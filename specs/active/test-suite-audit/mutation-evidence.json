@@ -1,0 +1,68 @@
+{
+  "initial": {
+    "total_mutants": 5,
+    "missed": 3,
+    "caught": 2,
+    "timeout": 0,
+    "unviable": 0,
+    "success": 0,
+    "start_time": "2026-09-05T10:13:37.497107Z",
+    "end_time": "2026-09-05T10:14:10.417185Z",
+    "cargo_mutants_version": "27.1.0",
+    "outcomes": [
+      {
+        "change": "src/table.rs:180:5: replace lossless_float -> bool with true",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:180:5: replace lossless_float -> bool with false",
+        "result": "MissedMutant"
+      },
+      {
+        "change": "src/table.rs:180:8: delete ! in lossless_float",
+        "result": "MissedMutant"
+      },
+      {
+        "change": "src/table.rs:187:30: replace == with != in lossless_float",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:190:30: replace == with != in lossless_float",
+        "result": "MissedMutant"
+      }
+    ]
+  },
+  "strengthened": {
+    "total_mutants": 5,
+    "missed": 0,
+    "caught": 5,
+    "timeout": 0,
+    "unviable": 0,
+    "success": 0,
+    "start_time": "2026-09-05T10:16:43.512186Z",
+    "end_time": "2026-09-05T10:17:15.638537Z",
+    "cargo_mutants_version": "27.1.0",
+    "outcomes": [
+      {
+        "change": "src/table.rs:180:5: replace lossless_float -> bool with true",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:180:5: replace lossless_float -> bool with false",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:180:8: delete ! in lossless_float",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:187:30: replace == with != in lossless_float",
+        "result": "CaughtMutant"
+      },
+      {
+        "change": "src/table.rs:190:30: replace == with != in lossless_float",
+        "result": "CaughtMutant"
+      }
+    ]
+  }
+}

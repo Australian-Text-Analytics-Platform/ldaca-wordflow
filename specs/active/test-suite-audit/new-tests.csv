@@ -1,0 +1,7 @@
+identifier,package,reason,execution
+polars-text/tests/test_concordance.py::test_concordance_document_start_has_no_left_neighbour,polars-text,Separate strict expected-failure regression for the discovered document-start concordance defect,"[{""case"": ""test_concordance_document_start_has_no_left_neighbour"", ""status"": ""expected failure"", ""seconds"": 0.0, ""reason"": ""Audit finding: native concordance returns the match as l1 at document start""}]"
+polars-text/src/offsets.rs::unicode_spans_match_character_slices,polars-text,Bounded generated Unicode source-map invariant,passed in native feature suite
+polars-text/src/quotation/normalize.rs::projected_spans_slice_original_unicode,polars-text,Bounded generated Unicode source-map invariant,passed in native feature suite
+polars-text/src/quotation/mod.rs::corrupt_model_is_an_error,polars-text,Offline native corrupt-model error separated from provisioned parsing,passed in native feature suite
+ldaca-data-rs/tests/tabulation.rs::compatible_numbers_promote_losslessly_with_nulls,ldaca-data-rs,Exact signed/unsigned numeric promotion and null preservation,passed in native feature suite
+ldaca-data-rs/tests/tabulation.rs::repeated_unicode_values_survive_tabulation,ldaca-data-rs,Bounded generated tabular Unicode value/ordinal preservation,passed in native feature suite

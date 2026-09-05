@@ -1,0 +1,180 @@
+{
+  "sdk-rebuilt-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "46",
+      "time": "3.770"
+    }
+  ],
+  "text-quotation-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "4",
+      "time": "0.441"
+    }
+  ],
+  "text-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "15",
+      "tests": "87",
+      "time": "4.430"
+    }
+  ],
+  "text-rebuilt-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "15",
+      "tests": "87",
+      "time": "2.317"
+    }
+  ],
+  "text-tokenization-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "4",
+      "time": "0.808"
+    }
+  ],
+  "text-base-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "4",
+      "time": "0.530"
+    }
+  ],
+  "sdk-core-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "42",
+      "time": "0.603"
+    }
+  ],
+  "source-utils-after": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "9",
+      "time": "0.409"
+    }
+  ],
+  "source-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "9",
+      "time": "2.995"
+    }
+  ],
+  "source-rebuilt-wheel": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "9",
+      "time": "3.020"
+    }
+  ],
+  "sdk-after": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "46",
+      "time": "0.485"
+    }
+  ],
+  "backend-after": [
+    {
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "825",
+      "time": "27.605"
+    }
+  ],
+  "native_features": {
+    "base": [
+      "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s"
+    ],
+    "tokenization": [
+      "test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s"
+    ],
+    "embedding": [
+      "test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.25s"
+    ],
+    "tokenization,embedding": [
+      "test result: ok. 33 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.26s"
+    ],
+    "topic-modeling": [
+      "test result: ok. 74 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.61s"
+    ],
+    "quotation": [
+      "test result: ok. 13 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.18s"
+    ],
+    "full": [
+      "test result: ok. 86 passed; 0 failed; 1 ignored; 0 measured; 0 filtered out; finished in 0.65s"
+    ]
+  },
+  "native_model": [
+    "test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 9.08s"
+  ],
+  "repeated_checks": {
+    "sdk-cancel-*.log": 5,
+    "sdk-native-cancel-*.log": 5,
+    "backend-credential-*.log": 5,
+    "backend-quota-*.log": 5
+  },
+  "sdk_core_installed_packages": [
+    {
+      "name": "iniconfig",
+      "version": "2.3.0"
+    },
+    {
+      "name": "ldaca-data-rs",
+      "version": "0.1.0"
+    },
+    {
+      "name": "packaging",
+      "version": "26.3"
+    },
+    {
+      "name": "pluggy",
+      "version": "1.6.0"
+    },
+    {
+      "name": "pygments",
+      "version": "2.21.0"
+    },
+    {
+      "name": "pytest",
+      "version": "9.1.1"
+    },
+    {
+      "name": "pytest-asyncio",
+      "version": "1.4.0"
+    }
+  ],
+  "platform": "macOS arm64; CPython 3.14.2 (GIL enabled)",
+  "unavailable": [
+    "Linux x86-64 wheel execution",
+    "Windows x86-64 wheel execution",
+    "CPython 3.11-3.13 SDK wheels",
+    "live Hugging Face/Lindera dictionary download tests"
+  ],
+  "artifact_root": "/tmp/wordflow-test-audit"
+}
