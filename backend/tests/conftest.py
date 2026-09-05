@@ -1,5 +1,6 @@
 """Small shared fixtures for the canonical backend test suite."""
 
+
 from __future__ import annotations
 
 import os
@@ -7,6 +8,7 @@ import uuid
 from collections.abc import AsyncIterator, Iterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any
 
 # Match the package bootstrap before importing Polars in the test process.
 os.environ["POLARS_UNKNOWN_EXTENSION_TYPE_BEHAVIOR"] = "load_as_extension"
@@ -157,3 +159,39 @@ def worker_snapshot(tmp_path: Path):
         )
 
     return create
+
+
+@pytest.fixture
+def cached_native_tokenizer(monkeypatch):
+    """Use native segmentation behind the non-plain model boundary, with real caching.
+
+    These orchestration tests need neither Hugging Face weights nor network I/O.
+    Model-specific tokenization is tested by the polars-text provisioned suite.
+    """
+    from polars_text.namespace import TextNamespace
+
+    tokenize = TextNamespace.tokenize
+
+    def local_tokenizer(self, **kwargs: Any):
+        assert kwargs["model"] == "huggingface:bert-base-uncased"
+        kwargs["model"] = "native:plain_words_en"
+        return tokenize(self, **kwargs)
+
+    monkeypatch.setattr(TextNamespace, "tokenize", local_tokenizer)
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--require-models",
+        action="store_true",
+        help="Require provisioned native quotation integration",
+    )
+
+
+def pytest_configure(config):
+    if config.getoption("--require-models"):
+        model = os.environ.get("WORDFLOW_TEST_UDPIPE_MODEL")
+        if not model or not Path(model).is_file():
+            raise pytest.UsageError(
+                "--require-models needs WORDFLOW_TEST_UDPIPE_MODEL pointing to the provisioned model"
+            )

@@ -1,0 +1,221 @@
+"""Exact SQLite schema marker and structural validation."""
+
+
+from pathlib import Path
+
+import aiosqlite
+import anyio
+import pytest
+
+from ldaca_wordflow.infrastructure.database import Database
+
+
+@pytest.mark.anyio
+async def test_user_storage_quota_defaults_nullable_and_positive_only(
+    tmp_path: Path,
+) -> None:
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+
+    async with aiosqlite.connect(database.path) as connection:
+        await connection.execute(
+            "INSERT INTO users (id,email,name,is_active,created_at) VALUES (?,?,?,?,?)",
+            ("hosted", "hosted@example.test", "Hosted", 1, "now"),
+        )
+        await connection.execute(
+            "INSERT INTO users "
+            "(id,email,name,is_active,created_at,storage_quota_bytes) "
+            "VALUES (?,?,?,?,?,NULL)",
+            ("local", "local@example.test", "Local", 1, "now"),
+        )
+        await connection.commit()
+
+        rows = await (
+            await connection.execute(
+                "SELECT id, storage_quota_bytes FROM users ORDER BY id"
+            )
+        ).fetchall()
+        assert rows == [("hosted", 30 * 1024**3), ("local", None)]
+
+        for invalid in (0, -1):
+            with pytest.raises(aiosqlite.IntegrityError):
+                await connection.execute(
+                    "INSERT INTO users "
+                    "(id,email,name,is_active,created_at,storage_quota_bytes) "
+                    "VALUES (?,?,?,?,?,?)",
+                    (
+                        f"invalid-{invalid}",
+                        f"invalid-{invalid}@example.test",
+                        "Invalid",
+                        1,
+                        "now",
+                        invalid,
+                    ),
+                )
+            await connection.rollback()
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("stored_version", [1, 6])
+async def test_existing_schema_marker_is_rejected_without_relabeling(
+    tmp_path: Path,
+    stored_version: int,
+) -> None:
+    database = Database(tmp_path / "users.db")
+    async with aiosqlite.connect(database.path) as connection:
+        await connection.execute("CREATE TABLE users (id TEXT PRIMARY KEY)")
+        await connection.execute(f"PRAGMA user_version = {stored_version}")
+        await connection.commit()
+
+    with pytest.raises(RuntimeError, match="schema version"):
+        await database.initialize()
+
+    async with aiosqlite.connect(database.path) as connection:
+        version = await (await connection.execute("PRAGMA user_version")).fetchone()
+    assert version == (stored_version,)
+
+
+@pytest.mark.anyio
+async def test_wrong_column_structure_is_rejected_at_current_version(
+    tmp_path: Path,
+) -> None:
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    await _replace_users_schema(database, "name TEXT NOT NULL", "name BLOB NOT NULL")
+    with pytest.raises(RuntimeError, match="users database schema"):
+        await database.initialize()
+
+
+async def _replace_users_schema(database, original, replacement):
+    async with aiosqlite.connect(database.path) as connection:
+        row = await (
+            await connection.execute(
+                "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'users'"
+            )
+        ).fetchone()
+        assert row is not None
+        altered = str(row[0]).replace(original, replacement)
+        assert altered != row[0]
+        await connection.execute("PRAGMA writable_schema = ON")
+        await connection.execute(
+            "UPDATE sqlite_master SET sql = ? WHERE type = 'table' AND name = 'users'",
+            (altered,),
+        )
+        await connection.execute("PRAGMA writable_schema = OFF")
+        await connection.commit()
+
+
+@pytest.mark.parametrize(
+    ("original", "replacement"),
+    [
+        pytest.param(
+            "\n        CHECK (storage_quota_bytes IS NULL OR storage_quota_bytes > 0)",
+            "",
+            id="missing-constraint",
+        ),
+        pytest.param(
+            "storage_quota_bytes > 0",
+            "storage_quota_bytes != 0",
+            id="negative-quota-allowed",
+        ),
+    ],
+)
+async def test_invalid_storage_quota_constraints_are_rejected(
+    tmp_path, original, replacement
+):
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    await _replace_users_schema(database, original, replacement)
+    with pytest.raises(RuntimeError, match="storage quota constraint"):
+        await database.initialize()
+
+
+@pytest.mark.anyio
+async def test_partial_session_index_is_rejected(tmp_path: Path) -> None:
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    async with aiosqlite.connect(database.path) as connection:
+        await connection.execute("DROP INDEX idx_sessions_user")
+        await connection.execute(
+            "CREATE INDEX idx_sessions_user ON user_sessions(user_id) "
+            "WHERE user_id <> ''"
+        )
+        await connection.commit()
+
+    with pytest.raises(RuntimeError, match="session indexes"):
+        await database.initialize()
+
+
+@pytest.mark.anyio
+async def test_schema_validation_probes_leave_no_rows(tmp_path: Path) -> None:
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+
+    async with aiosqlite.connect(database.path) as connection:
+        for table in (
+            "users",
+            "user_identities",
+            "user_sessions",
+            "google_login_credentials",
+            "oauth_transactions",
+        ):
+            row = await (
+                await connection.execute(f'SELECT COUNT(*) FROM "{table}"')
+            ).fetchone()
+            assert row == (0,)
+
+
+@pytest.mark.anyio
+async def test_google_credential_consumption_is_atomic_and_one_use(
+    tmp_path: Path,
+) -> None:
+    """Concurrent callbacks cannot consume the same verified credential twice."""
+
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    start = anyio.Event()
+    results: list[bool] = []
+
+    async def consume(*, task_status=anyio.TASK_STATUS_IGNORED):
+        competing = Database(database.path)
+        task_status.started()
+        await start.wait()
+        results.append(
+            await competing.consume_google_credential("hash", 4_102_444_800, "now")
+        )
+
+    with anyio.fail_after(5):
+        async with anyio.create_task_group() as group:
+            for _ in range(4):
+                await group.start(consume)
+            start.set()
+    assert sorted(results) == [False, False, False, True]
+    assert not await database.consume_google_credential("hash", 4_102_444_800, "later")
+
+
+@pytest.mark.anyio
+async def test_oauth_transaction_is_hashed_and_consumed_exactly_once(
+    tmp_path: Path,
+) -> None:
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    await database.create_oauth_transaction(
+        state_hash="state-hash",
+        provider="cilogon",
+        code_verifier="verifier",
+        return_to="/workspace",
+        expires_at=4_102_444_800,
+        created_at="now",
+    )
+
+    assert await database.consume_oauth_transaction(
+        state_hash="state-hash",
+        provider="cilogon",
+    ) == ("verifier", "/workspace")
+    assert (
+        await database.consume_oauth_transaction(
+            state_hash="state-hash",
+            provider="cilogon",
+        )
+        is None
+    )
