@@ -42,8 +42,9 @@ function createRuntime(root) {
   );
 }
 
-test('relative runtime layout remains valid after relocation', () => {
+test('relative runtime layout remains valid after relocation', (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-layout-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const source = path.join(temp, 'source', 'backend-runtime');
   const target = path.join(temp, 'relocated', 'backend-runtime');
   createRuntime(source);
@@ -58,8 +59,9 @@ test('relative runtime layout remains valid after relocation', () => {
   );
 });
 
-test('runtime layout rejects corrupt, absolute, escaping, and missing paths', () => {
+test('runtime layout rejects corrupt, absolute, escaping, and missing paths', (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-invalid-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const root = path.join(temp, 'runtime');
   createRuntime(root);
 
@@ -82,8 +84,9 @@ test('runtime layout rejects corrupt, absolute, escaping, and missing paths', ()
   assert.throws(() => resolveRuntimeLayout(root), /does not exist/);
 });
 
-test('runtime layout rejects free-threaded Python', () => {
+test('runtime layout rejects free-threaded Python', (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-abi-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const root = path.join(temp, 'runtime');
   createRuntime(root);
 
@@ -95,8 +98,9 @@ test('runtime layout rejects free-threaded Python', () => {
   assert.throws(() => resolveRuntimeLayout(root), /provenance is invalid/);
 });
 
-test('runtime layout rejects a stale backend version or lockfile', () => {
+test('runtime layout rejects a stale backend version or lockfile', (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-provenance-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const root = path.join(temp, 'runtime');
   createRuntime(root);
 
@@ -113,8 +117,9 @@ test('runtime layout rejects a stale backend version or lockfile', () => {
   assert.throws(() => resolveRuntimeLayout(root), /provenance is invalid/);
 });
 
-test('staging a replacement removes files retained from the previous runtime', () => {
+test('staging a replacement removes files retained from the previous runtime', (t) => {
   const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'runtime-replacement-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
   const source = path.join(temp, 'source', 'backend-runtime');
   const target = path.join(temp, 'staged', 'backend-runtime');
   createRuntime(source);

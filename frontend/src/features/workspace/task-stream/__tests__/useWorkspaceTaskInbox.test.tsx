@@ -67,13 +67,32 @@ describe('useWorkspaceTaskInbox', () => {
   });
 
   it('refreshes the workspace analysis projection when the canonical SSE event arrives', async () => {
+    let resource = analysisResponse({
+      state: 'queued',
+      started_at: null,
+      finished_at: null,
+      progress: { fraction: 0, message: 'Queued' },
+    });
+    server.use(
+      http.get('*/api/workspaces/:workspace_id/analyses', () =>
+        HttpResponse.json({
+          items: [resource], page: 1, page_size: 500, total_items: 1, total_pages: 1,
+        }),
+      ),
+      http.get('*/api/workspaces/:workspace_id/analyses/:analysis_id', () =>
+        HttpResponse.json(resource),
+      ),
+    );
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     );
     const view = renderHook(() => useWorkspaceTaskInbox('workspace-1'), { wrapper });
 
-    await waitFor(() => expect(view.result.current.tasks.length).toBeGreaterThan(0));
+    await waitFor(() => expect(view.result.current.tasks).toEqual([
+      expect.objectContaining({ task_id: 'analysis-1', state: 'queued' }),
+    ]));
+    resource = analysisResponse({ revision: 2 });
     act(() => {
       emitEvent?.({
         type: 'resource_changed',
@@ -91,7 +110,7 @@ describe('useWorkspaceTaskInbox', () => {
     await waitFor(() =>
       expect(
         queryClient.getQueryData(queryKeys.analysis('workspace-1', 'analysis-1')),
-      ).toMatchObject({ id: 'analysis-1', state: 'succeeded' }),
+      ).toMatchObject({ id: 'analysis-1', state: 'succeeded', revision: 2 }),
     );
     expect(view.result.current.tasks).toEqual(
       expect.arrayContaining([

@@ -91,7 +91,6 @@ describe('ServerPaginationFooter controlled pagination', () => {
     fireEvent.click(screen.getByRole('link', { name: /next/i }));
 
     expect(screen.getByTestId('page-source')).toHaveTextContent('2');
-    // This is the real assertion: the FOOTER's highlighted page must advance.
     expect(screen.getByRole('link', { current: 'page' })).toHaveTextContent('2');
   });
 });

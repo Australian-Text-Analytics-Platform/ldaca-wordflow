@@ -1,13 +1,19 @@
-import { mkdir, mkdtemp, readFile, readdir, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { syncPublishedDocs, validatePublishedDocs } from './sync-published-docs.mjs';
 
+const fixtureRoots = [];
+afterEach(async () => {
+  await Promise.all(fixtureRoots.splice(0).map((root) => rm(root, { recursive: true, force: true })));
+});
+
 async function createFixture() {
   const root = await mkdtemp(join(tmpdir(), 'wordflow-docs-sync-'));
+  fixtureRoots.push(root);
   const frontendDir = join(root, 'frontend');
   const targetDir = join(root, 'ldaca-wordflow-docs');
   await mkdir(join(frontendDir, 'public', 'tutorials', 'assets'), { recursive: true });

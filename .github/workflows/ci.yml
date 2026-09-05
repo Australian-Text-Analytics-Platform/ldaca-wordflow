@@ -50,6 +50,59 @@ jobs:
           if-no-files-found: error
           retention-days: 1
 
+  browser-workflows:
+    name: Browser workflows
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository with source dependencies
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Install frontend dependencies
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          corepack enable
+          pnpm install --frozen-lockfile
+
+      - name: Set up Rust nightly for source dependencies
+        uses: dtolnay/rust-toolchain@nightly
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v9.0.0
+        with:
+          python-version: "3.14"
+          enable-cache: true
+          cache-python: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Synchronize backend from checked-out sources
+        working-directory: backend
+        run: uv sync --locked
+
+      - name: Install Playwright Chromium
+        run: pnpm -C frontend exec playwright install --with-deps chromium
+
+      - name: Run browser workflow tests
+        run: pnpm -C frontend test:e2e
+
+      - name: Upload browser workflow diagnostics
+        if: failure() && !cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playwright-browser-workflows
+          path: |
+            frontend/.tmp/playwright-report
+            frontend/.tmp/playwright-results
+          if-no-files-found: warn
+          retention-days: 7
+
   backend:
     name: Backend ${{ matrix.name }}
     needs: frontend
@@ -110,7 +163,14 @@ jobs:
 
       - name: Run pytest
         working-directory: backend
-        run: uv run --no-sync pytest -q
+        run: uv run --no-sync pytest -q -m "not model"
+
+      - name: Provision and test native quotation integration
+        working-directory: backend
+        shell: bash
+        run: |
+          uv run --no-sync python ../polars-text/scripts/download_quotation_test_model.py "$RUNNER_TEMP/quotation.udpipe"
+          WORDFLOW_TEST_UDPIPE_MODEL="$RUNNER_TEMP/quotation.udpipe" uv run --no-sync pytest -q -m model --require-models
 
       - name: Export OpenAPI without runtime startup
         working-directory: backend

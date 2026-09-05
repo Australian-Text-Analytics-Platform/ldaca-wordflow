@@ -11,6 +11,7 @@ import {
   sessionResponse,
   tabResponse,
   tokenizerModelsResponse,
+  userFileImportResponse,
   workspaceResponse,
 } from './fixtures';
 
@@ -57,7 +58,7 @@ const emptyAnalysisResult = {
 };
 
 const acceptedAnalysis = () =>
-  analysisResponse({ state: 'queued', progress: { fraction: 0, message: 'Queued' } });
+  analysisResponse({ state: 'queued', started_at: null, finished_at: null, progress: { fraction: 0, message: 'Queued' } });
 
 /**
  * Default canonical API responses shared by tests. Individual tests can
@@ -76,27 +77,32 @@ export const handlers = [
   http.get(apiPath('/sample-collections'), () => HttpResponse.json(sampleCatalogueResponse())),
   http.post(apiPath('/data-portal/featured'), () => HttpResponse.json(dataPortalResponse())),
   http.post(apiPath('/data-portal/search'), () => HttpResponse.json(dataPortalResponse())),
-  http.post(apiPath('/data-portal/imports'), () => HttpResponse.json(acceptedAnalysis())),
+  http.post(apiPath('/data-portal/imports'), () => HttpResponse.json(userFileImportResponse(), {
+    status: 202,
+    headers: { Location: '/api/user-file-imports/import-1' },
+  })),
   http.get(apiPath('/user-files'), () => HttpResponse.json([])),
   http.get(apiPath('/user-file-imports'), ({ request }) => {
-    const pageSize = new URL(request.url).searchParams.get('page_size');
-    if (pageSize !== '100') {
-      return HttpResponse.json(
-        { code: 'request_validation_failed', message: 'Request validation failed' },
-        { status: 422 },
-      );
-    }
+    const pageSize = Number(new URL(request.url).searchParams.get('page_size') ?? '100');
     return HttpResponse.json({
       items: [],
       page: 1,
-      page_size: 100,
+      page_size: pageSize,
       total_items: 0,
       total_pages: 0,
     });
   }),
-  http.get(apiPath('/user-file-imports/:import_id'), () => HttpResponse.json(acceptedAnalysis())),
-  http.post(apiPath('/user-file-imports/:import_id/cancel'), () =>
-    HttpResponse.json(acceptedAnalysis()),
+  http.get(apiPath('/user-file-imports/:import_id'), ({ params }) =>
+    HttpResponse.json(userFileImportResponse({ id: String(params.import_id) })),
+  ),
+  http.post(apiPath('/user-file-imports/:import_id/cancel'), ({ params }) =>
+    HttpResponse.json(userFileImportResponse({
+      id: String(params.import_id),
+      state: 'cancelled',
+      revision: 2,
+      cancellation_requested_at: '2026-01-01T00:00:01Z',
+      finished_at: '2026-01-01T00:00:01Z',
+    })),
   ),
   http.delete(
     apiPath('/user-file-imports/:import_id'),

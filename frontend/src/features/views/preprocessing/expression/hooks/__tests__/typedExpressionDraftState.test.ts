@@ -27,7 +27,7 @@ describe('typedExpressionDraftState', () => {
       source: '{"expression":{"op":"column","name":"text"}}',
     });
 
-    expect(updated.withColumns[0]?.source).toContain('"column"');
+    expect(updated.withColumns[0]?.source).toBe('{"expression":{"op":"column","name":"text"}}');
     expect(updated.selectExpressions[0]?.source).toBe('');
   });
 
@@ -46,8 +46,8 @@ describe('typedExpressionDraftState', () => {
       source: '{"expression":{"op":"count","operand":{"op":"column","name":"speaker"}}}',
     });
 
-    expect(updated.groupByState.keySource).toContain('"speaker"');
-    expect(updated.groupByState.aggExpressions[0]?.source).toContain('"count"');
+    expect(updated.groupByState.keySource).toBe('{"expression":{"op":"column","name":"speaker"}}');
+    expect(updated.groupByState.aggExpressions[0]?.source).toBe('{"expression":{"op":"count","operand":{"op":"column","name":"speaker"}}}');
   });
 
   it('updates sort source and direction independently', () => {

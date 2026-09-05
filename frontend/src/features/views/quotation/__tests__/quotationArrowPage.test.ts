@@ -107,6 +107,8 @@ describe('Quotation Arrow page projection', () => {
     );
 
     expect(preview.groupedRows).toEqual(runAll.groupedRows);
+    expect(preview.rows).toHaveLength(1);
+    expect(preview.rows[0]?.spans).toEqual([{ start: 11, end: 16, type: 'quote' }]);
     expect(preview.rows.map((row) => row.spans)).toEqual(runAll.rows.map((row) => row.spans));
     expect(preview.metadata.quotation_columns).toEqual(runAll.metadata.quotation_columns);
     expect(runAll.rows[0]?.raw).not.toHaveProperty('__wordflow_source_row_id');

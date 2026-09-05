@@ -47,16 +47,21 @@ describe('loadMergedStopwords lazy module boundary', () => {
       byLanguage: [{ language: 'eng', words: ['about', 'after'] }],
       merged: ['about', 'after'],
     });
-    await expect(loadMergedStopwords({ languages: ['en'] })).resolves.toBeDefined();
+    await expect(loadMergedStopwords({ languages: ['en'] })).resolves.toEqual({
+      byLanguage: [{ language: 'en', words: ['about', 'after'] }],
+      merged: ['about', 'after'],
+    });
     expect(moduleFactory).toHaveBeenCalledOnce();
   });
 
   it('surfaces an offline chunk failure to the calling UI', async () => {
-    const moduleFactory = vi.fn(() => Promise.reject(new Error('offline')));
+    const failure = new Error('offline');
+    const moduleFactory = vi.fn(() => Promise.reject(failure));
     vi.doMock('stopword', moduleFactory);
     const { loadMergedStopwords } = await import('../loadMergedStopwords');
 
-    await expect(loadMergedStopwords({ languages: ['en'] })).rejects.toThrow();
+    // Vitest wraps rejected import factories; the original chunk error remains its cause.
+    await expect(loadMergedStopwords({ languages: ['en'] })).rejects.toMatchObject({ cause: failure });
     expect(moduleFactory).toHaveBeenCalledOnce();
   });
 

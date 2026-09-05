@@ -2,6 +2,8 @@
     "$schema": "https://unpkg.com/knip@6/schema.json",
     "entry": [
         "openapi.config.ts",
+        "playwright.config.ts",
+        "e2e/**/*.spec.ts",
         "src/updater/index.tsx"
     ],
     "project": [
@@ -17,5 +19,6 @@
     ],
     "ignoreBinaries": [
         "uv"
-    ]
+    ],
+    "playwright": false
 }

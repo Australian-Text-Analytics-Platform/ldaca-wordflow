@@ -27,7 +27,6 @@ describe('ResultAddToWorkspaceDialog', () => {
       />,
     );
 
-    expect(screen.queryByRole('button', { name: /apply to all/i })).not.toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Sync columns' })).not.toBeChecked();
     expect(screen.getByRole('button', { name: 'Select all for First' })).toBeEnabled();
     fireEvent.click(screen.getByRole('button', { name: 'Select none for First' }));

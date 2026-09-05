@@ -179,6 +179,8 @@ describe('queryKeys.detectedColumnLanguage', () => {
       'detected-language',
       { sourceRevision: '"revision-3"' },
     ]);
-    expect(JSON.stringify(key)).not.toContain('sampled document text');
+    expect(key).not.toEqual(
+      queryKeys.detectedColumnLanguage('workspace-1', 'node-1', 'document', '"revision-4"'),
+    );
   });
 });

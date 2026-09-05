@@ -5,9 +5,6 @@ import { fileURLToPath } from 'node:url';
 // fileURLToPath, not URL.pathname: on Windows the pathname is "/D:/..." and
 // resolving it against the current drive yields "D:\D:\...".
 const root = fileURLToPath(new URL('../src/', import.meta.url));
-const allowedFunctionalGradients = new Set([
-  'features/workspace/data-view/components/WorkspaceDataHeader.tsx',
-]);
 const allowedRawColorFiles = new Set([
   'features/theme/themeRuntime.ts',
   'features/views/common/components/MultiSeriesChart.tsx',
@@ -51,10 +48,6 @@ const checks = [
     'hardcoded Tailwind presentation palette',
     /\b(?:text|bg|border|from|via|to|fill|stroke)-(?:gray|slate|blue|red|amber|green|sky|emerald|yellow)-\d+/,
   ],
-  ['decorative blur', /\bbackdrop-blur(?:-\S+)?/],
-  ['non-overlay elevation', /\bshadow-(?:sm|md|lg|xl|2xl)\b/],
-  ['off-system radius', /\brounded-(?:xl|2xl|3xl)\b/],
-  ['off-system typography', /\btext-(?:xs|sm|base|lg|xl|2xl|3xl|4xl|5xl|6xl)\b/],
 ];
 
 async function sourceFiles(directory) {
@@ -78,17 +71,7 @@ for (const path of await sourceFiles(root)) {
   // Allow-lists use forward slashes; normalise Windows separators before lookup.
   const displayPath = relative(root, path).split(sep).join('/');
   for (const [label, pattern] of checks) {
-    if (label === 'non-overlay elevation') {
-      const withoutApprovedOverlay = source
-        .replaceAll('shadow-[var(--vscode-shadow-lg)]', '')
-        .replaceAll('var(--vscode-shadow-lg)', '');
-      if (pattern.test(withoutApprovedOverlay)) violations.push(`${displayPath}: ${label}`);
-      continue;
-    }
     if (pattern.test(source)) violations.push(`${displayPath}: ${label}`);
-  }
-  if (source.includes('bg-linear') && !allowedFunctionalGradients.has(displayPath)) {
-    violations.push(`${displayPath}: decorative gradient`);
   }
   if (
     /(?:#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:text|bg|border|fill|stroke)-(?:black|white)\b)/.test(

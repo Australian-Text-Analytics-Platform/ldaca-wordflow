@@ -88,16 +88,21 @@ describe('buildTypedExpressionRequest', () => {
     });
   });
 
-  it('rejects the removed raw-code shape', () => {
+  it.each([
+    ['unfinished JSON', '{', 'must be valid JSON'],
+    ['scalar JSON', '42', 'must be a JSON object'],
+    ['missing expression', '{}', 'requires an expression object with an op'],
+    ['missing operation', '{"expression":{"name":"text"}}', 'requires an expression object with an op'],
+  ])('rejects %s before submission', (_label, source, message) => {
     expect(() =>
       buildTypedExpressionRequest({
         activeContext: 'select',
         filterSource: '',
         withColumns: [],
-        selectExpressions: [item('a', '{"code":"pl.col(\\"text\\")"}')],
+        selectExpressions: [item('a', source)],
         sortItems: [],
         groupByState: { keySource: '', aggExpressions: [] },
       }),
-    ).toThrow('removed raw-code format');
+    ).toThrow(message);
   });
 });

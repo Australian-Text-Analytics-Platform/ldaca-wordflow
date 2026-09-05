@@ -36,7 +36,7 @@ describe('useQuotationEngineSettings', () => {
     expect(result.current.lastRemoteEngineId).toBe('remote-quotation-engine');
   });
 
-  it('requires a remote engine id before building request payloads', () => {
+  it('builds the selected remote engine request', () => {
     const { result } = renderHook(() => useQuotationEngineSettings());
 
     act(() => {

@@ -95,7 +95,7 @@ describe('TokenizerModelSelector', () => {
 
   it('loads models for defaulting and outlines language-compatible recommendations on open', async () => {
     const user = userEvent.setup();
-    renderSelector();
+    const { onChange } = renderSelector();
 
     expect(listTokenizerModels).not.toHaveBeenCalled();
 
@@ -106,18 +106,11 @@ describe('TokenizerModelSelector', () => {
     });
 
     expect(await screen.findByText('Recommended')).toBeInTheDocument();
-    expect(screen.getByTestId('tokenizer-model-recommendations')).toHaveClass('rounded-lg');
     expect(screen.getByText('Plain words (English)')).toBeInTheDocument();
     expect(screen.getByText('BERT base uncased')).toBeInTheDocument();
     expect(screen.getByText('IPADIC')).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: /BERT base uncased/ })).toHaveClass(
-      '!h-auto',
-      'min-h-control-sm',
-    );
-    expect(screen.getByRole('option', { name: /IPADIC/ })).toHaveClass(
-      '!h-auto',
-      'min-h-control-sm',
-    );
+    await user.click(screen.getByRole('option', { name: /IPADIC/ }));
+    expect(onChange).toHaveBeenCalledWith('lindera:ja-ipadic', 'en');
   });
 
   it('offers None as a clearing option', async () => {

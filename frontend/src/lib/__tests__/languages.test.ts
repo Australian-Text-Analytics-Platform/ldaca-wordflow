@@ -27,6 +27,6 @@ describe('tokenizer model inventory', () => {
       'native:plain_words_en',
       'huggingface:bert-base-uncased',
     ]);
-    expect(other).toHaveLength(TOKENIZER_MODELS.length - 2);
+    expect(other).toEqual(TOKENIZER_MODELS.slice(2));
   });
 });

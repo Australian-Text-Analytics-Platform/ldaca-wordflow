@@ -4,6 +4,6 @@
     "lib": ["ESNext"],
     "types": ["node", "vite/client", "vitest/config"]
   },
-  "include": ["vite.config.ts", "openapi.config.ts"],
+  "include": ["vite.config.ts", "openapi.config.ts", "playwright.config.ts", "e2e/**/*.ts"],
   "exclude": ["dist", "build", "node_modules"]
 }

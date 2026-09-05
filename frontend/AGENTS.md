@@ -51,9 +51,15 @@ Run from the repository root:
 ```sh
 pnpm -C frontend build
 pnpm -C frontend test -- --run
+pnpm -C frontend test:e2e
 pnpm -C frontend lint
 pnpm -C frontend docs:check
 ```
+
+The Playwright command runs Chromium workflow tests against real FastAPI and
+Vite processes. Its runner creates and removes a unique temporary Data Root;
+do not bypass the runner or point these tests at a development Data Root.
+Use `pnpm -C frontend test:e2e:ui` for Playwright's interactive runner.
 
 Frontend changes are complete only after tests and lint pass. Run the build for
 changes that affect compilation, bundling, generated code, or desktop staging.

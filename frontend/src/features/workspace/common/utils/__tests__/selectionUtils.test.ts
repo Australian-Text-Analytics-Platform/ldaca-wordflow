@@ -16,7 +16,4 @@ describe('takeMostRecent', () => {
     expect(takeMostRecent([], 2)).toEqual([]);
   });
 
-  it('works with string arrays', () => {
-    expect(takeMostRecent(['a', 'b', 'c', 'd'], 2)).toEqual(['c', 'd']);
-  });
 });

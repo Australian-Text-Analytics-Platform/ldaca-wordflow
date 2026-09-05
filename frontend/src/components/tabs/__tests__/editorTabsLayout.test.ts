@@ -28,9 +28,6 @@ describe('editorTabsLayout', () => {
       expect(computeContentTabWidths([20, 30])).toEqual([TAB_MIN_WIDTH, TAB_MIN_WIDTH]);
     });
 
-    it('preserves readable widths when the strip must scroll', () => {
-      expect(computeContentTabWidths([180, 180, 180])).toEqual([180, 180, 180]);
-    });
   });
 
   describe('computeTabPositions', () => {

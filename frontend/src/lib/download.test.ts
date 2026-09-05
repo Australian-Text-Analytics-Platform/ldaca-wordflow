@@ -1,5 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveBackendDownload, saveBlob, saveDataBlockDownload } from './download';
+
+const originalCreateObjectURL = URL.createObjectURL;
+const originalRevokeObjectURL = URL.revokeObjectURL;
 
 const mocks = vi.hoisted(() => ({
   invoke: vi.fn(),
@@ -16,6 +19,13 @@ vi.mock('@/lib/isTauri', () => ({ isTauri: mocks.isTauri }));
 vi.mock('sonner', () => ({ toast: mocks.toast }));
 
 describe('desktop download boundary', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.useRealTimers();
+    URL.createObjectURL = originalCreateObjectURL;
+    URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.isTauri.mockReturnValue(true);
@@ -102,13 +112,14 @@ describe('desktop download boundary', () => {
   });
 
   it('retains browser-owned downloads without invoking Rust', async () => {
+    vi.useFakeTimers();
     mocks.isTauri.mockReturnValue(false);
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(() => undefined);
     const loadBrowserDownload = vi.fn().mockResolvedValue({
       blob: new Blob(['browser']),
-      filename: 'server.csv',
+      filename: 'collection/server.csv',
       omittedTabCount: 2,
       omittedAnalysisCount: 3,
     });
@@ -117,7 +128,13 @@ describe('desktop download boundary', () => {
 
     expect(loadBrowserDownload).toHaveBeenCalledTimes(1);
     expect(click).toHaveBeenCalledTimes(1);
+    const anchor = click.mock.instances[0] as HTMLAnchorElement;
+    expect(anchor.download).toBe('server.csv');
+    expect(anchor.href).toBe('blob:download');
     expect(mocks.invoke).not.toHaveBeenCalled();
     expect(omissions).toEqual({ omittedTabCount: 2, omittedAnalysisCount: 3 });
+    await vi.runAllTimersAsync();
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:download');
+    expect(anchor.isConnected).toBe(false);
   });
 });

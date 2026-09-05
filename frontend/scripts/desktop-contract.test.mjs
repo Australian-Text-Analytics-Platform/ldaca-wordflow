@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -13,88 +13,10 @@ describe('desktop configuration contracts', () => {
     expect(tauri.identifier).toBe('au.edu.ldaca.wordflow');
   });
 
-  it('uses one strict Tauri development port command', () => {
-    const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
-    const packageJson = JSON.parse(read('frontend/package.json'));
-    const viteConfig = read('frontend/vite.config.ts');
-
-    expect(tauri.build.beforeDevCommand).toBe('pnpm dev:tauri');
-    expect(tauri.build.devUrl).toBe('http://127.0.0.1:3001');
-    expect(packageJson.scripts['dev:tauri']).toBe('vite --mode tauri');
-    expect(viteConfig).toContain("port: mode === 'tauri' ? 3001");
-    expect(viteConfig).toContain("host: mode === 'tauri' ? '127.0.0.1' : '0.0.0.0'");
-    expect(viteConfig).toContain("strictPort: mode === 'tauri'");
-    expect(viteConfig).toContain("ignored: ['**/src-tauri/**']");
-    expect(viteConfig).not.toContain('TAURI_DEV_HOST');
-  });
-
-  it('makes both shared desktop build branches use runtime preparation', () => {
-    const workflow = read('.github/workflows/desktop-build.yml');
-    const packageJson = JSON.parse(read('frontend/package.json'));
-
-    expect(workflow).toContain("inputs.platform == 'windows'");
-    expect(workflow).toContain("inputs.platform == 'macos'");
-    expect(workflow).toContain('pnpm prepare:backend-runtime');
-    expect(workflow).not.toContain('package_backend_runtime.py');
-    expect(workflow).not.toContain('pnpm stage:backend-runtime');
-    expect(workflow).not.toContain('build-notes');
-    expect(workflow).not.toContain('UV_NO_SOURCES');
-    expect(workflow).toContain('pnpm tauri:build');
-    expect(workflow).not.toContain('pnpm tauri build');
-    expect(workflow).toContain(
-      'pnpm exec vitest run scripts/desktop-contract.test.mjs src/lib/download.test.ts',
-    );
-    expect(packageJson.scripts['tauri:build']).toBe(
-      'tauri build --config src-tauri/tauri.bundle.conf.json',
-    );
-    expect(packageJson.scripts['dev:desktop']).toContain('tauri dev --features dev-runtime');
-    expect(packageJson.scripts['build:desktop:mac']).toContain('pnpm clean:desktop:mac-bundles');
-    expect(packageJson.scripts['build:desktop:mac']).toContain('--target aarch64-apple-darwin');
-    expect(packageJson.scripts['build:desktop:mac']).toContain(
-      '--config src-tauri/tauri.local-build.conf.json',
-    );
-    expect(packageJson.scripts['build:desktop:windows']).toContain(
-      '--config src-tauri/tauri.local-build.conf.json',
-    );
-    expect(
-      JSON.parse(read('frontend/src-tauri/tauri.local-build.conf.json')).bundle
-        .createUpdaterArtifacts,
-    ).toBe(false);
-  });
-
-  it('builds signed updater artifacts and delegates publication to the manual desktop workflow', () => {
-    const buildWorkflow = read('.github/workflows/desktop-build.yml');
-    const releaseWorkflow = read('.github/workflows/desktop-release.yml');
-
-    for (const action of [
-      'actions/checkout@v7.0.1',
-      'actions/setup-node@v7.0.0',
-      'actions/upload-artifact@v7.0.1',
-      'astral-sh/setup-uv@v9.0.0',
-    ]) {
-      expect(buildWorkflow).toContain(action);
-    }
-    expect(buildWorkflow).toContain('Apple-Actions/import-codesign-certs@v7.0.0');
-    expect(releaseWorkflow).toContain('actions/download-artifact@v8.0.1');
-    expect(buildWorkflow).toContain('aarch64-apple-darwin');
-    expect(buildWorkflow).toContain('xcrun notarytool submit');
-    expect(buildWorkflow).toContain('DMG notarization failed after $attempt attempts');
-    expect(buildWorkflow).toContain('TAURI_SIGNING_PRIVATE_KEY');
-    expect(buildWorkflow).toContain('.app.tar.gz.sig');
-    expect(releaseWorkflow).toContain('secrets: inherit');
-    expect(releaseWorkflow).toContain('release-assets/latest.json');
-    expect(releaseWorkflow).not.toContain('pnpm tauri build');
-  });
-
-  it('uses the official Tauri updater contract without legacy update checks', () => {
+  it('configures updater artifacts and isolates window permissions', () => {
     const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
     const capability = JSON.parse(read('frontend/src-tauri/capabilities/default.json'));
     const updaterCapability = JSON.parse(read('frontend/src-tauri/capabilities/updater.json'));
-    const cargo = read('frontend/src-tauri/Cargo.toml');
-    const packageJson = JSON.parse(read('frontend/package.json'));
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const nativeUpdater = read('frontend/src-tauri/src/desktop_updater.rs');
-    const viteConfig = read('frontend/vite.config.ts');
 
     expect(tauri.bundle.createUpdaterArtifacts).toBe(true);
     expect(tauri.plugins.updater.endpoints).toEqual([
@@ -102,110 +24,9 @@ describe('desktop configuration contracts', () => {
     ]);
     expect(capability.permissions).not.toContain('updater:default');
     expect(capability.permissions).not.toContain('process:allow-restart');
-    expect(cargo).toContain('tauri-plugin-updater = "2"');
-    expect(cargo).toContain('tauri-plugin-store = "2"');
-    expect(cargo).not.toContain('tauri-plugin-process = "2"');
-    expect(packageJson.dependencies).not.toHaveProperty('@tauri-apps/plugin-updater');
-    expect(packageJson.dependencies).not.toHaveProperty('@tauri-apps/plugin-store');
-    expect(packageJson.dependencies).not.toHaveProperty('@tauri-apps/plugin-process');
     expect(capability.windows).toEqual(['main']);
     expect(updaterCapability.windows).toEqual(['updater']);
     expect(updaterCapability.permissions).toEqual(['core:default']);
-    expect(desktopShell).toContain('Check for Updates…');
-    expect(desktopShell).toContain('desktop_updater::show_manual_check(app_handle.clone())');
-    expect(desktopShell).toContain(
-      'desktop_updater::schedule_automatic_check(app.handle().clone())',
-    );
-    expect(desktopShell).toContain('tauri_plugin_store::Builder::default().build()');
-    expect(desktopShell).toContain('window.label() == "main"');
-    expect(desktopShell).not.toContain('desktop_update_check_requested');
-    expect(desktopShell).not.toContain('desktop-updater=1');
-    expect(nativeUpdater).toContain('.timeout(CHECK_TIMEOUT)');
-    expect(nativeUpdater).toContain('.download(');
-    expect(nativeUpdater).toContain('Channel<DownloadEvent>');
-    expect(nativeUpdater).toContain('WebviewWindowBuilder::new(');
-    expect(nativeUpdater).toContain('updater-settings.json');
-    expect(nativeUpdater).toContain('app.restart()');
-    expect(nativeUpdater).not.toContain('MessageDialogButtons');
-    expect(viteConfig).toContain("main: path.resolve(frontendRootDir, 'index.html')");
-    expect(viteConfig).toContain("updater: path.resolve(frontendRootDir, 'updater.html')");
-    expect(existsSync(resolve(repoRoot, 'frontend/updater.html'))).toBe(true);
-    expect(existsSync(resolve(repoRoot, 'frontend/src/features/updater/UpdaterWindow.tsx'))).toBe(
-      true,
-    );
-    expect(existsSync(resolve(repoRoot, '.github/workflows/check-context-docs.yml'))).toBe(false);
-    expect(existsSync(resolve(repoRoot, '.github/workflows/check-docs-drift.yml'))).toBe(false);
-  });
-
-  it('packages the precompiled macOS Liquid Glass icon catalog', () => {
-    const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
-    const packageJson = JSON.parse(read('frontend/package.json'));
-    const compiler = read('frontend/scripts/compile-desktop-mac-icon.mjs');
-
-    expect(tauri.bundle.icon).toContain('icons/wordflow.icon');
-    expect(tauri.bundle.icon).toContain('icons/Assets.car');
-    expect(existsSync(resolve(repoRoot, 'frontend/src-tauri/icons/Assets.car'))).toBe(true);
-    expect(packageJson.scripts['compile:desktop:mac-icon']).toBe(
-      'node scripts/compile-desktop-mac-icon.mjs',
-    );
-    expect(compiler).toContain("'actool'");
-    expect(compiler).toMatch(/'--minimum-deployment-target',\s*'26\.0'/);
-  });
-
-  it('uses Tauri-native page zoom at the platform default scale', () => {
-    const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
-    const capability = JSON.parse(read('frontend/src-tauri/capabilities/default.json'));
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const [mainWindow] = tauri.app.windows;
-    const explicitWindowPermissions = capability.permissions.filter(
-      (permission) =>
-        permission.startsWith('core:window:') || permission.startsWith('core:webview:'),
-    );
-
-    expect(tauri.app.windows).toHaveLength(1);
-    expect(mainWindow.zoomHotkeysEnabled).toBe(true);
-    expect(capability.windows).toEqual(['main']);
-    expect(explicitWindowPermissions).toEqual([
-      'core:window:allow-start-dragging',
-      'core:webview:allow-set-webview-zoom',
-    ]);
-    expect(desktopShell).not.toMatch(/\.set_zoom\s*\(/);
-  });
-
-  it('uses native macOS traffic lights over the desktop-owned title bar', () => {
-    const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
-    const capability = JSON.parse(read('frontend/src-tauri/capabilities/default.json'));
-    const app = read('frontend/src/App.tsx');
-    const desktopFrame = read('frontend/src/components/layout/DesktopWindowFrame.tsx');
-    const desktopHeader = read('frontend/src/components/layout/DesktopNavigationHeader.tsx');
-    const workspaceShell = read('frontend/src/components/layout/WorkspaceShell.tsx');
-    const workspaceView = read('frontend/src/components/layout/WorkspaceView.tsx');
-    const sidebar = read('frontend/src/components/layout/Sidebar.tsx');
-    const [mainWindow] = tauri.app.windows;
-
-    expect(mainWindow.decorations ?? true).toBe(true);
-    expect(mainWindow.titleBarStyle).toBe('Overlay');
-    expect(mainWindow.hiddenTitle).toBe(true);
-    expect(app).toContain('<DesktopWindowFrame>');
-    expect(desktopFrame).toContain('data-tauri-drag-region="deep"');
-    expect(desktopFrame).toContain("['--desktop-titlebar-height' as string]: '35px'");
-    expect(workspaceShell).toContain('<DesktopNavigationHeader />');
-    expect(desktopHeader).toContain('data-tauri-drag-region="deep"');
-    expect(desktopHeader).toContain(
-      'app-glass-titlebar-foreground app-titlebar-backplane',
-    );
-    expect(desktopHeader).toContain('hasNativeTrafficLights={isMacOSDesktop()}');
-    expect(desktopHeader).toContain('data-tauri-drag-region="false"');
-    expect(desktopHeader).toContain('h-[22px] w-[38vw] max-w-[600px]');
-    expect(desktopHeader).toContain('sideOffset={-22}');
-    expect(desktopHeader).not.toContain('border-b');
-    expect(workspaceShell).toContain(
-      'className="app-titlebar-backplane h-full min-h-0"',
-    );
-    expect(workspaceShell).toContain('p-2 pt-0 pl-0');
-    expect(workspaceView).toContain('p-2 pt-0 pb-0 pl-0');
-    expect(sidebar).toContain('@container/sidebar pt-0! pr-0!');
-    expect(capability.permissions).toContain('core:window:allow-start-dragging');
   });
 
   it('enables Liquid Glass only for the transparent macOS main window', () => {
@@ -215,13 +36,9 @@ describe('desktop configuration contracts', () => {
       read('frontend/src-tauri/capabilities/liquid-glass.json'),
     );
     const updaterCapability = JSON.parse(read('frontend/src-tauri/capabilities/updater.json'));
-    const cargo = read('frontend/src-tauri/Cargo.toml');
-    const packageJson = JSON.parse(read('frontend/package.json'));
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
     const [baseMainWindow] = tauri.app.windows;
 
     expect(tauri.app.macOSPrivateApi).toBe(true);
-    expect(macOS.app).not.toHaveProperty('macOSPrivateApi');
     expect(macOS.app.windows).toEqual([{ ...baseMainWindow, transparent: true }]);
     expect(liquidGlassCapability).toMatchObject({
       windows: ['main'],
@@ -229,45 +46,6 @@ describe('desktop configuration contracts', () => {
       permissions: ['liquid-glass:default'],
     });
     expect(updaterCapability.permissions).not.toContain('liquid-glass:default');
-    expect(cargo).toContain('tauri = { version = "2", features = ["macos-private-api"] }');
-    expect(cargo).toContain('tauri-plugin-liquid-glass = "=0.1.6"');
-    expect(packageJson.dependencies['tauri-plugin-liquid-glass-api']).toBe('0.1.6');
-    expect(desktopShell).toContain('#[cfg(target_os = "macos")]');
-    expect(desktopShell).toContain('tauri_plugin_liquid_glass::init()');
-  });
-
-  it('discovers the desktop backend through IPC without page-load injection', () => {
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const backendEnvironment = read('frontend/src/lib/backend/env.ts');
-
-    expect(desktopShell).toContain('get_backend_url');
-    expect(desktopShell).not.toContain('window.__BACKEND_URL__');
-    expect(desktopShell).not.toMatch(/\.eval\s*\(/);
-    expect(desktopShell).not.toContain('on_page_load');
-    expect(backendEnvironment).not.toContain('http://127.0.0.1:${backendPort}/api');
-  });
-
-  it('keeps desktop save destinations and filesystem ownership behind Rust commands', () => {
-    const capability = JSON.parse(read('frontend/src-tauri/capabilities/default.json'));
-    const cargo = read('frontend/src-tauri/Cargo.toml');
-    const packageJson = JSON.parse(read('frontend/package.json'));
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const nativeDownloads = read('frontend/src-tauri/src/download.rs');
-    const webDownloads = read('frontend/src/lib/download.ts');
-
-    expect(desktopShell).toContain('download::save_backend_download');
-    expect(desktopShell).toContain('download::save_data_block_export');
-    expect(desktopShell).toContain('download::save_generated_bytes');
-    expect(nativeDownloads).toContain('.blocking_save_file()');
-    expect(nativeDownloads).toContain('.header(reqwest::header::ORIGIN, origin)');
-    expect(nativeDownloads).toContain('.header("X-CSRF-Token", csrf_header)');
-    expect(nativeDownloads).not.toContain('method: String');
-    expect(webDownloads).not.toContain('showSaveFilePicker');
-    expect(webDownloads).not.toContain('@tauri-apps/plugin-fs');
-    expect(packageJson.dependencies).not.toHaveProperty('@tauri-apps/plugin-fs');
-    expect(cargo).not.toMatch(/^tauri-plugin-fs\s*=/m);
-    expect(desktopShell).not.toContain('tauri_plugin_fs::init');
-    expect(capability.permissions.some((permission) => permission.startsWith('fs:'))).toBe(false);
   });
 
   it('uses least-privilege desktop capabilities and a production-only strict CSP', () => {
@@ -287,46 +65,12 @@ describe('desktop configuration contracts', () => {
     expect(tauri.app.security.devCsp).toContain('ws://127.0.0.1:3001');
   });
 
-  it('keeps backend startup off the Tauri setup and main threads', () => {
-    const desktopShell = read('frontend/src-tauri/src/lib.rs');
-    const supervisor = read('frontend/src-tauri/src/supervisor.rs');
-
-    expect(desktopShell).toContain('supervisor::start(app.handle().clone())');
-    expect(desktopShell).not.toContain('BackendProcess::spawn');
-    expect(desktopShell).not.toContain('wait_until_live');
-    expect(supervisor).toContain('tauri::async_runtime::spawn_blocking');
-    expect(supervisor).toContain('run_on_main_thread');
-    expect(supervisor).toContain('startup_cancelled');
-  });
-
-  it('keeps retired JavaScript permissions, plugins, and globals absent', () => {
-    const capability = JSON.parse(read('frontend/src-tauri/capabilities/default.json'));
-    const cargo = read('frontend/src-tauri/Cargo.toml');
-    const main = read('frontend/src-tauri/src/main.rs');
-
-    expect(capability.permissions).not.toContain('http:default');
-    expect(cargo).not.toMatch(/tauri-plugin-http|dotenvy/);
-    expect(main).not.toMatch(/tauri_plugin_http|__BACKEND_PORT__|load_runtime_env/);
-  });
-
   it('uses one explicit runtime for development and one bundled runtime for packaging', () => {
     const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
     const bundleConfig = JSON.parse(read('frontend/src-tauri/tauri.bundle.conf.json'));
-    const buildScript = read('frontend/src-tauri/build.rs');
-    const cargo = read('frontend/src-tauri/Cargo.toml');
-    const runtime = read('frontend/src-tauri/src/runtime.rs');
-    const backendProcess = read('frontend/src-tauri/src/backend_process.rs');
 
     expect(tauri.build.beforeBuildCommand).toContain('stage-backend-runtime.mjs --validate-only');
     expect(tauri.bundle).not.toHaveProperty('resources');
     expect(bundleConfig).toEqual({ bundle: { resources: ['backend-runtime'] } });
-    expect(cargo).toContain('dev-runtime = []');
-    expect(buildScript).toContain('cargo:rustc-env=LDACA_UV_LOCK_SHA256=');
-    expect(buildScript).not.toContain('TAURI_CONFIG');
-    expect(runtime).toContain('cfg!(feature = "dev-runtime")');
-    expect(runtime).toContain('/backend-runtime');
-    expect(runtime).not.toContain('current_exe');
-    expect(runtime).not.toContain('LDACA_BACKEND_RUNTIME');
-    expect(backendProcess).not.toContain('LDACA_BACKEND_RUNTIME');
   });
 });

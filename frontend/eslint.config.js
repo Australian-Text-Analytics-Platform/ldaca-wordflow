@@ -91,7 +91,7 @@ export default tseslint.config([
   // Node-executed TypeScript configuration has its own project and globals.
   // The normal source project deliberately remains browser-only.
   {
-    files: ['vite.config.ts', 'openapi.config.ts'],
+    files: ['vite.config.ts', 'openapi.config.ts', 'playwright.config.ts', 'e2e/**/*.ts'],
     languageOptions: {
       globals: globals.node,
       parserOptions: {
@@ -110,6 +110,7 @@ export default tseslint.config([
       '**/__tests__/**/*.{ts,tsx}',
       'src/test/**/*.{ts,tsx}',
     ],
+    ignores: ['e2e/**'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: {
       parserOptions: {

@@ -1,0 +1,6 @@
+document,date,group,sequence
+the cat sat on the mat,2024-01-01,A,1
+the dog sat beside the cat,2024-01-02,A,2
+the cat watched the bird,2024-01-03,B,3
+the bird watched the cat,2024-01-04,B,4
+the dog chased the bird,2024-01-05,A,5

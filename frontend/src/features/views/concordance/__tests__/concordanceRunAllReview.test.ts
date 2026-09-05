@@ -59,6 +59,10 @@ describe('Concordance Run All Review projection', () => {
 
     expect(result.data).toHaveLength(1);
     expect(result.data[0]).toHaveLength(2);
+    expect(result.data[0]?.map((row) => [row.speaker, row.CONC_matched_text, row.CONC_start_idx])).toEqual([
+      ['A', 'Queensland', 0],
+      ['A', 'Queensland', 11],
+    ]);
     expect(result.columns).not.toContain('__wordflow_source_row_id');
     expect(result.metadata.metadata_columns).toContain('speaker');
     expect(result.metadata.concordance_columns).toContain('CONC_matched_text');
@@ -87,7 +91,10 @@ describe('Concordance Run All Review projection', () => {
     );
 
     expect(result.data).toHaveLength(2);
-    expect(result.data.every((group) => group.length === 1)).toBe(true);
+    expect(result.data).toEqual([
+      [{ text: 'Queensland Queensland', CONC_matched_text: 'Queensland', CONC_start_idx: 0, __source_node: 'source-id' }],
+      [{ text: 'Queensland Queensland', CONC_matched_text: 'Queensland', CONC_start_idx: 11, __source_node: 'source-id' }],
+    ]);
     expect(result.pagination.total_source_rows).toBe(2);
   });
 });

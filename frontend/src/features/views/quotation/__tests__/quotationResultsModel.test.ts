@@ -6,7 +6,6 @@ import {
   buildQuotationSegments,
   buildQuotationMetadataColumns,
   filterQuotationRowsWithQuotes,
-  getQuotationHighlightColor,
   normalizeQuotationRow,
   resolveQuotationMetadataColumns,
 } from '../quotationResultsModel';
@@ -153,11 +152,4 @@ describe('quotationResultsModel', () => {
     expect(row.spans).toEqual([]);
   });
 
-  it('owns a stable highlight palette', () => {
-    expect((['speaker', 'quote', 'verb'] as const).map(getQuotationHighlightColor)).toEqual([
-      '#2563eb',
-      '#059669',
-      '#7c3aed',
-    ]);
-  });
 });

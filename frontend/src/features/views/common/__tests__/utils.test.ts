@@ -3,9 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { clampDisplayTokenLimit, DEFAULT_TOKEN_LIMIT } from '../utils';
 
 describe('analysis common utils', () => {
-  it('uses 25 as the default token limit when no value is provided', () => {
-    expect(DEFAULT_TOKEN_LIMIT).toBe(25);
-    expect(clampDisplayTokenLimit(undefined).limit).toBe(25);
-    expect(clampDisplayTokenLimit(null).limit).toBe(25);
+  it.each([
+    ['missing preference', undefined, DEFAULT_TOKEN_LIMIT, false],
+    ['cleared preference', null, DEFAULT_TOKEN_LIMIT, false],
+    ['nonfinite preference', Infinity, DEFAULT_TOKEN_LIMIT, false],
+    ['zero', 0, 1, true],
+    ['negative', -4, 1, true],
+    ['fractional limit', 3.9, 3, false],
+    ['valid limit', 40, 40, false],
+  ] as const)('normalizes %s before storing a display limit', (_label, value, limit, wasClamped) => {
+    expect(clampDisplayTokenLimit(value)).toEqual({ limit, wasClamped });
   });
 });

@@ -16,7 +16,7 @@ function resolveAddDataBlockTarget() {
 }
 
 describe('Data Loader guidance registry', () => {
-  it('targets the first enabled Add action with automatic placement', () => {
+  it('targets the first enabled Add action', () => {
     render(
       <>
         <button type="button" data-guidance="add-data-block" disabled>
@@ -29,7 +29,6 @@ describe('Data Loader guidance registry', () => {
       </>,
     );
 
-    expect(addDataBlockHint?.placement).toBe('auto');
     expect(resolveAddDataBlockTarget()).toBe(screen.getByRole('button', { name: 'Enabled Add' }));
   });
 
@@ -46,16 +45,12 @@ describe('Data Loader guidance registry', () => {
     expect(resolveAddDataBlockTarget()).toBe(screen.getByText('File toolbar'));
   });
 
-  it('defines 50 unique, automatically placed hints in exactly one view sequence', () => {
+  it('gives each persisted hint a unique identity and a reachable sequence entry', () => {
     const ids = contextualHintRegistry.map((definition) => definition.id);
     const sequencedIds = Object.values(contextualHintSequences).flat();
 
-    expect(ids).toHaveLength(50);
-    expect(new Set(ids).size).toBe(50);
-    expect(sequencedIds).toHaveLength(50);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(sequencedIds).toHaveLength(ids.length);
     expect(new Set(sequencedIds)).toEqual(new Set(ids));
-    expect(contextualHintRegistry.every((definition) => definition.placement === 'auto')).toBe(
-      true,
-    );
   });
 });

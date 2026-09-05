@@ -9,7 +9,9 @@ vi.mock('@/api/tableApi', () => ({ getNodeSchemaTable: getNodeSchemaTableMock })
 import { fetchNodeSchema, nodeSchemaQueryOptions } from '../nodeSchema';
 
 describe('node Arrow schema cache', () => {
-  beforeEach(() => getNodeSchemaTableMock.mockReset());
+  beforeEach(() => {
+    getNodeSchemaTableMock.mockReset();
+  });
 
   it('deduplicates schema reads by workspace and node', async () => {
     const schema = [{ name: 'text', field: new Field('text', new Utf8()) }];
@@ -27,10 +29,15 @@ describe('node Arrow schema cache', () => {
     queryClient.clear();
   });
 
-  it('defines no fallback data for a failed schema query', () => {
+  it('surfaces a failed schema read without caching invented columns', async () => {
+    getNodeSchemaTableMock.mockRejectedValue(new Error('Schema unavailable'));
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const options = nodeSchemaQueryOptions({ workspaceId: 'workspace-1', nodeId: 'node-1' });
-
-    expect(options).not.toHaveProperty('initialData');
-    expect(options).not.toHaveProperty('placeholderData');
+    try {
+      await expect(fetchNodeSchema({ queryClient, workspaceId: 'workspace-1', nodeId: 'node-1' })).rejects.toThrow('Schema unavailable');
+      expect(queryClient.getQueryData(options.queryKey)).toBeUndefined();
+    } finally {
+      queryClient.clear();
+    }
   });
 });

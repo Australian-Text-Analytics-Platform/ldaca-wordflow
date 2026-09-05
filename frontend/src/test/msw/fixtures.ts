@@ -8,11 +8,28 @@ import type {
   SessionResponse,
   Tab,
   TokenizerModelResource,
+  UserFileImport,
   WorkspaceNodeInfo,
   WorkspaceResource,
 } from '@/api';
 
 const TEST_DATE = '2026-01-01T00:00:00Z';
+
+export const userFileImportResponse = (overrides: Partial<UserFileImport> = {}): UserFileImport => ({
+  availability: 'available',
+  id: 'import-1',
+  state: 'queued',
+  cancellation_requested_at: null,
+  created_at: TEST_DATE,
+  started_at: null,
+  finished_at: null,
+  revision: 1,
+  progress: { fraction: 0, message: 'Queued' },
+  error: null,
+  request: { kind: 'data_portal', identifier: 'arcp://name,test-corpus' },
+  result: null,
+  ...overrides,
+});
 
 /** Builds the canonical cookie-session bootstrap response used by shared tests. */
 export const sessionResponse = (overrides: Partial<SessionResponse> = {}): SessionResponse => ({

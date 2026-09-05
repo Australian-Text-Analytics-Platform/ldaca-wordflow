@@ -41,6 +41,11 @@ describe('generated client with MSW', () => {
       },
     });
 
-    expect(node.id).toBeTruthy();
+    expect(node).toMatchObject({
+      id: 'node-1',
+      name: 'Text',
+      shape: [1, 1],
+      provenance: { type: 'source', file_path: 'text.csv' },
+    });
   });
 });

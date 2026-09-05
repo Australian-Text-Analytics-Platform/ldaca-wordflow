@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   PROVIDER_CREDENTIAL_STORAGE_KEY,
@@ -14,6 +14,9 @@ const SECOND_ID = 'aa0295d2-c879-40a0-95b5-24c33fd28a43';
 const THIRD_ID = 'c6c64e6b-5bd0-4d33-b409-a834c3274c31';
 
 describe('providerCredentialsStore', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
   beforeEach(() => {
     localStorage.clear();
     useProviderCredentialsStore.setState({ byUser: {} });
@@ -151,7 +154,7 @@ describe('providerCredentialsStore', () => {
   });
 
   it('rehydrates version 2 and ignores version 1 without migration', async () => {
-    useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
+    const configuration = useProviderCredentialsStore.getState().addAnnotationProvider('user-a', {
       name: 'Anthropic',
       provider: 'anthropic',
       apiKey: 'reload-secret',
@@ -161,7 +164,8 @@ describe('providerCredentialsStore', () => {
     useProviderCredentialsStore.setState({ byUser: {} });
     if (persisted) localStorage.setItem(PROVIDER_CREDENTIAL_STORAGE_KEY, persisted);
     await useProviderCredentialsStore.persist.rehydrate();
-    expect(providerCredentialPresence('user-a').annotationProviders).toHaveLength(1);
+    expect(providerCredentialPresence('user-a').annotationProviders).toEqual([configuration]);
+    expect(getBrowserAnnotationProviderCredential('user-a', configuration.id)).toBe('reload-secret');
 
     applyProviderCredentialStorageEvent(
       new StorageEvent('storage', {
@@ -170,7 +174,8 @@ describe('providerCredentialsStore', () => {
         storageArea: localStorage,
       }),
     );
-    expect(providerCredentialPresence('user-a').annotationProviders).toHaveLength(1);
+    expect(providerCredentialPresence('user-a').annotationProviders).toEqual([configuration]);
+    expect(getBrowserAnnotationProviderCredential('user-a', configuration.id)).toBe('reload-secret');
   });
 
   it('rejects incomplete version 2 partitions instead of defaulting legacy fields', () => {

@@ -61,21 +61,17 @@ describe('external file drop guard', () => {
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
-  it('installs and disposes the same bubble-phase listeners', () => {
-    const addEventListener = vi.spyOn(window, 'addEventListener');
-    const removeEventListener = vi.spyOn(window, 'removeEventListener');
-
+  it.each(['dragover', 'drop'] as const)('stops blocking %s after disposal', (type) => {
     const dispose = installExternalFileDropGuard(window);
-
-    expect(addEventListener).toHaveBeenCalledWith('dragover', blockUnhandledExternalFileDrop);
-    expect(addEventListener).toHaveBeenCalledWith('drop', blockUnhandledExternalFileDrop);
-
-    dispose();
-
-    expect(removeEventListener).toHaveBeenCalledWith('dragover', blockUnhandledExternalFileDrop);
-    expect(removeEventListener).toHaveBeenCalledWith('drop', blockUnhandledExternalFileDrop);
-
-    addEventListener.mockRestore();
-    removeEventListener.mockRestore();
+    try {
+      const guarded = dragEvent(type, ['Files']);
+      window.dispatchEvent(guarded);
+      expect(guarded.defaultPrevented).toBe(true);
+    } finally {
+      dispose();
+    }
+    const unguarded = dragEvent(type, ['Files']);
+    window.dispatchEvent(unguarded);
+    expect(unguarded.defaultPrevented).toBe(false);
   });
 });
