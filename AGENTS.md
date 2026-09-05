@@ -1,7 +1,7 @@
 # Wordflow repository operating guide
 
 LDaCA Wordflow is a text-analysis application with a FastAPI backend, a React
-and Tauri client, and two supporting Rust/Python packages. This file contains
+and Tauri client, and three supporting Rust/Python packages. This file contains
 only cross-repository rules. Read the nearest package `AGENTS.md` before
 changing that package.
 
@@ -11,6 +11,7 @@ changing that package.
 - `frontend/`: React 19, Vite, TypeScript, and the Tauri desktop shell
 - `polars-text/`: Polars expression plugins for text analysis
 - `polars-source-utils/`: serialized Polars-plan source-path utilities
+- `ldaca-data-rs/`: ONI data access and Arrow-based RO-Crate conversion
 - `ldaca-analytics-sample-data/`: canonical remote sample-data repository
 - `docs/`: current engineering knowledge and operational procedures
 - `specs/`: active and archived change records

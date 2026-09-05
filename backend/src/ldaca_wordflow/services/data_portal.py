@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 import anyio
-import httpx
+from ldaca_data_rs import AsyncClient, DataError, SizeLimitError, extract_identifier
 from pydantic import SecretStr
 
 from ..domain import (
@@ -19,7 +19,6 @@ from ..shared.errors import (
     InvalidInputError,
     ResourceTooLargeError,
 )
-from ..infrastructure.providers.oni import OniClient, extract_ldaca_identifier
 from ..models.data_sources import (
     DataPortalImportSubmitRequest,
     DataPortalRecord,
@@ -54,16 +53,15 @@ class DataPortalService:
         self._settings = settings
         self._files = files
         self._credentials = credentials
-        self._http_client = httpx.AsyncClient(
+        self._oni_client = AsyncClient(
             base_url=settings.ldaca_oni_api_base_url.rstrip("/"),
             timeout=settings.ldaca_oni_timeout,
-            follow_redirects=True,
         )
 
     async def close(self) -> None:
         """Close the runtime-owned portal connection pool."""
 
-        await self._http_client.aclose()
+        await self._oni_client.aclose()
 
     async def search(
         self, request: DataPortalSearchRequest
@@ -76,19 +74,21 @@ class DataPortalService:
             )
         )
         try:
-            records, total = await client.search(
-                method=request.method,
+            result = await client.search(
+                method=request.method.value,
                 query=request.query,
                 limit=request.page_size,
                 offset=(request.page - 1) * request.page_size,
             )
-        except (httpx.HTTPError, ValueError) as exc:
+        except SizeLimitError as exc:
+            raise ResourceTooLargeError(str(exc)) from exc
+        except DataError as exc:
             raise BadGatewayError("Data Portal search failed") from exc
         return DataPortalSearchResource(
             page=request.page,
             page_size=request.page_size,
-            total=total,
-            items=[DataPortalRecord.model_validate(record) for record in records],
+            total=result.total,
+            items=[DataPortalRecord.model_validate(record) for record in result.items],
         )
 
     async def featured(
@@ -104,7 +104,9 @@ class DataPortalService:
             records = await client.featured_collections(
                 list(self._settings.ldaca_oni_featured_collection_ids)
             )
-        except (httpx.HTTPError, ValueError) as exc:
+        except SizeLimitError as exc:
+            raise ResourceTooLargeError(str(exc)) from exc
+        except DataError as exc:
             raise BadGatewayError("Data Portal featured collections failed") from exc
         items = [DataPortalRecord.model_validate(record) for record in records]
         return DataPortalSearchResource(
@@ -122,7 +124,7 @@ class DataPortalService:
     ) -> tuple[DataPortalUserFileImportRequest, DataPortalImportExecution]:
         """Normalize one request and build its process-private invocation."""
 
-        identifier = extract_ldaca_identifier(request.identifier)
+        identifier = extract_identifier(request.identifier)
         if identifier is None:
             raise InvalidInputError(
                 "Data Portal import requires an ARCP identifier or portal URL"
@@ -153,9 +155,7 @@ class DataPortalService:
                             self._settings.ldaca_oni_download_concurrency
                         ),
                         staging_dir=str(staging),
-                        max_output_bytes=(
-                            self._settings.max_user_file_import_bytes
-                        ),
+                        max_output_bytes=(self._settings.max_user_file_import_bytes),
                     ),
                     staging=staging,
                 ),
@@ -223,11 +223,8 @@ class DataPortalService:
             result.destination_path,
         )
 
-    def _client(self, token: str | None) -> OniClient:
-        return OniClient(
-            self._http_client,
-            token=token,
-        )
+    def _client(self, token: str | None) -> AsyncClient:
+        return self._oni_client.with_api_key(token)
 
 
 __all__ = ["DataPortalImportExecution", "DataPortalService"]

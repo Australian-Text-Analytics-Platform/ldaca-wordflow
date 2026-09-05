@@ -16,7 +16,7 @@ import math
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import partial
-from typing import Any
+from typing import Any, cast
 
 import polars as pl
 
@@ -138,14 +138,30 @@ async def _extract_remote_batches(
     return RemoteQuotationExtractResponse(version=2, results=combined_results)
 
 
-def quotation_groups_via_quote_extractor(df: pl.DataFrame, column: str) -> pl.DataFrame:
-    """Extract quotations using the vendored QuoteExtractor (replaces polars-text).
+def quotation_groups_via_polars_text(df: pl.DataFrame, column: str) -> pl.DataFrame:
+    """Attach native quotation lists while retaining source and metadata columns."""
+    import polars_text  # noqa: F401 - registers the expression namespace
 
-    Used by quotation workers and live result queries.
-    """
-    from .quotation_extractor import quotation_groups_for_dataframe
+    from ..infrastructure.providers.quotation_model import ensure_quotation_model
 
-    return quotation_groups_for_dataframe(df, column)
+    texts = [str(value) if value is not None else "" for value in df[column].to_list()]
+    if not any(text.strip() for text in texts):
+        return df.with_columns(
+            pl.Series(
+                QUOTATION_GROUP_COLUMN, [[] for _ in texts], dtype=QUOTATION_GROUP_DTYPE
+            )
+        )
+    model_path = ensure_quotation_model()
+    quotations = (
+        pl.DataFrame({column: texts})
+        .select(
+            cast(Any, pl.col(column))
+            .text.quotation(model_path=model_path)
+            .alias(QUOTATION_GROUP_COLUMN)
+        )
+        .get_column(QUOTATION_GROUP_COLUMN)
+    )
+    return df.with_columns(quotations)
 
 
 def _remote_payload_to_grouped_dataframe(
@@ -203,7 +219,7 @@ async def compute_quotation_groups(
             payload,
         )
 
-    return await run_blocking(quotation_groups_via_quote_extractor, base_df, column)
+    return await run_blocking(quotation_groups_via_polars_text, base_df, column)
 
 
 def _lazyframe_height(lazyframe: pl.LazyFrame) -> int:

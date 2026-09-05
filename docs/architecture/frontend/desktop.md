@@ -24,10 +24,10 @@ Cargo checks compile the supervisor without pretending a missing runtime is a
 valid package.
 
 Runtime dependency selection is explicit. Local development and default
-desktop builds use the checked-out `polars-text` and `polars-source-utils`
+desktop builds use the checked-out `polars-text`, `polars-source-utils` and `ldaca-data-rs`
 sources recorded by `backend/uv.lock`. The opt-in release `no_sources` input
 passes `uv sync --no-sources`, so CI resolves published packages from PyPI and
-refuses to build either extension from an sdist.
+refuses to build any of these extensions from an sdist.
 
 ```mermaid
 sequenceDiagram

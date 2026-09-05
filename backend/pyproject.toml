@@ -1,6 +1,6 @@
 [project]
 name = "ldaca-wordflow"
-version = "0.7.7"
+version = "0.8.0"
 description = "LDaCA Wordflow - FastAPI backend with bundled production frontend for the Language Data Commons of Australia"
 readme = "README.md"
 requires-python = ">=3.14"
@@ -32,14 +32,14 @@ dependencies = [
     "platformdirs>=4.11.5,<5",
     "python-multipart>=0.0.20",                 # OAuth form callbacks
     "psutil>=6.1.0",                            # Process management for proper cleanup of child processes
-    "polars-text>=0.6.0",
+    "ldaca-data-rs>=0.1.0,<0.2",
+    "polars-text>=0.8.0",
     "polars-source-utils>=0.6.0",
     "tbb>=2022.3.1 ; sys_platform != 'darwin'",
     "tzdata>=2025.2 ; sys_platform == 'win32'",
     "openai>=3.6.0,<4",                         # AsyncOpenAI: OpenAI/OpenRouter/OpenAI-compatible custom annotation calls
     "anthropic>=1.2.0,<2",                      # AsyncAnthropic: server-side Claude annotation calls
     "google-genai>=2.20.0,<3",                  # google-genai aio: server-side Gemini annotation calls
-    "spacy>=3.8.16,<3.9",
     "rtoml>=0.12.0",
     "uvicorn[standard]>=0.52.4,<1",
 ]
@@ -59,12 +59,8 @@ Documentation = "https://github.com/Australian-Text-Analytics-Platform/ldaca-wor
 addopts = ["-ra", "--strict-markers", "--strict-config"]
 pythonpath = ["src"]
 testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = [
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-    "integration: marks tests as integration tests",
-    "workspace: marks tests related to workspace functionality",
-]
+anyio_mode = "auto"
+markers = ["model: tests requiring an explicitly provisioned native model"]
 
 [build-system]
 requires = ["hatchling"]
@@ -76,13 +72,10 @@ path = "scripts/hatch_build.py"
 [dependency-groups]
 dev = [
     "duckdb>=1.5.5,<2",
-    "pytest-asyncio>=0.23.0",
+    "pytest==9.1.1",
     "ruff>=0.16.5,<1",
     "ty==0.0.75",
 ]
-
-[tool.ty.src]
-exclude = ["**/_vendor/"]
 
 [tool.ty.analysis]
 allowed-unresolved-imports = [
@@ -93,7 +86,6 @@ allowed-unresolved-imports = [
 
 [tool.ruff]
 target-version = "py314"
-extend-exclude = ["src/ldaca_wordflow/_vendor"]
 
 [tool.ruff.lint]
 select = ["E4", "E7", "E9", "F", "UP", "B"]
@@ -108,19 +100,26 @@ include = [
     "/src",
     "/scripts/hatch_build.py",
     "/src/ldaca_wordflow/resources/**",
-    "/src/ldaca_wordflow/_vendor/gender_gap_tracker/**",
 ]
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/ldaca_wordflow"]
 include = [
     "src/ldaca_wordflow/resources/**",
-    "src/ldaca_wordflow/_vendor/gender_gap_tracker/**",
 ]
 
 [tool.hatch.build.targets.wheel.sources]
 "src" = ""
 
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "src/ldaca_wordflow/**/*.py" },
+    { file = "src/ldaca_wordflow/resources/frontend/build.tar.gz" },
+    { file = "scripts/hatch_build.py" },
+]
+
 [tool.uv.sources]
+ldaca-data-rs = { path = "../ldaca-data-rs", editable = true }
 polars-text = { path = "../polars-text", editable = true }
 polars-source-utils = { path = "../polars-source-utils", editable = true }

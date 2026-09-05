@@ -9,13 +9,21 @@ runtimes neither create nor read it. Analysis lifecycle and Artifacts live
 inside their Workspace; User File Import history lives inside its user's import
 area. Host paths are private and never appear in public resources.
 
-The local Quotation pipeline is the exception to Data Root cache ownership. Its
-spaCy model data downloads on first use into the operating system's disposable
-per-user cache for `au.edu.ldaca.wordflow`, shared by every Data Root used by
-that OS account. On macOS the model directory is
-`~/Library/Caches/au.edu.ldaca.wordflow/spacy/en_core_web_md`. The application
-never installs the model into its Python environment at runtime or consults the
-former `~/.cache/ldaca_wordflow` path.
+The local Quotation model is the exception to Data Root cache ownership.
+First nonempty local extraction downloads the pinned English EWT UDPipe model
+into `platform_cache_root()/udpipe/`, shared by every Data Root used by that OS
+account. On macOS this is
+`~/Library/Caches/au.edu.ldaca.wordflow/udpipe/english-ewt-ud-2.5-191206.udpipe`.
+A bounded download is checksum-verified and atomically published from a temporary
+file in that directory. Verified cached data works offline; download, checksum,
+and permission failures propagate to the Analysis error UI. Runtime acquisition
+never installs packages or writes into the signed application bundle.
+Existing spaCy cache files are left untouched and are no longer read.
+
+Saved Run All Artifacts retain their original quotation results. New runs and
+on-demand Preview computation use UDPipe; no Workspace migration or automatic
+re-extraction occurs. Model licensing is described in the
+[quotation runtime reference](../reference/quotation-runtime.md).
 
 A User File is mutable import material. Adding one to a Workspace snapshots it
 into an immutable Workspace-owned source, so later moves or deletion in the
@@ -48,7 +56,7 @@ flowchart TB
     ROOT --> AUTH["Hosted only<br/>deployment.sqlite3"]
     ROOT --> SNAPSHOTS["Response and query snapshots"]
     ROOT --> CACHE["Runtime caches"]
-    PLATFORM_CACHE["OS application cache"] --> SPACY["Quotation spaCy model"]
+    PLATFORM_CACHE["OS application cache"] --> UDPIPE["Quotation UDPipe model"]
 
     USERS --> FILES["Mutable User Files"]
     USERS --> IMPORTS["User File Import records and staging"]

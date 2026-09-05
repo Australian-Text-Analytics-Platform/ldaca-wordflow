@@ -59,3 +59,21 @@ row expressions. The tokenizer inventory is immutable Python data.
 Serialized LazyFrame path inspection and rewriting does not belong here; it is
 owned by `polars-source-utils`, keeping tokenizer-focused builds independent of
 the broad `polars-plan` feature surface.
+
+## Local quotation extraction
+
+The optional `quotation` feature (included in `full`) owns normalization,
+original-text mapping, grammatical parsing, quotation rules, and typed Polars
+output. A narrow CXX bridge statically links unmodified UDPipe 1.4.0 source.
+Rust reads an explicit model path; one owned model is cached per calling thread,
+replaced when the canonical path changes. There is no nested parallelism and no
+model acquisition in the package. Backend orchestration owns first-use download.
+
+The rules process syntactic/according-to candidates, floating quotations, then
+heuristic candidates before length and overlap filtering. UD complement and
+reporting-clause relationships replace spaCy-specific grammar. Returned spans
+are Unicode character offsets into the original input, with exact source slices.
+Multiword components use exact partitioned ranges when possible and the containing
+surface-token range otherwise. The [API reference](../../reference/polars-text-api.md)
+defines the public expression; the [runtime reference](../../reference/quotation-runtime.md)
+records the model and licence.

@@ -20,6 +20,7 @@ flowchart TB
 
     PACKAGES --> TEXT["polars-text"]
     PACKAGES --> PATHS["polars-source-utils"]
+    PACKAGES --> DATA["ldaca-data-rs"]
 ```
 
 - [System overview](system-overview.md) describes the monorepo and end-to-end
@@ -32,8 +33,9 @@ flowchart TB
   Analysis pipeline and its Result and child-resource ownership.
 - [Frontend overview](frontend/overview.md) covers the React application,
   state ownership, and desktop shell.
-- [polars-text](packages/polars-text.md) and
-  [polars-source-utils](packages/polars-source-utils.md) describe the compiled
+- [polars-text](packages/polars-text.md),
+  [polars-source-utils](packages/polars-source-utils.md) and
+  [ldaca-data-rs](packages/ldaca-data-rs.md) describe the compiled
   supporting packages.
 
 Architecture pages state current ownership and dependency direction. Product

@@ -9,10 +9,13 @@ a packaged desktop app, and a Python package that can serve the bundled SPA.
 - `backend/` contains the FastAPI service published as `ldaca-wordflow`.
 - `polars-text/` contains Rust/PyO3 Polars text-processing extensions.
 - `polars-source-utils/` contains Rust/PyO3 serialized-plan path utilities.
+- `ldaca-data-rs/` contains native ONI access and Arrow-based RO-Crate conversion.
 
 The backend is tracked directly in this repository, which owns its CI and
-`ldaca-wordflow` release workflow. The two compiled package roots remain Git
-submodules with their own manifests and release workflows. The root project
+`ldaca-wordflow` release workflow. The two Polars package roots remain Git
+submodules. `ldaca-data-rs` currently has an independent local repository; shared
+submodule registration waits for its initial commit to be published. Each package
+has its own manifest and release workflow. The root project
 coordinates local source resolution, frontend packaging, desktop builds, and
 version stamping.
 
@@ -31,12 +34,14 @@ flowchart LR
     subgraph Packages["Compiled package boundaries"]
         TEXT["polars-text<br/>text expressions"]
         PATHS["polars-source-utils<br/>serialized-plan relocation"]
+        DATA["ldaca-data-rs<br/>ONI and RO-Crate conversion"]
     end
 
     WEB --> FRONTEND
     DESKTOP --> FRONTEND
     FRONTEND -->|"typed HTTP and SSE"| BACKEND
     BACKEND --> TEXT
+    BACKEND --> DATA
     BACKEND -->|"persistence boundaries only"| PATHS
     BACKEND --> ROOT[("Data Root")]
     BACKEND --> PROVIDERS["External identity and data providers"]
@@ -66,4 +71,5 @@ bootstrap and switching; Tauri contributes the native directory picker.
 The backend owns product state and HTTP contracts. The frontend consumes the
 exported OpenAPI schema. `polars-text` provides computation primitives, while
 `polars-source-utils` is used only at explicit serialized-plan persistence and
-relocation boundaries.
+relocation boundaries. `ldaca-data-rs` owns portal protocol and conversion;
+Wordflow owns credentials, import lifecycle and storage publication.

@@ -1,0 +1,347 @@
+{
+  "engine": "UDPipe",
+  "engine_version": "1.4.0",
+  "model": "english-ewt-ud-2.5-191206",
+  "benchmark": {
+    "cold_seconds": 0.984828832995845,
+    "warm_seconds": 0.06934141699457541,
+    "process_peak_rss_bytes": 274137088,
+    "platform": "macOS arm64",
+    "documents": 16
+  },
+  "cases": [
+    {
+      "text": "Alice said, \"The project will finish tomorrow morning.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 5,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 13,
+          "quote_end_idx": 53,
+          "verb": "said",
+          "verb_start_idx": 6,
+          "verb_end_idx": 10,
+          "quote_type": "SVQCQ",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "\"The project will finish tomorrow morning,\" said Alice.",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 49,
+          "speaker_end_idx": 54,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 1,
+          "quote_end_idx": 41,
+          "verb": "said",
+          "verb_start_idx": 44,
+          "verb_end_idx": 48,
+          "quote_type": "QCQVS",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "Company director Alice Smith said the project would finish tomorrow morning.",
+      "quotes": [
+        {
+          "speaker": "Company director Alice Smith",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 28,
+          "quote": "the project would finish tomorrow morning",
+          "quote_start_idx": 34,
+          "quote_end_idx": 75,
+          "verb": "said",
+          "verb_start_idx": 29,
+          "verb_end_idx": 33,
+          "quote_type": "SVC",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "According to Alice, the project will finish tomorrow morning.",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 13,
+          "speaker_end_idx": 18,
+          "quote": "the project will finish tomorrow morning",
+          "quote_start_idx": 20,
+          "quote_end_idx": 60,
+          "verb": "According to",
+          "verb_start_idx": 0,
+          "verb_end_idx": 12,
+          "quote_type": "AccordingTo",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "The project will finish tomorrow morning, according to Alice.",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 55,
+          "speaker_end_idx": 60,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 0,
+          "quote_end_idx": 40,
+          "verb": "according to",
+          "verb_start_idx": 42,
+          "verb_end_idx": 54,
+          "quote_type": "AccordingTo",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "\"The project will finish tomorrow morning,\" Alice said. \"Everyone will receive their final report then.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 44,
+          "speaker_end_idx": 49,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 1,
+          "quote_end_idx": 41,
+          "verb": "said",
+          "verb_start_idx": 50,
+          "verb_end_idx": 54,
+          "quote_type": "QCQSV",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        },
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 44,
+          "speaker_end_idx": 49,
+          "quote": "\"Everyone will receive their final report then.\"",
+          "quote_start_idx": 56,
+          "quote_end_idx": 104,
+          "verb": null,
+          "verb_start_idx": null,
+          "verb_end_idx": null,
+          "quote_type": "QCQ",
+          "quote_token_count": 10,
+          "is_floating_quote": true,
+          "quote_row_idx": 1
+        }
+      ]
+    },
+    {
+      "text": "\"The project will finish tomorrow morning,\" Alice said. \"Everyone will receive their final report then. We will publish all the results afterwards.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 44,
+          "speaker_end_idx": 49,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 1,
+          "quote_end_idx": 41,
+          "verb": "said",
+          "verb_start_idx": 50,
+          "verb_end_idx": 54,
+          "quote_type": "QCQSV",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        },
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 44,
+          "speaker_end_idx": 49,
+          "quote": "\"Everyone will receive their final report then. We will publish all the results afterwards.\"",
+          "quote_start_idx": 56,
+          "quote_end_idx": 148,
+          "verb": null,
+          "verb_start_idx": null,
+          "verb_end_idx": null,
+          "quote_type": "QCQ",
+          "quote_token_count": 18,
+          "is_floating_quote": true,
+          "quote_row_idx": 1
+        }
+      ]
+    },
+    {
+      "text": "A sign read \"Every visitor must report to reception before entering\".",
+      "quotes": [
+        {
+          "speaker": null,
+          "speaker_start_idx": null,
+          "speaker_end_idx": null,
+          "quote": "\"Every visitor must report to reception before entering\"",
+          "quote_start_idx": 12,
+          "quote_end_idx": 68,
+          "verb": "read",
+          "verb_start_idx": 7,
+          "verb_end_idx": 11,
+          "quote_type": "Heuristic",
+          "quote_token_count": 10,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "\"Every visitor must report to reception before entering\"",
+      "quotes": [
+        {
+          "speaker": null,
+          "speaker_start_idx": null,
+          "speaker_end_idx": null,
+          "quote": "\"Every visitor must report to reception before entering\"",
+          "quote_start_idx": 0,
+          "quote_end_idx": 56,
+          "verb": null,
+          "verb_start_idx": null,
+          "verb_end_idx": null,
+          "quote_type": "Heuristic",
+          "quote_token_count": 10,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "José said, “The café will remain open until tomorrow.”",
+      "quotes": [
+        {
+          "speaker": "José",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 4,
+          "quote": "The café will remain open until tomorrow",
+          "quote_start_idx": 12,
+          "quote_end_idx": 52,
+          "verb": "said",
+          "verb_start_idx": 5,
+          "verb_end_idx": 9,
+          "quote_type": "SVQCQ",
+          "quote_token_count": 7,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "🙂 Alice said, \"We cannot finish the project before tomorrow.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 2,
+          "speaker_end_idx": 7,
+          "quote": "We cannot finish the project before tomorrow",
+          "quote_start_idx": 15,
+          "quote_end_idx": 59,
+          "verb": "said",
+          "verb_start_idx": 8,
+          "verb_end_idx": 12,
+          "quote_type": "SVQCQ",
+          "quote_token_count": 8,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "Alice said, \"We can't finish the project before tomorrow.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 5,
+          "quote": "We can't finish the project before tomorrow",
+          "quote_start_idx": 13,
+          "quote_end_idx": 56,
+          "verb": "said",
+          "verb_start_idx": 6,
+          "verb_end_idx": 10,
+          "quote_type": "SVQCQ",
+          "quote_token_count": 8,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "Alice said the project would finish tomorrow\nBob said the report would arrive next week.",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 5,
+          "quote": "the project would finish tomorrow",
+          "quote_start_idx": 11,
+          "quote_end_idx": 44,
+          "verb": "said",
+          "verb_start_idx": 6,
+          "verb_end_idx": 10,
+          "quote_type": "SVC",
+          "quote_token_count": 5,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        },
+        {
+          "speaker": "Bob",
+          "speaker_start_idx": 45,
+          "speaker_end_idx": 48,
+          "quote": "the report would arrive next week",
+          "quote_start_idx": 54,
+          "quote_end_idx": 87,
+          "verb": "said",
+          "verb_start_idx": 49,
+          "verb_end_idx": 53,
+          "quote_type": "SVC",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 1
+        }
+      ]
+    },
+    {
+      "text": "Alice  said, \"The project will finish tomorrow morning.\"",
+      "quotes": [
+        {
+          "speaker": "Alice",
+          "speaker_start_idx": 0,
+          "speaker_end_idx": 5,
+          "quote": "The project will finish tomorrow morning",
+          "quote_start_idx": 14,
+          "quote_end_idx": 54,
+          "verb": "said",
+          "verb_start_idx": 7,
+          "verb_end_idx": 11,
+          "quote_type": "SVQCQ",
+          "quote_token_count": 6,
+          "is_floating_quote": false,
+          "quote_row_idx": 0
+        }
+      ]
+    },
+    {
+      "text": "Nobody reported any statements in this plain sentence.",
+      "quotes": []
+    },
+    {
+      "text": "",
+      "quotes": []
+    }
+  ]
+}

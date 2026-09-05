@@ -16,6 +16,8 @@ Read only the sections relevant to the work at hand.
 - [Persistence integrity](reference/persistence-integrity.md) records the
   current persistence guarantees and the hardening boundaries that remain.
 - [Runbooks](runbooks/) contains operational and development procedures.
+- [Test suites](runbooks/test-suites.md) explains suite ownership, model provisioning
+  and installed-artifact verification.
 - [Release records](releases/) are historical snapshots, not current
   architecture.
 - [Active and archived specifications](../specs/README.md) record substantial

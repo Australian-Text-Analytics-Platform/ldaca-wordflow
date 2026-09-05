@@ -90,6 +90,34 @@ Use `pnpm -C frontend docs:check` for the bundled user-document registry. After
 an OpenAPI change, export the backend schema and regenerate the frontend client
 through `pnpm -C frontend openapi:generate`; never edit generated files.
 
+## Browser Workflow Tests
+
+Install the pinned Chromium build once after installing frontend dependencies:
+
+```bash
+pnpm -C frontend exec playwright install chromium
+```
+
+Run the browser workflow gate from the repository root:
+
+```bash
+pnpm -C frontend test:e2e
+```
+
+For local interactive debugging, use:
+
+```bash
+pnpm -C frontend test:e2e:ui
+```
+
+The cross-platform runner creates a unique temporary Data Root, starts the real
+FastAPI backend and Vite frontend, and removes the Data Root after Playwright
+exits. Playwright waits for both servers before beginning and never reuses an
+existing process. The fixed test ports therefore fail safely when occupied
+instead of connecting to another Wordflow instance or a developer Data Root.
+Chromium workflow tests cover application behavior; detailed component and edge
+case coverage remains in Vitest, and native Tauri behavior is outside this gate.
+
 ## Compiled Packages
 
 ```bash
@@ -109,7 +137,7 @@ cargo metadata --format-version 1 --no-deps
 ```
 
 Some tokenizer and embedding features download model assets on first use. The
-local Quotation pipeline likewise downloads its compatible spaCy model data to
+local Quotation pipeline likewise downloads its pinned UDPipe model data to
 the OS-native `au.edu.ldaca.wordflow` application cache; it is not a Python
 package dependency.
 
@@ -122,3 +150,14 @@ Root CI runs the complete frontend suite and a Linux, macOS, and Windows backend
 matrix from the same commit. Its backend sync is source-aware, so
 `backend/pyproject.toml` remains the authority for local versus registry
 dependencies.
+
+## LDaCA data SDK development
+
+The independent `ldaca-data-rs` package lives alongside `polars-text` and
+`polars-source-utils`. Initialize the supporting checkouts before `uv sync`
+in the backend; its local source mapping builds the SDK automatically.
+Use standard GIL-enabled Python 3.14 for Wordflow. The SDK also supports
+Python 3.11–3.13 for independent consumers. See its
+[package architecture](../architecture/packages/ldaca-data-rs.md) and
+[SDK README](../../ldaca-data-rs/README.md). The initial SDK commit/package
+remains a local dependency until publication is explicitly authorized.

@@ -23,9 +23,9 @@ make build-tokenization-embedding
 make build-topic
 ```
 
-Default builds use `full = ["topic-modeling"]`; topic modeling enables its
+Default builds use `full = ["topic-modeling", "quotation"]`; topic modeling enables its
 tokenization, embedding, and internal cache prerequisites. Base, tokenization,
-embedding, tokenization-plus-embedding, topic, and full configurations must all
+embedding, tokenization-plus-embedding, topic, quotation, and full configurations must all
 compile. Run strict Clippy before handoff:
 
 ```bash
@@ -38,3 +38,23 @@ always finish with `uv run make build` before Python acceptance.
 
 Leave Cargo's job count unset unless an explicit local limit is required.
 Tokenizer, dictionary, and ONNX assets may download on first use.
+
+## Quotation verification
+
+Provision the pinned model explicitly for tests (weights are never bundled):
+
+```sh
+python scripts/download_quotation_test_model.py /tmp/quotation.udpipe
+cargo test --locked --no-default-features --features quotation
+WORDFLOW_TEST_UDPIPE_MODEL=/tmp/quotation.udpipe cargo test --locked --no-default-features --features quotation -- --ignored
+WORDFLOW_TEST_UDPIPE_MODEL=/tmp/quotation.udpipe uv run pytest -q --require-models tests/test_quotation.py
+make check-quotation
+make build-quotation
+```
+
+Restore `make build` after feature-scoped builds. The quotation feature requires
+a C++17 compiler, but base/tokenization/embedding/topic-only builds do not require
+UDPipe or its bridge. No external UDPipe installation is used.
+
+See [test suite ownership and artifact verification](test-suites.md) for offline
+checks, feature matrices and installed-wheel acceptance.

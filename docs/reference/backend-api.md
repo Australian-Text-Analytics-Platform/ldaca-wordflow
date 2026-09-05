@@ -2,7 +2,7 @@
 
 This is the canonical human-readable HTTP inventory for the current backend.
 Generated OpenAPI and
-`backend/tests/unit/test_current_api_surface.py` enforce the executable method,
+`backend/tests/integration/api/test_openapi.py` enforce the executable method,
 path, and operation-ID set. All `/api` operations use the identity dependency
 unless marked public. Unsafe operations also require exact Origin and CSRF
 proof, except provider callbacks with their own one-use validation.

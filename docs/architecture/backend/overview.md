@@ -70,9 +70,11 @@ this direction and the absence of removed facades.
 - `UserFileStore` and `WorkspaceArchiveService` own their respective storage
   boundaries.
 
-The package includes narrow vendored runtime subsets for RO-Crate tabulation
-and quotation extraction. They are ordinary modules with their required data
-and licenses, not nested projects or submodules.
+ONI access and RO-Crate conversion belong to the standalone
+[ldaca-data-rs SDK](../packages/ldaca-data-rs.md). The backend owns credentials,
+import supervision, quotas, staging and publication, and selects the SDK's
+`wordflow_v1` compatibility profile. Local quotation computation belongs to
+polars-text; the backend only orchestrates execution and acquires its model.
 
 ## Further Reading
 

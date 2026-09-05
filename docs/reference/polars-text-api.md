@@ -80,3 +80,22 @@ The immutable tokenizer catalogue is `TOKENIZER_MODELS`, a tuple of
 loaded-model inspection are not public APIs.
 
 Serialized-plan path functions belong to `polars_source_utils`.
+
+## Quotation (0.8.0)
+
+```python
+pl.col("document").text.quotation(model_path="/absolute/path/model.udpipe")
+```
+
+Requires the `quotation` Cargo feature, included in `full`. The input must be
+String. Construction and schema inspection do not load a model, download, or
+collect. Evaluation uses only the supplied local file. Null, empty, and blank
+rows return empty lists. Input order and duplicate documents are retained.
+
+Each row returns `List[Struct]` containing `quote`, nullable `speaker` and `verb`
+(String), their `*_start_idx` and `*_end_idx` (Int64, nullable for absent fields),
+`quote_type` (String), `quote_token_count` (Int64), `is_floating_quote` (Boolean),
+and `quote_row_idx` (Int64, consecutive within each document after filtering).
+Offsets count Unicode characters with exclusive ends; each non-null string is
+exactly its original source slice. Parsing and model failures raise Polars
+computation errors. English is supported; spaCy output equality is not promised.

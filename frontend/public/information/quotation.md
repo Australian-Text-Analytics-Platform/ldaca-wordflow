@@ -15,7 +15,12 @@ working with another genre or English variety.
 
 - Which engine should I use?
   **Built-in** runs the bundled local quotation engine and requires no service
-  configuration. **Remote** uses an engine ID configured by the deployment
+  configuration. First nonempty use downloads an English UDPipe model; subsequent
+  use works offline from the per-user cache. The model is licensed
+  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/) for
+  non-commercial use, with attribution and share-alike terms; see
+  [UDPipe 1 models for UD 2.5](https://hdl.handle.net/11234/1-3131) by Straka
+  and Straková. **Remote** uses an engine ID configured by the deployment
   operator; it does not accept an arbitrary service URL. Ask the operator for a
   valid ID and confirm that the service's data-handling policy is suitable.
 
@@ -26,6 +31,11 @@ working with another genre or English variety.
   **Review** reads that Result directly and can page by highlighted documents
   or raw quotation matches. **Add to Workspace** publishes selected
   columns as a Derived Data Block only when you request it.
+
+- Will results change?
+  New local extractions use UDPipe and may detect different quotations or
+  speakers from the previous spaCy engine. All highlighted spans retain their
+  original spelling. Existing saved Run All results remain unchanged.
 
 - How does sorting work?
   The `QUOTE_extraction` header sorts by the selected source text column, and

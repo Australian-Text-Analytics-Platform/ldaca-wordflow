@@ -107,11 +107,14 @@ macOS signature verification again after this probe: the shared launcher
 disables Python bytecode writes so the packaged runtime must not mutate the
 sealed application resources.
 
-The local Quotation spaCy model is deliberately not installed into the sealed
+The local Quotation UDPipe model is deliberately not installed into the sealed
 runtime. First use downloads model data into the OS-native
 `au.edu.ldaca.wordflow` application cache and loads it by path, leaving the
 signed application unchanged. An offline first use therefore fails normally
-and can be retried when network access is available.
+and can be retried when network access is available. Verified cached data works
+offline. See the [quotation runtime reference](../reference/quotation-runtime.md)
+for model licensing and checksums. A published-wheel desktop release must wait
+until polars-text 0.8.0 is available; local source builds may test it beforehand.
 
 ## Desktop CI
 
@@ -232,3 +235,16 @@ remain with collision-free numeric suffixes. The packaged webview must have no
 filesystem capability; **Show in folder** may reveal only the path returned by
 the Rust saver. Repeat a representative download in the browser deployment and
 confirm it still uses the browser's own download UI.
+
+## LDaCA SDK dependency
+
+The local runtime build includes the adjacent `ldaca-data-rs` checkout through
+backend uv source mappings. The SDK owns ONI networking and Arrow tabulation;
+no additional model or Python DataFrame package is required. Published-wheel
+builds require `ldaca-data-rs>=0.1.0,<0.2` to be available on the package index
+and must not compile it implicitly. Publishing the new SDK and its referenced
+submodule commit is a separate release prerequisite.
+
+Backend local-wheel fingerprints include Python sources and the bundled frontend
+archive. This keeps `--no-editable` desktop installs current after source changes
+even when the package version has not changed.

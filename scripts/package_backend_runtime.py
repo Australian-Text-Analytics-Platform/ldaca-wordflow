@@ -279,7 +279,7 @@ def sync_runtime_environment(
     print("[INFO] Syncing backend runtime environment from backend/uv.lock")
     sync_env = create_uv_managed_python_env(managed_python_dir)
     sync_env["UV_PROJECT_ENVIRONMENT"] = str(runtime_python_dir)
-    # The local Rust wheels share the Polars dependency graph.
+    # Share compiled Rust dependencies across the local package builds.
     sync_env["CARGO_TARGET_DIR"] = str(cargo_target_dir)
     sync_args = [
         "uv",
@@ -294,6 +294,8 @@ def sync_runtime_environment(
         sync_args.extend(
             [
                 "--no-sources",
+                "--no-build-package",
+                "ldaca-data-rs",
                 "--no-build-package",
                 "polars-text",
                 "--no-build-package",
