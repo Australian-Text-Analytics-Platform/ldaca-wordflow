@@ -5,6 +5,10 @@ Python interfaces. It owns ONI data access, RO-Crate graph interpretation,
 configuration discovery, tabulation, document conversion, and Arrow-backed
 Parquet/CSV/IPC export. It does not depend on pandas, Polars, SQLite or PyArrow.
 
+The SDK source is currently tracked directly in Wordflow's root repository at
+`ldaca-data-rs/`. It retains its own package manifests and can be built independently;
+no submodule initialization is required for this package.
+
 ```mermaid
 flowchart LR
     Consumer["Rust or Python consumer"] --> SDK["ldaca-data-rs"]

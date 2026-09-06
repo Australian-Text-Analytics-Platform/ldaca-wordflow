@@ -12,5 +12,5 @@
 - [ ] Linux/Windows wheels and complete supported Python-version matrix.
 
 See [verification](verification.md) for evidence and existing frontend failures.
-Shared submodule registration, remote publication and release remain separate
-post-publication actions.
+The SDK is now tracked directly in the Wordflow repository at the user's request.
+Remote publication and release remain separate actions.

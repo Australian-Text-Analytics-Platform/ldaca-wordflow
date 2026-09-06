@@ -49,8 +49,9 @@ Python code to prevent stale non-editable wheels in desktop bundles.
 - The SDK has local commit `b83a38d`; its intended origin is the ATAP GitHub
   repository. No remote repository was created and nothing was pushed/published.
   Automatic approval review rejected local submodule registration because the
-  referenced commit is unpublished. Wordflow's local path mappings work; shared
-  submodule registration and published-wheel release remain deferred.
+  referenced commit is unpublished. Subsequently, the user requested tracking the
+  SDK files directly in Wordflow. This replaces the deferred submodule arrangement;
+  published-wheel release still requires SDK publication.
 
 ## Artifacts
 

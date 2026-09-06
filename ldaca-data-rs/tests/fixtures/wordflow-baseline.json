@@ -1,0 +1,273 @@
+{
+  "engine": "Wordflow Python tabulator",
+  "wordflow": "0.8.0",
+  "polars": "1.44.1",
+  "fixtures": [
+    {
+      "name": "expanded",
+      "metadata": {
+        "@graph": [
+          {
+            "@id": "work-1",
+            "@type": "CreativeWork",
+            "name": "Interview José 🎙",
+            "author": {
+              "@id": "person-1"
+            },
+            "keyword": [
+              "speech",
+              "archive"
+            ],
+            "internal": "discarded"
+          },
+          {
+            "@id": "person-1",
+            "@type": "Person",
+            "name": "Researcher",
+            "role": [
+              "speaker",
+              "collector"
+            ],
+            "affiliation": {
+              "@id": "org-1"
+            }
+          },
+          {
+            "@id": "org-1",
+            "@type": "Organization",
+            "name": "LDaCA"
+          }
+        ]
+      },
+      "config": {
+        "tables": {
+          "CreativeWork": {
+            "expand_props": [
+              "author"
+            ],
+            "ignore_props": [
+              "@type",
+              "internal",
+              "author_@type"
+            ],
+            "all_props": []
+          }
+        }
+      },
+      "rows": [
+        {
+          "entity_id": "work-1",
+          "name": "Interview José 🎙",
+          "author_name": "Researcher",
+          "author_role": "speaker",
+          "author_role_1": "collector",
+          "author_affiliation": "LDaCA",
+          "author_affiliation_id": "org-1",
+          "keyword": "speech",
+          "keyword_1": "archive"
+        }
+      ],
+      "schema": {
+        "entity_id": "String",
+        "name": "String",
+        "author_name": "String",
+        "author_role": "String",
+        "author_role_1": "String",
+        "author_affiliation": "String",
+        "author_affiliation_id": "String",
+        "keyword": "String",
+        "keyword_1": "String"
+      }
+    },
+    {
+      "name": "values",
+      "metadata": {
+        "@graph": [
+          {
+            "@id": "work-2",
+            "@type": [
+              "CreativeWork"
+            ],
+            "name": {
+              "@value": "Café"
+            },
+            "count": 2,
+            "flag": true,
+            "reference": {
+              "@id": "missing"
+            },
+            "tags": [
+              null,
+              "x"
+            ],
+            "complex": {
+              "z": 1,
+              "a": "é"
+            }
+          },
+          {
+            "@id": "work-3",
+            "@type": "CreativeWork",
+            "name": "Other",
+            "count": 3,
+            "flag": false
+          }
+        ]
+      },
+      "config": {
+        "tables": {
+          "CreativeWork": {
+            "expand_props": [
+              "author"
+            ],
+            "ignore_props": [
+              "@type",
+              "internal",
+              "author_@type"
+            ],
+            "all_props": []
+          }
+        }
+      },
+      "rows": [
+        {
+          "entity_id": "work-2",
+          "name": "Café",
+          "count": 2,
+          "flag": true,
+          "reference": "",
+          "reference_id": "missing",
+          "tags": null,
+          "tags_1": "x",
+          "complex": "{\"a\": \"é\", \"z\": 1}"
+        },
+        {
+          "entity_id": "work-3",
+          "name": "Other",
+          "count": 3,
+          "flag": false,
+          "reference": null,
+          "reference_id": null,
+          "tags": null,
+          "tags_1": null,
+          "complex": null
+        }
+      ],
+      "schema": {
+        "entity_id": "String",
+        "name": "String",
+        "count": "Int64",
+        "flag": "Boolean",
+        "reference": "String",
+        "reference_id": "String",
+        "tags": "Null",
+        "tags_1": "String",
+        "complex": "String"
+      }
+    },
+    {
+      "name": "wide",
+      "metadata": {
+        "@graph": [
+          {
+            "@id": "work-4",
+            "@type": "CreativeWork",
+            "refs": [
+              {
+                "@id": "p0"
+              },
+              {
+                "@id": "p1"
+              },
+              {
+                "@id": "p2"
+              },
+              {
+                "@id": "p3"
+              },
+              {
+                "@id": "p4"
+              },
+              {
+                "@id": "p5"
+              },
+              {
+                "@id": "p6"
+              },
+              {
+                "@id": "p7"
+              },
+              {
+                "@id": "p8"
+              },
+              {
+                "@id": "p9"
+              },
+              {
+                "@id": "p10"
+              }
+            ],
+            "keywords": [
+              "0",
+              "1",
+              "2",
+              "3",
+              "4",
+              "5",
+              "6",
+              "7",
+              "8",
+              "9",
+              "10"
+            ]
+          }
+        ]
+      },
+      "config": {
+        "tables": {
+          "CreativeWork": {
+            "expand_props": [
+              "author"
+            ],
+            "ignore_props": [
+              "@type",
+              "internal",
+              "author_@type"
+            ],
+            "all_props": []
+          }
+        }
+      },
+      "rows": [
+        {
+          "entity_id": "work-4",
+          "keywords": "0",
+          "keywords_1": "1",
+          "keywords_2": "2",
+          "keywords_3": "3",
+          "keywords_4": "4",
+          "keywords_5": "5",
+          "keywords_6": "6",
+          "keywords_7": "7",
+          "keywords_8": "8",
+          "keywords_9": "9",
+          "keywords_10": "10"
+        }
+      ],
+      "schema": {
+        "entity_id": "String",
+        "keywords": "String",
+        "keywords_1": "String",
+        "keywords_2": "String",
+        "keywords_3": "String",
+        "keywords_4": "String",
+        "keywords_5": "String",
+        "keywords_6": "String",
+        "keywords_7": "String",
+        "keywords_8": "String",
+        "keywords_9": "String",
+        "keywords_10": "String"
+      }
+    }
+  ]
+}

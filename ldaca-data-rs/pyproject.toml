@@ -1,0 +1,31 @@
+[project]
+name = "ldaca-data-rs"
+version = "0.1.0"
+description = "Arrow-based LDaCA ONI data access and RO-Crate conversion"
+requires-python = ">=3.11"
+readme = "README.md"
+license = "MIT"
+dependencies = []
+
+[build-system]
+requires = ["maturin==1.15.0"]
+build-backend = "maturin"
+
+[tool.maturin]
+python-source = "."
+module-name = "ldaca_data_rs._internal"
+features = ["extension-module"]
+include = [{path = "configs/**", format = "sdist"}]
+
+[dependency-groups]
+dev = ["pytest>=9", "pytest-asyncio>=1", "ty>=0.0.75", "ruff>=0.16.5"]
+interop = ["pyarrow>=24", "polars==1.44.1"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+addopts = ["-ra", "--import-mode=importlib"]
+markers = ["interop: optional PyArrow or Polars interoperability"]
+asyncio_mode = "strict"
+
+[tool.uv]
+cache-keys = [{file = "pyproject.toml"}, {file = "Cargo.toml"}, {file = "Cargo.lock"}, {file = "src/**/*.rs"}, {file = "configs/**/*.json"}]

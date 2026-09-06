@@ -1,0 +1,593 @@
+[
+  {
+    "method": "keyword",
+    "query": "",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "match_all": {}
+      }
+    }
+  },
+  {
+    "method": "keyword",
+    "query": "conversation",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "multi_match": {
+          "query": "conversation",
+          "fields": [
+            "name.@value",
+            "description.@value",
+            "_text",
+            "@id"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "keyword",
+    "query": "arcp://name,example",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "multi_match": {
+          "query": "arcp://name,example",
+          "fields": [
+            "name.@value",
+            "description.@value",
+            "_text",
+            "@id"
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "identifier",
+    "query": "",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "should": [
+            {
+              "term": {
+                "@id.keyword": ""
+              }
+            },
+            {
+              "term": {
+                "_crateId.@value.keyword": ""
+              }
+            },
+            {
+              "term": {
+                "_crateId.keyword": ""
+              }
+            }
+          ],
+          "minimum_should_match": 1
+        }
+      }
+    }
+  },
+  {
+    "method": "identifier",
+    "query": "conversation",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "should": [
+            {
+              "term": {
+                "@id.keyword": "conversation"
+              }
+            },
+            {
+              "term": {
+                "_crateId.@value.keyword": "conversation"
+              }
+            },
+            {
+              "term": {
+                "_crateId.keyword": "conversation"
+              }
+            }
+          ],
+          "minimum_should_match": 1
+        }
+      }
+    }
+  },
+  {
+    "method": "identifier",
+    "query": "arcp://name,example",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "should": [
+            {
+              "term": {
+                "@id.keyword": "arcp://name,example"
+              }
+            },
+            {
+              "term": {
+                "_crateId.@value.keyword": "arcp://name,example"
+              }
+            },
+            {
+              "term": {
+                "_crateId.keyword": "arcp://name,example"
+              }
+            }
+          ],
+          "minimum_should_match": 1
+        }
+      }
+    }
+  },
+  {
+    "method": "collection",
+    "query": "",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "Dataset",
+                  "RepositoryCollection"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "_isTopLevel.@value.keyword": [
+                  "true"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "collection",
+    "query": "conversation",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "Dataset",
+                  "RepositoryCollection"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "_isTopLevel.@value.keyword": [
+                  "true"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "collection",
+    "query": "arcp://name,example",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "Dataset",
+                  "RepositoryCollection"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "_isTopLevel.@value.keyword": [
+                  "true"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "file_format",
+    "query": "",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "File"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "file_format",
+    "query": "conversation",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "File"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "encodingFormat.@value.keyword": [
+                  "conversation"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "file_format",
+    "query": "arcp://name,example",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "bool": {
+          "filter": [
+            {
+              "terms": {
+                "@type.keyword": [
+                  "File"
+                ]
+              }
+            },
+            {
+              "terms": {
+                "encodingFormat.@value.keyword": [
+                  "arcp://name,example"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  },
+  {
+    "method": "all",
+    "query": "",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "match_all": {}
+      }
+    }
+  },
+  {
+    "method": "all",
+    "query": "conversation",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "match_all": {}
+      }
+    }
+  },
+  {
+    "method": "all",
+    "query": "arcp://name,example",
+    "limit": 12,
+    "offset": 24,
+    "body": {
+      "size": 12,
+      "from": 24,
+      "_source": [
+        "@id",
+        "@type",
+        "_crateId",
+        "_memberOf",
+        "_root",
+        "_mainCollection",
+        "name",
+        "description",
+        "encodingFormat",
+        "license",
+        "conformsTo",
+        "_access",
+        "error"
+      ],
+      "query": {
+        "match_all": {}
+      }
+    }
+  }
+]
