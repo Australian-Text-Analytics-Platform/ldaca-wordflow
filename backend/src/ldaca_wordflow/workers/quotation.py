@@ -225,6 +225,7 @@ def run_quotation_run_all(
                     "artifact": str(result_path),
                     "supports_density": False,
                 },
+                "source_document_count": len(node_corpus),
                 "document_count": int(quote_df.height),
                 "match_count": match_count,
             },

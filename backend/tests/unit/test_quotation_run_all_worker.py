@@ -5,6 +5,7 @@ from ldaca_wordflow.analysis.generated_columns import (
     QUOTE_COLUMN_NAMES,
     QUOTE_EXTRACTION_COLUMN,
 )
+from ldaca_wordflow.models.analysis_results import QuotationRunAllWorkerResult
 from ldaca_wordflow.models.quotation import LocalResolvedQuotationEngine
 from ldaca_wordflow.workers.quotation import run_quotation_run_all
 
@@ -44,7 +45,8 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
                             "is_floating_quote": False,
                             "quote_row_idx": 0,
                         }
-                    ]
+                    ],
+                    [],
                 ],
             )
         )
@@ -60,8 +62,8 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
             worker_snapshot(
                 node_id="11111111-1111-4111-8111-111111111111",
                 columns={
-                    "document": ['Ada said "Hello"'],
-                    "speaker_label": ["narrator"],
+                    "document": ['Ada said "Hello"', "No quotation here"],
+                    "speaker_label": ["narrator", "narrator"],
                 },
             )
         ),
@@ -79,6 +81,7 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
     )
 
     assert result["state"] == "successful"
+    QuotationRunAllWorkerResult.model_validate(result)
     source = result["source"]
     assert source["node_id"] == uuid.UUID("11111111-1111-4111-8111-111111111111")
     assert source["document_column"] == "document"
@@ -89,6 +92,7 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
     ]
     assert source["table"]["table_id"] == "quotation-run-all"
     assert source["table"]["supports_density"] is False
+    assert source["source_document_count"] == 2
     assert source["document_count"] == 1
     assert source["match_count"] == 1
     assert "data_block" not in source
