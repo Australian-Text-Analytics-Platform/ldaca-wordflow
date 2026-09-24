@@ -149,9 +149,6 @@ export const useWorkspaceManagementMutations = ({
       createWorkspace: (name: string, description?: string) =>
         createWorkspaceMutation.mutateAsync({ name, description }),
       deleteWorkspace: (workspaceId: string) => deleteWorkspaceMutation.mutateAsync(workspaceId),
-      saveWorkspace: async () => {
-        await queryClient.invalidateQueries({ queryKey: queryKeys.workspaceList, exact: true });
-      },
       renameWorkspace: (newName: string) => updateWorkspaceNameMutation.mutateAsync(newName),
       updateWorkspaceDescription: (description: string) =>
         updateWorkspaceDescriptionMutation.mutateAsync(description),

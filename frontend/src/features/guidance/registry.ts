@@ -120,7 +120,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.dataLoader.workspaceLoad,
     resolveLoadWorkspaceTarget,
     'Continue existing work',
-    'Loading restores the Project’s Data Blocks, Tabs, and analysis history. Choose Load beside the Project you want to continue.',
+    'Opening restores the Project’s Data Blocks, Tabs, and analysis history. Choose Open beside the Project you want to continue.',
     2,
   ),
   hint(

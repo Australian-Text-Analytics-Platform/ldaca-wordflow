@@ -96,7 +96,7 @@ export function useDataLoaderWorkspaceActions({
       if (!hasWorkspaceSelected) {
         const loaded = await handleSetCurrentWorkspace(
           workspace.id,
-          `Project "${name}" was created, but could not be loaded`,
+          `Project "${name}" was created, but could not be opened`,
         );
         if (!loaded) {
           return true;
@@ -131,21 +131,6 @@ export function useDataLoaderWorkspaceActions({
         return;
       }
       notify('error', (error as Error).message || 'Failed to rename project.');
-    }
-  };
-
-  /**
-   * Saves the active workspace from either workspace card action, guarded so
-   * empty selections never call the backend.
-   * Passed to `ActiveWorkspaceCard` as `onSave`.
-   */
-  const handleSaveWorkspace = async () => {
-    if (!hasWorkspaceSelected) return;
-    try {
-      await workspaceActions.saveWorkspace();
-      notify('success', 'Project saved.');
-    } catch (error) {
-      notify('error', (error as Error).message || 'Failed to save project.');
     }
   };
 
@@ -247,12 +232,12 @@ export function useDataLoaderWorkspaceActions({
             `${String(omittedAnalyses)} unavailable Analysis record${omittedAnalyses === 1 ? '' : 's'}`,
           );
         }
-        notify('info', `Project ZIP uploaded with ${omissions.join(' and ')} omitted.`);
+        notify('info', `Project imported with ${omissions.join(' and ')} omitted.`);
       } else {
-        notify('success', `Project ZIP "${file.name}" uploaded.`);
+        notify('success', `Project "${file.name}" imported.`);
       }
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to upload project ZIP.');
+      notify('error', (error as Error).message || 'Failed to import project.');
     } finally {
       setUploadingWorkspaceZip(false);
     }
@@ -324,7 +309,6 @@ export function useDataLoaderWorkspaceActions({
     },
     handleCreateWorkspace,
     handleRenameWorkspace,
-    handleSaveWorkspace,
     handleSetCurrentWorkspace,
     handleUpdateWorkspaceDescription,
     openDeleteWorkspaceDialog,

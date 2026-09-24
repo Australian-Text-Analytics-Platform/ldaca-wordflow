@@ -104,12 +104,12 @@ export function WorkspaceManagerCard({
               disabled={uploadingZip || busy}
             >
               <Upload className="mr-1.5 h-4 w-4" />
-              {uploadingZip ? 'Uploading…' : 'Upload project'}
+              {uploadingZip ? 'Importing…' : 'Import project'}
             </Button>
             <input
               ref={zipInputRef}
               type="file"
-              aria-label="Upload project archive"
+              aria-label="Import project archive"
               accept=".zip,application/zip"
               className="hidden"
               onChange={(e) => {

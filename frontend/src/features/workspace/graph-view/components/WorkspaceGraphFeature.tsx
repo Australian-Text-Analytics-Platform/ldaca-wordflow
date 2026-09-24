@@ -314,7 +314,7 @@ const GraphLoadingState = () => (
 const GraphEmptyState = () => (
   <div className="flex h-full items-center justify-center p-6 text-center">
     <div>
-      <h3 className="text-body font-semibold text-foreground">No project loaded</h3>
+      <h3 className="text-body font-semibold text-foreground">No project open</h3>
       <p className="mt-1 text-label-secondary text-description">
         Open or create a project in Data Loader to see the graph.
       </p>

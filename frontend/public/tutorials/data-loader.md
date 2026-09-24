@@ -12,10 +12,10 @@ The Data Loader is the entry point of the application and must be configured bef
 
 ![Active project screenshot](tutorials/assets/data_loader/active_workspace.png)
 
-The active project panel displays the currently loaded project along with its associated data blocks. From here you can rename or unload the active project. When no project is loaded, this panel also shows the option to create a new, empty project.
+The active project panel displays the currently open project along with its associated data blocks. From here you can rename the project or update its description; to close it, use **Close** in the project manager. When no project is open, this panel shows the option to create a new, empty project. Your work is saved automatically.
 
-- Verify the correct project is loaded before starting any analysis.
-- Create, rename, or unload a project as needed.
+- Verify the correct project is open before starting any analysis.
+- Create or rename a project as needed.
 
 <h2 id="help-data-loader-create-workspace-name">Project name input</h2>
 
@@ -36,12 +36,12 @@ Clicking this button creates a new project with the specified name and optional 
 
 Use this field to rename the currently active project. Renaming is useful when the project scope evolves or when you want a more organised project list. The project description can also be updated from this field.
 
-<h2 id="help-data-loader-unload-button">Unload project</h2>
+<h2 id="help-data-loader-unload-button">Close project</h2>
 
-The unload action closes the active project without deleting it.
+Click **Close** beside the open project in the project manager (the open project is always listed first). Closing does not delete anything.
 
-- Use this to switch between projects.
-- The unloaded project remains accessible in the project manager.
+- Use this to switch between projects, or open another project directly with its **Open** button.
+- A closed project stays in the project manager; click **Open** to continue working on it.
 
 <h2 id="help-data-loader-workspace-manager">Project manager overview</h2>
 
@@ -49,9 +49,10 @@ The unload action closes the active project without deleting it.
 
 The project manager lists all saved projects, enabling you to switch between projects and maintain an organised inventory.
 
-- Click **Activate** to set a project as the active project; the active project is visually highlighted.
-- Review the last-modified timestamp and data-block count to confirm you are loading the intended project.
-- Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or upload. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can upload the ZIP to another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
+- Click **Open** to make a project the active project. The open project is listed first and highlighted, with a **Close** button.
+- Review the last-modified timestamp and data-block count to confirm you are opening the intended project.
+- Click **Import project** to add a project from a ZIP archive, such as one downloaded from another Wordflow.
+- Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or import. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can import the ZIP (**Import project**) into another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
 - Click **Delete** to permanently remove a project that is no longer needed.
 
 <h2 id="help-data-loader-files-section">Files and uploads section</h2>
@@ -236,6 +237,6 @@ Some folders — particularly those created by the LDaCA importer — display a 
 2. Upload a CSV file and preview its contents.
 3. Add the file to the project as a data block.
 4. Rename the project to **Practice Corpus v1**.
-5. Unload the project and reload it from the project manager.
+5. Close the project and open it again from the project manager.
 
 [← Back to tutorial index](./index.md)

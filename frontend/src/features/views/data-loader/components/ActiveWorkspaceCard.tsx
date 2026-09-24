@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LogOut, Plus, RefreshCcw } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,34 +10,21 @@ import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { formatTimestamp } from '../utils/format';
 import type { WorkspaceSummary } from '@/api';
 
-type WorkspaceSelectionOperation = {
-  workspaceId: string | null;
-  action: 'load' | 'unload';
-} | null;
-
 export interface ActiveWorkspaceCardProps {
   currentWorkspace: WorkspaceSummary | null;
   nodeCount: number;
   busy: boolean;
-  hasActiveTask?: boolean;
-  selectionOperation?: WorkspaceSelectionOperation;
   onCreate: (name: string, description: string) => Promise<boolean>;
   onRename: (value: string) => Promise<void> | void;
   onUpdateDescription: (value: string) => Promise<void> | void;
-  onSave: () => Promise<void> | void;
-  onUnload: () => Promise<void> | void;
 }
 
 interface ActiveWorkspaceControlsProps {
   currentWorkspace: WorkspaceSummary;
   nodeCount: number;
   busy: boolean;
-  hasActiveTask: boolean;
-  selectionOperation: WorkspaceSelectionOperation;
   onRename: (value: string) => Promise<void> | void;
   onUpdateDescription: (value: string) => Promise<void> | void;
-  onSave: () => Promise<void> | void;
-  onUnload: () => Promise<void> | void;
 }
 
 interface CreateWorkspaceFormProps {
@@ -68,13 +55,9 @@ export function ActiveWorkspaceCard({
   currentWorkspace,
   nodeCount,
   busy,
-  hasActiveTask = false,
-  selectionOperation = null,
   onCreate,
   onRename,
   onUpdateDescription,
-  onSave,
-  onUnload,
 }: ActiveWorkspaceCardProps) {
   return (
     <Card
@@ -89,7 +72,7 @@ export function ActiveWorkspaceCard({
             <HelpIcon
               targetKey="data-loader.active-workspace.section"
               label="Active project overview"
-              tooltip="Choose or rename the project where new data blocks will be added. Save regularly to persist your progress."
+              tooltip="Rename the open project or update its description. New data blocks are added here, and your work is saved automatically."
             />
           ) : (
             <HelpIcon
@@ -107,12 +90,8 @@ export function ActiveWorkspaceCard({
             currentWorkspace={currentWorkspace}
             nodeCount={nodeCount}
             busy={busy}
-            hasActiveTask={hasActiveTask}
-            selectionOperation={selectionOperation}
             onRename={onRename}
             onUpdateDescription={onUpdateDescription}
-            onSave={onSave}
-            onUnload={onUnload}
           />
         ) : (
           <CreateWorkspaceForm onCreate={onCreate} />
@@ -136,12 +115,8 @@ function ActiveWorkspaceControls({
   currentWorkspace,
   nodeCount,
   busy,
-  hasActiveTask,
-  selectionOperation,
   onRename,
   onUpdateDescription,
-  onSave,
-  onUnload,
 }: ActiveWorkspaceControlsProps) {
   const [renameValue, setRenameValue] = useState(currentWorkspace.name);
   const [descriptionValue, setDescriptionValue] = useState(currentWorkspace.description);
@@ -205,37 +180,6 @@ function ActiveWorkspaceControls({
           >
             Update description
           </Button>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" onClick={() => void onSave()}>
-          <RefreshCcw className="mr-2 h-4 w-4" /> Save
-        </Button>
-        <div className="flex items-center gap-1">
-          <DisabledReasonTooltip
-            reason={
-              hasActiveTask
-                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before unloading.'
-                : selectionOperation
-                  ? 'Another Project Load or Unload operation is in progress.'
-                  : undefined
-            }
-          >
-            <Button
-              variant="outline"
-              onClick={() => void onUnload()}
-              disabled={busy || hasActiveTask || Boolean(selectionOperation)}
-            >
-              {selectionOperation?.action === 'unload' ? (
-                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <LogOut className="mr-2 h-4 w-4" />
-              )}
-              {selectionOperation?.action === 'unload' ? 'Unloading…' : 'Unload'}
-            </Button>
-          </DisabledReasonTooltip>
-          <HelpIcon targetKey="data-loader.unload.button" label="Unload project" />
         </div>
       </div>
     </>

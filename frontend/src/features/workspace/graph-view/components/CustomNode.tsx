@@ -7,7 +7,7 @@ import {
   useStore,
   type Node as ReactFlowNode,
 } from '@xyflow/react';
-import { Copy, Check, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -66,7 +66,6 @@ interface CustomNodeUiState {
   menuOpensRight: boolean;
   renameOpen: boolean;
   renameValue: string;
-  copied: boolean;
   isHovered: boolean;
   isToolbarHovered: boolean;
   showDeleteConfirm: boolean;
@@ -78,8 +77,6 @@ type CustomNodeUiAction =
   | { type: 'open-rename'; name: string }
   | { type: 'set-rename-value'; value: string }
   | { type: 'set-rename-open'; open: boolean }
-  | { type: 'copy-id' }
-  | { type: 'copy-id-reset' }
   | { type: 'show-toolbar' }
   | { type: 'set-toolbar-hovered'; isToolbarHovered: boolean }
   | { type: 'hide-toolbar' }
@@ -94,7 +91,6 @@ const initialCustomNodeUiState: CustomNodeUiState = {
   menuOpensRight: false,
   renameOpen: false,
   renameValue: '',
-  copied: false,
   isHovered: false,
   isToolbarHovered: false,
   showDeleteConfirm: false,
@@ -136,10 +132,6 @@ function customNodeUiReducer(
         renameOpen: action.open,
         renameValue: action.open ? state.renameValue : '',
       };
-    case 'copy-id':
-      return { ...state, copied: true };
-    case 'copy-id-reset':
-      return { ...state, copied: false };
     case 'show-toolbar':
       return { ...state, isHovered: true };
     case 'set-toolbar-hovered':
@@ -179,7 +171,6 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
     menuOpensRight,
     renameOpen,
     renameValue,
-    copied,
     isHovered,
     isToolbarHovered,
     showDeleteConfirm,
@@ -298,20 +289,6 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
     e.stopPropagation();
     dispatchUi({ type: 'set-menu', showMenu: false });
     onRedo(node.id);
-  };
-
-  /**
-   * Copies the node id for debugging and user support workflows.
-   */
-  const handleCopyId = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (node.id) {
-      void navigator.clipboard.writeText(node.id);
-      dispatchUi({ type: 'copy-id' });
-      setTimeout(() => {
-        dispatchUi({ type: 'copy-id-reset' });
-      }, 2000);
-    }
   };
 
   // The settings menu remains mounted when the pointer leaves the node. Plain
@@ -592,25 +569,6 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
 
       {/* Node Body */}
       <div className="space-y-1 rounded-b-md bg-surface p-3">
-        <div className="flex items-center justify-between group">
-          <div
-            className="font-mono text-label-secondary text-description truncate max-w-45"
-            title={node.id}
-          >
-            id: {node.id.substring(0, 8)}…
-          </div>
-          <button
-            onClick={handleCopyId}
-            className="p-1 hover:bg-panel rounded-sm transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
-            title="Copy ID"
-          >
-            {copied ? (
-              <Check className="h-3 w-3 text-[var(--vscode-charts-green)]" />
-            ) : (
-              <Copy className="h-3 w-3 text-description" />
-            )}
-          </button>
-        </div>
         {shapeLabel ? (
           <div className="font-mono text-label-secondary text-foreground">Shape: {shapeLabel}</div>
         ) : (

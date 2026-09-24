@@ -186,7 +186,6 @@ function DataLoaderFeature() {
     closeDeleteWorkspaceDialog,
     handleCreateWorkspace,
     handleRenameWorkspace,
-    handleSaveWorkspace,
     handleSetCurrentWorkspace,
     handleUpdateWorkspaceDescription,
     openDeleteWorkspaceDialog,
@@ -274,6 +273,10 @@ function DataLoaderFeature() {
   const sortedWorkspaces = workspaces.toSorted((a, b) => {
     const aId = a.id;
     const bId = b.id;
+    // The open project always comes first, so it is easy to find and close.
+    const aCurrent = aId === currentWorkspaceId ? 1 : 0;
+    const bCurrent = bId === currentWorkspaceId ? 1 : 0;
+    if (aCurrent !== bCurrent) return bCurrent - aCurrent;
     const aFav = favoriteWorkspaces.includes(aId) ? 1 : 0;
     const bFav = favoriteWorkspaces.includes(bId) ? 1 : 0;
     if (aFav !== bFav) return bFav - aFav;
@@ -403,15 +406,9 @@ function DataLoaderFeature() {
               currentWorkspace={currentWorkspace}
               nodeCount={nodeCount}
               busy={workspaceBusy}
-              hasActiveTask={hasActiveTask}
-              selectionOperation={workspaceSelectionOperation}
               onCreate={handleCreateWorkspace}
               onRename={handleRenameWorkspace}
               onUpdateDescription={handleUpdateWorkspaceDescription}
-              onSave={handleSaveWorkspace}
-              onUnload={() => {
-                void handleSetCurrentWorkspace(null);
-              }}
             />
 
             <WorkspaceManagerCard

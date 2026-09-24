@@ -146,7 +146,7 @@ describe('DesktopNavigationHeaderView', () => {
     {
       name: 'no Project',
       props: { workspaceName: 'No project', tabs: [] },
-      message: 'Load a Project to access analysis Tabs.',
+      message: 'Open a Project to access analysis Tabs.',
     },
     {
       name: 'no Tabs',

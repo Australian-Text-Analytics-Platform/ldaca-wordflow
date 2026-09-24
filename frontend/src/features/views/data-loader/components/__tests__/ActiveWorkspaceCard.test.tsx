@@ -100,11 +100,4 @@ describe('ActiveWorkspaceCard', () => {
     expect(screen.getByDisplayValue('Persisted rename')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Persisted description')).toBeInTheDocument();
   });
-
-  it('blocks unloading while an active project task is running', () => {
-    const onUnload = vi.fn();
-    renderCard({ hasActiveTask: true, onUnload });
-
-    expect(screen.getByRole('button', { name: /unload/i })).toBeDisabled();
-  });
 });

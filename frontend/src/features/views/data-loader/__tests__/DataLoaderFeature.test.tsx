@@ -111,7 +111,6 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
     createWorkspace: mockCreateWorkspace,
     renameWorkspace: vi.fn(),
     updateWorkspaceDescription: mockUpdateWorkspaceDescription,
-    saveWorkspace: vi.fn(),
     deleteWorkspace: mockDeleteWorkspace,
     setCurrentWorkspace: mockSetCurrentWorkspace,
     createNodeFromFile: vi.fn(),
@@ -548,7 +547,7 @@ describe('DataLoaderFeature citation UI', () => {
   it('renders project upload and download controls', () => {
     renderWithProviders(<DataLoaderFeature />);
 
-    expect(screen.getAllByRole('button', { name: /upload project/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /import project/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /download/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByText('0 data blocks').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /save as/i })).not.toBeInTheDocument();
@@ -565,7 +564,7 @@ describe('DataLoaderFeature citation UI', () => {
       }),
     });
     renderWithProviders(<DataLoaderFeature />);
-    const input = screen.getByLabelText('Upload project archive');
+    const input = screen.getByLabelText('Import project archive');
 
     fireEvent.change(input, {
       target: { files: [new File(['zip'], 'future.zip', { type: 'application/zip' })] },
@@ -573,7 +572,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     await waitFor(() =>
       expect(mockToast).toHaveBeenCalledWith(
-        'Project ZIP uploaded with 1 unavailable Tab and 2 unavailable Analysis records omitted.',
+        'Project imported with 1 unavailable Tab and 2 unavailable Analysis records omitted.',
         { duration: 3500 },
       ),
     );
@@ -613,7 +612,7 @@ describe('DataLoaderFeature citation UI', () => {
         'Project data schema 14 is incompatible with supported data schema 15.',
       ),
     ).toBeInTheDocument();
-    expect(unavailable.getByRole('button', { name: 'Load' })).toBeEnabled();
+    expect(unavailable.getByRole('button', { name: 'Open' })).toBeEnabled();
     expect(unavailable.getByRole('button', { name: 'Download archive' })).toBeEnabled();
     expect(unavailable.getByRole('button', { name: 'Delete' })).toBeEnabled();
     expect(unavailable.queryByLabelText(/favorites/i)).not.toBeInTheDocument();
@@ -623,10 +622,10 @@ describe('DataLoaderFeature citation UI', () => {
     fireEvent.pointerDown(descriptionButton, { button: 0 });
     expect(screen.getByText('Project from the winter workshop.')).toBeInTheDocument();
 
-    await user.click(unavailable.getByRole('button', { name: 'Load' }));
+    await user.click(unavailable.getByRole('button', { name: 'Open' }));
     expect(mockSetCurrentWorkspace).toHaveBeenCalledWith(unavailableId);
     expect(await unavailable.findByRole('alert')).toHaveTextContent(
-      'Failed to load: Stored data could not be loaded.',
+      'Failed to open: Stored data could not be loaded.',
     );
 
     await user.click(unavailable.getByRole('button', { name: 'Delete' }));
@@ -712,7 +711,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     expect(within(activeWorkspaceCard).getByPlaceholderText('Enter new name')).toBeInTheDocument();
 
-    const quickUnloadButton = within(workspaceManagerCard).getByText(/^Unload$/i, {
+    const quickUnloadButton = within(workspaceManagerCard).getByText(/^Close$/i, {
       selector: 'button',
     });
     expect(quickUnloadButton).toBeEnabled();
@@ -760,18 +759,18 @@ describe('DataLoaderFeature citation UI', () => {
       screen.getAllByTestId('workspace-manager-item-ws-offline'),
     );
 
-    await user.click(within(corruptWorkspace).getByRole('button', { name: 'Load' }));
+    await user.click(within(corruptWorkspace).getByRole('button', { name: 'Open' }));
     expect(await within(corruptWorkspace).findByRole('alert')).toHaveTextContent(
-      'Failed to load: Project snapshot is corrupt.',
+      'Failed to open: Project snapshot is corrupt.',
     );
 
-    await user.click(within(offlineWorkspace).getByRole('button', { name: 'Load' }));
+    await user.click(within(offlineWorkspace).getByRole('button', { name: 'Open' }));
     expect(await within(offlineWorkspace).findByRole('alert')).toHaveTextContent(
-      'Failed to load: Unable to reach the backend.',
+      'Failed to open: Unable to reach the backend.',
     );
     expect(within(corruptWorkspace).getByRole('alert')).toBeInTheDocument();
 
-    await user.click(within(corruptWorkspace).getByRole('button', { name: 'Load' }));
+    await user.click(within(corruptWorkspace).getByRole('button', { name: 'Open' }));
     await waitFor(() => {
       expect(within(corruptWorkspace).queryByRole('alert')).not.toBeInTheDocument();
     });
@@ -807,43 +806,45 @@ describe('DataLoaderFeature citation UI', () => {
 
     const workspace = getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1'));
     const other = getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-2'));
-    await user.click(within(workspace).getByRole('button', { name: 'Load' }));
+    await user.click(within(workspace).getByRole('button', { name: 'Open' }));
 
-    expect(within(workspace).getByRole('button', { name: 'Loading…' })).toBeDisabled();
-    expect(within(other).getByRole('button', { name: 'Load' })).toBeDisabled();
-    await user.click(within(other).getByRole('button', { name: 'Load' }));
+    expect(within(workspace).getByRole('button', { name: 'Opening…' })).toBeDisabled();
+    expect(within(other).getByRole('button', { name: 'Open' })).toBeDisabled();
+    await user.click(within(other).getByRole('button', { name: 'Open' }));
     expect(mockSetCurrentWorkspace).toHaveBeenCalledTimes(1);
 
     finishLoad();
 
     await waitFor(() => {
-      expect(within(other).getByRole('button', { name: 'Load' })).toBeEnabled();
+      expect(within(other).getByRole('button', { name: 'Open' })).toBeEnabled();
     });
   });
 
-  it('serializes pending Unload controls and shows Unloading on the active Project', async () => {
+  it('serializes pending Close controls and shows Closing on the open Project', async () => {
     const user = userEvent.setup();
-    let finishUnload: () => void = () => undefined;
+    let finishClose: () => void = () => undefined;
     mockSetCurrentWorkspace.mockImplementationOnce(
       () =>
         new Promise<void>((resolve) => {
-          finishUnload = resolve;
+          finishClose = resolve;
         }),
     );
 
     renderWithProviders(<DataLoaderFeature />);
 
+    // Closing now lives only in the Project manager (#140).
     const activeCard = getVisibleMatch(screen.getAllByTestId('active-workspace-card'));
-    await user.click(within(activeCard).getByRole('button', { name: 'Unload' }));
-
-    expect(within(activeCard).getByRole('button', { name: 'Unloading…' })).toBeDisabled();
+    expect(within(activeCard).queryByRole('button', { name: 'Close' })).not.toBeInTheDocument();
+    expect(within(activeCard).queryByRole('button', { name: /save/i })).not.toBeInTheDocument();
     const manager = getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1'));
-    expect(within(manager).getByRole('button', { name: 'Unloading…' })).toBeDisabled();
+    await user.click(within(manager).getByRole('button', { name: 'Close' }));
+
+    expect(within(manager).getByRole('button', { name: 'Closing…' })).toBeDisabled();
     expect(mockSetCurrentWorkspace).toHaveBeenCalledTimes(1);
 
-    finishUnload();
+    finishClose();
     await waitFor(() => {
-      expect(within(activeCard).getByRole('button', { name: 'Unload' })).toBeEnabled();
+      expect(within(manager).getByRole('button', { name: 'Close' })).toBeEnabled();
     });
   });
 
@@ -951,7 +952,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     const createdCard = await screen.findByTestId('workspace-manager-item-ws-new');
     expect(await within(createdCard).findByRole('alert')).toHaveTextContent(
-      'Failed to load: Snapshot failed validation.',
+      'Failed to open: Snapshot failed validation.',
     );
   });
 
@@ -962,7 +963,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     renderWithProviders(<DataLoaderFeature />);
     const workspace = getVisibleMatch(screen.getAllByTestId('workspace-manager-item-ws-1'));
-    await user.click(within(workspace).getByRole('button', { name: 'Load' }));
+    await user.click(within(workspace).getByRole('button', { name: 'Open' }));
     expect(await within(workspace).findByRole('alert')).toBeInTheDocument();
 
     await user.click(within(workspace).getByRole('button', { name: 'Delete' }));

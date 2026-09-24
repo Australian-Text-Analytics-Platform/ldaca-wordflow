@@ -256,7 +256,7 @@ export function DesktopNavigationHeaderView({
                 </div>
               ) : workspaceName === 'No project' ? (
                 <p className="px-2 py-4 text-center text-body text-description">
-                  Load a Project to access analysis Tabs.
+                  Open a Project to access analysis Tabs.
                 </p>
               ) : tabs.length === 0 ? (
                 <p className="px-2 py-4 text-center text-body text-description">

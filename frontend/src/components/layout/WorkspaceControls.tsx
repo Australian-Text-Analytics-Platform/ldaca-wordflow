@@ -78,10 +78,10 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           <PanelRightClose className="h-4 w-4" />
         </button>
       )}
-      <h3 className="text-body font-medium text-foreground">Project Graph View</h3>
+      <h3 className="text-body font-medium text-foreground">Project Graph</h3>
       <HelpIcon
         targetKey="ui.workspace-graph-view"
-        label="Project Graph View"
+        label="Project Graph"
         className="h-5 w-5 text-description"
       />
       <span className="text-description">|</span>

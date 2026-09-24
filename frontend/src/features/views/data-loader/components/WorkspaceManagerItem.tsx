@@ -106,7 +106,7 @@ export function WorkspaceManagerItem({
             >
               <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span>
-                <span className="font-medium">Failed to load:</span> {loadFailure}
+                <span className="font-medium">Failed to open:</span> {loadFailure}
               </span>
             </div>
           ) : null}
@@ -117,7 +117,7 @@ export function WorkspaceManagerItem({
               hasActiveTask
                 ? 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
                 : selectionOperation
-                  ? 'Another Project Load or Unload operation is in progress.'
+                  ? 'Another project is being opened or closed.'
                   : undefined
             }
           >
@@ -130,7 +130,7 @@ export function WorkspaceManagerItem({
               disabled={hasActiveTask || Boolean(selectionOperation)}
             >
               {isSelectionTarget ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
-              {isSelectionTarget ? 'Loading…' : 'Load'}
+              {isSelectionTarget ? 'Opening…' : 'Open'}
             </Button>
           </DisabledReasonTooltip>
           <DisabledReasonTooltip reason={isIncompatible ? undefined : workspace.message}>
@@ -215,7 +215,7 @@ export function WorkspaceManagerItem({
           >
             <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>
-              <span className="font-medium">Failed to load:</span> {loadFailure}
+              <span className="font-medium">Failed to open:</span> {loadFailure}
             </span>
           </div>
         ) : null}
@@ -225,10 +225,10 @@ export function WorkspaceManagerItem({
           reason={
             hasActiveTask
               ? isActive
-                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before unloading.'
+                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before closing it.'
                 : 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
               : selectionOperation
-                ? 'Another Project Load or Unload operation is in progress.'
+                ? 'Another project is being opened or closed.'
                 : undefined
           }
         >
@@ -244,11 +244,11 @@ export function WorkspaceManagerItem({
             {isSelectionTarget ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : null}
             {isSelectionTarget
               ? selectionOperation?.action === 'unload'
-                ? 'Unloading…'
-                : 'Loading…'
+                ? 'Closing…'
+                : 'Opening…'
               : isActive
-                ? 'Unload'
-                : 'Load'}
+                ? 'Close'
+                : 'Open'}
           </Button>
         </DisabledReasonTooltip>
         <Button

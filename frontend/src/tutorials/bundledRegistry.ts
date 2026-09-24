@@ -54,7 +54,7 @@ const tutorial = {
   'ui.workspace-graph-view': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-workspace-graph-view',
-    label: 'Project Graph View',
+    label: 'Project Graph',
   },
   'ui.data-viewer': {
     file: 'tutorials/ui.md',
@@ -104,7 +104,7 @@ const tutorial = {
   'data-loader.unload.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-unload-button',
-    label: 'Unload project',
+    label: 'Close project',
   },
   'data-loader.files.section': {
     file: 'tutorials/data-loader.md',

@@ -26,7 +26,7 @@ The edit icon next to the heading lets you customise which tools appear.
 
 <h2 id="help-ui-data-selection">2. Data Selection</h2>
 
-Below the tool list, the **Data Blocks** panel shows every data block in the active project. It is both a quick selector and a live indicator of what is selected in the [Project Graph View](#help-ui-workspace-graph-view) (section 4) — selecting a block here is equivalent to clicking the corresponding node in the graph, and the two panels always stay in sync. It is especially useful when the right column is hidden.
+Below the tool list, the **Data Blocks** panel shows every data block in the active project. It is both a quick selector and a live indicator of what is selected in the [Project Graph](#help-ui-workspace-graph-view) (section 4) — selecting a block here is equivalent to clicking the corresponding node in the graph, and the two panels always stay in sync. It is especially useful when the right column is hidden.
 
 - The total count and the number of currently selected data blocks are shown at the top.
 - Click a data block to toggle its selection. Click again to deselect it. For tools that require more than one data block (e.g. Join or Stack), simply click each block in turn to build up a multi-selection.
@@ -50,11 +50,11 @@ from the active Project together with your retained User File Imports.
 - **Live updates** keeps the panel refreshed automatically so you can continue
   working while tasks run in the background.
 
-<h2 id="help-ui-workspace-graph-view">4. Project Graph View</h2>
+<h2 id="help-ui-workspace-graph-view">4. Project Graph</h2>
 
-**Note:** The entire right column (Project Graph View and Data Viewer) can be collapsed to save screen space. Click the top-right arrow button to hide or show the right pane.
+**Note:** The entire right column (Project Graph and Data Viewer) can be collapsed to save screen space. Click the top-right arrow button to hide or show the right pane.
 
-The **Project Graph View** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a Derived Data Block draws an edge from parent to child. Updating an existing Data Block does not change the graph.
+The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a Derived Data Block draws an edge from parent to child. Updating an existing Data Block does not change the graph.
 
 - Click a node to select that data block across the entire interface. Click it again to deselect. Selections made here are reflected immediately in the Data Blocks panel (section 2) and vice versa.
 - Hover a Data Block and open its settings menu to **Rename**, **Clone**, **Undo**, **Redo**, or **Delete** it. Undo and Redo availability comes from that Data Block's current backend session history.
