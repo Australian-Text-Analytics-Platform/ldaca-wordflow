@@ -3,10 +3,11 @@ import { useState } from 'react';
 import type { WorkspaceCatalogueItem } from '@/api';
 import { importWorkspaceArchive } from '@/api';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
+import { describeSkippedFiles } from '@/features/workspace/common/skippedFiles';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
 import { queryKeys } from '@/lib/queryKeys';
 
-type Notify = (type: 'success' | 'error' | 'info', message: string) => void;
+type Notify = (type: 'success' | 'error' | 'info', message: string, description?: string) => void;
 
 interface DeleteWorkspaceTarget {
   id: string;
@@ -262,8 +263,14 @@ export function useDataLoaderWorkspaceActions({
    * Passed to `FileTree` as its add-file action.
    */
   const handleAddFileToWorkspace = async (filename: string, selectedSheet?: string | null) => {
-    await workspaceActions.createNodeFromFile(filename, selectedSheet ?? undefined);
-    notify('success', `${filename} added to project.`);
+    const node = await workspaceActions.createNodeFromFile(filename, selectedSheet ?? undefined);
+    // One toast, so the skip report of a folder or ZIP is never hidden behind it.
+    const skipped = node.skipped_files;
+    notify(
+      'success',
+      `${filename} added to project.`,
+      skipped && skipped.length > 0 ? describeSkippedFiles(skipped) : undefined,
+    );
   };
 
   return {

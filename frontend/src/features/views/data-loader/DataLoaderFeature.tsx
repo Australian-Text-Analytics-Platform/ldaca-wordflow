@@ -160,14 +160,16 @@ function DataLoaderFeature() {
    * Flow: choose an error-specific or normal duration, map the semantic status
    * to the matching Sonner API, and fall back to the neutral toast for info.
    */
-  const notify = (type: 'success' | 'error' | 'info', message: string) => {
-    const duration = type === 'error' ? 6000 : 3500;
+  const notify = (type: 'success' | 'error' | 'info', message: string, description?: string) => {
+    // A description (such as a skipped-files report) needs time to read.
+    const duration = description ? 10000 : type === 'error' ? 6000 : 3500;
+    const options = { duration, description };
     if (type === 'success') {
-      toast.success(message, { duration });
+      toast.success(message, options);
     } else if (type === 'error') {
-      toast.error(message, { duration });
+      toast.error(message, options);
     } else {
-      toast(message, { duration });
+      toast(message, options);
     }
   };
 
