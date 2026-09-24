@@ -25,6 +25,7 @@ import FillDefaultStopWordsDialog from './components/FillDefaultStopWordsDialog'
 import { TokenFrequencyParameterPanel } from './components/panels/TokenFrequencyParameterPanel';
 import { TokenFrequencyResultsPanel } from './components/panels/TokenFrequencyResultsPanel';
 import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloadDialog';
+import { readStopWordsEnabled, STOP_WORDS_ENABLED_SETTING } from './hooks/stopWordsToggle';
 import { useTokenFrequencyPreferences } from './hooks/useTokenFrequencyPreferences';
 import { useTokenFrequencyResultModel } from './hooks/useTokenFrequencyResultModel';
 import { useTokenFrequencyTaskFlow } from './hooks/useTokenFrequencyTaskFlow';
@@ -201,9 +202,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
 
   const backendTokenLimit = deriveBackendTokenLimit(results);
   const frequencyResultKey = tabTaskId ?? (results ? '__hydrated__' : null);
-  const [stopWordsEnabledForResult, setStopWordsEnabledForResult] = useState<string | null>(null);
-  const stopWordsEnabled =
-    frequencyResultKey !== null && stopWordsEnabledForResult === frequencyResultKey;
+  const stopWordsEnabled = frequencyResultKey !== null && readStopWordsEnabled(host.settings);
   const savedTokenLimit = Number(host.settings['tokenFrequency.tokenLimit']);
   // Primary node/column the "Add Default" dialog samples to guess a language.
   // Language is not stored per column (a column may mix languages), so the guess
@@ -463,7 +462,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         stopWordsEnabled={stopWordsEnabled}
         onStopWordsEnabledChange={(enabled) => {
           if (!frequencyResultKey) return;
-          setStopWordsEnabledForResult(enabled ? frequencyResultKey : null);
+          host.setSetting(STOP_WORDS_ENABLED_SETTING, String(enabled));
         }}
         tokenLimitInput={tokenLimitInput}
         onTokenLimitInputChange={handleTokenLimitInputChange}
