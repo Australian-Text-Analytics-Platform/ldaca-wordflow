@@ -22,7 +22,7 @@ Every Token Frequency run requires a tokenizer model for every selected data blo
 
 <h3 id="help-token-frequency-reference">Step 2 — Study and reference corpora (comparison mode)</h3>
 
-When two data blocks are selected, each selected-node card shows a **Study Corpus / Reference Corpus** switch. Switching one card to **Study Corpus** automatically makes the other card the reference, and switching one card to **Reference Corpus** makes the paired card the study corpus.
+When two data blocks are selected, each selected-node card shows a **Use as Study Corpus** toggle. Exactly one toggle is on: that block is the study corpus, and the other block is the reference corpus. The first block is the study corpus by default. Turning a toggle on makes its block the study corpus, and turning the active toggle off makes the other block the study corpus.
 
 The reference block provides the baseline for the statistical keyword analysis: its frequencies appear as **O1** and **%1** in the statistics table, and the study block appears as **O2** and **%2**. Swapping the corpus roles flips which side each statistic measures from, which can change the sign of directional measures like LogRatio.
 
@@ -157,8 +157,8 @@ until you choose Clear Results.
 
 1. Select a data block and click **Analyze** with the default settings.
 2. Click **Fill Default** to apply language-matched default stop words, then **Apply Stop Words** and compare the top tokens.
-3. Right-click one of the remaining high-frequency words in the cloud to add it as a custom stop word. Confirm it appears at the start of the stop-word list.
-4. Select a second data block. Use the card-level **Study Corpus / Reference Corpus** switches to set which block is the baseline, then choose **Run** again.
+3. Right-click one of the remaining high-frequency words in the cloud to add it as a custom stop word. The stop words filter switches on automatically if it was off. Confirm the word appears at the start of the stop-word list.
+4. Select a second data block. Use the card-level **Use as Study Corpus** toggles to choose the study corpus (the other block becomes the reference baseline), then choose **Run** again.
 5. Use **Filter tokens** with a wildcard pattern (e.g. `*ing`) and confirm that Cloud view, List view, and their downloads remain filtered while switching views.
 6. In **List view**, scroll one frequency list and observe that the other list scrolls in sync.
 7. Sort the statistics table by **LogRatio** to find the words most distinctively associated with each data block.
