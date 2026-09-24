@@ -39,6 +39,28 @@ def test_collection_manifest_requires_exact_total_and_unique_paths() -> None:
             total_size_bytes=6,
             files=[file, file],
         )
+def test_size_bytes_overrides_a_stale_size() -> None:
+    """The Parquet converter once left old CSV sizes in ``size`` (#133)."""
+
+    collection = SampleCollection.model_validate(
+        {
+            "id": "SCL",
+            "name": "SCL",
+            "total_size_bytes": 160627,
+            "files": [
+                {
+                    "path": "SCL/Honi_Soit.parquet",
+                    "size": 188074,
+                    "size_bytes": 160627,
+                    "sha256": "0" * 64,
+                }
+            ],
+        }
+    )
+
+    assert collection.files[0].size == 160627
+
+
 def test_hierarchical_collection_paths_are_relative_to_the_collection() -> None:
     assert sample_destination_path(
         "ADO/twitter",

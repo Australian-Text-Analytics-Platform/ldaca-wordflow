@@ -43,6 +43,19 @@ class SampleFile(BaseModel):
         Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
     ] = Field(exclude=True, repr=False)
 
+    @model_validator(mode="before")
+    @classmethod
+    def prefer_size_bytes(cls, data: object) -> object:
+        """Use ``size_bytes`` when the catalogue provides it (#133).
+
+        The Parquet converter records the real byte count in ``size_bytes``;
+        an older ``size`` left beside it once blocked the whole catalogue.
+        """
+
+        if isinstance(data, dict) and isinstance(data.get("size_bytes"), int):
+            return {**data, "size": data["size_bytes"]}
+        return data
+
 
 class SampleCollection(BaseModel):
     """One importable sample collection from the remote catalogue."""
