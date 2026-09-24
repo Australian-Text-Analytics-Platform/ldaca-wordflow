@@ -75,8 +75,9 @@ export interface QuotationNodeBlockProps {
  * (`useServerTable`) cannot run inside the feature's node map, so each node owns
  * a child component with its own table instance.
  * Flow: build column defs that wrap the highlighted cell, bridge TanStack
- * pagination back to the feature's page handlers, then render header/body via
- * flexRender and the shared pagination footer.
+ * pagination back to the feature's page handlers, then render headers via
+ * flexRender, body cells via `renderCell` (so cells keep their identity), and
+ * the shared pagination footer.
  */
 export function QuotationNodeBlock({ ...props }: QuotationNodeBlockProps) {
   // TanStack retains column-definition closures by column ID. Re-key when the
@@ -119,6 +120,30 @@ function QuotationNodeBlockContent({
     if (viewportRef.current) viewportRef.current.scrollTop = 0;
   }, [pageSize]);
 
+  // Renders one body cell. The table body calls this directly rather than
+  // through `flexRender`: `flexRender` mounts a function cell as a component,
+  // and these closures are rebuilt on every render (they capture hover state),
+  // so each highlight hover would remount every cell and reset its tooltip.
+  const renderCell = (columnName: string, data: QuotationResultRow, rowId: string) => {
+    if (Boolean(textCol) && columnName === QUOTATION_DOCUMENT_COLUMN && highlightDocument) {
+      return (
+        <QuotationClampedCell>
+          <QuotationHighlightedCell
+            row={data}
+            cellKey={`${nodeId}:${rowId}:${columnName}`}
+            contextLength={contextLength}
+            hoverState={hoverState}
+            onHoverChange={onHoverChange}
+          />
+        </QuotationClampedCell>
+      );
+    }
+    if (columnName === QUOTATION_DOCUMENT_COLUMN) {
+      return <QuotationClampedCell>{data.text}</QuotationClampedCell>;
+    }
+    return data.cellText(columnName);
+  };
+
   const columns: ServerColumnDef<QuotationResultRow>[] = cols.map((columnName) => ({
     id: columnName,
     accessorFn: (row) =>
@@ -143,26 +168,7 @@ function QuotationNodeBlockContent({
         </button>
       );
     },
-    cell: ({ row }) => {
-      const data = row.original;
-      if (Boolean(textCol) && columnName === QUOTATION_DOCUMENT_COLUMN && highlightDocument) {
-        return (
-          <QuotationClampedCell>
-            <QuotationHighlightedCell
-              row={data}
-              cellKey={`${nodeId}:${row.id}:${columnName}`}
-              contextLength={contextLength}
-              hoverState={hoverState}
-              onHoverChange={onHoverChange}
-            />
-          </QuotationClampedCell>
-        );
-      }
-      if (columnName === QUOTATION_DOCUMENT_COLUMN) {
-        return <QuotationClampedCell>{data.text}</QuotationClampedCell>;
-      }
-      return data.cellText(columnName);
-    },
+    cell: ({ row }) => renderCell(columnName, row.original, row.id),
   }));
 
   const table = useServerTable<QuotationResultRow>({
@@ -255,7 +261,7 @@ function QuotationNodeBlockContent({
                       key={cell.id}
                       className="px-4 py-3 align-top text-body leading-relaxed"
                     >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {renderCell(cell.column.id, row.original, row.id)}
                     </TableCell>
                   ))}
                 </TableRow>
