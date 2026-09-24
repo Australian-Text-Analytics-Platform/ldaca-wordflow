@@ -14,11 +14,16 @@ import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDete
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { formatStopWords, mergeStopWordsText } from '@/features/views/common/utils/stopWords';
 import { listSupportedStopwordLanguages, loadMergedStopwords } from '@/lib/loadMergedStopwords';
+import {
+  loadWordflowClassicStopwords,
+  WORDFLOW_CLASSIC_STOPWORD_LISTS,
+} from '@/lib/wordflowClassicStopwords';
 
 const SAVED_LIST_VALUE = '__saved__';
 const CLEAR_LIST_VALUE = '__clear__';
 const EMPTY_PROMPT_VALUE = '__prompt__';
 const TAB_SOURCE_PREFIX = 'tab:';
+const CLASSIC_LIST_PREFIX = 'classic:';
 
 interface StopWordsLanguageSelectProps {
   /** The tab's current normalized stop-word list. */
@@ -36,12 +41,13 @@ interface StopWordsLanguageSelectProps {
 
 /**
  * Shared stop-words list dropdown for analysis tabs that filter stop words.
- * Picking a language appends its default stop words to the current list
- * (duplicates skipped), so custom words and several languages can be combined;
- * "Clear stop words" starts again from an empty list. The detected column
- * language is listed first and marked "(Recommended)". Picking another tab's
- * list under "From other tabs" appends a copy of its words in the same way;
- * the tabs stay independent afterwards.
+ * Groups, in order: "From other tabs" (other tabs' saved lists), "Wordflow
+ * classic lists" (the built-in lists earlier Wordflow versions served), and
+ * "Languages (stopword library)" (the `stopword` package, with the detected
+ * column language first and marked "(Recommended)"). Every pick appends its
+ * words to the current list with duplicates skipped, so custom words and
+ * several lists can be combined; copied tab lists stay independent afterwards.
+ * "Clear stop words" starts again from an empty list.
  *
  * Rendered by: TokenFrequencyResultsPanel and TopicModelingStopWordsControl
  * beside their stop-words switches.
@@ -78,28 +84,20 @@ export function StopWordsLanguageSelect({
     }
   };
 
-  const appendLanguage = async (language: string) => {
+  // Appends one list, loading it first when it is not already in memory.
+  const appendWords = async (load: () => Promise<string[]> | string[]) => {
     setIsPending(true);
     try {
-      let merged: string[];
+      let loaded: string[];
       try {
-        ({ merged } = await loadMergedStopwords({ languages: [language] }));
+        loaded = await load();
       } catch (cause) {
         toast.error('Failed to load stop words.', {
           description: cause instanceof Error ? cause.message : String(cause),
         });
         return;
       }
-      await commit(mergeStopWordsText(formatStopWords(words), merged));
-    } finally {
-      setIsPending(false);
-    }
-  };
-
-  const appendTabList = async (sourceWords: string[]) => {
-    setIsPending(true);
-    try {
-      await commit(mergeStopWordsText(formatStopWords(words), sourceWords));
+      await commit(mergeStopWordsText(formatStopWords(words), loaded));
     } finally {
       setIsPending(false);
     }
@@ -129,10 +127,16 @@ export function StopWordsLanguageSelect({
           const source = sources.find(
             (candidate) => `${TAB_SOURCE_PREFIX}${candidate.tabId}` === value,
           );
-          if (source) void appendTabList(source.words);
+          if (source) void appendWords(() => source.words);
           return;
         }
-        void appendLanguage(value);
+        if (value.startsWith(CLASSIC_LIST_PREFIX)) {
+          void appendWords(() =>
+            loadWordflowClassicStopwords(value.slice(CLASSIC_LIST_PREFIX.length)),
+          );
+          return;
+        }
+        void appendWords(async () => (await loadMergedStopwords({ languages: [value] })).merged);
       }}
     >
       <SelectTrigger
@@ -156,7 +160,26 @@ export function StopWordsLanguageSelect({
             </SelectItem>
           ) : null}
         </SelectGroup>
+        {sources.length > 0 ? (
+          <SelectGroup>
+            <SelectLabel>From other tabs</SelectLabel>
+            {sources.map((source) => (
+              <SelectItem key={source.tabId} value={`${TAB_SOURCE_PREFIX}${source.tabId}`}>
+                {`${source.label} (${String(source.words.length)} words)`}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ) : null}
         <SelectGroup>
+          <SelectLabel>Wordflow classic lists</SelectLabel>
+          {WORDFLOW_CLASSIC_STOPWORD_LISTS.map((list) => (
+            <SelectItem key={list.iso6391} value={`${CLASSIC_LIST_PREFIX}${list.iso6391}`}>
+              {`${list.name} (${String(list.wordCount)} words)`}
+            </SelectItem>
+          ))}
+        </SelectGroup>
+        <SelectGroup>
+          <SelectLabel>Languages (stopword library)</SelectLabel>
           {recommendedLanguage ? (
             <SelectItem value={recommendedLanguage.iso6391}>
               {recommendedLanguage.name} (Recommended)
@@ -168,16 +191,6 @@ export function StopWordsLanguageSelect({
             </SelectItem>
           ))}
         </SelectGroup>
-        {sources.length > 0 ? (
-          <SelectGroup>
-            <SelectLabel>From other tabs</SelectLabel>
-            {sources.map((source) => (
-              <SelectItem key={source.tabId} value={`${TAB_SOURCE_PREFIX}${source.tabId}`}>
-                {`${source.label} (${String(source.words.length)} words)`}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        ) : null}
       </SelectContent>
     </Select>
   );

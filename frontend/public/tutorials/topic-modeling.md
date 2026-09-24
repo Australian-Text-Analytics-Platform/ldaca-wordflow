@@ -135,13 +135,15 @@ search, lasso filters, pan, zoom, or an open Add to Workspace dialog.
 list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
 the stopword filter to apply the Tab's saved list. You can choose a language or
 edit that list while filtering is off; the switch controls filtering only.
-Opening the language menu detects a recommendation from the first selected Data
-Block. Choosing a language appends its default stop words to the saved list
-(duplicates are skipped, so you can combine languages and keep custom words),
-while **Clear stop words** empties it. Lists saved in other Frequency or Topic
-Modeling tabs appear under **From other tabs**; picking one copies its words
-into this Tab's list, and the two lists stay independent afterwards. The menu
-returns to **Saved list (N words)** after a choice. These controls change presentation without rerunning or refetching the
+The dropdown's **From other tabs** group lists stop words saved in your other
+Frequency or Topic Modeling tabs; **Wordflow classic lists** offers the built-in
+lists earlier Wordflow versions used; **Languages (stopword library)** offers
+default lists from the open-source `stopword` package, with a recommendation
+detected from the first selected Data Block. Any choice appends its words to the
+saved list (duplicates are skipped, so you can combine lists and keep custom
+words), copied tab lists stay independent afterwards, and **Clear stop words**
+empties the list. The menu returns to **Saved list (N words)** after a choice.
+These controls change presentation without rerunning or refetching the
 Result.
 
 <h3 id="help-topic-modeling-bubble-chart">Bubble chart</h3>

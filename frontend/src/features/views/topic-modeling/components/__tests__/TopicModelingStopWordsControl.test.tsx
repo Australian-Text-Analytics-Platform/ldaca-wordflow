@@ -79,6 +79,13 @@ describe('TopicModelingStopWordsControl', () => {
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
       'Clear stop words',
       'Saved list (2 words)',
+      'Chinese (746 words)',
+      'English (231 words)',
+      'French (146 words)',
+      'German (131 words)',
+      'Japanese (310 words)',
+      'Korean (679 words)',
+      'Spanish (151 words)',
       'English (Recommended)',
       'Afrikaans',
       'French',
@@ -99,6 +106,13 @@ describe('TopicModelingStopWordsControl', () => {
     await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
       'Select language',
+      'Chinese (746 words)',
+      'English (231 words)',
+      'French (146 words)',
+      'German (131 words)',
+      'Japanese (310 words)',
+      'Korean (679 words)',
+      'Spanish (151 words)',
       'English (Recommended)',
       'Afrikaans',
       'French',

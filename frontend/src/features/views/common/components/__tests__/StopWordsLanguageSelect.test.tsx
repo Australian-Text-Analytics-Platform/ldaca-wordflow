@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { StopWordListSource } from '../../utils/stopWordListSources';
+import { WORDFLOW_CLASSIC_STOPWORD_LISTS } from '@/lib/wordflowClassicStopwords';
+import { WORDFLOW_CLASSIC_STOPWORDS } from '@/lib/wordflowClassicStopwordsData';
 import { StopWordsLanguageSelect } from '../StopWordsLanguageSelect';
 
 vi.mock('@/features/views/common/hooks/useDetectedColumnLanguage', () => ({
@@ -109,5 +111,42 @@ describe('StopWordsLanguageSelect', () => {
     await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
 
     expect(screen.queryByText('From other tabs')).not.toBeInTheDocument();
+  });
+
+  it('orders groups as other tabs, Wordflow classic lists, then the stopword library', async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        sources={[{ tabId: 'freq-1', label: 'Frequency · Analysis 1', words: ['university'] }]}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    const labels = ['From other tabs', 'Wordflow classic lists', 'Languages (stopword library)'];
+    const positions = labels.map((label) => document.body.textContent.indexOf(label));
+    expect(positions.every((position) => position >= 0)).toBe(true);
+    expect([...positions].sort((left, right) => left - right)).toEqual(positions);
+  });
+
+  it('appends the revised Wordflow classic English list', async () => {
+    const user = userEvent.setup();
+    render(<Harness initialWords={['university']} />);
+
+    await pickOption(user, 'English (231 words)');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('words').textContent.split('|')).toEqual(
+        expect.arrayContaining(['university', 'um', 'uh', 'aren', 'ought']),
+      );
+    });
+  });
+
+  it('keeps classic list metadata in step with the restored words', () => {
+    for (const list of WORDFLOW_CLASSIC_STOPWORD_LISTS) {
+      expect(WORDFLOW_CLASSIC_STOPWORDS[list.iso6391]).toHaveLength(list.wordCount);
+    }
+    expect(Object.keys(WORDFLOW_CLASSIC_STOPWORDS).sort()).toEqual(
+      WORDFLOW_CLASSIC_STOPWORD_LISTS.map((list) => list.iso6391).sort(),
+    );
   });
 });
