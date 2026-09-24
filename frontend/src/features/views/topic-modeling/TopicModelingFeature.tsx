@@ -1,3 +1,7 @@
+import {
+  readStopWordsEnabled,
+  STOP_WORDS_ENABLED_SETTINGS,
+} from '@/features/views/common/utils/stopWordsToggle';
 import { useStopWordListSources } from '@/features/views/common/hooks/useStopWordListSources';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -273,8 +277,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   };
 
   const resultKey = tabTaskId ?? (result ? '__hydrated__' : null);
-  const [stopWordsEnabledForResult, setStopWordsEnabledForResult] = useState<string | null>(null);
-  const stopWordsEnabled = resultKey !== null && stopWordsEnabledForResult === resultKey;
+  const stopWordsEnabled =
+    resultKey !== null &&
+    readStopWordsEnabled(host.settings, STOP_WORDS_ENABLED_SETTINGS.topicModeling);
   const resultSources = result?.sources ?? [];
   const resultNodeIds =
     resultSources.length > 0
@@ -510,7 +515,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           stopWordsEnabled={stopWordsEnabled}
           onStopWordsEnabledChange={(enabled) => {
             if (!resultKey) return;
-            setStopWordsEnabledForResult(enabled ? resultKey : null);
+            host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, String(enabled));
           }}
           stopWords={host.stopWords}
           stopWordsDetectionTarget={{

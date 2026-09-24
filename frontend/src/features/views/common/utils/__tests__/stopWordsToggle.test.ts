@@ -3,18 +3,25 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   addStopWordEnablingFilter,
   readStopWordsEnabled,
-  STOP_WORDS_ENABLED_SETTING,
+  STOP_WORDS_ENABLED_SETTINGS,
 } from '../stopWordsToggle';
 
 describe('readStopWordsEnabled', () => {
-  it('reads the persisted tab setting', () => {
-    expect(readStopWordsEnabled({ [STOP_WORDS_ENABLED_SETTING]: 'true' })).toBe(true);
-    expect(readStopWordsEnabled({ [STOP_WORDS_ENABLED_SETTING]: 'false' })).toBe(false);
+  const { tokenFrequency, topicModeling } = STOP_WORDS_ENABLED_SETTINGS;
+
+  it('reads the persisted tab setting for the given tool', () => {
+    expect(readStopWordsEnabled({ [tokenFrequency]: 'true' }, tokenFrequency)).toBe(true);
+    expect(readStopWordsEnabled({ [tokenFrequency]: 'false' }, tokenFrequency)).toBe(false);
+    expect(readStopWordsEnabled({ [topicModeling]: 'true' }, topicModeling)).toBe(true);
+  });
+
+  it('keeps each tool on its own setting', () => {
+    expect(readStopWordsEnabled({ [tokenFrequency]: 'true' }, topicModeling)).toBe(false);
   });
 
   it('treats a missing or malformed setting as disabled', () => {
-    expect(readStopWordsEnabled({})).toBe(false);
-    expect(readStopWordsEnabled({ [STOP_WORDS_ENABLED_SETTING]: 'yes' })).toBe(false);
+    expect(readStopWordsEnabled({}, tokenFrequency)).toBe(false);
+    expect(readStopWordsEnabled({ [tokenFrequency]: 'yes' }, tokenFrequency)).toBe(false);
   });
 });
 

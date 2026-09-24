@@ -29,8 +29,8 @@ import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloa
 import {
   addStopWordEnablingFilter,
   readStopWordsEnabled,
-  STOP_WORDS_ENABLED_SETTING,
-} from './hooks/stopWordsToggle';
+  STOP_WORDS_ENABLED_SETTINGS,
+} from '../common/utils/stopWordsToggle';
 import { useTokenFrequencyPreferences } from './hooks/useTokenFrequencyPreferences';
 import { useTokenFrequencyResultModel } from './hooks/useTokenFrequencyResultModel';
 import { useTokenFrequencyTaskFlow } from './hooks/useTokenFrequencyTaskFlow';
@@ -204,7 +204,9 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
 
   const backendTokenLimit = deriveBackendTokenLimit(results);
   const frequencyResultKey = tabTaskId ?? (results ? '__hydrated__' : null);
-  const stopWordsEnabled = frequencyResultKey !== null && readStopWordsEnabled(host.settings);
+  const stopWordsEnabled =
+    frequencyResultKey !== null &&
+    readStopWordsEnabled(host.settings, STOP_WORDS_ENABLED_SETTINGS.tokenFrequency);
   const savedTokenLimit = Number(host.settings['tokenFrequency.tokenLimit']);
   // Primary node/column the stop-words language dropdown samples to recommend a
   // language. Language is not stored per column (a column may mix languages),
@@ -295,7 +297,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         {
           enabled: stopWordsEnabled,
           enable: () => {
-            setHostSetting(STOP_WORDS_ENABLED_SETTING, 'true');
+            setHostSetting(STOP_WORDS_ENABLED_SETTINGS.tokenFrequency, 'true');
           },
           addStopWord: handleTokenRightClick,
         },
@@ -336,7 +338,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   // filter on, matching right-click, so a pick is never silently ignored.
   const handleStopWordsListChange = (words: string[]) => {
     if (words.length > 0 && !stopWordsEnabled) {
-      host.setSetting(STOP_WORDS_ENABLED_SETTING, 'true');
+      host.setSetting(STOP_WORDS_ENABLED_SETTINGS.tokenFrequency, 'true');
     }
     applyStopSetFromText(formatStopWords(words));
   };
@@ -490,7 +492,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         stopWordsEnabled={stopWordsEnabled}
         onStopWordsEnabledChange={(enabled) => {
           if (!frequencyResultKey) return;
-          host.setSetting(STOP_WORDS_ENABLED_SETTING, String(enabled));
+          host.setSetting(STOP_WORDS_ENABLED_SETTINGS.tokenFrequency, String(enabled));
         }}
         tokenLimitInput={tokenLimitInput}
         onTokenLimitInputChange={handleTokenLimitInputChange}
