@@ -12,3 +12,22 @@ export const STOP_WORDS_ENABLED_SETTING = 'tokenFrequency.stopWordsEnabled';
  */
 export const readStopWordsEnabled = (settings: Readonly<Record<string, string>>): boolean =>
   settings[STOP_WORDS_ENABLED_SETTING] === 'true';
+
+interface StopWordRightClick {
+  enabled: boolean;
+  enable: () => void;
+  addStopWord: (token: string) => void;
+}
+
+/**
+ * Adds a right-clicked token to the stop words, switching the filter on first
+ * when it is off so the right-click is never silently ignored.
+ * Used by: TokenFrequencyFeature for word cloud and token list right-clicks.
+ */
+export const addStopWordEnablingFilter = (
+  { enabled, enable, addStopWord }: StopWordRightClick,
+  token: string,
+): void => {
+  if (!enabled) enable();
+  addStopWord(token);
+};

@@ -25,7 +25,11 @@ import FillDefaultStopWordsDialog from './components/FillDefaultStopWordsDialog'
 import { TokenFrequencyParameterPanel } from './components/panels/TokenFrequencyParameterPanel';
 import { TokenFrequencyResultsPanel } from './components/panels/TokenFrequencyResultsPanel';
 import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloadDialog';
-import { readStopWordsEnabled, STOP_WORDS_ENABLED_SETTING } from './hooks/stopWordsToggle';
+import {
+  addStopWordEnablingFilter,
+  readStopWordsEnabled,
+  STOP_WORDS_ENABLED_SETTING,
+} from './hooks/stopWordsToggle';
 import { useTokenFrequencyPreferences } from './hooks/useTokenFrequencyPreferences';
 import { useTokenFrequencyResultModel } from './hooks/useTokenFrequencyResultModel';
 import { useTokenFrequencyTaskFlow } from './hooks/useTokenFrequencyTaskFlow';
@@ -285,6 +289,24 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     },
   });
 
+  const setHostSetting = host.setSetting;
+  // Stable so the memoised word cloud sections are not re-laid out per render.
+  const handleStopWordRightClick = useCallback(
+    (token: string) => {
+      addStopWordEnablingFilter(
+        {
+          enabled: stopWordsEnabled,
+          enable: () => {
+            setHostSetting(STOP_WORDS_ENABLED_SETTING, 'true');
+          },
+          addStopWord: handleTokenRightClick,
+        },
+        token,
+      );
+    },
+    [handleTokenRightClick, setHostSetting, stopWordsEnabled],
+  );
+
   const {
     computeDisplayName,
     normalizedNodeResults,
@@ -481,7 +503,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         getColorForNode={getColorForNode}
         onDownloadWordCloud={openWordCloudDownload}
         onTokenClick={handleTokenClick}
-        onTokenRightClick={stopWordsEnabled ? handleTokenRightClick : () => undefined}
+        onTokenRightClick={handleStopWordRightClick}
         registerWordCloudRef={registerWordCloudRef}
         onDownloadFrequencyCsv={openFrequencyDownload}
       />
