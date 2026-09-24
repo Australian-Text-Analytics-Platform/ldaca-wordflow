@@ -183,6 +183,9 @@ class DataPortalRecord(BaseModel):
     has_access: bool = True
     # Licence group to request access through, for access-controlled records.
     access_group: str | None = None
+    # Items with published metadata (collections only); 0 means the collection
+    # publishes only its own description.
+    object_count: int | None = Field(default=None, ge=0)
     access: list[str] = Field(default_factory=list)
     collections: list[str] = Field(default_factory=list)
     file_formats: list[str] = Field(default_factory=list)

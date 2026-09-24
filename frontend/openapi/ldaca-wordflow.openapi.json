@@ -1786,6 +1786,42 @@
         "title": "BackgroundState",
         "type": "string"
       },
+      "BatchDeleteFilesRequest": {
+        "additionalProperties": false,
+        "description": "Delete several files and folders in one call (issue 138).",
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "BatchDeleteFilesRequest",
+        "type": "object"
+      },
+      "BatchDeleteFilesResource": {
+        "additionalProperties": false,
+        "description": "How many selected entries were deleted; missing ones are skipped.",
+        "properties": {
+          "deleted": {
+            "minimum": 0.0,
+            "title": "Deleted",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "deleted"
+        ],
+        "title": "BatchDeleteFilesResource",
+        "type": "object"
+      },
       "BinaryExpression-Input": {
         "additionalProperties": false,
         "properties": {
@@ -4073,6 +4109,18 @@
             ],
             "title": "License"
           },
+          "object_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Object Count"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -5628,7 +5676,7 @@
       },
       "MoveFileRequest": {
         "additionalProperties": false,
-        "description": "Move one file into an existing relative directory.",
+        "description": "Move one file or folder into an existing relative directory.",
         "properties": {
           "source_path": {
             "minLength": 1,
@@ -12987,6 +13035,83 @@
           }
         ],
         "summary": "Move File",
+        "tags": [
+          "user-files"
+        ]
+      }
+    },
+    "/api/user-files/batch-delete": {
+      "post": {
+        "description": "Delete several files and folders in one request.",
+        "operationId": "delete_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchDeleteFilesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchDeleteFilesResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Delete Files",
         "tags": [
           "user-files"
         ]

@@ -905,6 +905,30 @@ export type AvailableWorkspaceListItem = {
 export type BackgroundState = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
 
 /**
+ * BatchDeleteFilesRequest
+ *
+ * Delete several files and folders in one call (issue 138).
+ */
+export type BatchDeleteFilesRequest = {
+    /**
+     * Paths
+     */
+    paths: Array<string>;
+};
+
+/**
+ * BatchDeleteFilesResource
+ *
+ * How many selected entries were deleted; missing ones are skipped.
+ */
+export type BatchDeleteFilesResource = {
+    /**
+     * Deleted
+     */
+    deleted: number;
+};
+
+/**
  * BinaryExpression
  */
 export type BinaryExpressionInput = {
@@ -2055,6 +2079,10 @@ export type DataPortalRecord = {
      */
     license?: string | null;
     /**
+     * Object Count
+     */
+    object_count?: number | null;
+    /**
      * Title
      */
     title: string;
@@ -2824,7 +2852,7 @@ export type LocalQuotationEngineSelection = {
 /**
  * MoveFileRequest
  *
- * Move one file into an existing relative directory.
+ * Move one file or folder into an existing relative directory.
  */
 export type MoveFileRequest = {
     /**
@@ -7047,6 +7075,43 @@ export type MoveFileResponses = {
 };
 
 export type MoveFileResponse = MoveFileResponses[keyof MoveFileResponses];
+
+export type DeleteFilesData = {
+    body: BatchDeleteFilesRequest;
+    path?: never;
+    query?: never;
+    url: '/api/user-files/batch-delete';
+};
+
+export type DeleteFilesErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type DeleteFilesError = DeleteFilesErrors[keyof DeleteFilesErrors];
+
+export type DeleteFilesResponses = {
+    /**
+     * Successful Response
+     */
+    200: BatchDeleteFilesResource;
+};
+
+export type DeleteFilesResponse = DeleteFilesResponses[keyof DeleteFilesResponses];
 
 export type DownloadFileData = {
     body?: never;

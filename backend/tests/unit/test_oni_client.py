@@ -137,16 +137,21 @@ def _hit(identifier: str, name: str, access: dict[str, object]) -> dict[str, obj
 
 
 @pytest.mark.anyio
-async def test_list_collections_reports_access_for_the_current_token() -> None:
-    """#135: every top-level collection, sorted, with typed access."""
+async def test_list_collections_reports_access_and_item_counts() -> None:
+    """#135: parentless top-level collections, sorted, with access and counts."""
 
-    bodies: list[dict[str, object]] = []
+    bodies: list[dict[str, Any]] = []
 
     def respond(request: httpx.Request) -> httpx.Response:
         import json
 
         body = json.loads(request.content)
         bodies.append(body)
+        if "aggs" in body:
+            buckets = [{"key": "arcp://a", "doc_count": 1354}]
+            return httpx.Response(
+                200, json={"aggregations": {"roots": {"buckets": buckets}}}
+            )
         hits = [
             _hit(
                 "arcp://b", "Sydney Speaks", {"hasAccess": False, "group": "licence-a"}
@@ -161,13 +166,73 @@ async def test_list_collections_reports_access_for_the_current_token() -> None:
     ) as http_client:
         records = await OniClient(http_client).list_collections()
 
-    assert [(r["title"], r["has_access"], r["access_group"]) for r in records] == [
-        ("COOEE", True, None),
-        ("Sydney Speaks", False, "licence-a"),
+    assert [
+        (r["title"], r["has_access"], r["access_group"], r["object_count"])
+        for r in records
+    ] == [
+        ("COOEE", True, None, 1354),
+        ("Sydney Speaks", False, "licence-a", 0),
     ]
-    assert records[1]["access"] == ["licence-a"]
-    assert len(bodies) == 1
+    # Sections such as ICE-AUS's W1A have a parent and no RO-Crate of their own.
+    assert bodies[0]["query"]["bool"]["must_not"] == [
+        {"exists": {"field": "_memberOf.@id"}}
+    ]
     assert bodies[0]["size"] == 100
+
+
+def test_collection_without_items_tabulates_its_own_description(tmp_path) -> None:
+    """Australian Deafblind Signing Corpus publishes no item metadata."""
+
+    import polars as pl
+
+    from ldaca_wordflow.workers.data_portal import _tabulate_metadata
+
+    destination = tmp_path / "metadata.parquet"
+    _tabulate_metadata(
+        "arcp://root",
+        {
+            "@graph": [
+                {"@id": "ro-crate-metadata.json", "@type": "CreativeWork"},
+                {
+                    "@id": "arcp://root",
+                    "@type": ["Dataset", "RepositoryCollection"],
+                    "name": "Deafblind",
+                    "description": "Signing corpus",
+                },
+            ]
+        },
+        destination,
+    )
+
+    rows = pl.read_parquet(destination).to_dicts()
+    assert len(rows) == 1
+    assert rows[0]["entity_id"] == "arcp://root"
+    assert rows[0]["name"] == "Deafblind"
+
+
+@pytest.mark.anyio
+async def test_document_download_replaces_a_stray_invalid_byte() -> None:
+    """ICE-AUS S1B-065 holds one non-UTF-8 byte; the import must not fail."""
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            content=b"You\xc6ve",
+            headers={"content-type": "text/plain;charset=UTF-8"},
+        )
+
+    async with httpx.AsyncClient(
+        base_url="https://data.ldaca.edu.au/api",
+        transport=httpx.MockTransport(respond),
+    ) as http_client:
+        texts = await OniClient(http_client).download_object_texts(
+            "arcp://root",
+            ["S1B-065.TXT"],
+            max_total_bytes=1_000,
+            max_document_bytes=1_000,
+        )
+
+    assert texts == {"S1B-065.TXT": "You\ufffdve"}
 
 
 @pytest.mark.anyio

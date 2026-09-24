@@ -163,8 +163,6 @@ async def _fetch_object_crates(
         object_ids = await client.list_member_object_ids(
             identifier, max_objects=MAX_METADATA_OBJECTS
         )
-        if not object_ids:
-            raise ValueError("The Data Portal lists no objects for this collection")
         report({"fraction": 0.1, "message": f"Fetching metadata for {len(object_ids)} objects"})
         semaphore = asyncio.Semaphore(max(1, download_concurrency))
         done = 0
@@ -394,7 +392,12 @@ def _tabulate_metadata(
         entity for entity in entities.values() if table_name in _entity_types(entity)
     ]
     if not matching:
-        raise ValueError(f"RO-Crate contains no {table_name} metadata")
+        # Some collections publish only their own description (no items).
+        # Tabulate that one entity, as the portal's Retrieve Metadata shows it.
+        root = entities.get(identifier)
+        if root is None:
+            raise ValueError(f"RO-Crate contains no {table_name} metadata")
+        matching = [root]
 
     ignored = _configured_properties(table_config, "ignore_props")
     expanded = _configured_properties(table_config, "expand_props")

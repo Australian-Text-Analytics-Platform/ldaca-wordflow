@@ -338,7 +338,9 @@ class OniClient:
                             )
                         total_bytes += len(chunk)
                     content.extend(chunk)
-                return path, content.decode(response.encoding or "utf-8")
+                # A stray invalid byte (ICE-AUS S1B-065 has one) is replaced with
+            # U+FFFD rather than failing the whole collection import.
+            return path, content.decode(response.encoding or "utf-8", errors="replace")
 
         pairs = await asyncio.gather(*(fetch(path) for path in paths))
         return dict(pairs)
@@ -378,20 +380,57 @@ class OniClient:
         )
 
     async def list_collections(self, *, max_collections: int = 500) -> list[dict[str, Any]]:
-        """Return every top-level collection, with access for the current token."""
+        """Return every top-level collection, with access for the current token.
+
+        Entries the index flags top-level but that belong to a parent (ICE-AUS's
+        W1A, S2B, ... sections) are left out: they have no RO-Crate of their
+        own, and importing the parent brings them in. Each record carries
+        ``object_count``, the number of items with published metadata.
+        """
 
         records: list[dict[str, Any]] = []
         while len(records) < max_collections:
-            page, total = await self.search(
+            body = build_search_body(
                 method=DataPortalSearchMethod.COLLECTION,
                 query="",
                 limit=100,
                 offset=len(records),
             )
-            records.extend(page)
-            if not page or len(records) >= total:
+            body["query"]["bool"]["must_not"] = [{"exists": {"field": "_memberOf.@id"}}]
+            data = await self._request_json("POST", "/search/index/items", json_body=body)
+            hits = data.get("hits", {})
+            raw_items = hits.get("hits", []) if isinstance(hits, dict) else []
+            if not isinstance(raw_items, list) or not all(
+                isinstance(item, dict) for item in raw_items
+            ):
+                raise ValueError("Data Portal search hits are invalid")
+            records.extend(_hit_to_result(hit) for hit in raw_items)
+            raw_total = hits.get("total", 0) if isinstance(hits, dict) else 0
+            total = raw_total.get("value", 0) if isinstance(raw_total, dict) else raw_total
+            if not raw_items or len(records) >= int(total or 0):
                 break
+        counts = await self._object_counts_by_root()
+        for record in records:
+            record["object_count"] = counts.get(record["id"], 0)
         return sorted(records[:max_collections], key=lambda record: record["title"].casefold())
+
+    async def _object_counts_by_root(self) -> dict[str, int]:
+        """Count items (RepositoryObjects) with indexed metadata per collection."""
+
+        body = {
+            "size": 0,
+            "query": {"terms": {"@type.keyword": ["RepositoryObject"]}},
+            "aggs": {"roots": {"terms": {"field": "_root.@id.keyword", "size": 1000}}},
+        }
+        data = await self._request_json("POST", "/search/index/items", json_body=body)
+        aggregations = data.get("aggregations", {})
+        roots = aggregations.get("roots", {}) if isinstance(aggregations, dict) else {}
+        buckets = roots.get("buckets", []) if isinstance(roots, dict) else []
+        return {
+            str(bucket["key"]): int(bucket["doc_count"])
+            for bucket in buckets
+            if isinstance(bucket, dict) and "key" in bucket and "doc_count" in bucket
+        }
 
     async def list_member_object_ids(self, root_id: str, *, max_objects: int) -> list[str]:
         """Return the identifier of every RepositoryObject under ``root_id``.

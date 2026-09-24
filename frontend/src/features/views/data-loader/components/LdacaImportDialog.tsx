@@ -68,6 +68,9 @@ function LdacaCollectionRow({
 }) {
   const isImporting = importingId === record.id;
   const restricted = record.has_access === false;
+  const itemCount = record.object_count ?? null;
+  // Some collections publish only their own description, not their items.
+  const collectionOnly = itemCount === 0;
 
   return (
     <div className="bg-surface text-surface-foreground rounded-md border p-4">
@@ -105,6 +108,13 @@ function LdacaCollectionRow({
                 {record.access_group ? `: ${accessGroupLabel(record.access_group)}` : ''}
               </Badge>
             ) : null}
+            {itemCount !== null ? (
+              <Badge variant="outline" className="text-label-secondary">
+                {itemCount === 0
+                  ? 'Collection description only'
+                  : `${itemCount.toLocaleString()} item${itemCount === 1 ? '' : 's'}`}
+              </Badge>
+            ) : null}
             {record.license ? (
               <Badge variant="outline" className="max-w-full truncate text-label-secondary">
                 {record.license}
@@ -113,8 +123,9 @@ function LdacaCollectionRow({
           </div>
           {restricted ? (
             <p className="text-description text-label-secondary">
-              Your API token cannot read this collection&rsquo;s texts. Import its object metadata
-              only, or update your token if you have been granted access.
+              {collectionOnly
+                ? 'Your API token cannot read this collection, and it publishes no item metadata. Import the collection description, or update your token if you have been granted access.'
+                : 'Your API token cannot read this collection’s texts. Import its item metadata only, or update your token if you have been granted access.'}
             </p>
           ) : null}
         </div>
@@ -135,7 +146,7 @@ function LdacaCollectionRow({
                 ) : (
                   <Download className="mr-2 h-4 w-4" />
                 )}
-                Import metadata only
+                {collectionOnly ? 'Import collection metadata' : 'Import metadata only'}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={onUpdateToken}>
                 <KeyRound className="mr-2 h-4 w-4" />
