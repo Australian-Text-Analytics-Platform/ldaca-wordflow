@@ -1,4 +1,4 @@
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => {
@@ -13,11 +13,14 @@ const mocks = vi.hoisted(() => {
     resize: vi.fn(),
     dispose: vi.fn(),
   };
+  const rendered: { svg: SVGSVGElement | null } = { svg: null };
   return {
     handlers,
     chart,
+    rendered,
     init: vi.fn((element: HTMLElement) => {
-      element.appendChild(document.createElementNS('http://www.w3.org/2000/svg', 'svg'));
+      rendered.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      element.appendChild(rendered.svg);
       return chart;
     }),
     use: vi.fn(),
@@ -250,5 +253,55 @@ describe('ResponsiveWordCloud', () => {
     });
     expect(layout.sizeRange).toEqual([10, 24]);
     expect(layout.gridSize).toBe(4);
+  });
+
+  it('relays out only when the words change, not on identical arrays or new svgRefs', () => {
+    const words = () => [
+      { text: 'alpha', value: 3 },
+      { text: 'beta', value: 1 },
+    ];
+    const { rerender } = render(<ResponsiveWordCloud words={words()} svgRef={() => undefined} />);
+    const layouts = mocks.chart.setOption.mock.calls.length;
+
+    // A parent rebuilding the same words, or passing a new svgRef, must not
+    // clear and redraw the cloud.
+    rerender(<ResponsiveWordCloud words={words()} svgRef={() => undefined} />);
+    expect(mocks.chart.setOption).toHaveBeenCalledTimes(layouts);
+
+    rerender(
+      <ResponsiveWordCloud words={[{ text: 'alpha', value: 3 }]} svgRef={() => undefined} />,
+    );
+    expect(mocks.chart.setOption).toHaveBeenCalledTimes(layouts + 1);
+  });
+
+  it('keeps the previous frame visible until the new layout draws words', async () => {
+    const { rerender } = render(
+      <ResponsiveWordCloud
+        words={[
+          { text: 'alpha', value: 3 },
+          { text: 'beta', value: 1 },
+        ]}
+      />,
+    );
+    const svg = mocks.rendered.svg;
+    if (!svg) throw new Error('Expected the chart SVG.');
+    const drawWord = (text: string) => {
+      const word = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      word.textContent = text;
+      svg.appendChild(word);
+      return word;
+    };
+    const previousWord = drawWord('beta');
+
+    rerender(<ResponsiveWordCloud words={[{ text: 'alpha', value: 3 }]} />);
+    const overlay = screen.getByTestId('word-cloud-previous-frame');
+    expect(overlay).toHaveTextContent('beta');
+
+    // The new layout clears the old words, then draws its own.
+    previousWord.remove();
+    drawWord('alpha');
+    await waitFor(() => {
+      expect(overlay).toBeEmptyDOMElement();
+    });
   });
 });

@@ -3,7 +3,7 @@ import 'echarts-wordcloud';
 import { init, type EChartsType, use as registerEChartsModules } from 'echarts/core';
 import { SVGRenderer } from 'echarts/renderers';
 import type { WordCloudSeriesOption } from 'echarts/types/dist/echarts';
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef } from 'react';
 import { useElementWidth } from '@/lib/useElementWidth';
 import { wordCloudLayoutSize, wordCloudSizingValue } from './wordCloudLayoutSize';
 
@@ -37,6 +37,9 @@ interface WordflowWordCloudSeriesOption extends WordCloudSeriesOption {
   shrinkToFit: boolean;
 }
 
+/** Longest time the previous frame is held if the new layout never draws words. */
+const OVERLAY_MAX_HOLD_MS = 1500;
+
 /** Responsive deterministic ECharts cloud shared by analysis-specific wrappers. */
 function ResponsiveWordCloudInstance({
   words,
@@ -53,16 +56,32 @@ function ResponsiveWordCloudInstance({
   const chartRef = useRef<EChartsType | null>(null);
   const wordClickRef = useRef(onWordClick);
   const wordContextMenuRef = useRef(onWordContextMenu);
+  const svgRefRef = useRef(svgRef);
+  const overlayRef = useRef<HTMLDivElement | null>(null);
   const measuredWidth = useElementWidth(containerRef);
   const cloudWidth = Math.max(minWidth, measuredWidth);
   const cloudHeight = Math.max(minHeight, Math.round(cloudWidth * aspectRatio));
   const interactive = Boolean(onWordClick ?? onWordContextMenu);
   const ariaLabel = words.map((word) => `${word.text}: ${String(word.value)}`).join(', ');
+  // Parents rebuild the words array on unrelated renders (for example when a
+  // saved stop-word list echoes back). Relayout only when the content changes,
+  // because every relayout clears and redraws the whole cloud.
+  const wordsSignature = JSON.stringify(
+    words.map((word) => [word.text, word.value, word.color ?? null]),
+  );
+  const stableWords = useMemo(
+    () =>
+      (JSON.parse(wordsSignature) as [string, number, string | null][]).map(
+        ([text, value, wordColor]) => ({ text, value, color: wordColor ?? undefined }),
+      ),
+    [wordsSignature],
+  );
 
   useEffect(() => {
     wordClickRef.current = onWordClick;
     wordContextMenuRef.current = onWordContextMenu;
-  }, [onWordClick, onWordContextMenu]);
+    svgRefRef.current = svgRef;
+  }, [onWordClick, onWordContextMenu, svgRef]);
 
   useEffect(() => {
     const element = plotRef.current;
@@ -104,7 +123,7 @@ function ResponsiveWordCloudInstance({
     const element = plotRef.current;
     if (!chart || !element) return;
 
-    const sizingWords = words.map((word) => ({
+    const sizingWords = stableWords.map((word) => ({
       text: word.text,
       value: wordCloudSizingValue(word.value),
     }));
@@ -136,7 +155,7 @@ function ResponsiveWordCloudInstance({
         fontFamily: 'Segoe UI, Roboto, sans-serif',
         fontWeight: 'normal',
       },
-      data: words.map((word) => ({
+      data: stableWords.map((word) => ({
         name: word.text,
         value: wordCloudSizingValue(word.value),
         textStyle: {
@@ -144,6 +163,24 @@ function ResponsiveWordCloudInstance({
         },
       })),
     };
+
+    // Hold a copy of the current cloud on top while the new layout computes, so
+    // replacing the words does not flash an empty pane.
+    const overlay = overlayRef.current;
+    const previousSvg = element.querySelector('svg');
+    if (overlay && previousSvg?.querySelector('text')) {
+      overlay.replaceChildren(previousSvg.cloneNode(true));
+    }
+    const releaseOverlay = () => {
+      overlay?.replaceChildren();
+    };
+    const drawn = new MutationObserver(() => {
+      if (!element.querySelector('svg text')) return;
+      releaseOverlay();
+      drawn.disconnect();
+    });
+    drawn.observe(element, { childList: true, subtree: true });
+    const overlayFallback = window.setTimeout(releaseOverlay, OVERLAY_MAX_HOLD_MS);
 
     // echarts-wordcloud defers its first layout pass even when layoutAnimation is
     // disabled. Dispose the previous layout before replacing the option so a
@@ -153,19 +190,27 @@ function ResponsiveWordCloudInstance({
     chart.setOption({ animation: false, series: [series] }, { notMerge: true, lazyUpdate: false });
 
     const svg = element.querySelector('svg');
-    svgRef?.(svg);
+    svgRefRef.current?.(svg);
     return () => {
-      svgRef?.(null);
+      drawn.disconnect();
+      window.clearTimeout(overlayFallback);
+      svgRefRef.current?.(null);
     };
-  }, [cloudHeight, cloudWidth, color, interactive, svgRef, words]);
+  }, [cloudHeight, cloudWidth, color, interactive, stableWords]);
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="relative w-full">
       <div
         ref={plotRef}
         role="img"
         aria-label={ariaLabel}
         style={{ width: `${String(cloudWidth)}px`, height: `${String(cloudHeight)}px` }}
+      />
+      <div
+        ref={overlayRef}
+        aria-hidden="true"
+        data-testid="word-cloud-previous-frame"
+        className="pointer-events-none absolute left-0 top-0"
       />
     </div>
   );
