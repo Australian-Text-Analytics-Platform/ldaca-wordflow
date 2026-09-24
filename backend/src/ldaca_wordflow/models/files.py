@@ -59,8 +59,20 @@ class CreateFolderRequest(_StrictModel):
     parent_path: str = ""
 
 
+class BatchDeleteFilesRequest(_StrictModel):
+    """Delete several files and folders in one call (issue 138)."""
+
+    paths: list[str] = Field(min_length=1, max_length=10_000)
+
+
+class BatchDeleteFilesResource(_StrictModel):
+    """How many selected entries were deleted; missing ones are skipped."""
+
+    deleted: int = Field(ge=0)
+
+
 class MoveFileRequest(_StrictModel):
-    """Move one file into an existing relative directory."""
+    """Move one file or folder into an existing relative directory."""
 
     source_path: str = Field(min_length=1)
     target_directory_path: str = ""

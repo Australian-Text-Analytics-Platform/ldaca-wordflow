@@ -336,6 +336,46 @@ class SafePathResolver:
         if source_checked.parent != destination_checked.parent:
             self._fsync_path(source_checked.parent)
 
+    def move_directory(self, source: Path, destination: Path) -> None:
+        """Move one real directory tree without replacing anything.
+
+        Callers hold the per-user file gate, so the existence check cannot race
+        another Wordflow operation. Moving a folder into itself is rejected.
+        """
+
+        source_checked = self.recheck_for_write(source)
+        destination_checked = self.recheck_for_write(destination)
+        if destination_checked == source_checked or destination_checked.is_relative_to(
+            source_checked
+        ):
+            raise UnsafePathError("A folder cannot be moved into itself")
+        metadata = source_checked.lstat()
+        if is_link_or_reparse(metadata) or not stat.S_ISDIR(metadata.st_mode):
+            raise UnsafePathError("Source is not a real folder")
+        if destination_checked.exists() or destination_checked.is_symlink():
+            raise FileExistsError(destination_checked)
+        if os.rename in os.supports_dir_fd:
+            with self._parent_descriptor(source_checked) as (source_parent, source_name):
+                with self._parent_descriptor(destination_checked) as (
+                    destination_parent,
+                    destination_name,
+                ):
+                    os.rename(
+                        source_name,
+                        destination_name,
+                        src_dir_fd=source_parent,
+                        dst_dir_fd=destination_parent,
+                    )
+                    os.fsync(destination_parent)
+                    if source_parent != destination_parent:
+                        os.fsync(source_parent)
+            return
+        # Windows: rename never replaces an existing entry.
+        os.rename(source_checked, destination_checked)
+        self._fsync_path(destination_checked.parent)
+        if source_checked.parent != destination_checked.parent:
+            self._fsync_path(source_checked.parent)
+
     def delete(self, target: Path) -> None:
         """Delete one file or tree without following swapped directory entries."""
 

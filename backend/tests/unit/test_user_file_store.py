@@ -237,7 +237,9 @@ async def test_deleting_a_file_never_deletes_a_sibling_readme_or_parent(
     assert readme.parent.is_dir()
 
 
-async def test_import_staging_is_private_and_atomically_published(tmp_path: Path) -> None:
+async def test_import_staging_is_private_and_atomically_published(
+    tmp_path: Path,
+) -> None:
     store = _store(tmp_path)
     import_id = "39ea27ac-dde8-4b9b-8727-e97b5949b3f3"
     staging = await store.prepare_import_staging("alice", import_id)
@@ -336,8 +338,7 @@ def test_user_file_tree_uses_exact_paths_to_break_casefold_collisions() -> None:
     ]
 
     assert [
-        resource["path"]
-        for resource in sorted(resources, key=_resource_order_key)
+        resource["path"] for resource in sorted(resources, key=_resource_order_key)
     ] == ["zeta", "Alpha", "alpha"]
 
 
@@ -353,9 +354,7 @@ async def test_user_file_tree_skips_links_and_special_entries(tmp_path: Path) ->
     except NotImplementedError, OSError:
         pytest.skip("symlinks are unavailable on this platform")
 
-    assert [item["path"] for item in await store.list_tree("alice")] == [
-        "visible.txt"
-    ]
+    assert [item["path"] for item in await store.list_tree("alice")] == ["visible.txt"]
 
 
 async def test_user_file_tree_fails_atomically_above_response_limit(
@@ -421,3 +420,61 @@ async def test_startup_reconciliation_removes_unowned_private_staging(
     assert active.is_dir()
     assert not orphan.exists()
     assert not interrupted_upload.exists()
+
+
+async def test_folders_move_with_their_contents_but_never_into_themselves(
+    tmp_path: Path,
+) -> None:
+    """#137: a whole folder can be dragged to another folder or the root."""
+
+    store = _store(tmp_path)
+    await store.create_folder("alice", name="speeches", parent_path="")
+    await store.create_folder("alice", name="2020", parent_path="speeches")
+    await store.create_folder("alice", name="archive", parent_path="")
+    await store.upload("alice", "speeches/2020/a.txt", ByteSource(b"hello"))
+
+    moved = await store.move(
+        "alice", source_path="speeches", target_directory_path="archive"
+    )
+
+    assert moved["path"] == "archive/speeches"
+    assert moved["type"] == "directory"
+    assert (
+        tmp_path / "alice" / "archive" / "speeches" / "2020" / "a.txt"
+    ).read_bytes() == (b"hello")
+    assert not (tmp_path / "alice" / "speeches").exists()
+
+    for target in ("archive/speeches", "archive/speeches/2020"):
+        with pytest.raises(InvalidInputError, match="into itself"):
+            await store.move(
+                "alice", source_path="archive/speeches", target_directory_path=target
+            )
+
+    await store.create_folder("alice", name="speeches", parent_path="")
+    with pytest.raises(ResourceConflictError, match="already exists"):
+        await store.move(
+            "alice", source_path="archive/speeches", target_directory_path=""
+        )
+    assert (tmp_path / "alice" / "archive" / "speeches" / "2020" / "a.txt").exists()
+
+
+async def test_batch_delete_covers_nested_selections_and_skips_missing(
+    tmp_path: Path,
+) -> None:
+    """#138: one call deletes a selection, such as every root file."""
+
+    store = _store(tmp_path)
+    await store.create_folder("alice", name="corpus", parent_path="")
+    for path in ("one.txt", "two.txt", "corpus/three.txt", "keep.txt"):
+        await store.upload("alice", path, ByteSource(b"x"))
+
+    deleted = await store.delete_many(
+        "alice", ["one.txt", "two.txt", "corpus", "corpus/three.txt", "gone.txt"]
+    )
+
+    assert deleted == 3
+    assert [item["path"] for item in await store.list_tree("alice")] == ["keep.txt"]
+    with pytest.raises(InvalidInputError, match="root"):
+        await store.delete_many("alice", ["/"])
+    with pytest.raises(InvalidInputError, match="Hidden"):
+        await store.delete_many("alice", [".wordflow-imports"])

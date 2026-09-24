@@ -5,6 +5,8 @@ from typing import Annotated
 from fastapi import APIRouter, Query, Request, Response, status
 
 from ...models.files import (
+    BatchDeleteFilesRequest,
+    BatchDeleteFilesResource,
     CreateFolderRequest,
     FileResource,
     MoveFileRequest,
@@ -153,6 +155,22 @@ async def upload_file(
         path=resource.path,
     )
     return resource
+
+
+@router.post(
+    "/batch-delete",
+    response_model=BatchDeleteFilesResource,
+    responses=api_errors(400, 403, 422),
+)
+async def delete_files(
+    request: BatchDeleteFilesRequest,
+    principal: CurrentSessionSecurityDep,
+    file_store: UserFileStoreDep,
+) -> BatchDeleteFilesResource:
+    """Delete several files and folders in one request."""
+
+    deleted = await file_store.delete_many(principal.user.id, request.paths)
+    return BatchDeleteFilesResource(deleted=deleted)
 
 
 @router.delete(

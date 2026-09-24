@@ -240,7 +240,7 @@ class UserFileStore:
         source_path: str,
         target_directory_path: str,
     ) -> dict[str, Any]:
-        """Move one file without replacing it and return the direct resource."""
+        """Move one file or folder without replacing anything; return its resource."""
 
         _require_public_path(source_path)
         _require_public_path(target_directory_path)
@@ -252,10 +252,15 @@ class UserFileStore:
                 if not target_directory_path.strip()
                 else resolver.resolve(target_directory_path.strip())
             )
-            if not await self._run_sync(_is_real_file, source):
+            is_folder = await self._run_sync(_is_real_directory, source)
+            if not is_folder and not await self._run_sync(_is_real_file, source):
                 raise FileResourceNotFoundError(f"File {source_path} not found")
             if not await self._run_sync(_is_real_directory, target_directory):
                 raise NotFoundError(f"Folder {target_directory_path} not found")
+            if is_folder and (
+                target_directory == source or target_directory.is_relative_to(source)
+            ):
+                raise InvalidInputError("A folder cannot be moved into itself")
             target_relative = (
                 source.name
                 if target_directory == resolver.root
@@ -267,18 +272,18 @@ class UserFileStore:
             destination = resolver.resolve(target_relative)
             if await self._run_sync(destination.exists):
                 raise ResourceConflictError(
-                    f"File {destination.name} already exists in destination"
+                    f"{destination.name} already exists in destination"
                 )
             try:
                 await self._run_sync(
-                    _move_checked,
+                    _move_directory_checked if is_folder else _move_checked,
                     resolver,
                     source,
                     destination,
                 )
             except FileExistsError as exc:
                 raise ResourceConflictError(
-                    f"File {destination.name} already exists in destination"
+                    f"{destination.name} already exists in destination"
                 ) from exc
             except OSError as exc:
                 raise InternalServiceError("Failed to move file") from exc
@@ -387,6 +392,39 @@ class UserFileStore:
                 await self._run_sync(_delete_checked, resolver, target)
             except OSError as exc:
                 raise InternalServiceError("Failed to delete file") from exc
+
+    async def delete_many(self, user_id: str, relative_paths: list[str]) -> int:
+        """Delete several files or folders under one gate; return the count.
+
+        Entries inside an already selected folder are covered by that folder,
+        and entries that no longer exist are skipped rather than failing the
+        whole batch.
+        """
+
+        normalized = sorted({path.replace("\\", "/").strip("/") for path in relative_paths})
+        for relative_path in normalized:
+            if not relative_path:
+                raise InvalidInputError("The root folder cannot be deleted")
+            _require_public_path(relative_path)
+        roots: list[str] = []
+        for path in normalized:
+            if not any(path.startswith(f"{root}/") for root in roots):
+                roots.append(path)
+        deleted = 0
+        async with self._lock_for(user_id):
+            resolver = await self._resolver_for(user_id)
+            for relative_path in roots:
+                target = resolver.resolve(relative_path)
+                if not await self._run_sync(target.exists):
+                    continue
+                try:
+                    await self._run_sync(_delete_checked, resolver, target)
+                except OSError as exc:
+                    raise InternalServiceError(
+                        f"Failed to delete {relative_path} after {deleted} deletions"
+                    ) from exc
+                deleted += 1
+        return deleted
 
     async def response_snapshot(
         self,
@@ -582,6 +620,14 @@ def _move_checked(
     destination: Path,
 ) -> None:
     resolver.move_file(source, destination)
+
+
+def _move_directory_checked(
+    resolver: SafePathResolver,
+    source: Path,
+    destination: Path,
+) -> None:
+    resolver.move_directory(source, destination)
 
 
 def _delete_checked(resolver: SafePathResolver, target: Path) -> None:
