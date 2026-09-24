@@ -132,7 +132,7 @@ jobs:
           ]
           operation_ids = [operation["operationId"] for operation in operations]
           assert len(operation_ids) == len(set(operation_ids))
-          assert schema["paths"]["/health"]["get"]["responses"]["200"]["content"]
+          assert schema["paths"]["/health/live"]["get"]["responses"]["200"]["content"]
           PY
 
       - name: Build and inspect backend distributions
