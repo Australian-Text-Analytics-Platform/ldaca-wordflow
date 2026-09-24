@@ -18,7 +18,7 @@ describe('QuotationClampedCell', () => {
     render(<QuotationClampedCell>Alice said hello.</QuotationClampedCell>);
 
     const cell = screen.getByTestId('quotation-clamped-cell');
-    expect(cell).toHaveClass('w-[32rem]', 'line-clamp-3', 'whitespace-normal');
+    expect(cell).toHaveClass('w-[42rem]', 'line-clamp-3', 'whitespace-normal');
   });
 
   it('shows the full content on hover when the clamp hides some of it', async () => {
