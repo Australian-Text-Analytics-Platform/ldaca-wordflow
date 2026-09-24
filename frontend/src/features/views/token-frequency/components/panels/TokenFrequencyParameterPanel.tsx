@@ -13,13 +13,15 @@ interface StudyNodeOption {
 }
 
 /**
- * Per-card corpus-role switch for two-node token-frequency comparisons.
+ * Per-card "Use as Study Corpus" toggle for two-node token-frequency
+ * comparisons.
  * Rendered by: TokenFrequencyParameterPanel inside each selected-node card so
- * the study/reference role sits next to the node it applies to.
- * Flow: unchecked means this card is Study Corpus, checked means Reference
- * Corpus. Toggling a card to Study stores that node id; toggling it to
- * Reference stores the paired node id as the study corpus, keeping both cards
- * synchronized through the single `studyNodeId` value.
+ * the role sits next to the node it applies to.
+ * Flow: the two cards' toggles are linked through the single `studyNodeId`
+ * value, so exactly one is on. The corpus that is on is the Study Corpus and
+ * the other is the Reference Corpus. Turning a card on stores its node id;
+ * turning the active card off hands the Study role to the paired node, because
+ * a two-corpus comparison always has a study/reference pair.
  */
 function CorpusRoleSwitch({
   nodeOption,
@@ -32,32 +34,27 @@ function CorpusRoleSwitch({
   isStudy: boolean;
   onStudyNodeChange: (nodeId: string) => void;
 }) {
+  const switchId = `study-corpus-${nodeOption.id}`;
   return (
     <div className="flex flex-wrap items-center gap-2 border-t border-surface-border/60 pt-3">
-      <span
+      <Switch
+        id={switchId}
+        size="sm"
+        checked={isStudy}
+        aria-label={`Use ${nodeOption.label} as Study Corpus`}
+        onCheckedChange={(useAsStudy) => {
+          onStudyNodeChange(useAsStudy ? nodeOption.id : pairedNodeId);
+        }}
+      />
+      <label
+        htmlFor={switchId}
         className={cn(
-          'whitespace-nowrap text-label-secondary font-medium',
+          'cursor-pointer whitespace-nowrap text-label-secondary font-medium',
           isStudy ? 'text-foreground' : 'text-description',
         )}
       >
-        Study Corpus
-      </span>
-      <Switch
-        size="sm"
-        checked={!isStudy}
-        aria-label={`${nodeOption.label} corpus role`}
-        onCheckedChange={(isReference) => {
-          onStudyNodeChange(isReference ? pairedNodeId : nodeOption.id);
-        }}
-      />
-      <span
-        className={cn(
-          'whitespace-nowrap text-label-secondary font-medium',
-          isStudy ? 'text-description' : 'text-foreground',
-        )}
-      >
-        Reference Corpus
-      </span>
+        Use as Study Corpus
+      </label>
     </div>
   );
 }

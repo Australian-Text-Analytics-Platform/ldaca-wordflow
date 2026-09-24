@@ -138,7 +138,7 @@ const baseProps = {
 };
 
 describe('TokenFrequencyParameterPanel', () => {
-  it('renders synced corpus role switches inside the selected-node cards', () => {
+  it('renders linked "Use as Study Corpus" toggles with the first corpus on by default', () => {
     const onStudyNodeChange = vi.fn();
     render(<TokenFrequencyParameterPanel {...baseProps} onStudyNodeChange={onStudyNodeChange} />);
 
@@ -147,21 +147,50 @@ describe('TokenFrequencyParameterPanel', () => {
 
     const cardA = within(screen.getByTestId('node-card-node-a'));
     const cardB = within(screen.getByTestId('node-card-node-b'));
-    expect(cardA.getByText('Study Corpus')).toBeInTheDocument();
-    expect(cardA.getByText('Reference Corpus')).toBeInTheDocument();
-    expect(cardB.getByText('Study Corpus')).toBeInTheDocument();
-    expect(cardB.getByText('Reference Corpus')).toBeInTheDocument();
+    expect(cardA.getByText('Use as Study Corpus')).toBeInTheDocument();
+    expect(cardB.getByText('Use as Study Corpus')).toBeInTheDocument();
+    expect(screen.queryByText('Reference Corpus')).not.toBeInTheDocument();
 
-    expect(cardA.getByRole('switch', { name: /Corpus A corpus role/i })).toHaveAttribute(
+    const corpusASwitch = cardA.getByRole('switch', { name: 'Use Corpus A as Study Corpus' });
+    const corpusBSwitch = cardB.getByRole('switch', { name: 'Use Corpus B as Study Corpus' });
+    expect(corpusASwitch).toHaveAttribute('aria-checked', 'true');
+    expect(corpusBSwitch).toHaveAttribute('aria-checked', 'false');
+
+    fireEvent.click(corpusBSwitch);
+    expect(onStudyNodeChange).toHaveBeenLastCalledWith('node-b');
+
+    // Turning the active toggle off hands the Study role to the other corpus.
+    fireEvent.click(corpusASwitch);
+    expect(onStudyNodeChange).toHaveBeenLastCalledWith('node-b');
+
+    fireEvent.click(cardB.getByText('Use as Study Corpus'));
+    expect(onStudyNodeChange).toHaveBeenLastCalledWith('node-b');
+  });
+
+  it('turns the first corpus on when no study corpus has been chosen', () => {
+    render(<TokenFrequencyParameterPanel {...baseProps} studyNodeId={null} />);
+
+    expect(screen.getByRole('switch', { name: 'Use Corpus A as Study Corpus' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
+    expect(screen.getByRole('switch', { name: 'Use Corpus B as Study Corpus' })).toHaveAttribute(
       'aria-checked',
       'false',
     );
-    const corpusBSwitch = cardB.getByRole('switch', { name: /Corpus B corpus role/i });
-    expect(corpusBSwitch).toHaveAttribute('aria-checked', 'true');
+  });
 
-    fireEvent.click(corpusBSwitch);
+  it('shows the selected study corpus as the only active toggle', () => {
+    render(<TokenFrequencyParameterPanel {...baseProps} studyNodeId="node-b" />);
 
-    expect(onStudyNodeChange).toHaveBeenCalledWith('node-b');
+    expect(screen.getByRole('switch', { name: 'Use Corpus A as Study Corpus' })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    expect(screen.getByRole('switch', { name: 'Use Corpus B as Study Corpus' })).toHaveAttribute(
+      'aria-checked',
+      'true',
+    );
   });
 
   it('projects a deleted saved input with its historical result name', () => {
