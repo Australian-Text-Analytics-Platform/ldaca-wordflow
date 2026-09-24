@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import shutil
 import stat
@@ -17,6 +18,8 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
 from ..shared.errors import ResourceTooLargeError
 from .storage_admission import StorageAdmissionService, StorageReservation
+
+logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
@@ -124,7 +127,13 @@ class ResponseSnapshotService:
             raise
 
     async def reconcile(self) -> None:
-        """Remove only this process family's abandoned response directory."""
+        """Remove only this process family's abandoned response directory.
+
+        Best effort: these are disposable download copies, so a file another
+        process still holds open (common on Windows, where open files cannot
+        be deleted) is logged and left for the next start instead of blocking
+        the Data Root.
+        """
 
         await self._run_io(_remove_root, self._root)
 
@@ -201,7 +210,21 @@ def _remove_root(root: Path) -> None:
         return
     if not stat.S_ISDIR(metadata.st_mode) or root.is_symlink():
         raise RuntimeError("Response snapshot root is unsafe")
-    shutil.rmtree(root)
+    failures: list[str] = []
+
+    def skip_locked(_function: object, path: str, exc: BaseException) -> None:
+        if not isinstance(exc, OSError):
+            raise exc
+        failures.append(path)
+
+    shutil.rmtree(root, onexc=skip_locked)
+    if failures:
+        logger.warning(
+            "Left %d abandoned response snapshot path(s) that could not be removed, "
+            "first: %s",
+            len(failures),
+            failures[0],
+        )
 
 
 __all__ = ["ResponseSnapshot", "ResponseSnapshotService"]

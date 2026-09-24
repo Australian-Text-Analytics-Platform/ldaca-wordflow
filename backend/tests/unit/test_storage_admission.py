@@ -340,11 +340,15 @@ async def test_response_snapshot_survives_source_deletion_and_cleans_up(
 
 
 @pytest.mark.anyio
-async def test_response_snapshot_reconciliation_propagates_cleanup_failure(
+async def test_response_snapshot_reconciliation_skips_undeletable_files(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Startup must not hide an abandoned response directory it cannot remove."""
+    """A locked orphan (common on Windows) is logged, not fatal to startup (#131).
+
+    Response snapshots are disposable download copies; refusing to open the
+    whole Data Root over one of them left Windows users stuck on first start.
+    """
 
     root = tmp_path / "data"
     snapshot_root = root / "responses"
@@ -358,10 +362,18 @@ async def test_response_snapshot_reconciliation_propagates_cleanup_failure(
         limiter=anyio.CapacityLimiter(2),
     )
 
-    def fail_cleanup(_path: Path) -> None:
-        raise PermissionError("denied")
+    def fail_cleanup(path: Path, *, onexc) -> None:
+        onexc(None, str(Path(path) / "orphan.bin"), PermissionError("denied"))
 
     monkeypatch.setattr(response_snapshots_module.shutil, "rmtree", fail_cleanup)
+    warnings: list[str] = []
+    monkeypatch.setattr(
+        response_snapshots_module.logger,
+        "warning",
+        lambda message, *args: warnings.append(message % args),
+    )
 
-    with pytest.raises(PermissionError, match="denied"):
-        await service.reconcile()
+    await service.reconcile()
+
+    assert len(warnings) == 1
+    assert "orphan.bin" in warnings[0]

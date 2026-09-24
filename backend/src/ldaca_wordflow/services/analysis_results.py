@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import shutil
 import uuid
@@ -119,6 +120,9 @@ T = TypeVar("T")
 _RESULT_ADAPTER = TypeAdapter(AnalysisResult)
 
 
+logger = logging.getLogger(__name__)
+
+
 class _SequentialResultBody(BaseModel):
     """Public semantic fields from a stored Sequential Result."""
 
@@ -174,9 +178,20 @@ class AnalysisResultService:
         )
 
     async def reconcile(self) -> None:
-        """Remove query snapshots abandoned by this deployment's prior process."""
+        """Remove query snapshots abandoned by this deployment's prior process.
 
-        await self._run_sync(_remove_query_root, self._query_root)
+        Best effort, like response snapshots: a leftover file still held open
+        (common on Windows) must not stop the Runtime from opening.
+        """
+
+        try:
+            await self._run_sync(_remove_query_root, self._query_root)
+        except OSError:
+            logger.warning(
+                "Abandoned query snapshots could not be fully removed from %s",
+                self._query_root,
+                exc_info=True,
+            )
 
     async def artifact_response_snapshot(
         self,
