@@ -138,8 +138,9 @@ edit that list while filtering is off; the switch controls filtering only.
 The dropdown's **From other tabs** group lists stop words saved in your other
 Frequency or Topic Modeling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers
-default lists from the open-source `stopword` package, with a recommendation
-detected from the first selected Data Block. Any choice appends its words to the
+default lists from the open-source `stopword` package: it shows the language
+detected from the first selected Data Block, marked **(Detected)**, and **Show
+all languages** reveals the rest. Any choice appends its words to the
 saved list (duplicates are skipped, so you can combine lists and keep custom
 words), copied tab lists stay independent afterwards, and **Clear stop words**
 empties the list. The menu returns to **Saved list (N words)** after a choice.

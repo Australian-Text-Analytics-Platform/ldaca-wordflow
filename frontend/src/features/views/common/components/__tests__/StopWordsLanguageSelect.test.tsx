@@ -52,11 +52,13 @@ describe('StopWordsLanguageSelect', () => {
     const user = userEvent.setup();
     render(<Harness initialWords={['university']} />);
 
-    await pickOption(user, 'English (Recommended)');
+    await pickOption(user, 'English (Detected)');
     await waitFor(() => {
       expect(screen.getByTestId('words').textContent).toContain('about');
     });
-    await pickOption(user, 'Chinese');
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(screen.getByRole('option', { name: /^Show all languages/ }));
+    await user.click(screen.getByRole('option', { name: 'Chinese' }));
     await waitFor(() => {
       expect(screen.getByTestId('words').textContent).toContain('的');
     });
@@ -148,5 +150,26 @@ describe('StopWordsLanguageSelect', () => {
     expect(Object.keys(WORDFLOW_CLASSIC_STOPWORDS).sort()).toEqual(
       WORDFLOW_CLASSIC_STOPWORD_LISTS.map((list) => list.iso6391).sort(),
     );
+  });
+
+  it('shows only the detected library language until the list is expanded', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    expect(screen.getByRole('option', { name: 'English (Detected)' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: 'Afrikaans' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('option', { name: /^Show all languages \(\d+\)$/ }));
+
+    // The menu stays open and lists every other library language in place.
+    expect(screen.getByRole('option', { name: 'Afrikaans' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'English (Detected)' })).toBeInTheDocument();
+    expect(screen.queryByRole('option', { name: /^Show all languages/ })).not.toBeInTheDocument();
+
+    // Closing collapses the list again for the next visit.
+    await user.keyboard('{Escape}');
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    expect(screen.queryByRole('option', { name: 'Afrikaans' })).not.toBeInTheDocument();
   });
 });

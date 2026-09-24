@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -24,6 +24,8 @@ const CLEAR_LIST_VALUE = '__clear__';
 const EMPTY_PROMPT_VALUE = '__prompt__';
 const TAB_SOURCE_PREFIX = 'tab:';
 const CLASSIC_LIST_PREFIX = 'classic:';
+const SHOW_ALL_LANGUAGES_VALUE = '__show_all_languages__';
+const DETECTING_VALUE = '__detecting__';
 
 interface StopWordsLanguageSelectProps {
   /** The tab's current normalized stop-word list. */
@@ -43,8 +45,9 @@ interface StopWordsLanguageSelectProps {
  * Shared stop-words list dropdown for analysis tabs that filter stop words.
  * Groups, in order: "From other tabs" (other tabs' saved lists), "Wordflow
  * classic lists" (the built-in lists earlier Wordflow versions served), and
- * "Languages (stopword library)" (the `stopword` package, with the detected
- * column language first and marked "(Recommended)"). Every pick appends its
+ * "Languages (stopword library)" (the `stopword` package: only the language
+ * detected from the column, marked "(Detected)", until the user expands
+ * "Show all languages"). Every pick appends its
  * words to the current list with duplicates skipped, so custom words and
  * several lists can be combined; copied tab lists stay independent afterwards.
  * "Clear stop words" starts again from an empty list.
@@ -62,17 +65,23 @@ export function StopWordsLanguageSelect({
   disabled = false,
 }: StopWordsLanguageSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showAllLanguages, setShowAllLanguages] = useState(false);
+  // Radix closes the menu after any item is picked; the expander row sets this
+  // so that one close is ignored and the full language list appears in place.
+  const keepOpenRef = useRef(false);
   const [isPending, setIsPending] = useState(false);
   const languages = listSupportedStopwordLanguages();
-  const { detectedLanguage } = useDetectedColumnLanguage({
+  const { detectedLanguage, isDetecting } = useDetectedColumnLanguage({
     workspaceId,
     nodeId,
     column,
     enabled: menuOpen,
   });
-  const recommendedLanguage = languages.find((language) => language.iso6391 === detectedLanguage);
-  const remainingLanguages = languages
-    .filter((language) => language.iso6391 !== recommendedLanguage?.iso6391)
+  const detectedStopwordLanguage = languages.find(
+    (language) => language.iso6391 === detectedLanguage,
+  );
+  const otherLanguages = languages
+    .filter((language) => language.iso6391 !== detectedStopwordLanguage?.iso6391)
     .sort((left, right) => left.name.localeCompare(right.name));
   const hasWords = words.length > 0;
 
@@ -116,9 +125,24 @@ export function StopWordsLanguageSelect({
     <Select
       value={hasWords ? SAVED_LIST_VALUE : EMPTY_PROMPT_VALUE}
       disabled={disabled || isPending}
-      onOpenChange={setMenuOpen}
+      open={menuOpen}
+      onOpenChange={(open) => {
+        if (!open && keepOpenRef.current) {
+          keepOpenRef.current = false;
+          return;
+        }
+        setMenuOpen(open);
+        // Start collapsed each time the menu opens.
+        if (!open) setShowAllLanguages(false);
+      }}
       onValueChange={(value) => {
-        if (value === SAVED_LIST_VALUE || value === EMPTY_PROMPT_VALUE) return;
+        if (value === SAVED_LIST_VALUE || value === EMPTY_PROMPT_VALUE || value === DETECTING_VALUE)
+          return;
+        if (value === SHOW_ALL_LANGUAGES_VALUE) {
+          keepOpenRef.current = true;
+          setShowAllLanguages(true);
+          return;
+        }
         if (value === CLEAR_LIST_VALUE) {
           void clearWords();
           return;
@@ -180,16 +204,26 @@ export function StopWordsLanguageSelect({
         </SelectGroup>
         <SelectGroup>
           <SelectLabel>Languages (stopword library)</SelectLabel>
-          {recommendedLanguage ? (
-            <SelectItem value={recommendedLanguage.iso6391}>
-              {recommendedLanguage.name} (Recommended)
+          {detectedStopwordLanguage ? (
+            <SelectItem value={detectedStopwordLanguage.iso6391}>
+              {detectedStopwordLanguage.name} (Detected)
+            </SelectItem>
+          ) : isDetecting ? (
+            <SelectItem value={DETECTING_VALUE} disabled>
+              Detecting language…
             </SelectItem>
           ) : null}
-          {remainingLanguages.map((language) => (
-            <SelectItem key={language.iso6391} value={language.iso6391}>
-              {language.name}
+          {showAllLanguages ? (
+            otherLanguages.map((language) => (
+              <SelectItem key={language.iso6391} value={language.iso6391}>
+                {language.name}
+              </SelectItem>
+            ))
+          ) : (
+            <SelectItem value={SHOW_ALL_LANGUAGES_VALUE}>
+              {`Show all languages (${String(otherLanguages.length)})`}
             </SelectItem>
-          ))}
+          )}
         </SelectGroup>
       </SelectContent>
     </Select>

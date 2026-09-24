@@ -86,9 +86,8 @@ describe('TopicModelingStopWordsControl', () => {
       'Japanese (310 words)',
       'Korean (679 words)',
       'Spanish (151 words)',
-      'English (Recommended)',
-      'Afrikaans',
-      'French',
+      'English (Detected)',
+      'Show all languages (2)',
     ]);
     expect(mocks.detectLanguage).toHaveBeenLastCalledWith(
       expect.objectContaining({ enabled: true, nodeId: 'node-1', column: 'text' }),
@@ -113,11 +112,10 @@ describe('TopicModelingStopWordsControl', () => {
       'Japanese (310 words)',
       'Korean (679 words)',
       'Spanish (151 words)',
-      'English (Recommended)',
-      'Afrikaans',
-      'French',
+      'English (Detected)',
+      'Show all languages (2)',
     ]);
-    await user.click(screen.getByRole('option', { name: 'English (Recommended)' }));
+    await user.click(screen.getByRole('option', { name: 'English (Detected)' }));
 
     expect(mocks.loadStopWords).toHaveBeenCalledWith({ languages: ['en'] });
     expect(onSave).toHaveBeenCalledWith(['the', 'and', 'of']);
@@ -133,7 +131,7 @@ describe('TopicModelingStopWordsControl', () => {
     render(<Harness initialWords={['university', 'the']} onSave={onSave} />);
 
     await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
-    await user.click(screen.getByRole('option', { name: 'English (Recommended)' }));
+    await user.click(screen.getByRole('option', { name: 'English (Detected)' }));
 
     expect(onSave).toHaveBeenCalledWith(['university', 'the', 'and', 'of']);
     expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(

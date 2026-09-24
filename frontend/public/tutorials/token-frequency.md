@@ -33,7 +33,7 @@ The reference block provides the baseline for the statistical keyword analysis: 
 Stop words are terms you want to exclude from the frequency count — commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
 - Enable the filter, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
-- Pick a list from the **Select language** dropdown next to the switch to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). In the library group, the language detected from the first selected Data Block is marked **(Recommended)**. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
+- Pick a list from the **Select language** dropdown next to the switch to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
 - Lists picked under **From other tabs** (for example *Topic Modeling · Analysis 1*) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
@@ -157,7 +157,7 @@ until you choose Clear Results.
 ## Practice exercise
 
 1. Select a data block and click **Analyze** with the default settings.
-2. Pick the recommended language from the stop words **Select language** dropdown to add its default stop words, and compare the top tokens.
+2. Pick the detected language from the stop words **Select language** dropdown to add its default stop words, and compare the top tokens.
 3. Right-click one of the remaining high-frequency words in the cloud to add it as a custom stop word. The stop words filter switches on automatically if it was off. Confirm the word appears at the start of the stop-word list.
 4. Select a second data block. Use the card-level **Use as Study Corpus** toggles to choose the study corpus (the other block becomes the reference baseline), then choose **Run** again.
 5. Use **Filter tokens** with a wildcard pattern (e.g. `*ing`) and confirm that Cloud view, List view, and their downloads remain filtered while switching views.
