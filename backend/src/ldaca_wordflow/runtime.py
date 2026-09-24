@@ -291,6 +291,8 @@ class _RuntimeOwnerRequest:
 
     action: Literal["initialize", "configure", "shutdown"]
     data_root: Path | None = None
+    # Remember a successfully opened root (first-start default only).
+    persist: bool = False
     completed: anyio.Event = field(default_factory=anyio.Event)
     result: RuntimeManagerSnapshot | None = None
     error: Exception | None = None
@@ -447,6 +449,17 @@ class RuntimeManager:
                 )
                 return
             self._source = "config" if selected is not None else "none"
+        if selected is None and not self._base_settings.multi_user:
+            # First start: open the recommended location without asking. Users
+            # can move it later in Settings; only a failure shows the chooser.
+            await self._submit_owner(
+                _RuntimeOwnerRequest(
+                    "initialize",
+                    self._config_store.paths.suggested_data_root,
+                    persist=True,
+                )
+            )
+            return
         if selected is None:
             self._state = "unconfigured"
             return
@@ -517,7 +530,9 @@ class RuntimeManager:
                     if request.action == "initialize":
                         if request.data_root is None:
                             raise RuntimeError("Runtime initialization requires a Data Root")
-                        await self._initialize_owned(slot, request.data_root)
+                        await self._initialize_owned(
+                            slot, request.data_root, persist=request.persist
+                        )
                     elif request.action == "configure":
                         if request.data_root is None:
                             raise RuntimeError("Runtime configuration requires a Data Root")
@@ -547,7 +562,9 @@ class RuntimeManager:
             raise request.error
         return request.result
 
-    async def _initialize_owned(self, slot: _RuntimeSlot, selected: Path) -> None:
+    async def _initialize_owned(
+        self, slot: _RuntimeSlot, selected: Path, *, persist: bool = False
+    ) -> None:
         self._data_root = selected
         self._state = "initializing"
         try:
@@ -560,6 +577,18 @@ class RuntimeManager:
                 format_exception_diagnostic(exc),
             )
             return
+        if persist:
+            try:
+                await run_sync_in_worker_thread(
+                    self._config_store.write,
+                    canonical,
+                    abandon_on_cancel=False,
+                )
+            except Exception:
+                # The Runtime is usable; the next start simply repeats this.
+                logger.exception("Default Data Root could not be remembered")
+            else:
+                self._source = "config"
         self._runtime = runtime
         self._data_root = canonical
         self._generation = 1

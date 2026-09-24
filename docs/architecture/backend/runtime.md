@@ -43,8 +43,11 @@ development or hosted production. The executable setup is documented in the
 
 `runtime_manager_context` is the lifespan owner. A non-empty `DATA_ROOT` has
 immutable environment authority. Otherwise the manager reads versioned
-platform configuration from `settings.json`; without either source it yields
-an unconfigured control plane. The manager dynamically enters
+platform configuration from `settings.json`. Without either source, a
+single-user manager initializes the suggested platform root and persists it on
+success, so first start never prompts; if that root cannot open, the manager
+reports `configuration_error` and the client offers the chooser. A multi-user
+manager without either source yields an unconfigured control plane. The manager dynamically enters
 `runtime_context` only while a root is active. A dedicated Runtime owner task
 receives initialize, configure, and shutdown commands from the manager. That
 task alone enters and exits every `runtime_context`; request tasks await the

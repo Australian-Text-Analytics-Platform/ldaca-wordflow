@@ -156,7 +156,7 @@ async def test_environment_wins_and_is_immutable(tmp_path: Path) -> None:
 
 
 @pytest.mark.anyio
-async def test_unconfigured_manager_switches_and_same_root_is_idempotent(
+async def test_first_start_opens_the_default_root_then_switches_idempotently(
     tmp_path: Path,
 ) -> None:
     store = _store(tmp_path)
@@ -170,17 +170,51 @@ async def test_unconfigured_manager_switches_and_same_root_is_idempotent(
     async with runtime_manager_context(
         Settings(), factory, config_store=store
     ) as manager:
-        assert manager.snapshot().state == "unconfigured"
-        assert manager.snapshot().runtime_generation == 0
+        # No prompt on first start (#130): the recommended root opens and is
+        # remembered, so the next start reads it from the configuration.
+        default = store.paths.suggested_data_root.resolve()
+        started = manager.snapshot()
+        assert started.state == "ready"
+        assert started.source == "config"
+        assert started.data_root == default
+        assert started.runtime_generation == 1
+        assert store.read() == default
 
         selected = tmp_path / "selected"
         first = await manager.configure(selected)
         second = await manager.configure(selected / ".")
         assert first.state == second.state == "ready"
-        assert first.runtime_generation == second.runtime_generation == 1
-        assert opened == [selected.resolve()]
+        assert first.runtime_generation == second.runtime_generation == 2
+        assert opened == [default, selected.resolve()]
         assert store.read() == selected.resolve()
         assert first.change_token == second.change_token
+
+
+@pytest.mark.anyio
+async def test_unusable_default_root_falls_back_to_the_chooser(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+
+    @asynccontextmanager
+    async def factory(settings: Settings) -> AsyncIterator[Runtime]:
+        if settings.get_data_root() == store.paths.suggested_data_root.resolve():
+            raise PermissionError("[WinError 5] Access is denied")
+        yield cast(Runtime, _FakeRuntime(settings.get_data_root()))
+
+    async with runtime_manager_context(
+        Settings(), factory, config_store=store
+    ) as manager:
+        snapshot = manager.snapshot()
+        assert snapshot.state == "configuration_error"
+        assert snapshot.mutable is True
+        assert snapshot.error is not None
+        assert "Access is denied" in snapshot.error.message
+        assert store.read() is None
+
+        chosen = await manager.configure(tmp_path / "chosen")
+        assert chosen.state == "ready"
+        assert store.read() == (tmp_path / "chosen").resolve()
 
 
 @pytest.mark.anyio
@@ -381,7 +415,7 @@ async def test_switch_from_another_task_replaces_the_runtime_without_stopping_th
     assert closed == [original, candidate]
 
 
-def test_control_plane_is_live_while_unconfigured_then_becomes_ready(
+def test_control_plane_opens_the_default_root_then_switches(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -400,12 +434,12 @@ def test_control_plane_is_live_while_unconfigured_then_becomes_ready(
     )
     with TestClient(app, base_url="http://localhost") as client:
         assert client.get("/health/live").status_code == 200
-        assert client.get("/health/ready").status_code == 503
-        assert client.get("/api/session").status_code == 503
+        assert client.get("/health/ready").status_code == 200
         initial = client.get("/api/data-root").json()
-        assert initial["state"] == "unconfigured"
-        assert initial["source"] == "none"
+        assert initial["state"] == "ready"
+        assert initial["source"] == "config"
         assert initial["mutable"] is True
+        assert initial["data_root"] == str(store.paths.suggested_data_root.resolve())
         assert initial["suggested_data_root"] == str(store.paths.suggested_data_root)
 
         denied = client.put(
@@ -429,7 +463,7 @@ def test_control_plane_is_live_while_unconfigured_then_becomes_ready(
         assert response.status_code == 200, response.text
         assert response.json()["state"] == "ready"
         assert response.json()["data_root"] == str(tmp_path / "selected")
-        assert response.json()["runtime_generation"] == 1
+        assert response.json()["runtime_generation"] == 2
         assert client.get("/health/ready").status_code == 200
 
 
@@ -440,7 +474,8 @@ def test_failed_http_initialization_exposes_the_python_error_in_response_and_sta
 
     @asynccontextmanager
     async def factory(settings: Settings) -> AsyncIterator[_FakeRuntime]:
-        if settings.get_data_root().name == "selected":
+        # The default root also fails, so there is no previous root to restore.
+        if settings.get_data_root().name in {"selected", "data"}:
             raise PermissionError("[Errno 13] Permission denied while opening SQLite")
         yield _FakeRuntime(settings.get_data_root())
 

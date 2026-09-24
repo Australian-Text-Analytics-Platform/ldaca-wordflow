@@ -75,8 +75,9 @@ configures the generated client, checks `/health/live`, obtains
 or Workspace consumers. Reloading repeats IPC discovery, so a
 stale JavaScript value cannot select an old backend port.
 
-The bootstrap gate offers directory selection only while unconfigured or after
-a recoverable configuration error. Initialization and replacement render
+The bootstrap gate offers directory selection only after a recoverable
+configuration error (including an unusable default root on first start) or,
+in multi-user mode, while unconfigured. Initialization and replacement render
 progress, and process shutdown renders non-interactive shutdown progress;
 `stopping` is never presented as first-run setup.
 

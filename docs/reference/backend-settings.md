@@ -52,8 +52,10 @@ queue-count quotas.
 When `DATA_ROOT` is absent, Wordflow reads
 `<platform config directory>/au.edu.ldaca.wordflow/settings.json` with
 schema `{ "schema_version": 1, "data_root": "..." }`. If no setting exists,
-the HTTP control plane starts unconfigured and suggests
-`<platform local application-data directory>/au.edu.ldaca.wordflow/data`.
+a single-user backend opens
+`<platform local application-data directory>/au.edu.ldaca.wordflow/data` and
+writes it to `settings.json` once it has opened; a failure leaves the control
+plane in `configuration_error` with that root suggested.
 Single-user clients may configure or switch this value through the backend;
 multi-user clients may not. The backend does not read or migrate Tauri's former
 `backend.json` file.
