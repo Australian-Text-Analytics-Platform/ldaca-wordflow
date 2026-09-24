@@ -231,11 +231,6 @@ const tutorial = {
     anchor: 'help-preprocessing-aggregate-builder',
     label: 'Expression builder',
   },
-  'preprocessing.aggregate.expression': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-expression',
-    label: 'Advanced expression',
-  },
   'preprocessing.aggregate.column-name': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-aggregate-column-name',
@@ -245,11 +240,6 @@ const tutorial = {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-find-replace',
     label: 'Find sub-tab overview',
-  },
-  'preprocessing.expression.tab': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-expression-section',
-    label: 'Expression sub-tab overview',
   },
   'analysis.token-frequency.tab': {
     file: 'tutorials/token-frequency.md',

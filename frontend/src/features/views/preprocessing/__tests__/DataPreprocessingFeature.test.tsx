@@ -120,7 +120,6 @@ vi.mock('@/stores/preprocessingInputsStore', () => {
       '__anonymous__::ws-1::slice': selectedInput,
       '__anonymous__::ws-1::find': selectedInput,
       '__anonymous__::ws-1::aggregate': selectedInput,
-      '__anonymous__::ws-1::expression': selectedInput,
       '__anonymous__::ws-1::join': selectedInput,
       '__anonymous__::ws-1::concat': selectedInput,
     },
@@ -311,12 +310,13 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     expect(screen.getByText('Invoice #')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: 'Create Data Block' }));
+    await user.click(screen.getByRole('button', { name: 'Update Data Block' }));
 
     await waitFor(() => {
       const [nodeId, payload, applyMode] = mockReplaceText.mock.calls[0] ?? [];
       expect(nodeId).toBe('node-1');
-      expect(applyMode).toBe('create');
+      // Find always edits the selected Data Block in place (#129).
+      expect(applyMode).toBe('update');
       expect(payload).toMatchObject({
         source_column: 'Body',
         pattern: regexPattern,
@@ -539,9 +539,10 @@ describe('DataPreprocessingFeature replace tab', () => {
     fireEvent.click(addButton);
 
     await waitFor(() => {
-      const [nodeId, payload, applyMode] = mockFilterNode.mock.calls[0] ?? [];
+      const [nodeId, payload, ...rest] = mockFilterNode.mock.calls[0] ?? [];
       expect(nodeId).toBe('node-1');
-      expect(applyMode).toBe('create');
+      // Filter always creates a new Data Block, so no apply mode is passed.
+      expect(rest).toEqual([]);
       expect(payload).toMatchObject({
         logic: 'and',
         name: 'custom_filter_name',
@@ -675,58 +676,27 @@ describe('DataPreprocessingFeature replace tab', () => {
     });
   });
 
-  it('defaults eligible tools to create mode and resets after changing tools', async () => {
+  it("shows every tool's fixed result destination without a choice", async () => {
     const user = userEvent.setup();
     renderPreprocessingFeature();
 
-    const applyBar = screen.getByRole('group', { name: 'Apply result as' });
-    const applyMode = within(applyBar).getByRole('combobox', { name: 'Apply result as' });
-    expect(applyMode).toHaveTextContent('New Data Block');
+    const applyBar = screen.getByRole('group', { name: 'Apply result' });
+    expect(applyBar).toHaveTextContent('Result: New Data Block');
+    expect(within(applyBar).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(applyBar).getByLabelText('New data block name')).toBeInTheDocument();
     expect(within(applyBar).getByRole('button', { name: 'Create Data Block' })).toBeInTheDocument();
 
-    await user.click(applyMode);
-    await user.click(screen.getByRole('option', { name: 'Selected Data Block' }));
-    expect(applyMode).toHaveTextContent('Selected Data Block');
-    expect(screen.queryByLabelText('New data block name')).not.toBeInTheDocument();
-
     await user.click(screen.getByRole('tab', { name: 'Find' }));
-    expect(screen.getByRole('combobox', { name: 'Apply result as' })).toHaveTextContent(
-      'New Data Block',
+    const findBar = screen.getByRole('group', { name: 'Apply result' });
+    expect(findBar).toHaveTextContent('Result: Updates the selected Data Block');
+    expect(screen.queryByLabelText('New data block name')).not.toBeInTheDocument();
+    expect(within(findBar).getByRole('button', { name: 'Update Data Block' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: 'Create' }));
+    expect(screen.getByRole('group', { name: 'Apply result' })).toHaveTextContent(
+      'Result: Updates the selected Data Block',
     );
 
-    await user.click(screen.getByRole('tab', { name: 'Sample' }));
-    expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
-  });
-
-  it('routes an eligible update through the selected Data Block', async () => {
-    const user = userEvent.setup();
-    renderPreprocessingFeature();
-
-    await user.click(screen.getByRole('combobox', { name: 'Apply result as' }));
-    await user.click(screen.getByRole('option', { name: 'Selected Data Block' }));
-    const filterPanel = await waitForFilterSchema();
-    const columnSelect = within(filterPanel).getByRole('combobox', { name: 'Filter column' });
-    columnSelect!.focus();
-    await user.keyboard('{ArrowDown}{Enter}');
-    fireEvent.change(await screen.findByPlaceholderText('Enter value'), {
-      target: { value: 'candidate' },
-    });
-
-    await waitFor(() => {
-      expect(within(filterPanel).getByRole('button', { name: 'Update Data Block' })).toBeEnabled();
-    });
-    await user.click(within(filterPanel).getByRole('button', { name: 'Update Data Block' }));
-
-    await waitFor(() => {
-      expect(mockFilterNode).toHaveBeenCalledWith(
-        'node-1',
-        expect.objectContaining({
-          conditions: expect.any(Array),
-          logic: 'and',
-        }),
-        'update',
-      );
-    });
+    expect(screen.queryByRole('tab', { name: /expression/i })).not.toBeInTheDocument();
   });
 });

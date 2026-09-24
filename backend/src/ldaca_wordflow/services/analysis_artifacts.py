@@ -331,6 +331,10 @@ def _publish_annotation_run_all(
     count = int(lazyframe.select(pl.len()).collect().item())
     if count != result.result.record_count:
         raise ValueError("Annotation Run All count does not match its Result")
+    # Publishing replaces the Data Block in place, so it must keep the rows
+    # the Data Block has now (Data Block Edits never change row count or order).
+    if count != int(node.data.select(pl.len()).collect().item()):
+        raise ValueError("Annotation Run All output does not keep the Data Block's rows")
     if source_request.annotation_column not in columns:
         raise ValueError("Annotation Run All output column is unavailable")
     node.data = lazyframe

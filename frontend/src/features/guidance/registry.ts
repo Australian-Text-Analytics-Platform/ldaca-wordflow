@@ -18,7 +18,6 @@ export const CONTEXTUAL_HINT_IDS = {
     stack: 'preprocessing.operation.stack',
     find: 'preprocessing.operation.find',
     create: 'preprocessing.operation.create',
-    expression: 'preprocessing.operation.expression',
     preview: 'preprocessing.preview',
     createOutcome: 'preprocessing.outcome.create',
     updateOutcome: 'preprocessing.outcome.update',
@@ -193,12 +192,6 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     '[data-guidance="preprocessing-operation-create"]',
     'Build an analysis-ready column',
     'Combine existing columns and text, then name the new column. Finish the expression, then choose Preview.',
-  ),
-  hint(
-    CONTEXTUAL_HINT_IDS.preprocessing.expression,
-    '[data-guidance="preprocessing-operation-expression"]',
-    'Apply a typed transformation',
-    'Choose Filter, With Columns, Select, Sort, or Group By and enter valid typed JSON expressions. Complete the expression, then choose Preview.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.preview,

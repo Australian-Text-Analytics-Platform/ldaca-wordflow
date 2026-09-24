@@ -13,16 +13,15 @@ describe('aggregateExpressionModel', () => {
     expect(normalizeSmartCharacters('“hello” and ‘world’')).toBe('"hello" and \'world\'');
   });
 
-  it('serializes column tokens with escaped names and operations', () => {
+  it('serializes column tokens with escaped names and no aggregation', () => {
     const token: AggregateBuilderToken = {
       id: 'token-1',
       kind: 'column',
       column: 'speaker"name',
       dtype: 'string',
-      operations: ['sum'],
     };
 
-    expect(tokenToPolarsExpression(token)).toBe('pl.col("speaker\\"name").sum()');
+    expect(tokenToPolarsExpression(token)).toBe('pl.col("speaker\\"name")');
   });
 
   it('serializes custom tokens as quoted, numeric, or escaped literals', () => {
@@ -39,7 +38,7 @@ describe('aggregateExpressionModel', () => {
 
   it('joins token expressions and aliases request payloads when a column name is set', () => {
     const tokens: AggregateBuilderToken[] = [
-      { id: 'token-1', kind: 'column', column: 'text', dtype: 'string', operations: [] },
+      { id: 'token-1', kind: 'column', column: 'text', dtype: 'string' },
       { id: 'token-2', kind: 'custom', value: '-' },
     ];
 

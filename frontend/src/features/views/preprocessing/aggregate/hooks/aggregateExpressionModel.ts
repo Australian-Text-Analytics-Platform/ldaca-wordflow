@@ -17,11 +17,8 @@ export type AggregateBuilderToken =
       kind: 'column';
       column: string;
       dtype: string;
-      operations: AggregateOperation[];
     }
   | { id: string; kind: 'custom'; value: string };
-
-export type AggregateOperation = 'count' | 'mean' | 'sum';
 
 /**
  * Normalizes smart quotes before expressions reach the backend parser.
@@ -48,11 +45,7 @@ const escapeDoubleQuotedPolarsString = (value: string): string =>
  */
 export function tokenToPolarsExpression(token: AggregateBuilderToken): string {
   if (token.kind === 'column') {
-    let expr = `pl.col("${escapeDoubleQuotedPolarsString(token.column)}")`;
-    for (const op of token.operations) {
-      expr += `.${op}()`;
-    }
-    return expr;
+    return `pl.col("${escapeDoubleQuotedPolarsString(token.column)}")`;
   }
 
   const raw = token.value;
@@ -102,10 +95,9 @@ const tokenExpression = (token: AggregateBuilderToken): ExpressionSpec => {
     return { op: 'literal', value: customTokenValue(token.value) };
   }
 
-  return token.operations.reduce<ExpressionSpec>(
-    (operand, operation) => ({ op: operation, operand }),
-    { op: 'column', name: token.column },
-  );
+  // Create only builds new per-row columns; aggregations (count, sum, mean)
+  // are not offered, so a column token is always the column itself.
+  return { op: 'column', name: token.column };
 };
 
 const aggregateExpression = (tokens: AggregateBuilderToken[]): ExpressionSpec => {

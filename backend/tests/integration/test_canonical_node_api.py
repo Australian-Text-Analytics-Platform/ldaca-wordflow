@@ -497,12 +497,6 @@ def test_data_block_edits_preserve_identity_history_and_frozen_descendants(
             },
             {"kind": "delete_column", "column": "dropme"},
             {
-                "kind": "filter",
-                    "conditions": [
-                        {"column": "score", "operator": "contains", "value": "2"}
-                    ],
-                },
-            {
                 "kind": "replace",
                 "source_column": "text",
                 "pattern": "world",

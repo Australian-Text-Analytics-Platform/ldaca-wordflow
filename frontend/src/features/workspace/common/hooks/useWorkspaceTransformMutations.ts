@@ -86,7 +86,6 @@ export const useWorkspaceTransformMutations = ({
   type SliceNodeCreateBody = Extract<NodeCreateBody, { kind: 'slice' }>;
   type ReplaceNodeCreateBody = Extract<NodeCreateBody, { kind: 'replace' }>;
   type ExpressionNodeCreateBody = Extract<NodeCreateBody, { kind: 'expression' }>;
-  type FilterNodeEditBody = Extract<NodeEditBody, { kind: 'filter' }>;
   type ReplaceNodeEditBody = Extract<NodeEditBody, { kind: 'replace' }>;
   type ExpressionNodeEditBody = Extract<NodeEditBody, { kind: 'expression' }>;
   type CastNodeEditBody = Extract<NodeEditBody, { kind: 'cast' }>;
@@ -127,11 +126,6 @@ export const useWorkspaceTransformMutations = ({
     group_by: request.group_by,
     name: request.name,
   });
-  const filterEditBody = (request: FilterRequestPayload): FilterNodeEditBody => ({
-    kind: 'filter',
-    conditions: request.conditions,
-    logic: request.logic ?? 'and',
-  });
   const replaceEditBody = (request: ReplaceRequest): ReplaceNodeEditBody => ({
     kind: 'replace',
     source_column: request.source_column,
@@ -143,12 +137,19 @@ export const useWorkspaceTransformMutations = ({
     match_limit: request.match_limit,
     connector: request.connector,
   });
-  const expressionEditBody = (request: PolarsExpressionRequest): ExpressionNodeEditBody => ({
-    kind: 'expression',
-    context: request.context,
-    expressions: request.expressions,
-    group_by: request.group_by,
-  });
+  // Data Block Edits never change rows, so in-place expressions may only add
+  // or change columns; the backend rejects any other context.
+  const expressionEditBody = (request: PolarsExpressionRequest): ExpressionNodeEditBody => {
+    if (request.context !== 'with_columns') {
+      throw new Error('Only column expressions can update a Data Block in place.');
+    }
+    return {
+      kind: 'expression',
+      context: request.context,
+      expressions: request.expressions,
+      group_by: request.group_by,
+    };
+  };
   const castEditBody = (
     column: string,
     targetType: ColumnCastType,
@@ -167,36 +168,18 @@ export const useWorkspaceTransformMutations = ({
     });
   };
 
+  // Filtering changes rows, so it always creates a derived Data Block.
   const filterNodeMutation = useMutation({
     mutationKey: ['workspace', 'filter-node'],
-    mutationFn: ({
-      nodeId,
-      request,
-      mode,
-    }: {
-      nodeId: string;
-      request: FilterRequestPayload;
-      mode: PreprocessingApplyMode;
-    }) =>
-      (mode === 'update'
-        ? editNode({
-            body: filterEditBody(request),
-            path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
-            throwOnError: true,
-          })
-        : createNode({
-            body: filterBody(nodeId, request),
-            path: { workspace_id: ensureWorkspaceSelected() },
-            throwOnError: true,
-          })
-      ).then(({ data }) => requireNode(data)),
-    onSuccess: (response, variables) => {
-      if (variables.mode === 'update') {
-        invalidateEditedNode(variables.nodeId);
-      } else {
-        markCreatedNode(response);
-        invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
-      }
+    mutationFn: ({ nodeId, request }: { nodeId: string; request: FilterRequestPayload }) =>
+      createNode({
+        body: filterBody(nodeId, request),
+        path: { workspace_id: ensureWorkspaceSelected() },
+        throwOnError: true,
+      }).then(({ data }) => requireNode(data)),
+    onSuccess: (response) => {
+      markCreatedNode(response);
+      invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
     },
   });
 
@@ -427,11 +410,8 @@ export const useWorkspaceTransformMutations = ({
 
   const actions = useMemo(
     () => ({
-      filterNode: (
-        nodeId: string,
-        request: FilterRequestPayload,
-        mode: PreprocessingApplyMode = 'create',
-      ) => filterNodeMutation.mutateAsync({ nodeId, request, mode }),
+      filterNode: (nodeId: string, request: FilterRequestPayload) =>
+        filterNodeMutation.mutateAsync({ nodeId, request }),
       filterPreview: ({
         workspaceId,
         nodeId,

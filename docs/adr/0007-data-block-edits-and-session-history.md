@@ -6,9 +6,10 @@ status: accepted
 
 Wordflow supports identity-preserving Data Block Edits alongside Derived Data
 Block creation. Cast, column rename, and column delete are always edits.
-Filter, Find, Create, and Expression default to creating a Derived Data
-Block but may explicitly update the selected Data Block. Sample, Join, and
-Stack remain creation-only.
+[ADR 0031](0031-data-block-edits-preserve-rows.md) supersedes this decision's
+former clause that let Filter, Find, Create, and Expression choose between
+creating and editing: Data Block Edits now never change rows, so row-changing
+tools are creation-only and column tools are edit-only.
 
 Provenance describes how a Data Block was created. It is not rewritten by an
 edit, and graph edges and parent relationships remain unchanged. Each Data

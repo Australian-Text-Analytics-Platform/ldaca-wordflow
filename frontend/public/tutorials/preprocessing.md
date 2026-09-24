@@ -6,24 +6,28 @@
 
 ![Preprocessing screenshot](tutorials/assets/preprocessing.png)
 
-The Preprocessing tools transform and prepare raw text data blocks into analysis-ready datasets. Each sub-tab performs a specific type of transformation. Filter, Find, Create, and Expression can either create a **new Data Block** or update the selected Data Block. Sample, Join, and Stack always create a new Derived Data Block. There are currently seven sub-tabs:
+The Preprocessing tools transform and prepare raw text data blocks into analysis-ready datasets. Each sub-tab performs a specific type of transformation, and each has a fixed result:
+
+- Tools that change which rows are present (Filter, Sample, Join, Stack) always create a new Derived Data Block. The source is never altered.
+- Tools that add or change columns (Find, Create) always update the selected Data Block in place. They never change the number or order of rows.
+
+There are currently six sub-tabs:
 
 | Sub-tab | What it does | Apply behavior |
 |---|---|---|
-| Filter | Keep only the rows that match one or more conditions | Create or update |
-| Sample | Extract a contiguous slice or a random subset of rows | Create only |
-| Join | Combine two data blocks side-by-side on a shared column | Create only |
-| Stack | Vertically concatenate two data blocks that share the same columns | Create only |
-| Find | Match text patterns with Regular Expressions, then remove, replace, or extract matches | Create or update |
-| Create | Build a new column by combining the contents of existing columns | Create or update |
-| Expression | Compose validated typed expression items for advanced transformations | Create or update |
+| Filter | Keep only the rows that match one or more conditions | New Data Block |
+| Sample | Extract a contiguous slice or a random subset of rows | New Data Block |
+| Join | Combine two data blocks side-by-side on a shared column | New Data Block |
+| Stack | Vertically concatenate two data blocks that share the same columns | New Data Block |
+| Find | Match text patterns with Regular Expressions, then remove, replace, or extract matches | Updates the selected Data Block |
+| Create | Build a new column by combining the contents of existing columns | Updates the selected Data Block |
 
 The general workflow for any sub-tab is:
 
 1. Select one or more data blocks from the workspace.
 2. Configure the transformation.
 3. Review the **Preview** table to check the expected output.
-4. For an eligible tool, choose **Create new Data Block** or **Update selected Data Block** under **Apply result as**.
+4. Check the **Result** line beside the action button: it says whether the tool creates a new Data Block or updates the selected one.
 5. Click **Create Data Block** or **Update Data Block**.
 
 <h2 id="help-preprocessing-common-section">Common controls</h2>
@@ -38,11 +42,12 @@ Select one or more data blocks from the workspace graph or the data block list. 
 
 The preview pane shows the result of the current configuration in a paginated format with an estimated row count. Check the preview before applying to confirm the output looks as expected. No data block is created until you click the action button.
 
-<h3 id="help-preprocessing-common-apply-button">Apply result as</h3>
+<h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
-For Filter, Find, Create, and Expression, **Create new Data Block** is selected by default. It preserves the source and records the new block's creation lineage. Choose **Update selected Data Block** only when you deliberately want to replace the selected block's current execution plan. The choice remains available for repeated applies in the same tool and source, but resets to Create when you change the tool or selected Data Block. It is not saved as a preference.
+Each tool has one fixed destination, shown as **Result** beside its action button. There is no choice to make.
 
-Sample (including Slice, Random Sample, and Shuffle), Join, and Stack have no update mode and always create Derived Data Blocks.
+- **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack): the source is preserved and the new block records its creation lineage.
+- **Updates the selected Data Block** (Find, Create): the new or changed column is added to the selected block. Rows are never added, removed, or reordered, so everything that refers to those rows (annotations, analyses, descendants) stays aligned.
 
 An update keeps the selected Data Block's identity, graph edges, parents, descendants, and creation provenance unchanged. Descendants keep their existing independent plans and are not recomputed. Undo/Redo stores only plans for the current open Workspace session, up to 50 edits per Data Block. Closing and reopening the Workspace, importing it, or restarting the backend preserves the latest data but clears Undo/Redo history.
 
@@ -73,7 +78,7 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 
 ![Filter new data block name screenshot](tutorials/assets/preprocessing/filter_new_node_name.png)
 
-In create mode, give the filtered output a descriptive name so it is easy to find in the workspace. The new block is a child of the selected source block. This field is hidden in update mode because the selected Data Block keeps its existing identity and name.
+Give the filtered output a descriptive name so it is easy to find in the workspace. The new block is a child of the selected source block.
 
 **Practice exercise**
 
@@ -189,7 +194,7 @@ Provide a label for the stacked output. Leave it blank to use the auto-generated
 
 ![Find screenshot](tutorials/assets/preprocessing/find.png)
 
-The Find sub-tab performs text manipulation on a selected column using Regular Expressions (RegEx). It supports two operations — **Replace** and **Extract** — and the transformation can overwrite the source column or write an output column. Separately, **Apply result as** decides whether the transformed plan creates a Data Block or updates the selected one.
+The Find sub-tab performs text manipulation on a selected column using Regular Expressions (RegEx). It supports two operations, **Replace** and **Extract**, and the transformation can overwrite the source column or write an output column. The result always updates the selected Data Block in place.
 
 **Replace**
 
@@ -207,7 +212,7 @@ Match a pattern and extract all captured matches into a new column. For example,
 
 1. Select a dataset with a text column that contains noise (e.g. XML tags, URLs).
 2. Write a RegEx pattern to match the noise and replace it with an empty string.
-3. Review the preview, choose create or update mode, and apply the result.
+3. Review the preview, then click **Update Data Block**.
 
 <h2 id="help-preprocessing-aggregate-section">Create</h2>
 
@@ -223,47 +228,13 @@ Drag column tokens and custom text blocks into the builder to assemble the expre
 - Add a **Custom Text** bubble for separators or literals, then click it to edit the value.
 - Reorder bubbles by dragging them to a new position.
 
-<h3 id="help-preprocessing-aggregate-expression">Advanced expression</h3>
-
-![Advanced expression screenshot](tutorials/assets/preprocessing/create_expression.png)
-
-Use the Advanced tab for full control, including helper functions and conditional logic.
-
-- Reference columns by name (`title`) or in quotes if the name contains spaces (`"Total Count"`).
-- Combine values with `+`.
-- Use helpers such as `abs()`, `round(value, 2)`, `when(condition, then, otherwise)`, `coalesce(a, b)`.
-- Use `lit("value")` to force a literal string when it would otherwise be interpreted as a column name.
-
 <h3 id="help-preprocessing-aggregate-column-name">New column name</h3>
 
-Set a clear label for the new column so it is easy to find downstream. This is a transformation field and remains available in both create and update modes.
+Set a clear label for the new column so it is easy to find downstream. The column is added to the selected Data Block.
 
 **Practice exercise**
 
 1. Select a dataset with a title column and a body or abstract column.
 2. Use the Basic builder to drag both columns into the expression with a space separator.
-3. Preview the combined column, choose create or update mode, then apply it.
+3. Preview the combined column, then click **Update Data Block**.
 
-<h2 id="help-preprocessing-expression-section">Expression</h2>
-
-The Expression sub-tab accepts JSON expression items from Wordflow's generated typed-expression contract. Raw Python and executable Polars source are not accepted. Each item contains an `expression` object with an `op`; optional item fields such as `alias` and the separate Sort direction control shape the output.
-
-Five context modes are available:
-
-| Mode | What it does |
-|---|---|
-| Filter | Supply a boolean expression to keep only matching rows |
-| With Columns | Add or overwrite columns using one or more expressions |
-| Select | Choose and transform specific columns |
-| Sort | Sort by one or more expressions, with optional descending order |
-| Group By | Group by a key expression and apply aggregations |
-
-Each mode displays a typed JSON example. Click **Preview** to validate and inspect results, choose create or update mode, then click **Create Data Block** or **Update Data Block**. The new-Data-Block name field is shown only in create mode.
-
-**Practice exercise**
-
-1. Select a dataset and switch to the **Filter** context.
-2. Enter `{"expression":{"op":"gt","left":{"op":"column","name":"word_count"},"right":{"op":"literal","value":100}}}`.
-3. Click **Preview** to inspect the filtered rows, then choose whether to create a Derived Data Block or update the selected Data Block.
-
-[← Back to tutorial index](./index.md)

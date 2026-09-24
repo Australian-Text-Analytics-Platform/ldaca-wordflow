@@ -14,7 +14,6 @@ import type { FilterConditionWithId } from '../types';
 
 type FilterSubTabComponentProps = FilterSubTabProps & {
   renderNodeInputsPanel?: () => ReactNode;
-  onApplyModeChange: (value: FilterSubTabProps['applyMode']) => void;
 };
 
 /**
@@ -25,7 +24,7 @@ type FilterSubTabComponentProps = FilterSubTabProps & {
  * condition edits/apply requests through hook actions.
  */
 export function FilterSubTab(props: FilterSubTabComponentProps) {
-  const { applyMode, onApplyModeChange, renderNodeInputsPanel } = props;
+  const { renderNodeInputsPanel } = props;
   const {
     schemaState,
     conditionBuilder,
@@ -97,36 +96,34 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
           />
         </CardContent>
 
-        <PreprocessingApplyBar value={applyMode} onChange={onApplyModeChange}>
-          {applyMode === 'create' && (
-            <div className="flex flex-1 items-center gap-2">
-              <label
-                className="shrink-0 text-body font-medium text-description"
-                htmlFor="filter-new-node-name"
-              >
-                New data block name
-              </label>
-              <HelpIcon targetKey="preprocessing.filter.new-node-name" label="Filter output name" />
-              <input
-                id="filter-new-node-name"
-                type="text"
-                value={newNodeInput.value}
-                onChange={(event) => {
-                  newNodeInput.setValue(event.target.value);
-                }}
-                onKeyDown={(event) => {
-                  acceptPlaceholderOnTab({
-                    event,
-                    value: newNodeInput.value,
-                    setValue: newNodeInput.setValue,
-                  });
-                }}
-                placeholder={newNodeInput.placeholder}
-                disabled={newNodeInput.disabled}
-                className="min-w-0 flex-1 rounded-md border border-input-border bg-editor px-3 py-2 text-body transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
-              />
-            </div>
-          )}
+        <PreprocessingApplyBar mode="create">
+          <div className="flex flex-1 items-center gap-2">
+            <label
+              className="shrink-0 text-body font-medium text-description"
+              htmlFor="filter-new-node-name"
+            >
+              New data block name
+            </label>
+            <HelpIcon targetKey="preprocessing.filter.new-node-name" label="Filter output name" />
+            <input
+              id="filter-new-node-name"
+              type="text"
+              value={newNodeInput.value}
+              onChange={(event) => {
+                newNodeInput.setValue(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                acceptPlaceholderOnTab({
+                  event,
+                  value: newNodeInput.value,
+                  setValue: newNodeInput.setValue,
+                });
+              }}
+              placeholder={newNodeInput.placeholder}
+              disabled={newNodeInput.disabled}
+              className="min-w-0 flex-1 rounded-md border border-input-border bg-editor px-3 py-2 text-body transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
           <DisabledReasonTooltip reason={applyButtonDisabledReason}>
             <Button
               size="sm"
@@ -139,12 +136,12 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
               {isFiltering ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {applyMode === 'create' ? 'Creating Data Block…' : 'Updating Data Block…'}
+                  Creating Data Block…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  {applyMode === 'create' ? 'Create Data Block' : 'Update Data Block'}
+                  Create Data Block
                 </>
               )}
             </Button>

@@ -3,20 +3,9 @@ import { isConditionComplete } from '../filter/utils/serializers';
 
 const DEFAULT_NAME_FALLBACK = 'dataset';
 
-const EXPRESSION_CONTEXT_SUFFIX: Record<
-  'filter' | 'with_columns' | 'select' | 'sort' | 'group_by_agg',
-  string
-> = {
-  filter: 'filtered_expr',
-  with_columns: 'with_columns',
-  select: 'selected_expr',
-  sort: 'sorted_expr',
-  group_by_agg: 'grouped_expr',
-};
-
 /**
  * Sanitizes user/schema text into safe auto-generated node-name tokens.
- * Called by condition/expression token formatters below.
+ * Called by condition token formatters below.
  */
 const sanitizeToken = (value: string): string => {
   const trimmed = value.trim();
@@ -127,19 +116,4 @@ export const buildFilterAutoNodeName = ({
   const joinToken = logic === 'or' ? '_or_' : '_and_';
   const conditionToken = completeConditions.map(formatFilterConditionToken).join(joinToken);
   return `${base}_filtered_by_${conditionToken}`;
-};
-
-/**
- * Builds the suggested output name shown by the Polars expression tab.
- * Used by `useTypedExpressionSubTab` when deriving the default output-node name.
- */
-export const buildExpressionAutoNodeName = ({
-  baseName,
-  context,
-}: {
-  baseName: string | null | undefined;
-  context: keyof typeof EXPRESSION_CONTEXT_SUFFIX;
-}): string => {
-  const base = (baseName ?? '').trim() || DEFAULT_NAME_FALLBACK;
-  return `${base}_${EXPRESSION_CONTEXT_SUFFIX[context]}`;
 };

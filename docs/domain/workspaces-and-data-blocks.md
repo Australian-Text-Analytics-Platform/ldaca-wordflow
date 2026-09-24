@@ -94,10 +94,12 @@ parents, children, order, edges, and provenance remain unchanged, and every
 descendant retains the independent plan captured when that descendant was
 created.
 
-Column cast, rename, and delete are always edits. Filter, Find, Create, and
-Expression may either create a Derived Data Block or update the selected
-Data Block. Slice, random sample, shuffle, Join, and Stack always create
-Derived Data Blocks.
+A Data Block Edit never changes the number or order of rows
+([ADR 0031](../adr/0031-data-block-edits-preserve-rows.md)). Column cast,
+rename, and delete, Find, and Create are always edits. Filter, Slice, random
+sample, shuffle, Join, Stack, and analysis Add to Workspace always create
+Derived Data Blocks. The one exception is an annotation's codebook, whose
+`annotation_classes` edit may change its class rows.
 
 Annotation uses the same edit boundary. Start new annotation immediately adds
 the named empty string column through an Expression edit and selects it; the

@@ -37,7 +37,7 @@ export const insertItemAt = <T>(
 /**
  * Remove the entry at `index`. Out-of-range indexes return the array
  * unchanged.
- * Used by `useAggregateSubTab` when removing builder tokens and operations.
+ * Used by `useAggregateSubTab` when removing builder tokens.
  */
 export const removeItemAt = <T>(items: readonly T[], index: number): T[] => {
   if (index < 0 || index >= items.length) return [...items];

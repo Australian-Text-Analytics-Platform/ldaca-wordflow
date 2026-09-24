@@ -96,7 +96,7 @@ The centre column is the main working area and shows the interface of whichever 
 
 - The tool name and a short description appear at the top.
 - Sub-tabs (e.g. Filter, Sample, Join, Stack, Find, Create in Preprocessing) let you switch between related operations within the same tool.
-- Most tools follow a common workflow: configure parameters → review a preview → choose whether to create or update when offered → click **Create Data Block** or **Update Data Block**. Filter, Find, Create, and Expression offer both modes and default to creating a new block. Sample, Join, and Stack are create-only.
+- Most tools follow a common workflow: configure parameters → review a preview → click **Create Data Block** or **Update Data Block**. Tools that change rows (Filter, Sample, Join, Stack) always create a new block; Find and Create always update the selected block in place without changing its rows.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
 
 <h2 id="help-ui-working-directory">7. Working Directory</h2>

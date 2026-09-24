@@ -11,12 +11,10 @@ import { takeMostRecent } from '@/features/workspace/common/utils/selectionUtils
 import { PreviewTable } from '../components/PreviewTable';
 import { PreprocessingApplyBar } from '../components/PreprocessingApplyBar';
 import { SubTabActivityTag } from '../components/SubTabActivityTag';
-import { OperationPopover } from './components/OperationPopover';
 import { useAggregateSubTab, type AggregateSubTabProps } from './hooks/useAggregateSubTab';
 
 type AggregateSubTabComponentProps = AggregateSubTabProps & {
   renderNodeInputsPanel?: () => ReactNode;
-  onApplyModeChange: (value: AggregateSubTabProps['applyMode']) => void;
 };
 
 /**
@@ -50,7 +48,7 @@ const getAggregateSelectionKey = (props: AggregateSubTabComponentProps): string 
  * visual-builder modes, and keep table/apply controls tied to hook state.
  */
 function AggregateSubTabContent(props: AggregateSubTabComponentProps) {
-  const { applyMode, isLoading, onApplyModeChange } = props;
+  const { isLoading } = props;
   const { renderNodeInputsPanel } = props;
   const { activeNode, expression, basicBuilder, preview, apply, dropZoneRef } =
     useAggregateSubTab(props);
@@ -219,45 +217,8 @@ function AggregateSubTabContent(props: AggregateSubTabComponentProps) {
                                   </button>
                                 )
                               ) : (
-                                <OperationPopover
-                                  workspaceId={props.currentWorkspaceId}
-                                  nodeId={activeNode?.id ?? ''}
-                                  column={token.column}
-                                  onSelect={(op) => {
-                                    basicBuilder.addOperation(token.id, op);
-                                  }}
-                                  disabled={basicBuilder.disabled}
-                                >
-                                  <button
-                                    type="button"
-                                    className="font-medium hover:text-editor/80 transition"
-                                  >
-                                    {token.column}
-                                  </button>
-                                </OperationPopover>
+                                <span className="font-medium">{token.column}</span>
                               )}
-                              {!isCustom &&
-                                token.operations.map((op, idx) => (
-                                  <span
-                                    key={`${op}-${String(idx)}`}
-                                    className="flex items-center gap-0.5 border-l border-editor/30 pl-1"
-                                  >
-                                    <span className="font-mono text-label-secondary text-editor/70">
-                                      .{op}()
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        basicBuilder.removeOperation(token.id, idx);
-                                      }}
-                                      className="inline-flex size-3.5 items-center justify-center rounded-full hover:bg-editor/20 focus-visible:outline-hidden"
-                                      aria-label={`Remove ${op}`}
-                                      disabled={basicBuilder.disabled}
-                                    >
-                                      <X className="size-2.5" />
-                                    </button>
-                                  </span>
-                                ))}
                               <button
                                 type="button"
                                 onClick={() => {
@@ -309,7 +270,7 @@ function AggregateSubTabContent(props: AggregateSubTabComponentProps) {
           </div>
         </CardContent>
 
-        <PreprocessingApplyBar value={applyMode} onChange={onApplyModeChange}>
+        <PreprocessingApplyBar mode="update">
           <div className="flex flex-1 items-center gap-2">
             <span className="shrink-0 text-body font-medium text-foreground">New column name</span>
             <HelpIcon
@@ -342,10 +303,8 @@ function AggregateSubTabContent(props: AggregateSubTabComponentProps) {
               {apply.loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {applyMode === 'create' ? 'Creating Data Block…' : 'Updating Data Block…'}
+                  Updating Data Block…
                 </>
-              ) : applyMode === 'create' ? (
-                'Create Data Block'
               ) : (
                 'Update Data Block'
               )}

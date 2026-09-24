@@ -231,13 +231,16 @@ multiple Data Blocks return one backend-built ZIP with one file per Data Block.
 Export operates on a stable Workspace view and is bounded by response-snapshot
 storage admission.
 
-`NodeEditRequest` accepts `cast`, `rename_column`, `delete_column`, `filter`,
-`replace`, `expression`, `set_cell`, or `annotation_classes`. `set_cell`
+`NodeEditRequest` accepts `cast`, `rename_column`, `delete_column`,
+`replace`, `expression`, `set_cell`, or `annotation_classes`. Edits never
+change the number or order of rows, so there is no `filter` edit and an
+`expression` edit accepts only the `with_columns` context. `set_cell`
 accepts an existing string column, absolute row index, and string or null value.
 `annotation_classes` accepts class and description columns plus at most 200
 validated rows; it preserves other columns positionally, truncating or
-null-padding them to the new row count. Sample, Join, and Stack remain
-creation-only, and cast is not part of the creation request union. Every
+null-padding them to the new row count; it is the only edit allowed to change
+row count, because a codebook's rows are its classes. Filter, Sample, Join,
+and Stack are creation-only, and cast is not part of the creation request union. Every
 `WorkspaceNodeInfo` contains required `can_undo` and `can_redo` flags plus the
 nullable scalar `tokenizer_model`. `NodeUpdateRequest.tokenizer_model` is an
 opaque identifier of at most 500 characters; surrounding whitespace is

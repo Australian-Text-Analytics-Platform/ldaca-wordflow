@@ -1,5 +1,5 @@
-import { Calculator, Code2, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
-import { lazy, Suspense, useState } from 'react';
+import { Calculator, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
+import { useState } from 'react';
 import InfoIcon from '@/components/help/InfoIcon';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
 import {
@@ -36,7 +36,7 @@ import { ReplaceSubTab } from './replace/ReplaceSubTab';
 import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
 
-type DataPrepSubtab = 'filter' | 'slice' | 'join' | 'concat' | 'find' | 'aggregate' | 'expression';
+type DataPrepSubtab = 'filter' | 'slice' | 'join' | 'concat' | 'find' | 'aggregate';
 
 const PREPROCESSING_TABS: EditorTabItem[] = [
   {
@@ -87,37 +87,17 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     panelDomId: 'preprocessing-panel-aggregate',
     'data-guidance': 'preprocessing-operation-create',
   },
-  {
-    id: 'expression',
-    title: 'Expression',
-    icon: <Code2 className="size-4" />,
-    tabDomId: 'preprocessing-tab-expression',
-    panelDomId: 'preprocessing-panel-expression',
-    'data-guidance': 'preprocessing-operation-expression',
-  },
 ];
 
 const EMPTY_PREPROCESSING_INPUTS: [] = [];
-
-const TypedExpressionSubTab = lazy(() =>
-  import('./expression/TypedExpressionSubTab').then((module) => ({
-    default: module.TypedExpressionSubTab,
-  })),
-);
-
-/** Shown only while the CodeMirror-backed expression subtab chunk is loading. */
-const PolarsExpressionFallback = () => (
-  <div className="rounded-md border border-surface-border/60 bg-panel/30 px-3 py-2 text-body text-description">
-    Loading expression editor...
-  </div>
-);
 
 // Hosts preprocessing subtabs and passes the active input node context into each tool.
 /**
  * Rendered by: the analysis feature registry when this panel is selected.
  * Flow: read workspace/auth state, derive inputs and analysis parameters,
- * render the active preprocessing subtab, and lazy-load the CodeMirror-backed
- * expression editor only when users open that subtab.
+ * and render the active preprocessing subtab. Each tool has a fixed result
+ * destination: row-changing tools create derived Data Blocks, column tools
+ * edit the selected Data Block in place.
  */
 function DataPreprocessingFeature() {
   const { reachContextualHint } = useGuidance();
@@ -170,19 +150,6 @@ function DataPreprocessingFeature() {
   const selectedNodeColumns = Object.fromEntries(
     nodeInputs.resolvedNodes.map((node) => [node.id, node.column]),
   );
-  const applyModeScope = `${activeSubtab}:${selectedNodeId ?? ''}`;
-  const [applyModeState, setApplyModeState] = useState<{
-    scope: string;
-    value: PreprocessingApplyMode;
-  }>({
-    scope: applyModeScope,
-    value: CREATE_DATA_BLOCK_MODE,
-  });
-  const applyMode =
-    applyModeState.scope === applyModeScope ? applyModeState.value : CREATE_DATA_BLOCK_MODE;
-  const setApplyMode = (value: PreprocessingApplyMode) => {
-    setApplyModeState({ scope: applyModeScope, value });
-  };
   const setSelectedJoinColumns = (columns: Record<string, string>) => {
     if (!currentWorkspaceId) return;
     setPersistedInputs(
@@ -228,7 +195,7 @@ function DataPreprocessingFeature() {
   };
   const guidedFilterNode = async (...args: Parameters<typeof filterNode>) => {
     const response = await filterNode(...args);
-    reachApplyOutcome(args[2] ?? CREATE_DATA_BLOCK_MODE);
+    reachApplyOutcome(CREATE_DATA_BLOCK_MODE);
     return response;
   };
   const guidedSlicePreview = async (...args: Parameters<typeof slicePreview>) => {
@@ -290,7 +257,6 @@ function DataPreprocessingFeature() {
     concat: CONTEXTUAL_HINT_IDS.preprocessing.stack,
     find: CONTEXTUAL_HINT_IDS.preprocessing.find,
     aggregate: CONTEXTUAL_HINT_IDS.preprocessing.create,
-    expression: CONTEXTUAL_HINT_IDS.preprocessing.expression,
   }[activeSubtab];
   useProgressiveContextualHints([
     CONTEXTUAL_HINT_IDS.preprocessing.inputs,
@@ -372,8 +338,6 @@ function DataPreprocessingFeature() {
             filterPreview={guidedFilterPreview}
             isLoading={isLoading}
             onAlert={handleAlert}
-            applyMode={applyMode}
-            onApplyModeChange={setApplyMode}
           />
         </TabsContent>
 
@@ -454,8 +418,6 @@ function DataPreprocessingFeature() {
             replaceTextPreview={guidedReplaceTextPreview}
             replaceText={guidedReplaceText}
             refreshNodeSchema={refreshNodeSchema}
-            applyMode={applyMode}
-            onApplyModeChange={setApplyMode}
           />
         </TabsContent>
 
@@ -475,31 +437,7 @@ function DataPreprocessingFeature() {
             polarsExpressionPreview={guidedExpressionPreview}
             polarsExpressionApply={guidedExpressionApply}
             refreshNodeSchema={refreshNodeSchema}
-            applyMode={applyMode}
-            onApplyModeChange={setApplyMode}
           />
-        </TabsContent>
-
-        <TabsContent
-          id="preprocessing-panel-expression"
-          aria-labelledby="preprocessing-tab-expression"
-          value="expression"
-          className="space-y-4"
-        >
-          <Suspense fallback={<PolarsExpressionFallback />}>
-            <TypedExpressionSubTab
-              renderNodeInputsPanel={renderNodeInputsPanel}
-              currentWorkspaceId={currentWorkspaceId}
-              selectedNodes={selectedNodes}
-              isLoading={isLoading}
-              onAlert={handleAlert}
-              polarsExpressionPreview={guidedExpressionPreview}
-              polarsExpressionApply={guidedExpressionApply}
-              refreshNodeSchema={refreshNodeSchema}
-              applyMode={applyMode}
-              onApplyModeChange={setApplyMode}
-            />
-          </Suspense>
         </TabsContent>
       </Tabs>
 

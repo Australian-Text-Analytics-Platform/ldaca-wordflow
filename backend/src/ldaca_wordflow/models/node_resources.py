@@ -159,16 +159,19 @@ class DeleteColumnNodeEditRequest(_StrictRequest):
     column: str = Field(min_length=1, max_length=200)
 
 
-class FilterNodeEditRequest(FilterDerivation):
-    """Replace the target plan with a filtered plan."""
-
-
 class ReplaceNodeEditRequest(ReplaceDerivation):
     """Replace or extract text on the target Data Block."""
 
 
 class ExpressionNodeEditRequest(ExpressionDerivation):
-    """Apply a typed Polars expression to the target Data Block."""
+    """Add or change columns on the target Data Block with a typed expression.
+
+    Data Block Edits never change the number or order of rows, so in-place
+    expressions are limited to ``with_columns``. Filtering, sorting, selecting
+    and grouping create a derived Data Block instead.
+    """
+
+    context: Literal["with_columns"]
 
 
 NonEmptyColumnName = Annotated[
@@ -220,7 +223,6 @@ NodeEditRequest = Annotated[
     CastNodeEditRequest
     | RenameColumnNodeEditRequest
     | DeleteColumnNodeEditRequest
-    | FilterNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest
     | SetCellNodeEditRequest

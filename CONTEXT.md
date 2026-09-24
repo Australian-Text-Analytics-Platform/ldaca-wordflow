@@ -66,7 +66,8 @@ _Avoid_: SQL session, database query, SQL edit
 **Data Block Edit**:
 An identity-preserving replacement of one Data Block's tabular execution plan.
 It changes neither creation lineage nor any descendant Data Block's independent
-plan. Session Undo/Redo is interaction history for these edits, not provenance
+plan, and never changes the number or order of rows (an annotation codebook's
+class rows are the one exception). Session Undo/Redo is interaction history for these edits, not provenance
 or a durable audit trail.
 _Avoid_: derivation, lineage update, saved edit history
 

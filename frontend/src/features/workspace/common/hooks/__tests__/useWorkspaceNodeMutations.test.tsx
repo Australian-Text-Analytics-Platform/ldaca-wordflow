@@ -265,7 +265,7 @@ describe('useWorkspaceNodeMutations', () => {
     });
   });
 
-  it('routes preprocessing create and update modes to distinct commands', async () => {
+  it('always creates a new Data Block for Filter and never edits in place', async () => {
     const queryClient = createTestClient();
     workspaceSdkMock.createNode.mockResolvedValue({ data: { id: 'derived-node' } });
     workspaceSdkMock.editNode.mockResolvedValue({ data: { id: 'node-1' } });
@@ -279,8 +279,7 @@ describe('useWorkspaceNodeMutations', () => {
     };
 
     await act(async () => {
-      await result.current.actions.filterNode('node-1', request, 'create');
-      await result.current.actions.filterNode('node-1', request, 'update');
+      await result.current.actions.filterNode('node-1', request);
     });
 
     expect(workspaceSdkMock.createNode).toHaveBeenCalledWith({
@@ -294,15 +293,8 @@ describe('useWorkspaceNodeMutations', () => {
       path: { workspace_id: 'ws-1' },
       throwOnError: true,
     });
-    expect(workspaceSdkMock.editNode).toHaveBeenCalledWith({
-      body: {
-        kind: 'filter',
-        conditions: request.conditions,
-        logic: 'and',
-      },
-      path: { workspace_id: 'ws-1', node_id: 'node-1' },
-      throwOnError: true,
-    });
+    // Data Block Edits never change rows (#129), so Filter has no edit route.
+    expect(workspaceSdkMock.editNode).not.toHaveBeenCalled();
     expect(useFreshNodesStore.getState().freshIdsByWorkspace.get('ws-1')).toEqual(
       new Set(['derived-node']),
     );

@@ -4836,16 +4836,10 @@
       },
       "ExpressionNodeEditRequest": {
         "additionalProperties": false,
-        "description": "Apply a typed Polars expression to the target Data Block.",
+        "description": "Add or change columns on the target Data Block with a typed expression.\n\nData Block Edits never change the number or order of rows, so in-place\nexpressions are limited to ``with_columns``. Filtering, sorting, selecting\nand grouping create a derived Data Block instead.",
         "properties": {
           "context": {
-            "enum": [
-              "filter",
-              "with_columns",
-              "select",
-              "sort",
-              "group_by_agg"
-            ],
+            "const": "with_columns",
             "title": "Context",
             "type": "string"
           },
@@ -5226,40 +5220,6 @@
           "source_node_id"
         ],
         "title": "FilterNodeCreateRequest",
-        "type": "object"
-      },
-      "FilterNodeEditRequest": {
-        "additionalProperties": false,
-        "description": "Replace the target plan with a filtered plan.",
-        "properties": {
-          "conditions": {
-            "items": {
-              "$ref": "#/components/schemas/FilterCondition-Input"
-            },
-            "minItems": 1,
-            "title": "Conditions",
-            "type": "array"
-          },
-          "kind": {
-            "const": "filter",
-            "default": "filter",
-            "title": "Kind",
-            "type": "string"
-          },
-          "logic": {
-            "default": "and",
-            "enum": [
-              "and",
-              "or"
-            ],
-            "title": "Logic",
-            "type": "string"
-          }
-        },
-        "required": [
-          "conditions"
-        ],
-        "title": "FilterNodeEditRequest",
         "type": "object"
       },
       "FilterScalar": {
@@ -17168,7 +17128,6 @@
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "expression": "#/components/schemas/ExpressionNodeEditRequest",
-                    "filter": "#/components/schemas/FilterNodeEditRequest",
                     "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
                     "replace": "#/components/schemas/ReplaceNodeEditRequest",
                     "set_cell": "#/components/schemas/SetCellNodeEditRequest"
@@ -17184,9 +17143,6 @@
                   },
                   {
                     "$ref": "#/components/schemas/DeleteColumnNodeEditRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/FilterNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/ReplaceNodeEditRequest"

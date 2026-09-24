@@ -15,12 +15,11 @@ import {
   type ReplaceRequestDraft,
 } from './replaceRequestModel';
 import type { ReplaceRequest } from './replaceRequestModel';
-import type { PreprocessingApplyMode } from '../../preprocessingApplyMode';
+import { type PreprocessingApplyMode, UPDATE_DATA_BLOCK_MODE } from '../../preprocessingApplyMode';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 
 export interface ReplaceSubTabProps {
   currentWorkspaceId: string | null;
-  applyMode: PreprocessingApplyMode;
   selectedColumn?: string;
   selectedNodes: WorkspaceNodeMetadata[];
   getColumnInfos: (node: WorkspaceNodeMetadata) => ColumnInfo[];
@@ -47,7 +46,6 @@ export interface ReplaceSubTabProps {
 export const useReplaceSubTab = (props: ReplaceSubTabProps) => {
   const {
     currentWorkspaceId,
-    applyMode,
     selectedColumn: inputSelectedColumn = '',
     selectedNodes,
     isLoading,
@@ -142,11 +140,10 @@ export const useReplaceSubTab = (props: ReplaceSubTabProps) => {
     if (!activeNodeId || !request) return;
     setApplyLoading(true);
     try {
-      const response = await replaceText(activeNodeId, request, applyMode);
-      onAlert(applyMode === 'create' ? `Created ${response.name}` : `Updated ${response.name}`);
-      if (applyMode === 'update') {
-        await refreshNodeSchema(activeNodeId);
-      }
+      // Find only adds or changes a column, so it always edits in place.
+      const response = await replaceText(activeNodeId, request, UPDATE_DATA_BLOCK_MODE);
+      onAlert(`Updated ${response.name}`);
+      await refreshNodeSchema(activeNodeId);
     } catch {
       // Error is shown via preview refresh
     } finally {

@@ -2434,13 +2434,17 @@ export type ExpressionNodeCreateRequest = {
 /**
  * ExpressionNodeEditRequest
  *
- * Apply a typed Polars expression to the target Data Block.
+ * Add or change columns on the target Data Block with a typed expression.
+ *
+ * Data Block Edits never change the number or order of rows, so in-place
+ * expressions are limited to ``with_columns``. Filtering, sorting, selecting
+ * and grouping create a derived Data Block instead.
  */
 export type ExpressionNodeEditRequest = {
     /**
      * Context
      */
-    context: 'filter' | 'with_columns' | 'select' | 'sort' | 'group_by_agg';
+    context: 'with_columns';
     /**
      * Expressions
      */
@@ -2649,26 +2653,6 @@ export type FilterNodeCreateRequest = {
      * Source Node Id
      */
     source_node_id: string;
-};
-
-/**
- * FilterNodeEditRequest
- *
- * Replace the target plan with a filtered plan.
- */
-export type FilterNodeEditRequest = {
-    /**
-     * Conditions
-     */
-    conditions: Array<FilterConditionInput>;
-    /**
-     * Kind
-     */
-    kind?: 'filter';
-    /**
-     * Logic
-     */
-    logic?: 'and' | 'or';
 };
 
 export type FilterScalar = string | number | number | boolean | null;
@@ -8954,8 +8938,6 @@ export type EditNodeData = {
     } & RenameColumnNodeEditRequest) | ({
         kind: 'delete_column';
     } & DeleteColumnNodeEditRequest) | ({
-        kind: 'filter';
-    } & FilterNodeEditRequest) | ({
         kind: 'replace';
     } & ReplaceNodeEditRequest) | ({
         kind: 'expression';

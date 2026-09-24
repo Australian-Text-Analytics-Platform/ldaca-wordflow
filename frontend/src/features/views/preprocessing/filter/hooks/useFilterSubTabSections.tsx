@@ -28,19 +28,14 @@ import type {
   PreviewPagination,
   PreviewRow,
 } from '../../types';
-import type { PreprocessingApplyMode } from '../../preprocessingApplyMode';
 
 export interface FilterSubTabProps {
   selectedNodeId: string | null;
   selectedNode: WorkspaceNodeMetadata | null;
   columnOptions: ConditionColumnOption[];
   currentWorkspaceId: string | null;
-  applyMode: PreprocessingApplyMode;
-  filterNode: (
-    nodeId: string,
-    request: FilterRequest,
-    mode: PreprocessingApplyMode,
-  ) => Promise<unknown>;
+  /** Always creates a derived Data Block: filtering changes rows. */
+  filterNode: (nodeId: string, request: FilterRequest) => Promise<unknown>;
   filterPreview: OperationPreviewFetcher<FilterRequest>;
   isLoading: {
     operations: boolean;
@@ -153,7 +148,6 @@ export const useFilterSubTabSections = (
     selectedNode,
     columnOptions,
     currentWorkspaceId,
-    applyMode,
     filterNode,
     filterPreview,
     isLoading,
@@ -570,7 +564,7 @@ export const useFilterSubTabSections = (
 
     try {
       setIsFiltering(true);
-      await filterNode(selectedNodeId, request, applyMode);
+      await filterNode(selectedNodeId, request);
     } catch (error) {
       onAlert(`Error applying filter: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {

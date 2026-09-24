@@ -22,7 +22,6 @@ import { useReplaceSubTab, type ReplaceSubTabProps } from './hooks/useReplaceSub
 
 type ReplaceSubTabComponentProps = ReplaceSubTabProps & {
   renderNodeInputsPanel?: () => ReactNode;
-  onApplyModeChange: (value: ReplaceSubTabProps['applyMode']) => void;
 };
 
 /**
@@ -33,7 +32,7 @@ type ReplaceSubTabComponentProps = ReplaceSubTabProps & {
  * apply/preview actions to the replace hook.
  */
 export function ReplaceSubTab(props: ReplaceSubTabComponentProps) {
-  const { applyMode, onApplyModeChange, renderNodeInputsPanel } = props;
+  const { renderNodeInputsPanel } = props;
   const {
     hasSelection,
     effectiveNodes,
@@ -170,7 +169,7 @@ export function ReplaceSubTab(props: ReplaceSubTabComponentProps) {
             )}
           </div>
         </CardContent>
-        <PreprocessingApplyBar value={applyMode} onChange={onApplyModeChange}>
+        <PreprocessingApplyBar mode="update">
           <div className="flex flex-1 items-center gap-2">
             <Label htmlFor="replace-output-column" className="shrink-0">
               Output column name
@@ -201,13 +200,7 @@ export function ReplaceSubTab(props: ReplaceSubTabComponentProps) {
               disabled={!canApply}
               className="shrink-0"
             >
-              {applyLoading
-                ? applyMode === 'create'
-                  ? 'Creating Data Block…'
-                  : 'Updating Data Block…'
-                : applyMode === 'create'
-                  ? 'Create Data Block'
-                  : 'Update Data Block'}
+              {applyLoading ? 'Updating Data Block…' : 'Update Data Block'}
             </Button>
           </DisabledReasonTooltip>
           <HelpIcon targetKey="preprocessing.common.apply-button" label="Apply action" />

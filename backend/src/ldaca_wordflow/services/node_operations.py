@@ -51,7 +51,6 @@ from ..models.node_resources import (
     DeleteColumnNodeEditRequest,
     ExpressionNodeEditRequest,
     ExpressionNodeCreateRequest,
-    FilterNodeEditRequest,
     FilterNodeCreateRequest,
     JoinNodeCreateRequest,
     NodeDerivationRequest,
@@ -248,10 +247,6 @@ def build_edited_lazyframe(
         if request.column not in node.data.collect_schema().names():
             raise InvalidInputError("Delete column is not present on the Data Block")
         return node.data.drop(request.column), None
-
-    if isinstance(request, FilterNodeEditRequest):
-        schema = dict(node.data.collect_schema().items())
-        return node.data.filter(_filter_expression(request, schema)), None
 
     if isinstance(request, ReplaceNodeEditRequest):
         _output_column, expression = _replace_expression(node, request)

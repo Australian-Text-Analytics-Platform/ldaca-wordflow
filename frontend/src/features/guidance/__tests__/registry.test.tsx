@@ -46,13 +46,13 @@ describe('Data Loader guidance registry', () => {
     expect(resolveAddDataBlockTarget()).toBe(screen.getByText('File toolbar'));
   });
 
-  it('defines 50 unique, automatically placed hints in exactly one view sequence', () => {
+  it('defines 49 unique, automatically placed hints in exactly one view sequence', () => {
     const ids = contextualHintRegistry.map((definition) => definition.id);
     const sequencedIds = Object.values(contextualHintSequences).flat();
 
-    expect(ids).toHaveLength(50);
-    expect(new Set(ids).size).toBe(50);
-    expect(sequencedIds).toHaveLength(50);
+    expect(ids).toHaveLength(49);
+    expect(new Set(ids).size).toBe(49);
+    expect(sequencedIds).toHaveLength(49);
     expect(new Set(sequencedIds)).toEqual(new Set(ids));
     expect(contextualHintRegistry.every((definition) => definition.placement === 'auto')).toBe(
       true,

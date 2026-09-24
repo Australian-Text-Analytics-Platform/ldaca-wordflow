@@ -6,7 +6,6 @@ import {
 } from './aggregateBuilderUiState';
 import {
   type AggregateBuilderToken,
-  type AggregateOperation,
   buildAggregateExpressionRequest,
   normalizeSmartCharacters,
   tokensToPolarsExpression,
@@ -23,11 +22,10 @@ import {
   type OperationPreviewFetcher,
 } from '../../hooks/useNodePreviewWithRawFallback';
 import type { PreviewPagination, PreviewRow } from '../../types';
-import type { PreprocessingApplyMode } from '../../preprocessingApplyMode';
+import { type PreprocessingApplyMode, UPDATE_DATA_BLOCK_MODE } from '../../preprocessingApplyMode';
 
 export interface AggregateSubTabProps {
   currentWorkspaceId: string | null;
-  applyMode: PreprocessingApplyMode;
   selectedNodes: WorkspaceNodeMetadata[];
   getColumnInfos: (node: WorkspaceNodeMetadata) => ColumnInfo[];
   isLoading: {
@@ -65,8 +63,6 @@ interface BasicBuilderConfig {
   addCustomToken: (index?: number) => void;
   removeToken: (tokenId: string) => void;
   moveToken: (tokenId: string, index: number) => void;
-  addOperation: (tokenId: string, operation: AggregateOperation) => void;
-  removeOperation: (tokenId: string, index: number) => void;
   startEditingCustom: (tokenId: string) => void;
   finishCustomEdit: (commit: boolean) => void;
   clearBuilder: () => void;
@@ -148,7 +144,6 @@ const createTokenId = (): string => {
 export const useAggregateSubTab = (props: AggregateSubTabProps): UseAggregateSubTabResult => {
   const {
     currentWorkspaceId,
-    applyMode,
     selectedNodes,
     isLoading,
     onAlert,
@@ -324,7 +319,6 @@ export const useAggregateSubTab = (props: AggregateSubTabProps): UseAggregateSub
         kind: 'column',
         column,
         dtype,
-        operations: [],
       }),
     );
     scheduleCommit();
@@ -377,43 +371,6 @@ export const useAggregateSubTab = (props: AggregateSubTabProps): UseAggregateSub
       const isNoOp = moved.length === prev.length && moved.every((token, i) => token === prev[i]);
       return isNoOp ? prev : moved;
     });
-    scheduleCommit();
-  };
-
-  /**
-   * Appends a backend-advertised operation to a column token.
-   * Returned as `basicBuilder.addOperation` for `OperationPopover` selections.
-   */
-  const addOperation = (tokenId: string, operation: AggregateOperation) => {
-    if (basicDisabled) return;
-    applyBasicTokenUpdate((prev) =>
-      prev.map((token) => {
-        if (token.id === tokenId && token.kind === 'column') {
-          return { ...token, operations: [...token.operations, operation] };
-        }
-        return token;
-      }),
-    );
-    scheduleCommit();
-  };
-
-  /**
-   * Removes one operation from a column token. Operation chips use this to undo
-   * method additions.
-   * Returned as `basicBuilder.removeOperation`.
-   */
-  const removeOperation = (tokenId: string, index: number) => {
-    if (basicDisabled) return;
-    applyBasicTokenUpdate((prev) =>
-      prev.map((token) => {
-        if (token.id === tokenId && token.kind === 'column') {
-          const next = [...token.operations];
-          next.splice(index, 1);
-          return { ...token, operations: next };
-        }
-        return token;
-      }),
-    );
     scheduleCommit();
   };
 
@@ -503,12 +460,11 @@ export const useAggregateSubTab = (props: AggregateSubTabProps): UseAggregateSub
     setApplyLoading(true);
     try {
       const payload = buildRequest();
-      const response = await polarsExpressionApply(activeNodeId, payload, applyMode);
+      // Create only adds a column, so it always edits in place.
+      const response = await polarsExpressionApply(activeNodeId, payload, UPDATE_DATA_BLOCK_MODE);
       setLastAppliedExpression(currentExpression);
-      onAlert(applyMode === 'create' ? `Created ${response.name}` : `Updated ${response.name}`);
-      if (applyMode === 'update') {
-        void refreshNodeSchema(activeNodeId);
-      }
+      onAlert(`Updated ${response.name}`);
+      void refreshNodeSchema(activeNodeId);
       commitExpression();
       refreshPreview();
     } catch {
@@ -592,8 +548,6 @@ export const useAggregateSubTab = (props: AggregateSubTabProps): UseAggregateSub
       addCustomToken,
       removeToken: removeBasicToken,
       moveToken: moveBasicToken,
-      addOperation,
-      removeOperation,
       startEditingCustom: startEditingCustomToken,
       finishCustomEdit,
       clearBuilder: clearBasicBuilder,
