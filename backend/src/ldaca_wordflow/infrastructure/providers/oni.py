@@ -181,16 +181,22 @@ def _summary_to_result(summary: dict[str, Any]) -> dict[str, Any]:
         or _first_string(record.get("name"))
         or result_id
     )
+    raw_access = summary.get("_access")
+    access = raw_access if isinstance(raw_access, dict) else {}
+    group = access.get("group")
     return {
         "id": result_id,
         "crate_id": str(crate_id) if crate_id else None,
+        # ``_access`` reflects the calling token; absent means publicly readable.
+        "has_access": access.get("hasAccess") is not False,
+        "access_group": group if isinstance(group, str) and group else None,
         "title": title,
         "description": _first_string(summary.get("description"))
         or _first_string(record.get("description")),
         "types": _string_list(summary.get("recordType") or summary.get("@type")),
         "license": _first_string(summary.get("license")),
         "importable": summary.get("error") != "not_authorized",
-        "access": _string_list(summary.get("_access")),
+        "access": [str(group)] if isinstance(group, str) and group else [],
         "collections": _unique_strings(
             summary.get("_memberOf"),
             summary.get("_mainCollection"),
@@ -370,6 +376,68 @@ class OniClient:
             [_hit_to_result(hit) for hit in raw_items],
             int(total) if isinstance(total, int) and total >= 0 else 0,
         )
+
+    async def list_collections(self, *, max_collections: int = 500) -> list[dict[str, Any]]:
+        """Return every top-level collection, with access for the current token."""
+
+        records: list[dict[str, Any]] = []
+        while len(records) < max_collections:
+            page, total = await self.search(
+                method=DataPortalSearchMethod.COLLECTION,
+                query="",
+                limit=100,
+                offset=len(records),
+            )
+            records.extend(page)
+            if not page or len(records) >= total:
+                break
+        return sorted(records[:max_collections], key=lambda record: record["title"].casefold())
+
+    async def list_member_object_ids(self, root_id: str, *, max_objects: int) -> list[str]:
+        """Return the identifier of every RepositoryObject under ``root_id``.
+
+        The index lists objects even when their content is access-controlled;
+        each object's own RO-Crate metadata is then public.
+        """
+
+        objects: list[str] = []
+        while len(objects) < max_objects:
+            body = {
+                "size": min(100, max_objects - len(objects)),
+                "from": len(objects),
+                "_source": ["@id"],
+                "query": {
+                    "bool": {
+                        "filter": [
+                            {"terms": {"@type.keyword": ["RepositoryObject"]}},
+                            {"terms": {"_root.@id.keyword": [root_id]}},
+                        ]
+                    }
+                },
+                # Index order keeps from/size paging stable; the portal rejects
+                # sorting on @id.keyword.
+                "sort": ["_doc"],
+            }
+            data = await self._request_json(
+                "POST", "/search/index/items", json_body=body
+            )
+            hits = data.get("hits", {})
+            raw_items = hits.get("hits", []) if isinstance(hits, dict) else []
+            if not isinstance(raw_items, list):
+                raise ValueError("Data Portal search hits are invalid")
+            sources = [
+                item["_source"]["@id"]
+                for item in raw_items
+                if isinstance(item, dict)
+                and isinstance(item.get("_source"), dict)
+                and isinstance(item["_source"].get("@id"), str)
+            ]
+            objects.extend(sources)
+            raw_total = hits.get("total", 0) if isinstance(hits, dict) else 0
+            total = raw_total.get("value", 0) if isinstance(raw_total, dict) else raw_total
+            if not sources or len(objects) >= int(total or 0):
+                break
+        return objects
 
     async def featured_collections(
         self, collection_ids: list[str]

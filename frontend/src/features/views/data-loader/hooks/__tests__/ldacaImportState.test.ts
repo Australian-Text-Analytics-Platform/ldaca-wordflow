@@ -1,57 +1,60 @@
 import { describe, expect, it } from 'vitest';
-import type { OniSearchResult as LdacaSearchResult } from '@/api';
-import { initialLdacaImportState, ldacaImportReducer } from '../ldacaImportState';
+import type { DataPortalRecord } from '@/api';
+import {
+  filterLdacaCollections,
+  initialLdacaImportState,
+  ldacaImportReducer,
+} from '../ldacaImportState';
 
-const record: LdacaSearchResult = {
-  id: 'arcp://name,hdl10.26180~23961609',
-  crate_id: 'arcp://name,hdl10.26180~23961609',
-  title: 'A COrpus of Oz Early English (COOEE)',
-  description: 'Historical English corpus',
-  types: ['Dataset'],
-  license: 'https://creativecommons.org/licenses/by/4.0/',
+const collection = (title: string, description: string | null = null): DataPortalRecord => ({
+  id: `arcp://${title}`,
+  crate_id: `arcp://${title}`,
+  title,
+  description,
   importable: true,
-  collections: ['arcp://name,hdl10.26180~23961609'],
-  file_formats: ['text/plain'],
-  stats: { documents: 600 },
-};
+});
 
 describe('ldacaImportReducer', () => {
-  it('prepares a new search by clearing stale results, filters, and errors', () => {
-    const state = {
-      ...initialLdacaImportState,
-      searchResults: [record],
-      collectionFilter: 'old-collection',
-      fileFormatFilter: 'old-format',
-      errorMessage: 'stale error',
-    };
-
-    expect(ldacaImportReducer(state, { type: 'searchStarted' })).toEqual({
-      ...state,
-      searching: true,
-      hasSearched: true,
-      searchResults: [],
-      collectionFilter: 'all',
-      fileFormatFilter: 'all',
-      errorMessage: undefined,
+  it('invalidates loaded collections so a token change re-checks access', () => {
+    const loaded = ldacaImportReducer(initialLdacaImportState, {
+      type: 'collectionsSucceeded',
+      collections: [collection('COOEE')],
     });
+    expect(loaded).toMatchObject({ collectionsLoaded: true, collectionsLoading: false });
+
+    expect(ldacaImportReducer(loaded, { type: 'collectionsInvalidated' }).collectionsLoaded).toBe(
+      false,
+    );
   });
 
-  it('closes and resets transient search fields after an import starts successfully', () => {
+  it('closes and resets the filter and token panel after an import starts', () => {
     const state = {
       ...initialLdacaImportState,
       ldacaImportOpen: true,
-      searchQuery: 'COOEE',
-      searchResults: [record],
-      hasSearched: true,
-      importingId: record.id,
+      filter: 'speech',
+      tokenPanelOpen: true,
     };
 
-    expect(ldacaImportReducer(state, { type: 'importSucceeded' })).toEqual({
-      ...state,
+    expect(ldacaImportReducer(state, { type: 'importSucceeded' })).toMatchObject({
       ldacaImportOpen: false,
-      searchQuery: '',
-      searchResults: [],
-      hasSearched: false,
+      filter: '',
+      tokenPanelOpen: false,
     });
+  });
+});
+
+describe('filterLdacaCollections', () => {
+  const collections = [
+    collection('A COrpus of Oz Early English (COOEE)', 'Colonial letters'),
+    collection('Sydney Speaks', 'Sociolinguistic interviews'),
+  ];
+
+  it('matches title, description, and identifier case-insensitively', () => {
+    expect(filterLdacaCollections(collections, 'cooee').map((item) => item.title)).toEqual([
+      'A COrpus of Oz Early English (COOEE)',
+    ]);
+    expect(filterLdacaCollections(collections, 'INTERVIEWS')).toHaveLength(1);
+    expect(filterLdacaCollections(collections, 'arcp://sydney')).toHaveLength(1);
+    expect(filterLdacaCollections(collections, '  ')).toHaveLength(2);
   });
 });

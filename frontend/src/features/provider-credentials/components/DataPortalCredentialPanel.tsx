@@ -7,7 +7,12 @@ import { Input } from '@/components/ui/input';
 import { useProviderCredentials } from '../useProviderCredentials';
 
 /** Standalone Data Portal credential surface, intentionally outside LLM provider settings. */
-export function DataPortalCredentialPanel() {
+export function DataPortalCredentialPanel({
+  onChanged,
+}: {
+  /** Called after the token is saved or cleared, e.g. to re-check access. */
+  onChanged?: () => void;
+} = {}) {
   const credentials = useProviderCredentials();
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
@@ -21,6 +26,7 @@ export function DataPortalCredentialPanel() {
       await credentials.saveDataPortalCredential(draft);
       setDraft('');
       toast.success('Data Portal credential updated');
+      onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not update credential');
     } finally {
@@ -33,6 +39,7 @@ export function DataPortalCredentialPanel() {
     try {
       await credentials.clearDataPortalCredential();
       toast.success('Data Portal credential cleared');
+      onChanged?.();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Could not clear credential');
     } finally {

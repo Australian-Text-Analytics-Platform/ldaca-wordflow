@@ -213,23 +213,16 @@ function DataLoaderFeature() {
   const {
     ldacaImportOpen,
     setLdacaImportOpen,
-    searchMethod,
-    setSearchMethod,
-    searchQuery,
-    setSearchQuery,
-    collectionFilter,
-    setCollectionFilter,
-    fileFormatFilter,
-    setFileFormatFilter,
-    featuredRecords,
-    featuredLoading,
-    searchResults,
-    hasSearched,
-    searching,
+    filter: ldacaFilter,
+    setFilter: setLdacaFilter,
+    collections: ldacaCollections,
+    collectionsLoading: ldacaCollectionsLoading,
+    reloadCollections: reloadLdacaCollections,
+    tokenPanelOpen: ldacaTokenPanelOpen,
+    setTokenPanelOpen: setLdacaTokenPanelOpen,
     importingId,
     ldacaImporting,
     errorMessage: ldacaErrorMessage,
-    handleLdacaSearch,
     handleLdacaImport,
   } = useLdacaImport({ notify });
   const {
@@ -473,11 +466,11 @@ function DataLoaderFeature() {
                     }}
                     disabled={ldacaImporting}
                   >
-                    <DownloadIcon className="mr-2 h-4 w-4" /> Import from LDaCA
+                    <DownloadIcon className="mr-2 h-4 w-4" /> Import LDaCA collections
                   </Button>
                   <HelpIcon
                     targetKey="data-loader.import-ldaca.button"
-                    label="About import from LDaCA"
+                    label="About import LDaCA collections"
                   />
                 </div>
                 <input
@@ -638,32 +631,17 @@ function DataLoaderFeature() {
         ldacaImport={{
           open: ldacaImportOpen,
           onOpenChange: setLdacaImportOpen,
-          searchMethod,
-          onSearchMethodChange: setSearchMethod,
-          query: searchQuery,
-          onQueryChange: setSearchQuery,
-          collectionFilter,
-          onCollectionFilterChange: setCollectionFilter,
-          fileFormatFilter,
-          onFileFormatFilterChange: setFileFormatFilter,
-          featuredRecords,
-          featuredLoading,
-          searchResults,
-          hasSearched,
-          searching,
+          filter: ldacaFilter,
+          onFilterChange: setLdacaFilter,
+          collections: ldacaCollections,
+          collectionsLoading: ldacaCollectionsLoading,
+          tokenPanelOpen: ldacaTokenPanelOpen,
+          onTokenPanelOpenChange: setLdacaTokenPanelOpen,
+          onTokenChanged: () => void reloadLdacaCollections(),
           importingId,
           importing: ldacaImporting,
           errorMessage: ldacaErrorMessage,
-          /**
-           * Routes dialog search submission through the feature's guarded search handler.
-           * Invoked by `DataLoaderDialogs` when its Oni search form submits.
-           */
-          onSearch: () => void handleLdacaSearch(),
-          /**
-           * Routes row-level imports through the feature's import task handler.
-           * Invoked by `DataLoaderDialogs` from an Oni result/import action.
-           */
-          onImport: (recordId) => void handleLdacaImport(recordId),
+          onImport: (recordId, metadataOnly) => void handleLdacaImport(recordId, metadataOnly),
         }}
         createFolder={{
           open: createFolderOpen,

@@ -61,6 +61,7 @@ class DataPortalUserFileImportRequest(_StrictModel):
     kind: Literal["data_portal"] = "data_portal"
     identifier: NonEmptyText = Field(max_length=4_000)
     name: NonEmptyText | None = Field(default=None, max_length=500)
+    metadata_only: bool = False
 
 
 UserFileImportRequest = Annotated[

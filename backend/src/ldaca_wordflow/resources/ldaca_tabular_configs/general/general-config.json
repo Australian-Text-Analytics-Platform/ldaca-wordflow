@@ -11,7 +11,8 @@
         "ldac:communicationMode",
         "ldac:indexableText",
         "ldac:mainText",
-        "ldac:annotationType"
+        "ldac:annotationType",
+        "ldac:speaker"
     ],
     "ignore_props": [
         "@type",

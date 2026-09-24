@@ -2,15 +2,13 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DataPortalRecord } from '@/api';
 import {
-  listFeaturedDataPortalCollectionsWithProviderCredential,
-  searchDataPortalWithProviderCredential,
+  listDataPortalCollectionsWithProviderCredential,
   submitDataPortalImportWithProviderCredential,
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useLdacaImport } from '../useLdacaImport';
 
 vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
-  listFeaturedDataPortalCollectionsWithProviderCredential: vi.fn(),
-  searchDataPortalWithProviderCredential: vi.fn(),
+  listDataPortalCollectionsWithProviderCredential: vi.fn(),
   submitDataPortalImportWithProviderCredential: vi.fn(),
 }));
 
@@ -45,12 +43,8 @@ describe('useLdacaImport', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(listFeaturedDataPortalCollectionsWithProviderCredential).mockResolvedValue({
-      data: { items: [record], page: 1, page_size: 20, total: 1 },
-      error: undefined,
-    });
-    vi.mocked(searchDataPortalWithProviderCredential).mockResolvedValue({
-      data: { items: [record], page: 1, page_size: 25, total: 1 },
+    vi.mocked(listDataPortalCollectionsWithProviderCredential).mockResolvedValue({
+      data: { items: [record], page: 1, page_size: 1, total: 1 },
       error: undefined,
     });
     vi.mocked(submitDataPortalImportWithProviderCredential).mockResolvedValue({
@@ -59,37 +53,36 @@ describe('useLdacaImport', () => {
     });
   });
 
-  it('loads featured records through the canonical endpoint', async () => {
+  it('lists every collection when the dialog opens and re-checks after a token change', async () => {
     const { result } = renderHook(() => useLdacaImport({ notify }));
     act(() => result.current.setLdacaImportOpen(true));
-    await waitFor(() => expect(result.current.featuredRecords).toEqual([record]));
-    expect(listFeaturedDataPortalCollectionsWithProviderCredential).toHaveBeenCalledWith();
+    await waitFor(() => expect(result.current.collections).toEqual([record]));
+    expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.setLdacaImportOpen(false));
+    act(() => result.current.setLdacaImportOpen(true));
+    expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(1);
+
+    await act(async () => result.current.reloadCollections());
+    expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(2);
   });
 
-  it('searches with one-based pagination and the selected method', async () => {
-    const { result } = renderHook(() => useLdacaImport({ notify }));
-    act(() => {
-      result.current.setSearchMethod('identifier');
-      result.current.setSearchQuery(record.id);
-    });
-    await act(async () => result.current.handleLdacaSearch());
-    expect(searchDataPortalWithProviderCredential).toHaveBeenCalledWith({
-      method: 'identifier',
-      query: record.id,
-      page: 1,
-      page_size: 25,
-    });
-    expect(result.current.searchResults).toEqual([record]);
-  });
-
-  it('submits the selected identifier and closes the dialog', async () => {
+  it('imports a whole collection, or its metadata only, and closes the dialog', async () => {
     const { result } = renderHook(() => useLdacaImport({ notify }));
     act(() => result.current.setLdacaImportOpen(true));
     await act(async () => result.current.handleLdacaImport(record.id));
-    expect(submitDataPortalImportWithProviderCredential).toHaveBeenCalledWith({
+    expect(submitDataPortalImportWithProviderCredential).toHaveBeenLastCalledWith({
       identifier: record.id,
+      metadata_only: false,
     });
     expect(notify).toHaveBeenCalledWith('success', 'LDaCA import queued.');
     expect(result.current.ldacaImportOpen).toBe(false);
+
+    await act(async () => result.current.handleLdacaImport(record.id, true));
+    expect(submitDataPortalImportWithProviderCredential).toHaveBeenLastCalledWith({
+      identifier: record.id,
+      metadata_only: true,
+    });
+    expect(notify).toHaveBeenCalledWith('success', 'LDaCA metadata import queued.');
   });
 });

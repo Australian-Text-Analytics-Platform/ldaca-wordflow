@@ -91,6 +91,27 @@ class DataPortalService:
             items=[DataPortalRecord.model_validate(record) for record in records],
         )
 
+    async def collections(
+        self,
+        api_token: SecretStr | None,
+    ) -> DataPortalSearchResource:
+        """List every top-level collection with access for the current token."""
+
+        client = self._client(
+            await self._credentials.data_portal_credential(supplied=api_token)
+        )
+        try:
+            records = await client.list_collections()
+        except (httpx.HTTPError, ValueError) as exc:
+            raise BadGatewayError("Data Portal collections could not be listed") from exc
+        items = [DataPortalRecord.model_validate(record) for record in records]
+        return DataPortalSearchResource(
+            page=1,
+            page_size=max(1, len(items)),
+            total=len(items),
+            items=items,
+        )
+
     async def featured(
         self,
         api_token: SecretStr | None,
@@ -141,6 +162,7 @@ class DataPortalService:
                 DataPortalUserFileImportRequest(
                     identifier=identifier,
                     name=name,
+                    metadata_only=request.metadata_only,
                 ),
                 DataPortalImportExecution(
                     input=DataPortalImportInput(
@@ -156,6 +178,7 @@ class DataPortalService:
                         max_output_bytes=(
                             self._settings.max_user_file_import_bytes
                         ),
+                        metadata_only=request.metadata_only,
                     ),
                     staging=staging,
                 ),

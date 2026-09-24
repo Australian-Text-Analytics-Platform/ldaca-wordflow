@@ -135,6 +135,7 @@ class DataPortalImportInput:
     download_concurrency: int
     staging_dir: str
     max_output_bytes: int
+    metadata_only: bool = False
     kind: Literal["data_portal_import"] = field(
         default="data_portal_import",
         init=False,

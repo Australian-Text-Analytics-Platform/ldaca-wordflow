@@ -39,6 +39,8 @@ def data_portal_import_process(
     report = cast(Callable[[dict[str, object]], None], progress_queue.put)
     staging = Path(invocation.staging_dir).resolve(strict=True)
     report({"fraction": 0.05, "message": "Fetching Data Portal metadata"})
+    if invocation.metadata_only:
+        return _import_metadata_only(invocation, staging, report)
     metadata, documents, texts = asyncio.run(
         _fetch_portal_content(
             identifier=invocation.identifier,
@@ -81,6 +83,115 @@ def data_portal_import_process(
         "destination_path": f"LDaCA/{folder_name}",
         "file_count": 2,
         "bytes_written": total_bytes,
+    }
+
+
+# Bounds one metadata-only import; the portal's largest collections are far smaller.
+MAX_METADATA_OBJECTS = 10_000
+
+
+def _import_metadata_only(
+    invocation: DataPortalImportInput,
+    staging: Path,
+    report: Callable[[dict[str, object]], None],
+) -> dict[str, object]:
+    """Tabulate every member object's public RO-Crate, without text content.
+
+    A restricted collection's own crate describes only the collection, but
+    each member object's RO-Crate is public. Their graphs are merged and
+    flattened with the same RO-Crate tabulation as a full import.
+    """
+
+    name, metadata = asyncio.run(
+        _fetch_object_crates(
+            identifier=invocation.identifier,
+            api_base_url=invocation.api_base_url,
+            api_token=invocation.api_token,
+            timeout=invocation.timeout,
+            download_concurrency=invocation.download_concurrency,
+            report=report,
+            max_json_bytes=invocation.max_output_bytes,
+        )
+    )
+    report({"fraction": 0.8, "message": "Tabulating object metadata"})
+    corpus_name = invocation.requested_name or f"{name} (metadata)"
+    folder_name = _safe_name(corpus_name)
+    destination = staging / f"{folder_name}.parquet"
+    _tabulate_metadata(invocation.identifier, metadata, destination)
+    readme = staging / "README.md"
+    readme.write_text(
+        f"# {corpus_name}\n\nSource: {invocation.identifier}\n\n"
+        "Metadata only: the object contents require access you do not "
+        "currently have.\n",
+        encoding="utf-8",
+    )
+    total_bytes = destination.stat().st_size + readme.stat().st_size
+    if total_bytes > invocation.max_output_bytes:
+        raise ValueError("Data Portal import exceeds its storage limit")
+    report({"fraction": 0.95, "message": "Portal import is ready to publish"})
+    return {
+        "kind": "data_portal",
+        "destination_path": f"LDaCA/{folder_name}",
+        "file_count": 2,
+        "bytes_written": total_bytes,
+    }
+
+
+async def _fetch_object_crates(
+    *,
+    identifier: str,
+    api_base_url: str,
+    api_token: str | None,
+    timeout: float,
+    download_concurrency: int,
+    report: Callable[[dict[str, object]], None],
+    max_json_bytes: int,
+) -> tuple[str, dict[str, Any]]:
+    """Merge the collection crate with every member object's crate."""
+
+    async with httpx.AsyncClient(
+        base_url=api_base_url.rstrip("/"),
+        timeout=timeout,
+        follow_redirects=True,
+    ) as http_client:
+        client = OniClient(
+            http_client,
+            token=api_token,
+            max_json_bytes=min(max_json_bytes, 8 * 1024 * 1024),
+        )
+        collection = await client.get_metadata(identifier)
+        object_ids = await client.list_member_object_ids(
+            identifier, max_objects=MAX_METADATA_OBJECTS
+        )
+        if not object_ids:
+            raise ValueError("The Data Portal lists no objects for this collection")
+        report({"fraction": 0.1, "message": f"Fetching metadata for {len(object_ids)} objects"})
+        semaphore = asyncio.Semaphore(max(1, download_concurrency))
+        done = 0
+
+        async def fetch(object_id: str) -> dict[str, Any]:
+            nonlocal done
+            async with semaphore:
+                crate = await client.get_metadata(object_id)
+            done += 1
+            if done % 25 == 0:
+                report(
+                    {
+                        "fraction": 0.1 + 0.7 * done / len(object_ids),
+                        "message": f"Fetched metadata for {done} of {len(object_ids)} objects",
+                    }
+                )
+            return crate
+
+        crates = await asyncio.gather(*(fetch(object_id) for object_id in object_ids))
+    merged: dict[str, dict[str, Any]] = {}
+    for crate in (collection, *crates):
+        for entity in crate.get("@graph", []):
+            if isinstance(entity, dict) and isinstance(entity.get("@id"), str):
+                merged.setdefault(entity["@id"], entity)
+    return _metadata_name(collection, identifier), {
+        "@context": collection.get("@context"),
+        "@graph": list(merged.values()),
     }
 
 

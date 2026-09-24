@@ -1,3 +1,5 @@
+from typing import Any
+
 import httpx
 import pytest
 
@@ -121,3 +123,155 @@ def test_build_search_body_rejects_invalid_pagination(
             limit=limit,
             offset=offset,
         )
+
+
+def _hit(identifier: str, name: str, access: dict[str, object]) -> dict[str, object]:
+    return {
+        "_source": {
+            "@id": identifier,
+            "@type": ["Dataset", "RepositoryCollection"],
+            "name": [{"@value": name}],
+            "_access": access,
+        }
+    }
+
+
+@pytest.mark.anyio
+async def test_list_collections_reports_access_for_the_current_token() -> None:
+    """#135: every top-level collection, sorted, with typed access."""
+
+    bodies: list[dict[str, object]] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        import json
+
+        body = json.loads(request.content)
+        bodies.append(body)
+        hits = [
+            _hit(
+                "arcp://b", "Sydney Speaks", {"hasAccess": False, "group": "licence-a"}
+            ),
+            _hit("arcp://a", "COOEE", {"hasAccess": True}),
+        ]
+        return httpx.Response(200, json={"hits": {"total": {"value": 2}, "hits": hits}})
+
+    async with httpx.AsyncClient(
+        base_url="https://data.ldaca.edu.au/api",
+        transport=httpx.MockTransport(respond),
+    ) as http_client:
+        records = await OniClient(http_client).list_collections()
+
+    assert [(r["title"], r["has_access"], r["access_group"]) for r in records] == [
+        ("COOEE", True, None),
+        ("Sydney Speaks", False, "licence-a"),
+    ]
+    assert records[1]["access"] == ["licence-a"]
+    assert len(bodies) == 1
+    assert bodies[0]["size"] == 100
+
+
+@pytest.mark.anyio
+async def test_list_member_object_ids_pages_through_the_index() -> None:
+    offsets: list[int] = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        import json
+
+        body = json.loads(request.content)
+        offsets.append(body["from"])
+        assert body["sort"] == ["_doc"]
+        assert body["_source"] == ["@id"]
+        start = body["from"]
+        hits = [
+            {"_source": {"@id": f"arcp://object/{index}"}}
+            for index in range(start, min(start + body["size"], 150))
+        ]
+        return httpx.Response(
+            200, json={"hits": {"total": {"value": 150}, "hits": hits}}
+        )
+
+    async with httpx.AsyncClient(
+        base_url="https://data.ldaca.edu.au/api",
+        transport=httpx.MockTransport(respond),
+    ) as http_client:
+        ids = await OniClient(http_client).list_member_object_ids(
+            "arcp://root", max_objects=10_000
+        )
+
+    assert ids[:2] == ["arcp://object/0", "arcp://object/1"]
+    assert len(ids) == 150
+    assert offsets == [0, 100]
+
+
+@pytest.mark.anyio
+async def test_metadata_only_merges_each_object_crate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """#135: restricted collections tabulate their public object RO-Crates."""
+
+    from ldaca_wordflow.workers import data_portal
+
+    collection = {
+        "@graph": [
+            {
+                "@id": "arcp://root",
+                "@type": ["Dataset", "RepositoryCollection"],
+                "name": "Speaks",
+            }
+        ]
+    }
+
+    def object_crate(index: int) -> dict[str, object]:
+        return {
+            "@graph": [
+                {
+                    "@id": f"arcp://root/o{index}",
+                    "@type": ["RepositoryObject"],
+                    "name": f"Interview {index}",
+                    "ldac:speaker": {"@id": f"arcp://root/speaker/{index}"},
+                },
+                {
+                    "@id": f"arcp://root/speaker/{index}",
+                    "@type": "Person",
+                    "name": f"Speaker {index}",
+                    "gender": "Female",
+                },
+                # Shared entities appear in every crate but are kept once.
+                {
+                    "@id": "https://creativecommons.org/licenses/by/4.0/",
+                    "name": "CC BY",
+                },
+            ]
+        }
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/search/index/items"):
+            hits = [{"_source": {"@id": f"arcp://root/o{index}"}} for index in (1, 2)]
+            return httpx.Response(
+                200, json={"hits": {"total": {"value": 2}, "hits": hits}}
+            )
+        identifier = request.url.params["id"]
+        if identifier == "arcp://root":
+            return httpx.Response(200, json=collection)
+        return httpx.Response(200, json=object_crate(int(identifier[-1])))
+
+    real_client = httpx.AsyncClient
+
+    def mocked_client(**kwargs: Any) -> httpx.AsyncClient:
+        return real_client(transport=httpx.MockTransport(respond), **kwargs)
+
+    monkeypatch.setattr(data_portal.httpx, "AsyncClient", mocked_client)
+    name, merged = await data_portal._fetch_object_crates(
+        identifier="arcp://root",
+        api_base_url="https://data.ldaca.edu.au/api",
+        api_token=None,
+        timeout=5,
+        download_concurrency=2,
+        report=lambda _update: None,
+        max_json_bytes=1_000_000,
+    )
+
+    assert name == "Speaks"
+    ids = [entity["@id"] for entity in merged["@graph"]]
+    assert len(ids) == len(set(ids)) == 6
+    assert "arcp://root/speaker/2" in ids

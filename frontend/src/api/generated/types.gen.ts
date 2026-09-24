@@ -1939,6 +1939,18 @@ export type DataBlockExportRequest = {
 };
 
 /**
+ * DataPortalCollectionsRequest
+ *
+ * Optional request-only token for listing every portal collection.
+ */
+export type DataPortalCollectionsRequest = {
+    /**
+     * Api Token
+     */
+    api_token?: string | null;
+};
+
+/**
  * DataPortalCredentialPatch
  *
  * Write-only Data Portal credential update.
@@ -1987,6 +1999,10 @@ export type DataPortalImportSubmitRequest = {
      */
     identifier: string;
     /**
+     * Metadata Only
+     */
+    metadata_only?: boolean;
+    /**
      * Name
      */
     name?: string | null;
@@ -2003,6 +2019,10 @@ export type DataPortalRecord = {
      */
     access?: Array<string>;
     /**
+     * Access Group
+     */
+    access_group?: string | null;
+    /**
      * Collections
      */
     collections?: Array<string>;
@@ -2018,6 +2038,10 @@ export type DataPortalRecord = {
      * File Formats
      */
     file_formats?: Array<string>;
+    /**
+     * Has Access
+     */
+    has_access?: boolean;
     /**
      * Id
      */
@@ -2104,6 +2128,10 @@ export type DataPortalUserFileImportRequest = {
      * Kind
      */
     kind?: 'data_portal';
+    /**
+     * Metadata Only
+     */
+    metadata_only?: boolean;
     /**
      * Name
      */
@@ -5694,6 +5722,10 @@ export type DataPortalImportSubmitRequestWritable = {
      */
     identifier: string;
     /**
+     * Metadata Only
+     */
+    metadata_only?: boolean;
+    /**
      * Name
      */
     name?: string | null;
@@ -5882,6 +5914,47 @@ export type GoogleCallbackErrors = {
 };
 
 export type GoogleCallbackError = GoogleCallbackErrors[keyof GoogleCallbackErrors];
+
+export type ListDataPortalCollectionsData = {
+    body: DataPortalCollectionsRequest;
+    path?: never;
+    query?: never;
+    url: '/api/data-portal/collections';
+};
+
+export type ListDataPortalCollectionsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Upstream provider unavailable
+     */
+    502: ApiError;
+};
+
+export type ListDataPortalCollectionsError = ListDataPortalCollectionsErrors[keyof ListDataPortalCollectionsErrors];
+
+export type ListDataPortalCollectionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DataPortalSearchResource;
+};
+
+export type ListDataPortalCollectionsResponse = ListDataPortalCollectionsResponses[keyof ListDataPortalCollectionsResponses];
 
 export type ListFeaturedDataPortalCollectionsData = {
     body: DataPortalFeaturedRequest;

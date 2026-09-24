@@ -119,20 +119,33 @@ Data Block and join it to the documents on `base_name`.
 
 Use this option to download curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities. All sample data is publicly available and may be freely tested or removed. If sample data is used in a research output, please cite <img alt="citemark" src="references/assets/mark_ref.png" style="display: inline; height: 1em; vertical-align: middle;"> the dataset appropriately.
 
-<h2 id="help-data-loader-import-ldaca-button">Import from LDaCA</h2>
+<h2 id="help-data-loader-import-ldaca-button">Import LDaCA collections</h2>
 
-Use this option to import a dataset directly from the Language Data Commons of Australia (LDaCA).
+Use this option to import a collection directly from the Language Data Commons
+of Australia ([LDaCA Data Portal](https://data.ldaca.edu.au)).
 
-![Copy download link](tutorials/assets/data_loader/ldaca_loader_link.png)
+1. Click **Import LDaCA collections**. The dialog lists every collection on the
+   portal. Each title links to its portal page.
+2. Type in **Filter collections** to narrow the list by name or description.
+3. Click **Download** on a collection to import its texts.
 
-1. On the LDaCA repository page, right-click the download icon to copy the ZIP download URL.
-2. Paste the URL into the import dialog.
+Some collections are access-controlled. A collection your LDaCA API token
+cannot read is marked **Restricted**, with the licence you need to apply for.
+For these you can:
 
-![Paste download link](tutorials/assets/data_loader/ldaca_loader_input.png)
+- **Import metadata only**: one row per item (for example each interview), with
+  its descriptive metadata and speaker details such as gender, birth date,
+  and location, but no text. This uses the metadata the portal publishes for
+  every item.
+- **Update API token**: enter or change your token in place. The list then
+  checks access again, so collections you have been granted access to become
+  downloadable.
 
-The import runs in the background and may take 30 seconds to a few minutes depending on collection size and network speed. The imported collection appears in the files list under the **LDaCA** folder as a Parquet file once extraction completes. If files do not appear, click the refresh button in the top-right corner of the panel.
-
-Currently supported fully public collections: [COOEE](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26180~23961609&_crateId=arcp%3A%2F%2Fname%2Chdl10.26180~23961609), [ICE-AUS](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1&_crateId=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1), and [La Trobe Australian Spoken English](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26181~23089559&_crateId=arcp%3A%2F%2Fname%2Chdl10.26181~23089559).
+Imports run in the background and may take from 30 seconds to a few minutes,
+depending on collection size and network speed. The imported collection
+appears in the files list under the **LDaCA** folder as a Parquet file (with
+"(metadata)" in its name for a metadata-only import). If files do not appear,
+click the refresh button in the top-right corner of the panel.
 
 <h2 id="help-data-loader-add-button">Add file to project</h2>
 

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request, Response, status
 
 from ..domain import UserFileImport
 from ..models.data_sources import (
+    DataPortalCollectionsRequest,
     DataPortalFeaturedRequest,
     DataPortalImportSubmitRequest,
     DataPortalSearchRequest,
@@ -36,6 +37,21 @@ async def search_data_portal(
     """Search the configured portal without holding file or workspace gates."""
 
     return await runtime.data_portal_service.search(request)
+
+
+@router.post(
+    "/collections",
+    response_model=DataPortalSearchResource,
+    responses=api_errors(400, 403, 422, 502),
+)
+async def list_data_portal_collections(
+    request: DataPortalCollectionsRequest,
+    _principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> DataPortalSearchResource:
+    """Return every top-level collection with access for the current token."""
+
+    return await runtime.data_portal_service.collections(request.api_token)
 
 
 @router.post(

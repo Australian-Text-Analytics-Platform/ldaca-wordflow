@@ -124,7 +124,7 @@ const tutorial = {
   'data-loader.import-ldaca.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-import-ldaca-button',
-    label: 'Import from LDaCA',
+    label: 'Import LDaCA collections',
   },
   'data-loader.add.button': {
     file: 'tutorials/data-loader.md',

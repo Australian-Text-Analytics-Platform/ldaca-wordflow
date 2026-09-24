@@ -154,6 +154,19 @@ class DataPortalFeaturedRequest(BaseModel):
     )
 
 
+class DataPortalCollectionsRequest(BaseModel):
+    """Optional request-only token for listing every portal collection."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    api_token: SecretStr | None = Field(
+        default=None,
+        min_length=1,
+        max_length=4_000,
+        json_schema_extra={"writeOnly": True},
+    )
+
+
 class DataPortalRecord(BaseModel):
     """Normalized portal record independent of Oni JSON-LD shapes."""
 
@@ -166,6 +179,10 @@ class DataPortalRecord(BaseModel):
     types: list[str] = Field(default_factory=list)
     license: str | None = None
     importable: bool
+    # False when the current API token cannot read this record's content.
+    has_access: bool = True
+    # Licence group to request access through, for access-controlled records.
+    access_group: str | None = None
     access: list[str] = Field(default_factory=list)
     collections: list[str] = Field(default_factory=list)
     file_formats: list[str] = Field(default_factory=list)
@@ -189,6 +206,9 @@ class DataPortalImportSubmitRequest(BaseModel):
 
     identifier: str = Field(min_length=1, max_length=4_000)
     name: str | None = Field(default=None, min_length=1, max_length=500)
+    # Import only the indexed object metadata (no text), for collections
+    # whose content the current token cannot read.
+    metadata_only: bool = False
     api_token: SecretStr | None = Field(
         default=None,
         min_length=1,

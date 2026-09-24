@@ -21,6 +21,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/auth/cilogon/callback", "cilogon_callback"),
     ("GET", "/api/auth/cilogon/login", "cilogon_login"),
     ("POST", "/api/auth/google/callback", "google_callback"),
+    ("POST", "/api/data-portal/collections", "list_data_portal_collections"),
     ("POST", "/api/data-portal/featured", "list_featured_data_portal_collections"),
     ("POST", "/api/data-portal/imports", "submit_data_portal_import"),
     ("POST", "/api/data-portal/search", "search_data_portal"),

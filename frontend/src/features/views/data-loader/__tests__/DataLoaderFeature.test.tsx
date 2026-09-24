@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { listFeaturedDataPortalCollections } from '@/api';
+import { listDataPortalCollections } from '@/api';
 import type { FileTreeNode } from '@/features/views/data-loader/types';
 import { WorkspaceDownloadsProvider } from '@/features/workspace/workspace-downloads/WorkspaceDownloadsProvider';
 import DataLoaderFeature from '../DataLoaderFeature';
@@ -21,7 +21,7 @@ const {
   mockRawFile,
   mockCreateFolder,
   mockMoveFile,
-  mockListFeaturedDataPortalCollections,
+  mockListDataPortalCollections,
   mockImportWorkspaceArchive,
   mockPublishContextualHints,
   mockToast,
@@ -38,7 +38,7 @@ const {
   mockRawFile: vi.fn(),
   mockCreateFolder: vi.fn(),
   mockMoveFile: vi.fn(),
-  mockListFeaturedDataPortalCollections: vi.fn(),
+  mockListDataPortalCollections: vi.fn(),
   mockImportWorkspaceArchive: vi.fn(),
   mockPublishContextualHints: vi.fn(),
   mockToast: vi.fn(),
@@ -184,7 +184,7 @@ vi.mock('@/api', async (importOriginal) => ({
   moveFile: mockMoveFile,
   importSampleData: vi.fn(),
   importWorkspaceArchive: mockImportWorkspaceArchive,
-  listFeaturedDataPortalCollections: mockListFeaturedDataPortalCollections,
+  listDataPortalCollections: mockListDataPortalCollections,
 }));
 
 vi.mock('@/features/views/data-loader/hooks/useFiles', () => ({
@@ -277,7 +277,7 @@ describe('DataLoaderFeature citation UI', () => {
       data: { message: 'File moved', path: 'sample_data/Other/docs.csv' },
       error: undefined,
     });
-    mockListFeaturedDataPortalCollections.mockResolvedValue({
+    mockListDataPortalCollections.mockResolvedValue({
       data: { items: [], page: 1, page_size: 20, total: 0 },
       error: undefined,
     });
@@ -636,9 +636,9 @@ describe('DataLoaderFeature citation UI', () => {
     expect(mockDeleteWorkspace).not.toHaveBeenCalled();
   });
 
-  it('links LDaCA collection card titles to their portal pages', async () => {
+  it('lists LDaCA collections with local filtering, access, and portal links', async () => {
     const user = userEvent.setup();
-    vi.mocked(listFeaturedDataPortalCollections).mockResolvedValueOnce({
+    vi.mocked(listDataPortalCollections).mockResolvedValueOnce({
       data: {
         items: [
           {
@@ -653,17 +653,35 @@ describe('DataLoaderFeature citation UI', () => {
             file_formats: [],
             stats: {},
           },
+          {
+            id: 'arcp://name,hdl10.25911~m03c-yz22',
+            crate_id: 'arcp://name,hdl10.25911~m03c-yz22',
+            title: 'Sydney Speaks',
+            description: 'Sociolinguistic interviews',
+            importable: true,
+            has_access: false,
+            access_group: 'https://www.ldaca.edu.au/licenses/sydney-speaks/license-a/all/v1/',
+          },
         ],
         page: 1,
-        page_size: 20,
-        total: 1,
+        page_size: 2,
+        total: 2,
       },
       error: undefined,
     });
 
     renderWithProviders(<DataLoaderFeature />);
 
-    await user.click(screen.getByRole('button', { name: /^import from ldaca$/i }));
+    await user.click(screen.getByRole('button', { name: /^import ldaca collections$/i }));
+    expect(screen.queryByLabelText('Search by')).not.toBeInTheDocument();
+    expect(await screen.findByText('2 of 2 collections')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Import metadata only' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update API token' })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1);
+
+    await user.type(screen.getByLabelText('Filter collections'), 'cooee');
+    expect(screen.getByText('1 of 2 collections')).toBeInTheDocument();
+    expect(screen.queryByText('Sydney Speaks')).not.toBeInTheDocument();
 
     const titleLink = await screen.findByRole('link', {
       name: 'A COrpus of Oz Early English (COOEE)',

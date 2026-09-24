@@ -6,7 +6,6 @@ import type {
   AnnotationRunAllSubmissionWritable,
   ConcordanceAnalysisRequest,
   DataPortalImportSubmitRequest,
-  DataPortalSearchRequest,
   QuotationAnalysisRequest,
   SequentialAnalysisRequest,
   SubmitTabAnalysisData,
@@ -15,9 +14,8 @@ import type {
 } from '@/api';
 import {
   listAnnotationModels,
-  listFeaturedDataPortalCollections,
+  listDataPortalCollections,
   queryAnalysisResult,
-  searchDataPortal,
   submitDataPortalImport,
   submitTabAnalysis,
 } from '@/api';
@@ -167,18 +165,10 @@ export const submitTabAnalysisWithProviderCredential = ({
   });
 };
 
-export const listFeaturedDataPortalCollectionsWithProviderCredential = () => {
+export const listDataPortalCollectionsWithProviderCredential = () => {
   const apiToken = dataPortalCredential();
-  return listFeaturedDataPortalCollections({
+  return listDataPortalCollections({
     body: apiToken ? { api_token: apiToken } : {},
-    throwOnError: true,
-  });
-};
-
-export const searchDataPortalWithProviderCredential = (request: DataPortalSearchRequest) => {
-  const apiToken = dataPortalCredential();
-  return searchDataPortal({
-    body: apiToken ? { ...request, api_token: apiToken } : request,
     throwOnError: true,
   });
 };

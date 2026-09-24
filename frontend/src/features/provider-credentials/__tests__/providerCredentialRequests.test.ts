@@ -4,9 +4,8 @@ import type { AnnotationAnalysisRequest, SessionResponse } from '@/api';
 import { useAuthStore } from '@/stores/authStore';
 import {
   listAnnotationModelsWithProviderCredential,
-  listFeaturedDataPortalCollectionsWithProviderCredential,
+  listDataPortalCollectionsWithProviderCredential,
   queryAnnotationPreviewWithProviderCredential,
-  searchDataPortalWithProviderCredential,
   submitAnnotationRunAllWithProviderCredential,
   submitDataPortalImportWithProviderCredential,
   submitTabAnalysisWithProviderCredential,
@@ -15,9 +14,8 @@ import { useProviderCredentialsStore } from '../providerCredentialsStore';
 
 const sdk = vi.hoisted(() => ({
   listAnnotationModels: vi.fn(),
-  listFeaturedDataPortalCollections: vi.fn(),
+  listDataPortalCollections: vi.fn(),
   queryAnalysisResult: vi.fn(),
-  searchDataPortal: vi.fn(),
   submitDataPortalImport: vi.fn(),
   submitTabAnalysis: vi.fn(),
 }));
@@ -97,8 +95,7 @@ describe('provider credential request boundary', () => {
       batchSize: 20,
       processingMode: 'reprocess_all',
     });
-    await listFeaturedDataPortalCollectionsWithProviderCredential();
-    await searchDataPortalWithProviderCredential({ query: 'speech' });
+    await listDataPortalCollectionsWithProviderCredential();
     await submitDataPortalImportWithProviderCredential({ identifier: 'arcp://name,corpus' });
 
     expect(sdk.listAnnotationModels).toHaveBeenCalledWith(
@@ -150,7 +147,7 @@ describe('provider credential request boundary', () => {
       }),
     );
     expect(sdk.submitTabAnalysis.mock.calls[1]?.[0]).not.toHaveProperty('headers');
-    expect(sdk.listFeaturedDataPortalCollections).toHaveBeenCalledWith(
+    expect(sdk.listDataPortalCollections).toHaveBeenCalledWith(
       expect.objectContaining({ body: { api_token: 'portal-secret' } }),
     );
     expect(analysisRequest).not.toHaveProperty('api_key');
@@ -167,7 +164,7 @@ describe('provider credential request boundary', () => {
       });
 
     await listAnnotationModelsWithProviderCredential(browserConfiguration);
-    await listFeaturedDataPortalCollectionsWithProviderCredential();
+    await listDataPortalCollectionsWithProviderCredential();
 
     expect(sdk.listAnnotationModels).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -178,7 +175,7 @@ describe('provider credential request boundary', () => {
         },
       }),
     );
-    expect(sdk.listFeaturedDataPortalCollections).toHaveBeenCalledWith(
+    expect(sdk.listDataPortalCollections).toHaveBeenCalledWith(
       expect.objectContaining({ body: {} }),
     );
   });
