@@ -154,6 +154,25 @@ updates bubble sizes, corpus composition, Topic lists, tooltip counts, CSV, and
 publication membership without moving the Topic layout or clearing selection,
 search, lasso filters, pan, zoom, or an open Add to Workspace dialog.
 
+<h3 id="help-topic-modeling-color-by">Colour by</h3>
+
+For a single-corpus result, **Colour by** colours the bubbles by a metadata
+column instead of the Data Block colour, so you can see, for example, which
+topics each party or decade talks about most. The list offers every column
+(other than the text column) with at most 8 distinct values among the analysed
+documents: text, true/false, or numbers. Values are read from the Data Block
+when you choose them, so columns added after the run, such as annotation
+columns, are included. Empty values form a grey **(missing)** group.
+
+Each value counts the documents whose Top topics per document include the
+topic, the same rule as bubble size. To stop common values dominating, each
+count is divided by how many documents have that value, and the bubble blends
+the two values most over-represented in the topic, as in a two-corpus run. The
+hover card and topic list show every value's count, a legend under the graph
+maps colours to values, and a downloaded graph includes that legend. Choose
+**Data Block colour** to return to the usual colouring. The choice is not
+saved and resets when you run the analysis again. No re-run is needed.
+
 <h3 id="help-topic-modeling-words-per-topic">Words per topic and stop words</h3>
 
 **Words per topic** controls how many representative words appear in the topic

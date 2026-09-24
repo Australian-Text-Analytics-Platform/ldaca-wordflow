@@ -1,16 +1,56 @@
 import { getReadableTextColor } from '../../topicModelingAdapters';
-import { resolveTopicCorpusColor } from './topicModelingGraph';
+import { resolveTopicCorpusColor, type TopicColorScheme } from './topicModelingGraph';
 
 export interface TopicCorpusPresentation {
   corpusCount: number;
   panelNodeIds: string[];
   nodeColors: Record<string, string>;
   defaultPalette: string[];
+  /** Single-corpus metadata colouring; replaces the corpus chip when set. */
+  colorScheme?: TopicColorScheme | null;
 }
 
 interface Props extends TopicCorpusPresentation {
   sizes: number[] | undefined;
   total?: number | null;
+  /** Needed to look up metadata colour counts. */
+  topicId?: number;
+  /** Prints each value's label beside its count (hover cards have the room). */
+  showLabels?: boolean;
+}
+
+/** One coloured count chip per metadata value, in legend order. */
+function TopicColorGroupChips({
+  scheme,
+  topicId,
+  total,
+  showLabels,
+}: {
+  scheme: TopicColorScheme;
+  topicId: number;
+  total?: number | null;
+  showLabels: boolean;
+}) {
+  const counts = scheme.topicCounts[topicId] ?? [];
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {scheme.groups.map((group, index) => {
+        const count = counts[index] ?? 0;
+        return (
+          <span
+            key={`${group.label}:${String(index)}`}
+            style={{ background: group.color, color: getReadableTextColor(group.color) }}
+            className="rounded-sm px-1.5 py-0.5 text-badge font-medium tabular-nums"
+            title={`${group.label}: ${String(count)}`}
+            aria-label={`${group.label}: ${String(count)}`}
+          >
+            {showLabels ? `${group.label} ${String(count)}` : count}
+          </span>
+        );
+      })}
+      <span className="text-badge text-description">= {total}</span>
+    </span>
+  );
 }
 
 /** Renders corpus counts with the same persisted colours used by graph bubbles. */
@@ -21,8 +61,21 @@ export function TopicSizeComposition({
   panelNodeIds,
   nodeColors,
   defaultPalette,
+  colorScheme = null,
+  topicId,
+  showLabels = false,
 }: Props) {
   if (corpusCount === 0 || !sizes) return null;
+  if (colorScheme && corpusCount === 1 && topicId !== undefined) {
+    return (
+      <TopicColorGroupChips
+        scheme={colorScheme}
+        topicId={topicId}
+        total={total}
+        showLabels={showLabels}
+      />
+    );
+  }
   const colorA = resolveTopicCorpusColor(
     0,
     defaultPalette[0] ?? '#2563eb',

@@ -1,5 +1,6 @@
-import type { TopicModelingTopic } from '@/api';
+import type { TopicColorGroups, TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
+import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
 import { interpolateColor } from '../../topicModelingAdapters';
 
 export const TOPIC_GRAPH_WIDTH = 1000;
@@ -26,6 +27,68 @@ export interface TopicBubbleModel {
   filteredOut: boolean;
 }
 
+/** One metadata value shown as a bubble colour, chip, and legend entry. */
+interface TopicColorGroupPresentation {
+  label: string;
+  color: string;
+  documentCount: number;
+  missing: boolean;
+}
+
+/** Per-Topic document counts split by one metadata column (single corpus only). */
+export interface TopicColorScheme {
+  column: string;
+  groups: TopicColorGroupPresentation[];
+  /** `topicCounts[topicId][groupIndex]`, using the same Top N rule as sizes. */
+  topicCounts: number[][];
+}
+
+/** Assigns palette colours in group order; the missing group is always grey. */
+export function buildTopicColorScheme(data: TopicColorGroups): TopicColorScheme | null {
+  if (data.column === null) return null;
+  let paletteIndex = 0;
+  return {
+    column: data.column,
+    groups: data.groups.map((group) => ({
+      label: group.label,
+      documentCount: group.document_count,
+      missing: group.missing,
+      color: group.missing
+        ? GREY
+        : (RANDOMIZABLE_FG[paletteIndex++ % RANDOMIZABLE_FG.length] ?? GREY),
+    })),
+    topicCounts: data.topic_counts,
+  };
+}
+
+/**
+ * Blends the two values most over-represented in a Topic. Each value's count
+ * is divided by its document count so common values do not dominate, then
+ * the top two are mixed exactly like the two-corpus colours.
+ */
+export function topicColorSchemeFill(
+  scheme: TopicColorScheme,
+  topicId: number,
+  fallback: string,
+): string {
+  const counts = scheme.topicCounts[topicId] ?? [];
+  const ranked = scheme.groups
+    .map((group, index) => ({
+      color: group.color,
+      weight: group.documentCount > 0 ? (counts[index] ?? 0) / group.documentCount : 0,
+    }))
+    .filter((entry) => entry.weight > 0)
+    .sort((left, right) => right.weight - left.weight);
+  const [first, second] = ranked;
+  if (!first) return fallback;
+  if (!second) return first.color;
+  return interpolateColor(
+    first.color,
+    second.color,
+    second.weight / (first.weight + second.weight),
+  );
+}
+
 interface BuildTopicBubbleModelsOptions {
   topics: TopicModelingTopic[];
   corpusSizes: number[];
@@ -36,6 +99,7 @@ interface BuildTopicBubbleModelsOptions {
   lassoTopicIds: Set<number>;
   hoveredTopicId: number | null;
   topicSearchQuery: string;
+  colorScheme?: TopicColorScheme | null;
 }
 
 /** Resolves one corpus colour from persisted node metadata, then palette fallback. */
@@ -91,6 +155,7 @@ export function buildTopicBubbleModels({
   lassoTopicIds,
   hoveredTopicId,
   topicSearchQuery,
+  colorScheme = null,
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
@@ -129,7 +194,12 @@ export function buildTopicBubbleModels({
         y: TOPIC_GRAPH_HEIGHT / 2,
       },
       radius: 10 + 40 * Math.sqrt(topic.total_size / maxSize),
-      fill: corpusCount <= 1 ? colorA : interpolateColor(colorA, colorB, proportion),
+      fill:
+        corpusCount <= 1
+          ? colorScheme
+            ? topicColorSchemeFill(colorScheme, topic.id, colorA)
+            : colorA
+          : interpolateColor(colorA, colorB, proportion),
       selected: selectedTopicIds.has(topic.id),
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,

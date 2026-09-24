@@ -7,12 +7,20 @@ import type {
   TopicModelingTopic,
 } from '@/api';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import { AnalysisRunningStateCard } from '@/features/views/common/components/AnalysisRunningStateCard';
 import { TopicModelingBubbleChartSection } from '../results/TopicModelingBubbleChartSection';
+import type { TopicColorScheme } from '../results/topicModelingGraph';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 
@@ -69,6 +77,70 @@ interface Props {
   onStopWordsChange: (words: string[]) => Promise<void>;
   /** Other tabs' saved stop-word lists offered for copying. */
   stopWordListSources?: StopWordListSource[];
+  /** Single-corpus "Colour by" metadata colouring; omitted for two corpora. */
+  colorBy?: TopicColorByState;
+}
+
+interface TopicColorByState {
+  /** Columns with at most 8 distinct values in this result's documents. */
+  columns: string[];
+  column: string | null;
+  scheme: TopicColorScheme | null;
+  pending: boolean;
+  error: string | null;
+  onColumnChange: (column: string | null) => void;
+}
+
+const COLOR_BY_DATA_BLOCK = '__data_block__';
+
+function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
+  return (
+    <div className="grid gap-1 text-label-secondary text-description">
+      <div className="flex items-center gap-1.5">
+        <span id="topic-color-by-label" className="font-medium">
+          Colour by
+        </span>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label="About Colour by"
+              className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-description transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              <CircleHelp className="h-3.5 w-3.5" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-72">
+            Colour bubbles by a column with up to 8 values. Each bubble blends the two values most
+            over-represented in its documents, relative to how common each value is.
+          </TooltipContent>
+        </Tooltip>
+      </div>
+      <Select
+        value={colorBy.column ?? COLOR_BY_DATA_BLOCK}
+        onValueChange={(value) => {
+          colorBy.onColumnChange(value === COLOR_BY_DATA_BLOCK ? null : value);
+        }}
+      >
+        <SelectTrigger aria-labelledby="topic-color-by-label" className="h-9 w-full text-body">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={COLOR_BY_DATA_BLOCK}>Data Block colour</SelectItem>
+          {colorBy.columns.map((column) => (
+            <SelectItem key={column} value={column}>
+              {column}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {colorBy.error ? (
+        <p role="alert" className="text-error">
+          {colorBy.error}
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function ClusterCountControl({
@@ -418,6 +490,7 @@ export function TopicModelingResultsPanel({
   stopWordsDetectionTarget,
   onStopWordsChange,
   stopWordListSources = [],
+  colorBy,
 }: Props) {
   const isRunningState = Boolean(topicWaitingBanner);
   const runningMessage =
@@ -490,6 +563,7 @@ export function TopicModelingResultsPanel({
                   topNTopics={topicInclusion?.top_n_topics}
                   exportDisabled={projectionPending}
                   randomSeed={randomSeed}
+                  colorScheme={colorBy?.scheme ?? null}
                   controlRowSlot={
                     <div className="flex w-full flex-col gap-3">
                       <section
@@ -537,6 +611,11 @@ export function TopicModelingResultsPanel({
                                     pending={projectionPending}
                                     onCommit={onTopNTopicsCommit}
                                   />
+                                </div>
+                              ) : null}
+                              {colorBy && colorBy.columns.length > 0 ? (
+                                <div className="min-w-40 flex-[1_1_12rem]">
+                                  <ColorByControl colorBy={colorBy} />
                                 </div>
                               ) : null}
                             </div>

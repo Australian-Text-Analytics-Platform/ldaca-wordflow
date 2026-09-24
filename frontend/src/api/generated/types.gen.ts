@@ -4238,6 +4238,75 @@ export type TopicClustering = {
 };
 
 /**
+ * TopicColorGroup
+ */
+export type TopicColorGroup = {
+    /**
+     * Document Count
+     */
+    document_count: number;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Missing
+     */
+    missing: boolean;
+    /**
+     * Value
+     */
+    value: string | number | number | boolean | null;
+};
+
+/**
+ * TopicColorGroups
+ *
+ * Eligible colour columns plus, for a chosen column, per-Topic counts.
+ *
+ * ``topic_counts[topic_id][group_index]`` counts documents whose Top-N Topics
+ * include the Topic, split by the document's value in ``column``.
+ */
+export type TopicColorGroups = {
+    /**
+     * Column
+     */
+    column: string | null;
+    /**
+     * Columns
+     */
+    columns: Array<string>;
+    /**
+     * Groups
+     */
+    groups: Array<TopicColorGroup>;
+    /**
+     * Topic Counts
+     */
+    topic_counts: Array<Array<number>>;
+};
+
+/**
+ * TopicColorGroupsQuery
+ *
+ * Group one single-corpus Topic projection by a metadata column.
+ */
+export type TopicColorGroupsQuery = {
+    /**
+     * Cluster Count
+     */
+    cluster_count: number;
+    /**
+     * Column
+     */
+    column?: string | null;
+    /**
+     * Top N Topics
+     */
+    top_n_topics: number;
+};
+
+/**
  * TopicInclusion
  */
 export type TopicInclusion = {
@@ -8407,6 +8476,76 @@ export type GetAnalysisTableProjectionSchemaResponses = {
 };
 
 export type GetAnalysisTableProjectionSchemaResponse = GetAnalysisTableProjectionSchemaResponses[keyof GetAnalysisTableProjectionSchemaResponses];
+
+export type QueryTopicColorGroupsData = {
+    body: TopicColorGroupsQuery;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Analysis Id
+         */
+        analysis_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-color-groups/query';
+};
+
+export type QueryTopicColorGroupsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Retained artifact is no longer available
+     */
+    410: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+    /**
+     * Storage capacity is exhausted
+     */
+    507: ApiError;
+};
+
+export type QueryTopicColorGroupsError = QueryTopicColorGroupsErrors[keyof QueryTopicColorGroupsErrors];
+
+export type QueryTopicColorGroupsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicColorGroups;
+};
+
+export type QueryTopicColorGroupsResponse = QueryTopicColorGroupsResponses[keyof QueryTopicColorGroupsResponses];
 
 export type ExportWorkspaceArchiveData = {
     body?: never;

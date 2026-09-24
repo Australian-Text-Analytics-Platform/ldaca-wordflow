@@ -438,6 +438,37 @@ describe('TopicModelingResultsPanel', () => {
     );
   });
 
+  it('offers Colour by only when eligible columns exist and reports the choice', async () => {
+    const user = userEvent.setup();
+    const onColumnChange = vi.fn();
+    const colorBy = {
+      columns: ['party', 'year'],
+      column: null,
+      scheme: null,
+      pending: false,
+      error: null,
+      onColumnChange,
+    };
+    const { rerender } = render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel {...baseProps} colorBy={{ ...colorBy, columns: [] }} />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByRole('combobox', { name: 'Colour by' })).not.toBeInTheDocument();
+
+    rerender(
+      <TooltipProvider>
+        <TopicModelingResultsPanel {...baseProps} colorBy={colorBy} />
+      </TooltipProvider>,
+    );
+    const select = screen.getByRole('combobox', { name: 'Colour by' });
+    expect(select).toHaveTextContent('Data Block colour');
+    select.focus();
+    await user.keyboard('{ArrowDown}');
+    await user.click(await screen.findByRole('option', { name: 'party' }));
+    expect(onColumnChange).toHaveBeenCalledWith('party');
+  });
+
   it('offers the typed Add to Workspace action for successful results', () => {
     render(
       <TooltipProvider>

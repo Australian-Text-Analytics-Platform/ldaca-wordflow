@@ -23,6 +23,10 @@ from ..analysis.concordance_projection import filter_concordance_documents
 from ..analysis.quotation_core import compute_quotation_page
 from ..analysis.token_cache import tokenize_lazyframe, tokens_cache_path
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
+from ..analysis.topic_metadata_colors import (
+    eligible_color_columns,
+    group_topic_counts,
+)
 from ..analysis.topic_projection import (
     TopicNodeInfo,
     build_topic_projection_payload,
@@ -72,6 +76,8 @@ from ..models.analysis_results import (
     ProjectedTableIdentity,
     StoredArtifactIdentity,
     TokenFrequencyStoredResult,
+    TopicColorGroups,
+    TopicColorGroupsQuery,
     TopicModelingResultQuery,
     TopicModelingStoredResult,
 )
@@ -107,6 +113,7 @@ from .topic_projection_cache import (
     TopicProjectionCacheKey,
 )
 from .workspace import WorkspaceLease
+from ..workers.topic_pipeline import _project_rust_topic_modeling
 
 T = TypeVar("T")
 _RESULT_ADAPTER = TypeAdapter(AnalysisResult)
@@ -435,6 +442,59 @@ class AnalysisResultService:
                 if input_snapshot is not None:
                     await self._cleanup_query_snapshot(input_snapshot)
 
+    async def topic_color_groups(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        query: TopicColorGroupsQuery,
+    ) -> TopicColorGroups:
+        """Group a single-corpus Topic projection by a live metadata column.
+
+        Values are read from the source Data Block now, not from the run's
+        snapshot, so columns added after the run (for example annotations)
+        qualify. Data Block Edits never change rows, so the run's source row
+        indices still address the same documents.
+        """
+
+        async with self._analyses.successful_record_context(
+            user_id,
+            workspace_id,
+            analysis_id,
+            allow_closing=False,
+        ) as (lease, record):
+            if record.request.kind != "topic_modeling" or record.result_payload is None:
+                raise AnalysisKindMismatchError(
+                    "Metadata colours require a Topic Modeling Analysis"
+                )
+            try:
+                stored = TopicModelingStoredResult.model_validate(record.result_payload)
+            except ValidationError as exc:
+                raise AnalysisCorruptError("Analysis data is corrupt") from exc
+            if len(stored.sources) != 1:
+                raise InvalidInputError(
+                    "Metadata colours are available for single-corpus results only"
+                )
+            source = stored.sources[0]
+            node = lease.workspace.nodes.get(source.node_id)
+            if node is None:
+                raise NodeNotFoundError("The source Data Block is no longer available")
+            context_path = _topic_context_path(lease, record, stored)
+            frame = await self._run_sync(
+                _topic_color_frame,
+                node.data,
+                source.text_column,
+                stored.projection_context.source_row_indices[0],
+            )
+        return await self._run_sync(
+            _topic_color_groups,
+            stored,
+            query,
+            frame,
+            source.text_column,
+            context_path,
+        )
+
     async def query(
         self,
         user_id: str,
@@ -522,24 +582,7 @@ class AnalysisResultService:
 
             if isinstance(effective_query, TopicModelingResultQuery):
                 topic_stored = TopicModelingStoredResult.model_validate(stored)
-                context_path: Path | None = None
-                context_identity = topic_stored.projection_context.artifact
-                if context_identity is not None:
-                    reference = next(
-                        (
-                            item
-                            for item in record.artifact_references
-                            if item.name == context_identity.name
-                        ),
-                        None,
-                    )
-                    if reference is not None:
-                        context_path = (
-                            lease.path
-                            / "analyses"
-                            / str(record.id)
-                            / reference.relative_path
-                        )
+                context_path = _topic_context_path(lease, record, topic_stored)
                 payload = await self._run_sync(
                     _query_topics,
                     topic_stored,
@@ -1056,6 +1099,99 @@ def _query_topics(
     payload["topics"] = cast(JsonData, rows)
     payload["query"] = cast(JsonData, query.model_dump(mode="json"))
     return payload
+
+
+def _topic_context_path(
+    lease: WorkspaceLease,
+    record: AnalysisRecord,
+    stored: TopicModelingStoredResult,
+) -> Path | None:
+    context_identity = stored.projection_context.artifact
+    if context_identity is None:
+        return None
+    reference = next(
+        (
+            item
+            for item in record.artifact_references
+            if item.name == context_identity.name
+        ),
+        None,
+    )
+    if reference is None:
+        return None
+    return lease.path / "analyses" / str(record.id) / reference.relative_path
+
+
+def _topic_color_frame(
+    data: pl.LazyFrame, text_column: str, row_indices: list[int]
+) -> pl.DataFrame:
+    """Collect every non-text column for the model documents, in model order."""
+
+    columns = [name for name in data.collect_schema().names() if name != text_column]
+    frame = data.select(columns).collect()
+    if row_indices and max(row_indices) >= frame.height:
+        raise InvalidInputError(
+            "The source Data Block no longer has the rows used by this run"
+        )
+    return frame[row_indices]
+
+
+def _topic_color_groups(
+    stored: TopicModelingStoredResult,
+    query: TopicColorGroupsQuery,
+    frame: pl.DataFrame,
+    text_column: str,
+    context_path: Path | None,
+) -> TopicColorGroups:
+    minimum = stored.clustering.min_cluster_count
+    maximum = stored.clustering.max_cluster_count
+    if not minimum <= query.cluster_count <= maximum:
+        raise InvalidClusterCountError(
+            "Number of clusters is outside the supported range",
+            details={
+                "min_cluster_count": minimum,
+                "max_cluster_count": maximum,
+                "default_cluster_count": stored.clustering.default_cluster_count,
+            },
+        )
+    try:
+        topic_inclusion_descriptor(query.cluster_count, query.top_n_topics)
+    except ValueError as exc:
+        raise InvalidTopicTopNError(
+            "Top topics per row is outside the supported range"
+        ) from exc
+    columns = eligible_color_columns(frame, text_column)
+    if query.column is None or query.cluster_count == 0:
+        return TopicColorGroups(
+            columns=columns, column=None, groups=[], topic_counts=[]
+        )
+    if query.column not in columns:
+        raise InvalidInputError(
+            "Colour column must have at most 8 distinct values in this result"
+        )
+    if context_path is None or not context_path.is_file():
+        raise ArtifactGoneError("Topic projection context is unavailable")
+    try:
+        context_bytes = context_path.read_bytes()
+    except OSError as exc:
+        raise ArtifactGoneError("Topic projection context is unavailable") from exc
+    try:
+        projection = _project_rust_topic_modeling(
+            projection_context=context_bytes,
+            cluster_count=query.cluster_count,
+            document_count=frame.height,
+        )
+        grouped = group_topic_counts(
+            frame[query.column].to_list(),
+            projection["documents"],
+            topic_count=query.cluster_count,
+            top_n_topics=query.top_n_topics,
+        )
+    except ValueError as exc:
+        raise AnalysisCorruptError("Topic projection context is corrupt") from exc
+    return TopicColorGroups.model_validate(
+        {"columns": columns, "column": query.column, **grouped}
+    )
 
 
 def _query_concordance_snapshot(

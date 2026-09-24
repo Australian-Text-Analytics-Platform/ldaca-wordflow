@@ -34,6 +34,34 @@ class TopicModelingResultQuery(_StrictModel):
     descending: bool = False
 
 
+class TopicColorGroupsQuery(_StrictModel):
+    """Group one single-corpus Topic projection by a metadata column."""
+
+    cluster_count: int = Field(ge=0)
+    top_n_topics: int = Field(ge=0)
+    column: str | None = Field(default=None, min_length=1, max_length=500)
+
+
+class TopicColorGroup(_StrictModel):
+    value: str | int | float | bool | None
+    label: str
+    document_count: int = Field(ge=0)
+    missing: bool
+
+
+class TopicColorGroups(_StrictModel):
+    """Eligible colour columns plus, for a chosen column, per-Topic counts.
+
+    ``topic_counts[topic_id][group_index]`` counts documents whose Top-N Topics
+    include the Topic, split by the document's value in ``column``.
+    """
+
+    columns: list[str]
+    column: str | None
+    groups: list[TopicColorGroup]
+    topic_counts: list[list[int]]
+
+
 class ConcordanceResultQuery(_PagedQuery):
     kind: Literal["concordance"] = "concordance"
     node_id: uuid.UUID | None = None
@@ -792,6 +820,9 @@ def stored_result_payload(kind: str, result: BaseModel) -> dict[str, JsonData]:
 
 
 __all__ = [
+    "TopicColorGroup",
+    "TopicColorGroups",
+    "TopicColorGroupsQuery",
     "ANALYSIS_STORED_RESULT_MODELS",
     "ANALYSIS_WORKER_RESULT_MODELS",
     "AnalysisWorkerFailure",

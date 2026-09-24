@@ -11,7 +11,7 @@ import {
 import { saveBlob } from '@/lib/download';
 import { buildTopicsCSV } from './topicModelingCsv';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
-import { buildTopicBubbleModels } from './topicModelingGraph';
+import { buildTopicBubbleModels, type TopicColorScheme } from './topicModelingGraph';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
 
 interface Props {
@@ -35,6 +35,31 @@ interface Props {
   topNTopics?: number;
   /** Result controls placed between the graph and the Topic lists. */
   controlRowSlot?: React.ReactNode;
+  /** Single-corpus metadata colouring chosen under "Colour by". */
+  colorScheme?: TopicColorScheme | null;
+}
+
+/** Maps each metadata colour to its value, shown under the graph. */
+function TopicColorLegend({ scheme }: { scheme: TopicColorScheme }) {
+  return (
+    <div
+      role="group"
+      aria-label={`Bubble colours by ${scheme.column}`}
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-label-secondary text-description"
+    >
+      <span className="font-medium text-foreground">{scheme.column}:</span>
+      {scheme.groups.map((group, index) => (
+        <span key={`${group.label}:${String(index)}`} className="inline-flex items-center gap-1">
+          <span
+            aria-hidden="true"
+            className="inline-block size-3 rounded-full"
+            style={{ background: group.color }}
+          />
+          {group.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 const TM_CSV_OPTION = {
@@ -65,6 +90,7 @@ export function TopicModelingBubbleChartSection({
   randomSeed,
   topNTopics,
   controlRowSlot,
+  colorScheme = null,
 }: Props) {
   const corpusCount = corpusSizes.length;
   const chartRef = useRef<HTMLDivElement | null>(null);
@@ -91,9 +117,20 @@ export function TopicModelingBubbleChartSection({
     lassoTopicIds,
     hoveredTopicId,
     topicSearchQuery,
+    colorScheme,
   });
+  const activeColorScheme = corpusCount === 1 ? colorScheme : null;
 
-  const corpusPresentation = { corpusCount, panelNodeIds, nodeColors, defaultPalette };
+  const corpusPresentation = {
+    corpusCount,
+    panelNodeIds,
+    nodeColors,
+    defaultPalette,
+    colorScheme: activeColorScheme,
+  };
+  const exportLegend = activeColorScheme
+    ? activeColorScheme.groups.map((group) => ({ label: group.label, color: group.color }))
+    : [];
 
   const handleDownloadChart = async (format: ChartImageFormat, extras: Record<string, boolean>) => {
     const svg = chartRef.current?.querySelector<SVGSVGElement>(
@@ -110,6 +147,7 @@ export function TopicModelingBubbleChartSection({
       { label: 'Top topics per document', value: topNTopics != null ? String(topNTopics) : '—' },
       { label: 'Random Seed', value: randomSeed != null ? String(randomSeed) : '—' },
       { label: 'Topics', value: String(topics.length) },
+      ...(activeColorScheme ? [{ label: 'Colour by', value: activeColorScheme.column }] : []),
     ];
     try {
       if (extras.includeCSV ?? false) {
@@ -118,7 +156,7 @@ export function TopicModelingBubbleChartSection({
           toolSuffix: 'tm',
           format,
           header,
-          legend: [],
+          legend: exportLegend,
         });
         const safeBaseName = nodeName.replace(/[<>:"\\|?*/\s]+/g, '_').slice(0, 60) || 'data';
         const zip = new JSZip();
@@ -136,7 +174,7 @@ export function TopicModelingBubbleChartSection({
           toolSuffix: 'tm',
           format,
           header,
-          legend: [],
+          legend: exportLegend,
         });
         await saveBlob(blob, filename);
       }
@@ -186,6 +224,8 @@ export function TopicModelingBubbleChartSection({
           />
         </div>
       </div>
+
+      {activeColorScheme ? <TopicColorLegend scheme={activeColorScheme} /> : null}
 
       {controlRowSlot ?? null}
 

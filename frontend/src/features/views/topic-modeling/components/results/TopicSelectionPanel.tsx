@@ -163,11 +163,12 @@ export function TopicSelectionPanel({
                   onHoveredTopicChange(null);
                 }}
               >
-                <div className="flex items-center justify-between">
+                <div className="flex items-start justify-between gap-2">
                   <span className="text-body font-medium text-foreground">Topic {topic.id}</span>
                   <TopicSizeComposition
                     sizes={topic.size}
                     total={topic.total_size}
+                    topicId={topic.id}
                     {...corpusPresentation}
                   />
                 </div>

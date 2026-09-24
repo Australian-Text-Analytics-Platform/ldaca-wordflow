@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
+import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
 import {
   buildTopicBubbleModels,
+  buildTopicColorScheme,
   findTopicIdsInsideLasso,
   normalizeTopicPositions,
+  topicColorSchemeFill,
 } from '../topicModelingGraph';
 
 const topics = [
@@ -159,5 +162,66 @@ describe('topicModelingGraph', () => {
     );
 
     expect(ids).toEqual(new Set([0]));
+  });
+
+  it('assigns palette colours in group order and greys out missing values', () => {
+    const scheme = buildTopicColorScheme({
+      columns: ['party'],
+      column: 'party',
+      groups: [
+        { value: 'Labor', label: 'Labor', document_count: 6, missing: false },
+        { value: 'Greens', label: 'Greens', document_count: 2, missing: false },
+        { value: null, label: '(missing)', document_count: 1, missing: true },
+      ],
+      topic_counts: [
+        [3, 0, 0],
+        [3, 2, 0],
+      ],
+    });
+
+    expect(scheme?.groups.map((group) => group.color)).toEqual([
+      RANDOMIZABLE_FG[0],
+      RANDOMIZABLE_FG[1],
+      GREY,
+    ]);
+    expect(buildTopicColorScheme({ columns: [], column: null, groups: [], topic_counts: [] })).toBe(
+      null,
+    );
+  });
+
+  it('blends the two values most over-represented relative to their size', () => {
+    const scheme = {
+      column: 'party',
+      groups: [
+        { label: 'Labor', color: '#ff0000', documentCount: 6, missing: false },
+        { label: 'Greens', color: '#0000ff', documentCount: 2, missing: false },
+        { label: 'Other', color: '#00ff00', documentCount: 10, missing: false },
+      ],
+      topicCounts: [
+        [3, 0, 0],
+        // Labor 3/6 = 0.5 and Greens 2/2 = 1.0 lead; Other 1/10 is ignored.
+        [3, 2, 1],
+        [0, 0, 0],
+      ],
+    };
+
+    expect(topicColorSchemeFill(scheme, 0, '#999999')).toBe('#ff0000');
+    // Greens leads, so the blend sits one third of the way towards Labor.
+    expect(topicColorSchemeFill(scheme, 1, '#999999')).toBe('rgb(85, 0, 170)');
+    expect(topicColorSchemeFill(scheme, 2, '#999999')).toBe('#999999');
+
+    const bubbles = buildTopicBubbleModels({
+      topics,
+      corpusSizes: [4],
+      panelNodeIds: ['corpus-a'],
+      nodeColors: { 'corpus-a': '#999999' },
+      defaultPalette: [],
+      selectedTopicIds: new Set(),
+      lassoTopicIds: new Set(),
+      hoveredTopicId: null,
+      topicSearchQuery: '',
+      colorScheme: scheme,
+    });
+    expect(bubbles.map((bubble) => bubble.fill)).toEqual(['#ff0000', 'rgb(85, 0, 170)']);
   });
 });

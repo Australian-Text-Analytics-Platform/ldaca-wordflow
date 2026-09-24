@@ -98,6 +98,18 @@ export const queryKeys = {
   concordanceDensity: (workspaceId: string, analysisId: string, tableId: string) =>
     [...queryKeys.analysisResults(workspaceId, analysisId), 'tables', tableId, 'density'] as const,
 
+  /**
+   * Metadata colour groups for one single-corpus Topic projection. Values are
+   * read live from the source Data Block, so these entries are never cached
+   * as immutable.
+   */
+  topicColorGroups: (
+    workspaceId: string,
+    analysisId: string,
+    query: { cluster_count: number; top_n_topics: number; column: string | null },
+  ) =>
+    [...queryKeys.analysisResults(workspaceId, analysisId), 'topic-color-groups', query] as const,
+
   /** Paginated user-owned file imports shown in the Task Inbox. */
   userFileImports: ['user-file-imports', 'list'] as const,
 

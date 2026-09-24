@@ -37,6 +37,7 @@ import {
   useTopicModelingParameters,
 } from './hooks/useTopicModelingParameters';
 import { useTopicModelingResultControls } from './hooks/useTopicModelingResultControls';
+import { useTopicColorGroups } from './hooks/useTopicColorGroups';
 import { useTopicModelingTaskFlow } from './hooks/useTopicModelingTaskFlow';
 import {
   nextTopicProjectionAttempt,
@@ -420,6 +421,19 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   });
 
   const colorNodeIds = result ? resultNodeIds : panelNodeIds;
+  // "Colour by" is a view choice for one Analysis; a new run starts uncoloured.
+  const [colorBySelection, setColorBySelection] = useState<{
+    analysisId: string | null;
+    column: string | null;
+  }>({ analysisId: null, column: null });
+  const colorBy = useTopicColorGroups({
+    workspaceId: currentWorkspaceId,
+    analysisId: tabTaskId,
+    singleCorpus: resultSources.length === 1,
+    clusterCount: result?.clustering.cluster_count ?? null,
+    topNTopics: result?.topic_inclusion.top_n_topics ?? null,
+    column: colorBySelection.analysisId === tabTaskId ? colorBySelection.column : null,
+  });
 
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- this is a truthiness OR: a falsy banner/result/error must fall through to the next, so ?? would short-circuit incorrectly
   const shouldShowResultsPanel = Boolean(topicWaitingBanner || result || error);
@@ -550,6 +564,20 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           onStopWordsChange={(words) => {
             return host.setPresentationSettings({ stopWords: words });
           }}
+          colorBy={
+            resultSources.length === 1
+              ? {
+                  columns: colorBy.columns,
+                  column: colorBy.activeColumn,
+                  scheme: colorBy.scheme,
+                  pending: colorBy.pending,
+                  error: colorBy.error,
+                  onColumnChange: (column) => {
+                    setColorBySelection({ analysisId: tabTaskId, column });
+                  },
+                }
+              : undefined
+          }
         />
       )}
       {addToWorkspaceDialogOpen ? (

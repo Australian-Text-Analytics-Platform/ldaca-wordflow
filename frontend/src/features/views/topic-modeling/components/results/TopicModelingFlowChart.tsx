@@ -207,6 +207,8 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
           <TopicSizeComposition
             sizes={bubble.topic.size}
             total={bubble.topic.total_size}
+            topicId={bubble.topic.id}
+            showLabels
             {...corpusPresentation}
           />
         </div>

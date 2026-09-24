@@ -22,6 +22,8 @@ from ...models.analysis_results import (
     QuotationPreviewQuery,
     PreviewReadyStoredResult,
     StoredArtifactIdentity,
+    TopicColorGroups,
+    TopicColorGroupsQuery,
 )
 from ...models.tables import (
     CompleteTableResource,
@@ -387,6 +389,28 @@ async def query_quotation_preview_table(
         body,
     )
     return arrow_page_response(result)
+
+
+@router.post(
+    "/analyses/{analysis_id}/result/topic-color-groups/query",
+    response_model=TopicColorGroups,
+    responses=api_errors(400, 403, 404, 409, 410, 413, 422, 500, 507),
+)
+async def query_topic_color_groups(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    body: TopicColorGroupsQuery,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> TopicColorGroups:
+    """List metadata colour columns and group Topic counts by one of them."""
+
+    return await runtime.analysis_result_service.topic_color_groups(
+        principal.user.id,
+        workspace_id,
+        analysis_id,
+        body,
+    )
 
 
 @router.get(

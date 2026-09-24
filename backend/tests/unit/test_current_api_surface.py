@@ -116,6 +116,11 @@ EXPECTED_OPERATIONS = {
         "query_quotation_preview_table",
     ),
     (
+        "POST",
+        "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-color-groups/query",
+        "query_topic_color_groups",
+    ),
+    (
         "GET",
         "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/tables/{table_id}",
         "download_analysis_table",

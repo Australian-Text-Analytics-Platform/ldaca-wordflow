@@ -283,6 +283,7 @@ means both defaults. It is cleared when that Analysis is removed or superseded.
 | `GET /api/workspaces/{workspace_id}/analyses/{analysis_id}/result` | `get_analysis_result` | 200 | Stored canonical Result or durable Preview-ready marker |
 | `POST /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/query` | `query_analysis_result` | 200 | Typed side-effect-free JSON projection for Topic Modelling cluster-tree cuts, Concordance, or Annotation; Quotation is invalid here |
 | `POST /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/tables/quotation-preview/query` | `query_quotation_preview_table` | 200 Arrow | On-demand Quotation Preview document page from the retained snapshot |
+| `POST /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-color-groups/query` | `query_topic_color_groups` | 200 | Single-corpus Topic counts grouped by a live metadata column |
 | `GET /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/tables/{table_id}` | `download_analysis_table` | 200 Arrow | Complete immutable Result table |
 | `GET /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/tables/{table_id}/projections/{row_unit}/rows` | `get_analysis_table_projection_rows` | 200 Arrow | Document or match page from a nested Run All Result, with optional `sort_by` and `descending` |
 | `POST /api/workspaces/{workspace_id}/analyses/{analysis_id}/result/tables/{table_id}/projections/documents/query` | `query_concordance_document_projection` | 200 Arrow | Exact-term/bin-filtered Concordance document page with filtered total-row header |
@@ -311,6 +312,16 @@ context Artifact returns 410. Topic Modelling Data Block Creation requires the
 displayed K and Top N. Selected bubbles publish the deduplicated union of rows
 whose Top-N memberships intersect the selection while preserving dominant
 `TOPIC_top1` and the complete Topic Coverage.
+
+`POST .../result/topic-color-groups/query` (`query_topic_color_groups`) serves
+single-corpus metadata colouring. `TopicColorGroupsQuery` takes the displayed
+`cluster_count` and `top_n_topics` plus an optional `column`. The response
+always lists `columns`: non-text columns of the live source Data Block with 1
+to 8 distinct non-missing values among the run's documents (read through
+`source_row_indices`). With a `column`, it adds ordered `groups` (largest
+first, missing last) and `topic_counts[topic_id][group_index]`, counted with
+the same Top-N-with-ties rule as bubble sizes. Two-corpus results return 400;
+an ineligible column returns 400; a missing projection context returns 410.
 
 `AnalysisCreate` contains one discriminated Analysis request, one execution
 scope (`preview`, `run_all`, or `supporting`), an optional
