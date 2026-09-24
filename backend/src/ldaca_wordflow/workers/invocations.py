@@ -37,6 +37,7 @@ class TopicModelingInput:
     input_snapshot_dir: str
     embedding_cache_path: str
     min_cluster_size: int
+    max_cluster_size: int | None
     random_seed: int
     segmentation_method: str
     max_segment_tokens: int

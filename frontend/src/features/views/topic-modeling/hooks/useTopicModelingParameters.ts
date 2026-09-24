@@ -11,6 +11,7 @@ import {
   defaultCorpusSample,
   effectiveSampleDocumentCount,
   normalizeTopicSampleFractions,
+  sanitizeMaxClusterSize,
   sanitizeMinClusterSize,
   sanitizeMaxSegmentTokens,
   sampleToFraction,
@@ -25,6 +26,7 @@ export {
   effectiveSampleDocumentCount,
   normalizeTopicSampleFractions,
   sanitizeSamplePercent,
+  sanitizeMaxClusterSize,
   sanitizeMinClusterSize,
   sanitizeMaxSegmentTokens,
 };
@@ -41,6 +43,8 @@ export interface UseTopicModelingParametersResult {
   updateCorpusSample: (index: number, update: Partial<CorpusSample>) => void;
   minClusterSize: number;
   setMinClusterSize: (value: number) => void;
+  maxClusterSize: number | null;
+  setMaxClusterSize: (value: number | null) => void;
   randomSeed: number;
   randomSeedUserSet: boolean;
   setRandomSeedFromUser: (value: number) => void;
@@ -86,6 +90,7 @@ export function useTopicModelingParameters({
     corpusSamplesByNodeId,
     userSetSampleNodeIds,
     minClusterSize,
+    maxClusterSize,
     randomSeed,
     randomSeedUserSet,
     segmentationMethod,
@@ -108,6 +113,11 @@ export function useTopicModelingParameters({
 
   const setMinClusterSize = (value: number) => {
     dispatchParameters({ type: 'setMinClusterSize', value: sanitizeMinClusterSize(value) });
+  };
+
+  /** Sets a fixed Max topic size, or `null` for Auto. */
+  const setMaxClusterSize = (value: number | null) => {
+    dispatchParameters({ type: 'setMaxClusterSize', value });
   };
 
   /** Records the random seed from an explicit user edit. */
@@ -144,6 +154,8 @@ export function useTopicModelingParameters({
     updateCorpusSample,
     minClusterSize,
     setMinClusterSize,
+    maxClusterSize,
+    setMaxClusterSize,
     randomSeed,
     randomSeedUserSet,
     setRandomSeedFromUser,

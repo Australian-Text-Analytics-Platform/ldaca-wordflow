@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createTopicModelingParameterState,
+  sanitizeMaxClusterSize,
   topicModelingParameterReducer,
 } from '../topicModelingParameterState';
 
@@ -43,5 +44,32 @@ describe('topicModelingParameterReducer', () => {
       },
       userSetSampleNodeIds: { 'node-1': true, 'node-2': true },
     });
+  });
+
+  it('defaults Max topic size to Auto and restores it from a saved request', () => {
+    const initial = createTopicModelingParameterState();
+    expect(initial.maxClusterSize).toBeNull();
+
+    const fixed = topicModelingParameterReducer(initial, { type: 'setMaxClusterSize', value: 300 });
+    expect(fixed.maxClusterSize).toBe(300);
+
+    const hydrated = topicModelingParameterReducer(fixed, {
+      type: 'hydrateRequest',
+      request: {
+        kind: 'topic_modeling',
+        node_ids: ['node-1'],
+        node_columns: { 'node-1': 'text' },
+        max_cluster_size: null,
+      },
+    });
+    expect(hydrated.maxClusterSize).toBeNull();
+  });
+
+  it('sanitizes Max topic size, treating empty or invalid input as Auto', () => {
+    expect(sanitizeMaxClusterSize('')).toBeNull();
+    expect(sanitizeMaxClusterSize(undefined)).toBeNull();
+    expect(sanitizeMaxClusterSize('abc')).toBeNull();
+    expect(sanitizeMaxClusterSize('300.4')).toBe(300);
+    expect(sanitizeMaxClusterSize(1)).toBe(3);
   });
 });

@@ -60,6 +60,7 @@ def analysis_process(
             input_snapshot_dir=invocation.input_snapshot_dir,
             embedding_cache_path=invocation.embedding_cache_path,
             min_cluster_size=invocation.min_cluster_size,
+            max_cluster_size=invocation.max_cluster_size,
             random_seed=invocation.random_seed,
             segmentation_method=invocation.segmentation_method,
             max_segment_tokens=invocation.max_segment_tokens,

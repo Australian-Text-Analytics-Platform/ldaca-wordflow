@@ -12,6 +12,8 @@ export interface TopicModelingParameterState {
   corpusSamplesByNodeId: Record<string, CorpusSample>;
   userSetSampleNodeIds: Record<string, true>;
   minClusterSize: number;
+  /** Max topic size in Topic Segments; `null` means Auto (decided during the run). */
+  maxClusterSize: number | null;
   randomSeed: number;
   randomSeedUserSet: boolean;
   segmentationMethod: TopicSegmentationMethod;
@@ -21,6 +23,7 @@ export interface TopicModelingParameterState {
 type TopicModelingParameterAction =
   | { type: 'updateCorpusSample'; nodeId: string; update: Partial<CorpusSample> }
   | { type: 'setMinClusterSize'; value: number }
+  | { type: 'setMaxClusterSize'; value: number | null }
   | { type: 'setRandomSeedFromUser'; value: number }
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
   | { type: 'setMaxSegmentTokens'; value: number }
@@ -36,6 +39,7 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   corpusSamplesByNodeId: {},
   userSetSampleNodeIds: {},
   minClusterSize: DEFAULT_MIN_CLUSTER_SIZE,
+  maxClusterSize: null,
   randomSeed: 0,
   randomSeedUserSet: false,
   segmentationMethod: 'automatic',
@@ -52,6 +56,16 @@ export const sanitizeMinClusterSize = (value: string | number | undefined): numb
   const raw = typeof value === 'number' ? value : Number(value);
   const rounded = Number.isFinite(raw) ? Math.round(raw) : DEFAULT_MIN_CLUSTER_SIZE;
   return Math.max(2, rounded);
+};
+
+/** Normalizes a Max topic size; empty or invalid values mean Auto (`null`). */
+export const sanitizeMaxClusterSize = (
+  value: string | number | null | undefined,
+): number | null => {
+  if (value === null || value === undefined || value === '') return null;
+  const raw = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(raw)) return null;
+  return Math.max(3, Math.round(raw));
 };
 
 const normalizeSegmentationMethod = (value: unknown): TopicSegmentationMethod => {
@@ -141,6 +155,8 @@ export const topicModelingParameterReducer = (
     }
     case 'setMinClusterSize':
       return { ...state, minClusterSize: sanitizeMinClusterSize(action.value) };
+    case 'setMaxClusterSize':
+      return { ...state, maxClusterSize: sanitizeMaxClusterSize(action.value) };
     case 'setRandomSeedFromUser':
       return { ...state, randomSeed: action.value, randomSeedUserSet: true };
     case 'setSegmentationMethod':
@@ -155,6 +171,7 @@ export const topicModelingParameterReducer = (
       return {
         ...state,
         minClusterSize: sanitizeMinClusterSize(action.request.min_cluster_size),
+        maxClusterSize: sanitizeMaxClusterSize(action.request.max_cluster_size),
         randomSeed: action.request.random_seed ?? 0,
         randomSeedUserSet: true,
         segmentationMethod: normalizeSegmentationMethod(action.request.segmentation_method),

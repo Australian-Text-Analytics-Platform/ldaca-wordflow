@@ -87,11 +87,25 @@ def run_topic_modeling_data_block_creation(
     destination.mkdir(parents=True, exist_ok=True)
     from .topic_pipeline import _project_rust_topic_modeling
 
+    projection_context = Path(projection_context_path).read_bytes()
     projection = _project_rust_topic_modeling(
-        projection_context=Path(projection_context_path).read_bytes(),
+        projection_context=projection_context,
         cluster_count=request.cluster_count,
         document_count=sum(int(item["size"]) for item in source_projection.values()),
     )
+    segment_assignments: list[tuple[int, int, int, int]] = []
+    if request.row_unit == "topics":
+        from polars_text import project_topic_segments
+
+        try:
+            segment_assignments = project_topic_segments(
+                projection_context, request.cluster_count
+            )
+        except ValueError as exc:
+            raise ValueError(
+                "Per-topic detach needs a Topic Modeling run made with this version "
+                "of Wordflow. Re-run the analysis, then detach again."
+            ) from exc
     meaning_values = {
         int(topic["id"]): [
             str(candidate["word"])
@@ -121,63 +135,80 @@ def run_topic_modeling_data_block_creation(
         row_indices = list(source_context["row_indices"])
         projected_documents = projection["documents"][offset : offset + size]
         selected_topic_ids = set(request.topic_ids or [])
-        included_rows: list[int] = []
-        included_top_topics: set[int] = set()
-        for row_offset, document in enumerate(projected_documents):
-            row_topics = top_topic_ids(
-                document.get("topic_coverage") or [],
-                request.cluster_count,
-                request.top_n_topics,
+        document_column: str | None = (
+            source.document if source.document in selected_columns else None
+        )
+        if request.row_unit == "topics":
+            text_column = str(source_context["text_column"])
+            joined, included_top_topics = _topic_segment_rows(
+                source_data=source.data,
+                text_column=text_column,
+                selected_columns=selected_columns,
+                segment_assignments=segment_assignments,
+                offset=offset,
+                size=size,
+                row_indices=row_indices,
+                selected_topic_ids=selected_topic_ids,
             )
-            if selected_topic_ids and not row_topics.intersection(selected_topic_ids):
-                continue
-            included_rows.append(row_offset)
-            included_top_topics.update(row_topics)
-        padded_coverage = _coverage_by_doc_index(
-            [
+            document_column = text_column
+        else:
+            included_rows: list[int] = []
+            included_top_topics: set[int] = set()
+            for row_offset, document in enumerate(projected_documents):
+                row_topics = top_topic_ids(
+                    document.get("topic_coverage") or [],
+                    request.cluster_count,
+                    request.top_n_topics,
+                )
+                if selected_topic_ids and not row_topics.intersection(selected_topic_ids):
+                    continue
+                included_rows.append(row_offset)
+                included_top_topics.update(row_topics)
+            padded_coverage = _coverage_by_doc_index(
+                [
+                    {
+                        "doc_index": row_offset,
+                        "topic_coverage": document.get("topic_coverage") or [],
+                    }
+                    for row_offset, document in enumerate(projected_documents)
+                ],
+                size,
+                list(range(request.cluster_count)),
+            )
+            assignments = pl.DataFrame(
                 {
-                    "doc_index": row_offset,
-                    "topic_coverage": document.get("topic_coverage") or [],
+                    "__row_nr__": pl.Series(
+                        "__row_nr__",
+                        [row_indices[row_offset] for row_offset in included_rows],
+                        dtype=pl.Int64,
+                    ),
+                    TOPIC_COLUMN: pl.Series(
+                        TOPIC_COLUMN,
+                        [
+                            int(projected_documents[row_offset]["dominant_topic"])
+                            for row_offset in included_rows
+                        ],
+                        dtype=pl.Int64,
+                    ),
+                    TOPIC_COVERAGE_COLUMN: pl.Series(
+                        TOPIC_COVERAGE_COLUMN,
+                        [padded_coverage[row_offset] for row_offset in included_rows],
+                        dtype=topic_coverage_dtype(request.cluster_count),
+                    ),
                 }
-                for row_offset, document in enumerate(projected_documents)
-            ],
-            size,
-            list(range(request.cluster_count)),
-        )
-        assignments = pl.DataFrame(
-            {
-                "__row_nr__": pl.Series(
-                    "__row_nr__",
-                    [row_indices[row_offset] for row_offset in included_rows],
-                    dtype=pl.Int64,
-                ),
-                TOPIC_COLUMN: pl.Series(
-                    TOPIC_COLUMN,
-                    [
-                        int(projected_documents[row_offset]["dominant_topic"])
-                        for row_offset in included_rows
-                    ],
-                    dtype=pl.Int64,
-                ),
-                TOPIC_COVERAGE_COLUMN: pl.Series(
-                    TOPIC_COVERAGE_COLUMN,
-                    [padded_coverage[row_offset] for row_offset in included_rows],
-                    dtype=topic_coverage_dtype(request.cluster_count),
-                ),
-            }
-        ).lazy()
-        joined = (
-            source.data.with_row_index("__row_nr__")
-            .with_columns(pl.col("__row_nr__").cast(pl.Int64))
-            .join(assignments, on="__row_nr__", how="inner", maintain_order="left")
-            .select(
-                *[pl.col(column) for column in selected_columns],
-                pl.col(TOPIC_COLUMN).alias(TOPIC_TOP1_COLUMN),
-                pl.col(TOPIC_COVERAGE_COLUMN).alias(
-                    TOPIC_COVERAGE_OUTPUT_COLUMN
-                ),
+            ).lazy()
+            joined = (
+                source.data.with_row_index("__row_nr__")
+                .with_columns(pl.col("__row_nr__").cast(pl.Int64))
+                .join(assignments, on="__row_nr__", how="inner", maintain_order="left")
+                .select(
+                    *[pl.col(column) for column in selected_columns],
+                    pl.col(TOPIC_COLUMN).alias(TOPIC_TOP1_COLUMN),
+                    pl.col(TOPIC_COVERAGE_COLUMN).alias(
+                        TOPIC_COVERAGE_OUTPUT_COLUMN
+                    ),
+                )
             )
-        )
         topic_data_id = uuid.uuid4()
         topic_meanings_id = uuid.uuid4()
         topic_data_path = destination / f"{topic_data_id}.parquet"
@@ -209,6 +240,7 @@ def run_topic_modeling_data_block_creation(
                 "role": "topic_data",
                 "cluster_count": request.cluster_count,
                 "top_n_topics": request.top_n_topics,
+                "row_unit": request.row_unit,
             },
             "inputs": [
                 {
@@ -224,6 +256,7 @@ def run_topic_modeling_data_block_creation(
                 "role": "topic_meanings",
                 "cluster_count": request.cluster_count,
                 "top_n_topics": request.top_n_topics,
+                "row_unit": request.row_unit,
             },
             "inputs": [
                 {
@@ -240,9 +273,7 @@ def run_topic_modeling_data_block_creation(
                         "id": topic_data_id,
                         "name": topic_name,
                         "provenance": topic_data_provenance,
-                        "document": source.document
-                        if source.document in selected_columns
-                        else None,
+                        "document": document_column,
                         "color": None,
                     },
                     "parquet_path": str(topic_data_path),
@@ -273,6 +304,122 @@ def run_topic_modeling_data_block_creation(
         "outputs": outputs,
         "message": "Topic Modelling results added to the Workspace",
     }
+
+
+# Joins a Topic's segments within one document, in source order.
+TOPIC_SEGMENT_SEPARATOR = "\n"
+
+
+def _topic_segment_rows(
+    *,
+    source_data: Any,
+    text_column: str,
+    selected_columns: list[str],
+    segment_assignments: list[tuple[int, int, int, int]],
+    offset: int,
+    size: int,
+    row_indices: list[int],
+    selected_topic_ids: set[int],
+) -> tuple[Any, set[int]]:
+    """Build one row per (document, Topic) holding only that Topic's segments.
+
+    Called by: ``run_topic_modeling_data_block_creation`` for ``row_unit="topics"``.
+
+    Flow: keep this source's segments (by global document index), drop outliers
+    and unselected Topics, slice each span from the same text the run segmented
+    (the text column as a string, nulls as ""), join a Topic's segments within a
+    document in source order, and attach its share of the document's segmented
+    characters, its segment count, and the selected source columns.
+    """
+    import polars as pl
+
+    from ..analysis.generated_columns import (
+        TOPIC_COLUMN,
+        TOPIC_SEGMENT_COUNT_COLUMN,
+        TOPIC_SHARE_COLUMN,
+    )
+
+    document_characters: dict[int, int] = {}
+    kept: list[tuple[int, int, int, int]] = []
+    for document_index, start, end, topic_id in segment_assignments:
+        local = document_index - offset
+        if not 0 <= local < size:
+            continue
+        row = int(row_indices[local])
+        document_characters[row] = document_characters.get(row, 0) + (end - start)
+        if topic_id < 0 or (selected_topic_ids and topic_id not in selected_topic_ids):
+            continue
+        kept.append((row, start, end, topic_id))
+
+    segments = pl.DataFrame(
+        {
+            "__row_nr__": [row for row, _, _, _ in kept],
+            "__start__": [start for _, start, _, _ in kept],
+            "__length__": [end - start for _, start, end, _ in kept],
+            TOPIC_COLUMN: [topic_id for _, _, _, topic_id in kept],
+        },
+        schema={
+            "__row_nr__": pl.Int64,
+            "__start__": pl.Int64,
+            "__length__": pl.Int64,
+            TOPIC_COLUMN: pl.Int64,
+        },
+    )
+    totals = pl.DataFrame(
+        {
+            "__row_nr__": list(document_characters),
+            "__document_characters__": list(document_characters.values()),
+        },
+        schema={"__row_nr__": pl.Int64, "__document_characters__": pl.Int64},
+    )
+    source = source_data.with_row_index("__row_nr__").with_columns(
+        pl.col("__row_nr__").cast(pl.Int64)
+    )
+    topic_rows = (
+        source.select(
+            "__row_nr__",
+            pl.col(text_column).cast(pl.String).fill_null("").alias("__text__"),
+        )
+        .join(segments.lazy(), on="__row_nr__", how="inner")
+        .with_columns(
+            pl.col("__text__")
+            .str.slice(pl.col("__start__"), pl.col("__length__"))
+            .alias("__segment__")
+        )
+        .sort("__row_nr__", TOPIC_COLUMN, "__start__")
+        .group_by("__row_nr__", TOPIC_COLUMN, maintain_order=True)
+        .agg(
+            pl.col("__segment__")
+            .str.join(TOPIC_SEGMENT_SEPARATOR)
+            .alias("__topic_text__"),
+            pl.col("__length__").sum().alias("__topic_characters__"),
+            pl.len().cast(pl.Int64).alias(TOPIC_SEGMENT_COUNT_COLUMN),
+        )
+        .join(totals.lazy(), on="__row_nr__", how="left")
+        .with_columns(
+            (
+                pl.col("__topic_characters__")
+                / pl.col("__document_characters__").cast(pl.Float64)
+            ).alias(TOPIC_SHARE_COLUMN)
+        )
+    )
+    carried = [column for column in selected_columns if column != text_column]
+    joined = (
+        topic_rows.join(
+            source.select("__row_nr__", *carried),
+            on="__row_nr__",
+            how="left",
+        )
+        .sort("__row_nr__", TOPIC_COLUMN)
+        .select(
+            pl.col("__topic_text__").alias(text_column),
+            *[pl.col(column) for column in carried],
+            pl.col(TOPIC_COLUMN),
+            pl.col(TOPIC_SHARE_COLUMN),
+            pl.col(TOPIC_SEGMENT_COUNT_COLUMN),
+        )
+    )
+    return joined, {topic_id for _, _, _, topic_id in kept}
 
 
 # ---------------------------------------------------------------------------
@@ -366,6 +513,7 @@ def _compute_topic_payload(
     min_cluster_size: int,
     random_seed: int,
     progress_callback: Callable[[float, str], None] | None,
+    max_cluster_size: int | None = None,
     sample_fractions: list[float | None] | None,
     segmentation_method: str,
     max_segment_tokens: int,
@@ -411,6 +559,7 @@ def _compute_topic_payload(
         all_docs=sampled.all_docs,
         seed=random_state,
         min_cluster_size=min_cluster_size,
+        max_cluster_size=max_cluster_size,
         vectorizer_model=vectorizer_model,
         embedder_model=_DEFAULT_EMBEDDER_MODEL,
         embedding_cache=embedding_cache_path,
@@ -446,6 +595,7 @@ def _compute_topic_payload(
         "max_cluster_count": natural_count,
         "default_cluster_count": natural_count,
         "adjustable": natural_count > 1,
+        "max_topic_size": rust_result.get("max_topic_size"),
     }
     payload["projection_context"] = {
         "version": 2,
@@ -472,6 +622,7 @@ def _compute_topic_modeling(
     embedding_cache_path: str,
     corpora: list[list[str]],
     min_cluster_size: int = 10,
+    max_cluster_size: int | None = None,
     random_seed: int = 0,
     segmentation_method: str = "automatic",
     max_segment_tokens: int = 256,
@@ -521,6 +672,7 @@ def _compute_topic_modeling(
             artifact_root=prepared_payload.artifact_root,
             artifact_prefix=artifact_prefix,
             min_cluster_size=min_cluster_size,
+            max_cluster_size=max_cluster_size,
             random_seed=random_seed,
             progress_callback=progress_callback,
             sample_fractions=sample_fractions,
@@ -562,6 +714,7 @@ def run_topic_modeling_analysis(
     max_segment_tokens: int,
     sample_fractions: list[float | None] | None,
     progress_callback: Callable[[float, str], None] | None = None,
+    max_cluster_size: int | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only topic-modeling process contract."""
 
@@ -575,6 +728,7 @@ def run_topic_modeling_analysis(
         artifact_prefix="topic_modeling",
         corpora=corpora,
         min_cluster_size=min_cluster_size,
+        max_cluster_size=max_cluster_size,
         random_seed=random_seed,
         segmentation_method=segmentation_method,
         max_segment_tokens=max_segment_tokens,

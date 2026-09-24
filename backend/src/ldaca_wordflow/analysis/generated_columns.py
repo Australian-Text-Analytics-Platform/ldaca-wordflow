@@ -116,6 +116,11 @@ TOPIC_COVERAGE_COLUMN = "TOPIC_topic_coverage"
 # full Topic Coverage (rendered as a source-coverage bar).
 TOPIC_TOP1_COLUMN = "TOPIC_top1"
 TOPIC_COVERAGE_OUTPUT_COLUMN = "TOPIC_coverage"
+# Per-topic Data Block Creation output: one row per (document, Topic) whose text
+# is that Topic's segments. The share is the Topic's portion of the document's
+# segmented characters; the count is how many segments it joined.
+TOPIC_SHARE_COLUMN = "TOPIC_share"
+TOPIC_SEGMENT_COUNT_COLUMN = "TOPIC_segment_count"
 
 QUOTE_EXTRACTION_COLUMN = "QUOTE_extraction"
 QUOTE_SPEAKER_COLUMN = "QUOTE_speaker"

@@ -51,18 +51,21 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select all for First' }));
     fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
 
-    expect(onSubmit).toHaveBeenCalledWith([
-      {
-        sourceId: 'node-1',
-        selectedColumns: ['id', 'speaker'],
-        newName: 'First topics',
-      },
-      {
-        sourceId: 'node-2',
-        selectedColumns: ['id', 'speaker'],
-        newName: 'Second topics',
-      },
-    ]);
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          sourceId: 'node-1',
+          selectedColumns: ['id', 'speaker'],
+          newName: 'First topics',
+        },
+        {
+          sourceId: 'node-2',
+          selectedColumns: ['id', 'speaker'],
+          newName: 'Second topics',
+        },
+      ],
+      'documents',
+    );
   });
 
   it('uses the shared wide responsive layout', () => {
@@ -109,12 +112,59 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
 
-    expect(onSubmit).toHaveBeenCalledWith([
-      {
-        sourceId: 'node-1',
-        selectedColumns: ['text'],
-        newName: 'Corpus topics',
-      },
-    ]);
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          sourceId: 'node-1',
+          selectedColumns: ['text'],
+          newName: 'Corpus topics',
+        },
+      ],
+      'documents',
+    );
+  });
+
+  it('detaches per topic with the document column always included', () => {
+    const onSubmit = vi.fn();
+    render(
+      <TopicModelingAddToWorkspaceDialog
+        open
+        onOpenChange={vi.fn()}
+        sources={[
+          {
+            id: 'node-1',
+            name: 'Corpus',
+            columns: ['id', 'text', 'speaker'],
+            documentColumn: 'text',
+          },
+        ]}
+        selectedTopicCount={null}
+        isSubmitting={false}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Per topic' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Per topic' }));
+
+    expect(screen.getByText(/one row per document and topic/i)).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'TOPIC_topic (required)' })).toBeDisabled();
+    expect(screen.getByRole('checkbox', { name: 'text (required)' })).toBeChecked();
+    expect(
+      screen.queryByRole('checkbox', { name: 'TOPIC_top1 (required)' }),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          sourceId: 'node-1',
+          selectedColumns: ['text'],
+          newName: 'Corpus topic segments',
+        },
+      ],
+      'topics',
+    );
   });
 });

@@ -27,6 +27,7 @@ import { TopicModelingResultsPanel } from './components/panels/TopicModelingResu
 import {
   TopicModelingAddToWorkspaceDialog,
   type TopicModelingAddToWorkspaceSelection,
+  type TopicModelingDetachRowUnit,
   type TopicModelingAddToWorkspaceSource,
 } from './components/TopicModelingAddToWorkspaceDialog';
 import {
@@ -95,6 +96,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     updateCorpusSample,
     minClusterSize,
     setMinClusterSize,
+    maxClusterSize,
+    setMaxClusterSize,
     randomSeed,
     randomSeedUserSet,
     setRandomSeedFromUser,
@@ -230,6 +233,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         .map((selection) => [selection.nodeId, selection.column]),
     ),
     min_cluster_size: minClusterSize,
+    max_cluster_size: maxClusterSize,
     random_seed: randomSeed,
     sample_fractions: sampleFractionsForRequest,
     segmentation_method: segmentationMethod,
@@ -239,6 +243,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     node_ids: request.node_ids,
     node_columns: request.node_columns,
     min_cluster_size: request.min_cluster_size ?? DEFAULT_MIN_CLUSTER_SIZE,
+    max_cluster_size: request.max_cluster_size ?? null,
     random_seed: request.random_seed ?? 0,
     sample_fractions: normalizeTopicSampleFractions(
       request.sample_fractions,
@@ -254,11 +259,13 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     ? true
     : hasParameterDiff(currentTopicParams, serverTopicParams(serverRequest));
 
+  // A fixed Max topic size must leave room above Min topic size.
+  const maxTopicSizeInvalid = maxClusterSize !== null && maxClusterSize <= minClusterSize;
   const parametersLocked = isRunning || Boolean(activeAnalysis);
   const requiresClear = hasClearRequiredAnalysis(analyses);
   const actionState = getRerunActionState({
     hasWorkspace: Boolean(currentWorkspaceId),
-    isRunnable: panelNodeIds.length > 0 && !panelHasMissingColumns,
+    isRunnable: panelNodeIds.length > 0 && !panelHasMissingColumns && !maxTopicSizeInvalid,
     hasAttachedAnalysis: Boolean(tabTaskId),
     hasAnyAnalysis: analyses.length > 0,
     analysisState: taskStatus.tasks[0]?.state ?? null,
@@ -314,7 +321,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     setAddToWorkspaceDialogOpen(true);
   };
 
-  const handleAddToWorkspace = async (selections: TopicModelingAddToWorkspaceSelection[]) => {
+  const handleAddToWorkspace = async (
+    selections: TopicModelingAddToWorkspaceSelection[],
+    rowUnit: TopicModelingDetachRowUnit,
+  ) => {
     if (!tabTaskId || selections.length === 0) return;
     const nodeIds = selections.map((selection) => selection.sourceId);
     setIsAddingToWorkspace(true);
@@ -330,6 +340,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         topic_ids: selectedTopicIds.size > 0 ? [...selectedTopicIds] : null,
         cluster_count: result?.clustering.cluster_count ?? 0,
         top_n_topics: result?.topic_inclusion.top_n_topics ?? 0,
+        row_unit: rowUnit,
         topic_meanings_override: exportTopics.map((topic) => ({
           topic_id: topic.id,
           words: topic.representative_words.map((term) => term.word),
@@ -354,6 +365,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       panelHasMissingColumns,
       effectiveNodeColumnSelections: nodeColumnSelections,
       minClusterSize,
+      maxClusterSize,
       randomSeed,
       sampleFractions: hasAnySampling ? sampleFractionsForRequest : null,
       segmentationMethod,
@@ -435,6 +447,17 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         onCorpusSampleChange={updateCorpusSample}
         minClusterSize={minClusterSize}
         onMinClusterSizeChange={setMinClusterSize}
+        maxClusterSize={maxClusterSize}
+        onMaxClusterSizeChange={setMaxClusterSize}
+        lastRunClustering={
+          result
+            ? {
+                segmentCount: result.segment_count,
+                appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
+                requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
+              }
+            : null
+        }
         randomSeed={randomSeed}
         randomSeedUserSet={randomSeedUserSet}
         onRandomSeedChange={setRandomSeedFromUser}
@@ -536,8 +559,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           sources={addToWorkspaceSources}
           selectedTopicCount={selectedTopicIds.size > 0 ? selectedTopicIds.size : null}
           isSubmitting={isAddingToWorkspace}
-          onSubmit={(selections) => {
-            void handleAddToWorkspace(selections);
+          onSubmit={(selections, rowUnit) => {
+            void handleAddToWorkspace(selections, rowUnit);
           }}
         />
       ) : null}

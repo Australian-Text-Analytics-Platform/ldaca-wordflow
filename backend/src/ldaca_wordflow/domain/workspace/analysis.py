@@ -129,6 +129,9 @@ class TopicModelingAnalysisRequest(_StrictModel):
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
     node_columns: dict[uuid.UUID, NonEmptyText]
     min_cluster_size: int = Field(default=10, ge=2)
+    # Max topic size in Topic Segments. None means Auto: the native pipeline caps
+    # a topic only when one holds more than half of all segments.
+    max_cluster_size: int | None = Field(default=None, ge=3)
     random_seed: int = 0
     sample_fractions: list[float | None] | None = None
     segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC
@@ -137,6 +140,11 @@ class TopicModelingAnalysisRequest(_StrictModel):
     @model_validator(mode="after")
     def validate_nodes_and_sampling(self) -> TopicModelingAnalysisRequest:
         _validate_node_columns(self.node_ids, self.node_columns)
+        if (
+            self.max_cluster_size is not None
+            and self.max_cluster_size <= self.min_cluster_size
+        ):
+            raise ValueError("Max topic size must be larger than Min topic size")
         if self.sample_fractions is not None:
             if len(self.sample_fractions) != len(self.node_ids):
                 raise ValueError("Sample fractions must align with Data Block IDs")
@@ -475,6 +483,9 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
     cluster_count: int = Field(ge=0)
     top_n_topics: int = Field(ge=0)
     topic_meanings_override: list[TopicMeaningOverride] = Field(default_factory=list)
+    # "documents": one row per source document with its Topic Coverage.
+    # "topics": one row per (document, Topic) holding only that Topic's segments.
+    row_unit: Literal["documents", "topics"] = "documents"
 
     @model_validator(mode="after")
     def validate_sources_and_topics(

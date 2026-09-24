@@ -183,6 +183,7 @@ def _run_rust_topic_modeling(
     seed: int,
     min_cluster_size: int,
     vectorizer_model: str | None,
+    max_cluster_size: int | None = None,
     segmentation_method: str = "automatic",
     max_segment_tokens: int = 256,
     embedder_model: str | None = None,
@@ -200,6 +201,11 @@ def _run_rust_topic_modeling(
     """
     import polars_text  # noqa: F401  (registers the ``.text`` expr namespace)
 
+    # Auto (None) is the native default, so it is only passed when fixed; this
+    # keeps Auto runs working with polars-text builds that predate the option.
+    max_topic_size_kwargs = (
+        {} if max_cluster_size is None else {"max_topic_size": int(max_cluster_size)}
+    )
     result_frame = pl.DataFrame({"__doc__": all_docs}).select(
         cast(Any, pl.col("__doc__"))
         .text.topic_modeling(
@@ -211,6 +217,7 @@ def _run_rust_topic_modeling(
             min_topic_size=int(min_cluster_size),
             tokenizer_model=vectorizer_model,
             lowercase=True,
+            **max_topic_size_kwargs,
         )
         .alias("__topic__")
     )
@@ -251,7 +258,9 @@ def _run_rust_topic_modeling(
     if all_topic_ids != list(range(len(topics))):
         raise ValueError("Topic modeling native topic ids must be contiguous")
     if bool(topics) != isinstance(projection_context, bytes):
-        raise ValueError("Topic modeling native projection context does not match Topics")
+        raise ValueError(
+            "Topic modeling native projection context does not match Topics"
+        )
 
     raw_documents = raw_result.get("documents")
     if not isinstance(raw_documents, list) or len(raw_documents) != len(all_docs):
@@ -309,6 +318,8 @@ def _run_rust_topic_modeling(
 
     try:
         n_segments = int(raw_result["n_segments"])
+        raw_max_topic_size = raw_result.get("max_topic_size")
+        max_topic_size = None if raw_max_topic_size is None else int(raw_max_topic_size)
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("Topic modeling native run metadata is malformed") from exc
     return {
@@ -316,6 +327,7 @@ def _run_rust_topic_modeling(
         "documents": documents,
         "n_topics": len(topics),
         "n_segments": n_segments,
+        "max_topic_size": max_topic_size,
         "projection_context": projection_context,
     }
 

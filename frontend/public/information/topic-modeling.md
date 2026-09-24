@@ -13,7 +13,7 @@ assignments into source-character Topic Coverage for the source document.
 
 <h3 id="info-topic-modeling-pipeline">How the result is produced</h3>
 
-1. Automatic, Line, or Sentence segmentation creates non-overlapping Topic Segments.
+1. Automatic, Paragraph, or Sentence segmentation creates non-overlapping Topic Segments.
 2. A sentence-transformer model converts each segment into an embedding.
 3. PaCMAP reduces the embeddings and HDBSCAN discovers natural clusters and
    outliers.
@@ -31,11 +31,13 @@ vocabulary, not necessarily the topic's meaning or an author's intent.
 
 <h3 id="info-topic-modeling-segmentation">Why segmentation matters</h3>
 
-Automatic segmentation prefers blank-line, Unicode sentence, word, and token
-boundaries within the model budget. Line begins from each non-empty physical
-line, and Sentence begins from Unicode sentence boundaries. Oversized semantic
-units are split further. Every source span is owned by at most one segment, so
-coverage is neither repeated nor silently discarded.
+Automatic segmentation starts from paragraphs (blank-line blocks, or single lines
+when the text has no blank lines), Paragraph from each non-empty line, and
+Sentence from Unicode sentence boundaries. A unit that fits the model budget is
+one segment; an oversized unit is split into sentences and then at the clause
+punctuation nearest its middle, so segments end at natural pauses rather than
+leaving tiny fragments. Every source span is owned by at most one segment, so
+coverage is never repeated.
 
 <h3 id="info-topic-modeling-what-you-can-do">What you can do</h3>
 
@@ -53,7 +55,7 @@ coverage is neither repeated nor silently discarded.
 Topic modelling is not a classifier or a definitive account of what a corpus
 is “about”. Clusters can reflect subject matter, genre, author, boilerplate,
 document length, or data-cleaning artefacts. Topic −1 is the expected outlier
-group rather than an error. Sampling, segmentation, Min topic size, the
+group rather than an error. Sampling, segmentation, Min and Max topic size, the
 displayed number of topics, and the random seed can all affect the result, so
 compare configurations and return to the source documents when naming or
 interpreting a topic.
@@ -61,7 +63,8 @@ interpreting a topic.
 Min topic size controls the smallest number of Topic Segments that can
 form a natural HDBSCAN Topic during the initial run. Its default is 10 and its
 minimum is 2. Changing it requires a new run and may change the maximum natural
-Topic count.
+Topic count. Max topic size limits the largest Topic; its Auto default only steps
+in when one Topic would hold more than half of all Topic Segments.
 
 The Number of topics Result control merges HDBSCAN's natural real Topics; it
 does not rerun the model and cannot split above that natural count. Topic −1 is

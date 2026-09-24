@@ -18,6 +18,7 @@ import {
 import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
 import {
   effectiveSampleDocumentCount,
+  sanitizeMaxClusterSize,
   sanitizeMinClusterSize,
   sanitizeSamplePercent,
   sanitizeMaxSegmentTokens,
@@ -46,6 +47,15 @@ interface Props {
   onCorpusSampleChange: (idx: number, update: Partial<CorpusSample>) => void;
   minClusterSize: number;
   onMinClusterSizeChange: (value: number) => void;
+  /** Fixed Max topic size in Topic Segments, or `null` for Auto. */
+  maxClusterSize: number | null;
+  onMaxClusterSizeChange: (value: number | null) => void;
+  /** The attached run's segment count and the cap it used, shown beside the field. */
+  lastRunClustering: {
+    segmentCount: number;
+    appliedMaxTopicSize: number | null;
+    requestedMaxTopicSize: number | null;
+  } | null;
   randomSeed: number;
   randomSeedUserSet: boolean;
   onRandomSeedChange: (value: number) => void;
@@ -80,6 +90,9 @@ export function TopicModelingParameterPanel({
   onCorpusSampleChange,
   minClusterSize,
   onMinClusterSizeChange,
+  maxClusterSize,
+  onMaxClusterSizeChange,
+  lastRunClustering,
   randomSeed,
   randomSeedUserSet,
   onRandomSeedChange,
@@ -104,6 +117,38 @@ export function TopicModelingParameterPanel({
     minClusterSizeDraft.source === minClusterSize
       ? minClusterSizeDraft.value
       : String(minClusterSize);
+
+  const [maxClusterSizeDraft, setMaxClusterSizeDraft] = useState<{
+    source: number | null;
+    value: string;
+  }>(() => ({
+    source: maxClusterSize,
+    value: maxClusterSize === null ? '' : String(maxClusterSize),
+  }));
+  const maxClusterSizeValueDraft =
+    maxClusterSizeDraft.source === maxClusterSize
+      ? maxClusterSizeDraft.value
+      : maxClusterSize === null
+        ? ''
+        : String(maxClusterSize);
+  const maxTopicSizeInvalid = maxClusterSize !== null && maxClusterSize <= minClusterSize;
+
+  const handleMaxClusterSizeBlur = (event: FocusEvent<HTMLInputElement>) => {
+    const next = sanitizeMaxClusterSize(event.currentTarget.value.trim());
+    setMaxClusterSizeDraft({ source: next, value: next === null ? '' : String(next) });
+    onMaxClusterSizeChange(next);
+  };
+
+  const lastRunSummary = (() => {
+    if (!lastRunClustering) return null;
+    const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} segments`;
+    if (lastRunClustering.requestedMaxTopicSize !== null) {
+      return `${segments}, capped at ${lastRunClustering.requestedMaxTopicSize.toLocaleString()}`;
+    }
+    return lastRunClustering.appliedMaxTopicSize === null
+      ? `${segments}, Auto: no cap needed`
+      : `${segments}, Auto capped at ${lastRunClustering.appliedMaxTopicSize.toLocaleString()}`;
+  })();
 
   const handleMinClusterSizeBlur = (event: FocusEvent<HTMLInputElement>) => {
     const next = sanitizeMinClusterSize(event.currentTarget.value);
@@ -226,7 +271,7 @@ export function TopicModelingParameterPanel({
               Segmentation method
               <span
                 aria-label="Segmentation method controls which text spans become Topic Segments"
-                title="Automatic prefers semantic boundaries within the token budget. Line starts from each non-empty line. Sentence starts from Unicode sentence boundaries. Oversized units are split without overlap."
+                title="Automatic starts from paragraphs (blank-line blocks, or single lines when the text has no blank lines). Paragraph treats every non-empty line as a paragraph. Sentence starts from Unicode sentence boundaries. A unit that fits the token budget is one segment; an oversized unit is split into sentences, then at the clause punctuation nearest its middle."
                 className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
               >
                 <CircleHelp className="h-4 w-4" />
@@ -247,7 +292,7 @@ export function TopicModelingParameterPanel({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="automatic">Automatic</SelectItem>
-                <SelectItem value="line">Line</SelectItem>
+                <SelectItem value="line">Paragraph</SelectItem>
                 <SelectItem value="sentence">Sentence</SelectItem>
               </SelectContent>
             </Select>
@@ -316,6 +361,47 @@ export function TopicModelingParameterPanel({
               }}
               onBlur={handleMinClusterSizeBlur}
             />
+          </div>
+
+          <div className="min-w-[11rem] space-y-1">
+            <Label
+              htmlFor="topic-max-cluster-size"
+              className="flex items-center gap-1.5 whitespace-nowrap text-label-secondary font-medium text-description"
+            >
+              Max topic size
+              <span
+                aria-label="Max topic size limits the largest number of Topic Segments one topic can hold"
+                title="The largest topic, in Topic Segments (not documents). Leave empty for Auto: it only steps in when one topic holds more than half of all segments, splitting it into its sub-topics, and keeps the result only if that topic is not lost to outliers. A fixed value must be larger than Min topic size. Changing it requires running a new analysis."
+                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
+              >
+                <CircleHelp className="h-4 w-4" />
+              </span>
+            </Label>
+            <Input
+              id="topic-max-cluster-size"
+              aria-label="Max topic size"
+              aria-invalid={maxTopicSizeInvalid || undefined}
+              aria-describedby="topic-max-cluster-size-note"
+              type="number"
+              min={minClusterSize + 1}
+              step={1}
+              placeholder="Auto"
+              value={maxClusterSizeValueDraft}
+              className="h-9 w-full px-2 text-right text-body"
+              onChange={(event) => {
+                setMaxClusterSizeDraft({
+                  source: maxClusterSize,
+                  value: event.target.value,
+                });
+              }}
+              onBlur={handleMaxClusterSizeBlur}
+            />
+            <p
+              id="topic-max-cluster-size-note"
+              className={`text-label-secondary ${maxTopicSizeInvalid ? 'text-error' : 'text-description'}`}
+            >
+              {maxTopicSizeInvalid ? 'Must be larger than Min topic size' : lastRunSummary}
+            </p>
           </div>
 
           {/* Random seed */}

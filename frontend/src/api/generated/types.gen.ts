@@ -4244,6 +4244,10 @@ export type TopicClustering = {
      */
     max_cluster_count: number;
     /**
+     * Max Topic Size
+     */
+    max_topic_size?: number | null;
+    /**
      * Min Cluster Count
      */
     min_cluster_count: number;
@@ -4328,6 +4332,10 @@ export type TopicModelingAnalysisRequest = {
      */
     kind?: 'topic_modeling';
     /**
+     * Max Cluster Size
+     */
+    max_cluster_size?: number | null;
+    /**
      * Max Segment Tokens
      */
     max_segment_tokens?: number;
@@ -4379,6 +4387,10 @@ export type TopicModelingDataBlockCreationAnalysisRequest = {
      */
     node_ids: Array<string>;
     /**
+     * Row Unit
+     */
+    row_unit?: 'documents' | 'topics';
+    /**
      * Selected Columns
      */
     selected_columns: {
@@ -4414,6 +4426,10 @@ export type TopicModelingDataBlockCreationDerivation = {
      * Role
      */
     role: 'topic_data' | 'topic_meanings';
+    /**
+     * Row Unit
+     */
+    row_unit?: 'documents' | 'topics';
     /**
      * Top N Topics
      */

@@ -8315,6 +8315,18 @@
             "title": "Max Cluster Count",
             "type": "integer"
           },
+          "max_topic_size": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Topic Size"
+          },
           "min_cluster_count": {
             "minimum": 0.0,
             "title": "Min Cluster Count",
@@ -8447,6 +8459,18 @@
             "title": "Kind",
             "type": "string"
           },
+          "max_cluster_size": {
+            "anyOf": [
+              {
+                "minimum": 3.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Cluster Size"
+          },
           "max_segment_tokens": {
             "default": 256,
             "maximum": 256.0,
@@ -8554,6 +8578,15 @@
             "title": "Node Ids",
             "type": "array"
           },
+          "row_unit": {
+            "default": "documents",
+            "enum": [
+              "documents",
+              "topics"
+            ],
+            "title": "Row Unit",
+            "type": "string"
+          },
           "selected_columns": {
             "additionalProperties": {
               "items": {
@@ -8625,6 +8658,15 @@
               "topic_meanings"
             ],
             "title": "Role",
+            "type": "string"
+          },
+          "row_unit": {
+            "default": "documents",
+            "enum": [
+              "documents",
+              "topics"
+            ],
+            "title": "Row Unit",
             "type": "string"
           },
           "top_n_topics": {
@@ -10315,7 +10357,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.6"
+    "version": "0.7.7"
   },
   "openapi": "3.1.0",
   "paths": {

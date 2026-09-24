@@ -40,6 +40,22 @@ def test_topic_modeling_request_rejects_minimum_cluster_size_below_two() -> None
         _request(min_cluster_size=1)
 
 
+def test_topic_modeling_request_defaults_max_topic_size_to_auto() -> None:
+    assert _request().max_cluster_size is None
+
+
+def test_topic_modeling_request_accepts_a_fixed_max_topic_size() -> None:
+    assert _request(min_cluster_size=5, max_cluster_size=300).max_cluster_size == 300
+
+
+@pytest.mark.parametrize("max_cluster_size", [5, 4])
+def test_topic_modeling_request_rejects_max_topic_size_not_above_minimum(
+    max_cluster_size: int,
+) -> None:
+    with pytest.raises(ValidationError, match="Max topic size must be larger"):
+        _request(min_cluster_size=5, max_cluster_size=max_cluster_size)
+
+
 @pytest.mark.parametrize("max_segment_tokens", [31, 257])
 def test_topic_modeling_request_rejects_segment_caps_outside_model_window(
     max_segment_tokens: int,

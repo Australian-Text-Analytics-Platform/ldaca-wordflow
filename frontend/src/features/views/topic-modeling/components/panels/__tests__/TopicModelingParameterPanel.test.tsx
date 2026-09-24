@@ -105,6 +105,9 @@ const baseProps = {
   onCorpusSampleChange: vi.fn(),
   minClusterSize: 10,
   onMinClusterSizeChange: vi.fn(),
+  maxClusterSize: null,
+  onMaxClusterSizeChange: vi.fn(),
+  lastRunClustering: null,
   randomSeed: 0,
   randomSeedUserSet: false,
   onRandomSeedChange: vi.fn(),
@@ -211,5 +214,60 @@ describe('TopicModelingParameterPanel', () => {
     fireEvent.change(input, { target: { value: '25.4' } });
     fireEvent.blur(input);
     expect(onMinClusterSizeChange).toHaveBeenLastCalledWith(25);
+  });
+
+  it('shows Max topic size as Auto and commits fixed values or Auto', () => {
+    const onMaxClusterSizeChange = vi.fn();
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        onMaxClusterSizeChange={onMaxClusterSizeChange}
+      />,
+    );
+
+    const input = screen.getByLabelText<HTMLInputElement>('Max topic size');
+    expect(input).toHaveValue(null);
+    expect(input).toHaveAttribute('placeholder', 'Auto');
+
+    fireEvent.change(input, { target: { value: '300.4' } });
+    fireEvent.blur(input);
+    expect(onMaxClusterSizeChange).toHaveBeenLastCalledWith(300);
+
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+    expect(onMaxClusterSizeChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('flags a Max topic size that is not larger than Min topic size', () => {
+    render(<TopicModelingParameterPanel {...baseProps} minClusterSize={10} maxClusterSize={10} />);
+
+    expect(screen.getByText('Must be larger than Min topic size')).toBeInTheDocument();
+    expect(screen.getByLabelText('Max topic size')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('reports the last run segment count and the cap Auto applied', () => {
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{
+          segmentCount: 4047,
+          appliedMaxTopicSize: null,
+          requestedMaxTopicSize: null,
+        }}
+      />,
+    );
+    expect(screen.getByText('Last run: 4,047 segments, Auto: no cap needed')).toBeInTheDocument();
+
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{
+          segmentCount: 4047,
+          appliedMaxTopicSize: 1540,
+          requestedMaxTopicSize: null,
+        }}
+      />,
+    );
+    expect(screen.getByText('Last run: 4,047 segments, Auto capped at 1,540')).toBeInTheDocument();
   });
 });

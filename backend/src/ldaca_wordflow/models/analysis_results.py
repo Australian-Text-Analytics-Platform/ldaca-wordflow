@@ -242,6 +242,8 @@ class TopicClustering(_StrictModel):
     max_cluster_count: int = Field(ge=0)
     default_cluster_count: int = Field(ge=0)
     adjustable: bool
+    # Max topic size (segments) that produced the topics; None when no cap applied.
+    max_topic_size: int | None = Field(default=None, ge=1)
 
 
 class TopicInclusion(_StrictModel):

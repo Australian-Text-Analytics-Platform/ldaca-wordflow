@@ -136,6 +136,7 @@ def _fake_topic_modeling_expr_factory(
     n_segments: int,
     coverage: list[list[dict[str, Any]]] | None = None,
     seen_kwargs: dict[str, Any] | None = None,
+    max_topic_size: int | None = None,
 ):
     """Build a fake ``.text.topic_modeling`` method returning a canned struct.
 
@@ -165,6 +166,7 @@ def _fake_topic_modeling_expr_factory(
         }
         for index, document in enumerate(documents)
     ]
+
     def _fake(self, **kwargs):  # noqa: ANN001 - mirrors namespace method shape
         if seen_kwargs is not None:
             seen_kwargs.update(kwargs)
@@ -205,6 +207,7 @@ def _fake_topic_modeling_expr_factory(
                 ),
             ),
             pl.lit(n_segments, dtype=pl.UInt32).alias("n_segments"),
+            pl.lit(max_topic_size, dtype=pl.UInt32).alias("max_topic_size"),
             pl.lit(b"context", dtype=pl.Binary).alias("projection_context"),
         )
 
@@ -313,6 +316,46 @@ def test_run_rust_topic_modeling_reconstructs_result_dict(monkeypatch):
     ]
     assert result["n_topics"] == 2
     assert result["n_segments"] == 5
+
+
+@pytest.mark.parametrize("max_cluster_size", [None, 300])
+def test_run_rust_topic_modeling_forwards_and_reports_max_topic_size(
+    monkeypatch, max_cluster_size: int | None
+) -> None:
+    from polars_text.namespace import TextNamespace
+
+    seen_kwargs: dict[str, Any] = {}
+    monkeypatch.setattr(
+        TextNamespace,
+        "topic_modeling",
+        _fake_topic_modeling_expr_factory(
+            documents=[{"doc_index": 0, "dominant_topic": 0}],
+            topics=[
+                {
+                    "id": 0,
+                    "representative_words": _terms("alpha"),
+                    "x": 0.0,
+                    "y": 0.0,
+                }
+            ],
+            n_segments=3,
+            seen_kwargs=seen_kwargs,
+            max_topic_size=max_cluster_size,
+        ),
+    )
+
+    result = topic_pipeline._run_rust_topic_modeling(
+        all_docs=["one document"],
+        seed=0,
+        min_cluster_size=2,
+        max_cluster_size=max_cluster_size,
+        vectorizer_model="native:plain_words_en",
+    )
+
+    # Auto is the native default, so it is not passed at all.
+    assert seen_kwargs.get("max_topic_size") == max_cluster_size
+    assert ("max_topic_size" in seen_kwargs) == (max_cluster_size is not None)
+    assert result["max_topic_size"] == max_cluster_size
 
 
 @pytest.mark.parametrize("segmentation_method", ["automatic", "line", "sentence"])
@@ -475,9 +518,7 @@ def _node_info(node_id: str = "node-1") -> TopicNodeInfo:
     )
 
 
-def test__compute_topic_modeling_writes_only_projection_context(
-    tmp_path, monkeypatch
-):
+def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkeypatch):
     messages: list[str] = []
     monkeypatch.setattr(
         topic_modeling.logger,

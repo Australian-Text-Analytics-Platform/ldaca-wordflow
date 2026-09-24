@@ -46,6 +46,8 @@ interface Props {
   onSubmit: (sources: AddToWorkspaceSelection[]) => void;
   allowSourceSelection?: boolean;
   columnsLabel?: string;
+  /** Analysis-specific choices shown above the sources, e.g. how rows are formed. */
+  options?: ReactNode;
 }
 
 const defaultColumns = (source: AddToWorkspaceSource): string[] =>
@@ -98,6 +100,7 @@ export function AddToWorkspaceDialog({
   sources,
   isSubmitting,
   onSubmit,
+  options,
   allowSourceSelection = false,
   columnsLabel = 'Columns',
 }: Props) {
@@ -192,6 +195,7 @@ export function AddToWorkspaceDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
+          {options}
           {sources.length >= 2 ? (
             <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
               <div className="space-y-1">

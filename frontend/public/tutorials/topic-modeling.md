@@ -31,15 +31,25 @@ small topics less stable. The label reports the effective document count.
 This setting controls which spans become Topic Segments. The same method is
 used for every selected Data Block.
 
-| Method | Boundary behavior | Oversized text |
+| Method | Starting unit | Oversized unit |
 | --- | --- | --- |
-| **Automatic** | Prefers blank-line blocks, Unicode sentences, words, then token boundaries | Split without overlap or lost tail text |
-| **Line** | Starts from each trimmed, non-empty newline-delimited line | Recursively split within the token cap |
-| **Sentence** | Starts from each Unicode UAX #29 sentence | Split at token boundaries within the cap |
+| **Automatic** | Each paragraph: a blank-line block when the text has blank lines, otherwise each non-empty line | Split into its sentences, then as below |
+| **Paragraph** | Each trimmed, non-empty line, treated as a paragraph | Split into its sentences, then as below |
+| **Sentence** | Each Unicode UAX #29 sentence | Split as below |
 
-Line means a physical non-empty line, not a blank-line block. Sentence
-uses a language-independent Unicode boundary algorithm, so abbreviations may
-occasionally form a short segment.
+A unit that fits the token cap is always one segment; short units are never
+merged together. A sentence that is still too long is split at the clause
+punctuation (commas, semicolons, colons, dashes) nearest its middle, repeatedly,
+so the pieces stay similar in size and end at natural pauses. Only a stretch with
+no usable punctuation is cut at the token cap, and a leftover of fewer than four
+tokens from such a cut is dropped. Segments with no letters or digits (a stray
+quotation mark or full stop) are dropped in every mode.
+
+For text whose paragraphs are separated by single line breaks, Automatic and
+Paragraph produce the same segments. They differ for text that uses blank lines
+between paragraphs: Automatic keeps each blank-line block together, while
+Paragraph starts a new segment at every line break. Sentence uses a language-independent Unicode boundary
+algorithm, so abbreviations may occasionally form a short segment.
 
 <h4 id="help-topic-modeling-max-segment-tokens">Maximum tokens per segment</h4>
 
@@ -49,8 +59,11 @@ words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
 more context.
 
-All modes split over-cap text into non-overlapping source spans. No mode silently
-discards the tail of an oversized semantic unit.
+All modes split over-cap text into non-overlapping source spans. Apart from the
+tiny leftovers and letterless segments described above, no text is discarded.
+Very small caps (such as 32 tokens) produce many short, fragment-like segments,
+which can make the number of topics unstable; 128–256 tokens usually gives more
+stable topics.
 
 <h4 id="help-topic-modeling-min-cluster-size">Min topic size</h4>
 
@@ -58,6 +71,18 @@ Sets the smallest number of Topic Segments that can form a natural HDBSCAN
 Topic. The default is 10 and the minimum is 2. Smaller values can produce more,
 finer natural Topics but may be noisier; larger values require more supporting
 segments per natural Topic. Changing this value requires a new run.
+
+<h4 id="help-topic-modeling-max-cluster-size">Max topic size</h4>
+
+Limits the largest number of Topic Segments one Topic can hold. Topic size
+counts segments, not documents. Leave it empty for **Auto**: HDBSCAN sometimes
+picks one huge Topic that swallows most of the corpus, especially with short
+segments, so Auto re-clusters only when one Topic holds more than half of all
+segments. It then splits that Topic into its sub-topics, and keeps the split only
+if most of that Topic's segments stay in Topics rather than becoming outliers.
+A fixed value must be larger than Min topic size. The number of segments is only
+known after a run, so after each run the field shows the segment count and
+whether Auto applied a cap, to help you choose a fixed value.
 
 <h4 id="help-topic-modeling-random-seed">Random seed</h4>
 
@@ -181,6 +206,22 @@ sync is active, and an unchecked source keeps its independent selection.
 `TOPIC_top1` remains required and is not synchronized. If fewer than two sources
 remain checked, Sync columns turns off automatically.
 
+The **Rows** choice in the dialog sets how rows are formed:
+
+- **Per document** (default): one row per source document, with its dominant
+  topic (`TOPIC_top1`) and full topic coverage (`TOPIC_coverage`).
+- **Per topic**: one row per document and topic. The document column holds only
+  the segments assigned to that topic, joined by line breaks in source order, so
+  a document with three topics becomes three rows. Each row also carries the
+  topic (`TOPIC_topic`), its share of the document's text (`TOPIC_share`), and how
+  many segments it joined (`TOPIC_segment_count`). Outlier segments are left
+  out. Use this when you are interested in particular topics rather than whole
+  documents.
+
+Both modes use the topics as currently shown, including any merging from
+**Number of topics**. Per topic needs a result from this version of Wordflow;
+for older results, re-run the analysis first.
+
 The download control exports the current panned and zoomed graph viewport. Its
 header records Data Block, cluster count, Top topics per document, random seed, and
 Topic count. CSV output continues to contain the complete projected Topic
@@ -210,6 +251,7 @@ available for the next run.
 | Segmentation method | Automatic |
 | Maximum tokens per segment | 256 |
 | Min topic size | 10 |
+| Max topic size | Auto |
 | Random seed | 0 |
 | Top topics per document | 2, or the available Topic count when smaller |
 | Words per topic | 15 |
@@ -219,7 +261,7 @@ available for the next run.
 1. Run a corpus with Automatic segmentation.
 2. Change Top topics per document and compare bubble membership without moving the map.
 3. Move Number of topics down and compare the merged representative words.
-4. Clear the Result, choose Line or Sentence, and run again with the same
+4. Clear the Result, choose Paragraph or Sentence, and run again with the same
    sample and seed.
 5. Compare the topic map, representative words, and outlier coverage.
 

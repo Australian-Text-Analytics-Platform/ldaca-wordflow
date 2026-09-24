@@ -11,6 +11,8 @@ interface TopicModelingState {
   panelHasMissingColumns: boolean;
   effectiveNodeColumnSelections: NodeColumnSelection[];
   minClusterSize: number;
+  /** Fixed Max topic size, or `null` for Auto. */
+  maxClusterSize: number | null;
   randomSeed: number;
   sampleFractions?: (number | null)[] | null;
   segmentationMethod: TopicSegmentationMethod;
@@ -37,6 +39,7 @@ export function useTopicModelingTaskFlow({
     panelHasMissingColumns,
     effectiveNodeColumnSelections,
     minClusterSize,
+    maxClusterSize,
     randomSeed,
     sampleFractions,
     segmentationMethod,
@@ -63,6 +66,7 @@ export function useTopicModelingTaskFlow({
       node_ids: requestNodeIds,
       node_columns: nodeColumns,
       min_cluster_size: minClusterSize,
+      max_cluster_size: maxClusterSize,
       random_seed: randomSeed,
       segmentation_method: segmentationMethod,
       max_segment_tokens: maxSegmentTokens,

@@ -155,6 +155,7 @@ def _prepare_topic_modeling(
         input_snapshot_dir=str(context.snapshot_dir),
         embedding_cache_path=str(embeddings_cache_path(context.cache_root)),
         min_cluster_size=request.min_cluster_size,
+        max_cluster_size=request.max_cluster_size,
         random_seed=request.random_seed,
         segmentation_method=request.segmentation_method.value,
         max_segment_tokens=request.max_segment_tokens,
@@ -219,6 +220,7 @@ def _prepare_topic_data_block_creation(
             "row_indices": stored.projection_context.source_row_indices[index],
             "offset": offset,
             "size": size,
+            "text_column": source.text_column,
         }
         offset += size
     return TopicDataBlockCreationInput(

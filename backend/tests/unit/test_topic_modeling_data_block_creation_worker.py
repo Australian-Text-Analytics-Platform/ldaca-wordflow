@@ -10,6 +10,8 @@ from ldaca_wordflow.analysis.generated_columns import (
     TOPIC_COLUMN,
     TOPIC_COVERAGE_OUTPUT_COLUMN,
     TOPIC_MEANING_COLUMN,
+    TOPIC_SEGMENT_COUNT_COLUMN,
+    TOPIC_SHARE_COLUMN,
     TOPIC_TOP1_COLUMN,
 )
 from ldaca_wordflow.domain.workspace import Node, SourceProvenance, Workspace
@@ -147,13 +149,184 @@ def test_topic_modeling_data_block_creation_publishes_ordered_data_and_meanings(
     meanings = pl.read_parquet(first["topic_meanings"]["parquet_path"])
     assert meanings.to_dicts() == [
         {TOPIC_COLUMN: 0, TOPIC_MEANING_COLUMN: ["old"]},
-        {TOPIC_COLUMN: 1, TOPIC_MEANING_COLUMN: ["new"]}
+        {TOPIC_COLUMN: 1, TOPIC_MEANING_COLUMN: ["new"]},
     ]
     assert first["topic_data"]["data_block"]["provenance"]["operation"] == {
         "kind": "topic_modeling_data_block_creation",
         "role": "topic_data",
         "cluster_count": 2,
         "top_n_topics": 2,
+        "row_unit": "documents",
     }
     assert first["topic_data"]["data_block"]["color"] is None
     assert first["topic_meanings"]["data_block"]["color"] is None
+
+
+def _topic_segments_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, segments: object
+) -> tuple[uuid.UUID, Path, Path]:
+    node_id = uuid.uuid4()
+    workspace = Workspace(name="topics")
+    workspace.add_node(
+        Node(
+            id=node_id,
+            name="Source",
+            data=pl.DataFrame(
+                {
+                    # Non-ASCII text proves spans are character offsets.
+                    "text": ["Café au lait. Noël arrive. Rain again.", "Solo line."],
+                    "year": [2021, 2022],
+                }
+            ).lazy(),
+            provenance=SourceProvenance(),
+            document="text",
+            color=None,
+        )
+    )
+    data_dir = tmp_path / "data"
+    data_dir.mkdir()
+    snapshot_dir = tmp_path / "input"
+    create_worker_input_snapshot(
+        workspace_id=workspace.id,
+        node_ids=[node_id],
+        workspace=workspace,
+        workspace_data_dir=data_dir,
+        snapshot_dir=snapshot_dir,
+        max_snapshot_bytes=10_000_000,
+    )
+    monkeypatch.setattr(
+        "ldaca_wordflow.workers.topic_pipeline._project_rust_topic_modeling",
+        lambda **_kwargs: {
+            "documents": [{"doc_index": 0}, {"doc_index": 1}],
+            "topics": [
+                {"id": 0, "representative_words": [{"word": "coffee"}]},
+                {"id": 1, "representative_words": [{"word": "weather"}]},
+            ],
+        },
+    )
+
+    def fake_segments(_context: bytes, topic_count: int):
+        assert topic_count == 2
+        if isinstance(segments, Exception):
+            raise segments
+        return segments
+
+    # raising=False: installed polars-text builds may predate this function.
+    monkeypatch.setattr(
+        "polars_text.project_topic_segments", fake_segments, raising=False
+    )
+    context_path = tmp_path / "context.msgpack.zst"
+    context_path.write_bytes(b"context")
+    return node_id, snapshot_dir, context_path
+
+
+def _topic_request(node_id: uuid.UUID, topic_ids: list[int] | None = None) -> dict:
+    return {
+        "kind": "topic_modeling_data_block_creation",
+        "node_ids": [str(node_id)],
+        "selected_columns": {str(node_id): ["text", "year"]},
+        "new_node_names": {str(node_id): "Topic rows"},
+        "topic_ids": topic_ids,
+        "cluster_count": 2,
+        "top_n_topics": 1,
+        "row_unit": "topics",
+    }
+
+
+def test_per_topic_detach_joins_only_each_topics_segments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Document 0: "Café au lait." (0-13) and "Rain again." (27-38) are Topic 0 and
+    # 1, "Noël arrive." (14-26) is also Topic 0; document 1 is one outlier.
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [(0, 0, 13, 0), (0, 14, 26, 0), (0, 27, 38, 1), (1, 0, 10, -1)],
+    )
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=_topic_request(node_id),
+        projection_context_path=str(context_path),
+        source_projection={
+            node_id: {
+                "row_indices": [0, 1],
+                "offset": 0,
+                "size": 2,
+                "text_column": "text",
+            }
+        },
+    )
+
+    output = result["outputs"][0]["topic_data"]
+    data = pl.read_parquet(output["parquet_path"])
+    assert data.columns == [
+        "text",
+        "year",
+        TOPIC_COLUMN,
+        TOPIC_SHARE_COLUMN,
+        TOPIC_SEGMENT_COUNT_COLUMN,
+    ]
+    assert data["text"].to_list() == ["Café au lait.\nNoël arrive.", "Rain again."]
+    assert data["year"].to_list() == [2021, 2021]
+    assert data[TOPIC_COLUMN].to_list() == [0, 1]
+    assert data[TOPIC_SEGMENT_COUNT_COLUMN].to_list() == [2, 1]
+    assert data[TOPIC_SHARE_COLUMN].to_list() == pytest.approx([25 / 36, 11 / 36])
+    assert output["data_block"]["document"] == "text"
+    assert output["data_block"]["provenance"]["operation"]["row_unit"] == "topics"
+    meanings = pl.read_parquet(result["outputs"][0]["topic_meanings"]["parquet_path"])
+    assert meanings[TOPIC_COLUMN].to_list() == [0, 1]
+
+
+def test_per_topic_detach_keeps_only_selected_topics(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [(0, 0, 13, 0), (0, 14, 26, 0), (0, 27, 38, 1), (1, 0, 10, -1)],
+    )
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=_topic_request(node_id, topic_ids=[1]),
+        projection_context_path=str(context_path),
+        source_projection={
+            node_id: {
+                "row_indices": [0, 1],
+                "offset": 0,
+                "size": 2,
+                "text_column": "text",
+            }
+        },
+    )
+
+    data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
+    assert data["text"].to_list() == ["Rain again."]
+    assert data[TOPIC_COLUMN].to_list() == [1]
+
+
+def test_per_topic_detach_asks_for_a_rerun_without_segment_spans(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path, monkeypatch, ValueError("no segment spans")
+    )
+
+    with pytest.raises(ValueError, match="Re-run the analysis"):
+        run_topic_modeling_data_block_creation(
+            input_snapshot_dir=str(snapshot_dir),
+            output_dir=str(tmp_path / "output"),
+            request_payload=_topic_request(node_id),
+            projection_context_path=str(context_path),
+            source_projection={
+                node_id: {
+                    "row_indices": [0, 1],
+                    "offset": 0,
+                    "size": 2,
+                    "text_column": "text",
+                }
+            },
+        )
