@@ -113,7 +113,7 @@ function ResponsiveWordCloudInstance({
       top: 0,
       width: '100%',
       height: '100%',
-      sizeRange: wordCloudSizeRange(cloudHeight),
+      sizeRange: wordCloudSizeRange({ width: cloudWidth, height: cloudHeight, words }),
       rotationRange: [0, 0],
       rotationStep: 1,
       gridSize: 4,

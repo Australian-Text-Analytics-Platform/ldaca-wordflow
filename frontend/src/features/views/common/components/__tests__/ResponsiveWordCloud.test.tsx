@@ -105,7 +105,7 @@ describe('ResponsiveWordCloud', () => {
             height: '100%',
             shape: 'square',
             keepAspect: false,
-            sizeRange: [10, 60],
+            sizeRange: [25, 150],
             rotationRange: [0, 0],
             gridSize: 4,
             drawOutOfBound: false,
@@ -207,10 +207,31 @@ describe('ResponsiveWordCloud', () => {
     expect(plainEvent.defaultPrevented).toBe(false);
   });
 
-  it('scales the font range with the canvas height', () => {
-    expect(wordCloudSizeRange(600)).toEqual([20, 120]);
-    expect(wordCloudSizeRange(300)).toEqual([10, 60]);
-    // Small topic bubbles keep a legible floor.
-    expect(wordCloudSizeRange(86)).toEqual([10, 24]);
+  it('sizes fonts from the words so fewer words get larger text', () => {
+    const cloud = (count: number) =>
+      Array.from({ length: count }, (_, index) => ({
+        text: `word${String(index)}`,
+        value: count - index,
+      }));
+    const [, max100] = wordCloudSizeRange({ width: 1000, height: 600, words: cloud(100) });
+    const [, max50] = wordCloudSizeRange({ width: 1000, height: 600, words: cloud(50) });
+    const [, max100Wide] = wordCloudSizeRange({ width: 1600, height: 960, words: cloud(100) });
+
+    expect(max50).toBeGreaterThan(max100);
+    // Growing the pane grows the words.
+    expect(max100Wide).toBeGreaterThan(max100);
+  });
+
+  it('caps a short list and keeps small clouds legible', () => {
+    expect(
+      wordCloudSizeRange({ width: 1000, height: 600, words: [{ text: 'a', value: 1 }] }),
+    ).toEqual([50, 300]);
+    const [minFont, maxFont] = wordCloudSizeRange({
+      width: 180,
+      height: 86,
+      words: Array.from({ length: 30 }, (_, index) => ({ text: 'representative', value: index })),
+    });
+    expect(maxFont).toBe(24);
+    expect(minFont).toBe(10);
   });
 });
