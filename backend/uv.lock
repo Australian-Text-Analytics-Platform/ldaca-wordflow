@@ -1467,7 +1467,7 @@ dev = [
 
 [[package]]
 name = "polars-text"
-version = "0.6.0"
+version = "0.6.1"
 source = { editable = "../polars-text" }
 dependencies = [
     { name = "polars" },

@@ -32,7 +32,7 @@ dependencies = [
     "platformdirs>=4.11.5,<5",
     "python-multipart>=0.0.20",                 # OAuth form callbacks
     "psutil>=6.1.0",                            # Process management for proper cleanup of child processes
-    "polars-text>=0.6.0",
+    "polars-text>=0.6.1",
     "polars-source-utils>=0.6.0",
     "tbb>=2022.3.1 ; sys_platform != 'darwin'",
     "tzdata>=2025.2 ; sys_platform == 'win32'",
