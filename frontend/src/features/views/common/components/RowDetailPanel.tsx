@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 
 import {
@@ -34,6 +34,8 @@ export interface RowDetailCustomization {
    * Custom renderer for the full-text section.
    * Receives the raw text and the full row record.
    * Return `null` to hide the document section entirely.
+   * Mark one element with `data-row-detail-anchor` to scroll the document box
+   * to it when the dialog opens or the row changes.
    */
   renderDocumentText?: (text: string, record: Record<string, unknown>) => React.ReactNode;
 }
@@ -80,6 +82,22 @@ const formatMetadataValue = (value: unknown): string => {
   return String(value);
 };
 
+/** Space kept above the document anchor so the preceding context stays visible. */
+const DOCUMENT_ANCHOR_MARGIN_PX = 48;
+
+/**
+ * Scrolls only the document box so its `data-row-detail-anchor` element sits
+ * near the top, or back to the start when the renderer marks no anchor.
+ * Called by: RowDetailPanel after the dialog opens or its payload changes.
+ */
+const scrollDocumentToAnchor = (documentBox: HTMLElement) => {
+  documentBox.scrollTop = 0;
+  const anchor = documentBox.querySelector<HTMLElement>('[data-row-detail-anchor]');
+  if (!anchor) return;
+  const offset = anchor.getBoundingClientRect().top - documentBox.getBoundingClientRect().top;
+  documentBox.scrollTop = Math.max(0, offset - DOCUMENT_ANCHOR_MARGIN_PX);
+};
+
 // ---- Component ----
 
 /**
@@ -95,10 +113,17 @@ export function RowDetailPanel({
   navigation,
 }: RowDetailPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  // State rather than a ref: Radix mounts dialog content after the render that
+  // opens it, so the effect must rerun once the document box exists.
+  const [documentBox, setDocumentBox] = useState<HTMLDivElement | null>(null);
 
+  // Resets the dialog to the top and brings the renderer's anchor (such as the
+  // first extracted quote) into view inside the document box, leaving the
+  // summary fields above it visible.
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [payload]);
+    if (documentBox) scrollDocumentToAnchor(documentBox);
+  }, [payload, open, documentBox]);
 
   if (!payload) return null;
 
@@ -161,7 +186,11 @@ export function RowDetailPanel({
                 Document{textColumn ? `: ${textColumn}` : ''}
               </h4>
               <div className="bg-panel p-4 rounded-lg border">
-                <div className="font-mono text-body whitespace-pre-wrap max-h-96 overflow-y-auto">
+                <div
+                  ref={setDocumentBox}
+                  data-testid="row-detail-document"
+                  className="font-mono text-body whitespace-pre-wrap max-h-96 overflow-y-auto"
+                >
                   {documentContent}
                 </div>
               </div>

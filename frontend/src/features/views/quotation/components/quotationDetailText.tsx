@@ -12,16 +12,24 @@ import {
  * adapter it does not clip; both adapters share the exact same segments,
  * palette, and overlap ordering.
  *
- * Used by: `useQuotationRowDetail` for the shared row-detail document slot.
+ * The first highlighted segment carries `data-row-detail-anchor` so the
+ * Row details dialog opens scrolled to the first extracted quote.
+ *
+ * Used by: `buildQuotationRowDetailCustomization` for the shared row-detail
+ * document slot.
  */
 export const renderQuotationDetailText = (row: QuotationResultRow): ReactNode => {
   if (row.text.length === 0 || row.spans.length === 0) return row.text;
   const segments = buildQuotationSegments(row.text, row.spans);
+  const anchorStart = segments.find((segment) => segment.types.length > 0)?.start;
 
   return (
     <span>
       {segments.map((segment) => (
-        <span key={`${String(segment.start)}:${String(segment.end)}`}>
+        <span
+          key={`${String(segment.start)}:${String(segment.end)}`}
+          data-row-detail-anchor={segment.start === anchorStart ? '' : undefined}
+        >
           {segment.types.map((type) => (
             <span
               key={type}

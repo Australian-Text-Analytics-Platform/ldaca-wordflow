@@ -66,4 +66,38 @@ describe('RowDetailPanel', () => {
     });
     expect(screen.getByRole('alert')).toHaveTextContent('Could not load the next row.');
   });
+
+  it('scrolls the document box to the renderer anchor on open', () => {
+    const rectTop = (top: number) => ({ top }) as DOMRect;
+    const renderDocumentText = () => (
+      <span>
+        Opening paragraph.{' '}
+        <span data-testid="anchor" data-row-detail-anchor="">
+          The extracted quote.
+        </span>
+      </span>
+    );
+    vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      if (this.dataset.testid === 'anchor') return rectTop(500);
+      if (this.dataset.testid === 'row-detail-document') return rectTop(100);
+      return rectTop(0);
+    });
+
+    render(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { text: 'unused' }, textColumn: 'text' }}
+        customization={{ renderDocumentText }}
+        navigation={navigation()}
+      />,
+    );
+
+    // 400px below the box top, minus the 48px context margin.
+    expect(screen.getByTestId('row-detail-document').scrollTop).toBe(352);
+    expect(screen.getByTestId('row-detail-scroll').scrollTop).toBe(0);
+    vi.restoreAllMocks();
+  });
 });
