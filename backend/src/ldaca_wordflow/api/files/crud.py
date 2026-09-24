@@ -3,10 +3,14 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response, status
+from fastapi.responses import FileResponse
+from starlette.background import BackgroundTask
 
 from ...models.files import (
     BatchDeleteFilesRequest,
     BatchDeleteFilesResource,
+    FileArchiveRequest,
+    FileArchiveResource,
     CreateFolderRequest,
     FileResource,
     MoveFileRequest,
@@ -155,6 +159,55 @@ async def upload_file(
         path=resource.path,
     )
     return resource
+
+
+@router.post(
+    "/archives",
+    response_model=FileArchiveResource,
+    status_code=status.HTTP_201_CREATED,
+    responses=api_errors(400, 403, 404, 413, 422),
+)
+async def prepare_file_archive(
+    request: FileArchiveRequest,
+    principal: CurrentSessionSecurityDep,
+    file_store: UserFileStoreDep,
+) -> FileArchiveResource:
+    """Register a selection for one ZIP download; fetch it with the returned id."""
+
+    return FileArchiveResource.model_validate(
+        await file_store.prepare_archive(principal.user.id, request.paths)
+    )
+
+
+@router.get(
+    "/archives/{archive_id}",
+    response_class=FileResponse,
+    responses={
+        **api_errors(403, 404, 413, 422, 507),
+        200: {
+            "description": "The selection as one ZIP, folder structure kept.",
+            "content": {
+                "application/zip": {"schema": {"type": "string", "format": "binary"}}
+            },
+        },
+    },
+)
+async def download_file_archive(
+    archive_id: str,
+    principal: CurrentSessionSecurityDep,
+    file_store: UserFileStoreDep,
+) -> FileResponse:
+    """Build and stream a registered selection's ZIP (single use)."""
+
+    snapshot, filename = await file_store.archive_snapshot(
+        principal.user.id, archive_id
+    )
+    return FileResponse(
+        snapshot.path,
+        media_type="application/zip",
+        filename=filename,
+        background=BackgroundTask(snapshot.cleanup),
+    )
 
 
 @router.post(

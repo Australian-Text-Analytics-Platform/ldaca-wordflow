@@ -144,6 +144,8 @@ export interface FileTreeProps {
   onMoveMany?: (sourcePaths: string[], targetDirectoryPath: string) => Promise<void> | void;
   /** Deletes several selected files and folders at once (issue 138). */
   onDeleteMany?: (paths: string[]) => Promise<void> | void;
+  /** Downloads a selection as one ZIP that keeps its folders (issue 139). */
+  onDownloadMany?: (paths: string[]) => Promise<void> | void;
 }
 
 interface FileTreeContentProps extends FileTreeProps {
@@ -186,6 +188,7 @@ function FileTreeContent({
   onMoveFile,
   onMoveMany,
   onDeleteMany,
+  onDownloadMany,
 }: FileTreeContentProps) {
   const [draggingPaths, setDraggingPaths] = useState<string[]>([]);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(() => new Set());
@@ -820,6 +823,19 @@ function FileTreeContent({
                     ))}
                 </SelectContent>
               </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                disabled={!onDownloadMany}
+                onClick={() => {
+                  void onDownloadMany?.(summary.roots);
+                }}
+              >
+                <DownloadIcon className="mr-1 h-3.5 w-3.5" />
+                Download
+              </Button>
               <Button
                 type="button"
                 size="sm"

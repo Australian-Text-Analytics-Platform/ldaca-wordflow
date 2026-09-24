@@ -1,6 +1,7 @@
 import { useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { deleteFiles, getRawFile, moveFile } from '@/api';
+import { deleteFiles, downloadFileArchive, getRawFile, moveFile, prepareFileArchive } from '@/api';
+import { saveBackendDownload } from '@/lib/download';
 import type { FileTreeDirectory } from '@/features/views/data-loader/types';
 import {
   createFileBrowserCitationState,
@@ -93,6 +94,37 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
     }
   };
 
+  /**
+   * Downloads a multi-selection as one ZIP (issue 139). The selection is
+   * registered first, so the ZIP itself streams through a plain GET, which
+   * desktop saves natively.
+   */
+  const handleDownloadMany = async (paths: string[]) => {
+    try {
+      const { data: archive } = await prepareFileArchive({
+        body: { paths },
+        throwOnError: true,
+      });
+      await saveBackendDownload(
+        `/api/user-files/archives/${encodeURIComponent(archive.id)}`,
+        archive.filename,
+        async () => {
+          const { data } = await downloadFileArchive({
+            parseAs: 'blob',
+            path: { archive_id: archive.id },
+            throwOnError: true,
+          });
+          return {
+            blob: data instanceof Blob ? data : new Blob([data]),
+            filename: archive.filename,
+          };
+        },
+      );
+    } catch (error) {
+      notify('error', (error as Error).message || 'Failed to download the selection.');
+    }
+  };
+
   /** Deletes a multi-selection in one backend call (issue 138). */
   const handleDeleteMany = async (paths: string[]) => {
     try {
@@ -150,6 +182,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
     handleMoveFile,
     handleMoveMany,
     handleDeleteMany,
+    handleDownloadMany,
     openCitation,
     closeCitation,
   };

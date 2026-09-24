@@ -26,7 +26,9 @@ import logging
 import shutil
 import stat
 import tempfile
+import time
 import uuid
+import zipfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -48,6 +50,7 @@ from ..shared.errors import (
     InvalidInputError,
     NotFoundError,
     ResourceConflictError,
+    ResourceTooLargeError,
     UnsafePathError,
     UserFileTreeTooLargeError,
     UploadTooLargeError,
@@ -116,6 +119,7 @@ class UserFileStore:
         self._all_users_root = all_users_root
         self._response_snapshots = response_snapshots
         self._user_locks: dict[str, _UserGate] = {}
+        self._pending_archives: dict[str, _PendingArchive] = {}
         self._lock_registry = anyio.Lock()
 
     async def list_tree(self, user_id: str) -> list[dict[str, Any]]:
@@ -426,6 +430,75 @@ class UserFileStore:
                 deleted += 1
         return deleted
 
+    async def prepare_archive(self, user_id: str, relative_paths: list[str]) -> dict[str, Any]:
+        """Register a selection for one ZIP download (issue 139).
+
+        Returns a short-lived, single-use id; the ZIP is built when that id is
+        downloaded, so desktop saves can stream it through a plain GET.
+        """
+
+        roots = _selection_roots(relative_paths)
+        async with self._lock_for(user_id):
+            resolver = await self._resolver_for(user_id)
+            file_count = 0
+            total_bytes = 0
+            for relative_path in roots:
+                target = resolver.resolve(relative_path)
+                if not await self._run_sync(target.exists):
+                    raise FileResourceNotFoundError(f"File {relative_path} not found")
+                files = await self._run_sync(_archive_members, target)
+                file_count += len(files)
+                total_bytes += sum(size for _path, size in files)
+        if total_bytes > self._response_snapshots.max_snapshot_bytes:
+            raise ResourceTooLargeError("Selection is too large to download as one ZIP")
+        now = time.monotonic()
+        self._pending_archives = {
+            key: value
+            for key, value in self._pending_archives.items()
+            if value.expires_at > now
+        }
+        if len(self._pending_archives) >= _MAX_PENDING_ARCHIVES:
+            oldest = min(self._pending_archives, key=lambda key: self._pending_archives[key].expires_at)
+            del self._pending_archives[oldest]
+        archive_id = uuid.uuid4().hex
+        base = _common_parent(roots)
+        filename = _archive_filename(roots, base)
+        self._pending_archives[archive_id] = _PendingArchive(
+            user_id=user_id,
+            roots=tuple(roots),
+            base=base,
+            filename=filename,
+            total_bytes=total_bytes,
+            expires_at=now + _ARCHIVE_TTL_SECONDS,
+        )
+        return {"id": archive_id, "filename": filename, "file_count": file_count}
+
+    async def archive_snapshot(
+        self, user_id: str, archive_id: str
+    ) -> tuple[ResponseSnapshot, str]:
+        """Build a registered selection's ZIP and stage it for one response."""
+
+        pending = self._pending_archives.pop(archive_id, None)
+        if (
+            pending is None
+            or pending.user_id != user_id
+            or pending.expires_at <= time.monotonic()
+        ):
+            raise NotFoundError("Download link has expired; select the files again")
+        max_bytes = self._response_snapshots.max_snapshot_bytes
+        async with self._lock_for(user_id):
+            resolver = await self._resolver_for(user_id)
+            targets = [resolver.resolve(path) for path in pending.roots]
+            # Stored ZIP members add a small header per file; allow for it.
+            budget = min(max_bytes, pending.total_bytes + 1024 * 1024 + 512 * len(targets))
+            snapshot = await self._response_snapshots.create_generated(
+                suffix=".zip",
+                max_output_bytes=max_bytes,
+                reservation_bytes=budget,
+                producer=partial(_write_archive, resolver.root, targets, pending.base),
+            )
+        return snapshot, pending.filename
+
     async def response_snapshot(
         self,
         user_id: str,
@@ -620,6 +693,99 @@ def _move_checked(
     destination: Path,
 ) -> None:
     resolver.move_file(source, destination)
+
+
+_ARCHIVE_TTL_SECONDS = 600
+_MAX_PENDING_ARCHIVES = 64
+
+
+@dataclass(frozen=True, slots=True)
+class _PendingArchive:
+    user_id: str
+    roots: tuple[str, ...]
+    base: str
+    filename: str
+    total_bytes: int
+    expires_at: float
+
+
+def _selection_roots(relative_paths: list[str]) -> list[str]:
+    """Normalize a selection and drop entries inside another selected folder."""
+
+    normalized = sorted({path.replace("\\", "/").strip("/") for path in relative_paths})
+    if not normalized:
+        raise InvalidInputError("Select at least one file or folder")
+    for relative_path in normalized:
+        if not relative_path:
+            raise InvalidInputError("Select files or folders, not the root folder")
+        _require_public_path(relative_path)
+    roots: list[str] = []
+    for path in normalized:
+        if not any(path.startswith(f"{root}/") for root in roots):
+            roots.append(path)
+    return roots
+
+
+def _common_parent(roots: list[str]) -> str:
+    """The deepest folder containing every selected entry ("" for the root)."""
+
+    parents = [path.split("/")[:-1] for path in roots]
+    common: list[str] = []
+    for parts in zip(*parents, strict=False):
+        if len(set(parts)) != 1:
+            break
+        common.append(parts[0])
+    return "/".join(common)
+
+
+def _archive_filename(roots: list[str], base: str) -> str:
+    if len(roots) == 1:
+        return f"{roots[0].split('/')[-1]}.zip"
+    return f"{base.split('/')[-1]}.zip" if base else "wordflow_files.zip"
+
+
+def _archive_members(target: Path) -> list[tuple[Path, int]]:
+    """Every regular file at or below ``target``; links and hidden entries skipped."""
+
+    metadata = target.lstat()
+    if _is_link_or_reparse(metadata):
+        return []
+    if stat.S_ISREG(metadata.st_mode):
+        return [(target, metadata.st_size)]
+    if not stat.S_ISDIR(metadata.st_mode):
+        return []
+    members: list[tuple[Path, int]] = []
+    for directory, dirnames, filenames in os.walk(target, followlinks=False):
+        dirnames[:] = sorted(name for name in dirnames if not name.startswith("."))
+        for name in sorted(filenames):
+            if name.startswith("."):
+                continue
+            path = Path(directory) / name
+            entry = path.lstat()
+            if stat.S_ISREG(entry.st_mode) and not _is_link_or_reparse(entry):
+                members.append((path, entry.st_size))
+    return members
+
+
+def _write_archive(
+    root: Path,
+    targets: list[Path],
+    base: str,
+    destination: Path,
+    max_output_bytes: int,
+) -> None:
+    """Write the selection as a ZIP whose paths start below ``base``."""
+
+    base_dir = root / base if base else root
+    with zipfile.ZipFile(destination, "x", compression=zipfile.ZIP_DEFLATED) as archive:
+        for target in targets:
+            for path, _size in _archive_members(target):
+                archive.write(path, path.relative_to(base_dir).as_posix())
+            if target.is_dir() and not _archive_members(target):
+                # Keep empty selected folders visible in the archive.
+                archive.writestr(f"{target.relative_to(base_dir).as_posix()}/", b"")
+            if destination.stat().st_size > max_output_bytes:
+                raise ResourceTooLargeError("Selection is too large to download as one ZIP")
 
 
 def _move_directory_checked(

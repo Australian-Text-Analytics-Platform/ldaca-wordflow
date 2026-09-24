@@ -71,6 +71,12 @@ class ResponseSnapshotService:
         self._slots = anyio.Semaphore(max_concurrent_snapshots)
         self._limiter = limiter
 
+    @property
+    def max_snapshot_bytes(self) -> int:
+        """Largest single response this service will stage."""
+
+        return self._max_snapshot_bytes
+
     async def create(self, source: Path) -> ResponseSnapshot:
         """Reserve worst-case copy bytes and retain a concurrency slot."""
 

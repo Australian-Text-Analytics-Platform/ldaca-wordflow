@@ -71,6 +71,20 @@ class BatchDeleteFilesResource(_StrictModel):
     deleted: int = Field(ge=0)
 
 
+class FileArchiveRequest(_StrictModel):
+    """Files and folders to download together as one ZIP (issue 139)."""
+
+    paths: list[str] = Field(min_length=1, max_length=10_000)
+
+
+class FileArchiveResource(_StrictModel):
+    """A single-use, short-lived id to download the selection's ZIP."""
+
+    id: str
+    filename: str
+    file_count: int = Field(ge=0)
+
+
 class MoveFileRequest(_StrictModel):
     """Move one file or folder into an existing relative directory."""
 

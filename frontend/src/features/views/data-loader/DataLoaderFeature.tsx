@@ -212,6 +212,7 @@ function DataLoaderFeature() {
     handleMoveFile,
     handleMoveMany,
     handleDeleteMany,
+    handleDownloadMany,
     openCitation,
     closeCitation,
   } = useFileBrowserActions({ refreshFiles, notify });
@@ -614,6 +615,7 @@ function DataLoaderFeature() {
                           onMoveFile={handleMoveFile}
                           onMoveMany={handleMoveMany}
                           onDeleteMany={handleDeleteMany}
+                          onDownloadMany={handleDownloadMany}
                         />
                       </div>
                     </ScrollArea>

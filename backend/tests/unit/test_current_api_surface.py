@@ -62,6 +62,8 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/user-files/worksheets", "list_file_worksheets"),
     ("GET", "/api/user-files/zip-tables", "list_zip_table_members"),
     ("GET", "/api/user-files/raw", "get_raw_file"),
+    ("POST", "/api/user-files/archives", "prepare_file_archive"),
+    ("GET", "/api/user-files/archives/{archive_id}", "download_file_archive"),
     ("POST", "/api/user-files/batch-delete", "delete_files"),
     ("POST", "/api/user-files/uploads", "upload_file"),
     ("GET", "/api/sample-collections", "list_sample_collections"),

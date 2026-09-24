@@ -196,6 +196,7 @@ Tick the checkbox beside a file or folder (it appears when you hover, and on eve
 With items selected, the bar at the top shows how many are selected and offers:
 
 - **Move to…**: move the whole selection into a folder or the top level. You can also drag any selected row to move them all.
+- **Download**: download the selection as one ZIP. Folders keep their structure, and paths start from the folder that contains the selection, so selecting `speeches` and `one.csv` gives `speeches/…` and `one.csv`.
 - **Delete**: delete the selection after a confirmation that counts the files and folders affected. Folders are deleted with everything inside them, and deletion cannot be undone.
 - **Clear**: deselect everything (or press Esc).
 

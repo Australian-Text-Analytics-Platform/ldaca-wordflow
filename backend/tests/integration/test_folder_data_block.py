@@ -196,3 +196,53 @@ def test_zip_tables_load_as_separate_data_blocks_and_folders_skip_zips(
         assert folder_node["skipped_files"] == [
             {"extension": "zip", "reason": "unsupported_type", "count": 1}
         ]
+
+
+def test_selection_zip_download_round_trip(tmp_path: Path) -> None:
+    """#139: register a selection, then download its ZIP once."""
+
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        client.post(
+            "/api/user-files/folders",
+            json={"name": "speeches", "parent_path": ""},
+            headers=unsafe,
+        )
+        for path in ("one.csv", "speeches/a.txt"):
+            client.post(
+                "/api/user-files/uploads",
+                params={"path": path},
+                content=b"x",
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            )
+
+        prepared = client.post(
+            "/api/user-files/archives",
+            json={"paths": ["one.csv", "speeches"]},
+            headers=unsafe,
+        )
+        assert prepared.status_code == 201, prepared.text
+        archive = prepared.json()
+        assert archive["file_count"] == 2
+
+        downloaded = client.get(f"/api/user-files/archives/{archive['id']}")
+        assert downloaded.status_code == 200, downloaded.text
+        assert downloaded.headers["content-type"] == "application/zip"
+        assert sorted(zipfile.ZipFile(BytesIO(downloaded.content)).namelist()) == [
+            "one.csv",
+            "speeches/a.txt",
+        ]
+        assert (
+            client.get(f"/api/user-files/archives/{archive['id']}").status_code == 404
+        )

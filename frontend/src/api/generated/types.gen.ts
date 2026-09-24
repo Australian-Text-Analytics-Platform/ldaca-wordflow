@@ -2532,6 +2532,38 @@ export type Failure = {
 };
 
 /**
+ * FileArchiveRequest
+ *
+ * Files and folders to download together as one ZIP (issue 139).
+ */
+export type FileArchiveRequest = {
+    /**
+     * Paths
+     */
+    paths: Array<string>;
+};
+
+/**
+ * FileArchiveResource
+ *
+ * A single-use, short-lived id to download the selection's ZIP.
+ */
+export type FileArchiveResource = {
+    /**
+     * File Count
+     */
+    file_count: number;
+    /**
+     * Filename
+     */
+    filename: string;
+    /**
+     * Id
+     */
+    id: string;
+};
+
+/**
  * FileNodeCreateRequest
  *
  * Create one source node from a safe user-file path.
@@ -7075,6 +7107,101 @@ export type MoveFileResponses = {
 };
 
 export type MoveFileResponse = MoveFileResponses[keyof MoveFileResponses];
+
+export type PrepareFileArchiveData = {
+    body: FileArchiveRequest;
+    path?: never;
+    query?: never;
+    url: '/api/user-files/archives';
+};
+
+export type PrepareFileArchiveErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type PrepareFileArchiveError = PrepareFileArchiveErrors[keyof PrepareFileArchiveErrors];
+
+export type PrepareFileArchiveResponses = {
+    /**
+     * Successful Response
+     */
+    201: FileArchiveResource;
+};
+
+export type PrepareFileArchiveResponse = PrepareFileArchiveResponses[keyof PrepareFileArchiveResponses];
+
+export type DownloadFileArchiveData = {
+    body?: never;
+    path: {
+        /**
+         * Archive Id
+         */
+        archive_id: string;
+    };
+    query?: never;
+    url: '/api/user-files/archives/{archive_id}';
+};
+
+export type DownloadFileArchiveErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Storage capacity is exhausted
+     */
+    507: ApiError;
+};
+
+export type DownloadFileArchiveError = DownloadFileArchiveErrors[keyof DownloadFileArchiveErrors];
+
+export type DownloadFileArchiveResponses = {
+    /**
+     * The selection as one ZIP, folder structure kept.
+     */
+    200: Blob | File;
+};
+
+export type DownloadFileArchiveResponse = DownloadFileArchiveResponses[keyof DownloadFileArchiveResponses];
 
 export type DeleteFilesData = {
     body: BatchDeleteFilesRequest;

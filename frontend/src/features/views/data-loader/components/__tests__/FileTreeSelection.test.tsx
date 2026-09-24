@@ -155,4 +155,15 @@ describe('FileTree multi-select (#138)', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Select all in speeches' }));
     expect(screen.getByText('3 selected')).toBeInTheDocument();
   });
+
+  it('downloads the selection as one ZIP', async () => {
+    const user = userEvent.setup();
+    const callbacks = mountTree({ onDownloadMany: vi.fn() });
+
+    await user.click(screen.getByRole('checkbox', { name: 'Select speeches' }));
+    await user.click(screen.getByRole('checkbox', { name: 'Select one.csv' }));
+    await user.click(screen.getByRole('button', { name: 'Download' }));
+
+    expect(callbacks.onDownloadMany).toHaveBeenCalledWith(['one.csv', 'speeches']);
+  });
 });

@@ -11,6 +11,7 @@ import pytest
 from ldaca_wordflow.shared.errors import (
     FileNotFoundError as FileResourceNotFoundError,
     InvalidInputError,
+    NotFoundError,
     ResourceConflictError,
     UnsafePathError,
     UserFileTreeTooLargeError,
@@ -478,3 +479,50 @@ async def test_batch_delete_covers_nested_selections_and_skips_missing(
         await store.delete_many("alice", ["/"])
     with pytest.raises(InvalidInputError, match="Hidden"):
         await store.delete_many("alice", [".wordflow-imports"])
+
+
+async def test_selection_downloads_as_one_zip_with_structure(tmp_path: Path) -> None:
+    """#139: paths are kept relative to the selection's common parent."""
+
+    import io
+    import zipfile
+
+    store = _store(tmp_path)
+    await store.create_folder("alice", name="speeches", parent_path="")
+    await store.create_folder("alice", name="2020", parent_path="speeches")
+    await store.create_folder("alice", name="empty", parent_path="")
+    for path in ("one.csv", "speeches/a.txt", "speeches/2020/b.txt"):
+        await store.upload("alice", path, ByteSource(b"x"))
+
+    prepared = await store.prepare_archive(
+        "alice", ["one.csv", "speeches", "speeches/a.txt", "empty"]
+    )
+    assert prepared["file_count"] == 3
+    assert prepared["filename"] == "wordflow_files.zip"
+    snapshot, filename = await store.archive_snapshot("alice", prepared["id"])
+    try:
+        names = sorted(
+            zipfile.ZipFile(io.BytesIO(snapshot.path.read_bytes())).namelist()
+        )
+    finally:
+        await snapshot.cleanup()
+    assert filename == "wordflow_files.zip"
+    assert names == ["empty/", "one.csv", "speeches/2020/b.txt", "speeches/a.txt"]
+
+    # Single use, and bound to its user.
+    with pytest.raises(NotFoundError, match="expired"):
+        await store.archive_snapshot("alice", prepared["id"])
+    nested = await store.prepare_archive(
+        "alice", ["speeches/2020/b.txt", "speeches/a.txt"]
+    )
+    with pytest.raises(NotFoundError, match="expired"):
+        await store.archive_snapshot("bob", nested["id"])
+
+    single = await store.prepare_archive("alice", ["speeches/2020"])
+    snapshot, filename = await store.archive_snapshot("alice", single["id"])
+    try:
+        names = zipfile.ZipFile(io.BytesIO(snapshot.path.read_bytes())).namelist()
+    finally:
+        await snapshot.cleanup()
+    assert filename == "2020.zip"
+    assert names == ["2020/b.txt"]
