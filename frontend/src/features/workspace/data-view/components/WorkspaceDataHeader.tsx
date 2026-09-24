@@ -171,7 +171,7 @@ export const WorkspaceDataHeader = ({
             onClick={onUndo}
             disabled={!info.canUndo}
             aria-label="Undo Data Block edit"
-            title="Undo the last edit from this Workspace session"
+            title="Undo the last edit from this Project session"
           >
             <Undo2 className="h-3 w-3" />
             Undo
@@ -182,7 +182,7 @@ export const WorkspaceDataHeader = ({
             onClick={onRedo}
             disabled={!info.canRedo}
             aria-label="Redo Data Block edit"
-            title="Redo the last undone edit from this Workspace session"
+            title="Redo the last undone edit from this Project session"
           >
             <Redo2 className="h-3 w-3" />
             Redo

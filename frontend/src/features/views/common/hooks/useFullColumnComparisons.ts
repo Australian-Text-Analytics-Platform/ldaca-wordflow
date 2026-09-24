@@ -73,7 +73,7 @@ export function useFullColumnComparisons({
         canonicalClassOptions,
       ),
       queryFn: async ({ signal }: { signal: AbortSignal }) => {
-        if (!workspaceId) throw new Error('Missing workspace ID');
+        if (!workspaceId) throw new Error('Missing project ID');
         const aggregateSql = fullColumnComparisonSql(
           sql,
           referenceColumn,
@@ -98,7 +98,7 @@ export function useFullColumnComparisons({
           });
           initialEtag ??= aggregate.etag;
           if (initialEtag !== aggregate.etag) {
-            throw new Error('Workspace changed while loading the annotation comparison');
+            throw new Error('Project changed while loading the annotation comparison');
           }
           rows.push(
             ...aggregate.rows.map((row) => ({

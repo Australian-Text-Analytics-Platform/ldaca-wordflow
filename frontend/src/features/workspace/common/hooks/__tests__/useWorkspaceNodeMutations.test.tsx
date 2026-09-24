@@ -53,7 +53,7 @@ describe('useWorkspaceNodeMutations', () => {
     useFreshNodesStore.getState().reset();
   });
 
-  it('creates a workspace through the canonical resource endpoint', async () => {
+  it('creates a project through the canonical resource endpoint', async () => {
     const queryClient = createTestClient();
     workspaceSdkMock.createWorkspace.mockResolvedValue({ data: { id: 'ws-new' } });
     const { result } = renderHook(() => useWorkspaceNodeMutations(buildArgs(queryClient)), {
@@ -61,16 +61,16 @@ describe('useWorkspaceNodeMutations', () => {
     });
 
     await act(async () => {
-      await result.current.actions.createWorkspace('My workspace', 'Description');
+      await result.current.actions.createWorkspace('My project', 'Description');
     });
 
     expect(workspaceSdkMock.createWorkspace).toHaveBeenCalledWith({
-      body: { name: 'My workspace', description: 'Description' },
+      body: { name: 'My project', description: 'Description' },
       throwOnError: true,
     });
   });
 
-  it('opens a Workspace and reconciles through the authoritative Workspace list', async () => {
+  it('opens a Project and reconciles through the authoritative Project list', async () => {
     const queryClient = createTestClient();
     workspaceSdkMock.openWorkspaceById.mockResolvedValue({ data: { id: 'ws-2' } });
     const args = buildArgs(queryClient);
@@ -89,7 +89,7 @@ describe('useWorkspaceNodeMutations', () => {
     expect(args.clearSelection).not.toHaveBeenCalled();
   });
 
-  it('closes the selected workspace when the selection is cleared', async () => {
+  it('closes the selected project when the selection is cleared', async () => {
     const queryClient = createTestClient();
     workspaceSdkMock.closeWorkspaceById.mockResolvedValue({ data: undefined });
     const { result } = renderHook(() => useWorkspaceNodeMutations(buildArgs(queryClient, 'ws-1')), {
@@ -194,7 +194,7 @@ describe('useWorkspaceNodeMutations', () => {
     );
   });
 
-  it('previews node creation with the request workspace and cancellation signal', async () => {
+  it('previews node creation with the request project and cancellation signal', async () => {
     const queryClient = createTestClient();
     const signal = new AbortController().signal;
     workspaceSdkMock.previewNodeCreationTable.mockResolvedValue({

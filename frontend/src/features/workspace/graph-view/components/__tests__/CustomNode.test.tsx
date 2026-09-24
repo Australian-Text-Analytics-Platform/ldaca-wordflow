@@ -23,7 +23,7 @@ vi.mock('sonner', () => ({ toast: mocks.toast }));
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
   useWorkspaceData: () => ({
     currentWorkspaceId: 'workspace-1',
-    currentWorkspace: { name: 'Main Workspace' },
+    currentWorkspace: { name: 'Main Project' },
   }),
 }));
 
@@ -201,7 +201,7 @@ describe('CustomNode', () => {
     await waitFor(() =>
       expect(mocks.downloadDataBlocks).toHaveBeenCalledWith({
         workspaceId: 'workspace-1',
-        workspaceName: 'Main Workspace',
+        workspaceName: 'Main Project',
         dataBlocks: [{ id: 'node-1', name: 'Corpus' }],
         format: 'csv',
       }),

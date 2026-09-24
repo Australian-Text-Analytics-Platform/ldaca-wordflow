@@ -38,7 +38,7 @@ export async function queryWorkspaceSqlTable(options: {
     );
   }
   if (!(data instanceof Blob) && !(data instanceof ArrayBuffer)) {
-    throw new Error('Workspace SQL query did not return Arrow IPC');
+    throw new Error('Project SQL query did not return Arrow IPC');
   }
   return decodeArrowPage(data, response);
 }
@@ -102,7 +102,7 @@ export async function createWorkspaceSqlDataBlock(options: {
   }
   const resource: unknown = data;
   if (!resource || typeof resource !== 'object' || !('id' in resource)) {
-    throw new Error('Workspace SQL creation did not return a Data Block resource');
+    throw new Error('Project SQL creation did not return a Data Block resource');
   }
   return resource as WorkspaceNodeInfo;
 }

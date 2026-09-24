@@ -9,7 +9,7 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
    * Supplies workspace identity and graph roots consumed by `WorkspaceControls`.
    */
   useWorkspaceData: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Main Workspace' },
+    currentWorkspace: { id: 'ws-1', name: 'Main Project' },
   }),
 }));
 
@@ -21,14 +21,14 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
 }));
 
 describe('WorkspaceControls', () => {
-  it('keeps workspace identity actions in the header and leaves deletion to the graph toolbar', () => {
+  it('keeps project identity actions in the header and leaves deletion to the graph toolbar', () => {
     render(
       <TooltipProvider>
         <WorkspaceControls />
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Rename workspace' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Rename project' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   });
 });

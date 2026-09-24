@@ -68,7 +68,7 @@ describe('useNodePreviewWithRawFallback', () => {
       expect(opts.request).toBeNull();
     });
 
-    it('indexes a raw preview by operation, Workspace, and Data Block', () => {
+    it('indexes a raw preview by operation, Project, and Data Block', () => {
       renderHook(() =>
         useNodePreviewWithRawFallback({
           workspaceId: 'workspace-1',

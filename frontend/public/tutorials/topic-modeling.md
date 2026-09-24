@@ -136,7 +136,7 @@ A successfully applied non-default projection is remembered for the same
 Analysis. If a lower cluster count cannot support the current Top topics per
 row, Wordflow sends one update with that value clamped to the new count.
 Rerunning creates a new Analysis at its natural count and Top 2. Export and Add
-to Workspace use the displayed successful projection and are unavailable while
+to Project use the displayed successful projection and are unavailable while
 an update is pending.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Top topics per document</h3>
@@ -152,7 +152,7 @@ Enter a value and press Enter or leave the input to request one update. Partial
 input and the already-applied value make no request. Changing only this value
 updates bubble sizes, corpus composition, Topic lists, tooltip counts, CSV, and
 publication membership without moving the Topic layout or clearing selection,
-search, lasso filters, pan, zoom, or an open Add to Workspace dialog.
+search, lasso filters, pan, zoom, or an open Add to Project dialog.
 
 <h3 id="help-topic-modeling-color-by">Colour by</h3>
 
@@ -215,7 +215,7 @@ around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the
 filter shown in **All Topics**; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
-Search further narrows the filtered list. Choose **Add to Workspace** to publish
+Search further narrows the filtered list. Choose **Add to Project** to publish
 manually selected topic data and linked topic meanings as Derived Data Blocks.
 For a two-source result, **Sync columns** applies exact, case-sensitive shared
 source-column selections to both checked Data Blocks. Enabling it combines the

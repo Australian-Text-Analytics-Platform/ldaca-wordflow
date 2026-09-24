@@ -70,7 +70,7 @@ export const useWorkspaceTransformMutations = ({
   };
   const ensureWorkspaceSelected = () => {
     if (!currentWorkspaceId) {
-      throw new Error('No workspace selected');
+      throw new Error('No project selected');
     }
     return currentWorkspaceId;
   };

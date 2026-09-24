@@ -469,7 +469,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(onColumnChange).toHaveBeenCalledWith('party');
   });
 
-  it('offers the typed Add to Workspace action for successful results', () => {
+  it('offers the typed Add to Project action for successful results', () => {
     render(
       <TooltipProvider>
         <TopicModelingResultsPanel {...baseProps} />
@@ -478,10 +478,10 @@ describe('TopicModelingResultsPanel', () => {
 
     expect(screen.getByText('Topic Modelling Results')).toBeInTheDocument();
     expect(screen.getByText('Topics (1)')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add to Workspace' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add to Project' })).toBeInTheDocument();
   });
 
-  it('disables Add to Workspace when density clustering discovers no Topics', () => {
+  it('disables Add to Project when density clustering discovers no Topics', () => {
     render(
       <TooltipProvider>
         <TopicModelingResultsPanel
@@ -506,7 +506,7 @@ describe('TopicModelingResultsPanel', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Add to Workspace' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add to Project' })).toBeDisabled();
   });
 
   it('organizes Result settings and moves the Top-N explanation into help', async () => {

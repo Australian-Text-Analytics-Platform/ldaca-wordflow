@@ -52,7 +52,7 @@ describe('ViewRouteSync', () => {
     resetFixtures();
   });
 
-  it('adopts a valid URL view when the workspace is loaded', async () => {
+  it('adopts a valid URL view when the project is loaded', async () => {
     routeFixture.routeView = 'filter';
 
     render(<ViewRouteSync />);
@@ -133,7 +133,7 @@ describe('ViewRouteSync', () => {
     expect(routeFixture.navigate).not.toHaveBeenCalled();
   });
 
-  it('keeps a workspace URL view pending until the workspace finishes loading', async () => {
+  it('keeps a project URL view pending until the project finishes loading', async () => {
     routeFixture.routeView = 'filter';
     routeFixture.workspaceId = null;
 
@@ -151,7 +151,7 @@ describe('ViewRouteSync', () => {
     expect(routeFixture.navigate).not.toHaveBeenCalled();
   });
 
-  it('drops a pending workspace view when browser navigation clears it', async () => {
+  it('drops a pending project view when browser navigation clears it', async () => {
     routeFixture.routeView = 'filter';
     routeFixture.workspaceId = null;
 

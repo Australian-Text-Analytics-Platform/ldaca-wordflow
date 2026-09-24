@@ -281,7 +281,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
 
   const lastResultSummary = (() => {
     if (!lastResult) {
-      return 'Adjust parameters and add to workspace to create a sampled data block.';
+      return 'Adjust parameters and add to project to create a sampled data block.';
     }
     if (lastResult.mode === 'random_sample') {
       const sizeLabel =

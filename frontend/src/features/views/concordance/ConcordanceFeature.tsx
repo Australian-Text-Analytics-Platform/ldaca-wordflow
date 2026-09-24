@@ -313,7 +313,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     ),
     /** Fetches a completed concordance task result for polling and hydration. */
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No workspace selected');
+      if (!currentWorkspaceId) throw new Error('No project selected');
       return getAnalysisResultResource<ConcordanceAnalysisResponse>(currentWorkspaceId, taskId);
     },
     /** Restores concordance form controls from a saved request. */
@@ -706,7 +706,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         });
       }
       setAddToWorkspaceDialogOpen(false);
-      toast.success('Adding Concordance Results to the Workspace.');
+      toast.success('Adding Concordance Results to the Project.');
     } catch (cause) {
       toast.error('Could not add Concordance Results.', {
         description: cause instanceof Error ? cause.message : String(cause),
@@ -847,7 +847,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
                   setAddToWorkspaceDialogOpen(true);
                 }}
               >
-                Add to Workspace
+                Add to Project
               </Button>
             ) : null
           }
@@ -954,7 +954,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         <ResultAddToWorkspaceDialog
           open
           onOpenChange={setAddToWorkspaceDialogOpen}
-          title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Workspace`}
+          title={`Add Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'} to Project`}
           nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
           sources={addToWorkspaceSources}
           isSubmitting={isAddingToWorkspace}
@@ -970,7 +970,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {isLoading.graph && (
         <div className="text-center py-12">
           <div className="inline-block size-8 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
-          <p className="text-description mt-2">Loading workspace...</p>
+          <p className="text-description mt-2">Loading project...</p>
         </div>
       )}
     </div>

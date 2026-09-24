@@ -89,11 +89,11 @@ export function WorkspaceManagerCard({
       <CardHeader>
         <div className="flex flex-col items-stretch gap-2 @min-[288px]/workspace-manager:flex-row @min-[288px]/workspace-manager:items-center @min-[288px]/workspace-manager:justify-between">
           <CardTitle className="flex items-center gap-2">
-            Workspace manager
+            Project manager
             <HelpIcon
               targetKey="data-loader.workspace-manager.section"
-              label="Workspace manager overview"
-              tooltip="Switch between saved workspaces or remove ones you no longer need."
+              label="Project manager overview"
+              tooltip="Switch between saved projects or remove ones you no longer need."
             />
           </CardTitle>
           <div className="flex w-full flex-wrap items-center gap-1 @min-[288px]/workspace-manager:w-auto @min-[288px]/workspace-manager:justify-end">
@@ -104,12 +104,12 @@ export function WorkspaceManagerCard({
               disabled={uploadingZip || busy}
             >
               <Upload className="mr-1.5 h-4 w-4" />
-              {uploadingZip ? 'Uploading…' : 'Upload workspace'}
+              {uploadingZip ? 'Uploading…' : 'Upload project'}
             </Button>
             <input
               ref={zipInputRef}
               type="file"
-              aria-label="Upload workspace archive"
+              aria-label="Upload project archive"
               accept=".zip,application/zip"
               className="hidden"
               onChange={(e) => {
@@ -119,8 +119,8 @@ export function WorkspaceManagerCard({
             <Button
               size="icon"
               variant="ghost"
-              aria-label="Refresh workspace list"
-              title="Refresh workspace list"
+              aria-label="Refresh project list"
+              title="Refresh project list"
               onClick={onRefresh}
               disabled={refreshing || busy}
             >
@@ -132,11 +132,11 @@ export function WorkspaceManagerCard({
       <CardContent className="flex flex-1 flex-col min-h-0 overflow-hidden">
         {busy && !workspaces.length ? (
           <div className="flex items-center gap-2 text-body text-description">
-            <Loader2 className="h-4 w-4 animate-spin" /> Loading workspaces…
+            <Loader2 className="h-4 w-4 animate-spin" /> Loading projects…
           </div>
         ) : workspaces.length === 0 ? (
           <div className="rounded-md border border-dashed border-surface-border-foreground/60 px-4 py-3 text-center text-body text-description">
-            No workspaces yet. Create one to get started.
+            No projects yet. Create one to get started.
           </div>
         ) : (
           <div className="space-y-3 overflow-y-auto pr-2">

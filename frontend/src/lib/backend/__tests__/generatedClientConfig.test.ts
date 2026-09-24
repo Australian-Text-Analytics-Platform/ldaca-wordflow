@@ -73,21 +73,19 @@ describe('generatedClientConfig', () => {
   it('preserves the backend stable error code on failed generated requests', async () => {
     const config = createClientConfig({
       baseUrl: 'http://api.test/api',
-      fetch: vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({ code: 'workspace_conflict', message: 'Workspace changed' }),
-            { status: 409, headers: { 'Content-Type': 'application/json' } },
-          ),
-        ),
+      fetch: vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ code: 'workspace_conflict', message: 'Project changed' }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
     });
     await expect(
       requireFetch(config.fetch)(new Request(`${String(config.baseUrl)}/session`)),
     ).rejects.toMatchObject({
       status: 409,
       code: 'workspace_conflict',
-      message: 'Workspace changed',
+      message: 'Project changed',
     } satisfies Partial<ApiError>);
   });
 

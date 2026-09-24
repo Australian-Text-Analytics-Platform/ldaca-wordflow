@@ -66,7 +66,7 @@ describe('useWorkspaceTaskInbox', () => {
     useFreshNodesStore.getState().reset();
   });
 
-  it('refreshes the workspace analysis projection when the canonical SSE event arrives', async () => {
+  it('refreshes the project analysis projection when the canonical SSE event arrives', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const wrapper = ({ children }: { children: ReactNode }) => (
       <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
@@ -428,7 +428,7 @@ describe('useWorkspaceTaskInbox', () => {
       availability: 'unavailable',
       id: 'workspace-unavailable',
       reason: 'corrupt_snapshot',
-      message: 'Workspace data is corrupt.',
+      message: 'Project data is corrupt.',
     };
     const available: WorkspaceCatalogueItem = {
       availability: 'available',
@@ -468,14 +468,14 @@ describe('useWorkspaceTaskInbox', () => {
     ]);
   });
 
-  it('removes either catalogue variant when a Workspace removal event arrives', () => {
+  it('removes either catalogue variant when a Project removal event arrives', () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     const catalogue: WorkspaceCatalogueItem[] = [
       {
         availability: 'unavailable',
         id: 'workspace-unavailable',
         reason: 'configured_limit',
-        message: 'Workspace exceeds the configured limits.',
+        message: 'Project exceeds the configured limits.',
       },
       {
         availability: 'available',

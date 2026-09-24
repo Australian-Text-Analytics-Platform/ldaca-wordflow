@@ -146,7 +146,7 @@ function WorkspaceShellContent() {
                         <Suspense
                           fallback={
                             <div className="flex h-full items-center justify-center bg-editor text-body text-description">
-                              Loading workspace view…
+                              Loading project view…
                             </div>
                           }
                         >

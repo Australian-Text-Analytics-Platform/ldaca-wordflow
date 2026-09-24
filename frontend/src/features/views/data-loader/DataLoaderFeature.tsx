@@ -312,7 +312,7 @@ function DataLoaderFeature() {
     try {
       await handleAddFileToWorkspace(addFileName, selectedSheet);
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to add file to workspace.');
+      notify('error', (error as Error).message || 'Failed to add file to project.');
     } finally {
       setAddFileName(null);
     }
@@ -353,7 +353,7 @@ function DataLoaderFeature() {
           <HelpIcon
             targetKey="data-loader.tab"
             label="Data loader overview"
-            tooltip="Manage workspaces, upload text data, and add files to the active workspace. Use this tab before running downstream analyses."
+            tooltip="Manage projects, upload text data, and add files to the active project. Use this tab before running downstream analyses."
           />
         </div>
       </div>
@@ -427,7 +427,7 @@ function DataLoaderFeature() {
                   <HelpIcon
                     targetKey="data-loader.files.section"
                     label="Files and uploads section"
-                    tooltip="Load delimited, JSON, Parquet, Avro, Arrow IPC, spreadsheet, UTF-8 text, or ZIP document files into the active workspace."
+                    tooltip="Load delimited, JSON, Parquet, Avro, Arrow IPC, spreadsheet, UTF-8 text, or ZIP document files into the active project."
                   />
                 </CardTitle>
                 <Button

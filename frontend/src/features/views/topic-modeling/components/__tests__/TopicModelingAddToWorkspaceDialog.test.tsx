@@ -49,7 +49,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
     ).toBe(true);
 
     fireEvent.click(screen.getByRole('button', { name: 'Select all for First' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       [
@@ -110,7 +110,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
     expect(screen.getByRole('checkbox', { name: 'id' })).not.toBeChecked();
     expect(screen.getByRole('checkbox', { name: 'speaker' })).not.toBeChecked();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       [
@@ -154,7 +154,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
       screen.queryByRole('checkbox', { name: 'TOPIC_top1 (required)' }),
     ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith(
       [

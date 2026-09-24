@@ -231,7 +231,7 @@ function WorkspaceGraphControls({
       showInteractive={false}
       className="group/workspace-controls overflow-hidden rounded-md border border-surface-border bg-editor"
       style={{ zIndex: 20 }}
-      aria-label="Workspace graph controls"
+      aria-label="Project graph controls"
     >
       <GraphSelectionControl selected={selected} total={total} />
       <WorkspaceGraphControlButton
@@ -300,7 +300,7 @@ const GraphLoadingState = () => (
       </div>
       <div className="flex items-center gap-2 text-body text-description">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Loading workspace graph…</span>
+        <span>Loading project graph…</span>
       </div>
     </div>
   </div>
@@ -314,9 +314,9 @@ const GraphLoadingState = () => (
 const GraphEmptyState = () => (
   <div className="flex h-full items-center justify-center p-6 text-center">
     <div>
-      <h3 className="text-body font-semibold text-foreground">No workspace loaded</h3>
+      <h3 className="text-body font-semibold text-foreground">No project loaded</h3>
       <p className="mt-1 text-label-secondary text-description">
-        Open or create a workspace in Data Loader to see the graph.
+        Open or create a project in Data Loader to see the graph.
       </p>
     </div>
   </div>

@@ -140,7 +140,7 @@ export function validateAdd(
   constraints: NodeInputConstraints,
 ): string | null {
   const node = nodeMap.get(nodeId);
-  if (!node) return 'Node is no longer in the workspace';
+  if (!node) return 'Node is no longer in the project';
   if (current.some((i) => i.node_id === nodeId)) return 'Already added';
   if (constraints.maxNodes != null && current.length >= constraints.maxNodes) {
     return constraints.maxNodes === 1

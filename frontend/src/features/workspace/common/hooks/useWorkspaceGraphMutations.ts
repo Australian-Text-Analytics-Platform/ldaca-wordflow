@@ -57,7 +57,7 @@ export const useWorkspaceGraphMutations = ({
 }: WorkspaceGraphMutationsParams) => {
   const ensureWorkspaceSelected = () => {
     if (!currentWorkspaceId) {
-      throw new Error('No workspace selected');
+      throw new Error('No project selected');
     }
     return currentWorkspaceId;
   };
@@ -242,7 +242,7 @@ export const useWorkspaceGraphMutations = ({
     mutationKey: ['workspace', 'reorder-nodes'],
     mutationFn: ({ orderedIds }: { orderedIds: string[] }) => {
       if (!currentWorkspaceId) {
-        throw new Error('No workspace selected');
+        throw new Error('No project selected');
       }
       return reorderWorkspaceNodesById({
         body: { ordered_ids: orderedIds },

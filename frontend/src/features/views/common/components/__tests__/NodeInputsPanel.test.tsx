@@ -155,7 +155,7 @@ describe('NodeInputsPanel', () => {
     expect(within(card).getByText('Archived Corpus')).toBeInTheDocument();
     expect(
       within(card).getByText(
-        'This Data Block no longer exists in the Workspace and cannot be used for a new run.',
+        'This Data Block no longer exists in the Project and cannot be used for a new run.',
       ),
     ).toBeInTheDocument();
     expect(within(card).getByText('body')).toBeInTheDocument();

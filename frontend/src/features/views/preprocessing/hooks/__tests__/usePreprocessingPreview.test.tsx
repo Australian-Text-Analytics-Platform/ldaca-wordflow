@@ -252,7 +252,7 @@ describe('usePreprocessingPreview', () => {
     expect(result.current.pagination).toBeNull();
   });
 
-  it('cancels an in-flight preview when workspace identity changes and ignores its stale completion', async () => {
+  it('cancels an in-flight preview when project identity changes and ignores its stale completion', async () => {
     vi.useFakeTimers();
     let resolveFirst:
       | ((value: {

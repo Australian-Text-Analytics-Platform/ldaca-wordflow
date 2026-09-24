@@ -95,7 +95,7 @@ export function FilePreviewContent({
         <DialogHeader className="sr-only">
           <DialogTitle>{title ?? `Preview: ${filename}`}</DialogTitle>
           <DialogDescription>
-            {description ?? 'Inspect file content before adding to workspace.'}
+            {description ?? 'Inspect file content before adding to project.'}
           </DialogDescription>
         </DialogHeader>
         <Card className="flex w-full min-w-0 flex-col" style={{ maxHeight: cardMaxHeight }}>

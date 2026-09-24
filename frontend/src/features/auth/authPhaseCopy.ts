@@ -53,7 +53,7 @@ export const getBlockingCopy = (
     return {
       title: 'Reconnecting your session',
       description:
-        'Multiple background refresh attempts failed, so we paused the workspace until the backend responds again.',
+        'Multiple background refresh attempts failed, so we paused the project until the backend responds again.',
       status: `Retrying (${formatAttemptLabel(phase.attempts)})…`,
       hint: lastFailureLabel
         ? `Last failure at ${lastFailureLabel}. Check your connection or restart the backend, then retry below.`

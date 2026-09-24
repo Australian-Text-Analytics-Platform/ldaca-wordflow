@@ -100,9 +100,9 @@ function ExportFeature() {
       );
       if (omissions === null) return;
       reachContextualHint(CONTEXTUAL_HINT_IDS.export.workspaceSuccess);
-      toast.success('Workspace archive exported');
+      toast.success('Project archive exported');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not export workspace archive');
+      toast.error(error instanceof Error ? error.message : 'Could not export project archive');
     } finally {
       setExportingWorkspace(false);
     }
@@ -204,12 +204,12 @@ function ExportFeature() {
 
       <Card>
         <CardHeader className="space-y-1">
-          <CardTitle>Export Workspace</CardTitle>
+          <CardTitle>Export Project</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-body text-description">
-            Export the complete workspace as a self-contained ZIP archive. Import the archive later
-            to relocate the workspace.
+            Export the complete project as a self-contained ZIP archive. Import the archive later to
+            relocate the project.
           </p>
           <Button
             data-guidance="export-workspace"
@@ -220,7 +220,7 @@ function ExportFeature() {
             className="gap-2"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
-            {exportingWorkspace ? 'Exporting…' : 'Export workspace archive'}
+            {exportingWorkspace ? 'Exporting…' : 'Export project archive'}
           </Button>
         </CardContent>
       </Card>

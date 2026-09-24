@@ -656,7 +656,7 @@ export function TopicModelingResultsPanel({
                         <DisabledReasonTooltip
                           reason={
                             isAddingToWorkspace
-                              ? 'A Data Block is being added to the workspace'
+                              ? 'A Data Block is being added to the project'
                               : (clustering?.cluster_count ?? 0) === 0
                                 ? 'No Topics were discovered'
                                 : undefined
@@ -673,7 +673,7 @@ export function TopicModelingResultsPanel({
                             }
                           >
                             <Plus className="mr-1 h-4 w-4" />
-                            Add to Workspace
+                            Add to Project
                           </Button>
                         </DisabledReasonTooltip>
                       </div>

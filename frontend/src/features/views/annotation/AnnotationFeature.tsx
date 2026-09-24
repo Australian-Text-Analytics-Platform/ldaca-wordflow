@@ -658,7 +658,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     controlAnalysisId: activeAnalysis?.id ?? null,
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     fetchResult: async (analysisId) => {
-      if (!currentWorkspaceId) throw new Error('No workspace selected');
+      if (!currentWorkspaceId) throw new Error('No project selected');
       const result = await getAnalysisOutputResource(currentWorkspaceId, analysisId);
       if (result.kind !== 'annotation') {
         throw new Error('Annotation Analysis returned the wrong Result kind');

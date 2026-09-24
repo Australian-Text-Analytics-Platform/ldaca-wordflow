@@ -150,7 +150,7 @@ def _resolve_metadata_path(path: Path) -> Path:
     if path.suffix.lower() == ".json":
         return path
     if path.exists() and not path.is_dir():
-        raise ValueError("Workspace path must be a directory or a .json file")
+        raise ValueError("Project path must be a directory or a .json file")
     return path / "workspace.json"
 
 
@@ -158,18 +158,18 @@ def _resolve_regular_under(root: Path, relative: Path) -> Path:
     """Resolve one regular file without following link/reparse components."""
 
     if relative.is_absolute() or not relative.parts:
-        raise ValueError("Workspace file path must be relative")
+        raise ValueError("Project file path must be relative")
     current = root.resolve(strict=True)
     resolved_root = current
     for part in relative.parts:
         if part in {"", ".", ".."}:
-            raise ValueError("Workspace file path is invalid")
+            raise ValueError("Project file path is invalid")
         current = current / part
         metadata = current.lstat()
         if is_link_or_reparse(metadata):
-            raise ValueError("Workspace file path contains a link or reparse point")
+            raise ValueError("Project file path contains a link or reparse point")
     if not stat.S_ISREG(current.lstat().st_mode):
-        raise ValueError("Workspace file is not regular")
+        raise ValueError("Project file is not regular")
     resolved = current.resolve(strict=True)
     resolved.relative_to(resolved_root)
     return resolved
@@ -203,7 +203,7 @@ def _rebase_plan_copy(
                 Path(NODE_DATA_DIR) / Path(old).name,
             )
         except (OSError, ValueError) as exc:
-            raise ValueError("Workspace plan source cannot be relocated") from exc
+            raise ValueError("Project plan source cannot be relocated") from exc
         published_source = published_data_dir / staged_source.name
         if old != str(published_source):
             mapping[old] = str(published_source)
@@ -213,7 +213,7 @@ def _rebase_plan_copy(
         shutil.copyfile(source, temporary)
         rewritten = replace_source_paths(temporary, mapping)
         if rewritten != len(mapping):
-            raise RuntimeError("Workspace plan source rewrite was incomplete")
+            raise RuntimeError("Project plan source rewrite was incomplete")
     return True
 
 
@@ -254,7 +254,7 @@ def _garbage_collect_workspace_data(
                 relative = source.relative_to(published_root)
             except ValueError as exc:
                 raise ValueError(
-                    "Workspace plan source escapes its publication root"
+                    "Project plan source escapes its publication root"
                 ) from exc
             remapped_sources.add((ws_root_dir / relative).resolve())
         referenced_sources = remapped_sources
@@ -336,17 +336,17 @@ def _tab_references(payload: Mapping[str, Any]) -> list[tuple[str, Path]]:
 
     raw_references = payload.get("tabs")
     if not isinstance(raw_references, list):
-        raise ValueError("Workspace tabs must be a list")
+        raise ValueError("Project tabs must be a list")
     references: list[tuple[str, Path]] = []
     tab_ids: set[str] = set()
     record_paths: set[Path] = set()
     for raw in raw_references:
         if not isinstance(raw, Mapping) or set(raw) != {"id", "record_path"}:
-            raise ValueError("Workspace Tab reference is invalid")
+            raise ValueError("Project Tab reference is invalid")
         raw_id = raw["id"]
         raw_path = raw["record_path"]
         if not isinstance(raw_id, str) or not isinstance(raw_path, str):
-            raise ValueError("Workspace Tab reference is invalid")
+            raise ValueError("Project Tab reference is invalid")
         tab_id = str(uuid.UUID(raw_id))
         relative = Path(raw_path)
         if (
@@ -359,7 +359,7 @@ def _tab_references(payload: Mapping[str, Any]) -> list[tuple[str, Path]]:
             or relative.suffix != ".json"
             or any(part in {"", ".", ".."} for part in relative.parts)
         ):
-            raise ValueError("Workspace Tab reference is invalid")
+            raise ValueError("Project Tab reference is invalid")
         tab_ids.add(tab_id)
         record_paths.add(relative)
         references.append((tab_id, relative))
@@ -385,22 +385,22 @@ def _read_tabs(
         except OSError, ValueError:
             content = b""
         if total_bytes + len(content) > max_bytes:
-            raise WorkspaceCapacityError("Workspace Tab records exceed their byte budget")
+            raise WorkspaceCapacityError("Project Tab records exceed their byte budget")
         total_bytes += len(content)
         analysis_kind: AnalysisKind | None = None
         try:
             envelope = json.loads(content)
             if not isinstance(envelope, Mapping) or set(envelope) != _TAB_RECORD_FIELDS:
-                raise ValueError("Workspace Tab record envelope is invalid")
+                raise ValueError("Project Tab record envelope is invalid")
             if _canonical_uuid_text(envelope["id"], label="Workspace Tab ID") != tab_id:
-                raise ValueError("Workspace Tab identity does not match its reference")
+                raise ValueError("Project Tab identity does not match its reference")
             analysis_kind = AnalysisKind(envelope["analysis_kind"])
             schema_version = envelope["schema_version"]
             if type(schema_version) is not int or schema_version < 1:
-                raise ValueError("Workspace Tab schema version is invalid")
+                raise ValueError("Project Tab schema version is invalid")
             payload = envelope["payload"]
             if not isinstance(payload, Mapping):
-                raise ValueError("Workspace Tab payload is invalid")
+                raise ValueError("Project Tab payload is invalid")
             if schema_version != ANALYSIS_SCHEMA_VERSIONS[analysis_kind]:
                 unavailable[tab_id] = _incompatible_record(
                     content,
@@ -410,7 +410,7 @@ def _read_tabs(
                 continue
             tab = Tab.model_validate(payload)
             if str(tab.id) != tab_id or tab.kind is not analysis_kind:
-                raise ValueError("Workspace Tab envelope does not match its payload")
+                raise ValueError("Project Tab envelope does not match its payload")
             if len(tab.analysis_ids) != len(set(tab.analysis_ids)):
                 raise ValueError("A Tab cannot contain duplicate Analysis IDs")
             if analysis_ids.intersection(tab.analysis_ids):
@@ -436,7 +436,7 @@ def _garbage_collect_workspace_tabs(
     if not tabs_root.exists():
         return
     if not tabs_root.is_dir() or tabs_root.is_symlink():
-        raise ValueError("Workspace tabs path is invalid")
+        raise ValueError("Project tabs path is invalid")
     expected = {workspace_root / relative for _tab_id, relative in references}
     for tab_directory in tabs_root.iterdir():
         if not tab_directory.is_dir() or tab_directory.is_symlink():
@@ -464,17 +464,17 @@ def _analysis_references(payload: Mapping[str, Any]) -> list[tuple[str, Path]]:
 
     raw_references = payload.get("analyses")
     if not isinstance(raw_references, list):
-        raise ValueError("Workspace analyses must be a list")
+        raise ValueError("Project analyses must be a list")
     references: list[tuple[str, Path]] = []
     analysis_ids: set[str] = set()
     record_paths: set[Path] = set()
     for raw in raw_references:
         if not isinstance(raw, Mapping) or set(raw) != {"id", "record_path"}:
-            raise ValueError("Workspace Analysis reference is invalid")
+            raise ValueError("Project Analysis reference is invalid")
         raw_id = raw["id"]
         raw_path = raw["record_path"]
         if not isinstance(raw_id, str) or not isinstance(raw_path, str):
-            raise ValueError("Workspace Analysis reference is invalid")
+            raise ValueError("Project Analysis reference is invalid")
         analysis_id = str(uuid.UUID(raw_id))
         relative = Path(raw_path)
         if (
@@ -487,7 +487,7 @@ def _analysis_references(payload: Mapping[str, Any]) -> list[tuple[str, Path]]:
             or relative.suffix != ".json"
             or any(part in {"", ".", ".."} for part in relative.parts)
         ):
-            raise ValueError("Workspace Analysis reference is invalid")
+            raise ValueError("Project Analysis reference is invalid")
         analysis_ids.add(analysis_id)
         record_paths.add(relative)
         references.append((analysis_id, relative))
@@ -517,7 +517,7 @@ def _read_analysis_records(
             content = b""
         if total_bytes + len(content) > max_bytes:
             raise WorkspaceCapacityError(
-                "Workspace Analysis records exceed their byte budget"
+                "Project Analysis records exceed their byte budget"
             )
         total_bytes += len(content)
         analysis_kind: AnalysisKind | None = None
@@ -528,7 +528,7 @@ def _read_analysis_records(
                 not isinstance(envelope, Mapping)
                 or set(envelope) != _ANALYSIS_RECORD_FIELDS
             ):
-                raise ValueError("Workspace Analysis record envelope is invalid")
+                raise ValueError("Project Analysis record envelope is invalid")
             if (
                 _canonical_uuid_text(envelope["id"], label="Workspace Analysis ID")
                 != analysis_id
@@ -542,10 +542,10 @@ def _read_analysis_records(
             analysis_kind = AnalysisKind(envelope["analysis_kind"])
             schema_version = envelope["schema_version"]
             if type(schema_version) is not int or schema_version < 1:
-                raise ValueError("Workspace Analysis schema version is invalid")
+                raise ValueError("Project Analysis schema version is invalid")
             payload = envelope["payload"]
             if not isinstance(payload, Mapping):
-                raise ValueError("Workspace Analysis payload is invalid")
+                raise ValueError("Project Analysis payload is invalid")
             if schema_version != ANALYSIS_SCHEMA_VERSIONS[analysis_kind]:
                 unavailable[analysis_id] = _incompatible_record(
                     content,
@@ -772,7 +772,7 @@ def _garbage_collect_workspace_analyses(
     if not analyses_root.exists():
         return
     if not analyses_root.is_dir() or analyses_root.is_symlink():
-        raise ValueError("Workspace analyses path is invalid")
+        raise ValueError("Project analyses path is invalid")
     expected = {workspace_root / relative for _analysis_id, relative in references}
     expected_directories = {path.parent for path in expected}
     for analysis_directory in analyses_root.iterdir():
@@ -886,9 +886,9 @@ def _write_workspace(
     modified_at = workspace.modified_at.isoformat()
 
     if len(workspace.node_ids) > max_nodes:
-        raise WorkspaceCapacityError("Workspace exceeds its node-count limit")
+        raise WorkspaceCapacityError("Project exceeds its node-count limit")
     if workspace.unavailable_node_ids:
-        raise ValueError("A Workspace with unavailable Data Blocks is read-only")
+        raise ValueError("A Project with unavailable Data Blocks is read-only")
 
     generation = f"r{revision}-{uuid.uuid4().hex}"
     nodes_data: list[dict[str, Any]] = []
@@ -902,7 +902,7 @@ def _write_workspace(
         for node in workspace.nodes.values():
             if remaining < 1:
                 raise WorkspaceCapacityError(
-                    "Workspace snapshot exceeds its byte limit"
+                    "Project snapshot exceeds its byte limit"
                 )
             payload = node_to_dict(
                 node,
@@ -917,7 +917,7 @@ def _write_workspace(
 
         for tab_id, tab in workspace.tabs.items():
             if tab_id != tab.id:
-                raise ValueError("Workspace Tab key does not match its identity")
+                raise ValueError("Project Tab key does not match its identity")
             tab_id_text = str(tab_id)
             relative = Path("tabs") / tab_id_text / f"{generation}.json"
             record_path = target.parent / relative
@@ -947,7 +947,7 @@ def _write_workspace(
 
         for analysis_id, analysis in workspace.analyses.items():
             if analysis_id != analysis.id:
-                raise ValueError("Workspace Analysis key does not match its identity")
+                raise ValueError("Project Analysis key does not match its identity")
             analysis_id_text = str(analysis_id)
             relative = (
                 Path("analyses") / analysis_id_text / f"{generation}.json"
@@ -1006,7 +1006,7 @@ def _write_workspace(
             target.parent,
         )
         raise WorkspaceCapacityError(
-            "Workspace snapshot exceeds its byte limit"
+            "Project snapshot exceeds its byte limit"
         ) from exc
     except AtomicWriteCapacityError as exc:
         _discard_uncommitted_files(
@@ -1014,7 +1014,7 @@ def _write_workspace(
             target.parent,
         )
         raise WorkspaceCapacityError(
-            "Workspace snapshot exceeds its byte limit"
+            "Project snapshot exceeds its byte limit"
         ) from exc
     except BaseException:
         _discard_uncommitted_files(
@@ -1081,10 +1081,10 @@ def _read_workspace_metadata(path: str | Path) -> dict[str, Any]:
     with target.open("r", encoding="utf-8") as f:
         payload = json.load(f)
     if not isinstance(payload, dict):
-        raise ValueError("Workspace metadata must be an object")
+        raise ValueError("Project metadata must be an object")
     workspace_metadata = payload.get("workspace_metadata")
     if not isinstance(workspace_metadata, dict):
-        raise ValueError("Workspace metadata envelope is invalid")
+        raise ValueError("Project metadata envelope is invalid")
     stored_version = workspace_metadata.get("data_schema_version")
     if (
         type(stored_version) is int
@@ -1096,7 +1096,7 @@ def _read_workspace_metadata(path: str | Path) -> dict[str, Any]:
             workspace_metadata,
         )
     if set(payload) != _WORKSPACE_ENVELOPE_FIELDS:
-        raise ValueError("Workspace metadata envelope fields are invalid")
+        raise ValueError("Project metadata envelope fields are invalid")
     nodes = payload.get("nodes")
     tabs = payload.get("tabs")
     analyses = payload.get("analyses")
@@ -1105,15 +1105,15 @@ def _read_workspace_metadata(path: str | Path) -> dict[str, Any]:
         or not isinstance(tabs, list)
         or not isinstance(analyses, list)
     ):
-        raise ValueError("Workspace metadata envelope is invalid")
+        raise ValueError("Project metadata envelope is invalid")
     if set(workspace_metadata) != _WORKSPACE_METADATA_FIELDS:
-        raise ValueError("Workspace metadata fields are invalid")
+        raise ValueError("Project metadata fields are invalid")
     if stored_version != WORKSPACE_DATA_SCHEMA_VERSION:
-        raise ValueError("Workspace data schema version is invalid")
+        raise ValueError("Project data schema version is invalid")
     if not isinstance(workspace_metadata.get("id"), str) or not isinstance(
         workspace_metadata.get("name"), str
     ):
-        raise ValueError("Workspace identity metadata is invalid")
+        raise ValueError("Project identity metadata is invalid")
     _tab_references(payload)
     _analysis_references(payload)
     return payload
@@ -1121,12 +1121,12 @@ def _read_workspace_metadata(path: str | Path) -> dict[str, Any]:
 
 def _stored_schema_signature(raw_schema: object) -> tuple[tuple[str, str], ...]:
     if not isinstance(raw_schema, list):
-        raise ValueError("Workspace Data Block schema is invalid")
+        raise ValueError("Project Data Block schema is invalid")
     signature: list[tuple[str, str]] = []
     names: set[str] = set()
     for raw_field in raw_schema:
         if not isinstance(raw_field, Mapping) or set(raw_field) != {"name", "dtype"}:
-            raise ValueError("Workspace Data Block schema field is invalid")
+            raise ValueError("Project Data Block schema field is invalid")
         name = raw_field["name"]
         dtype = raw_field["dtype"]
         if (
@@ -1136,7 +1136,7 @@ def _stored_schema_signature(raw_schema: object) -> tuple[tuple[str, str], ...]:
             or not isinstance(dtype, str)
             or not dtype
         ):
-            raise ValueError("Workspace Data Block schema field is invalid")
+            raise ValueError("Project Data Block schema field is invalid")
         names.add(name)
         signature.append((name, dtype))
     return tuple(signature)
@@ -1195,29 +1195,29 @@ def _read_workspace(
 
     for raw_entry in data["nodes"]:
         if not isinstance(raw_entry, Mapping):
-            raise ValueError("Workspace node entry must be an object")
+            raise ValueError("Project node entry must be an object")
         raw_metadata = raw_entry.get("node_metadata")
         if not isinstance(raw_metadata, Mapping):
-            raise ValueError("Workspace node metadata must be an object")
+            raise ValueError("Project node metadata must be an object")
         metadata = dict(raw_metadata)
         raw_id = metadata.get("id")
         if not isinstance(raw_id, str):
-            raise ValueError("Workspace node ID must be a string")
+            raise ValueError("Project node ID must be a string")
         node_id = uuid.UUID(raw_id)
         if str(node_id) != raw_id:
-            raise ValueError("Workspace node ID must be canonical")
+            raise ValueError("Project node ID must be canonical")
         if node_id in all_node_ids:
-            raise ValueError("Workspace contains duplicate node IDs")
+            raise ValueError("Project contains duplicate node IDs")
         all_node_ids.add(node_id)
 
         provenance = validate_node_provenance(metadata.get("provenance"))
         parent_ids = referenced_node_ids(provenance)
         if node_id in parent_ids or len(parent_ids) != len(set(parent_ids)):
-            raise ValueError("Workspace node provenance references are invalid")
+            raise ValueError("Project node provenance references are invalid")
 
         raw_data_path = raw_entry.get("data_path")
         if not isinstance(raw_data_path, str):
-            raise ValueError("Workspace node data path must be a string")
+            raise ValueError("Project node data path must be a string")
         relative_data_path = Path(raw_data_path)
         if (
             relative_data_path.is_absolute()
@@ -1225,7 +1225,7 @@ def _read_workspace(
             or relative_data_path.parts[:1] != (NODE_DATA_DIR,)
             or relative_data_path.suffix != ".plbin"
         ):
-            raise ValueError("Workspace node data path is invalid")
+            raise ValueError("Project node data path is invalid")
         ordered_ids.append(node_id)
         parent_ids_by_node[node_id] = parent_ids
         try:
@@ -1238,22 +1238,22 @@ def _read_workspace(
                 "tokenizer_model",
                 "schema",
             }:
-                raise ValueError("Workspace node metadata fields are invalid")
+                raise ValueError("Project node metadata fields are invalid")
             absolute_data_path = _resolve_regular_under(root, relative_data_path)
             if absolute_data_path.parent != (root / NODE_DATA_DIR).resolve(strict=True):
-                raise ValueError("Workspace node data path escapes the data directory")
+                raise ValueError("Project node data path escapes the data directory")
             if absolute_data_path in data_paths:
-                raise ValueError("Workspace nodes cannot share a data path")
+                raise ValueError("Project nodes cannot share a data path")
             validation_mapping: dict[str, str] = {}
             for raw_source in list_source_paths(absolute_data_path):
                 source_path = Path(raw_source)
                 if not source_path.is_absolute():
-                    raise ValueError("Workspace plan source must be absolute")
+                    raise ValueError("Project plan source must be absolute")
                 try:
                     relative_source = source_path.relative_to(declared_root)
                 except ValueError as exc:
                     raise ValueError(
-                        "Workspace plan source escapes its workspace"
+                        "Project plan source escapes its project"
                     ) from exc
                 staged_source = _resolve_regular_under(root, relative_source)
                 if raw_source != str(staged_source):
@@ -1262,12 +1262,12 @@ def _read_workspace(
 
             name = metadata.get("name")
             if not isinstance(name, str) or not name:
-                raise ValueError("Workspace node name is invalid")
+                raise ValueError("Project node name is invalid")
             for optional_key in ("document", "color", "tokenizer_model"):
                 if metadata.get(optional_key) is not None and not isinstance(
                     metadata.get(optional_key), str
                 ):
-                    raise ValueError(f"Workspace node {optional_key} is invalid")
+                    raise ValueError(f"Project node {optional_key} is invalid")
             raw_tokenizer_model = metadata["tokenizer_model"]
             tokenizer_model = (
                 raw_tokenizer_model.strip()
@@ -1277,7 +1277,7 @@ def _read_workspace(
             if raw_tokenizer_model is not None and (
                 not tokenizer_model or len(tokenizer_model) > 500
             ):
-                raise ValueError("Workspace node tokenizer model is invalid")
+                raise ValueError("Project node tokenizer model is invalid")
 
             stored_schema = _stored_schema_signature(metadata["schema"])
             lazyframe = pl.LazyFrame.deserialize(absolute_data_path, format="binary")
@@ -1295,7 +1295,7 @@ def _read_workspace(
                     )
                     if rewritten != len(validation_mapping):
                         raise ValueError(
-                            "Workspace validation plan rewrite was incomplete"
+                            "Project validation plan rewrite was incomplete"
                         )
                     validation_plan = temporary_validation_plan
                 loaded_schema = tuple(
@@ -1311,7 +1311,7 @@ def _read_workspace(
                 if temporary_validation_plan is not None:
                     temporary_validation_plan.unlink(missing_ok=True)
             if loaded_schema != stored_schema:
-                raise ValueError("Workspace Data Block schema does not match metadata")
+                raise ValueError("Project Data Block schema does not match metadata")
             document = metadata["document"]
             if document is not None and document not in dict(stored_schema):
                 raise ValueError(
@@ -1335,7 +1335,7 @@ def _read_workspace(
         for parent_ids in parent_ids_by_node.values()
         for parent_id in parent_ids
     ):
-        raise ValueError("Workspace node parent is missing")
+        raise ValueError("Project node parent is missing")
 
     children: dict[uuid.UUID, list[uuid.UUID]] = {
         node_id: [] for node_id in ordered_ids
@@ -1356,7 +1356,7 @@ def _read_workspace(
             if indegree[child_id] == 0:
                 ready.append(child_id)
     if visited != len(ordered_ids):
-        raise ValueError("Workspace node graph contains a cycle")
+        raise ValueError("Project node graph contains a cycle")
 
     nodes_by_id: dict[uuid.UUID, Node] = {}
     for node_id in topological_ids:
@@ -1426,7 +1426,7 @@ def _rebase_workspace_sources(
         if not isinstance(node_metadata, dict) or not isinstance(
             node_metadata.get("id"), str
         ):
-            raise ValueError("Workspace node metadata is invalid")
+            raise ValueError("Project node metadata is invalid")
         relative = Path(NODE_DATA_DIR) / (
             f"{node_metadata['id']}.rebase-{generation}.plbin"
         )
@@ -1468,7 +1468,7 @@ class WorkspaceStore:
 
     def __init__(self, *, max_nodes: int, max_snapshot_bytes: int) -> None:
         if max_nodes < 1 or max_snapshot_bytes < 1:
-            raise ValueError("Workspace store limits must be positive")
+            raise ValueError("Project store limits must be positive")
         self.max_nodes = max_nodes
         self.max_snapshot_bytes = max_snapshot_bytes
 
@@ -1479,13 +1479,13 @@ class WorkspaceStore:
             nodes = payload["nodes"]
             raw_workspace_id = metadata["id"]
             if not isinstance(raw_workspace_id, str):
-                raise ValueError("Workspace ID must be a string")
+                raise ValueError("Project ID must be a string")
             workspace_id = uuid.UUID(raw_workspace_id)
             if str(workspace_id) != raw_workspace_id:
-                raise ValueError("Workspace ID is not canonical")
+                raise ValueError("Project ID is not canonical")
             name = metadata["name"]
             if not isinstance(name, str) or not name:
-                raise ValueError("Workspace name is invalid")
+                raise ValueError("Project name is invalid")
             description = metadata["description"]
             created_at = metadata["created_at"]
             modified_at = metadata["modified_at"]
@@ -1494,7 +1494,7 @@ class WorkspaceStore:
                 or not isinstance(created_at, str)
                 or not isinstance(modified_at, str)
             ):
-                raise ValueError("Workspace descriptive metadata is invalid")
+                raise ValueError("Project descriptive metadata is invalid")
             created_timestamp = datetime.fromisoformat(created_at)
             modified_timestamp = datetime.fromisoformat(modified_at)
             if (
@@ -1502,12 +1502,12 @@ class WorkspaceStore:
                 or modified_timestamp.utcoffset() is None
                 or modified_timestamp < created_timestamp
             ):
-                raise ValueError("Workspace timestamps are invalid")
+                raise ValueError("Project timestamps are invalid")
             revision = metadata["revision"]
             if type(revision) is not int or revision < 1:
-                raise ValueError("Workspace revision must be positive")
+                raise ValueError("Project revision must be positive")
             if not isinstance(nodes, list):
-                raise ValueError("Workspace nodes must be a list")
+                raise ValueError("Project nodes must be a list")
             tab_references = _tab_references(payload)
             analysis_references = _analysis_references(payload)
             node_ids: set[uuid.UUID] = set()
@@ -1516,27 +1516,27 @@ class WorkspaceStore:
             root_node_count = 0
             for entry in nodes:
                 if not isinstance(entry, Mapping):
-                    raise ValueError("Workspace node entry is invalid")
+                    raise ValueError("Project node entry is invalid")
                 node_metadata = entry.get("node_metadata")
                 if not isinstance(node_metadata, Mapping):
-                    raise ValueError("Workspace node metadata is invalid")
+                    raise ValueError("Project node metadata is invalid")
                 raw_node_id = node_metadata["id"]
                 if not isinstance(raw_node_id, str):
-                    raise ValueError("Workspace node ID must be a string")
+                    raise ValueError("Project node ID must be a string")
                 node_id = uuid.UUID(raw_node_id)
                 if str(node_id) != raw_node_id or node_id in node_ids:
-                    raise ValueError("Workspace node ID is invalid")
+                    raise ValueError("Project node ID is invalid")
                 canonical_parents = referenced_node_ids(
                     validate_node_provenance(node_metadata.get("provenance"))
                 )
                 if node_id in canonical_parents:
-                    raise ValueError("Workspace node provenance is invalid")
+                    raise ValueError("Project node provenance is invalid")
                 node_ids.add(node_id)
                 parents_by_node[node_id] = canonical_parents
                 parent_ids.update(canonical_parents)
                 root_node_count += not canonical_parents
             if not parent_ids <= node_ids:
-                raise ValueError("Workspace node parent is missing")
+                raise ValueError("Project node parent is missing")
 
             children: dict[uuid.UUID, list[uuid.UUID]] = {
                 node_id: [] for node_id in node_ids
@@ -1555,10 +1555,10 @@ class WorkspaceStore:
                     if indegree[child_id] == 0:
                         ready.append(child_id)
             if visited != len(node_ids):
-                raise ValueError("Workspace node graph contains a cycle")
+                raise ValueError("Project node graph contains a cycle")
         except (KeyError, TypeError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace snapshot identity or revision is invalid"
+                "Project snapshot identity or revision is invalid"
             ) from exc
         return WorkspaceSnapshotInfo(
             workspace_id=workspace_id,
@@ -1587,7 +1587,7 @@ class WorkspaceStore:
         """Atomically publish validated installation identity metadata."""
 
         if not name or revision < 1 or timestamp.utcoffset() is None:
-            raise WorkspaceSnapshotInvalidError("Workspace identity is invalid")
+            raise WorkspaceSnapshotInvalidError("Project identity is invalid")
         try:
             target = _resolve_metadata_path(Path(path))
             payload = _read_workspace_metadata(target)
@@ -1603,7 +1603,7 @@ class WorkspaceStore:
             raise
         except (OSError, TypeError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace identity could not be published"
+                "Project identity could not be published"
             ) from exc
 
     def inspect(self, path: str | Path) -> WorkspaceSnapshotInfo:
@@ -1632,10 +1632,10 @@ class WorkspaceStore:
             raise
         except (OSError, ValueError, json.JSONDecodeError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace snapshot is invalid"
+                "Project snapshot is invalid"
             ) from exc
         if info.node_count > self.max_nodes:
-            raise WorkspaceCapacityError("Workspace node count exceeds its limit")
+            raise WorkspaceCapacityError("Project node count exceeds its limit")
         total_bytes = target.stat().st_size
         seen_paths: set[Path] = set()
         root = target.parent.resolve()
@@ -1644,22 +1644,22 @@ class WorkspaceStore:
                 try:
                     relative = Path(entry["data_path"])
                     if relative.is_absolute() or ".." in relative.parts:
-                        raise ValueError("Workspace plan path is invalid")
+                        raise ValueError("Project plan path is invalid")
                     plan = _resolve_regular_under(root, relative)
                     if plan in seen_paths:
-                        raise ValueError("Workspace nodes cannot share a plan")
+                        raise ValueError("Project nodes cannot share a plan")
                     seen_paths.add(plan)
                     total_bytes += plan.stat().st_size
                 except (KeyError, OSError, TypeError, ValueError):
                     continue
         except (KeyError, OSError, TypeError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace snapshot plan references are invalid"
+                "Project snapshot plan references are invalid"
             ) from exc
         if validate_tabs:
             if total_bytes > self.max_snapshot_bytes:
                 raise WorkspaceCapacityError(
-                    "Workspace snapshot exceeds its byte limit"
+                    "Project snapshot exceeds its byte limit"
                 )
             references = _tab_references(payload)
             _tabs, _unavailable_tabs, tab_bytes = _read_tabs(
@@ -1675,7 +1675,7 @@ class WorkspaceStore:
             )
             total_bytes += analysis_bytes
         if total_bytes > self.max_snapshot_bytes:
-            raise WorkspaceCapacityError("Workspace snapshot exceeds its byte limit")
+            raise WorkspaceCapacityError("Project snapshot exceeds its byte limit")
         return replace(info, serialized_bytes=total_bytes)
 
     def reconcile(self, path: str | Path) -> WorkspaceSnapshotInfo:
@@ -1715,7 +1715,7 @@ class WorkspaceStore:
             )
         except (OSError, TypeError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace orphan generations could not be reconciled"
+                "Project orphan generations could not be reconciled"
             ) from exc
         return info
 
@@ -1734,7 +1734,7 @@ class WorkspaceStore:
             raise
         except (OSError, RuntimeError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace plan sources cannot be relocated"
+                "Project plan sources cannot be relocated"
             ) from exc
         return self._inspect_complete(path)
 
@@ -1772,7 +1772,7 @@ class WorkspaceStore:
             raise
         except (OSError, ValueError) as exc:
             raise WorkspaceSnapshotInvalidError(
-                "Workspace graph cannot be loaded"
+                "Project graph cannot be loaded"
             ) from exc
         return LoadedWorkspace(workspace=workspace, snapshot=snapshot)
 
@@ -1791,7 +1791,7 @@ class WorkspaceStore:
         """
 
         if revision < 1:
-            raise ValueError("Workspace revision must be positive")
+            raise ValueError("Project revision must be positive")
         target = _resolve_metadata_path(Path(path))
         if target.exists():
             raise WorkspaceRevisionConflictError(None, self.inspect(path).revision)
@@ -1807,7 +1807,7 @@ class WorkspaceStore:
             raise
         except (OSError, TypeError, ValueError) as exc:
             raise WorkspaceSerializationError(
-                "Workspace snapshot could not be staged"
+                "Project snapshot could not be staged"
             ) from exc
         return self._inspect_complete(path)
 
@@ -1831,7 +1831,7 @@ class WorkspaceStore:
             or staged.revision != expected_revision + 1
         ):
             raise WorkspaceSnapshotInvalidError(
-                "Staged Workspace identity or revision is invalid"
+                "Staged Project identity or revision is invalid"
             )
 
         payload = _read_workspace_metadata(staged_metadata)
@@ -1874,7 +1874,7 @@ class WorkspaceStore:
             raise
         except (KeyError, OSError, TypeError, ValueError) as exc:
             raise WorkspaceSerializationError(
-                "Staged Workspace snapshot could not be published"
+                "Staged Project snapshot could not be published"
             ) from exc
 
         try:
@@ -1933,7 +1933,7 @@ class WorkspaceStore:
             raise
         except (OSError, TypeError, ValueError) as exc:
             raise WorkspaceSerializationError(
-                "Workspace snapshot could not be serialized"
+                "Project snapshot could not be serialized"
             ) from exc
         return self._inspect_complete(path)
 

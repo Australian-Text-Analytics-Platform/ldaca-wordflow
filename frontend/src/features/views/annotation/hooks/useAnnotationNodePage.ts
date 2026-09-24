@@ -87,7 +87,7 @@ export function useAnnotationNodePage({
     placeholderData: (previousData, previousQuery) =>
       previousQuery?.meta?.annotationPageOwner === pageOwner ? previousData : undefined,
     queryFn: async ({ signal }) => {
-      if (!workspaceId) throw new Error('Missing workspace ID');
+      if (!workspaceId) throw new Error('Missing project ID');
       const data = await queryWorkspaceSqlTable({
         path: { workspace_id: workspaceId },
         body: {

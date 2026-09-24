@@ -43,7 +43,7 @@ describe('useQuotationContextPreference', () => {
     expect(persistPreference).not.toHaveBeenCalled();
   });
 
-  it('persists changed context length only after results are loaded in a workspace', async () => {
+  it('persists changed context length only after results are loaded in a project', async () => {
     const { result, rerender } = renderHook(
       ({ hasLoaded }: { hasLoaded: boolean }) =>
         useQuotationContextPreference({

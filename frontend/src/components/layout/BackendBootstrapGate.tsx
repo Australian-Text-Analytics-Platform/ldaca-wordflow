@@ -231,7 +231,7 @@ export function BackendBootstrapGate({
               ? 'Choose another Data Root'
               : 'Set up Wordflow'
           }
-          description="Choose the folder where Wordflow will keep workspaces, imports, and application data."
+          description="Choose the folder where Wordflow will keep projects, imports, and application data."
           status="Data Root required"
           hint={resource.error?.message}
           actions={

@@ -11,7 +11,7 @@ import { fetchNodeSchema, nodeSchemaQueryOptions } from '../nodeSchema';
 describe('node Arrow schema cache', () => {
   beforeEach(() => getNodeSchemaTableMock.mockReset());
 
-  it('deduplicates schema reads by workspace and node', async () => {
+  it('deduplicates schema reads by project and node', async () => {
     const schema = [{ name: 'text', field: new Field('text', new Utf8()) }];
     getNodeSchemaTableMock.mockResolvedValue({ schema });
     const queryClient = new QueryClient();

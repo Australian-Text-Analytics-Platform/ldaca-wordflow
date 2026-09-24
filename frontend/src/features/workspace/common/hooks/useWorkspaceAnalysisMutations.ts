@@ -37,7 +37,7 @@ export const useWorkspaceAnalysisMutations = ({
   queryClient,
 }: WorkspaceAnalysisMutationsParams) => {
   const ensureWorkspaceSelected = () => {
-    if (!currentWorkspaceId) throw new Error('No workspace selected');
+    if (!currentWorkspaceId) throw new Error('No project selected');
     return currentWorkspaceId;
   };
   const runConcordanceAllMutation = useMutation({

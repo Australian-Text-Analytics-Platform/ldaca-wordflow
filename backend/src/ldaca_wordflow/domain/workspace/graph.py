@@ -72,7 +72,7 @@ class Workspace:
 
     def add_node(self, node: Node) -> Node:
         if node.id in self.nodes:
-            raise ValueError(f"Workspace already contains node {node.id}")
+            raise ValueError(f"Project already contains node {node.id}")
         if any(parent is node for parent in node.parents):
             raise ValueError("A node cannot be its own parent")
         if len({parent.id for parent in node.parents}) != len(node.parents):
@@ -81,14 +81,14 @@ class Workspace:
             parent.workspace is not self or self.nodes.get(parent.id) is not parent
             for parent in node.parents
         ):
-            raise ValueError("Node parents must already belong to this workspace")
+            raise ValueError("Node parents must already belong to this project")
         if referenced_node_ids(node.provenance) != [
             parent.id for parent in node.parents
         ]:
             raise ValueError("Node parents do not match its provenance")
         source_workspace = node.workspace
         if source_workspace is not None and source_workspace is not self:
-            raise ValueError("Node already belongs to another workspace")
+            raise ValueError("Node already belongs to another project")
         self.nodes[node.id] = node
         self._node_order.append(node.id)
         self._children_by_parent[node.id] = []
@@ -103,7 +103,7 @@ class Workspace:
         parent_ids: list[uuid.UUID],
     ) -> None:
         if node_id in self.nodes or node_id in self._unavailable_node_parents:
-            raise ValueError(f"Workspace already contains Data Block {node_id}")
+            raise ValueError(f"Project already contains Data Block {node_id}")
         self._unavailable_node_parents[node_id] = tuple(parent_ids)
         self._node_order.append(node_id)
 
@@ -157,7 +157,7 @@ class Workspace:
     def add_tab(self, tab: Tab) -> Tab:
         tab_id = tab.id
         if tab_id in self.tabs:
-            raise ValueError(f"Workspace already contains tab {tab_id}")
+            raise ValueError(f"Project already contains tab {tab_id}")
         if len(tab.analysis_ids) != len(set(tab.analysis_ids)):
             raise ValueError("A Tab cannot contain duplicate Analysis IDs")
         claimed_ids = {
@@ -176,7 +176,7 @@ class Workspace:
         record: UnavailableChildRecord,
     ) -> None:
         if tab_id in self.tabs or tab_id in self._unavailable_tab_records:
-            raise ValueError(f"Workspace already contains tab {tab_id}")
+            raise ValueError(f"Project already contains tab {tab_id}")
         self._unavailable_tab_records[tab_id] = record
 
     @property
@@ -205,7 +205,7 @@ class Workspace:
             analysis_id in self.analyses
             or analysis_id in self._unavailable_analysis_records
         ):
-            raise ValueError(f"Workspace already contains analysis {analysis_id}")
+            raise ValueError(f"Project already contains analysis {analysis_id}")
         tab = self.tabs.get(analysis.tab_id)
         if analysis.parent_analysis_id is not None:
             parent = self.analyses.get(analysis.parent_analysis_id)
@@ -227,7 +227,7 @@ class Workspace:
             analysis_id in self.analyses
             or analysis_id in self._unavailable_analysis_records
         ):
-            raise ValueError(f"Workspace already contains analysis {analysis_id}")
+            raise ValueError(f"Project already contains analysis {analysis_id}")
         self._unavailable_analysis_records[analysis_id] = record
 
     @property
@@ -348,7 +348,7 @@ class Workspace:
         3. Reinsert the node directly after that parent via ``reorder_nodes``.
         """
         if self.nodes.get(node.id) is not node:
-            raise ValueError("Node must belong to this workspace")
+            raise ValueError("Node must belong to this project")
         if not node.parents:
             return
         parent_id = node.parents[0].id

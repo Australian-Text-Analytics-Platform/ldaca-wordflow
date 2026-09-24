@@ -59,7 +59,7 @@ analysis without materializing a whole-corpus result in the browser.
   qualifying source rows and charts one series per exact, case-sensitive term
   over the complete Result. In Review, hidden terms and selected bins filter
   documents, markers, counts, and Data Block Creation before sorting and
-  paging. **Add to Workspace** starts Concordance Match Data Block Creation
+  paging. **Add to Project** starts Concordance Match Data Block Creation
   from Table View or Concordance Document Data Block Creation with required
   `CONC_extraction` from Dispersion View. With two sources, you can include
   either or both in one atomic request.

@@ -167,7 +167,7 @@ describe('SettingsDialog', () => {
     const user = userEvent.setup();
     renderSettingsDialog();
 
-    await user.click(screen.getByRole('tab', { name: 'Workspace' }));
+    await user.click(screen.getByRole('tab', { name: 'Project' }));
 
     expect(screen.getByLabelText('Folder on the server')).toHaveValue('/srv/wordflow');
   });

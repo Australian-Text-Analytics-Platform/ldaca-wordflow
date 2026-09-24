@@ -39,7 +39,7 @@ describe('direct preprocessing preview adapters', () => {
     usePreprocessingPreviewMock.mockReturnValue(previewState);
   });
 
-  it('maps the Join request workspace and exact signal to the generated client', async () => {
+  it('maps the Join request project and exact signal to the generated client', async () => {
     previewNodeCreationTableMock.mockResolvedValue({ rows: [], columns: [], hasNext: false });
     const workspaceNodes = [
       projectWorkspaceNodeMetadata({ id: 'left', name: 'Left' }),
@@ -95,7 +95,7 @@ describe('direct preprocessing preview adapters', () => {
     );
   });
 
-  it('maps the Stack request workspace and exact signal to its workspace action', async () => {
+  it('maps the Stack request project and exact signal to its project action', async () => {
     const concatPreview = vi.fn().mockResolvedValue({ data: [], columns: [], pagination: null });
     const workspaceNodes = [
       projectWorkspaceNodeMetadata({ id: 'node-1', name: 'One' }),

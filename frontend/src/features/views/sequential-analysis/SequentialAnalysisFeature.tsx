@@ -160,7 +160,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     // Loads the latest sequential-analysis result for polling and task resumption.
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No workspace selected');
+      if (!currentWorkspaceId) throw new Error('No project selected');
       return getAnalysisResultResource<SequentialAnalysisResponse>(currentWorkspaceId, taskId);
     },
     // Restores sequential request parameters, selection lock, and schema after reload.
@@ -372,7 +372,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         ),
       );
       setAddToWorkspaceDialogOpen(false);
-      toast.success('Adding the Trends selection to the Workspace.');
+      toast.success('Adding the Trends selection to the Project.');
     } catch (cause) {
       toast.error('Could not add the Trends selection.', {
         description: cause instanceof Error ? cause.message : String(cause),

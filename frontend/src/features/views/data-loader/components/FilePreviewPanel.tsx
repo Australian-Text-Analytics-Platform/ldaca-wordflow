@@ -114,7 +114,7 @@ export function FilePreviewPanel({ filename, open, onClose }: FilePreviewPanelPr
       }}
       dialogMaxWidth="min(80vw, 1000px)"
       title={filename ? `Preview: ${filename}` : 'File preview'}
-      description="Inspect file content before adding to workspace."
+      description="Inspect file content before adding to project."
       footer={footer}
     />
   );

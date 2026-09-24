@@ -240,7 +240,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               {isBusy ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding to workspace…
+                  Adding to project…
                 </>
               ) : (
                 <>
@@ -261,7 +261,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
           </span>
         }
-        description="Review rows returned by the current slice or random sample configuration before adding to the workspace."
+        description="Review rows returned by the current slice or random sample configuration before adding to the project."
         columns={preview.columns}
         data={preview.data}
         pagination={preview.pagination}

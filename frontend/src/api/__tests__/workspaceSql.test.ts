@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { sqlGlobPattern, sqlIdentifier, sqlOrder, sqlString } from '../workspaceSql';
 
-describe('workspace SQL builders', () => {
+describe('project SQL builders', () => {
   it('quotes identifiers and literals without accepting SQL structure', () => {
     expect(sqlIdentifier('column"name')).toBe('"column""name"');
     expect(sqlString("O'Brien")).toBe("'O''Brien'");

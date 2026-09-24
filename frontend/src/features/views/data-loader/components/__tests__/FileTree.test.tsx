@@ -2,12 +2,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileTree } from '../FileTree';
 
-describe('FileTree workspace routing', () => {
+describe('FileTree project routing', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('keeps the responsive Add action disabled when no workspace is selected', () => {
+  it('keeps the responsive Add action disabled when no project is selected', () => {
     const onAddFile = vi.fn();
     render(
       <FileTree
@@ -30,7 +30,7 @@ describe('FileTree workspace routing', () => {
     const addButton = screen.getByRole('button', { name: 'Add' });
     expect(addButton).toBeDisabled();
     expect(addButton).toHaveAttribute('data-guidance', 'add-data-block');
-    expect(addButton).toHaveAttribute('title', 'Load a workspace to add this file as a Data Block');
+    expect(addButton).toHaveAttribute('title', 'Load a project to add this file as a Data Block');
     expect(screen.getByText('Add')).toHaveClass('hidden', '@min-[640px]/file-row:inline');
     expect(screen.getByTestId('file-row-records.csv').children[1]).toHaveClass(
       '@container/file-row',
@@ -78,7 +78,7 @@ describe('FileTree workspace routing', () => {
     expect(fileNameViewport).toHaveClass('overflow-hidden', 'whitespace-nowrap');
   });
 
-  it('exposes enabled Add actions as guidance anchors when a workspace is selected', () => {
+  it('exposes enabled Add actions as guidance anchors when a project is selected', () => {
     render(
       <FileTree
         nodes={[{ type: 'file', name: 'records.csv', path: 'records.csv', size: 10 }]}

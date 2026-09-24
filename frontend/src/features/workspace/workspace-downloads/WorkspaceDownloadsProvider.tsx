@@ -78,12 +78,12 @@ export function WorkspaceDownloadsProvider({ children }: { children: ReactNode }
           duration: 7000,
         });
       } else {
-        toast.success(`Downloaded workspace "${workspaceName || workspaceId}".`, {
+        toast.success(`Downloaded project "${workspaceName || workspaceId}".`, {
           duration: 3500,
         });
       }
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to start workspace download.', {
+      toast.error((error as Error).message || 'Failed to start project download.', {
         duration: 6000,
       });
     } finally {

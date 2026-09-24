@@ -13,7 +13,7 @@ vi.mock('@/components/help/HelpIcon', () => ({
 
 const workspace: WorkspaceListItem = {
   id: 'ws-1',
-  name: 'Main Workspace',
+  name: 'Main Project',
   description: 'Initial description',
   created_at: '2024-01-01T00:00:00Z',
   modified_at: '2024-01-02T00:00:00Z',
@@ -45,46 +45,46 @@ function renderCard(overrides: Partial<ComponentProps<typeof ActiveWorkspaceCard
 }
 
 describe('ActiveWorkspaceCard', () => {
-  it('clears create drafts only after the workspace create action succeeds', async () => {
+  it('clears create drafts only after the project create action succeeds', async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn().mockResolvedValue(true);
     renderCard({ currentWorkspace: null, onCreate });
 
-    await user.type(screen.getByPlaceholderText('Workspace name'), 'New workspace');
+    await user.type(screen.getByPlaceholderText('Project name'), 'New project');
     await user.type(screen.getByPlaceholderText('Optional description'), 'Project notes');
-    await user.click(screen.getByRole('button', { name: /create workspace/i }));
+    await user.click(screen.getByRole('button', { name: /create project/i }));
 
     await waitFor(() => {
-      expect(onCreate).toHaveBeenCalledWith('New workspace', 'Project notes');
+      expect(onCreate).toHaveBeenCalledWith('New project', 'Project notes');
     });
-    expect(screen.getByPlaceholderText('Workspace name')).toHaveValue('');
+    expect(screen.getByPlaceholderText('Project name')).toHaveValue('');
     expect(screen.getByPlaceholderText('Optional description')).toHaveValue('');
   });
 
-  it('keeps create drafts when the workspace create action fails', async () => {
+  it('keeps create drafts when the project create action fails', async () => {
     const user = userEvent.setup();
     const onCreate = vi.fn().mockResolvedValue(false);
     renderCard({ currentWorkspace: null, onCreate });
 
-    await user.type(screen.getByPlaceholderText('Workspace name'), 'New workspace');
+    await user.type(screen.getByPlaceholderText('Project name'), 'New project');
     await user.type(screen.getByPlaceholderText('Optional description'), 'Project notes');
-    await user.click(screen.getByRole('button', { name: /create workspace/i }));
+    await user.click(screen.getByRole('button', { name: /create project/i }));
 
     await waitFor(() => {
-      expect(onCreate).toHaveBeenCalledWith('New workspace', 'Project notes');
+      expect(onCreate).toHaveBeenCalledWith('New project', 'Project notes');
     });
-    expect(screen.getByPlaceholderText('Workspace name')).toHaveValue('New workspace');
+    expect(screen.getByPlaceholderText('Project name')).toHaveValue('New project');
     expect(screen.getByPlaceholderText('Optional description')).toHaveValue('Project notes');
   });
 
-  it('resets active workspace drafts when persisted workspace details change', async () => {
+  it('resets active project drafts when persisted project details change', async () => {
     const user = userEvent.setup();
     const { rerender, props } = renderCard();
 
     await user.clear(screen.getByPlaceholderText('Enter new name'));
     await user.type(screen.getByPlaceholderText('Enter new name'), 'Unsaved name');
-    await user.clear(screen.getByLabelText('Workspace description'));
-    await user.type(screen.getByLabelText('Workspace description'), 'Unsaved description');
+    await user.clear(screen.getByLabelText('Project description'));
+    await user.type(screen.getByLabelText('Project description'), 'Unsaved description');
 
     rerender(
       <ActiveWorkspaceCard
@@ -101,7 +101,7 @@ describe('ActiveWorkspaceCard', () => {
     expect(screen.getByDisplayValue('Persisted description')).toBeInTheDocument();
   });
 
-  it('blocks unloading while an active workspace task is running', () => {
+  it('blocks unloading while an active project task is running', () => {
     const onUnload = vi.fn();
     renderCard({ hasActiveTask: true, onUnload });
 

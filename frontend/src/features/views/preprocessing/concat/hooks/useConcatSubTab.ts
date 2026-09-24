@@ -164,7 +164,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
   };
 
   if (summaries.length === 0) {
-    result.issues = 'Select data blocks in the workspace to enable stacking.';
+    result.issues = 'Select data blocks in the project to enable stacking.';
     return result;
   }
 

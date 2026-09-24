@@ -19,7 +19,7 @@ Wordflow offers an interface that prioritizes ease of use and efficient navigati
 1.	Tool Choice: Choose and customise which tool module to use.
 2.	Data Selection: Select the data block to be analysed.
 3.	Task Centre: Show progress of time-consuming tasks.
-4.	Workspace Graph View: Manage all processible and produced data blocks.
+4.	Project Graph View: Manage all processible and produced data blocks.
 5.	Data Viewer: View selected data block(s) as table.
 6.	Tool Interface: The main interface of the selected analytic tool.
 7.	Working Directory: Set the local directory where the data are saved.
@@ -31,17 +31,17 @@ For detailed explanation of how each of the above sections work, please refer to
 ## Concept: How the Analyses Interoperate
 Wordflow's analyses are designed to work together seamlessly, allowing you to conduct comprehensive text analyses. Here’s how the components interact:
 - **Data block**: Tabular data consists of at least one column of analysable textual contents. Each row represents a unit of text (document, post, comment, speech etc.) and its associated metadata in columns. A data block can be viewed as a collection of texts with various types of metadata.
-- **Workspace**: A set of data blocks that can be processed, analysed and derived from each other. The workspace is a virtual space where the user uploads, processes and manipulates all relevant data blocks to a project or task. The workspace is visualised as a graph of interconnecting data blocks, where the links indicates how new data blocks are derived from their parent data blocks through various operations. The user can select, rename, delete or clone the data blocks from the workspace manager.
+- **Project**: A set of data blocks that can be processed, analysed and derived from each other. The project is a virtual space where the user uploads, processes and manipulates all relevant data blocks to a project or task. The project is visualised as a graph of interconnecting data blocks, where the links indicates how new data blocks are derived from their parent data blocks through various operations. The user can select, rename, delete or clone the data blocks from the project manager.
 
 The data block is the fundamental analytic unit across Wordflow, serves as both input and output so that the result of one analysis can be processed by any other seamlessly. 
-The text corpus and metadata can be uploaded to Wordflow then loaded as a data block to an active workspace.
-Most operations (filtering, sampling, joining, stacking, and creating derived data) on a Data Block create a new Data Block in the Workspace, and
+The text corpus and metadata can be uploaded to Wordflow then loaded as a data block to an active project.
+Most operations (filtering, sampling, joining, stacking, and creating derived data) on a Data Block create a new Data Block in the Project, and
 
-- Data Loader: Upload your text files and load  the text corpus (e.g., interview transcripts, articles) into a project workspace.
+- Data Loader: Upload your text files and load  the text corpus (e.g., interview transcripts, articles) into a project project.
 - Preprocessing: Use built-in cleaning tools to prepare your text, including removal of stopwords, stemming, and normalization.
 - Analysis Modules: Select from available tools — such as frequency analysis, quotation extraction, topic modelling, or concordance analysis — to process your data.
 -	Results Integration: Combine the findings from different modules to gain holistic insights, e.g., linking topics to historical trends.
-- Export & Share: Export your results in various formats (CSV, image or a whole zip archived workspace) and share with your collaborators.
+- Export & Share: Export your results in various formats (CSV, image or a whole zip archived project) and share with your collaborators.
 
 ## How to use the help icons
 
@@ -51,18 +51,18 @@ Most operations (filtering, sampling, joining, stacking, and creating derived da
 
 ## Quick start (first session)
 
-1. **Create or load a workspace** so your work is saved together.
+1. **Create or load a project** so your work is saved together.
 2. **Upload files** or import sample data to explore quickly.
 3. **Clean and join** your data if needed.
 4. **Run analyses** like token frequency, concordance, or topic modelling.
 5. **Export** results for sharing or downstream work.
 
-> **Placeholder (image):** Add a hero screenshot of the workspace with highlighted side panels.
+> **Placeholder (image):** Add a hero screenshot of the project with highlighted side panels.
 
 ## Help sections
 
 - [User Interface Overview](./ui.md) — learn what each section of the main screen does.
-- [Data loader](./data-loader.md) — create workspaces and upload data.
+- [Data loader](./data-loader.md) — create projects and upload data.
 - [Data Preprocessing](./preprocessing.md) — filter, slice, join, stack, and create columns.
 - [Token frequency](./token-frequency.md) — count and explore common terms.
 - [Concordance](./concordance.md) — inspect terms in context.
@@ -74,9 +74,9 @@ Most operations (filtering, sampling, joining, stacking, and creating derived da
 
 ## Questions to check your understanding
 
-**Q: What is a workspace?**
+**Q: What is a project?**
 
-A workspace is a saved container for your datasets, settings, and analysis outputs. Think of it as a project folder inside the app.
+A project is a saved container for your datasets, settings, and analysis outputs. Think of it as a project folder inside the app.
 
 **Q: Why are there separate tutorial pages?**
 

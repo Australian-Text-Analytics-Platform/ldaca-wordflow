@@ -864,8 +864,8 @@ describe('ConcordanceFeature', () => {
       expect(legend).toHaveAttribute('aria-pressed', 'false');
     }
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add to Workspace' }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add to Project' }).at(-1)!);
     await waitFor(() => {
       expect(createResultDataBlocksMock).toHaveBeenCalledTimes(1);
     });
@@ -921,8 +921,8 @@ describe('ConcordanceFeature', () => {
       }
     });
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
-    fireEvent.click(screen.getAllByRole('button', { name: 'Add to Workspace' }).at(-1)!);
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Add to Project' }).at(-1)!);
     await waitFor(() => {
       expect(createResultDataBlocksMock).toHaveBeenCalledTimes(2);
     });

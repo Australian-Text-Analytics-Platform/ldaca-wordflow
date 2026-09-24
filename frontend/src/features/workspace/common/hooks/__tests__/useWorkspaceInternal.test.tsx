@@ -65,7 +65,7 @@ describe('useWorkspaceInternal', () => {
     useWorkspaceNodeMutationsMock.mockReturnValue({ actions: { createWorkspace: vi.fn() } });
   });
 
-  it('selects nothing when the backend reports no open Workspace', () => {
+  it('selects nothing when the backend reports no open Project', () => {
     useWorkspaceCoreMock.mockReturnValue({
       ...coreDefaults,
       isAuthenticated: false,
@@ -75,7 +75,7 @@ describe('useWorkspaceInternal', () => {
     expect(result.current.currentWorkspace).toBeNull();
   });
 
-  it('clears local Data Block selection when the backend open Workspace changes', () => {
+  it('clears local Data Block selection when the backend open Project changes', () => {
     const clearSelection = vi.fn();
     useWorkspaceCoreMock.mockReturnValue({ ...coreDefaults, clearSelection });
     useWorkspaceQueriesMock.mockReturnValue({
@@ -101,7 +101,7 @@ describe('useWorkspaceInternal', () => {
     expect(result.current.isLoading).toMatchObject({ operations: true, workspaces: true });
   });
 
-  it('exposes selected workspace and graph data from the local selection plus canonical queries', () => {
+  it('exposes selected project and graph data from the local selection plus canonical queries', () => {
     useWorkspaceCoreMock.mockReturnValue({ ...coreDefaults, activeNodeId: 'node-1' });
     useWorkspaceQueriesMock.mockReturnValue({
       ...queryDefaults,

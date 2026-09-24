@@ -144,14 +144,14 @@ describe('DesktopNavigationHeaderView', () => {
       message: 'Loading Tabs…',
     },
     {
-      name: 'no Workspace',
-      props: { workspaceName: 'No workspace', tabs: [] },
-      message: 'Load a Workspace to access analysis Tabs.',
+      name: 'no Project',
+      props: { workspaceName: 'No project', tabs: [] },
+      message: 'Load a Project to access analysis Tabs.',
     },
     {
       name: 'no Tabs',
       props: { tabs: [] },
-      message: 'This Workspace has no analysis Tabs.',
+      message: 'This Project has no analysis Tabs.',
     },
   ])('shows the $name state', async ({ props, message }) => {
     const user = userEvent.setup();

@@ -134,7 +134,7 @@ describe('WorkspaceTable', () => {
         <WorkspaceTable
           columns={['document']}
           columnFields={{ document: new Field('document', new Utf8()) }}
-          data={[{ document: page === 1 ? 'Workspace row one.' : 'Workspace row two.' }]}
+          data={[{ document: page === 1 ? 'Project row one.' : 'Project row two.' }]}
           documentColumn="document"
           pagination={{ page, page_size: 1 }}
           rowCount={2}
@@ -144,12 +144,12 @@ describe('WorkspaceTable', () => {
     }
 
     render(<Harness />);
-    await user.click(screen.getByText('Workspace row one.'));
+    await user.click(screen.getByText('Project row one.'));
     await user.click(screen.getByRole('button', { name: 'Next row' }));
 
     const dialog = await screen.findByRole('dialog');
     await waitFor(() => {
-      expect(within(dialog).getByText('Workspace row two.')).toBeInTheDocument();
+      expect(within(dialog).getByText('Project row two.')).toBeInTheDocument();
     });
     expect(within(dialog).getByRole('button', { name: 'Previous row' })).toBeEnabled();
   });

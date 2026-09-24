@@ -33,7 +33,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select none for First' }));
     fireEvent.click(screen.getByRole('button', { name: 'Select none for First' }));
     fireEvent.click(screen.getByRole('button', { name: 'Select all for Second' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith([
       {
@@ -122,7 +122,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     expect(analysis).toBeChecked();
     expect(screen.getByLabelText('New Data Block name')).toHaveValue('Documents_concordance');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith([
       {
@@ -162,7 +162,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     expect(screen.getAllByRole('checkbox', { name: /CONC_extraction.*required/i })).toHaveLength(2);
     fireEvent.click(screen.getByRole('checkbox', { name: 'Second' }));
     fireEvent.click(screen.getAllByRole('checkbox', { name: 'speaker' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith([
       {
@@ -230,7 +230,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     expect(screen.getAllByRole('checkbox', { name: 'speaker' })[0]).not.toBeChecked();
     expect(screen.getAllByRole('checkbox', { name: 'speaker' })[1]).not.toBeChecked();
     fireEvent.click(screen.getAllByRole('checkbox', { name: 'speaker' })[0]!);
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith([
       {

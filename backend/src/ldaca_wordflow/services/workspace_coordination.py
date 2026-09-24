@@ -169,7 +169,7 @@ class _WorkspaceCatalogue:
                     or not stat.S_ISDIR(metadata.st_mode)
                     or is_link_or_reparse(metadata)
                 ):
-                    raise ValueError("Workspace entry is not a canonical directory")
+                    raise ValueError("Project entry is not a canonical directory")
             except OSError, ValueError:
                 logger.warning(
                     "Ignoring invalid Workspace catalogue entry name=%s",
@@ -200,7 +200,7 @@ class _WorkspaceCatalogue:
                 snapshot = self._store.inspect(candidate)
                 if snapshot.workspace_id != candidate_id:
                     raise WorkspaceSnapshotInvalidError(
-                        "Workspace directory and snapshot IDs differ"
+                        "Project directory and snapshot IDs differ"
                     )
             except WorkspaceSchemaVersionError as exc:
                 logger.info(
@@ -287,7 +287,7 @@ class _WorkspaceCatalogue:
                 or is_link_or_reparse(metadata)
             ):
                 raise WorkspaceAccessInvalidError(
-                    "Workspace path is not a safe directory"
+                    "Project path is not a safe directory"
                 )
             owner_id = read_workspace_owner(path)
         except FileNotFoundError:
@@ -306,7 +306,7 @@ class _WorkspaceCatalogue:
             return self._store.inspect(path)
         except (WorkspaceSnapshotInvalidError, WorkspaceCapacityError) as exc:
             raise WorkspaceCorruptError(
-                "Workspace data is corrupt",
+                "Project data is corrupt",
                 details={"workspace_id": path.name},
             ) from exc
 
@@ -315,7 +315,7 @@ class _WorkspaceCatalogue:
             loaded = self._store.load(path)
         except (WorkspaceSnapshotInvalidError, WorkspaceCapacityError) as exc:
             raise WorkspaceCorruptError(
-                "Workspace data is corrupt",
+                "Project data is corrupt",
                 details={"workspace_id": path.name},
             ) from exc
         return (
@@ -544,10 +544,10 @@ class _WorkspaceMutationCommitter:
         try:
             return self._store.stage_snapshot(staging, workspace, revision=revision)
         except WorkspaceCapacityError as exc:
-            raise ResourceTooLargeError("Workspace snapshot exceeds its limit") from exc
+            raise ResourceTooLargeError("Project snapshot exceeds its limit") from exc
         except WorkspaceSerializationError as exc:
             raise WorkspaceCorruptError(
-                "Workspace data could not be persisted",
+                "Project data could not be persisted",
                 details={"workspace_id": str(workspace.id)},
             ) from exc
 
@@ -598,7 +598,7 @@ class _WorkspaceMutationCommitter:
                 )
             except WorkspaceRevisionConflictError as exc:
                 raise WorkspaceConflictError(
-                    "Workspace persistence changed outside its mutation boundary",
+                    "Project persistence changed outside its mutation boundary",
                     details={
                         "expected_revision": exc.expected,
                         "actual_revision": exc.actual,
@@ -606,7 +606,7 @@ class _WorkspaceMutationCommitter:
                 ) from exc
             except WorkspaceSerializationError as exc:
                 raise WorkspaceCorruptError(
-                    "Workspace data could not be persisted",
+                    "Project data could not be persisted",
                     details={"workspace_id": str(lease.workspace.id)},
                 ) from exc
 

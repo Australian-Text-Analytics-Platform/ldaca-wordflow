@@ -125,7 +125,7 @@ clear a value.
 **Clear Results** removes the tab's Preview and Run All Analyses and clears its
 result state; it does not undo labels already written to the Data Block. Use the
 Data Block's session **Undo** action to reverse the latest manual edit, AI write,
-or column creation. Undo history lasts only for the current backend Workspace
+or column creation. Undo history lasts only for the current backend Project
 session.
 
 Preview or Run All locks the parameter panel only while submission or execution

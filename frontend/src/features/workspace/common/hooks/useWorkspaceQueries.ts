@@ -52,7 +52,7 @@ export const useWorkspaceQueries = ({
   const openWorkspaces = workspaces.filter((workspace) => workspace.runtime_state === 'open');
   if (openWorkspaces.length > 1) {
     throw new Error(
-      `Workspace runtime invariant violated: ${String(openWorkspaces.length)} Workspaces are open`,
+      `Project runtime invariant violated: ${String(openWorkspaces.length)} Projects are open`,
     );
   }
   const currentWorkspace = openWorkspaces[0] ?? null;
@@ -67,7 +67,7 @@ export const useWorkspaceQueries = ({
      * Why: graph consumers need one cache entry gated by authenticated workspace identity.
      */
     queryFn: async () => {
-      if (!currentWorkspaceId) throw new Error('Missing workspace ID');
+      if (!currentWorkspaceId) throw new Error('Missing project ID');
       const { data } = await listNodes({
         path: { workspace_id: currentWorkspaceId },
         throwOnError: true,

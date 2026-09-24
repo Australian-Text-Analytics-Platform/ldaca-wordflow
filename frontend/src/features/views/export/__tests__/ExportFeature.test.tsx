@@ -62,7 +62,7 @@ describe('ExportFeature', () => {
     window.HTMLElement.prototype.scrollIntoView = vi.fn();
     mocks.useWorkspaceData.mockReturnValue({
       currentWorkspaceId: 'workspace-1',
-      currentWorkspace: { name: 'Main Workspace' },
+      currentWorkspace: { name: 'Main Project' },
       nodes,
     });
     mocks.useWorkspaceSelection.mockReturnValue({ selectedNodeIds: [] });
@@ -119,7 +119,7 @@ describe('ExportFeature', () => {
       data: new Blob(['zip']),
       response: new Response(null, {
         headers: {
-          'Content-Disposition': 'attachment; filename="Main_Workspace_data_blocks.zip"',
+          'Content-Disposition': 'attachment; filename="Main_Project_data_blocks.zip"',
         },
       }),
     });
@@ -131,20 +131,20 @@ describe('ExportFeature', () => {
       workspaceId: 'workspace-1',
       nodeIds: ['node-1', 'node-2'],
       format: 'csv',
-      filename: 'Main_Workspace_data_blocks.zip',
+      filename: 'Main_Project_data_blocks.zip',
       loadBrowserDownload: expect.any(Function),
     });
     expect(screen.getByRole('button', { name: 'Add All' })).toBeDisabled();
   });
 
-  it('keeps complete Workspace archive export as a separate action', async () => {
+  it('keeps complete Project archive export as a separate action', async () => {
     render(<ExportFeature />);
-    fireEvent.click(screen.getByRole('button', { name: 'Export workspace archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export project archive' }));
 
     await waitFor(() =>
       expect(mocks.saveBackendDownload).toHaveBeenCalledWith(
         '/api/workspaces/workspace-1/archive',
-        'Main_Workspace.zip',
+        'Main_Project.zip',
         expect.any(Function),
       ),
     );
@@ -165,11 +165,11 @@ describe('ExportFeature', () => {
     expect(mocks.toast.success).not.toHaveBeenCalled();
   });
 
-  it('does not report a cancelled Workspace export as successful', async () => {
+  it('does not report a cancelled Project export as successful', async () => {
     mocks.saveBackendDownload.mockResolvedValueOnce(null);
     render(<ExportFeature />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Export workspace archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export project archive' }));
 
     await waitFor(() => expect(mocks.saveBackendDownload).toHaveBeenCalledTimes(1));
     expect(mocks.reachContextualHint).not.toHaveBeenCalled();

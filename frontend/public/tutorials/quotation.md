@@ -82,19 +82,19 @@ projection of the same Preview Analysis. It does not mutate that Analysis.
 Click **Run All** at any time to submit an independent Run All Analysis that
 retains a complete table Result from its own immutable snapshot. Later source
 edits do not alter that Analysis's meaning, and Run All does not add a Data
-Block to the Workspace. After success, **Review** reads the immutable Result.
+Block to the Project. After success, **Review** reads the immutable Result.
 **Page by Documents** shows the highlighted reading view, while **Page by
 Matches** shows one raw extract per row with scalar `QUOTE_*` fields. Changing
 the paging unit returns to page 1. Review does not show the Preview page
 summary.
 
-Use **Add to Workspace** to publish selected Result columns as a Derived Data
+Use **Add to Project** to publish selected Result columns as a Derived Data
 Block. The document column is required, metadata columns start unselected, and
 analysis columns start selected.
 
 <h3 id="help-quotation-clear-results">Clear results</h3>
 
-The Tab retains its Analysis forest across navigation and Workspace reopen.
+The Tab retains its Analysis forest across navigation and Project reopen.
 **Clear Results** removes the complete forest. Preview or Run All locks every
 parameter only while submission or execution is active; Stop becomes available
 once the task exists. If either root fails or is cancelled, parameters unlock
@@ -124,7 +124,7 @@ but both execution actions stay disabled until Clear Results.
 2. Inspect highlighted speaker, quote, and verb spans in several rows.
 3. Change the display context length.
 4. Sort by the virtual document header and a source metadata column.
-5. Run All, inspect Review, and use **Add to Workspace** if you need a Derived
+5. Run All, inspect Review, and use **Add to Project** if you need a Derived
    Data Block.
 
 [← Back to tutorial index](./index.md)

@@ -91,7 +91,7 @@ export function DataLoaderDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Invalid workspace name</AlertDialogTitle>
+            <AlertDialogTitle>Invalid project name</AlertDialogTitle>
             <AlertDialogDescription>{workspaceNameAlert.message}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -108,13 +108,13 @@ export function DataLoaderDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete workspace?</AlertDialogTitle>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteWorkspace.target
-                ? // an empty workspace name should fall through to the id
+                ? // an empty project name should fall through to the id
                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   `This will permanently delete "${deleteWorkspace.target.name || deleteWorkspace.target.id}" and its data. This action cannot be undone.`
-                : 'This will permanently delete the workspace and its data. This action cannot be undone.'}
+                : 'This will permanently delete the project and its data. This action cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -129,7 +129,7 @@ export function DataLoaderDialogs({
               className="bg-error text-button-foreground hover:bg-error/90"
               disabled={deleteWorkspace.deleting}
             >
-              {deleteWorkspace.deleting ? 'Deleting…' : 'Delete workspace'}
+              {deleteWorkspace.deleting ? 'Deleting…' : 'Delete project'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

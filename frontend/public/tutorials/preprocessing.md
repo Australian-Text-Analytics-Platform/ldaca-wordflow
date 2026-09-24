@@ -24,7 +24,7 @@ There are currently six sub-tabs:
 
 The general workflow for any sub-tab is:
 
-1. Select one or more data blocks from the workspace.
+1. Select one or more data blocks from the project.
 2. Configure the transformation.
 3. Review the **Preview** table to check the expected output.
 4. Check the **Result** line beside the action button: it says whether the tool creates a new Data Block or updates the selected one.
@@ -36,7 +36,7 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Select one or more data blocks from the workspace graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter, Sample, Find, Create; two for Join, Stack).
+Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter, Sample, Find, Create; two for Join, Stack).
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
@@ -49,7 +49,7 @@ Each tool has one fixed destination, shown as **Result** beside its action butto
 - **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack): the source is preserved and the new block records its creation lineage.
 - **Updates the selected Data Block** (Find, Create): the new or changed column is added to the selected block. Rows are never added, removed, or reordered, so everything that refers to those rows (annotations, analyses, descendants) stays aligned.
 
-An update keeps the selected Data Block's identity, graph edges, parents, descendants, and creation provenance unchanged. Descendants keep their existing independent plans and are not recomputed. Undo/Redo stores only plans for the current open Workspace session, up to 50 edits per Data Block. Closing and reopening the Workspace, importing it, or restarting the backend preserves the latest data but clears Undo/Redo history.
+An update keeps the selected Data Block's identity, graph edges, parents, descendants, and creation provenance unchanged. Descendants keep their existing independent plans and are not recomputed. Undo/Redo stores only plans for the current open Project session, up to 50 edits per Data Block. Closing and reopening the Project, importing it, or restarting the backend preserves the latest data but clears Undo/Redo history.
 
 <h2 id="help-preprocessing-filter-section">Filter</h2>
 
@@ -78,7 +78,7 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 
 ![Filter new data block name screenshot](tutorials/assets/preprocessing/filter_new_node_name.png)
 
-Give the filtered output a descriptive name so it is easy to find in the workspace. The new block is a child of the selected source block.
+Give the filtered output a descriptive name so it is easy to find in the project. The new block is a child of the selected source block.
 
 **Practice exercise**
 

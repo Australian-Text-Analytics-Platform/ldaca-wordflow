@@ -29,7 +29,7 @@ describe('useConcatSubTab preview adapter', () => {
     vi.useRealTimers();
   });
 
-  it('forwards request-owned workspaces and aborts the first custom-adapter signal on switch', async () => {
+  it('forwards request-owned projects and aborts the first custom-adapter signal on switch', async () => {
     let resolveFirst: ((value: unknown) => void) | null = null;
     const firstResponse = new Promise((resolve) => {
       resolveFirst = resolve;

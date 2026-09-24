@@ -384,7 +384,7 @@ function FileTreeContent({
             title={
               hasWorkspaceSelected
                 ? 'Add this file as a Data Block'
-                : 'Load a workspace to add this file as a Data Block'
+                : 'Load a project to add this file as a Data Block'
             }
             onClick={() => {
               onAddFile(file.path);

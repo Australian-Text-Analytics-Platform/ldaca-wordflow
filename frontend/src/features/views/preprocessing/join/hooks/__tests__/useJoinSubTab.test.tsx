@@ -30,7 +30,7 @@ describe('useJoinSubTab preview adapter', () => {
     vi.useRealTimers();
   });
 
-  it('uses request-owned workspaces and aborts the exact SDK signal on workspace switch', async () => {
+  it('uses request-owned projects and aborts the exact SDK signal on project switch', async () => {
     let resolveFirst: ((value: unknown) => void) | null = null;
     const firstResponse = new Promise((resolve) => {
       resolveFirst = resolve;

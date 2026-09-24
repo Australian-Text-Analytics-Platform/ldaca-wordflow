@@ -14,7 +14,7 @@ export const workspaceAnalysesQueryOptions = (workspaceId: string | null) =>
       ? queryKeys.workspaceAnalyses(workspaceId)
       : queryKeys.inactiveWorkspaceAnalyses,
     queryFn: async ({ pageParam }): Promise<AnalysisPage> => {
-      if (!workspaceId) throw new Error('Missing workspace ID');
+      if (!workspaceId) throw new Error('Missing project ID');
       const { data } = await listAnalyses({
         path: { workspace_id: workspaceId },
         query: { page: pageParam, page_size: WORKSPACE_ANALYSES_PAGE_SIZE },

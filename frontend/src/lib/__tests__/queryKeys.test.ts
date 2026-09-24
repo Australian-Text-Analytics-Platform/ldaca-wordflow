@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { queryKeys } from '../queryKeys';
 
-describe('queryKeys workspace hierarchy', () => {
-  it('keeps the Workspace list separate from every Workspace detail subtree', () => {
+describe('queryKeys project hierarchy', () => {
+  it('keeps the Project list separate from every Project detail subtree', () => {
     expect(queryKeys.workspaceList).toEqual(['workspaces', 'list']);
     expect(queryKeys.workspaceGraph('workspace-1')).toEqual(['workspaces', 'workspace-1', 'graph']);
     expect(
@@ -100,7 +100,7 @@ describe('queryKeys file hierarchy', () => {
 });
 
 describe('queryKeys catalogue hierarchy', () => {
-  it('keeps global catalogues independent of Workspace detail invalidation', () => {
+  it('keeps global catalogues independent of Project detail invalidation', () => {
     expect(queryKeys.tokenizerModels).toEqual(['catalogues', 'tokenizer-models']);
     expect(queryKeys.sampleCollections).toEqual(['catalogues', 'sample-collections']);
     expect(

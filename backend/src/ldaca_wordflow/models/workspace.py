@@ -117,9 +117,9 @@ class UnavailableWorkspaceListItem(_StrictModel):
         )
         if self.reason == "incompatible_format":
             if any(version is None for version in versions):
-                raise ValueError("Incompatible Workspace formats require both versions")
+                raise ValueError("Incompatible Project formats require both versions")
         elif any(version is not None for version in versions):
-            raise ValueError("Only incompatible Workspace formats expose versions")
+            raise ValueError("Only incompatible Project formats expose versions")
         return self
 
 
@@ -151,9 +151,9 @@ class WorkspaceUpdateRequest(_StrictModel):
     @model_validator(mode="after")
     def validate_patch(self) -> WorkspaceUpdateRequest:
         if not self.model_fields_set:
-            raise ValueError("Workspace patch must contain at least one field")
+            raise ValueError("Project patch must contain at least one field")
         if "name" in self.model_fields_set and self.name is None:
-            raise ValueError("Workspace name cannot be null")
+            raise ValueError("Project name cannot be null")
         return self
 
 
@@ -173,7 +173,7 @@ class WorkspaceArchiveMetadata(_StrictModel):
             and self.modified_at is not None
             and self.modified_at < self.created_at
         ):
-            raise ValueError("Workspace modified_at cannot precede created_at")
+            raise ValueError("Project modified_at cannot precede created_at")
         return self
 
 

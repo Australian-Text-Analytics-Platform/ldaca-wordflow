@@ -12,7 +12,7 @@ const createClient = () =>
   });
 
 describe('workspaceMutationCache', () => {
-  it('refreshes the Workspace list without invalidating Workspace detail resources', () => {
+  it('refreshes the Project list without invalidating Project detail resources', () => {
     const queryClient = createClient();
     const graphKey = queryKeys.workspaceGraph('workspace-1');
     queryClient.setQueryData(queryKeys.workspaceList, [{ id: 'workspace-1' }]);

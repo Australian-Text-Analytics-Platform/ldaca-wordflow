@@ -43,7 +43,7 @@ describe('SequentialAddToWorkspaceDialog', () => {
     ]);
     expect(checkboxes[1]).toBeDisabled();
 
-    await user.click(screen.getByRole('button', { name: 'Add to Workspace' }));
+    await user.click(screen.getByRole('button', { name: 'Add to Project' }));
     expect(onSubmit).toHaveBeenCalledWith({
       sourceId: source.node_id,
       selectedColumns: ['when', 'text', 'group'],

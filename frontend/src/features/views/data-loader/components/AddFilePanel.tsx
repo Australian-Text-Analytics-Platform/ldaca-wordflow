@@ -79,7 +79,7 @@ function AddFilePanelBody({
           ) : (
             <>
               <Plus className="mr-2 h-4 w-4" />
-              Add to Workspace
+              Add to Project
             </>
           )}
         </Button>
@@ -103,7 +103,7 @@ function AddFilePanelBody({
         setSelectedSheet,
       }}
       title={`Add File: ${filename}`}
-      description="Files are added as data blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the workspace."
+      description="Files are added as data blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the project."
       footer={footer}
     />
   );

@@ -3,13 +3,13 @@ import type { WorkspaceCatalogueItem } from '@/api';
 import { availableWorkspacesFromCatalogue } from '../useWorkspaceQueries';
 
 describe('availableWorkspacesFromCatalogue', () => {
-  it('excludes unavailable entries from runtime Workspace derivation', () => {
+  it('excludes unavailable entries from runtime Project derivation', () => {
     const catalogue: WorkspaceCatalogueItem[] = [
       {
         availability: 'unavailable',
         id: '0a120442-2f33-4474-9d09-9adbdfea7ebc',
         reason: 'incompatible_format',
-        message: 'Workspace data schema 14 is incompatible with supported data schema 15.',
+        message: 'Project data schema 14 is incompatible with supported data schema 15.',
         stored_data_schema_version: 14,
         supported_data_schema_version: 15,
       },

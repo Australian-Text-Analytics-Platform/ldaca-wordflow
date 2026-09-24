@@ -207,7 +207,7 @@ function Sidebar() {
               }}
               disabled={isDisabled}
               aria-disabled={isDisabled}
-              tooltip={isDisabled ? 'Load a workspace to use this view' : undefined}
+              tooltip={isDisabled ? 'Load a project to use this view' : undefined}
             >
               <Icon />
               <span>{label}</span>

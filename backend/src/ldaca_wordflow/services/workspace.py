@@ -251,14 +251,14 @@ class WorkspaceService:
         if path is None:
             if slot.workspace is not None:
                 await self._residency.clear(slot)
-            raise WorkspaceNotFoundError("Workspace not found")
+            raise WorkspaceNotFoundError("Project not found")
         if slot.workspace is None or slot.path is None:
-            raise WorkspaceNotOpenError("Workspace is not open")
+            raise WorkspaceNotOpenError("Project is not open")
         if slot.closing and not allow_closing:
-            raise WorkspaceClosingError("Workspace is closing")
+            raise WorkspaceClosingError("Project is closing")
         if slot.path != path:
             await self._residency.clear(slot)
-            raise WorkspaceNotFoundError("Workspace not found")
+            raise WorkspaceNotFoundError("Project not found")
         return WorkspaceLease(slot.workspace, path, slot.revision, slot)
 
     def _save_sync(
@@ -284,17 +284,17 @@ class WorkspaceService:
             )
         except WorkspaceRevisionConflictError as exc:
             raise WorkspaceConflictError(
-                "Workspace revision is stale",
+                "Project revision is stale",
                 details={
                     "expected_revision": exc.expected,
                     "actual_revision": exc.actual,
                 },
             ) from exc
         except WorkspaceCapacityError as exc:
-            raise ResourceTooLargeError("Workspace snapshot exceeds its limit") from exc
+            raise ResourceTooLargeError("Project snapshot exceeds its limit") from exc
         except WorkspaceSerializationError as exc:
             raise WorkspaceCorruptError(
-                "Workspace data could not be persisted",
+                "Project data could not be persisted",
                 details={"workspace_id": str(workspace.id)},
             ) from exc
         return snapshot
@@ -369,7 +369,7 @@ class WorkspaceService:
                 normalized_name = request.name.strip()
                 valid, reason = validate_workspace_name(normalized_name)
                 if not valid:
-                    raise InvalidInputError(f"Invalid workspace name: {reason}")
+                    raise InvalidInputError(f"Invalid project name: {reason}")
                 if lease.workspace.name != normalized_name:
                     lease.workspace.name = normalized_name
                     changed = True
@@ -402,7 +402,7 @@ class WorkspaceService:
                 or set(ordered_ids) != set(current_ids)
             ):
                 raise InvalidInputError(
-                    "ordered_ids must be an exact duplicate-free permutation of workspace nodes"
+                    "ordered_ids must be an exact duplicate-free permutation of project nodes"
                 )
             changed = ordered_ids != current_ids
             if changed:
@@ -599,9 +599,9 @@ class WorkspaceService:
 
         is_valid, reason = validate_workspace_name(name)
         if not is_valid:
-            raise InvalidInputError(f"Invalid workspace name: {reason}")
+            raise InvalidInputError(f"Invalid project name: {reason}")
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
 
         workspace_id = uuid.uuid4()
         async with self._residency.slot(workspace_id):
@@ -665,7 +665,7 @@ class WorkspaceService:
         """Snapshot new work only while the Workspace is fully open."""
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         async with self._residency.slot(workspace_id) as slot:
             yield await self._require_open(
                 slot,
@@ -689,7 +689,7 @@ class WorkspaceService:
         """
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         async with self._residency.slot(workspace_id) as slot:
             lease = await self._require_open(
                 slot,
@@ -764,15 +764,15 @@ class WorkspaceService:
         """Reserve cross-process ownership before local sibling transitions."""
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         async with self._residency.slot(workspace_id) as slot:
             path = await self._path(user_id, workspace_id)
             if path is None:
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             if slot.workspace is not None:
                 if slot.path != path:
                     await self._residency.clear(slot)
-                    raise WorkspaceNotFoundError("Workspace not found")
+                    raise WorkspaceNotFoundError("Project not found")
             elif slot.process_lock is None:
                 slot.process_lock = await self._residency.acquire_process_lock(workspace_id)
         try:
@@ -791,15 +791,15 @@ class WorkspaceService:
         """Idempotently load one Workspace through its explicit open boundary."""
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         async with self._residency.slot(workspace_id) as slot:
             path = await self._path(user_id, workspace_id)
             if path is None:
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             if slot.workspace is not None:
                 if slot.path != path:
                     await self._residency.clear(slot)
-                    raise WorkspaceNotFoundError("Workspace not found")
+                    raise WorkspaceNotFoundError("Project not found")
                 state_changed = slot.closing
                 slot.closing = False
                 resource = self.materialize_record(
@@ -839,7 +839,7 @@ class WorkspaceService:
                     with anyio.CancelScope(shield=True):
                         await self._residency.clear(slot)
                     raise WorkspaceCorruptError(
-                        "Workspace changed while it was opening",
+                        "Project changed while it was opening",
                         details={"workspace_id": str(workspace_id)},
                     )
                 slot.workspace = workspace
@@ -870,7 +870,7 @@ class WorkspaceService:
         async with self._residency.slot(workspace_id) as slot:
             path = await self._path(user_id, workspace_id)
             if path is None:
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             snapshot = await self._residency.run_io(self._catalogue.inspect, path)
             return self._record_from_snapshot(snapshot, self._residency.runtime_state(slot))
 
@@ -922,7 +922,7 @@ class WorkspaceService:
 
         path = await self._path(user_id, workspace_id)
         if path is None:
-            raise WorkspaceNotFoundError("Workspace not found")
+            raise WorkspaceNotFoundError("Project not found")
         return path
 
     async def request_close(
@@ -936,12 +936,12 @@ class WorkspaceService:
         async with self._residency.slot(workspace_id) as slot:
             path = await self._path(user_id, workspace_id)
             if path is None:
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             if slot.workspace is None:
                 return None
             if slot.path != path:
                 await self._residency.clear(slot)
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             if slot.closing:
                 return self.materialize_record(
                     slot.workspace,
@@ -993,11 +993,11 @@ class WorkspaceService:
         """
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         async with self._residency.slot(workspace_id) as slot:
             path = await self._path(user_id, workspace_id)
             if path is None:
-                raise WorkspaceNotFoundError("Workspace not found")
+                raise WorkspaceNotFoundError("Project not found")
             acquired_for_delete = slot.process_lock is None
             if acquired_for_delete:
                 slot.process_lock = await self._residency.acquire_process_lock(workspace_id)
@@ -1049,7 +1049,7 @@ class WorkspaceService:
         """
 
         if not self._accepting_mutations:
-            raise WorkspaceConflictError("Workspace service is shutting down")
+            raise WorkspaceConflictError("Project service is shutting down")
         workspace_id = uuid.uuid4()
         async with self._residency.slot(workspace_id):
             destination = workspaces_root(self.settings) / str(workspace_id)
@@ -1096,9 +1096,9 @@ class WorkspaceService:
             resolved_staging.parent != staging_root.resolve(strict=True)
             or staging.is_symlink()
         ):
-            raise InvalidInputError("Invalid workspace import staging path")
+            raise InvalidInputError("Invalid project import staging path")
         if destination.exists():
-            raise WorkspaceConflictError("Workspace identifier already exists")
+            raise WorkspaceConflictError("Project identifier already exists")
 
         marker = staging / SAFE_WORKSPACE_IMPORT_MARKER
         try:
@@ -1106,7 +1106,7 @@ class WorkspaceService:
             marker_content = marker.read_text(encoding="ascii")
         except (OSError, UnicodeError) as exc:
             raise InvalidWorkspaceArchiveError(
-                "Workspace import was not compiled from safe materialized data"
+                "Project import was not compiled from safe materialized data"
             ) from exc
         if (
             marker.is_symlink()
@@ -1114,7 +1114,7 @@ class WorkspaceService:
             or marker_content != SAFE_WORKSPACE_IMPORT_MARKER_CONTENT
         ):
             raise InvalidWorkspaceArchiveError(
-                "Workspace import was not compiled from safe materialized data"
+                "Project import was not compiled from safe materialized data"
             )
         imported_at = datetime.now(UTC)
         self._store.prepare_import_identity(

@@ -23,7 +23,7 @@ function DownloadStarter() {
     <>
       <button
         type="button"
-        onClick={() => void downloads.startDownload('workspace-1', 'Main Workspace')}
+        onClick={() => void downloads.startDownload('workspace-1', 'Main Project')}
       >
         Start download
       </button>
@@ -42,7 +42,7 @@ describe('WorkspaceDownloadsProvider', () => {
     });
   });
 
-  it('downloads the canonical workspace archive and keeps the command shell-owned', async () => {
+  it('downloads the canonical project archive and keeps the command shell-owned', async () => {
     render(
       <WorkspaceDownloadsProvider>
         <DownloadStarter />
@@ -53,7 +53,7 @@ describe('WorkspaceDownloadsProvider', () => {
     await waitFor(() =>
       expect(mocks.saveBackendDownload).toHaveBeenCalledWith(
         '/api/workspaces/workspace-1/archive',
-        'Main_Workspace.zip',
+        'Main_Project.zip',
         expect.any(Function),
       ),
     );

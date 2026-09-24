@@ -16,7 +16,7 @@ describe('analysisTabsPresentationStore', () => {
     localStorage.removeItem('ldaca-analysis-tab-presentation-v3');
   });
 
-  it('keeps active tabs independent by user, Workspace, and analysis kind', () => {
+  it('keeps active tabs independent by user, Project, and analysis kind', () => {
     const { rememberActiveTab } = useAnalysisTabsPresentationStore.getState();
 
     rememberActiveTab('user-1', 'workspace-1', 'concordance', 'concordance-tab');
@@ -89,7 +89,7 @@ describe('analysisTabsPresentationStore', () => {
     expect(localStorage.getItem('ldaca-analysis-tab-presentation-v3')).toBeNull();
   });
 
-  it('stores presentation settings per user, Workspace, and Tab', () => {
+  it('stores presentation settings per user, Project, and Tab', () => {
     const { rememberTabSetting } = useAnalysisTabsPresentationStore.getState();
     rememberTabSetting('user-1', 'workspace-1', 'tab-1', 'contextLength', '12');
     rememberTabSetting('user-2', 'workspace-1', 'tab-1', 'contextLength', '24');

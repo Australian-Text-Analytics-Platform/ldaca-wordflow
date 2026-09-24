@@ -44,7 +44,7 @@ describe('tokenFrequencyUtils', () => {
     expect(buildSelectionNameKey(selected, panel)).toBe('a:Panel A|b:Beta');
   });
 
-  it('derivePanelNodeIds keeps the first two live workspace node ids', () => {
+  it('derivePanelNodeIds keeps the first two live project node ids', () => {
     const panelNodes = [
       { id: 'node-a', name: 'Node A' },
       { id: 'node-b', name: 'Node B' },

@@ -81,7 +81,7 @@ export function ResultAddToWorkspaceDialog({
       open={open}
       onOpenChange={onOpenChange}
       title={title}
-      description="Choose which immutable Result columns create new Workspace Data Blocks."
+      description="Choose which immutable Result columns create new Project Data Blocks."
       sources={sources.map((source) => createResultSource(source, mode, nameSuffix))}
       isSubmitting={isSubmitting}
       allowSourceSelection={allowSourceSelection}

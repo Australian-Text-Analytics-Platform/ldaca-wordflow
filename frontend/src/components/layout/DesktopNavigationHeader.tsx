@@ -233,7 +233,7 @@ export function DesktopNavigationHeaderView({
 
             <div
               role="listbox"
-              aria-label="Workspace analysis tabs"
+              aria-label="Project analysis tabs"
               className="max-h-[50vh] overflow-y-auto"
             >
               {unavailableTabWarnings.map((warning) => (
@@ -249,18 +249,18 @@ export function DesktopNavigationHeaderView({
                 <p className="px-2 py-4 text-center text-body text-description">Loading Tabs…</p>
               ) : isError ? (
                 <div className="flex items-center justify-between gap-3 px-2 py-3">
-                  <p className="text-body text-error">Could not load Workspace Tabs.</p>
+                  <p className="text-body text-error">Could not load Project Tabs.</p>
                   <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
                     Retry
                   </Button>
                 </div>
-              ) : workspaceName === 'No workspace' ? (
+              ) : workspaceName === 'No project' ? (
                 <p className="px-2 py-4 text-center text-body text-description">
-                  Load a Workspace to access analysis Tabs.
+                  Load a Project to access analysis Tabs.
                 </p>
               ) : tabs.length === 0 ? (
                 <p className="px-2 py-4 text-center text-body text-description">
-                  This Workspace has no analysis Tabs.
+                  This Project has no analysis Tabs.
                 </p>
               ) : filteredTabs.length === 0 ? (
                 <p className="px-2 py-4 text-center text-body text-description">
@@ -385,7 +385,7 @@ function DesktopNavigationHeaderController() {
 
   return (
     <DesktopNavigationHeaderView
-      workspaceName={currentWorkspace?.name ?? 'No workspace'}
+      workspaceName={currentWorkspace?.name ?? 'No project'}
       tabs={tabs}
       unavailableTabWarnings={unavailableTabWarnings}
       currentTabId={currentTabId}

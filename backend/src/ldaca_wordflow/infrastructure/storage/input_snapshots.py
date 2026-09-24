@@ -147,7 +147,7 @@ def create_worker_input_snapshot(
     if max_snapshot_bytes < 1:
         raise ValueError("Execution snapshot byte limit must be positive")
     if workspace.id != workspace_id:
-        raise ValueError("Workspace snapshot identity does not match the aggregate")
+        raise ValueError("Project snapshot identity does not match the aggregate")
     if len(node_ids) != len(set(node_ids)):
         raise ValueError("Execution input node identifiers must be unique")
 
@@ -169,7 +169,7 @@ def create_worker_input_snapshot(
                 raise KeyError(f"Node {node_id} not found")
             if node.id != node_id:
                 raise ValueError(
-                    f"Workspace node key does not match node id: {node_id}"
+                    f"Project node key does not match node id: {node_id}"
                 )
             rel_data_path = Path(_SNAPSHOT_DATA_DIR) / f"{node_id}.plbin"
             plan_path = staging / rel_data_path
@@ -373,7 +373,7 @@ def _require_contained_regular(root: Path, raw_source: str) -> Path:
     try:
         relative = candidate.resolve(strict=True).relative_to(resolved_root)
     except (OSError, ValueError) as exc:
-        raise RuntimeError("Execution snapshot plan source escapes workspace data") from exc
+        raise RuntimeError("Execution snapshot plan source escapes project data") from exc
     current = resolved_root
     for part in relative.parts:
         current = current / part

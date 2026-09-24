@@ -42,7 +42,7 @@ const WorkspaceDescription = ({ description }: { description?: string | null }) 
           size="icon"
           variant="ghost"
           className="h-6 w-6"
-          aria-label="View workspace description"
+          aria-label="View project description"
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
@@ -76,7 +76,7 @@ export function WorkspaceManagerItem({
     const isSelectionTarget =
       selectionOperation?.action === 'load' && selectionOperation.workspaceId === workspaceId;
     const trimmedWorkspaceName = workspace.name?.trim();
-    let workspaceName = 'Unnamed workspace';
+    let workspaceName = 'Unnamed project';
     if (trimmedWorkspaceName) workspaceName = trimmedWorkspaceName;
     return (
       <div
@@ -90,7 +90,7 @@ export function WorkspaceManagerItem({
             <WorkspaceDescription description={workspace.description} />
           </div>
           <div className="mt-1 break-all text-[11px] text-description">
-            Workspace ID: <span>{workspaceId}</span>
+            Project ID: <span>{workspaceId}</span>
           </div>
           <div className="mt-2 text-label-secondary text-description">
             Created {formatTimestamp(workspace.created_at)} | Updated{' '}
@@ -115,9 +115,9 @@ export function WorkspaceManagerItem({
           <DisabledReasonTooltip
             reason={
               hasActiveTask
-                ? 'A task is still running on the current workspace. Wait for it to finish, or cancel it from the task list, before switching workspaces.'
+                ? 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
                 : selectionOperation
-                  ? 'Another Workspace Load or Unload operation is in progress.'
+                  ? 'Another Project Load or Unload operation is in progress.'
                   : undefined
             }
           >
@@ -225,10 +225,10 @@ export function WorkspaceManagerItem({
           reason={
             hasActiveTask
               ? isActive
-                ? 'A task is still running on this workspace. Wait for it to finish, or cancel it from the task list, before unloading.'
-                : 'A task is still running on the current workspace. Wait for it to finish, or cancel it from the task list, before switching workspaces.'
+                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before unloading.'
+                : 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
               : selectionOperation
-                ? 'Another Workspace Load or Unload operation is in progress.'
+                ? 'Another Project Load or Unload operation is in progress.'
                 : undefined
           }
         >

@@ -40,14 +40,14 @@ describe('DataLoaderDialogs ownership', () => {
       />,
     );
 
-    expect(screen.queryByText('No workspace selected')).not.toBeInTheDocument();
+    expect(screen.queryByText('No project selected')).not.toBeInTheDocument();
   });
 
-  it('renders the specific workspace validation message supplied by the backend', () => {
+  it('renders the specific project validation message supplied by the backend', () => {
     render(
       <DataLoaderDialogs
         workspaceNameAlert={{
-          message: 'Invalid workspace name: name cannot contain control characters',
+          message: 'Invalid project name: name cannot contain control characters',
           onClose: vi.fn(),
         }}
         folderNameAlert={{ message: null, onClose: vi.fn() }}
@@ -80,10 +80,10 @@ describe('DataLoaderDialogs ownership', () => {
     );
 
     expect(
-      screen.getByText('Invalid workspace name: name cannot contain control characters'),
+      screen.getByText('Invalid project name: name cannot contain control characters'),
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('Workspace names cannot include path separators or traversal sequences.'),
+      screen.queryByText('Project names cannot include path separators or traversal sequences.'),
     ).not.toBeInTheDocument();
   });
 });

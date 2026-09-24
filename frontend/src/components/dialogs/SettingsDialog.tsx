@@ -43,7 +43,7 @@ const SETTINGS_TABS = [
   { value: 'general', label: 'General', icon: Sparkles },
   { value: 'portal', label: 'Portal', icon: KeyRound },
   { value: 'ai', label: 'AI', icon: Bot },
-  { value: 'workspace', label: 'Workspace', icon: FolderOpen },
+  { value: 'workspace', label: 'Project', icon: FolderOpen },
   { value: 'views', label: 'Views', icon: Eye },
   { value: 'guidance', label: 'Guidance', icon: Hash },
 ] as const;
@@ -239,7 +239,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   <DataFolderSettingsPanel />
                 </section>
                 <section className="space-y-3 border-t border-surface-border/60 pt-4">
-                  <h3 className="text-body font-semibold">Favorite Workspaces</h3>
+                  <h3 className="text-body font-semibold">Favorite Projects</h3>
                   {favoriteWorkspaces.length ? (
                     <div className="space-y-2">
                       {favoriteWorkspaces.map((workspaceId) => (
@@ -273,7 +273,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-body text-description">No favorite workspaces saved.</p>
+                    <p className="text-body text-description">No favorite projects saved.</p>
                   )}
                 </section>
               </TabsContent>
@@ -282,7 +282,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <div>
                   <h3 className="text-body font-semibold">Visible Views</h3>
                   <p className="text-body text-description">
-                    Data Loader stays visible so workspaces remain reachable.
+                    Data Loader stays visible so projects remain reachable.
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">

@@ -56,7 +56,7 @@ export function SequentialAddToWorkspaceDialog({
       key={`${source.node_id}:${axisColumn}:${groupByColumns.join('|')}`}
       open={open}
       onOpenChange={onOpenChange}
-      title="Add Trends selection to Workspace"
+      title="Add Trends selection to Project"
       description={`Creates original source rows from ${filterSummary}.`}
       sources={[dialogSource]}
       isSubmitting={isSubmitting}

@@ -24,7 +24,7 @@ working with another genre or English variety.
   retained input snapshot. **Run All** may be started directly and creates an
   independent Run All Analysis with a complete immutable table Result.
   **Review** reads that Result directly and can page by highlighted documents
-  or raw quotation matches. **Add to Workspace** publishes selected
+  or raw quotation matches. **Add to Project** publishes selected
   columns as a Derived Data Block only when you request it.
 
 - How does sorting work?

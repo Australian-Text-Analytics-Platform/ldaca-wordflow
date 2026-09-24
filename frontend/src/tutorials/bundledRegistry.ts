@@ -54,7 +54,7 @@ const tutorial = {
   'ui.workspace-graph-view': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-workspace-graph-view',
-    label: 'Workspace Graph View',
+    label: 'Project Graph View',
   },
   'ui.data-viewer': {
     file: 'tutorials/ui.md',
@@ -74,7 +74,7 @@ const tutorial = {
   'data-loader.active-workspace.section': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-active-workspace',
-    label: 'Active workspace overview',
+    label: 'Active project overview',
   },
   'data-loader.tab': {
     file: 'tutorials/data-loader.md',
@@ -84,27 +84,27 @@ const tutorial = {
   'data-loader.workspace-manager.section': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-workspace-manager',
-    label: 'Workspace manager overview',
+    label: 'Project manager overview',
   },
   'data-loader.create-workspace.name': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-create-workspace-name',
-    label: 'Workspace name input',
+    label: 'Project name input',
   },
   'data-loader.create-workspace.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-create-workspace-button',
-    label: 'Create workspace button',
+    label: 'Create project button',
   },
   'data-loader.rename-workspace.input': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-rename-workspace-input',
-    label: 'Rename workspace input',
+    label: 'Rename project input',
   },
   'data-loader.unload.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-unload-button',
-    label: 'Unload workspace',
+    label: 'Unload project',
   },
   'data-loader.files.section': {
     file: 'tutorials/data-loader.md',
@@ -129,7 +129,7 @@ const tutorial = {
   'data-loader.add.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-add-button',
-    label: 'Add file to workspace',
+    label: 'Add file to project',
   },
   'preprocessing.join.tab': {
     file: 'tutorials/preprocessing.md',

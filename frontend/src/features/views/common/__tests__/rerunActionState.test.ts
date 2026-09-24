@@ -19,7 +19,7 @@ describe('getRerunActionState', () => {
     });
   });
 
-  it('explains that Clear requires an open workspace', () => {
+  it('explains that Clear requires an open project', () => {
     expect(
       getRerunActionState({
         ...baseInput,
@@ -27,7 +27,7 @@ describe('getRerunActionState', () => {
       }),
     ).toMatchObject({
       clearDisabled: true,
-      clearDisabledReason: 'Open a workspace first',
+      clearDisabledReason: 'Open a project first',
     });
   });
 

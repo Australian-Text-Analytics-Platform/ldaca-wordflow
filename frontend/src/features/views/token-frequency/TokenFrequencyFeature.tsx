@@ -159,7 +159,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     /** Fetches the latest task result so polling and hydration share one retrieval path. */
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No workspace selected');
+      if (!currentWorkspaceId) throw new Error('No project selected');
       return getAnalysisResultResource<TokenFrequencyResponse>(currentWorkspaceId, taskId);
     },
     /**

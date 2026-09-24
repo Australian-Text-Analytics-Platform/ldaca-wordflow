@@ -431,7 +431,7 @@ export function useWorkspaceTabs(
 
   const presentationMutation = useMutation({
     mutationFn: async ({ tabId, patch }: { tabId: string; patch: TabPresentationPatch }) => {
-      if (!workspaceId) throw new Error('Workspace is required');
+      if (!workspaceId) throw new Error('Project is required');
       const { data } = await updateServerTab({
         path: { workspace_id: workspaceId, tab_id: tabId },
         body: presentationUpdate(kind, patch),

@@ -236,7 +236,7 @@ describe('useWorkspaceGraph', () => {
     expect(result.current.nodes[0]?.dragging).toBeUndefined();
   });
 
-  it('resets React Flow-owned state when a new workspace reuses the same node id', () => {
+  it('resets React Flow-owned state when a new project reuses the same node id', () => {
     const { result, rerender } = renderHook(() => useWorkspaceGraph());
 
     act(() => {
@@ -253,7 +253,7 @@ describe('useWorkspaceGraph', () => {
     useSelectionStore.setState({ currentWorkspaceId: 'workspace-b' });
     useWorkspaceDataMock.mockReturnValue({
       currentWorkspaceId: 'workspace-b',
-      workspaceGraph: makeGraph('#ff0000', 'workspace B label'),
+      workspaceGraph: makeGraph('#ff0000', 'project B label'),
     });
     rerender();
 
@@ -261,10 +261,10 @@ describe('useWorkspaceGraph', () => {
     expect(result.current.nodes[0]?.dragging).toBeUndefined();
     expect(result.current.nodes[0]?.selected).toBe(false);
     expect((result.current.nodes[0]?.data as unknown as TestNodeData).node.color).toBe('#ff0000');
-    expect(result.current.edges[0]?.label).toBe('workspace B label');
+    expect(result.current.edges[0]?.label).toBe('project B label');
   });
 
-  it('reads the workspace at invocation time for cached graph commands', () => {
+  it('reads the project at invocation time for cached graph commands', () => {
     const { result, rerender } = renderHook(() => useWorkspaceGraph());
     const cachedAddCommand = (result.current.nodes[0]?.data as unknown as TestNodeData)
       .onAddToSelection;

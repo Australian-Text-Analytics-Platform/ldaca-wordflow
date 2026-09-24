@@ -97,7 +97,7 @@ enter **0** to show every group. A group whose count equals the threshold remain
 visible. The control appears in the legend card immediately after **Uncased**.
 
 The filter removes small groups from the chart, legend, chart export, displayed
-counts, and Add to Workspace. It does not change manual legend visibility: if a
+counts, and Add to Project. It does not change manual legend visibility: if a
 filtered group was struck out, lowering the threshold restores it still struck
 out. Selected periods do not change which groups meet the threshold. With
 **Uncased** enabled, case variants are merged before their total is compared
@@ -162,14 +162,14 @@ With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**,
 
 Use **Clear Selection** to deselect all periods without losing any other settings.
 
-<h3 id="help-sequential-add-to-workspace">Add to Workspace</h3>
+<h3 id="help-sequential-add-to-workspace">Add to Project</h3>
 
-Click **Add to Workspace** to create a Data Block containing original source
+Click **Add to Project** to create a Data Block containing original source
 rows represented by the current Trends result. If periods are selected, only
 those periods are included; with no selection, all periods are included. Groups
 removed by Minimum group count and groups hidden through the legend are always
 excluded. Zoom changes only the viewport and never the rows added to the
-Workspace.
+Project.
 
 When Uncased is enabled, hiding a merged legend entry excludes every exact
 spelling represented by that entry.

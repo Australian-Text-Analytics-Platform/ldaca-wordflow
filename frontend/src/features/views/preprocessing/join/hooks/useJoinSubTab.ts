@@ -496,7 +496,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     if (isJoining || isLoading.operations) return undefined;
     if (!joinConfigReady) return joinConfigIssues || 'Configure the join first';
     if (joinPreviewError)
-      return 'Fix the error shown in Preview join output before adding to workspace';
+      return 'Fix the error shown in Preview join output before adding to project';
     if (previewIsEmpty)
       return 'The current join produces no matching rows — adjust the join type or key columns';
     return undefined;

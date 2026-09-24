@@ -6,7 +6,7 @@ describe('useFreshNodesStore', () => {
     useFreshNodesStore.getState().reset();
   });
 
-  it('does not mark loaded Workspace nodes as new', () => {
+  it('does not mark loaded Project nodes as new', () => {
     useFreshNodesStore.getState().reconcileNodeIds('workspace-a', ['a', 'b', 'c']);
     expect(useFreshNodesStore.getState().freshIdsByWorkspace.has('workspace-a')).toBe(false);
   });
@@ -45,7 +45,7 @@ describe('useFreshNodesStore', () => {
     );
   });
 
-  it('tracks overlapping IDs independently per Workspace', () => {
+  it('tracks overlapping IDs independently per Project', () => {
     useFreshNodesStore.getState().markCreated('workspace-a', ['shared']);
     useFreshNodesStore.getState().markCreated('workspace-b', ['shared']);
     useFreshNodesStore.getState().markInteracted('workspace-a', ['shared']);
@@ -56,7 +56,7 @@ describe('useFreshNodesStore', () => {
     );
   });
 
-  it('skips empty workspace and Data Block IDs', () => {
+  it('skips empty project and Data Block IDs', () => {
     useFreshNodesStore.getState().markCreated('', ['a']);
     useFreshNodesStore.getState().markCreated('workspace-a', ['', 'a']);
     expect(useFreshNodesStore.getState().freshIdsByWorkspace.get('workspace-a')).toEqual(
@@ -64,7 +64,7 @@ describe('useFreshNodesStore', () => {
     );
   });
 
-  it('reset clears every Workspace marker', () => {
+  it('reset clears every Project marker', () => {
     useFreshNodesStore.getState().markCreated('workspace-a', ['a']);
     useFreshNodesStore.getState().markCreated('workspace-b', ['b']);
     useFreshNodesStore.getState().reset();

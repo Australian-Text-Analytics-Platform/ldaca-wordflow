@@ -156,7 +156,7 @@ class WorkspaceArchiveLimits:
             self.max_central_directory_bytes,
         )
         if any(value < 1 for value in values) or self.max_compression_ratio <= 0:
-            raise ValueError("Workspace archive limits must be positive")
+            raise ValueError("Project archive limits must be positive")
 
 
 class WorkspaceArchiveService:
@@ -351,7 +351,7 @@ class WorkspaceArchiveService:
                 total += len(chunk)
                 if total > self._limits.max_archive_bytes:
                     raise UploadTooLargeError(
-                        f"Workspace archive exceeds {self._limits.max_archive_bytes} bytes"
+                        f"Project archive exceeds {self._limits.max_archive_bytes} bytes"
                     )
                 await self._run_sync(_write_all, descriptor, chunk)
             if total == 0:
@@ -415,7 +415,7 @@ class WorkspaceArchiveService:
                     )
                     if manifest_member.file_size > self._limits.max_manifest_bytes:
                         raise InvalidWorkspaceArchiveError(
-                            "Workspace manifest exceeds the configured limit"
+                            "Project manifest exceeds the configured limit"
                         )
                     self._extract_members(
                         archive,
@@ -432,26 +432,26 @@ class WorkspaceArchiveService:
                 zipfile.LargeZipFile,
             ) as exc:
                 raise InvalidWorkspaceArchiveError(
-                    "Invalid workspace ZIP archive"
+                    "Invalid project ZIP archive"
                 ) from exc
 
             manifest_path = staging / "workspace.json"
             try:
                 if manifest_path.stat().st_size > self._limits.max_manifest_bytes:
                     raise InvalidWorkspaceArchiveError(
-                        "Workspace manifest exceeds the configured limit"
+                        "Project manifest exceeds the configured limit"
                     )
                 manifest = WorkspaceArchiveManifest.model_validate_json(
                     manifest_path.read_text(encoding="utf-8")
                 )
             except (OSError, UnicodeError, ValidationError) as exc:
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace workspace.json is missing or invalid"
+                    "Project workspace.json is missing or invalid"
                 ) from exc
             workspace_name = manifest.workspace.name.strip()
             is_valid_name, reason = validate_workspace_name(workspace_name)
             if not is_valid_name:
-                raise InvalidWorkspaceArchiveError(f"Invalid workspace name: {reason}")
+                raise InvalidWorkspaceArchiveError(f"Invalid project name: {reason}")
 
             omitted_tab_count, omitted_analysis_count = _compile_materialized_archive(
                 staging,
@@ -668,12 +668,12 @@ def _workspace_root_prefix(
         and "__MACOSX" not in path.parts
     ]
     if not candidates:
-        raise InvalidWorkspaceArchiveError("ZIP must contain workspace workspace.json")
+        raise InvalidWorkspaceArchiveError("ZIP must contain project workspace.json")
     shallowest = min(len(path.parts) for path in candidates)
     shallow_candidates = [path for path in candidates if len(path.parts) == shallowest]
     if len(shallow_candidates) != 1:
         raise InvalidWorkspaceArchiveError(
-            "ZIP contains ambiguous workspace metadata roots"
+            "ZIP contains ambiguous project metadata roots"
         )
     return shallow_candidates[0].parts[:-1]
 
@@ -703,11 +703,11 @@ def _archive_artifact_path(record: AnalysisRecord, relative_path: str) -> Path:
         parts = portable_relative_path_parts(relative_path)
     except ValueError as exc:
         raise InvalidWorkspaceArchiveError(
-            "Workspace Analysis Artifact path is invalid"
+            "Project Analysis Artifact path is invalid"
         ) from exc
     if len(parts) < 2 or parts[0] != "artifacts":
         raise InvalidWorkspaceArchiveError(
-            "Workspace Analysis Artifact path is invalid"
+            "Project Analysis Artifact path is invalid"
         )
     return Path("analyses") / str(record.id) / Path(*parts)
 
@@ -728,10 +728,10 @@ def _compatible_archive_children(
     tab_entry_ids = [entry.id for entry in manifest.tabs]
     analysis_entry_ids = [entry.id for entry in manifest.analyses]
     if len(tab_entry_ids) != len(set(tab_entry_ids)):
-        raise InvalidWorkspaceArchiveError("Workspace archive has duplicate Tab IDs")
+        raise InvalidWorkspaceArchiveError("Project archive has duplicate Tab IDs")
     if len(analysis_entry_ids) != len(set(analysis_entry_ids)):
         raise InvalidWorkspaceArchiveError(
-            "Workspace archive has duplicate Analysis IDs"
+            "Project archive has duplicate Analysis IDs"
         )
 
     tabs_by_id: dict[uuid.UUID, Tab] = {}
@@ -744,11 +744,11 @@ def _compatible_archive_children(
             tab = Tab.model_validate(entry.payload)
         except ValidationError as exc:
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive Tab payload is invalid"
+                "Project archive Tab payload is invalid"
             ) from exc
         if tab.id != entry.id or tab.kind is not entry.analysis_kind:
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive Tab envelope does not match its payload"
+                "Project archive Tab envelope does not match its payload"
             )
         tabs_by_id[tab.id] = tab
 
@@ -784,7 +784,7 @@ def _compatible_archive_children(
             record = AnalysisRecord.model_validate(entry.payload)
         except ValidationError as exc:
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive Analysis payload is invalid"
+                "Project archive Analysis payload is invalid"
             ) from exc
         if (
             record.id != entry.id
@@ -792,7 +792,7 @@ def _compatible_archive_children(
             or analysis_kind_for_request(record.request) is not entry.analysis_kind
         ):
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive Analysis envelope does not match its payload"
+                "Project archive Analysis envelope does not match its payload"
             )
         if record.state not in {
             AnalysisState.SUCCEEDED,
@@ -800,7 +800,7 @@ def _compatible_archive_children(
             AnalysisState.CANCELLED,
         }:
             raise InvalidWorkspaceArchiveError(
-                "Workspace archives contain only terminal Analyses"
+                "Project archives contain only terminal Analyses"
             )
         parsed[entry.id] = (entry, record)
 
@@ -859,7 +859,7 @@ def _compile_materialized_archive(
     compatible_children = _compatible_archive_children(manifest)
     node_ids = [node.id for node in manifest.nodes]
     if len(node_ids) != len(set(node_ids)):
-        raise InvalidWorkspaceArchiveError("Workspace archive has duplicate node IDs")
+        raise InvalidWorkspaceArchiveError("Project archive has duplicate node IDs")
     known_ids = set(node_ids)
     allowed_files = {"workspace.json"}
     parent_map: dict[uuid.UUID, list[uuid.UUID]] = {}
@@ -872,17 +872,17 @@ def _compile_materialized_archive(
         expected_file = f"data/{node_id}.parquet"
         if node.data_file != expected_file:
             raise InvalidWorkspaceArchiveError(
-                "Workspace node data_file must match its canonical node ID"
+                "Project node data_file must match its canonical node ID"
             )
         parent_ids = referenced_node_ids(node.provenance)
         if len(parent_ids) != len(set(parent_ids)) or node_id in parent_ids:
-            raise InvalidWorkspaceArchiveError("Workspace node parents are invalid")
+            raise InvalidWorkspaceArchiveError("Project node parents are invalid")
         if any(parent_id not in known_ids for parent_id in parent_ids):
-            raise InvalidWorkspaceArchiveError("Workspace node parent is missing")
+            raise InvalidWorkspaceArchiveError("Project node parent is missing")
         edge_count += len(parent_ids)
         if edge_count > max_parent_edges:
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive graph has too many parent edges"
+                "Project archive graph has too many parent edges"
             )
         parent_map[node_id] = parent_ids
         for parent_id in parent_ids:
@@ -920,7 +920,7 @@ def _compile_materialized_archive(
         if omitted_root.exists():
             if not omitted_root.is_dir() or omitted_root.is_symlink():
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace Analysis storage is invalid"
+                    "Project Analysis storage is invalid"
                 )
             shutil.rmtree(omitted_root)
 
@@ -931,7 +931,7 @@ def _compile_materialized_archive(
     }
     if actual_files != allowed_files:
         raise InvalidWorkspaceArchiveError(
-            "Workspace archive contains undeclared or missing files"
+            "Project archive contains undeclared or missing files"
         )
 
     workspace = Workspace(
@@ -961,13 +961,13 @@ def _compile_materialized_archive(
             metadata = data_path.lstat()
             if not stat.S_ISREG(metadata.st_mode) or data_path.is_symlink():
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace node data is not a regular file"
+                    "Project node data is not a regular file"
                 )
             lazyframe = pl.scan_parquet(data_path.resolve())
             schema_names = set(lazyframe.collect_schema().names())
             if node.document is not None and node.document not in schema_names:
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace document column is absent from node data"
+                    "Project document column is absent from node data"
                 )
             materialized = Node(
                 id=node_id,
@@ -987,14 +987,14 @@ def _compile_materialized_archive(
                     ready.append(child_id)
         if processed != len(node_ids):
             raise InvalidWorkspaceArchiveError(
-                "Workspace archive node graph contains a cycle"
+                "Project archive node graph contains a cycle"
             )
         for archived, record in compatible_children.analyses:
             if not archived.query_inputs:
                 continue
             if record.query_snapshot is None:
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace Analysis query inputs are invalid"
+                    "Project Analysis query inputs are invalid"
                 )
             query_workspace = Workspace(
                 name=f"Analysis {record.id} query inputs",
@@ -1007,7 +1007,7 @@ def _compile_materialized_archive(
                 schema_names = set(lazyframe.collect_schema().names())
                 if item.document is not None and item.document not in schema_names:
                     raise InvalidWorkspaceArchiveError(
-                        "Workspace Analysis document column is absent from query data"
+                        "Project Analysis document column is absent from query data"
                     )
                 query_workspace.add_node(
                     Node(
@@ -1043,7 +1043,7 @@ def _compile_materialized_archive(
                 workspace.add_analysis(record)
             if len(next_pending) == len(pending):
                 raise InvalidWorkspaceArchiveError(
-                    "Workspace Analysis forest is invalid"
+                    "Project Analysis forest is invalid"
                 )
             pending = next_pending
         workspace_store.commit(staging, workspace, expected_revision=None)
@@ -1051,7 +1051,7 @@ def _compile_materialized_archive(
         raise
     except Exception as exc:
         raise InvalidWorkspaceArchiveError(
-            "Workspace materialized data is invalid"
+            "Project materialized data is invalid"
         ) from exc
 
     marker = staging / SAFE_WORKSPACE_IMPORT_MARKER
@@ -1091,12 +1091,12 @@ def _snapshot_workspace_tree(source: Path, max_bytes: int) -> Path:
                 metadata = candidate.lstat()
                 if not stat.S_ISREG(metadata.st_mode):
                     raise InvalidWorkspaceArchiveError(
-                        "Workspace export source is unsafe"
+                        "Project export source is unsafe"
                     )
                 copied += metadata.st_size
                 if copied > max_bytes:
                     raise UploadTooLargeError(
-                        "Workspace export exceeds the configured limit"
+                        "Project export exceeds the configured limit"
                     )
                 os.link(candidate, target_dir / name, follow_symlinks=False)
         return destination
@@ -1149,7 +1149,7 @@ def _create_raw_workspace_archive(
                         metadata = candidate.lstat()
                         if not stat.S_ISREG(metadata.st_mode) or candidate.is_symlink():
                             raise InvalidWorkspaceArchiveError(
-                                "Workspace export source is unsafe"
+                                "Project export source is unsafe"
                             )
                         relative = candidate.relative_to(source)
                         archive.write(
@@ -1226,9 +1226,9 @@ def _copy_export_artifact(
     source.relative_to(source_root.resolve(strict=True))
     metadata = source.lstat()
     if source.is_symlink() or not stat.S_ISREG(metadata.st_mode):
-        raise InvalidWorkspaceArchiveError("Workspace Analysis Artifact is unsafe")
+        raise InvalidWorkspaceArchiveError("Project Analysis Artifact is unsafe")
     if metadata.st_size > remaining_bytes:
-        raise UploadTooLargeError("Workspace export exceeds the configured limit")
+        raise UploadTooLargeError("Project export exceeds the configured limit")
     destination = staging / archive_path
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(source, destination, follow_symlinks=False)
@@ -1262,7 +1262,7 @@ def _create_workspace_export(
             )
             if expanded_bytes > max_output_bytes:
                 raise UploadTooLargeError(
-                    "Workspace export exceeds the configured limit"
+                    "Project export exceeds the configured limit"
                 )
             nodes.append(
                 {
@@ -1366,7 +1366,7 @@ def _create_workspace_export(
         )
         expanded_bytes += (staging / "workspace.json").stat().st_size
         if expanded_bytes > max_output_bytes:
-            raise UploadTooLargeError("Workspace export exceeds the configured limit")
+            raise UploadTooLargeError("Project export exceeds the configured limit")
         with target.open("xb") as output:
             bounded = cast(
                 BinaryIO,

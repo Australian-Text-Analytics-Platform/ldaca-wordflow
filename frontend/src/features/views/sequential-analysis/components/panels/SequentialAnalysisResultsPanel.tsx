@@ -78,7 +78,7 @@ export function SequentialAnalysisResultsPanel({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button type="button" disabled={addToWorkspaceDisabled} onClick={onAddToWorkspace}>
-            Add to Workspace
+            Add to Project
           </Button>
         </div>
       </CardHeader>

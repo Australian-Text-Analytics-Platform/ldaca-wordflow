@@ -86,7 +86,7 @@ export function useAnnotationClassDescriptions({
         });
         initialEtag ??= data.etag;
         if (initialEtag !== data.etag) {
-          throw new Error('Workspace changed while loading class descriptions');
+          throw new Error('Project changed while loading class descriptions');
         }
         rows.push(...data.rows);
         hasNext = data.hasNext;

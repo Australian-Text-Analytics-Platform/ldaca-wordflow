@@ -17,7 +17,7 @@ Your textual data should be consistently encoded (UTF8) and should not contain a
 You need to make sure that the column that includes the date is correctly classified in the Data Loader (not as string, but as datetime, integer or float). You can auto-convert this in the Data Loader. For additional metadata (e.g. gender, age, political party) it is a good idea to have these metadata converted in the Data Loader as categorical.
 
 For visualising words on the timeline: You first have to create a Concordance,
-open Review in **Table View**, and use **Add to Workspace** to create a
+open Review in **Table View**, and use **Add to Project** to create a
 **Concordance Match Data Block Creation**. Include the date and any other metadata that
 you need. Then use that Data Block as the source for Trends and Sequence and add
 `CONC_matched_text` (string) as a Group By column. This shows how each exact
@@ -29,7 +29,7 @@ You can change the frequency (e.g. daily vs monthly), you can change the chart t
 
 You can also create a new Data Block from the original source rows. Use click
 or drag selection to choose periods, hide any groups you do not want, and then
-choose **Add to Workspace**. With no selected periods, all periods are included;
+choose **Add to Project**. With no selected periods, all periods are included;
 chart zoom does not affect the new Data Block.
 
 - Is there a notebook version?

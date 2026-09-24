@@ -115,7 +115,7 @@ vi.mock('../../hooks/useWorkspaceGraph', () => ({
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
   useWorkspaceData: () => ({
-    currentWorkspace: { id: 'ws-1', name: 'Main Workspace' },
+    currentWorkspace: { id: 'ws-1', name: 'Main Project' },
     workspaceGraph: {
       nodes: [
         { id: 'a', name: 'Alpha', operation: 'import' },
@@ -148,7 +148,7 @@ describe('WorkspaceGraphFeature', () => {
     graphState.canClearSelection = false;
   });
 
-  it('relaxes the graph zoom bounds so the full workspace can fit on screen', () => {
+  it('relaxes the graph zoom bounds so the full project can fit on screen', () => {
     render(<WorkspaceGraphFeature />);
 
     expect(reactFlowMock).toHaveBeenCalled();
@@ -161,7 +161,7 @@ describe('WorkspaceGraphFeature', () => {
   it('puts selection, graph actions, and delete in an expandable upper-left control rail', () => {
     render(<WorkspaceGraphFeature />);
 
-    const controls = screen.getByLabelText('Workspace graph controls');
+    const controls = screen.getByLabelText('Project graph controls');
     expect(controls).toHaveAttribute('data-orientation', 'vertical');
     expect(controls).toHaveAttribute('data-position', 'top-left');
     expect(controls).toHaveAttribute('data-show-zoom', 'false');

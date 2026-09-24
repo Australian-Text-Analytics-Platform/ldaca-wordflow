@@ -5,4 +5,4 @@
 Export lets you select any number of Data Blocks and download their physical
 table contents as CSV, JSON, NDJSON, Parquet, or Arrow IPC. One Data Block is
 downloaded directly; multiple Data Blocks are packaged into a ZIP. Complete
-portable Workspace export remains available as a separate action.
+portable Project export remains available as a separate action.

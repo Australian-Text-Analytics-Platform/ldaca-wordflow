@@ -574,7 +574,7 @@ export function WorkspaceTable({
             <AlertDialogTitle>Delete column</AlertDialogTitle>
             <AlertDialogDescription>
               Delete column &quot;{columnToDelete}&quot; from this Data Block? You can undo this
-              while the Workspace remains open.
+              while the Project remains open.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

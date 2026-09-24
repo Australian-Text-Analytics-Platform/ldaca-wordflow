@@ -4,55 +4,55 @@
 
 <h1 id="help-data-loader-section">Data Loader tutorial</h1>
 
-The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active workspace panel, the workspace manager, and the files and uploads section.
+The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active project panel, the project manager, and the files and uploads section.
 
 ![Data loader screenshot](tutorials/assets/data_loader.png)
 
-<h2 id="help-data-loader-active-workspace">Active workspace overview</h2>
+<h2 id="help-data-loader-active-workspace">Active project overview</h2>
 
-![Active workspace screenshot](tutorials/assets/data_loader/active_workspace.png)
+![Active project screenshot](tutorials/assets/data_loader/active_workspace.png)
 
-The active workspace panel displays the currently loaded project along with its associated data blocks. From here you can rename or unload the active workspace. When no workspace is loaded, this panel also shows the option to create a new, empty workspace.
+The active project panel displays the currently loaded project along with its associated data blocks. From here you can rename or unload the active project. When no project is loaded, this panel also shows the option to create a new, empty project.
 
 - Verify the correct project is loaded before starting any analysis.
-- Create, rename, or unload a workspace as needed.
+- Create, rename, or unload a project as needed.
 
-<h2 id="help-data-loader-create-workspace-name">Workspace name input</h2>
+<h2 id="help-data-loader-create-workspace-name">Project name input</h2>
 
-![Create workspace screenshot](tutorials/assets/data_loader/create_workspace.png)
+![Create project screenshot](tutorials/assets/data_loader/create_workspace.png)
 
-This field is visible only when no workspace is currently active. Use it to specify a name for a new empty workspace. Choose a descriptive name that reflects the project or dataset (e.g. the project title or dataset identifier). An optional description can also be provided at this stage.
+This field is visible only when no project is currently active. Use it to specify a name for a new empty project. Choose a descriptive name that reflects the project or dataset (e.g. the project title or dataset identifier). An optional description can also be provided at this stage.
 
-Workspace names are not unique identifiers — the application allows multiple workspaces to share the same name, each stored in a separate directory. Using identical names for different workspaces is strongly discouraged, as it can cause confusion when managing or revisiting projects.
+Project names are not unique identifiers — the application allows multiple projects to share the same name, each stored in a separate directory. Using identical names for different projects is strongly discouraged, as it can cause confusion when managing or revisiting projects.
 
-<h2 id="help-data-loader-create-workspace-button">Create workspace button</h2>
+<h2 id="help-data-loader-create-workspace-button">Create project button</h2>
 
-Clicking this button creates a new workspace with the specified name and optional description.
+Clicking this button creates a new project with the specified name and optional description.
 
-- The newly created workspace becomes the active workspace immediately.
-- **An active workspace is required before files can be loaded and analysed.**
+- The newly created project becomes the active project immediately.
+- **An active project is required before files can be loaded and analysed.**
 
-<h2 id="help-data-loader-rename-workspace-input">Rename workspace input</h2>
+<h2 id="help-data-loader-rename-workspace-input">Rename project input</h2>
 
-Use this field to rename the currently active workspace. Renaming is useful when the project scope evolves or when you want a more organised workspace list. The workspace description can also be updated from this field.
+Use this field to rename the currently active project. Renaming is useful when the project scope evolves or when you want a more organised project list. The project description can also be updated from this field.
 
-<h2 id="help-data-loader-unload-button">Unload workspace</h2>
+<h2 id="help-data-loader-unload-button">Unload project</h2>
 
-The unload action closes the active workspace without deleting it.
+The unload action closes the active project without deleting it.
 
 - Use this to switch between projects.
-- The unloaded workspace remains accessible in the workspace manager.
+- The unloaded project remains accessible in the project manager.
 
-<h2 id="help-data-loader-workspace-manager">Workspace manager overview</h2>
+<h2 id="help-data-loader-workspace-manager">Project manager overview</h2>
 
-![Workspace manager screenshot](tutorials/assets/data_loader/workspace_manager.png)
+![Project manager screenshot](tutorials/assets/data_loader/workspace_manager.png)
 
-The workspace manager lists all saved workspaces, enabling you to switch between projects and maintain an organised inventory.
+The project manager lists all saved projects, enabling you to switch between projects and maintain an organised inventory.
 
-- Click **Activate** to set a workspace as the active project; the active workspace is visually highlighted.
-- Review the last-modified timestamp and data-block count to confirm you are loading the intended workspace.
-- Click **Download** to export the entire workspace as a ZIP archive. The archive contains Workspace metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Workspace contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Workspace but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or upload. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can upload the ZIP to another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
-- Click **Delete** to permanently remove a workspace that is no longer needed.
+- Click **Activate** to set a project as the active project; the active project is visually highlighted.
+- Review the last-modified timestamp and data-block count to confirm you are loading the intended project.
+- Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or upload. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can upload the ZIP to another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
+- Click **Delete** to permanently remove a project that is no longer needed.
 
 <h2 id="help-data-loader-files-section">Files and uploads section</h2>
 
@@ -92,7 +92,7 @@ The application stores other uploaded files, but the Data Loader hides them
 because they cannot become Data Blocks. Folders remain visible even when they
 contain no supported files.
 
-Supported file types can be previewed before being added to the workspace as a
+Supported file types can be previewed before being added to the project as a
 Data Block. A ZIP becomes a table with one row per member that can be decoded as
 strict UTF-8; members that fail decoding are ignored. The table records each member's path,
 filename stem, extension, and complete document text.
@@ -116,14 +116,14 @@ The import runs in the background and may take 30 seconds to a few minutes depen
 
 Currently supported fully public collections: [COOEE](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26180~23961609&_crateId=arcp%3A%2F%2Fname%2Chdl10.26180~23961609), [ICE-AUS](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1&_crateId=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1), and [La Trobe Australian Spoken English](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26181~23089559&_crateId=arcp%3A%2F%2Fname%2Chdl10.26181~23089559).
 
-<h2 id="help-data-loader-add-button">Add file to workspace</h2>
+<h2 id="help-data-loader-add-button">Add file to project</h2>
 
 ![Files operations](tutorials/assets/data_loader/file_operations.png)
 
 Once a file is uploaded, imported, or downloaded, the following actions are available:
 
-- **Preview** the file contents before adding it to the workspace.
-- **Add to Workspace** to load the file as a data block in the active workspace.
+- **Preview** the file contents before adding it to the project.
+- **Add to Project** to load the file as a data block in the active project.
 - **Download** the original file to your local machine.
 - **Remove** the file from the application.
 
@@ -162,8 +162,8 @@ Some folders — particularly those created by the LDaCA importer — display a 
 | File fails to load | Unsupported format or encoding | Check that the file is UTF-8 encoded and uses a supported format |
 | CSV preview shows all data in one column | Wrong delimiter | Re-export with a comma delimiter, or contact the developer team |
 | LDaCA import does not appear | Import still in progress | Wait a moment and click the refresh button |
-| Workspace not visible in the manager | Working directory changed | Check the working directory setting at the bottom of the sidebar |
-| Duplicate workspace names | Created before uniqueness was enforced | Activate each, review contents, and rename to distinct labels |
+| Project not visible in the manager | Working directory changed | Check the working directory setting at the bottom of the sidebar |
+| Duplicate project names | Created before uniqueness was enforced | Activate each, review contents, and rename to distinct labels |
 
 <h2 id="help-data-loader-defaults">Quick-reference defaults</h2>
 
@@ -173,10 +173,10 @@ Some folders — particularly those created by the LDaCA importer — display a 
 
 ## Practice exercise
 
-1. Create a workspace named **Practice Corpus**.
+1. Create a project named **Practice Corpus**.
 2. Upload a CSV file and preview its contents.
-3. Add the file to the workspace as a data block.
-4. Rename the workspace to **Practice Corpus v1**.
-5. Unload the workspace and reload it from the workspace manager.
+3. Add the file to the project as a data block.
+4. Rename the project to **Practice Corpus v1**.
+5. Unload the project and reload it from the project manager.
 
 [← Back to tutorial index](./index.md)

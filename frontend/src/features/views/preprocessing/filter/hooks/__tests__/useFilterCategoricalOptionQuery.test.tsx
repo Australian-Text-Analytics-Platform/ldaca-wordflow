@@ -135,7 +135,7 @@ describe('useFilterCategoricalOptionQuery', () => {
     );
   });
 
-  it('restarts from page one when a later page has a different Workspace ETag', async () => {
+  it('restarts from page one when a later page has a different Project ETag', async () => {
     queryWorkspaceSqlTableMock
       .mockResolvedValueOnce({
         rows: [{ value: 'Alice' }],

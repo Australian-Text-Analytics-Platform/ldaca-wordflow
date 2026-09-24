@@ -19,7 +19,7 @@ describe('view registry', () => {
     ]);
   });
 
-  it('marks only Data Loader as available before a workspace loads', () => {
+  it('marks only Data Loader as available before a project loads', () => {
     expect(isWorkspaceRequired('data-loader')).toBe(false);
     expect(isWorkspaceRequired('filter')).toBe(true);
     expect(isWorkspaceRequired('export')).toBe(true);

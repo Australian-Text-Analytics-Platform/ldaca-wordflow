@@ -425,7 +425,7 @@ export function useConcordanceResultSession({
       enabled: Boolean(workspaceId && isReview && showDispersion),
       staleTime: Number.POSITIVE_INFINITY,
       queryFn: async (): Promise<ConcordanceDensityResult> => {
-        if (!workspaceId) throw new Error('Workspace is unavailable');
+        if (!workspaceId) throw new Error('Project is unavailable');
         const { data } = await getConcordanceTableDensity({
           path: {
             workspace_id: workspaceId,

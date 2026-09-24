@@ -39,7 +39,7 @@ The same format applies to all blocks in a bundle export.
 Click **Export 1 Data Block** to download one file directly in the selected
 format.
 
-For a shortcut anywhere in the Workspace graph, open a Data Block's node menu,
+For a shortcut anywhere in the Project graph, open a Data Block's node menu,
 choose **Export**, select the format in the dialog, and click **Export**. This
 shortcut always exports that one Data Block directly.
 
@@ -48,10 +48,10 @@ backend writes every Data Block in the selected format and returns one ZIP in
 the same order. Files inside the ZIP are named after their Data Blocks, with a
 numeric suffix when names collide.
 
-<h3 id="help-export-bundle">Complete Workspace archive</h3>
+<h3 id="help-export-bundle">Complete Project archive</h3>
 
-**Export workspace archive** remains a separate action. It exports the complete
-portable Workspace, including its graph, Tabs, Analyses, and Data Blocks, for
+**Export project archive** remains a separate action. It exports the complete
+portable Project, including its graph, Tabs, Analyses, and Data Blocks, for
 later import into Wordflow.
 
 <h2 id="help-export-troubleshooting">Troubleshooting</h2>

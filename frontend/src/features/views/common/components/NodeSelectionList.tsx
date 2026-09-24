@@ -134,7 +134,7 @@ export function NodeSelectionList({
                   >
                     <TriangleAlert className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                     <span>
-                      This Data Block no longer exists in the Workspace and cannot be used for a new
+                      This Data Block no longer exists in the Project and cannot be used for a new
                       run.
                     </span>
                   </div>

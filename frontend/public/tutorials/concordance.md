@@ -204,7 +204,7 @@ remain the chart series.
 **Run All** can be started before or after Preview. It submits one thin Run All
 group with one independent Supporting Analysis per selected source. Each child
 uses the Run All request's immutable snapshot and tokenizer mapping and retains
-one complete table Result. Run All does not add Data Blocks to the Workspace.
+one complete table Result. Run All does not add Data Blocks to the Project.
 
 After success, **Review** reads each immutable Result through explicit match and
 document projections. Table View always shows **Matches per page**. Dispersion
@@ -222,7 +222,7 @@ The Review density chart always summarizes the complete immutable Result, not
 the visible page. `CONC_dispersion` remains a frontend presentation field and
 is never stored or queried as a physical Result column.
 
-Use **Add to Workspace** to create Derived Data Blocks after reviewing the
+Use **Add to Project** to create Derived Data Blocks after reviewing the
 Result. Table View creates a **Concordance Match Data Block Creation**, with one row per
 match and the current flat selected-column behavior. Dispersion View creates a
 **Concordance Document Data Block Creation**, with one row per qualifying original

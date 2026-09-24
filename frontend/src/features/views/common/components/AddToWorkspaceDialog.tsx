@@ -343,7 +343,7 @@ export function AddToWorkspaceDialog({
               );
             }}
           >
-            {isSubmitting ? 'Adding…' : 'Add to Workspace'}
+            {isSubmitting ? 'Adding…' : 'Add to Project'}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -38,7 +38,7 @@ describe('desktop navigation history', () => {
     expect(moveDesktopNavigation(history, 1).location).toBeNull();
   });
 
-  it('resets when the Workspace changes', () => {
+  it('resets when the Project changes', () => {
     let history = recordDesktopNavigation(createDesktopNavigationHistory(), null, {
       view: 'data-loader',
     });

@@ -62,7 +62,7 @@ async def import_workspace_archive(
         != "application/octet-stream"
     ):
         raise UnsupportedMediaTypeError(
-            "Workspace imports require application/octet-stream"
+            "Project imports require application/octet-stream"
         )
     payload, omitted_tab_count, omitted_analysis_count = (
         await archive_service.import_upload(

@@ -166,7 +166,7 @@ describe('useWorkspaceDataTable', () => {
     ).toBe(true);
   });
 
-  it('projects a raw Workspace SQL page already cached by Annotation', () => {
+  it('projects a raw Project SQL page already cached by Annotation', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false } },
     });

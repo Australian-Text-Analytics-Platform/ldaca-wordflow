@@ -72,16 +72,16 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           type="button"
           onClick={onToggleCollapse}
           className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface text-foreground hover:bg-panel"
-          aria-label="Collapse workspace panel"
+          aria-label="Collapse project panel"
           title="Collapse"
         >
           <PanelRightClose className="h-4 w-4" />
         </button>
       )}
-      <h3 className="text-body font-medium text-foreground">Workspace Graph View</h3>
+      <h3 className="text-body font-medium text-foreground">Project Graph View</h3>
       <HelpIcon
         targetKey="ui.workspace-graph-view"
-        label="Workspace Graph View"
+        label="Project Graph View"
         className="h-5 w-5 text-description"
       />
       <span className="text-description">|</span>
@@ -101,12 +101,12 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
             if (e.key === 'Escape') setRenameDraft(undefined);
           }}
           autoFocus
-          aria-label="Workspace name"
+          aria-label="Project name"
         />
       ) : (
         <span className="text-body font-semibold text-foreground">
           {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- show placeholder for an empty name, not only null/undefined */}
-          {currentWorkspace?.name || 'No Workspace'}
+          {currentWorkspace?.name || 'No Project'}
         </span>
       )}
 
@@ -115,7 +115,7 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           className="inline-flex items-center gap-1 text-label-secondary text-description hover:text-foreground px-2 py-1 border rounded-sm"
           onClick={startRename}
           title="Rename"
-          aria-label="Rename workspace"
+          aria-label="Rename project"
         >
           <Pencil className="h-3 w-3" />
           Rename
@@ -125,7 +125,7 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
       <AlertDialog open={nameAlertOpen} onOpenChange={setNameAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Invalid workspace name</AlertDialogTitle>
+            <AlertDialogTitle>Invalid project name</AlertDialogTitle>
             <AlertDialogDescription>{nameAlertMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -217,7 +217,7 @@ def test_workspace_rejects_cross_workspace_registration(tmp_path: Path) -> None:
     second = Workspace(name="second")
     node = first.add_node(_node("owned"))
 
-    with pytest.raises(ValueError, match="another workspace"):
+    with pytest.raises(ValueError, match="another project"):
         second.add_node(node)
 
     assert node.workspace is first

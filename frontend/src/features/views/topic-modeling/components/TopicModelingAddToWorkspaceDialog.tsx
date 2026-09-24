@@ -101,7 +101,7 @@ export function TopicModelingAddToWorkspaceDialog({
       key={rowUnit}
       open={open}
       onOpenChange={onOpenChange}
-      title="Add Topic Modelling results to Workspace"
+      title="Add Topic Modelling results to Project"
       description={
         <>
           {rowUnit === 'documents'

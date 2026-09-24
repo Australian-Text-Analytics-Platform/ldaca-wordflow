@@ -113,21 +113,21 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.dataLoader.workspace,
     '[data-guidance="workspace-setup"]',
     'Create a home for your analysis',
-    'A Workspace keeps related Data Blocks, Tabs, and analysis history together. Name a new Workspace here to begin.',
+    'A Project keeps related Data Blocks, Tabs, and analysis history together. Name a new Project here to begin.',
     2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.workspaceLoad,
     resolveLoadWorkspaceTarget,
     'Continue existing work',
-    'Loading restores the Workspace’s Data Blocks, Tabs, and analysis history. Choose Load beside the Workspace you want to continue.',
+    'Loading restores the Project’s Data Blocks, Tabs, and analysis history. Choose Load beside the Project you want to continue.',
     2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.activeWorkspace,
     '[data-guidance="active-workspace"]',
     'Keep this work together',
-    'The active Workspace owns the Data Blocks and Analyses you create next. Use the Workspace manager when you need to switch.',
+    'The active Project owns the Data Blocks and Analyses you create next. Use the Project manager when you need to switch.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.fileSources,
@@ -140,14 +140,14 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.dataLoader.addDataBlock,
     resolveAddDataBlockTarget,
     'Make a file analysis-ready',
-    'User Files stay outside the Workspace until you add one. Preview a file if needed, then choose Add to create a Source Data Block.',
+    'User Files stay outside the Project until you add one. Preview a file if needed, then choose Add to create a Source Data Block.',
     2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.dataBlocks,
     '[data-guidance="data-blocks"]',
     'Work from Data Blocks',
-    'Data Blocks appear here and in the Workspace graph. Select one to inspect it, then open a function to analyse or transform it.',
+    'Data Blocks appear here and in the Project graph. Select one to inspect it, then open a function to analyse or transform it.',
     2,
   ),
 
@@ -197,7 +197,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.preview,
     '[data-guidance="preprocessing-preview"]',
     'Check the transformation before applying',
-    'Preview shows the current transformation without changing the Workspace. Confirm the rows and columns, then apply it.',
+    'Preview shows the current transformation without changing the Project. Confirm the rows and columns, then apply it.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.createOutcome,
@@ -259,7 +259,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.addToWorkspace,
     '[data-guidance="concordance-add-to-workspace"]',
     'Keep only what you need',
-    'Add to Workspace creates Derived Data Blocks from selected Result columns without changing the Result. Name the outputs, then add them to the Workspace.',
+    'Add to Project creates Derived Data Blocks from selected Result columns without changing the Result. Name the outputs, then add them to the Project.',
   ),
 
   hint(
@@ -303,7 +303,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.topicModeling.addToWorkspace,
     '[data-guidance="topic-modeling-add-to-workspace"]',
     'Add topic data for reuse',
-    'Add to Workspace creates Derived Data Blocks from selected topic columns and names without changing the Result. Select what to keep, then add it to the Workspace.',
+    'Add to Project creates Derived Data Blocks from selected topic columns and names without changing the Result. Select what to keep, then add it to the Project.',
   ),
 
   hint(
@@ -334,7 +334,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.quotation.addToWorkspace,
     '[data-guidance="quotation-add-to-workspace"]',
     'Keep reviewed quotations',
-    'Add to Workspace creates Derived Data Blocks from selected Result columns without changing the Result. Name the output, then add it to the Workspace.',
+    'Add to Project creates Derived Data Blocks from selected Result columns without changing the Result. Name the output, then add it to the Project.',
   ),
 
   hint(
@@ -413,8 +413,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
   hint(
     CONTEXTUAL_HINT_IDS.export.workspaceSuccess,
     '[data-guidance="export-workspace"]',
-    'Your Workspace archive is ready',
-    'The ZIP is a self-contained Workspace archive that can be imported later. Keep it as a backup, or import it in Data Loader to restore or move the Workspace.',
+    'Your Project archive is ready',
+    'The ZIP is a self-contained Project archive that can be imported later. Keep it as a backup, or import it in Data Loader to restore or move the Project.',
   ),
 ];
 

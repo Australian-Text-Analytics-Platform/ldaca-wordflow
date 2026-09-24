@@ -12,7 +12,7 @@ Token Frequency counts how often each word appears in your text data. It is one 
 
 <h3 id="help-token-frequency-data-block">Step 1 — Select your data</h3>
 
-Use the data-block selector to choose which corpus (or corpora) to analyse. The tool is strictly pairwise — at most two data blocks at a time — because keyword analysis is defined between exactly one reference and one study corpus. If more than two blocks are selected at the workspace level, the tool only shows the **two most recent** picks; any older selections are silently dropped from the panel until you deselect a newer block to make room.
+Use the data-block selector to choose which corpus (or corpora) to analyse. The tool is strictly pairwise — at most two data blocks at a time — because keyword analysis is defined between exactly one reference and one study corpus. If more than two blocks are selected at the project level, the tool only shows the **two most recent** picks; any older selections are silently dropped from the panel until you deselect a newer block to make room.
 
 When two are selected, the tool runs in comparison mode and produces the Juxtorpus cloud and statistical measures in addition to the per-block results.
 
@@ -138,7 +138,7 @@ until you choose Clear Results.
 | Word cloud dominated by common words                    | No stop words applied                                          | Pick your corpus language from the stop words **Select language** dropdown                |
 | Juxtorpus or Keyword Analysis table are missing         | Only one data block selected                                   | Select a second data block to enable comparison mode                                      |
 | Keyword Analysis table shows no significant words       | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
-| A workspace block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
+| A project block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
 | Right-clicked stop word is hard to find                 | List was already long when the word was added                  | New words are inserted at the top — scroll to the start, or click **Sort** to alphabetise |
 | Analyze button is disabled                              | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
 

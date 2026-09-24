@@ -241,7 +241,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
      */
     queryFn: async () => {
       if (!currentWorkspaceId || !activeNodeId) {
-        throw new Error('Missing workspace or node ID');
+        throw new Error('Missing project or node ID');
       }
       return await queryWorkspaceSqlTable({
         path: { workspace_id: currentWorkspaceId },

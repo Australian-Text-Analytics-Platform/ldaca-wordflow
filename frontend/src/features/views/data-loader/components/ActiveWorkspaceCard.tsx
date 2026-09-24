@@ -84,18 +84,18 @@ export function ActiveWorkspaceCard({
     >
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {currentWorkspace ? 'Active workspace' : 'Create workspace'}
+          {currentWorkspace ? 'Active project' : 'Create project'}
           {currentWorkspace ? (
             <HelpIcon
               targetKey="data-loader.active-workspace.section"
-              label="Active workspace overview"
-              tooltip="Choose or rename the workspace where new data blocks will be added. Save regularly to persist your progress."
+              label="Active project overview"
+              tooltip="Choose or rename the project where new data blocks will be added. Save regularly to persist your progress."
             />
           ) : (
             <HelpIcon
               targetKey="data-loader.create-workspace.name"
-              label="Create workspace overview"
-              tooltip="Create a new workspace before uploading files or adding data blocks. Add an optional description if you want to capture its purpose."
+              label="Create project overview"
+              tooltip="Create a new project before uploading files or adding data blocks. Add an optional description if you want to capture its purpose."
             />
           )}
         </CardTitle>
@@ -165,8 +165,8 @@ function ActiveWorkspaceControls({
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Label htmlFor="rename-workspace">Rename workspace</Label>
-          <HelpIcon targetKey="data-loader.rename-workspace.input" label="Rename workspace input" />
+          <Label htmlFor="rename-workspace">Rename project</Label>
+          <HelpIcon targetKey="data-loader.rename-workspace.input" label="Rename project input" />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -186,17 +186,17 @@ function ActiveWorkspaceControls({
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Label htmlFor="workspace-description">Workspace description</Label>
+          <Label htmlFor="workspace-description">Project description</Label>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
             id="workspace-description"
-            aria-label="Workspace description"
+            aria-label="Project description"
             value={descriptionValue}
             onChange={(event) => {
               setDescriptionValue(event.target.value);
             }}
-            placeholder="Enter workspace description"
+            placeholder="Enter project description"
             disabled={busy}
           />
           <Button
@@ -216,9 +216,9 @@ function ActiveWorkspaceControls({
           <DisabledReasonTooltip
             reason={
               hasActiveTask
-                ? 'A task is still running on this workspace. Wait for it to finish, or cancel it from the task list, before unloading.'
+                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before unloading.'
                 : selectionOperation
-                  ? 'Another Workspace Load or Unload operation is in progress.'
+                  ? 'Another Project Load or Unload operation is in progress.'
                   : undefined
             }
           >
@@ -235,7 +235,7 @@ function ActiveWorkspaceControls({
               {selectionOperation?.action === 'unload' ? 'Unloading…' : 'Unload'}
             </Button>
           </DisabledReasonTooltip>
-          <HelpIcon targetKey="data-loader.unload.button" label="Unload workspace" />
+          <HelpIcon targetKey="data-loader.unload.button" label="Unload project" />
         </div>
       </div>
     </>
@@ -275,7 +275,7 @@ function CreateWorkspaceForm({ onCreate }: CreateWorkspaceFormProps) {
         onChange={(event) => {
           setNewWorkspaceName(event.target.value);
         }}
-        placeholder="Workspace name"
+        placeholder="Project name"
       />
       <Input
         value={newWorkspaceDescription}
@@ -286,13 +286,13 @@ function CreateWorkspaceForm({ onCreate }: CreateWorkspaceFormProps) {
       />
       <div className="flex items-center gap-2">
         <DisabledReasonTooltip
-          reason={!newWorkspaceName.trim() ? 'Enter a workspace name first' : undefined}
+          reason={!newWorkspaceName.trim() ? 'Enter a project name first' : undefined}
         >
           <Button onClick={() => void handleCreate()} disabled={!newWorkspaceName.trim()}>
-            <Plus className="mr-2 h-4 w-4" /> Create workspace
+            <Plus className="mr-2 h-4 w-4" /> Create project
           </Button>
         </DisabledReasonTooltip>
-        <HelpIcon targetKey="data-loader.create-workspace.button" label="Create workspace" />
+        <HelpIcon targetKey="data-loader.create-workspace.button" label="Create project" />
       </div>
     </div>
   );

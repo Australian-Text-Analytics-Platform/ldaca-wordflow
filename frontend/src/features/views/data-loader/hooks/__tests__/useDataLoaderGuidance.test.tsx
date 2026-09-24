@@ -13,7 +13,7 @@ vi.mock('@/features/guidance/useProgressiveContextualHints', () => ({
 describe('useDataLoaderGuidance', () => {
   beforeEach(() => publish.mockClear());
 
-  it('waits for stable workspace and file state', () => {
+  it('waits for stable project and file state', () => {
     renderHook(() =>
       useDataLoaderGuidance({
         currentWorkspaceId: null,

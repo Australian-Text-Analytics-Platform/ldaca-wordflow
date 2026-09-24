@@ -185,7 +185,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       analysis.state === 'succeeded' ? analysis.supersedes_analysis_ids : [],
     ),
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No workspace selected');
+      if (!currentWorkspaceId) throw new Error('No project selected');
       return getAnalysisResultResource<QuotationResult>(currentWorkspaceId, taskId);
     },
     // Restores saved request settings after reload.
@@ -460,7 +460,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
         source,
       });
       setAddToWorkspaceDialogOpen(false);
-      toast.success('Adding Quotation Results to the Workspace.');
+      toast.success('Adding Quotation Results to the Project.');
     } catch (cause) {
       toast.error('Could not add Quotation Results.', {
         description: cause instanceof Error ? cause.message : String(cause),
@@ -637,7 +637,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
                     setAddToWorkspaceDialogOpen(true);
                   }}
                 >
-                  Add to Workspace
+                  Add to Project
                 </Button>
               ) : null
             }
@@ -689,7 +689,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
         <ResultAddToWorkspaceDialog
           open
           onOpenChange={setAddToWorkspaceDialogOpen}
-          title="Add Quotation Results to Workspace"
+          title="Add Quotation Results to Project"
           nameSuffix="quotation"
           sources={[runAllSource]}
           isSubmitting={isAddingToWorkspace}
