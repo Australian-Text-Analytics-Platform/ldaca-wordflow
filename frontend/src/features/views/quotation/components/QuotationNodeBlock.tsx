@@ -16,6 +16,7 @@ import { ServerPaginationFooter } from '@/features/views/common/components/Serve
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import { QUOTATION_DOCUMENT_COLUMN } from '../../common/generatedColumns';
 import type { QuotationResultRow } from '../quotationResultsModel';
+import { QuotationClampedCell } from './QuotationClampedCell';
 import { QuotationHighlightedCell, type QuotationHoverState } from './QuotationHighlightedCell';
 
 export interface QuotationNodeBlockProps {
@@ -146,16 +147,20 @@ function QuotationNodeBlockContent({
       const data = row.original;
       if (Boolean(textCol) && columnName === QUOTATION_DOCUMENT_COLUMN && highlightDocument) {
         return (
-          <QuotationHighlightedCell
-            row={data}
-            cellKey={`${nodeId}:${row.id}:${columnName}`}
-            contextLength={contextLength}
-            hoverState={hoverState}
-            onHoverChange={onHoverChange}
-          />
+          <QuotationClampedCell>
+            <QuotationHighlightedCell
+              row={data}
+              cellKey={`${nodeId}:${row.id}:${columnName}`}
+              contextLength={contextLength}
+              hoverState={hoverState}
+              onHoverChange={onHoverChange}
+            />
+          </QuotationClampedCell>
         );
       }
-      if (columnName === QUOTATION_DOCUMENT_COLUMN) return data.text;
+      if (columnName === QUOTATION_DOCUMENT_COLUMN) {
+        return <QuotationClampedCell>{data.text}</QuotationClampedCell>;
+      }
       return data.cellText(columnName);
     },
   }));
