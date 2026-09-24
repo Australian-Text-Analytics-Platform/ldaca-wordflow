@@ -14,6 +14,7 @@ import type {
   WorkspaceNodeInfo as NodeInfoResponse,
 } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { describeSkippedFiles } from '../skippedFiles';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
 import {
   invalidateNodeWorkspaceQueries,
@@ -159,6 +160,10 @@ export const useWorkspaceGraphMutations = ({
           description: lines.join('\n'),
           duration: 10000,
         });
+      }
+      const skipped = response.skipped_files;
+      if (skipped && skipped.length > 0) {
+        void toast.info(describeSkippedFiles(skipped), { duration: 10000 });
       }
     },
   });

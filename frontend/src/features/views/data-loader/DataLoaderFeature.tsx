@@ -130,6 +130,7 @@ function DataLoaderFeature() {
 
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   const [addFileName, setAddFileName] = useState<string | null>(null);
+  const [addFileIsFolder, setAddFileIsFolder] = useState(false);
   const filesPaneRef = useRef<HTMLDivElement | null>(null);
   const [filesPaneHeight, setFilesPaneHeight] = useState<number | null>(null);
   const {
@@ -565,7 +566,10 @@ function DataLoaderFeature() {
                           hasWorkspaceSelected={hasWorkspaceSelected}
                           workspaceId={currentWorkspaceId}
                           onPreviewFile={setPreviewFile}
-                          onAddFile={setAddFileName}
+                          onAddFile={(path, isFolder = false) => {
+                            setAddFileIsFolder(isFolder);
+                            setAddFileName(path);
+                          }}
                           onSelectFile={setSelectedFile}
                           onDownloadFile={(file) => {
                             void handleDownloadFile(file);
@@ -602,6 +606,7 @@ function DataLoaderFeature() {
       />
       <AddFilePanel
         filename={addFileName}
+        isFolder={addFileIsFolder}
         open={Boolean(addFileName)}
         /** Clears the pending file-to-workspace selection when the add dialog closes. */
         onClose={() => {

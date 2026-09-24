@@ -47,6 +47,39 @@ describe('FileTree project routing', () => {
     expect(onAddFile).not.toHaveBeenCalled();
   });
 
+  it('adds a whole folder as one Data Block', () => {
+    const onAddFile = vi.fn();
+    const folder = {
+      type: 'directory' as const,
+      name: 'speeches',
+      path: 'speeches',
+      children: [{ type: 'file' as const, name: 'a.txt', path: 'speeches/a.txt', size: 5 }],
+    };
+    const props = {
+      nodes: [folder],
+      selectedFile: null,
+      loadingFiles: false,
+      onPreviewFile: vi.fn(),
+      onAddFile,
+      onSelectFile: vi.fn(),
+      onDownloadFile: vi.fn(),
+      onDeleteFile: vi.fn(),
+      onCreateFolderInside: vi.fn(),
+      onOpenCitation: vi.fn(),
+      onMoveFile: vi.fn(),
+    };
+    const { rerender } = render(
+      <FileTree {...props} hasWorkspaceSelected={false} workspaceId={null} />,
+    );
+    expect(
+      screen.getByRole('button', { name: 'Add folder speeches as a Data Block' }),
+    ).toBeDisabled();
+
+    rerender(<FileTree {...props} hasWorkspaceSelected workspaceId="workspace-1" />);
+    fireEvent.click(screen.getByRole('button', { name: 'Add folder speeches as a Data Block' }));
+    expect(onAddFile).toHaveBeenCalledWith('speeches', true);
+  });
+
   it('fades an overflowing file name and exposes its full value on hover', async () => {
     vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(240);
     vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(120);

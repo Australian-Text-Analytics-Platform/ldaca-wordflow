@@ -14,12 +14,14 @@ import pytest
 
 from ldaca_wordflow.infrastructure.storage.data_loading import (
     DataFileLoadError,
+    DirectoryTooLargeError,
     LOADABLE_FILE_TYPES,
     detect_file_type,
     load_data_file,
     load_data_file_preview,
     materialize_data_file,
     normalize_dtypes,
+    read_documents,
 )
 
 
@@ -229,13 +231,17 @@ def test_columnar_formats_load_through_the_canonical_source_loader(
     assert loaded.lazy().collect().to_dicts() == expected.to_dicts()
 
 
-def test_zip_ingestion_returns_one_row_per_utf8_document_in_path_order(
+def test_zip_ingestion_returns_one_row_per_text_document_in_path_order(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "documents.zip"
     with zipfile.ZipFile(path, "w") as archive:
-        archive.writestr("nested/z.custom", "last")
-        archive.writestr("alpha", "first")
+        archive.writestr("nested/z.md", "last")
+        archive.writestr("alpha.TXT", "first")
+        # Not text documents (#134): metadata tables and extensionless files.
+        archive.writestr("metadata.csv", "id,year\n1,2020\n")
+        archive.writestr("README", "no extension")
+        archive.writestr("latin1.txt", "caf\xe9".encode("latin-1"))
         archive.writestr("binary.png", b"valid-prefix\xffinvalid")
         archive.writestr("__MACOSX/ignored.txt", "metadata")
         archive.writestr("nested/._ignored.txt", "metadata")
@@ -251,18 +257,77 @@ def test_zip_ingestion_returns_one_row_per_utf8_document_in_path_order(
     }
     assert loaded.to_dicts() == [
         {
-            "file_path": "alpha",
+            "file_path": "alpha.TXT",
             "base_name": "alpha",
-            "extension": "",
+            "extension": ".TXT",
             "document": "first",
         },
         {
-            "file_path": "nested/z.custom",
+            "file_path": "nested/z.md",
             "base_name": "z",
-            "extension": ".custom",
+            "extension": ".md",
             "document": "last",
         },
     ]
+    documents = read_documents(path)
+    assert documents is not None
+    assert documents[1].as_report() == [
+        {"extension": "", "reason": "unsupported_type", "count": 1},
+        {"extension": "csv", "reason": "unsupported_type", "count": 1},
+        {"extension": "png", "reason": "unsupported_type", "count": 1},
+        {"extension": "txt", "reason": "not_utf8", "count": 1},
+    ]
+
+
+def test_folder_ingestion_matches_zip_rules_and_reports_skips(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "speeches"
+    (root / "2020").mkdir(parents=True)
+    (root / "2020" / "b.txt").write_text("second")
+    (root / "a.txt").write_text("first")
+    (root / "notes.md").write_text("# notes")
+    (root / "metadata.csv").write_text("file,party\na.txt,Labor\n")
+    for index in range(3):
+        (root / f"scan{index}.pdf").write_bytes(b"%PDF-1.7")
+    (root / ".DS_Store").write_bytes(b"\x00\x87")
+    (root / ".git").mkdir()
+    (root / ".git" / "HEAD.txt").write_text("hidden")
+    outside = tmp_path / "outside.txt"
+    outside.write_text("must not load")
+    (root / "linked.txt").symlink_to(outside)
+    (root / "linked-dir").symlink_to(tmp_path, target_is_directory=True)
+
+    documents = read_documents(root)
+
+    assert documents is not None
+    frame, skipped = documents
+    assert frame.select("file_path", "document").rows() == [
+        ("2020/b.txt", "second"),
+        ("a.txt", "first"),
+        ("notes.md", "# notes"),
+    ]
+    assert skipped.as_report() == [
+        {"extension": "pdf", "reason": "unsupported_type", "count": 3},
+        {"extension": "csv", "reason": "unsupported_type", "count": 1},
+    ]
+    loaded = load_data_file(root)
+    assert isinstance(loaded, pl.DataFrame)
+    assert loaded.equals(frame)
+
+
+def test_folder_ingestion_enforces_the_source_byte_limit(tmp_path: Path) -> None:
+    root = tmp_path / "big"
+    root.mkdir()
+    (root / "a.txt").write_text("x" * 60)
+    (root / "b.txt").write_text("x" * 60)
+    # Skipped types do not count towards the limit.
+    (root / "scan.pdf").write_bytes(b"x" * 500)
+
+    assert read_documents(root, max_total_bytes=120) is not None
+    with pytest.raises(DataFileLoadError) as error:
+        read_documents(root, max_total_bytes=100)
+    assert isinstance(error.value.__cause__, DirectoryTooLargeError)
 
 
 def test_zip_without_utf8_documents_returns_the_typed_empty_contract(

@@ -121,7 +121,8 @@ export interface FileTreeProps {
   hasWorkspaceSelected: boolean;
   workspaceId: string | null;
   onPreviewFile: (path: string) => void;
-  onAddFile: (path: string) => void;
+  /** `isFolder` adds the folder's text files as one document Data Block. */
+  onAddFile: (path: string, isFolder?: boolean) => void;
   onSelectFile: (path: string) => void;
   onDownloadFile: (path: string) => void;
   onDeleteFile: (path: string) => void;
@@ -494,6 +495,23 @@ function FileTreeContent({
               </Button>
             ) : null}
           </div>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-7 w-7 shrink-0 text-description hover:text-foreground"
+            aria-label={`Add folder ${node.name} as a Data Block`}
+            disabled={!hasWorkspaceSelected}
+            title={
+              hasWorkspaceSelected
+                ? 'Add the text files in this folder as one Data Block'
+                : 'Load a project to add this folder as a Data Block'
+            }
+            onClick={() => {
+              onAddFile(node.path, true);
+            }}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
           <Button
             size="icon"
             variant="ghost"

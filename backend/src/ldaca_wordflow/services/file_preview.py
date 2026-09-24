@@ -12,6 +12,7 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
+    DirectoryTooLargeError,
     detect_file_type,
     load_data_file_preview,
     validate_spreadsheet_container,
@@ -51,7 +52,9 @@ class FileReadService:
         page_size: int,
         sheet_name: str | None,
     ) -> IpcTablePage:
-        async with self._file_store.read_path(user_id, relative_path) as path:
+        async with self._file_store.read_path(
+            user_id, relative_path, allow_directory=True
+        ) as path:
             await self._ensure_preview_size(path)
             return await self._run_sync(
                 _materialize_file_page,
@@ -59,6 +62,7 @@ class FileReadService:
                 page,
                 page_size,
                 sheet_name,
+                self._max_preview_bytes,
             )
 
     async def schema(
@@ -68,9 +72,13 @@ class FileReadService:
         *,
         sheet_name: str | None,
     ) -> bytes:
-        async with self._file_store.read_path(user_id, relative_path) as path:
+        async with self._file_store.read_path(
+            user_id, relative_path, allow_directory=True
+        ) as path:
             await self._ensure_preview_size(path)
-            return await self._run_sync(_file_schema, path, sheet_name)
+            return await self._run_sync(
+                _file_schema, path, sheet_name, self._max_preview_bytes
+            )
 
     async def worksheets(
         self,
@@ -99,6 +107,9 @@ class FileReadService:
             return content, media_type
 
     async def _ensure_preview_size(self, path: Path) -> None:
+        # A folder's total is enforced while its files are listed.
+        if await self._run_sync(path.is_dir):
+            return
         if (await self._stat(path)).st_size > self._max_preview_bytes:
             raise ResourceTooLargeError("File is too large to preview")
 
@@ -113,7 +124,9 @@ class FileReadService:
         )
 
 
-def _file_lazyframe(path: Path, sheet_name: str | None) -> pl.LazyFrame:
+def _file_lazyframe(
+    path: Path, sheet_name: str | None, max_directory_bytes: int | None = None
+) -> pl.LazyFrame:
     """Build the preview-specific lazy frame consumed by page and schema reads.
 
     CSV/TSV fields remain raw strings while JSON-family types come from full
@@ -128,11 +141,15 @@ def _file_lazyframe(path: Path, sheet_name: str | None) -> pl.LazyFrame:
             if selected not in sheets:
                 raise InvalidInputError("Excel sheet not found")
             sheet_name = selected
-        loaded = load_data_file_preview(path, sheet_name)
+        loaded = load_data_file_preview(
+            path, sheet_name, max_directory_bytes=max_directory_bytes
+        )
         return loaded if isinstance(loaded, pl.LazyFrame) else loaded.lazy()
     except InvalidInputError:
         raise
     except DataFileLoadError as exc:
+        if isinstance(exc.__cause__, DirectoryTooLargeError):
+            raise ResourceTooLargeError("Folder is too large to preview") from exc
         raise InvalidInputError("File preview could not be generated") from exc
 
 
@@ -141,25 +158,30 @@ def _materialize_file_page(
     page: int,
     page_size: int,
     sheet_name: str | None,
+    max_directory_bytes: int | None = None,
 ) -> IpcTablePage:
     """Materialize one raw-value preview page and classify parser failures."""
     try:
         return materialize_page(
-            _file_lazyframe(path, sheet_name),
+            _file_lazyframe(path, sheet_name, max_directory_bytes),
             page=page,
             page_size=page_size,
         )
-    except InvalidInputError:
+    except (InvalidInputError, ResourceTooLargeError):
         raise
     except (DataFileLoadError, pl.exceptions.PolarsError) as exc:
         raise InvalidInputError("File preview could not be generated") from exc
 
 
-def _file_schema(path: Path, sheet_name: str | None) -> bytes:
+def _file_schema(
+    path: Path, sheet_name: str | None, max_directory_bytes: int | None = None
+) -> bytes:
     """Materialize the preview policy's schema and classify parser failures."""
     try:
-        return encode_schema_stream(_file_lazyframe(path, sheet_name).collect_schema())
-    except InvalidInputError:
+        return encode_schema_stream(
+            _file_lazyframe(path, sheet_name, max_directory_bytes).collect_schema()
+        )
+    except (InvalidInputError, ResourceTooLargeError):
         raise
     except (DataFileLoadError, pl.exceptions.PolarsError) as exc:
         raise InvalidInputError("File preview could not be generated") from exc

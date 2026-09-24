@@ -16,7 +16,9 @@ from ..domain.workspace import Node, Workspace
 
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
+    DirectoryTooLargeError,
     materialize_data_file,
+    read_documents,
     normalize_dtypes,
 )
 from ..shared.errors import (
@@ -137,17 +139,25 @@ class NodeService:
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Create one source node after durable storage has been reserved."""
 
-        async with self._files.read_path(user_id, request.file_path) as source_path:
+        async with self._files.read_path(
+            user_id, request.file_path, allow_directory=True
+        ) as source_path:
+            is_folder = await self._run_io(source_path.is_dir)
             metadata = await self._run_io(source_path.stat)
-            if metadata.st_size > self._max_source_bytes:
+            if not is_folder and metadata.st_size > self._max_source_bytes:
                 raise ResourceTooLargeError("File is too large for node ingestion")
             try:
-                dataframe, dtype_changes = await self._run_io(
+                dataframe, dtype_changes, skipped = await self._run_io(
                     _load_dataframe,
                     source_path,
                     request.sheet_name,
+                    self._max_source_bytes,
                 )
             except DataFileLoadError as exc:
+                if isinstance(exc.__cause__, DirectoryTooLargeError):
+                    raise ResourceTooLargeError(
+                        "Folder is too large for node ingestion"
+                    ) from exc
                 raise InvalidInputError("User file could not be loaded") from exc
         node_name = (request.name or _node_name_from_path(request.file_path)).strip()
         valid, reason = validate_display_name(node_name)
@@ -177,6 +187,8 @@ class NodeService:
                 info = await self._run_io(canonical_node_info, node)
                 if dtype_changes:
                     info["dtype_normalization"] = dtype_changes
+                if skipped:
+                    info["skipped_files"] = skipped
             return WorkspaceNodeInfo.model_validate(info), lease.revision
         except BaseException:
             if staged_path is not None:
@@ -456,17 +468,23 @@ class NodeService:
 
 
 def _load_dataframe(
-    path: Path, sheet_name: str | None
-) -> tuple[pl.DataFrame, list[dict[str, str]]]:
+    path: Path, sheet_name: str | None, max_source_bytes: int
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[dict[str, str | int]]]:
     """Fully infer and materialize one source before canonical normalization.
 
     Called by ``NodeService._create_from_file_admitted`` at its worker-thread
     I/O boundary. Inference establishes the source schema; only subsequent
     canonical casts belong in the returned normalization change log.
     """
+    # A folder's documents together share the single-file source limit.
+    documents = read_documents(path, max_total_bytes=max_source_bytes)
+    if documents is not None:
+        data, skipped = documents
+        frame, changes = normalize_dtypes(data)
+        return frame, changes, skipped.as_report()
     data = materialize_data_file(path, sheet_name=sheet_name)
     frame, changes = normalize_dtypes(data)
-    return frame, changes
+    return frame, changes, []
 
 
 def _node_name_from_path(relative_path: str) -> str:

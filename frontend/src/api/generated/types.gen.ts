@@ -3809,6 +3809,30 @@ export type SetCellNodeEditRequest = {
 };
 
 /**
+ * SkippedFileCount
+ *
+ * Files left out of a folder or ZIP of documents, grouped by extension.
+ *
+ * ``extension`` is lower-case without the dot (empty when there is none).
+ * ``unsupported_type`` means not a text document (for example pdf or csv);
+ * ``not_utf8`` means a text document that is not valid UTF-8.
+ */
+export type SkippedFileCount = {
+    /**
+     * Count
+     */
+    count: number;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * Reason
+     */
+    reason: 'unsupported_type' | 'not_utf8';
+};
+
+/**
  * SliceDerivation
  */
 export type SliceDerivation = {
@@ -5155,6 +5179,10 @@ export type WorkspaceNodeInfo = {
         number | null,
         number | null
     ];
+    /**
+     * Skipped Files
+     */
+    skipped_files?: Array<SkippedFileCount> | null;
     /**
      * Tokenizer Model
      */

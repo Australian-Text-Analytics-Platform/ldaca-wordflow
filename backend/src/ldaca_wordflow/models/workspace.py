@@ -35,6 +35,19 @@ class DtypeNormalizationChange(_StrictModel):
     reason: str
 
 
+class SkippedFileCount(_StrictModel):
+    """Files left out of a folder or ZIP of documents, grouped by extension.
+
+    ``extension`` is lower-case without the dot (empty when there is none).
+    ``unsupported_type`` means not a text document (for example pdf or csv);
+    ``not_utf8`` means a text document that is not valid UTF-8.
+    """
+
+    extension: str
+    reason: Literal["unsupported_type", "not_utf8"]
+    count: int = Field(ge=1)
+
+
 class WorkspaceNodeInfo(_StrictModel):
     """Complete addressable node metadata returned by node routes."""
 
@@ -49,6 +62,8 @@ class WorkspaceNodeInfo(_StrictModel):
     color: str | None = None
     shape: tuple[int | None, int | None] = (None, None)
     dtype_normalization: list[DtypeNormalizationChange] | None = None
+    # Set only when a folder or ZIP of documents was loaded and files were skipped.
+    skipped_files: list[SkippedFileCount] | None = None
     tokenizer_model: str | None = Field(default=None, max_length=500)
     can_undo: bool
     can_redo: bool

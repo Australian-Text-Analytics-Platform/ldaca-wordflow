@@ -408,14 +408,22 @@ class UserFileStore:
         self,
         user_id: str,
         relative_path: str,
+        *,
+        allow_directory: bool = False,
     ) -> AsyncIterator[Path]:
-        """Hold the user's file gate while a service snapshots one regular file."""
+        """Hold the user's file gate while a service snapshots one regular file.
+
+        With ``allow_directory``, a real (no-follow) folder is also admitted, for
+        loading a folder of documents as one Data Block.
+        """
 
         _require_public_path(relative_path)
         async with self._lock_for(user_id):
             resolver = await self._resolver_for(user_id)
             target = resolver.resolve(relative_path)
-            if not await self._run_sync(_is_real_file, target):
+            if not await self._run_sync(_is_real_file, target) and not (
+                allow_directory and await self._run_sync(_is_real_directory, target)
+            ):
                 raise FileResourceNotFoundError(f"File {relative_path} not found")
             yield target
 
