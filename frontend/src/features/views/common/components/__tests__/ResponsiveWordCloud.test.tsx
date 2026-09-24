@@ -180,4 +180,27 @@ describe('ResponsiveWordCloud', () => {
     expect(nextContextMenu).toHaveBeenCalledWith('alpha');
     expect(mocks.chart.on).toHaveBeenCalledTimes(2);
   });
+
+  it('suppresses the native context menu even when the word is detached mid-event', () => {
+    const { rerender } = render(
+      <ResponsiveWordCloud words={[{ text: 'alpha', value: 1 }]} onWordContextMenu={vi.fn()} />,
+    );
+    const plot = screen.getByRole('img');
+    // Stand-in for an SVG word that zrender's listener removes when the stop
+    // word update re-renders the cloud before the event finishes bubbling.
+    const word = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    plot.appendChild(word);
+    word.addEventListener('contextmenu', () => {
+      word.remove();
+    });
+
+    const detachedEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    word.dispatchEvent(detachedEvent);
+    expect(detachedEvent.defaultPrevented).toBe(true);
+
+    rerender(<ResponsiveWordCloud words={[{ text: 'alpha', value: 1 }]} />);
+    const plainEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    plot.dispatchEvent(plainEvent);
+    expect(plainEvent.defaultPrevented).toBe(false);
+  });
 });

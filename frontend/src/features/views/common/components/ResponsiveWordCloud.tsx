@@ -67,6 +67,15 @@ function ResponsiveWordCloudInstance({
     const element = plotRef.current;
     if (!element) return;
 
+    // Suppress the native context menu in the capture phase, before zrender's
+    // own listener runs. A right-click that adds a stop word re-renders the
+    // cloud synchronously and detaches the SVG target, after which React's
+    // delegated onContextMenu can no longer resolve it and never fires.
+    const suppressNativeContextMenu = (event: MouseEvent) => {
+      if (wordContextMenuRef.current) event.preventDefault();
+    };
+    element.addEventListener('contextmenu', suppressNativeContextMenu, true);
+
     const chart = init(element, undefined, { renderer: 'svg' });
     chartRef.current = chart;
 
@@ -81,6 +90,7 @@ function ResponsiveWordCloudInstance({
     chart.on('contextmenu', 'series.wordCloud', handleContextMenu as never);
 
     return () => {
+      element.removeEventListener('contextmenu', suppressNativeContextMenu, true);
       chart.off('click', handleClick);
       chart.off('contextmenu', handleContextMenu);
       chart.dispose();
@@ -143,9 +153,6 @@ function ResponsiveWordCloudInstance({
         ref={plotRef}
         role="img"
         aria-label={ariaLabel}
-        onContextMenu={(event) => {
-          if (onWordContextMenu) event.preventDefault();
-        }}
         style={{ width: `${String(cloudWidth)}px`, height: `${String(cloudHeight)}px` }}
       />
     </div>
