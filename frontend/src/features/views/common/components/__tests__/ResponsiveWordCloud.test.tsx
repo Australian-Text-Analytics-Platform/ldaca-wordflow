@@ -29,6 +29,7 @@ vi.mock('echarts/core', () => ({ init: mocks.init, use: mocks.use }));
 vi.mock('echarts/renderers', () => ({ SVGRenderer: {} }));
 
 import { ResponsiveWordCloud } from '../ResponsiveWordCloud';
+import { wordCloudSizeRange } from '../wordCloudSizeRange';
 
 describe('ResponsiveWordCloud', () => {
   let measuredWidth = 500;
@@ -102,7 +103,9 @@ describe('ResponsiveWordCloud', () => {
             type: 'wordCloud',
             width: '100%',
             height: '100%',
+            shape: 'square',
             keepAspect: false,
+            sizeRange: [10, 60],
             rotationRange: [0, 0],
             gridSize: 4,
             drawOutOfBound: false,
@@ -202,5 +205,12 @@ describe('ResponsiveWordCloud', () => {
     const plainEvent = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
     plot.dispatchEvent(plainEvent);
     expect(plainEvent.defaultPrevented).toBe(false);
+  });
+
+  it('scales the font range with the canvas height', () => {
+    expect(wordCloudSizeRange(600)).toEqual([20, 120]);
+    expect(wordCloudSizeRange(300)).toEqual([10, 60]);
+    // Small topic bubbles keep a legible floor.
+    expect(wordCloudSizeRange(86)).toEqual([10, 24]);
   });
 });

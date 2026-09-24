@@ -5,6 +5,7 @@ import { SVGRenderer } from 'echarts/renderers';
 import type { WordCloudSeriesOption } from 'echarts/types/dist/echarts';
 import { memo, useEffect, useRef } from 'react';
 import { useElementWidth } from '@/lib/useElementWidth';
+import { wordCloudSizeRange } from './wordCloudSizeRange';
 
 registerEChartsModules([SVGRenderer]);
 
@@ -105,12 +106,14 @@ function ResponsiveWordCloudInstance({
 
     const series: WordflowWordCloudSeriesOption = {
       type: 'wordCloud',
-      shape: 'circle',
+      // A rectangular mask uses the whole pane instead of leaving corners empty.
+      shape: 'square',
       keepAspect: false,
       left: 0,
       top: 0,
       width: '100%',
       height: '100%',
+      sizeRange: wordCloudSizeRange(cloudHeight),
       rotationRange: [0, 0],
       rotationStep: 1,
       gridSize: 4,
