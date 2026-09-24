@@ -10,7 +10,10 @@ from __future__ import annotations
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from ldaca_wordflow.models.node_resources import NodeEditRequest
+from ldaca_wordflow.models.node_resources import (
+    ExpressionNodeEditRequest,
+    NodeEditRequest,
+)
 
 EDIT_ADAPTER: TypeAdapter[object] = TypeAdapter(NodeEditRequest)
 UPPERCASE_TEXT = {
@@ -54,4 +57,5 @@ def test_in_place_column_expressions_are_allowed() -> None:
             "expressions": [UPPERCASE_TEXT],
         }
     )
+    assert isinstance(edit, ExpressionNodeEditRequest)
     assert edit.context == "with_columns"

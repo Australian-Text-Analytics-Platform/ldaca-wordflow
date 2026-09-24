@@ -63,6 +63,6 @@ async def test_query_snapshot_reconcile_does_not_block_startup(
     async def run_sync(function, *args):
         return function(*args)
 
-    service._run_sync = run_sync  # type: ignore[method-assign]
+    monkeypatch.setattr(service, "_run_sync", run_sync)
 
     await service.reconcile()
