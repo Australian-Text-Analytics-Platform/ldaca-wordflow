@@ -185,9 +185,21 @@ Click the <kbd>+</kbd> folder icon next to any existing folder to create a subfo
 
 Click the trash icon next to a file or folder to request its permanent removal. A confirmation dialog identifies the selected item before deletion. Deleting a folder also deletes everything inside it.
 
-**Moving files by drag-and-drop**
+**Moving files and folders by drag-and-drop**
 
-Drag any file row and drop it onto a target folder (or onto any file inside a target folder) to move the file there. Valid drop targets are highlighted as you drag. A file cannot be moved to the folder it already belongs to, and dropping a file into a folder that already contains a file with the same name is not allowed.
+Drag any file or folder row and drop it onto a target folder (or onto any file inside a target folder) to move it there; drop it on empty space in the panel to move it to the top level. A folder moves with everything inside it. Valid drop targets are highlighted as you drag. Nothing is moved into the folder it already belongs to, a folder cannot be moved into itself or one of its subfolders, and a move is refused when the target already contains an item with the same name.
+
+**Selecting several items**
+
+Tick the checkbox beside a file or folder (it appears when you hover, and on every row once something is selected) to select it. Shift-click selects everything between two rows, and Ctrl-click (Cmd-click on a Mac) adds or removes one row. **Select all at root** at the top of the panel selects every top-level item, and each open folder shows **Select all in** *folder* while you are selecting.
+
+With items selected, the bar at the top shows how many are selected and offers:
+
+- **Move to…**: move the whole selection into a folder or the top level. You can also drag any selected row to move them all.
+- **Delete**: delete the selection after a confirmation that counts the files and folders affected. Folders are deleted with everything inside them, and deletion cannot be undone.
+- **Clear**: deselect everything (or press Esc).
+
+Press Delete or Backspace to open the delete confirmation for the current selection. To clear out many files uploaded at the top level, choose **Select all at root**, then **Delete**.
 
 <h2 id="help-data-loader-citation-notice">Citation and licensing notices</h2>
 

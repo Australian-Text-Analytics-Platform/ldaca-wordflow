@@ -1,12 +1,12 @@
 import { useReducer, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { getRawFile, moveFile } from '@/api';
+import { deleteFiles, getRawFile, moveFile } from '@/api';
 import type { FileTreeDirectory } from '@/features/views/data-loader/types';
 import {
   createFileBrowserCitationState,
   fileBrowserCitationReducer,
 } from './fileBrowserCitationState';
-import { refreshMovedFileQueries } from './fileCache';
+import { refreshFilePathQuery, refreshMovedFileQueries } from './fileCache';
 
 type Notify = (type: 'success' | 'error' | 'info', message: string) => void;
 
@@ -67,6 +67,44 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
   };
 
   /**
+   * Moves a multi-selection (issue 138) one entry at a time, then reports one
+   * summary. A clash or failure on one entry does not stop the rest.
+   */
+  const handleMoveMany = async (sourcePaths: string[], targetDirectoryPath: string) => {
+    const failed: string[] = [];
+    for (const sourcePath of sourcePaths) {
+      try {
+        await moveFile({
+          body: { source_path: sourcePath, target_directory_path: targetDirectoryPath },
+          throwOnError: true,
+        });
+        await refreshMovedFileQueries(queryClient, sourcePath, targetDirectoryPath);
+      } catch {
+        failed.push(sourcePath);
+      }
+    }
+    const moved = sourcePaths.length - failed.length;
+    if (moved > 0) notify('success', `Moved ${String(moved)} item${moved === 1 ? '' : 's'}.`);
+    if (failed.length > 0) {
+      notify(
+        'error',
+        `Could not move ${String(failed.length)} item${failed.length === 1 ? '' : 's'}: ${failed.join(', ')}`,
+      );
+    }
+  };
+
+  /** Deletes a multi-selection in one backend call (issue 138). */
+  const handleDeleteMany = async (paths: string[]) => {
+    try {
+      const { data } = await deleteFiles({ body: { paths }, throwOnError: true });
+      await Promise.all(paths.map((path) => refreshFilePathQuery(queryClient, path)));
+      notify('success', `Deleted ${String(data.deleted)} item${data.deleted === 1 ? '' : 's'}.`);
+    } catch (error) {
+      notify('error', (error as Error).message || 'Failed to delete the selection.');
+    }
+  };
+
+  /**
    * Opens the citation dialog and loads README content when the selected folder
    * has a citation file.
    * Passed to `FileTree` as `onOpenCitation`.
@@ -110,6 +148,8 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
     refreshingFiles,
     handleRefreshFiles,
     handleMoveFile,
+    handleMoveMany,
+    handleDeleteMany,
     openCitation,
     closeCitation,
   };

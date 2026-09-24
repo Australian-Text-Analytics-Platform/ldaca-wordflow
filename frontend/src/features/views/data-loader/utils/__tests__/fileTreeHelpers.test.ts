@@ -37,3 +37,20 @@ describe('table files in a folder', () => {
     expect(findDirectory(tree, 'missing')).toBeNull();
   });
 });
+
+describe('selection helpers', () => {
+  it('keeps only the outermost selected paths', async () => {
+    const { selectionRoots } = await import('../fileTreeHelpers');
+    expect(selectionRoots(['a/b.txt', 'a', 'c.txt', 'a/d'])).toEqual(['a', 'c.txt']);
+  });
+
+  it('rejects moves into a selected folder or where nothing would change', async () => {
+    const { canMoveInto } = await import('../fileTreeHelpers');
+    expect(canMoveInto(['a'], 'a/sub')).toBe(false);
+    expect(canMoveInto(['a'], 'a')).toBe(false);
+    expect(canMoveInto(['a/x.txt'], 'a')).toBe(false);
+    expect(canMoveInto(['a/x.txt', 'b.txt'], 'a')).toBe(true);
+    expect(canMoveInto(['a'], '')).toBe(false);
+    expect(canMoveInto(['a/sub'], '')).toBe(true);
+  });
+});

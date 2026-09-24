@@ -9,9 +9,18 @@ import {
   Plus,
   Quote,
   Trash2,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -30,10 +39,12 @@ import type {
 } from '@/features/views/data-loader/types';
 import {
   FILE_DRAG_MIME_TYPE,
+  canMoveInto,
   countFilesInNode,
   getCitationFile,
   getParentDirectoryPath,
   getVisibleDirectoryChildren,
+  selectionRoots,
 } from '../utils/fileTreeHelpers';
 import { formatBytes } from '../utils/format';
 import { useAuth } from '@/features/auth/hooks/useAuth';
@@ -129,6 +140,10 @@ export interface FileTreeProps {
   onCreateFolderInside: (parentPath: string, parentLabel: string) => void;
   onOpenCitation: (directory: FileTreeDirectory, readmePath: string | null) => void;
   onMoveFile: (sourcePath: string, targetDirectoryPath: string) => Promise<void> | void;
+  /** Moves several selected files and folders at once (issue 138). */
+  onMoveMany?: (sourcePaths: string[], targetDirectoryPath: string) => Promise<void> | void;
+  /** Deletes several selected files and folders at once (issue 138). */
+  onDeleteMany?: (paths: string[]) => Promise<void> | void;
 }
 
 interface FileTreeContentProps extends FileTreeProps {
@@ -169,8 +184,13 @@ function FileTreeContent({
   onCreateFolderInside,
   onOpenCitation,
   onMoveFile,
+  onMoveMany,
+  onDeleteMany,
 }: FileTreeContentProps) {
-  const [draggingFilePath, setDraggingFilePath] = useState<string | null>(null);
+  const [draggingPaths, setDraggingPaths] = useState<string[]>([]);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(() => new Set());
+  const [selectionAnchor, setSelectionAnchor] = useState<string | null>(null);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [fileMoveTarget, setFileMoveTarget] = useState<FileMoveTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
@@ -222,11 +242,12 @@ function FileTreeContent({
    * fallback for browsers that clear dataTransfer during nested drag events.
    * Called by directory hover and drop handlers.
    */
-  const getDraggedFilePath = (event: React.DragEvent<HTMLElement>): string | null => {
+  const getDraggedPaths = (event: React.DragEvent<HTMLElement>): string[] => {
+    if (draggingPaths.length > 0) return draggingPaths;
     const customPath = event.dataTransfer.getData(FILE_DRAG_MIME_TYPE);
-    if (customPath) return customPath;
+    if (customPath) return [customPath];
     const plainTextPath = event.dataTransfer.getData('text/plain');
-    return plainTextPath || draggingFilePath;
+    return plainTextPath ? [plainTextPath] : [];
   };
 
   /**
@@ -234,13 +255,8 @@ function FileTreeContent({
    * handlers use this before showing an active target or calling the API.
    * Called by move-target rendering, drag-over, and drop paths.
    */
-  const canDropFileIntoDirectory = (
-    sourcePath: string | null,
-    targetDirectoryPath: string,
-  ): boolean => {
-    if (!sourcePath) return false;
-    return getParentDirectoryPath(sourcePath) !== targetDirectoryPath;
-  };
+  const canDropIntoDirectory = (sourcePaths: string[], targetDirectoryPath: string): boolean =>
+    canMoveInto(sourcePaths, targetDirectoryPath);
 
   /**
    * Drives drag styling for the exact directory/file-row target currently able
@@ -251,7 +267,7 @@ function FileTreeContent({
     return (
       fileMoveTarget?.key === targetKey &&
       fileMoveTarget.directoryPath === targetDirectoryPath &&
-      canDropFileIntoDirectory(draggingFilePath, targetDirectoryPath)
+      canDropIntoDirectory(draggingPaths, targetDirectoryPath)
     );
   };
 
@@ -260,11 +276,14 @@ function FileTreeContent({
    * drop targets can recover the source path without prop drilling.
    * Attached by `renderFile` to each draggable file row's `onDragStart`.
    */
-  const handleTreeFileDragStart = (event: React.DragEvent<HTMLDivElement>, filePath: string) => {
+  const handleTreeFileDragStart = (event: React.DragEvent<HTMLElement>, path: string) => {
+    event.stopPropagation();
+    // Dragging a selected row moves the whole selection; otherwise just the row.
+    const paths = selectedPaths.has(path) ? selectionRoots(selectedPaths) : [path];
     event.dataTransfer.effectAllowed = 'move';
-    event.dataTransfer.setData(FILE_DRAG_MIME_TYPE, filePath);
-    event.dataTransfer.setData('text/plain', filePath);
-    setDraggingFilePath(filePath);
+    event.dataTransfer.setData(FILE_DRAG_MIME_TYPE, path);
+    event.dataTransfer.setData('text/plain', path);
+    setDraggingPaths(paths);
     setFileMoveTarget(null);
   };
 
@@ -274,7 +293,7 @@ function FileTreeContent({
    * Attached by `renderFile` to each draggable file row's `onDragEnd`.
    */
   const handleTreeFileDragEnd = () => {
-    setDraggingFilePath(null);
+    setDraggingPaths([]);
     setFileMoveTarget(null);
   };
 
@@ -288,8 +307,12 @@ function FileTreeContent({
     targetDirectoryPath: string,
     event: React.DragEvent<HTMLElement>,
   ) => {
-    const sourcePath = getDraggedFilePath(event);
-    if (!canDropFileIntoDirectory(sourcePath, targetDirectoryPath)) return;
+    // An internal drag stops at the row under the pointer, so a row that
+    // rejects the drop never hands it to the root drop zone. OS file drags
+    // (uploads) carry no internal paths and keep bubbling to the upload zone.
+    if (draggingPaths.length > 0) event.stopPropagation();
+    const sourcePaths = getDraggedPaths(event);
+    if (!canDropIntoDirectory(sourcePaths, targetDirectoryPath)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
     setFileMoveTarget({ key: targetKey, directoryPath: targetDirectoryPath });
@@ -315,13 +338,168 @@ function FileTreeContent({
     targetDirectoryPath: string,
     event: React.DragEvent<HTMLElement>,
   ) => {
-    const sourcePath = getDraggedFilePath(event);
-    if (!canDropFileIntoDirectory(sourcePath, targetDirectoryPath)) return;
-    if (!sourcePath) return;
+    if (draggingPaths.length > 0) event.stopPropagation();
+    const sourcePaths = getDraggedPaths(event);
+    if (!canDropIntoDirectory(sourcePaths, targetDirectoryPath)) return;
     event.preventDefault();
     setFileMoveTarget(null);
-    setDraggingFilePath(null);
-    await onMoveFile(sourcePath, targetDirectoryPath);
+    setDraggingPaths([]);
+    const moving = sourcePaths.filter(
+      (path) => getParentDirectoryPath(path) !== targetDirectoryPath,
+    );
+    if (moving.length === 1 && moving[0]) await onMoveFile(moving[0], targetDirectoryPath);
+    else if (onMoveMany) await onMoveMany(moving, targetDirectoryPath);
+    setSelectedPaths(new Set());
+  };
+
+  // Paths that still exist; a refresh drops deleted or moved entries.
+  const allPaths = useMemo(() => {
+    const paths = new Set<string>();
+    const visit = (list: FileTreeNode[]) => {
+      for (const node of list) {
+        paths.add(node.path);
+        if (node.type === 'directory') visit(node.children);
+      }
+    };
+    visit(nodes);
+    return paths;
+  }, [nodes]);
+  const liveSelected = new Set([...selectedPaths].filter((path) => allPaths.has(path)));
+  const selecting = liveSelected.size > 0;
+
+  /** Visible rows in display order, for Shift-click ranges. */
+  const visibleOrder: string[] = [];
+  const collectVisible = (list: FileTreeNode[]) => {
+    for (const node of list) {
+      visibleOrder.push(node.path);
+      if (node.type === 'directory' && !collapsedPaths.has(node.path)) {
+        collectVisible(getVisibleDirectoryChildren(node));
+      }
+    }
+  };
+  collectVisible(nodes);
+
+  const setSelection = (next: Set<string>) => {
+    setSelectedPaths(next);
+  };
+
+  /** Toggle one row; with Shift, select the range from the last clicked row. */
+  const selectRow = (path: string, range: boolean) => {
+    const next = new Set(liveSelected);
+    if (range && selectionAnchor && visibleOrder.includes(selectionAnchor)) {
+      const from = visibleOrder.indexOf(selectionAnchor);
+      const to = visibleOrder.indexOf(path);
+      const [start, end] = from < to ? [from, to] : [to, from];
+      for (const candidate of visibleOrder.slice(start, end + 1)) next.add(candidate);
+    } else if (next.has(path)) {
+      next.delete(path);
+    } else {
+      next.add(path);
+    }
+    setSelection(next);
+    setSelectionAnchor(path);
+  };
+
+  /** Ctrl/Cmd-click toggles and Shift-click extends, anywhere on a row except its buttons. */
+  const handleRowClick = (path: string, event: React.MouseEvent<HTMLElement>) => {
+    if (!(event.shiftKey || event.metaKey || event.ctrlKey)) return;
+    if ((event.target as HTMLElement).closest('button, a, input')) return;
+    event.preventDefault();
+    selectRow(path, event.shiftKey);
+  };
+
+  const setGroupSelected = (paths: string[], selected: boolean) => {
+    const next = new Set(liveSelected);
+    for (const path of paths) {
+      if (selected) next.add(path);
+      else next.delete(path);
+    }
+    setSelection(next);
+  };
+
+  const groupState = (paths: string[]): boolean | 'indeterminate' => {
+    const count = paths.filter((path) => liveSelected.has(path)).length;
+    if (count === 0) return false;
+    return count === paths.length ? true : 'indeterminate';
+  };
+
+  const rowCheckbox = (path: string, label: string) => (
+    <Checkbox
+      aria-label={`Select ${label}`}
+      checked={liveSelected.has(path)}
+      className={
+        selecting || liveSelected.has(path)
+          ? 'shrink-0'
+          : 'shrink-0 opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
+      }
+      onClick={(event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        selectRow(path, event.shiftKey);
+      }}
+    />
+  );
+
+  const folderOptions = directoryPathsIn(nodes);
+  const selectionSummary = () => {
+    const roots = selectionRoots(liveSelected);
+    let files = 0;
+    let folders = 0;
+    const count = (list: FileTreeNode[]) => {
+      for (const node of list) {
+        if (node.type === 'directory') count(node.children);
+        else files += 1;
+      }
+    };
+    const find = (list: FileTreeNode[], path: string): FileTreeNode | null => {
+      for (const node of list) {
+        if (node.path === path) return node;
+        if (node.type === 'directory' && path.startsWith(`${node.path}/`)) {
+          return find(node.children, path);
+        }
+      }
+      return null;
+    };
+    for (const root of roots) {
+      const node = find(nodes, root);
+      if (!node) continue;
+      if (node.type === 'directory') {
+        folders += 1;
+        count(node.children);
+      } else {
+        files += 1;
+      }
+    }
+    return { roots, files, folders };
+  };
+
+  const describeCount = (files: number, folders: number) =>
+    [
+      files > 0 ? `${String(files)} file${files === 1 ? '' : 's'}` : null,
+      folders > 0 ? `${String(folders)} folder${folders === 1 ? '' : 's'}` : null,
+    ]
+      .filter(Boolean)
+      .join(' and ');
+
+  const moveSelectionTo = async (targetDirectoryPath: string) => {
+    const roots = selectionRoots(liveSelected);
+    if (!canMoveInto(roots, targetDirectoryPath)) return;
+    const moving = roots.filter((path) => getParentDirectoryPath(path) !== targetDirectoryPath);
+    if (moving.length === 1 && moving[0]) await onMoveFile(moving[0], targetDirectoryPath);
+    else if (onMoveMany) await onMoveMany(moving, targetDirectoryPath);
+    setSelection(new Set());
+  };
+
+  const handleTreeKeyDown = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (!selecting) return;
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setSelection(new Set());
+    } else if ((event.key === 'Delete' || event.key === 'Backspace') && onDeleteMany) {
+      if ((event.target as HTMLElement).closest('input, textarea')) return;
+      event.preventDefault();
+      setBulkDeleteOpen(true);
+    }
   };
 
   /**
@@ -351,14 +529,23 @@ function FileTreeContent({
         handleDirectoryDragLeave(`file:${file.path}`, event);
       }}
       onDrop={(event) => void handleDirectoryDrop(parentDirectoryPath, event)}
+      onClick={(event) => {
+        handleRowClick(file.path, event);
+      }}
+      aria-selected={liveSelected.has(file.path) || undefined}
       className={`group flex items-start gap-2 rounded-md px-2 py-1.5 hover:bg-list-hover/50 ${
-        selectedFile === file.path ? 'bg-panel/50' : ''
+        liveSelected.has(file.path)
+          ? 'bg-button/10'
+          : selectedFile === file.path
+            ? 'bg-panel/50'
+            : ''
       } ${
         isFileMoveTargetActive(`file:${file.path}`, parentDirectoryPath)
           ? 'bg-button/10 ring-1 ring-focus/30'
           : ''
       }`}
     >
+      {rowCheckbox(file.path, file.name)}
       <FileIcon className="h-4 w-4 shrink-0 text-description" />
       <div className="@container/file-row flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
         <FileNameWithSize name={file.name} size={file.size} />
@@ -450,13 +637,24 @@ function FileTreeContent({
         }}
       >
         <div
-          className={`flex flex-wrap items-center gap-1 rounded-md pr-1 hover:bg-list-hover/50 ${
+          className={`group flex flex-wrap items-center gap-1 rounded-md pl-2 pr-1 hover:bg-list-hover/50 ${
             isFileMoveTargetActive(`folder:${node.path}`, node.path)
               ? 'bg-button/10 ring-1 ring-focus/30'
-              : ''
+              : liveSelected.has(node.path)
+                ? 'bg-button/10'
+                : ''
           }`}
           data-folder-path={node.path}
           data-testid={`folder-row-${node.path}`}
+          draggable
+          aria-selected={liveSelected.has(node.path) || undefined}
+          onDragStart={(event) => {
+            handleTreeFileDragStart(event, node.path);
+          }}
+          onDragEnd={handleTreeFileDragEnd}
+          onClick={(event) => {
+            handleRowClick(node.path, event);
+          }}
           onDragEnter={(event) => {
             handleDirectoryDragOver(`folder:${node.path}`, node.path, event);
           }}
@@ -469,6 +667,7 @@ function FileTreeContent({
           onDrop={(event) => void handleDirectoryDrop(node.path, event)}
         >
           <div className="flex min-w-0 flex-[1_1_12rem] items-center gap-1 rounded-md">
+            {rowCheckbox(node.path, node.name)}
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
@@ -543,6 +742,21 @@ function FileTreeContent({
         </div>
         <CollapsibleContent className="ml-3 sm:ml-5">
           <div className="flex flex-col gap-0.5 border-l border-surface-border/40 pl-2">
+            {selecting && visibleChildren.length > 0 ? (
+              <label className="flex items-center gap-2 px-2 py-1 text-label-secondary text-description">
+                <Checkbox
+                  aria-label={`Select all in ${node.name}`}
+                  checked={groupState(visibleChildren.map((child) => child.path))}
+                  onCheckedChange={(checked) => {
+                    setGroupSelected(
+                      visibleChildren.map((child) => child.path),
+                      checked === true,
+                    );
+                  }}
+                />
+                Select all in {node.name}
+              </label>
+            ) : null}
             {visibleChildren.map((child) => renderNode(child))}
           </div>
         </CollapsibleContent>
@@ -550,9 +764,124 @@ function FileTreeContent({
     );
   };
 
+  const rootPaths = nodes.map((node) => node.path);
+  const summary = selecting ? selectionSummary() : null;
+
   return (
-    <>
+    <div
+      role="tree"
+      aria-multiselectable="true"
+      aria-label="Files"
+      // Focusable so row clicks keep keyboard focus here for Esc and Delete.
+      tabIndex={-1}
+      className="flex flex-col gap-0.5 outline-none"
+      onKeyDown={handleTreeKeyDown}
+      onDragOver={(event) => {
+        handleDirectoryDragOver('root', '', event);
+      }}
+      onDrop={(event) => void handleDirectoryDrop('', event)}
+    >
+      {nodes.length > 0 ? (
+        <div
+          className={`sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded-md bg-surface px-2 py-1.5 text-label-secondary ${
+            isFileMoveTargetActive('root', '') ? 'ring-1 ring-focus/30' : ''
+          }`}
+        >
+          <Checkbox
+            aria-label="Select all at root"
+            checked={groupState(rootPaths)}
+            onCheckedChange={(checked) => {
+              setGroupSelected(rootPaths, checked === true);
+            }}
+          />
+          {summary ? (
+            <>
+              <span className="font-medium text-foreground">{liveSelected.size} selected</span>
+              <Select
+                value=""
+                onValueChange={(value) => {
+                  void moveSelectionTo(value === '__root__' ? '' : value);
+                }}
+              >
+                <SelectTrigger
+                  aria-label="Move selection to"
+                  className="h-7 w-auto gap-1 text-label-secondary"
+                >
+                  <SelectValue placeholder="Move to…" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__root__">Root folder</SelectItem>
+                  {folderOptions
+                    .filter((folder) => canMoveInto(summary.roots, folder))
+                    .map((folder) => (
+                      <SelectItem key={folder} value={folder}>
+                        {folder}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-error hover:bg-error/10 hover:text-error"
+                disabled={loadingFiles || !onDeleteMany}
+                onClick={() => {
+                  setBulkDeleteOpen(true);
+                }}
+              >
+                <Trash2 className="mr-1 h-3.5 w-3.5" />
+                Delete
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
+                onClick={() => {
+                  setSelection(new Set());
+                }}
+              >
+                <X className="mr-1 h-3.5 w-3.5" />
+                Clear
+              </Button>
+            </>
+          ) : (
+            <span className="text-description">Select all at root</span>
+          )}
+        </div>
+      ) : null}
       {nodes.map((node) => renderNode(node))}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {summary ? describeCount(summary.files, summary.folders) : 'selection'}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {summary && summary.folders > 0
+                ? 'Folders are deleted with everything inside them. '
+                : ''}
+              This can&rsquo;t be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loadingFiles}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-error text-button-foreground hover:bg-error/90"
+              disabled={loadingFiles || !summary}
+              onClick={() => {
+                if (!summary || !onDeleteMany) return;
+                void onDeleteMany(summary.roots);
+                setSelection(new Set());
+                setBulkDeleteOpen(false);
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={deleteTarget !== null}
         onOpenChange={(open) => {
@@ -587,6 +916,6 @@ function FileTreeContent({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

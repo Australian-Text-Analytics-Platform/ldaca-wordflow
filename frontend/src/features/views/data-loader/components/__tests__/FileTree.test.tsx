@@ -32,7 +32,7 @@ describe('FileTree project routing', () => {
     expect(addButton).toHaveAttribute('data-guidance', 'add-data-block');
     expect(addButton).toHaveAttribute('title', 'Load a project to add this file as a Data Block');
     expect(screen.getByText('Add')).toHaveClass('hidden', '@min-[640px]/file-row:inline');
-    expect(screen.getByTestId('file-row-records.csv').children[1]).toHaveClass(
+    expect(screen.getByTestId('file-row-records.csv').children[2]).toHaveClass(
       '@container/file-row',
       'flex-wrap',
     );

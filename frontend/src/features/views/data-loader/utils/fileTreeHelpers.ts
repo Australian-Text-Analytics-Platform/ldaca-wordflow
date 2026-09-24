@@ -121,3 +121,24 @@ export function findDirectory(nodes: FileTreeNode[], path: string): FileTreeDire
   }
   return null;
 }
+
+/** Whether `path` is `ancestor` itself or lies inside it. */
+const isSameOrInside = (path: string, ancestor: string) =>
+  path === ancestor || path.startsWith(`${ancestor}/`);
+
+/** Drops selected paths already covered by a selected ancestor folder. */
+export const selectionRoots = (paths: Iterable<string>): string[] => {
+  const sorted = [...new Set(paths)].sort();
+  const roots: string[] = [];
+  for (const path of sorted) {
+    if (!roots.some((root) => isSameOrInside(path, root))) roots.push(path);
+  }
+  return roots;
+};
+
+/** A drop is valid unless a folder would go into itself, and something must move. */
+export const canMoveInto = (sourcePaths: string[], targetDirectoryPath: string): boolean => {
+  if (sourcePaths.length === 0) return false;
+  if (sourcePaths.some((path) => isSameOrInside(targetDirectoryPath, path))) return false;
+  return sourcePaths.some((path) => getParentDirectoryPath(path) !== targetDirectoryPath);
+};
