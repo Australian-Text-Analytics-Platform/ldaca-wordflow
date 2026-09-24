@@ -44,4 +44,29 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     );
     expect(notify).toHaveBeenNthCalledWith(2, 'success', 'notes.txt added to project.', undefined);
   });
+
+  it('adds several table files with one summary and lists failures', async () => {
+    mocks.createNodeFromFile.mockReset();
+    mocks.createNodeFromFile
+      .mockResolvedValueOnce({})
+      .mockRejectedValueOnce(new Error('bad file'))
+      .mockResolvedValueOnce({});
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddFilesToWorkspace(['a.csv', 'b.csv', 'c.parquet']);
+    });
+
+    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to project.');
+    expect(notify).toHaveBeenCalledWith('error', '1 file could not be added.', 'b.csv');
+  });
 });

@@ -10,12 +10,7 @@ interface AddFilePanelProps {
   open: boolean;
   onClose: () => void;
   onConfirm: (selectedSheet?: string | null) => Promise<void> | void;
-  /** A folder loads its text files as one document table, like a ZIP. */
-  isFolder?: boolean;
 }
-
-const FOLDER_DESCRIPTION =
-  'Every .txt, .text, .md, .rst and .log file in this folder and its subfolders becomes one row. Other files (for example PDF, Word, CSV) are skipped and listed after adding. Inspect the preview, then confirm.';
 
 /**
  * Confirmation panel opened by the data loader before a selected file becomes
@@ -25,22 +20,9 @@ const FOLDER_DESCRIPTION =
  * Flow: combine open state with filename presence, then mount the preview
  * content that owns the single focus, escape, and close lifecycle.
  */
-export function AddFilePanel({
-  filename,
-  open,
-  onClose,
-  onConfirm,
-  isFolder = false,
-}: AddFilePanelProps) {
+export function AddFilePanel({ filename, open, onClose, onConfirm }: AddFilePanelProps) {
   if (!open || !filename) return null;
-  return (
-    <AddFilePanelBody
-      filename={filename}
-      onClose={onClose}
-      onConfirm={onConfirm}
-      isFolder={isFolder}
-    />
-  );
+  return <AddFilePanelBody filename={filename} onClose={onClose} onConfirm={onConfirm} />;
 }
 
 /**
@@ -52,7 +34,6 @@ function AddFilePanelBody({
   filename,
   onClose,
   onConfirm,
-  isFolder,
 }: Omit<AddFilePanelProps, 'open'> & { filename: string }) {
   const {
     previewData,
@@ -121,12 +102,8 @@ function AddFilePanelBody({
         selectedSheet,
         setSelectedSheet,
       }}
-      title={isFolder ? `Add Folder: ${filename}` : `Add File: ${filename}`}
-      description={
-        isFolder
-          ? FOLDER_DESCRIPTION
-          : 'Files are added as data blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the project.'
-      }
+      title={`Add File: ${filename}`}
+      description="Files are added as data blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the project."
       footer={footer}
     />
   );

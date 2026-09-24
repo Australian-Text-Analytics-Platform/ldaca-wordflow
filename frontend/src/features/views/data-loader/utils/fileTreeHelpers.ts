@@ -69,3 +69,55 @@ export function getParentDirectoryPath(filePath: string): string {
   const lastSlashIndex = filePath.lastIndexOf('/');
   return lastSlashIndex === -1 ? '' : filePath.slice(0, lastSlashIndex);
 }
+
+/**
+ * Loadable table formats that become one Data Block each in a folder's Tables
+ * mode (issue 136). Mirrors the non-text, non-ZIP entries of the backend's
+ * `LOADABLE_FILE_TYPES`.
+ */
+const TABLE_EXTENSIONS = new Set([
+  '.csv',
+  '.tsv',
+  '.json',
+  '.jsonl',
+  '.ndjson',
+  '.parquet',
+  '.avro',
+  '.arrow',
+  '.ipc',
+  '.feather',
+  '.xlsx',
+  '.xls',
+  '.xlsm',
+  '.xlsb',
+  '.ods',
+]);
+
+function extensionOf(name: string): string {
+  const dot = name.lastIndexOf('.');
+  return dot > 0 ? name.slice(dot).toLowerCase() : '';
+}
+
+/** Returns every table file below a folder, in path order, including subfolders. */
+export function tableFilesInDirectory(directory: FileTreeDirectory): FileTreeFile[] {
+  const files: FileTreeFile[] = [];
+  const visit = (nodes: FileTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.type === 'directory') visit(node.children);
+      else if (TABLE_EXTENSIONS.has(extensionOf(node.name))) files.push(node);
+    }
+  };
+  visit(directory.children);
+  return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+/** Finds one directory node by its path. */
+export function findDirectory(nodes: FileTreeNode[], path: string): FileTreeDirectory | null {
+  for (const node of nodes) {
+    if (node.type !== 'directory') continue;
+    if (node.path === path) return node;
+    const nested = findDirectory(node.children, path);
+    if (nested) return nested;
+  }
+  return null;
+}

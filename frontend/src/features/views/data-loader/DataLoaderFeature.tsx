@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import { AddFilePanel, FilePreviewPanel } from '@/features/views/data-loader/components';
+import { AddFolderPanel } from './components/AddFolderPanel';
 import { useFiles } from '@/features/views/data-loader/hooks/useFiles';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
@@ -37,7 +38,7 @@ import { useFileBrowserActions } from './hooks/useFileBrowserActions';
 import { useFolderCreation } from './hooks/useFolderCreation';
 import { useLdacaImport } from './hooks/useLdacaImport';
 import { useUploadState } from './hooks/useUploadState';
-import { countFilesInNode } from './utils/fileTreeHelpers';
+import { countFilesInNode, findDirectory, tableFilesInDirectory } from './utils/fileTreeHelpers';
 
 interface FileListShellProps {
   children: ReactNode;
@@ -130,7 +131,7 @@ function DataLoaderFeature() {
 
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   const [addFileName, setAddFileName] = useState<string | null>(null);
-  const [addFileIsFolder, setAddFileIsFolder] = useState(false);
+  const [addFolderPath, setAddFolderPath] = useState<string | null>(null);
   const filesPaneRef = useRef<HTMLDivElement | null>(null);
   const [filesPaneHeight, setFilesPaneHeight] = useState<number | null>(null);
   const {
@@ -192,6 +193,7 @@ function DataLoaderFeature() {
     handleRefreshWorkspaces,
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
+    handleAddFilesToWorkspace,
     workspaceLoadFailures,
     workspaceSelectionOperation,
   } = useDataLoaderWorkspaceActions({
@@ -311,6 +313,19 @@ function DataLoaderFeature() {
       notify('error', (error as Error).message || 'Failed to add file to project.');
     } finally {
       setAddFileName(null);
+    }
+  };
+
+  const addFolderDirectory = addFolderPath ? findDirectory(fileTree, addFolderPath) : null;
+  const closeAddFolder = () => {
+    setAddFolderPath(null);
+  };
+  const handleAddFolderTexts = async () => {
+    if (!addFolderPath) return;
+    try {
+      await handleAddFileToWorkspace(addFolderPath);
+    } catch (error) {
+      notify('error', (error as Error).message || 'Failed to add folder to project.');
     }
   };
 
@@ -562,8 +577,8 @@ function DataLoaderFeature() {
                           workspaceId={currentWorkspaceId}
                           onPreviewFile={setPreviewFile}
                           onAddFile={(path, isFolder = false) => {
-                            setAddFileIsFolder(isFolder);
-                            setAddFileName(path);
+                            if (isFolder) setAddFolderPath(path);
+                            else setAddFileName(path);
                           }}
                           onSelectFile={setSelectedFile}
                           onDownloadFile={(file) => {
@@ -599,9 +614,16 @@ function DataLoaderFeature() {
           setPreviewFile(null);
         }}
       />
+      <AddFolderPanel
+        key={addFolderPath ?? 'none'}
+        folderPath={addFolderPath}
+        tableFiles={addFolderDirectory ? tableFilesInDirectory(addFolderDirectory) : []}
+        onClose={closeAddFolder}
+        onConfirmTexts={handleAddFolderTexts}
+        onConfirmTables={handleAddFilesToWorkspace}
+      />
       <AddFilePanel
         filename={addFileName}
-        isFolder={addFileIsFolder}
         open={Boolean(addFileName)}
         /** Clears the pending file-to-workspace selection when the add dialog closes. */
         onClose={() => {

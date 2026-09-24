@@ -273,6 +273,32 @@ export function useDataLoaderWorkspaceActions({
     );
   };
 
+  /**
+   * Adds several table files as one Data Block each (a folder's Tables mode),
+   * reporting one summary instead of a toast per file.
+   */
+  const handleAddFilesToWorkspace = async (paths: string[]) => {
+    const failed: string[] = [];
+    for (const path of paths) {
+      try {
+        await workspaceActions.createNodeFromFile(path);
+      } catch {
+        failed.push(path);
+      }
+    }
+    const added = paths.length - failed.length;
+    if (added > 0) {
+      notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to project.`);
+    }
+    if (failed.length > 0) {
+      notify(
+        'error',
+        `${String(failed.length)} file${failed.length === 1 ? '' : 's'} could not be added.`,
+        failed.join(', '),
+      );
+    }
+  };
+
   return {
     workspaceToDelete,
     deletingWorkspace,
@@ -304,5 +330,6 @@ export function useDataLoaderWorkspaceActions({
     handleRefreshWorkspaces,
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
+    handleAddFilesToWorkspace,
   };
 }
