@@ -33,9 +33,9 @@ The reference block provides the baseline for the statistical keyword analysis: 
 Stop words are terms you want to exclude from the frequency count — commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
 - Enable the filter, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
-- Click **Add Default** to choose a language. The first selected Data Block supplies a recommendation, but you confirm or override it.
+- Pick a language from the **Select language** dropdown next to the switch to append that language's default stop words to the list (duplicates are skipped, so you can combine languages). The language detected from the first selected Data Block is marked **(Recommended)**. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
 - Click **Sort** to sort the current stop-word list alphabetically.
-- Click **Apply Stop Words** to apply the current list to the results. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
+- Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
 
 <h2 id="help-token-frequency-run">Step 4 — Run the analysis</h2>
@@ -133,8 +133,8 @@ until you choose Clear Results.
 
 | Symptom                                                 | Likely cause                                                   | What to try                                                                               |
 | ------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Results unchanged after removing stop words             | Stop words not applied                                         | Click **Apply Stop Words** after editing the list                                         |
-| Word cloud dominated by common words                    | No stop words applied                                          | Click **Fill Default** then **Apply Stop Words**                                          |
+| Results unchanged after removing stop words             | Filter off, or the text box still has focus                    | Turn on the stop words switch, then click outside the text box to apply your edits        |
+| Word cloud dominated by common words                    | No stop words applied                                          | Pick your corpus language from the stop words **Select language** dropdown                |
 | Juxtorpus or Keyword Analysis table are missing         | Only one data block selected                                   | Select a second data block to enable comparison mode                                      |
 | Keyword Analysis table shows no significant words       | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
 | A workspace block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
@@ -148,7 +148,7 @@ until you choose Clear Results.
 | Data blocks          | None                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected workspace-wide, only the 2 most recent show in the panel. |
 | Tokenizer model      | Saved Data Block preference or none | Required for each selected block; the submitted Analysis freezes the exact mapping                                                |
 | Corpus role switches | First selected block is Study Corpus | Changes O1/O2 assignment in the statistics table                                                                                  |
-| Stop words           | Empty                | Click **Fill Default** for language-matched default stop words                                                                                |
+| Stop words           | Empty                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
 | Token filter         | Empty                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                      |
 | Cloud display limit  | 50                   | Range 10–100; mirrors to list limit                                                                                                           |
 | List display limit   | 50                   | Range 10 – vocabulary size; values > 100 diverge from cloud                                                                                   |
@@ -156,7 +156,7 @@ until you choose Clear Results.
 ## Practice exercise
 
 1. Select a data block and click **Analyze** with the default settings.
-2. Click **Fill Default** to apply language-matched default stop words, then **Apply Stop Words** and compare the top tokens.
+2. Pick the recommended language from the stop words **Select language** dropdown to add its default stop words, and compare the top tokens.
 3. Right-click one of the remaining high-frequency words in the cloud to add it as a custom stop word. The stop words filter switches on automatically if it was off. Confirm the word appears at the start of the stop-word list.
 4. Select a second data block. Use the card-level **Use as Study Corpus** toggles to choose the study corpus (the other block becomes the reference baseline), then choose **Run** again.
 5. Use **Filter tokens** with a wildcard pattern (e.g. `*ing`) and confirm that Cloud view, List view, and their downloads remain filtered while switching views.

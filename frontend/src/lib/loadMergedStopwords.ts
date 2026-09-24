@@ -2,9 +2,9 @@
  * Load client-side default stop-word lists for one or more saved language codes
  * and combine them into a single user-facing payload.
  *
- * Used by: Token Frequency's preference hook for the "Apply Stop Words"
- * action, which spans the saved tokenizer languages for selected corpora so
- * multilingual comparisons fill with all relevant stoplists in one textarea.
+ * Used by: the shared StopWordsLanguageSelect (Token Frequency and Topic
+ * Modeling), which appends the picked language's list to the tab's current
+ * stop words so several languages can be combined.
  *
  * Why:
  * - Centralises the "resolve N stoplists, dedupe by surface form, keep
@@ -201,7 +201,7 @@ function resolveMergedStopwords(
 }
 
 /** Loads and merges stopwords only after a supported user choice requires the chunk. */
-/** Used by: Token Frequency preferences, `FillDefaultStopWordsDialog`, and stopword tests. */
+/** Used by: `StopWordsLanguageSelect` and stopword tests. */
 export async function loadMergedStopwords(args: {
   languages: readonly (string | null | undefined)[];
 }): Promise<MergedStopwordsResult> {
@@ -210,7 +210,7 @@ export async function loadMergedStopwords(args: {
   return resolveMergedStopwords(ordered, await loadStopwordModule());
 }
 
-/** A stopword language offered in the "Add Default" picker. */
+/** A stopword language offered in the stop-words language dropdown. */
 export interface SupportedStopwordLanguage {
   /** ISO 639-1 code passed back into loadMergedStopwords. */
   iso6391: string;
@@ -220,7 +220,7 @@ export interface SupportedStopwordLanguage {
 
 /**
  * Lists every language the bundled stopword package can supply, as
- * {iso6391, name} sorted by name. Used by: FillDefaultStopWordsDialog to
+ * {iso6391, name} sorted by name. Used by: StopWordsLanguageSelect to
  * populate its language dropdown so users pick a stoplist case-by-case instead
  * of relying on a stored per-column language.
  * Flow: return the curated display metadata without requesting the stopword

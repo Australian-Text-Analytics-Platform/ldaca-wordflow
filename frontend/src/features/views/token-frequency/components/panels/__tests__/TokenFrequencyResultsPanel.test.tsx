@@ -6,6 +6,9 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { TokenFrequencyResultsPanel } from '../TokenFrequencyResultsPanel';
 
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+vi.mock('@/features/views/common/hooks/useDetectedColumnLanguage', () => ({
+  useDetectedColumnLanguage: () => ({ detectedLanguage: null, isDetecting: false }),
+}));
 const { singleSectionSpy, unifiedSectionSpy } = vi.hoisted(() => ({
   singleSectionSpy: vi.fn(),
   unifiedSectionSpy: vi.fn(),
@@ -30,8 +33,8 @@ const baseProps = {
   stopWords: 'the, and',
   onStopWordsChange: vi.fn(),
   onStopWordsApply: vi.fn(),
-  isLoadingStopWords: false,
-  onFillDefaultStopWords: vi.fn(),
+  onStopWordsListChange: vi.fn(),
+  stopWordsLanguageSource: { workspaceId: 'workspace-1', nodeId: 'node-1', column: 'text' },
   onSortStopWords: vi.fn(),
   stopWordsEnabled: false,
   onStopWordsEnabledChange: vi.fn(),
@@ -73,8 +76,13 @@ describe('TokenFrequencyResultsPanel stop words', () => {
     const editor = screen.getByRole('textbox', { name: 'Stop words filter (2)' });
     expect(editor).toHaveValue('the, and');
     expect(editor).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Apply Stop Words' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Add Default' })).toBeDisabled();
+    expect(screen.queryByRole('button', { name: 'Apply Stop Words' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add Default' })).not.toBeInTheDocument();
+    // Picking a language switches the filter on, so the dropdown stays usable.
+    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
+      'Saved list (2 words)',
+    );
+    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Sort' })).toBeDisabled();
 
     await user.click(screen.getByRole('switch', { name: 'Enable stop words' }));

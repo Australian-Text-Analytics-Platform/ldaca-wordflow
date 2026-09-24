@@ -88,7 +88,7 @@ describe('TopicModelingStopWordsControl', () => {
     );
   });
 
-  it('treats a language as a replacement action and leaves the filter switch unchanged', async () => {
+  it('appends a language to an empty list and leaves the filter switch unchanged', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<Harness onSave={onSave} />);
@@ -111,6 +111,20 @@ describe('TopicModelingStopWordsControl', () => {
       'Saved list (3 words)',
     );
     expect(screen.getByRole('switch', { name: 'Filter stop words' })).not.toBeChecked();
+  });
+
+  it('appends language defaults to custom words without duplicates', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<Harness initialWords={['university', 'the']} onSave={onSave} />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(screen.getByRole('option', { name: 'English (Recommended)' }));
+
+    expect(onSave).toHaveBeenCalledWith(['university', 'the', 'and', 'of']);
+    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
+      'Saved list (4 words)',
+    );
   });
 
   it('treats an empty custom save as clearing the saved list', async () => {

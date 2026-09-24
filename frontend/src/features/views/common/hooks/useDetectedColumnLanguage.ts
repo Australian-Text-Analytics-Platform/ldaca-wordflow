@@ -28,7 +28,7 @@ export interface DetectedColumnLanguage {
 /**
  * Samples a node's text column and guesses its ISO 639-1 language.
  * Used by: TokenizerModelSelector (to recommend language-matching models) and
- * FillDefaultStopWordsDialog (to pre-select a guessed stoplist) because both
+ * StopWordsLanguageSelect (to mark the recommended stoplist) because both
  * need the same "fetch a page of rows, concatenate the column, detect language"
  * behavior without storing the language anywhere.
  * Flow: fetch a sample page when enabled, collect the column text, then run

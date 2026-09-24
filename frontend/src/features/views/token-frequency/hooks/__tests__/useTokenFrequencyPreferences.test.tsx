@@ -11,49 +11,6 @@ const baseArgs = {
 };
 
 describe('useTokenFrequencyPreferences', () => {
-  it('adds default stop words for the chosen language', async () => {
-    const { result } = renderHook(() => useTokenFrequencyPreferences({ ...baseArgs }));
-
-    await act(async () => {
-      await result.current.handleAddDefaultStopWords('zh');
-    });
-
-    await waitFor(() => {
-      expect(result.current.stopWords).toContain('的');
-    });
-  });
-
-  it('rejects an empty language before starting a stopword load', async () => {
-    const { result } = renderHook(() => useTokenFrequencyPreferences({ ...baseArgs }));
-
-    await expect(result.current.handleAddDefaultStopWords('')).rejects.toThrow(
-      'Default stop words require a language selection',
-    );
-
-    expect(result.current.stopWords).toBe('');
-    expect(result.current.isLoadingStopWords).toBe(false);
-  });
-
-  it('appends a second language without dropping the first', async () => {
-    const { result } = renderHook(() => useTokenFrequencyPreferences({ ...baseArgs }));
-
-    await act(async () => {
-      await result.current.handleAddDefaultStopWords('en');
-    });
-    await waitFor(() => {
-      expect(result.current.stopWords).toContain('about');
-    });
-
-    await act(async () => {
-      await result.current.handleAddDefaultStopWords('zh');
-    });
-
-    await waitFor(() => {
-      expect(result.current.stopWords).toContain('的');
-    });
-    expect(result.current.stopWords).toContain('about');
-  });
-
   it('clamps the backend token limit into the editable input', async () => {
     const { result } = renderHook(() =>
       useTokenFrequencyPreferences({ ...baseArgs, backendTokenLimit: 500 }),

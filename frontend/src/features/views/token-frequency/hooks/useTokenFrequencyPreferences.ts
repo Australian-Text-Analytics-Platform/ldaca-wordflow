@@ -1,11 +1,6 @@
 import { useCallback, useEffect, useReducer } from 'react';
 import type { TokenFrequencyResponse } from '@/api';
-import { loadMergedStopwords } from '@/lib/loadMergedStopwords';
-import {
-  formatStopWords,
-  mergeStopWordsText,
-  parseStopWordsText,
-} from '../../common/utils/stopWords';
+import { parseStopWordsText } from '../../common/utils/stopWords';
 import { clampDisplayTokenLimit, DEFAULT_TOKEN_LIMIT, toFiniteNumber } from '../../common/utils';
 import {
   createTokenFrequencyPreferenceState,
@@ -47,7 +42,6 @@ export const useTokenFrequencyPreferences = ({
   );
   const {
     stopWords,
-    isLoadingStopWords,
     appliedStopSet,
     tokenLimitOverride,
     tokenLimitInput,
@@ -287,36 +281,6 @@ export const useTokenFrequencyPreferences = ({
   };
 
   /** Adds a chosen language's default stop words to the existing editable list. */
-  /**
-   * Called by: TokenFrequencyFeature via FillDefaultStopWordsDialog's onFill,
-   * because language is picked per scenario in the dialog rather than derived
-   * from a stored per-column property.
-   * Flow: load the chosen language's default stop words, append them to whatever
-   * is already in the editor, then apply the combined set. Appending (instead of
-   * replacing) lets users stack stop-word bags from multiple languages; the
-   * dedupe in applyStopSetFromText keeps overlaps from piling up.
-   */
-  const handleAddDefaultStopWords = async (language: string) => {
-    if (!language) {
-      throw new Error('Default stop words require a language selection');
-    }
-    dispatchPreference({ type: 'stopWordsLoadingChanged', active: true });
-    try {
-      const { merged } = await loadMergedStopwords({
-        languages: [language],
-      });
-      if (merged.length === 0) {
-        throw new Error('Default stop words returned an empty list');
-      }
-      applyStopSetFromText(formatStopWords(mergeStopWordsText(stopWords, merged)));
-    } catch (error) {
-      console.error('Error getting default stop words:', error);
-      throw error;
-    } finally {
-      dispatchPreference({ type: 'stopWordsLoadingChanged', active: false });
-    }
-  };
-
   /** Resets transient preference errors when results or selection state are cleared. */
   /**
    * Called by preference handlers in `useTokenFrequencyPreferences`.
@@ -328,7 +292,6 @@ export const useTokenFrequencyPreferences = ({
   return {
     stopWords,
     setStopWords,
-    isLoadingStopWords,
     appliedStopSet,
     setAppliedStopSet,
     tokenLimitInput,
@@ -341,7 +304,6 @@ export const useTokenFrequencyPreferences = ({
     handleTokenLimitInputChange,
     handleTokenLimitBlur,
     applyTokenLimit,
-    handleAddDefaultStopWords,
     resetPreferenceUiState,
   };
 };

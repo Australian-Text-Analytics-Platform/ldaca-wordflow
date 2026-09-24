@@ -136,9 +136,10 @@ list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
 the stopword filter to apply the Tab's saved list. You can choose a language or
 edit that list while filtering is off; the switch controls filtering only.
 Opening the language menu detects a recommendation from the first selected Data
-Block. Choosing a language replaces the saved list, while **Clear stop words**
-empties it. The menu returns to **Saved list (N words)** after a language is
-chosen. These controls change presentation without rerunning or refetching the
+Block. Choosing a language appends its default stop words to the saved list
+(duplicates are skipped, so you can combine languages and keep custom words),
+while **Clear stop words** empties it. The menu returns to **Saved list (N
+words)** after a language is chosen. These controls change presentation without rerunning or refetching the
 Result.
 
 <h3 id="help-topic-modeling-bubble-chart">Bubble chart</h3>

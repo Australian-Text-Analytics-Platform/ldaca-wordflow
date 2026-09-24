@@ -4,7 +4,6 @@ import { formatStopWords } from '../../common/utils/stopWords';
 
 export interface TokenFrequencyPreferenceState {
   stopWords: string;
-  isLoadingStopWords: boolean;
   appliedStopSet: Set<string>;
   tokenLimitOverride: number | null;
   tokenLimitInput: string;
@@ -17,7 +16,6 @@ export type TokenFrequencyPreferenceAction =
   | { type: 'appliedStopSetChanged'; value: SetStateAction<Set<string>> }
   | { type: 'stopWordsApplied'; words: string[] }
   | { type: 'stopWordsReset' }
-  | { type: 'stopWordsLoadingChanged'; active: boolean }
   | { type: 'tokenLimitStateApplied'; limit: number }
   | { type: 'tokenLimitInputChanged'; input: string; clearError?: boolean }
   | { type: 'tokenLimitErrorChanged'; error: string | null }
@@ -32,7 +30,6 @@ export type TokenFrequencyPreferenceAction =
  */
 export const createTokenFrequencyPreferenceState = (): TokenFrequencyPreferenceState => ({
   stopWords: '',
-  isLoadingStopWords: false,
   appliedStopSet: new Set(),
   tokenLimitOverride: null,
   tokenLimitInput: '',
@@ -70,10 +67,6 @@ export const tokenFrequencyPreferenceReducer = (
       };
     case 'stopWordsReset':
       return { ...state, stopWords: '', appliedStopSet: new Set() };
-    case 'stopWordsLoadingChanged':
-      return state.isLoadingStopWords === action.active
-        ? state
-        : { ...state, isLoadingStopWords: action.active };
     case 'tokenLimitStateApplied':
       return {
         ...state,

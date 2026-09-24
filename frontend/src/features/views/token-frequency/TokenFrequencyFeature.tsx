@@ -21,7 +21,7 @@ import { hasClearRequiredAnalysis } from '../common/analysisActionLifecycle';
 import { DEFAULT_TAB_INPUT_SET_ID } from '../common/tabs/tabStateOps';
 import { deriveTokenizerModelsByNode } from '../common/tokenizerModelPreferences';
 import { DEFAULT_TOKEN_LIMIT } from '../common/utils';
-import FillDefaultStopWordsDialog from './components/FillDefaultStopWordsDialog';
+import { formatStopWords } from '../common/utils/stopWords';
 import { TokenFrequencyParameterPanel } from './components/panels/TokenFrequencyParameterPanel';
 import { TokenFrequencyResultsPanel } from './components/panels/TokenFrequencyResultsPanel';
 import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloadDialog';
@@ -68,9 +68,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   const [liveTokenizerModelsByNode, setLiveTokenizerModelsByNode] = useState<
     Record<string, string>
   >({});
-  // Controls the "Add Default" stop-words dialog where the user confirms which
-  // language's defaults to append (guessed on the fly, not stored per column).
-  const [fillDialogOpen, setFillDialogOpen] = useState(false);
   const { currentWorkspace } = useWorkspaceData();
   const currentWorkspaceId = currentWorkspace?.id ?? null;
   const nodeInputs = useTabNodeInputs({
@@ -208,20 +205,20 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   const frequencyResultKey = tabTaskId ?? (results ? '__hydrated__' : null);
   const stopWordsEnabled = frequencyResultKey !== null && readStopWordsEnabled(host.settings);
   const savedTokenLimit = Number(host.settings['tokenFrequency.tokenLimit']);
-  // Primary node/column the "Add Default" dialog samples to guess a language.
-  // Language is not stored per column (a column may mix languages), so the guess
-  // is derived on demand from the first selected text column and the user
-  // confirms or overrides it in the dialog.
-  const fillDefaultSelection = nodeColumnSelections.find((selection) => selection.column);
-  const fillDefaultTarget = {
-    nodeId: fillDefaultSelection?.nodeId ?? null,
-    column: fillDefaultSelection?.column ?? null,
+  // Primary node/column the stop-words language dropdown samples to recommend a
+  // language. Language is not stored per column (a column may mix languages),
+  // so the recommendation is derived on demand from the first selected text
+  // column and the user picks the language in the dropdown.
+  const stopWordsLanguageSelection = nodeColumnSelections.find((selection) => selection.column);
+  const stopWordsLanguageSource = {
+    workspaceId: currentWorkspaceId,
+    nodeId: stopWordsLanguageSelection?.nodeId ?? null,
+    column: stopWordsLanguageSelection?.column ?? null,
   };
 
   const {
     stopWords,
     setStopWords,
-    isLoadingStopWords,
     appliedStopSet,
     tokenLimitInput,
     tokenLimitError,
@@ -233,7 +230,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     handleTokenLimitInputChange,
     handleTokenLimitBlur,
     applyTokenLimit,
-    handleAddDefaultStopWords,
     resetPreferenceUiState,
   } = useTokenFrequencyPreferences({
     results,
@@ -332,6 +328,15 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   /** Passed to TokenFrequencyResultsPanel to apply its stop-word editor text. */
   const handleApplyStopWords = () => {
     applyStopSetFromText(stopWords);
+  };
+
+  // Applies a list picked from the language dropdown. Adding words switches the
+  // filter on, matching right-click, so a pick is never silently ignored.
+  const handleStopWordsListChange = (words: string[]) => {
+    if (words.length > 0 && !stopWordsEnabled) {
+      host.setSetting(STOP_WORDS_ENABLED_SETTING, 'true');
+    }
+    applyStopSetFromText(formatStopWords(words));
   };
 
   const hasIncompleteSelections = nodeColumnSelections.some((selection) => !selection.column);
@@ -476,10 +481,8 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         stopWords={stopWords}
         onStopWordsChange={setStopWords}
         onStopWordsApply={handleApplyStopWords}
-        isLoadingStopWords={isLoadingStopWords}
-        onFillDefaultStopWords={() => {
-          setFillDialogOpen(true);
-        }}
+        onStopWordsListChange={handleStopWordsListChange}
+        stopWordsLanguageSource={stopWordsLanguageSource}
         onSortStopWords={sortStopWords}
         stopWordsEnabled={stopWordsEnabled}
         onStopWordsEnabledChange={(enabled) => {
@@ -515,17 +518,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         onConfirm={(options) => {
           void confirmDownload(options);
         }}
-      />
-
-      <FillDefaultStopWordsDialog
-        key={fillDialogOpen ? 'fill-dialog-open' : 'fill-dialog-closed'}
-        open={fillDialogOpen}
-        onOpenChange={setFillDialogOpen}
-        workspaceId={currentWorkspaceId}
-        nodeId={fillDefaultTarget.nodeId}
-        column={fillDefaultTarget.column}
-        isLoading={isLoadingStopWords}
-        onFill={handleAddDefaultStopWords}
       />
     </div>
   );

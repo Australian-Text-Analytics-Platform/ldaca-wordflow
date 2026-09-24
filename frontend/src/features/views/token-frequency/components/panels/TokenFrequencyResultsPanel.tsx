@@ -14,6 +14,8 @@ import { TokenFrequencySingleTokenSection } from '../results/TokenFrequencySingl
 import { TokenFrequencyUnifiedTokenSection } from '../results/TokenFrequencyUnifiedTokenSection';
 import { useTokenFrequencyListLimit } from '../../hooks/useTokenFrequencyListLimit';
 import { StopWordsEnabledSwitch } from '@/features/views/common/components/StopWordsEnabledSwitch';
+import { StopWordsLanguageSelect } from '@/features/views/common/components/StopWordsLanguageSelect';
+import { parseStopWordsText } from '@/features/views/common/utils/stopWords';
 import { TokenFrequencyTokenFilterCard } from './TokenFrequencyTokenFilterCard';
 
 type ResultsView = 'cloud' | 'list';
@@ -34,8 +36,14 @@ interface TokenFrequencyResultsPanelProps {
   stopWords: string;
   onStopWordsChange: React.Dispatch<React.SetStateAction<string>>;
   onStopWordsApply: () => void;
-  isLoadingStopWords: boolean;
-  onFillDefaultStopWords: () => void;
+  /** Replaces the stop-word list from the shared language dropdown. */
+  onStopWordsListChange: (words: string[]) => void;
+  /** Workspace, node, and column sampled to recommend a stop-word language. */
+  stopWordsLanguageSource: {
+    workspaceId: string | null;
+    nodeId: string | null;
+    column: string | null;
+  };
   onSortStopWords: () => void;
   stopWordsEnabled: boolean;
   onStopWordsEnabledChange: (enabled: boolean) => void;
@@ -80,8 +88,8 @@ export const TokenFrequencyResultsPanel = ({
   stopWords,
   onStopWordsChange,
   onStopWordsApply,
-  isLoadingStopWords,
-  onFillDefaultStopWords,
+  onStopWordsListChange,
+  stopWordsLanguageSource,
   onSortStopWords,
   stopWordsEnabled,
   onStopWordsEnabledChange,
@@ -160,18 +168,34 @@ export const TokenFrequencyResultsPanel = ({
         <div className="space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2 rounded-lg border border-surface-border/60 bg-panel/20 p-4">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                   <Label htmlFor="stop-words">Stop words filter ({appliedStopCount})</Label>
                   <StopWordsEnabledSwitch
                     checked={stopWordsEnabled}
                     onCheckedChange={onStopWordsEnabledChange}
                   />
+                  <StopWordsLanguageSelect
+                    words={parseStopWordsText(stopWords)}
+                    onWordsChange={onStopWordsListChange}
+                    workspaceId={stopWordsLanguageSource.workspaceId}
+                    nodeId={stopWordsLanguageSource.nodeId}
+                    column={stopWordsLanguageSource.column}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={onSortStopWords}
+                    disabled={!stopWordsEnabled || !stopWords.trim()}
+                  >
+                    Sort
+                  </Button>
                 </div>
                 <HelpIcon
                   targetKey="analysis.token-frequency.stop-words"
                   label="Stop words"
-                  tooltip="Words entered here are removed from the displayed token tables and comparison views after a run completes."
+                  tooltip="Words entered here are removed from the displayed token tables and comparison views after a run completes. Pick a language to append its default stop words (the detected language is marked Recommended), or right-click a word to add it. Edits apply when you leave the text box."
                 />
               </div>
               <textarea
@@ -183,44 +207,9 @@ export const TokenFrequencyResultsPanel = ({
                 }}
                 onBlur={onStopWordsApply}
                 placeholder="the, and, of"
-                disabled={isLoadingStopWords || !stopWordsEnabled}
+                disabled={!stopWordsEnabled}
                 className="w-full resize-y overflow-y-auto rounded-md border border-input-border bg-editor px-3 py-2 text-body text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
               />
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onStopWordsApply}
-                  disabled={isLoadingStopWords || !stopWordsEnabled}
-                >
-                  Apply Stop Words
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onFillDefaultStopWords}
-                  disabled={isLoadingStopWords || !stopWordsEnabled}
-                >
-                  Add Default
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={onSortStopWords}
-                  disabled={isLoadingStopWords || !stopWordsEnabled || !stopWords.trim()}
-                >
-                  Sort
-                </Button>
-                <HelpIcon
-                  targetKey="analysis.token-frequency.stop-words"
-                  label="About default stop words"
-                  tooltip="Add Default opens a dialog where you pick a language (a guess is pre-selected from the column's text) whose default stop words are appended to your current list. Add bags from several languages and edit the list before or after applying. Click to open the tutorial."
-                  className="h-5 w-5 text-description"
-                />
-              </div>
             </div>
 
             <div className="space-y-4 rounded-lg border border-surface-border/60 bg-panel/20 p-4">
