@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Pencil, Redo2, Undo2 } from 'lucide-react';
+import { Columns3, Pencil, Redo2, Undo2 } from 'lucide-react';
 import HelpIcon from '@/components/help/HelpIcon';
 import { cn } from '@/lib/utils';
+import { DeleteColumnsDialog } from './DeleteColumnsDialog';
 
 import type { WorkspaceDataTableHeaderInfo } from '../hooks/useWorkspaceDataTable';
 
@@ -10,6 +11,8 @@ interface WorkspaceDataHeaderProps {
   onRename?: (newName: string) => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  /** Deletes several columns in one edit (issue 141). */
+  onDeleteColumns?: (columns: string[]) => Promise<void>;
 }
 
 /**
@@ -81,9 +84,11 @@ export const WorkspaceDataHeader = ({
   info,
   onRename,
   onUndo,
+  onDeleteColumns,
   onRedo,
 }: WorkspaceDataHeaderProps) => {
   const [renameDraft, setRenameDraft] = useState<{ baseLabel: string; value: string }>();
+  const [deleteColumnsOpen, setDeleteColumnsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const isRenaming = renameDraft?.baseLabel === info.nodeLabel;
 
@@ -165,6 +170,20 @@ export const WorkspaceDataHeader = ({
         </div>
 
         <div className="ml-auto flex shrink-0 items-center gap-1.5">
+          {onDeleteColumns ? (
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={() => {
+                setDeleteColumnsOpen(true);
+              }}
+              disabled={info.columns.length < 2}
+              title="Delete several columns at once"
+            >
+              <Columns3 className="h-3 w-3" />
+              Delete columns
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
@@ -188,6 +207,14 @@ export const WorkspaceDataHeader = ({
             Redo
           </button>
         </div>
+        {onDeleteColumns ? (
+          <DeleteColumnsDialog
+            open={deleteColumnsOpen}
+            onOpenChange={setDeleteColumnsOpen}
+            columns={info.columns}
+            onConfirm={onDeleteColumns}
+          />
+        ) : null}
       </div>
     </div>
   );

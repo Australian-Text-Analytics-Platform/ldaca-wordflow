@@ -287,6 +287,19 @@ export const useWorkspaceTransformMutations = ({
     },
   });
 
+  const deleteColumnsMutation = useMutation({
+    mutationKey: ['workspace', 'delete-columns'],
+    mutationFn: ({ nodeId, columns }: { nodeId: string; columns: string[] }) =>
+      editNode({
+        body: { kind: 'delete_columns', columns },
+        path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
+        throwOnError: true,
+      }).then(({ data }) => requireNode(data)),
+    onSuccess: (_response, variables) => {
+      invalidateEditedNode(variables.nodeId);
+    },
+  });
+
   const expressionMutation = useMutation({
     mutationKey: ['workspace', 'expression'],
     mutationFn: ({
@@ -486,6 +499,9 @@ export const useWorkspaceTransformMutations = ({
         renameColumnMutation.mutateAsync({ nodeId, column, newName }),
       deleteColumn: (nodeId: string, column: string) =>
         deleteColumnMutation.mutateAsync({ nodeId, column }),
+      /** One edit, so a single Undo restores every column (issue 141). */
+      deleteColumns: (nodeId: string, columns: string[]) =>
+        deleteColumnsMutation.mutateAsync({ nodeId, columns }),
       undoNode: (nodeId: string) => undoNodeMutation.mutateAsync(nodeId),
       redoNode: (nodeId: string) => redoNodeMutation.mutateAsync(nodeId),
       setCell: (nodeId: string, column: string, rowIndex: number, value: string | null) =>

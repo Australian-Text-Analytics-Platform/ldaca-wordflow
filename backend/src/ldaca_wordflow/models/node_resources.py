@@ -161,6 +161,21 @@ class DeleteColumnNodeEditRequest(_StrictRequest):
     column: str = Field(min_length=1, max_length=200)
 
 
+class DeleteColumnsNodeEditRequest(_StrictRequest):
+    """Delete several columns in one edit, so one Undo restores them (issue 141)."""
+
+    kind: Literal["delete_columns"] = "delete_columns"
+    columns: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
+        min_length=1, max_length=10_000
+    )
+
+    @model_validator(mode="after")
+    def validate_unique(self) -> DeleteColumnsNodeEditRequest:
+        if len(set(self.columns)) != len(self.columns):
+            raise ValueError("Columns to delete must be unique")
+        return self
+
+
 class ReplaceNodeEditRequest(ReplaceDerivation):
     """Replace or extract text on the target Data Block."""
 
@@ -225,6 +240,7 @@ NodeEditRequest = Annotated[
     CastNodeEditRequest
     | RenameColumnNodeEditRequest
     | DeleteColumnNodeEditRequest
+    | DeleteColumnsNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest
     | SetCellNodeEditRequest

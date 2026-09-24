@@ -4456,6 +4456,34 @@
         "title": "DeleteColumnNodeEditRequest",
         "type": "object"
       },
+      "DeleteColumnsNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Delete several columns in one edit, so one Undo restores them (issue 141).",
+        "properties": {
+          "columns": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10000,
+            "minItems": 1,
+            "title": "Columns",
+            "type": "array"
+          },
+          "kind": {
+            "const": "delete_columns",
+            "default": "delete_columns",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "columns"
+        ],
+        "title": "DeleteColumnsNodeEditRequest",
+        "type": "object"
+      },
       "DerivationInput": {
         "additionalProperties": false,
         "description": "One ordered, role-bearing derivation input.",
@@ -18123,6 +18151,7 @@
                     "annotation_classes": "#/components/schemas/AnnotationClassesNodeEditRequest",
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
+                    "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "expression": "#/components/schemas/ExpressionNodeEditRequest",
                     "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
                     "replace": "#/components/schemas/ReplaceNodeEditRequest",
@@ -18139,6 +18168,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/DeleteColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteColumnsNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/ReplaceNodeEditRequest"

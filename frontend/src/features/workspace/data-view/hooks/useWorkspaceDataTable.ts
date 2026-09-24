@@ -17,6 +17,8 @@ export interface WorkspaceDataTableHeaderInfo {
   isEmptyTable: boolean;
   canUndo: boolean;
   canRedo: boolean;
+  /** Column names of the Data Block, for the Delete columns dialog. */
+  columns: string[];
 }
 
 interface WorkspaceDataTableNodeActions {
@@ -24,6 +26,7 @@ interface WorkspaceDataTableNodeActions {
   onRename?: (newName: string) => void;
   onUndo?: () => void;
   onRedo?: () => void;
+  onDeleteColumns?: (columns: string[]) => Promise<void>;
 }
 
 interface WorkspaceSelectionTab {
@@ -118,6 +121,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     castColumn,
     renameColumn,
     deleteColumn,
+    deleteColumns,
     undoNode,
     redoNode,
     refreshNodeSchema,
@@ -279,6 +283,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     isEmptyTable: nodeData.rows.length === 0,
     canUndo: selectedNode?.can_undo ?? false,
     canRedo: selectedNode?.can_redo ?? false,
+    columns: nodeData.columns,
   };
 
   const nodeActions: WorkspaceDataTableNodeActions = {
@@ -288,6 +293,11 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       : undefined,
     onUndo: selectedNode?.id ? () => void undoNode(selectedNode.id) : undefined,
     onRedo: selectedNode?.id ? () => void redoNode(selectedNode.id) : undefined,
+    onDeleteColumns: selectedNode?.id
+      ? async (columns: string[]) => {
+          await deleteColumns(selectedNode.id, columns);
+        }
+      : undefined,
   };
 
   const tabs: WorkspaceSelectionTabsState = {

@@ -2270,6 +2270,22 @@ export type DeleteColumnNodeEditRequest = {
 };
 
 /**
+ * DeleteColumnsNodeEditRequest
+ *
+ * Delete several columns in one edit, so one Undo restores them (issue 141).
+ */
+export type DeleteColumnsNodeEditRequest = {
+    /**
+     * Columns
+     */
+    columns: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'delete_columns';
+};
+
+/**
  * DerivationInput
  *
  * One ordered, role-bearing derivation input.
@@ -9452,6 +9468,8 @@ export type EditNodeData = {
     } & RenameColumnNodeEditRequest) | ({
         kind: 'delete_column';
     } & DeleteColumnNodeEditRequest) | ({
+        kind: 'delete_columns';
+    } & DeleteColumnsNodeEditRequest) | ({
         kind: 'replace';
     } & ReplaceNodeEditRequest) | ({
         kind: 'expression';

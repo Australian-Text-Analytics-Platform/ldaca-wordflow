@@ -49,6 +49,7 @@ from ..models.node_resources import (
     CloneNodeCreateRequest,
     ConcatNodeCreateRequest,
     DeleteColumnNodeEditRequest,
+    DeleteColumnsNodeEditRequest,
     ExpressionNodeEditRequest,
     ExpressionNodeCreateRequest,
     FilterNodeCreateRequest,
@@ -247,6 +248,19 @@ def build_edited_lazyframe(
         if request.column not in node.data.collect_schema().names():
             raise InvalidInputError("Delete column is not present on the Data Block")
         return node.data.drop(request.column), None
+
+    if isinstance(request, DeleteColumnsNodeEditRequest):
+        names = node.data.collect_schema().names()
+        missing = [column for column in request.columns if column not in names]
+        if missing:
+            raise InvalidInputError(
+                f"Columns to delete are not present on the Data Block: {', '.join(missing)}"
+            )
+        if len(request.columns) >= len(names):
+            # A block with no columns cannot keep its rows (Data Block Edits
+            # never change rows).
+            raise InvalidInputError("Keep at least one column on the Data Block")
+        return node.data.drop(request.columns), None
 
     if isinstance(request, ReplaceNodeEditRequest):
         _output_column, expression = _replace_expression(node, request)
