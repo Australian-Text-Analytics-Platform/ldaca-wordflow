@@ -5,7 +5,7 @@ import { SVGRenderer } from 'echarts/renderers';
 import type { WordCloudSeriesOption } from 'echarts/types/dist/echarts';
 import { memo, useEffect, useRef } from 'react';
 import { useElementWidth } from '@/lib/useElementWidth';
-import { wordCloudSizeRange } from './wordCloudSizeRange';
+import { wordCloudLayoutSize, wordCloudSizingValue } from './wordCloudLayoutSize';
 
 registerEChartsModules([SVGRenderer]);
 
@@ -104,6 +104,15 @@ function ResponsiveWordCloudInstance({
     const element = plotRef.current;
     if (!chart || !element) return;
 
+    const sizingWords = words.map((word) => ({
+      text: word.text,
+      value: wordCloudSizingValue(word.value),
+    }));
+    const layoutSize = wordCloudLayoutSize({
+      width: cloudWidth,
+      height: cloudHeight,
+      words: sizingWords,
+    });
     const series: WordflowWordCloudSeriesOption = {
       type: 'wordCloud',
       // A rectangular mask uses the whole pane instead of leaving corners empty.
@@ -113,10 +122,10 @@ function ResponsiveWordCloudInstance({
       top: 0,
       width: '100%',
       height: '100%',
-      sizeRange: wordCloudSizeRange({ width: cloudWidth, height: cloudHeight, words }),
+      sizeRange: layoutSize.sizeRange,
       rotationRange: [0, 0],
       rotationStep: 1,
-      gridSize: 4,
+      gridSize: layoutSize.gridSize,
       drawOutOfBound: false,
       shrinkToFit: true,
       layoutAnimation: false,
@@ -129,7 +138,7 @@ function ResponsiveWordCloudInstance({
       },
       data: words.map((word) => ({
         name: word.text,
-        value: word.value,
+        value: wordCloudSizingValue(word.value),
         textStyle: {
           color: word.color ?? color,
         },

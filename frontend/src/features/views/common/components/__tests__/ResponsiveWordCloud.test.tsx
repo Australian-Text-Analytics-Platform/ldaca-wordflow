@@ -29,7 +29,7 @@ vi.mock('echarts/core', () => ({ init: mocks.init, use: mocks.use }));
 vi.mock('echarts/renderers', () => ({ SVGRenderer: {} }));
 
 import { ResponsiveWordCloud } from '../ResponsiveWordCloud';
-import { wordCloudSizeRange } from '../wordCloudSizeRange';
+import { wordCloudLayoutSize, wordCloudSizingValue } from '../wordCloudLayoutSize';
 
 describe('ResponsiveWordCloud', () => {
   let measuredWidth = 500;
@@ -67,6 +67,16 @@ describe('ResponsiveWordCloud', () => {
   });
 
   it('maps words into a deterministic responsive SVG series and exposes it for export', () => {
+    // Two short words hit the third-of-height cap, so the smallest font grows.
+    const expectedLayout = wordCloudLayoutSize({
+      width: 500,
+      height: 300,
+      words: [
+        { text: 'alpha', value: 10 },
+        { text: 'beta', value: Math.sqrt(50) },
+      ],
+    });
+    expect(expectedLayout.sizeRange[1]).toBe(100);
     const svgRef = vi.fn();
     const { unmount } = render(
       <ResponsiveWordCloud
@@ -105,9 +115,9 @@ describe('ResponsiveWordCloud', () => {
             height: '100%',
             shape: 'square',
             keepAspect: false,
-            sizeRange: [25, 150],
+            sizeRange: expectedLayout.sizeRange,
             rotationRange: [0, 0],
-            gridSize: 4,
+            gridSize: expectedLayout.gridSize,
             drawOutOfBound: false,
             shrinkToFit: true,
             layoutAnimation: false,
@@ -115,12 +125,12 @@ describe('ResponsiveWordCloud', () => {
             data: [
               expect.objectContaining({
                 name: 'alpha',
-                value: 100,
+                value: 10,
                 textStyle: { color: '#ff0000' },
               }),
               expect.objectContaining({
                 name: 'beta',
-                value: 50,
+                value: Math.sqrt(50),
                 textStyle: { color: '#0000ff' },
               }),
             ],
@@ -207,31 +217,38 @@ describe('ResponsiveWordCloud', () => {
     expect(plainEvent.defaultPrevented).toBe(false);
   });
 
-  it('sizes fonts from the words so fewer words get larger text', () => {
+  it('compresses counts with a square root before sizing', () => {
+    expect(wordCloudSizingValue(10_000)).toBe(100);
+    expect(wordCloudSizingValue(-1)).toBe(0);
+  });
+
+  it('fills the pane from the words while capping the largest word', () => {
     const cloud = (count: number) =>
       Array.from({ length: count }, (_, index) => ({
         text: `word${String(index)}`,
-        value: count - index,
+        value: wordCloudSizingValue(1000 / (index + 1)),
       }));
-    const [, max100] = wordCloudSizeRange({ width: 1000, height: 600, words: cloud(100) });
-    const [, max50] = wordCloudSizeRange({ width: 1000, height: 600, words: cloud(50) });
-    const [, max100Wide] = wordCloudSizeRange({ width: 1600, height: 960, words: cloud(100) });
+    const many = wordCloudLayoutSize({ width: 1000, height: 600, words: cloud(100) });
+    const few = wordCloudLayoutSize({ width: 1000, height: 600, words: cloud(30) });
+    const wide = wordCloudLayoutSize({ width: 1600, height: 960, words: cloud(100) });
 
-    expect(max50).toBeGreaterThan(max100);
-    // Growing the pane grows the words.
-    expect(max100Wide).toBeGreaterThan(max100);
+    // The largest word never exceeds a third of the height.
+    expect(many.sizeRange[1]).toBeLessThanOrEqual(200);
+    // A short list hits the cap and grows its smallest words instead.
+    expect(few.sizeRange[1]).toBe(200);
+    expect(few.sizeRange[0]).toBeGreaterThan(many.sizeRange[0]);
+    // Growing the pane grows the words, and spacing follows the largest font.
+    expect(wide.sizeRange[1]).toBeGreaterThan(many.sizeRange[1]);
+    expect(wide.gridSize).toBeGreaterThanOrEqual(many.gridSize);
   });
 
-  it('caps a short list and keeps small clouds legible', () => {
-    expect(
-      wordCloudSizeRange({ width: 1000, height: 600, words: [{ text: 'a', value: 1 }] }),
-    ).toEqual([50, 300]);
-    const [minFont, maxFont] = wordCloudSizeRange({
+  it('keeps small clouds legible', () => {
+    const layout = wordCloudLayoutSize({
       width: 180,
       height: 86,
       words: Array.from({ length: 30 }, (_, index) => ({ text: 'representative', value: index })),
     });
-    expect(maxFont).toBe(24);
-    expect(minFont).toBe(10);
+    expect(layout.sizeRange).toEqual([10, 24]);
+    expect(layout.gridSize).toBe(4);
   });
 });
