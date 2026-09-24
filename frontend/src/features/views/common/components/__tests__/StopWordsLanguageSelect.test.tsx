@@ -3,13 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { StopWordListSource } from '../../utils/stopWordListSources';
 import { StopWordsLanguageSelect } from '../StopWordsLanguageSelect';
 
 vi.mock('@/features/views/common/hooks/useDetectedColumnLanguage', () => ({
   useDetectedColumnLanguage: () => ({ detectedLanguage: 'en', isDetecting: false }),
 }));
 
-function Harness({ initialWords = [] }: { initialWords?: string[] }) {
+function Harness({
+  initialWords = [],
+  sources = [],
+}: {
+  initialWords?: string[];
+  sources?: StopWordListSource[];
+}) {
   const [words, setWords] = useState(initialWords);
   return (
     <>
@@ -19,6 +26,7 @@ function Harness({ initialWords = [] }: { initialWords?: string[] }) {
         workspaceId="workspace-1"
         nodeId="node-1"
         column="text"
+        sources={sources}
       />
       <output data-testid="words">{words.join('|')}</output>
     </>
@@ -70,5 +78,36 @@ describe('StopWordsLanguageSelect', () => {
     expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
       'Select language',
     );
+  });
+
+  it("appends a copy of another tab's list under From other tabs", async () => {
+    const user = userEvent.setup();
+    render(
+      <Harness
+        initialWords={['the']}
+        sources={[
+          {
+            tabId: 'freq-1',
+            label: 'Frequency · Analysis 1',
+            words: ['university', 'the', 'staff'],
+          },
+        ]}
+      />,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    expect(screen.getByText('From other tabs')).toBeInTheDocument();
+    await user.click(screen.getByRole('option', { name: 'Frequency · Analysis 1 (3 words)' }));
+
+    expect(screen.getByTestId('words')).toHaveTextContent('the|university|staff');
+  });
+
+  it('hides the From other tabs group when no other tab has a list', async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+
+    expect(screen.queryByText('From other tabs')).not.toBeInTheDocument();
   });
 });

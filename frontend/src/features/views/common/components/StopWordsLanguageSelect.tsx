@@ -6,16 +6,19 @@ import {
   SelectContent,
   SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { useDetectedColumnLanguage } from '@/features/views/common/hooks/useDetectedColumnLanguage';
+import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { formatStopWords, mergeStopWordsText } from '@/features/views/common/utils/stopWords';
 import { listSupportedStopwordLanguages, loadMergedStopwords } from '@/lib/loadMergedStopwords';
 
 const SAVED_LIST_VALUE = '__saved__';
 const CLEAR_LIST_VALUE = '__clear__';
 const EMPTY_PROMPT_VALUE = '__prompt__';
+const TAB_SOURCE_PREFIX = 'tab:';
 
 interface StopWordsLanguageSelectProps {
   /** The tab's current normalized stop-word list. */
@@ -26,6 +29,8 @@ interface StopWordsLanguageSelectProps {
   workspaceId: string | null;
   nodeId: string | null;
   column: string | null;
+  /** Other tabs' saved lists offered under "From other tabs". */
+  sources?: StopWordListSource[];
   disabled?: boolean;
 }
 
@@ -34,7 +39,9 @@ interface StopWordsLanguageSelectProps {
  * Picking a language appends its default stop words to the current list
  * (duplicates skipped), so custom words and several languages can be combined;
  * "Clear stop words" starts again from an empty list. The detected column
- * language is listed first and marked "(Recommended)".
+ * language is listed first and marked "(Recommended)". Picking another tab's
+ * list under "From other tabs" appends a copy of its words in the same way;
+ * the tabs stay independent afterwards.
  *
  * Rendered by: TokenFrequencyResultsPanel and TopicModelingStopWordsControl
  * beside their stop-words switches.
@@ -45,6 +52,7 @@ export function StopWordsLanguageSelect({
   workspaceId,
   nodeId,
   column,
+  sources = [],
   disabled = false,
 }: StopWordsLanguageSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -88,6 +96,15 @@ export function StopWordsLanguageSelect({
     }
   };
 
+  const appendTabList = async (sourceWords: string[]) => {
+    setIsPending(true);
+    try {
+      await commit(mergeStopWordsText(formatStopWords(words), sourceWords));
+    } finally {
+      setIsPending(false);
+    }
+  };
+
   const clearWords = async () => {
     setIsPending(true);
     try {
@@ -106,6 +123,13 @@ export function StopWordsLanguageSelect({
         if (value === SAVED_LIST_VALUE || value === EMPTY_PROMPT_VALUE) return;
         if (value === CLEAR_LIST_VALUE) {
           void clearWords();
+          return;
+        }
+        if (value.startsWith(TAB_SOURCE_PREFIX)) {
+          const source = sources.find(
+            (candidate) => `${TAB_SOURCE_PREFIX}${candidate.tabId}` === value,
+          );
+          if (source) void appendTabList(source.words);
           return;
         }
         void appendLanguage(value);
@@ -144,6 +168,16 @@ export function StopWordsLanguageSelect({
             </SelectItem>
           ))}
         </SelectGroup>
+        {sources.length > 0 ? (
+          <SelectGroup>
+            <SelectLabel>From other tabs</SelectLabel>
+            {sources.map((source) => (
+              <SelectItem key={source.tabId} value={`${TAB_SOURCE_PREFIX}${source.tabId}`}>
+                {`${source.label} (${String(source.words.length)} words)`}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        ) : null}
       </SelectContent>
     </Select>
   );

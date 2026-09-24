@@ -14,6 +14,7 @@ import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisC
 import { AnalysisRunningStateCard } from '@/features/views/common/components/AnalysisRunningStateCard';
 import { TopicModelingBubbleChartSection } from '../results/TopicModelingBubbleChartSection';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
+import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 
 interface Props {
   topicWaitingBanner: {
@@ -66,6 +67,8 @@ interface Props {
     column: string | null;
   };
   onStopWordsChange: (words: string[]) => Promise<void>;
+  /** Other tabs' saved stop-word lists offered for copying. */
+  stopWordListSources?: StopWordListSource[];
 }
 
 function ClusterCountControl({
@@ -414,6 +417,7 @@ export function TopicModelingResultsPanel({
   stopWords,
   stopWordsDetectionTarget,
   onStopWordsChange,
+  stopWordListSources = [],
 }: Props) {
   const isRunningState = Boolean(topicWaitingBanner);
   const runningMessage =
@@ -561,6 +565,7 @@ export function TopicModelingResultsPanel({
                                   nodeId={stopWordsDetectionTarget.nodeId}
                                   column={stopWordsDetectionTarget.column}
                                   onSavedWordsChange={onStopWordsChange}
+                                  sources={stopWordListSources}
                                 />
                               </div>
                             </div>

@@ -1,3 +1,4 @@
+import { useStopWordListSources } from '@/features/views/common/hooks/useStopWordListSources';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { TopicModelingResponse, TopicModelingResultQuery, TopicModelingTopic } from '@/api';
@@ -62,6 +63,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   } = host;
   const tabTaskId = latestRunAll?.id ?? null;
   const { currentWorkspaceId } = useWorkspaceData();
+  const stopWordListSources = useStopWordListSources(currentWorkspaceId, host.tabId);
   const { setNodeColor: persistNodeColor, createTopicModelingDataBlocks } = useWorkspaceActions();
   const nodeInputs = useTabNodeInputs({
     tabInputSets,
@@ -516,6 +518,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             nodeId: firstResultNodeId,
             column: firstResultColumn,
           }}
+          stopWordListSources={stopWordListSources}
           onStopWordsChange={(words) => {
             return host.setPresentationSettings({ stopWords: words });
           }}

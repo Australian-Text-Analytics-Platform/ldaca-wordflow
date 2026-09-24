@@ -15,6 +15,7 @@ import { TokenFrequencyUnifiedTokenSection } from '../results/TokenFrequencyUnif
 import { useTokenFrequencyListLimit } from '../../hooks/useTokenFrequencyListLimit';
 import { StopWordsEnabledSwitch } from '@/features/views/common/components/StopWordsEnabledSwitch';
 import { StopWordsLanguageSelect } from '@/features/views/common/components/StopWordsLanguageSelect';
+import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { parseStopWordsText } from '@/features/views/common/utils/stopWords';
 import { TokenFrequencyTokenFilterCard } from './TokenFrequencyTokenFilterCard';
 
@@ -44,6 +45,8 @@ interface TokenFrequencyResultsPanelProps {
     nodeId: string | null;
     column: string | null;
   };
+  /** Other tabs' saved stop-word lists offered for copying. */
+  stopWordListSources?: StopWordListSource[];
   onSortStopWords: () => void;
   stopWordsEnabled: boolean;
   onStopWordsEnabledChange: (enabled: boolean) => void;
@@ -90,6 +93,7 @@ export const TokenFrequencyResultsPanel = ({
   onStopWordsApply,
   onStopWordsListChange,
   stopWordsLanguageSource,
+  stopWordListSources = [],
   onSortStopWords,
   stopWordsEnabled,
   onStopWordsEnabledChange,
@@ -181,6 +185,7 @@ export const TokenFrequencyResultsPanel = ({
                     workspaceId={stopWordsLanguageSource.workspaceId}
                     nodeId={stopWordsLanguageSource.nodeId}
                     column={stopWordsLanguageSource.column}
+                    sources={stopWordListSources}
                   />
                   <Button
                     type="button"

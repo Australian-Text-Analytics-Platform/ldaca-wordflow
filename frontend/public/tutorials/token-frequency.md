@@ -34,6 +34,7 @@ Stop words are terms you want to exclude from the frequency count — commonly w
 
 - Enable the filter, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
 - Pick a language from the **Select language** dropdown next to the switch to append that language's default stop words to the list (duplicates are skipped, so you can combine languages). The language detected from the first selected Data Block is marked **(Recommended)**. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
+- To reuse a list built in another tab, pick it under **From other tabs** in the same dropdown (for example *Topic Modeling · Analysis 1*). Its words are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.

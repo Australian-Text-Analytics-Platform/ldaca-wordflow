@@ -138,8 +138,10 @@ edit that list while filtering is off; the switch controls filtering only.
 Opening the language menu detects a recommendation from the first selected Data
 Block. Choosing a language appends its default stop words to the saved list
 (duplicates are skipped, so you can combine languages and keep custom words),
-while **Clear stop words** empties it. The menu returns to **Saved list (N
-words)** after a language is chosen. These controls change presentation without rerunning or refetching the
+while **Clear stop words** empties it. Lists saved in other Frequency or Topic
+Modeling tabs appear under **From other tabs**; picking one copies its words
+into this Tab's list, and the two lists stay independent afterwards. The menu
+returns to **Saved list (N words)** after a choice. These controls change presentation without rerunning or refetching the
 Result.
 
 <h3 id="help-topic-modeling-bubble-chart">Bubble chart</h3>

@@ -15,6 +15,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { StopWordsEnabledSwitch } from '@/features/views/common/components/StopWordsEnabledSwitch';
 import { StopWordsLanguageSelect } from '@/features/views/common/components/StopWordsLanguageSelect';
+import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { formatStopWords, parseStopWordsText } from '@/features/views/common/utils/stopWords';
 
 interface TopicModelingStopWordsControlProps {
@@ -25,6 +26,8 @@ interface TopicModelingStopWordsControlProps {
   nodeId: string | null;
   column: string | null;
   onSavedWordsChange: (words: string[]) => Promise<void>;
+  /** Other tabs' saved stop-word lists offered for copying. */
+  sources?: StopWordListSource[];
 }
 
 /**
@@ -41,6 +44,7 @@ export function TopicModelingStopWordsControl({
   nodeId,
   column,
   onSavedWordsChange,
+  sources = [],
 }: TopicModelingStopWordsControlProps) {
   const [editorOpen, setEditorOpen] = useState(false);
   const [editorDraft, setEditorDraft] = useState('');
@@ -79,6 +83,7 @@ export function TopicModelingStopWordsControl({
           workspaceId={workspaceId}
           nodeId={nodeId}
           column={column}
+          sources={sources}
           disabled={isSavingEditor}
         />
         <Tooltip>

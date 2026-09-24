@@ -22,6 +22,7 @@ import { DEFAULT_TAB_INPUT_SET_ID } from '../common/tabs/tabStateOps';
 import { deriveTokenizerModelsByNode } from '../common/tokenizerModelPreferences';
 import { DEFAULT_TOKEN_LIMIT } from '../common/utils';
 import { formatStopWords } from '../common/utils/stopWords';
+import { useStopWordListSources } from '../common/hooks/useStopWordListSources';
 import { TokenFrequencyParameterPanel } from './components/panels/TokenFrequencyParameterPanel';
 import { TokenFrequencyResultsPanel } from './components/panels/TokenFrequencyResultsPanel';
 import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloadDialog';
@@ -209,6 +210,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   // language. Language is not stored per column (a column may mix languages),
   // so the recommendation is derived on demand from the first selected text
   // column and the user picks the language in the dropdown.
+  const stopWordListSources = useStopWordListSources(currentWorkspaceId, host.tabId);
   const stopWordsLanguageSelection = nodeColumnSelections.find((selection) => selection.column);
   const stopWordsLanguageSource = {
     workspaceId: currentWorkspaceId,
@@ -483,6 +485,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         onStopWordsApply={handleApplyStopWords}
         onStopWordsListChange={handleStopWordsListChange}
         stopWordsLanguageSource={stopWordsLanguageSource}
+        stopWordListSources={stopWordListSources}
         onSortStopWords={sortStopWords}
         stopWordsEnabled={stopWordsEnabled}
         onStopWordsEnabledChange={(enabled) => {
