@@ -2,9 +2,10 @@
  * Estimated padded word-box area as a multiple of the canvas area. It exceeds 1
  * because echarts-wordcloud packs glyphs at pixel level, so small words fit in
  * the gaps around large ones. Measured with the real layout in headless
- * Chromium (1000x600, Zipf-like counts, square-root sizing, the constants
- * below): 1.5 spans about 83-97% of the pane for 10-100 words with every word
- * placed, with a visible size hierarchy.
+ * Chromium (1000x600, Zipf-like counts, square-root sizing, circle mask, the
+ * constants below): 1.5 spans about 88-97% of the pane at its widest and
+ * tallest for 10-100 words with every word placed, with a visible size
+ * hierarchy.
  */
 const TARGET_FILL = 1.5;
 /** Caps the largest word so frequent words cannot dominate the cloud. */

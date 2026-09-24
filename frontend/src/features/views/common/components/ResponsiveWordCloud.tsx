@@ -115,8 +115,8 @@ function ResponsiveWordCloudInstance({
     });
     const series: WordflowWordCloudSeriesOption = {
       type: 'wordCloud',
-      // A rectangular mask uses the whole pane instead of leaving corners empty.
-      shape: 'square',
+      // Circle stretched to the pane (keepAspect: false) gives the rounded cloud.
+      shape: 'circle',
       keepAspect: false,
       left: 0,
       top: 0,

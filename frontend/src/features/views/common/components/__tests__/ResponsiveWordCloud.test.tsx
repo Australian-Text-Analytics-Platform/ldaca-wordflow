@@ -113,7 +113,7 @@ describe('ResponsiveWordCloud', () => {
             type: 'wordCloud',
             width: '100%',
             height: '100%',
-            shape: 'square',
+            shape: 'circle',
             keepAspect: false,
             sizeRange: expectedLayout.sizeRange,
             rotationRange: [0, 0],
