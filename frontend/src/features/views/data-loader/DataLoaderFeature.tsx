@@ -15,7 +15,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import { AddFilePanel, FilePreviewPanel } from '@/features/views/data-loader/components';
-import { AddFolderPanel } from './components/AddFolderPanel';
+import { AddBatchPanel, type BatchSource } from './components/AddBatchPanel';
+import { useZipTableMembers } from './hooks/useZipTableMembers';
 import { useFiles } from '@/features/views/data-loader/hooks/useFiles';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
@@ -131,7 +132,7 @@ function DataLoaderFeature() {
 
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   const [addFileName, setAddFileName] = useState<string | null>(null);
-  const [addFolderPath, setAddFolderPath] = useState<string | null>(null);
+  const [addBatchSource, setAddBatchSource] = useState<BatchSource | null>(null);
   const filesPaneRef = useRef<HTMLDivElement | null>(null);
   const [filesPaneHeight, setFilesPaneHeight] = useState<number | null>(null);
   const {
@@ -316,17 +317,32 @@ function DataLoaderFeature() {
     }
   };
 
-  const addFolderDirectory = addFolderPath ? findDirectory(fileTree, addFolderPath) : null;
-  const closeAddFolder = () => {
-    setAddFolderPath(null);
+  const zipTables = useZipTableMembers(addBatchSource?.kind === 'zip' ? addBatchSource.path : null);
+  const batchFolder =
+    addBatchSource?.kind === 'folder' ? findDirectory(fileTree, addBatchSource.path) : null;
+  const batchTableFiles = batchFolder
+    ? tableFilesInDirectory(batchFolder).map((file) => ({
+        id: file.path,
+        label: file.path.slice(batchFolder.path.length + 1),
+      }))
+    : zipTables.members.map((member) => ({ id: member.path, label: member.path }));
+  const closeAddBatch = () => {
+    setAddBatchSource(null);
   };
-  const handleAddFolderTexts = async () => {
-    if (!addFolderPath) return;
+  const handleAddBatchTexts = async () => {
+    if (!addBatchSource) return;
     try {
-      await handleAddFileToWorkspace(addFolderPath);
+      await handleAddFileToWorkspace(addBatchSource.path);
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to add folder to project.');
+      notify('error', (error as Error).message || 'Failed to add to project.');
     }
+  };
+  const handleAddBatchTables = async (ids: string[]) => {
+    if (!addBatchSource) return;
+    await handleAddFilesToWorkspace(
+      ids,
+      addBatchSource.kind === 'zip' ? addBatchSource.path : undefined,
+    );
   };
 
   const workspaceBusy = isLoading.workspaces || isLoading.currentWorkspace;
@@ -577,7 +593,9 @@ function DataLoaderFeature() {
                           workspaceId={currentWorkspaceId}
                           onPreviewFile={setPreviewFile}
                           onAddFile={(path, isFolder = false) => {
-                            if (isFolder) setAddFolderPath(path);
+                            // Folders and ZIPs open the batch dialog (issue 136).
+                            if (isFolder) setAddBatchSource({ path, kind: 'folder' });
+                            else if (/\.zip$/i.test(path)) setAddBatchSource({ path, kind: 'zip' });
                             else setAddFileName(path);
                           }}
                           onSelectFile={setSelectedFile}
@@ -614,13 +632,14 @@ function DataLoaderFeature() {
           setPreviewFile(null);
         }}
       />
-      <AddFolderPanel
-        key={addFolderPath ?? 'none'}
-        folderPath={addFolderPath}
-        tableFiles={addFolderDirectory ? tableFilesInDirectory(addFolderDirectory) : []}
-        onClose={closeAddFolder}
-        onConfirmTexts={handleAddFolderTexts}
-        onConfirmTables={handleAddFilesToWorkspace}
+      <AddBatchPanel
+        key={addBatchSource ? `${addBatchSource.kind}:${addBatchSource.path}` : 'none'}
+        source={addBatchSource}
+        tableFiles={batchTableFiles}
+        tablesLoading={addBatchSource?.kind === 'zip' && zipTables.loading}
+        onClose={closeAddBatch}
+        onConfirmTexts={handleAddBatchTexts}
+        onConfirmTables={handleAddBatchTables}
       />
       <AddFilePanel
         filename={addFileName}

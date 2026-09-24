@@ -17,6 +17,7 @@ from ..domain.workspace import Node, Workspace
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
     DirectoryTooLargeError,
+    extract_zip_table_member,
     materialize_data_file,
     read_documents,
     normalize_dtypes,
@@ -144,22 +145,38 @@ class NodeService:
         ) as source_path:
             is_folder = await self._run_io(source_path.is_dir)
             metadata = await self._run_io(source_path.stat)
-            if not is_folder and metadata.st_size > self._max_source_bytes:
+            if (
+                not is_folder
+                and request.zip_member is None
+                and metadata.st_size > self._max_source_bytes
+            ):
                 raise ResourceTooLargeError("File is too large for node ingestion")
             try:
-                dataframe, dtype_changes, skipped = await self._run_io(
-                    _load_dataframe,
-                    source_path,
-                    request.sheet_name,
-                    self._max_source_bytes,
-                )
+                if request.zip_member is not None:
+                    dataframe, dtype_changes = await self._run_io(
+                        _load_zip_member_dataframe,
+                        source_path,
+                        request.zip_member,
+                        self._max_source_bytes,
+                    )
+                    skipped: list[dict[str, str | int]] = []
+                else:
+                    dataframe, dtype_changes, skipped = await self._run_io(
+                        _load_dataframe,
+                        source_path,
+                        request.sheet_name,
+                        self._max_source_bytes,
+                    )
             except DataFileLoadError as exc:
                 if isinstance(exc.__cause__, DirectoryTooLargeError):
                     raise ResourceTooLargeError(
                         "Folder is too large for node ingestion"
                     ) from exc
                 raise InvalidInputError("User file could not be loaded") from exc
-        node_name = (request.name or _node_name_from_path(request.file_path)).strip()
+        node_name = (
+            request.name
+            or _node_name_from_path(request.zip_member or request.file_path)
+        ).strip()
         valid, reason = validate_display_name(node_name)
         if not valid:
             raise InvalidInputError(f"Invalid node name: {reason}")
@@ -485,6 +502,24 @@ def _load_dataframe(
     data = materialize_data_file(path, sheet_name=sheet_name)
     frame, changes = normalize_dtypes(data)
     return frame, changes, []
+
+
+def _load_zip_member_dataframe(
+    zip_path: Path, member: str, max_source_bytes: int
+) -> tuple[pl.DataFrame, list[dict[str, str]]]:
+    """Load one table member of a ZIP (first sheet for spreadsheets)."""
+
+    with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
+        try:
+            extracted = extract_zip_table_member(
+                zip_path, member, Path(scratch), max_bytes=max_source_bytes
+            )
+        except DirectoryTooLargeError as exc:
+            raise ResourceTooLargeError("ZIP member is too large for node ingestion") from exc
+        except ValueError as exc:
+            raise DataFileLoadError("ZIP member could not be loaded") from exc
+        data = materialize_data_file(extracted)
+    return normalize_dtypes(data)
 
 
 def _node_name_from_path(relative_path: str) -> str:

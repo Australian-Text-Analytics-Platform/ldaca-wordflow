@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse, Response
 from starlette.background import BackgroundTask
 
-from ...models.files import FileWorksheetsResource
+from ...models.files import FileWorksheetsResource, ZipTableMembersResource
 from ..dependencies import RuntimeDep
 from ..responses import api_errors
 from ..security import CurrentSessionSecurityDep
@@ -34,8 +34,12 @@ async def preview_file(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=500),
     sheet_name: str | None = Query(None),
+    member: str | None = Query(None, min_length=1, max_length=4_000),
 ) -> Response:
-    """Return one self-contained Arrow IPC preview page."""
+    """Return one self-contained Arrow IPC preview page.
+
+    With ``member``, previews that table file inside the ZIP at ``path``.
+    """
 
     page_result = await runtime.file_read_service.preview(
         principal.user.id,
@@ -43,6 +47,7 @@ async def preview_file(
         page=page,
         page_size=page_size,
         sheet_name=sheet_name,
+        member=member,
     )
     return arrow_page_response(page_result)
 
@@ -66,6 +71,21 @@ async def preview_file_schema(
         sheet_name=sheet_name,
     )
     return arrow_stream_response(content)
+
+
+@router.get(
+    "/zip-tables",
+    response_model=ZipTableMembersResource,
+    responses=api_errors(400, 403, 404, 422),
+)
+async def list_zip_table_members(
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    path: str = Query(..., min_length=1),
+) -> ZipTableMembersResource:
+    """List the table files inside one ZIP, for loading as separate Data Blocks."""
+
+    return await runtime.file_read_service.zip_tables(principal.user.id, path)
 
 
 @router.get(

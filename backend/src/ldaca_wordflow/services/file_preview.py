@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import tempfile
 from functools import partial
 from pathlib import Path
 
@@ -14,10 +15,16 @@ from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
     DirectoryTooLargeError,
     detect_file_type,
+    extract_zip_table_member,
+    zip_table_members,
     load_data_file_preview,
     validate_spreadsheet_container,
 )
-from ..models.files import FileWorksheetsResource
+from ..models.files import (
+    FileWorksheetsResource,
+    ZipTableMember,
+    ZipTableMembersResource,
+)
 from ..shared.errors import InvalidInputError, ResourceTooLargeError
 from ..shared.table_transport import (
     IpcTablePage,
@@ -51,10 +58,21 @@ class FileReadService:
         page: int,
         page_size: int,
         sheet_name: str | None,
+        member: str | None = None,
     ) -> IpcTablePage:
         async with self._file_store.read_path(
             user_id, relative_path, allow_directory=True
         ) as path:
+            if member is not None:
+                # A table member of a ZIP, extracted within the preview limit.
+                return await self._run_sync(
+                    _materialize_zip_member_page,
+                    path,
+                    member,
+                    page,
+                    page_size,
+                    self._max_preview_bytes,
+                )
             await self._ensure_preview_size(path)
             return await self._run_sync(
                 _materialize_file_page,
@@ -64,6 +82,20 @@ class FileReadService:
                 sheet_name,
                 self._max_preview_bytes,
             )
+
+    async def zip_tables(self, user_id: str, relative_path: str) -> ZipTableMembersResource:
+        """List the table files inside one ZIP archive."""
+
+        async with self._file_store.read_path(user_id, relative_path) as path:
+            if detect_file_type(path.name) != "zip":
+                raise InvalidInputError("File is not a ZIP archive")
+            try:
+                members = await self._run_sync(zip_table_members, path)
+            except ValueError as exc:
+                raise InvalidInputError("ZIP archive could not be read") from exc
+        return ZipTableMembersResource(
+            members=[ZipTableMember(path=name, size=size) for name, size in members]
+        )
 
     async def schema(
         self,
@@ -171,6 +203,25 @@ def _materialize_file_page(
         raise
     except (DataFileLoadError, pl.exceptions.PolarsError) as exc:
         raise InvalidInputError("File preview could not be generated") from exc
+
+
+def _materialize_zip_member_page(
+    zip_path: Path,
+    member: str,
+    page: int,
+    page_size: int,
+    max_bytes: int,
+) -> IpcTablePage:
+    with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
+        try:
+            extracted = extract_zip_table_member(
+                zip_path, member, Path(scratch), max_bytes=max_bytes
+            )
+        except DirectoryTooLargeError as exc:
+            raise ResourceTooLargeError("ZIP member is too large to preview") from exc
+        except ValueError as exc:
+            raise InvalidInputError("ZIP member could not be read") from exc
+        return _materialize_file_page(extracted, page, page_size, None)
 
 
 def _file_schema(

@@ -2525,6 +2525,10 @@ export type FileNodeCreateRequest = {
      * Sheet Name
      */
     sheet_name?: string | null;
+    /**
+     * Zip Member
+     */
+    zip_member?: string | null;
 };
 
 /**
@@ -5342,6 +5346,34 @@ export type WorkspaceUpdateRequest = {
 };
 
 /**
+ * ZipTableMember
+ *
+ * One table file inside a ZIP archive.
+ */
+export type ZipTableMember = {
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Size
+     */
+    size: number;
+};
+
+/**
+ * ZipTableMembersResource
+ *
+ * Table files inside one ZIP, each loadable as its own Data Block.
+ */
+export type ZipTableMembersResource = {
+    /**
+     * Members
+     */
+    members: Array<ZipTableMember>;
+};
+
+/**
  * _TokenNodeTableResource
  */
 export type TokenNodeTableResource = {
@@ -7137,6 +7169,10 @@ export type PreviewFileData = {
          * Sheet Name
          */
         sheet_name?: string | null;
+        /**
+         * Member
+         */
+        member?: string | null;
     };
     url: '/api/user-files/preview';
 };
@@ -7434,6 +7470,52 @@ export type ListFileWorksheetsResponses = {
 };
 
 export type ListFileWorksheetsResponse = ListFileWorksheetsResponses[keyof ListFileWorksheetsResponses];
+
+export type ListZipTableMembersData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Path
+         */
+        path: string;
+    };
+    url: '/api/user-files/zip-tables';
+};
+
+export type ListZipTableMembersErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ListZipTableMembersError = ListZipTableMembersErrors[keyof ListZipTableMembersErrors];
+
+export type ListZipTableMembersResponses = {
+    /**
+     * Successful Response
+     */
+    200: ZipTableMembersResource;
+};
+
+export type ListZipTableMembersResponse = ListZipTableMembersResponses[keyof ListZipTableMembersResponses];
 
 export type ListWorkspacesData = {
     body?: never;

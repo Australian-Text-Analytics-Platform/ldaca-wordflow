@@ -4983,6 +4983,19 @@
               }
             ],
             "title": "Sheet Name"
+          },
+          "zip_member": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Zip Member"
           }
         },
         "required": [
@@ -10469,6 +10482,45 @@
         "title": "WorkspaceUpdateRequest",
         "type": "object"
       },
+      "ZipTableMember": {
+        "additionalProperties": false,
+        "description": "One table file inside a ZIP archive.",
+        "properties": {
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "size": {
+            "minimum": 0.0,
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "path",
+          "size"
+        ],
+        "title": "ZipTableMember",
+        "type": "object"
+      },
+      "ZipTableMembersResource": {
+        "additionalProperties": false,
+        "description": "Table files inside one ZIP, each loadable as its own Data Block.",
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/ZipTableMember"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "title": "ZipTableMembersResource",
+        "type": "object"
+      },
       "_TokenNodeTableResource": {
         "additionalProperties": false,
         "properties": {
@@ -13149,7 +13201,7 @@
     },
     "/api/user-files/preview": {
       "get": {
-        "description": "Return one self-contained Arrow IPC preview page.",
+        "description": "Return one self-contained Arrow IPC preview page.\n\nWith ``member``, previews that table file inside the ZIP at ``path``.",
         "operationId": "preview_file",
         "parameters": [
           {
@@ -13199,6 +13251,24 @@
                 }
               ],
               "title": "Sheet Name"
+            }
+          },
+          {
+            "in": "query",
+            "name": "member",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "minLength": 1,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Member"
             }
           }
         ],
@@ -13809,6 +13879,95 @@
           }
         ],
         "summary": "List File Worksheets",
+        "tags": [
+          "user-files"
+        ]
+      }
+    },
+    "/api/user-files/zip-tables": {
+      "get": {
+        "description": "List the table files inside one ZIP, for loading as separate Data Blocks.",
+        "operationId": "list_zip_table_members",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "path",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Path",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ZipTableMembersResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Zip Table Members",
         "tags": [
           "user-files"
         ]

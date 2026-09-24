@@ -94,7 +94,7 @@ describe('queryKeys file hierarchy', () => {
       'items',
       'sample/book.xlsx',
       'preview',
-      { page: 3, pageSize: 20, sheet: 'Sheet 2' },
+      { page: 3, pageSize: 20, sheet: 'Sheet 2', member: null },
     ]);
   });
 });

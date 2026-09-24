@@ -246,8 +246,21 @@ export const queryKeys = {
   fileWorksheets: (filename: string) => [...queryKeys.file(filename), 'worksheets'] as const,
 
   /** Paginated preview of an unsaved file (sheets/CSV/etc). */
-  filePreview: (filename: string, page: number, pageSize: number, selectedSheet: string | null) =>
-    [...queryKeys.file(filename), 'preview', { page, pageSize, sheet: selectedSheet }] as const,
+  filePreview: (
+    filename: string,
+    page: number,
+    pageSize: number,
+    selectedSheet: string | null,
+    member: string | null = null,
+  ) =>
+    [
+      ...queryKeys.file(filename),
+      'preview',
+      { page, pageSize, sheet: selectedSheet, member },
+    ] as const,
+
+  /** Table files inside one ZIP archive. */
+  zipTableMembers: (filename: string) => [...queryKeys.file(filename), 'zip-tables'] as const,
 
   /** Raw text projection of one file, such as a sample README. */
   fileRaw: (filename: string) => [...queryKeys.file(filename), 'raw'] as const,

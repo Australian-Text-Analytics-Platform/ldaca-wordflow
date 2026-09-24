@@ -112,18 +112,23 @@ for both:
   exe - 1*.
 - A folder's text files together must fit within the single-file size limit.
 
-When you add a folder with its **+** button, choose how to load it:
+When you add a folder (its **+** button) or a ZIP archive (**Add**), choose
+how to load it:
 
 - **Texts as one Data Block** (default) follows the document rules above.
 - **Tables as separate Data Blocks** lists every table file in the folder and
-  its subfolders (CSV, TSV, JSON/JSONL, Parquet, Avro, Arrow/IPC, and
-  spreadsheets, which use their first sheet). Tick the files you want, or use
-  **Select all** or **Select none**, and select a file name to preview it. Each
-  ticked file becomes its own Data Block named after the file. This mode is
-  available for folders, not ZIP archives.
+  its subfolders, or inside the ZIP (CSV, TSV, JSON/JSONL, Parquet, Avro,
+  Arrow/IPC, and spreadsheets, which use their first sheet). Tick the files
+  you want, or use **Select all** or **Select none**, and select a file name to
+  preview it. Each ticked file becomes its own Data Block named after the file.
+
+A ZIP inside a folder, or inside another ZIP, is never opened: it is skipped
+(and listed as skipped in Texts mode). Add the ZIP on its own to load its
+contents.
 
 To use a metadata table that sits beside the texts, add the texts in Texts
-mode and the CSV in Tables mode, then join them on `base_name`.
+mode and the CSV in Tables mode (from the same folder or ZIP), then join them
+on `base_name`.
 
 <h2 id="help-data-loader-import-sample-button">Import sample data</h2>
 

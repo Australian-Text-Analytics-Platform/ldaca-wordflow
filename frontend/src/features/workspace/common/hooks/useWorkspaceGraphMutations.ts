@@ -134,10 +134,23 @@ export const useWorkspaceGraphMutations = ({
 
   const createNodeMutation = useMutation({
     mutationKey: ['workspace', 'create-node'],
-    mutationFn: ({ filename, sheetName }: { filename: string; sheetName?: string }) =>
+    mutationFn: ({
+      filename,
+      sheetName,
+      zipMember,
+    }: {
+      filename: string;
+      sheetName?: string;
+      zipMember?: string;
+    }) =>
       createNode({
         path: { workspace_id: ensureWorkspaceSelected() },
-        body: { kind: 'file', file_path: filename, sheet_name: sheetName },
+        body: {
+          kind: 'file',
+          file_path: filename,
+          sheet_name: sheetName,
+          ...(zipMember ? { zip_member: zipMember } : {}),
+        },
         throwOnError: true,
       }).then(({ data }) => {
         return data;
@@ -293,10 +306,11 @@ export const useWorkspaceGraphMutations = ({
         setNodeColorMutation.mutateAsync({ nodeId, color }),
       deleteNode: (nodeId: string) => deleteNodeMutation.mutateAsync({ nodeId }),
       reorderNodes: (orderedIds: string[]) => reorderNodesMutation.mutateAsync({ orderedIds }),
-      createNodeFromFile: (filename: string, sheetName?: string) =>
+      createNodeFromFile: (filename: string, sheetName?: string, zipMember?: string) =>
         createNodeMutation.mutateAsync({
           filename,
           sheetName,
+          zipMember,
         }),
       joinNodes: (
         leftNodeId: string,

@@ -69,4 +69,26 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to project.');
     expect(notify).toHaveBeenCalledWith('error', '1 file could not be added.', 'b.csv');
   });
+
+  it('adds ZIP table members through their archive', async () => {
+    mocks.createNodeFromFile.mockReset();
+    mocks.createNodeFromFile.mockResolvedValue({});
+    const notify = vi.fn();
+    const { result } = renderHook(
+      () =>
+        useDataLoaderWorkspaceActions({
+          workspaceCatalogue: [],
+          hasWorkspaceSelected: true,
+          notify,
+        }),
+      { wrapper },
+    );
+
+    await act(async () => {
+      await result.current.handleAddFilesToWorkspace(['tables/a.csv'], 'bundle.zip');
+    });
+
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', undefined, 'tables/a.csv');
+    expect(notify).toHaveBeenCalledWith('success', '1 Data Block added to project.');
+  });
 });

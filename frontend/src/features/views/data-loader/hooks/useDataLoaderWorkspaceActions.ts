@@ -277,11 +277,13 @@ export function useDataLoaderWorkspaceActions({
    * Adds several table files as one Data Block each (a folder's Tables mode),
    * reporting one summary instead of a toast per file.
    */
-  const handleAddFilesToWorkspace = async (paths: string[]) => {
+  const handleAddFilesToWorkspace = async (paths: string[], zipPath?: string) => {
     const failed: string[] = [];
     for (const path of paths) {
       try {
-        await workspaceActions.createNodeFromFile(path);
+        // With `zipPath`, each path is a table member inside that ZIP.
+        if (zipPath) await workspaceActions.createNodeFromFile(zipPath, undefined, path);
+        else await workspaceActions.createNodeFromFile(path);
       } catch {
         failed.push(path);
       }

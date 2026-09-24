@@ -383,6 +383,75 @@ def read_documents(
     return None
 
 
+# Table formats that a ZIP member (or folder file) can load as its own Data Block.
+TABLE_EXTENSIONS: Final = frozenset(
+    suffix
+    for suffix, kind in LOADABLE_FILE_TYPES.items()
+    if kind not in {"text", "zip"}
+)
+
+
+def is_table_path(name: str) -> bool:
+    """Return whether ``name`` has a loadable table extension (never ``.zip``)."""
+
+    return PurePosixPath(name).suffix.lower() in TABLE_EXTENSIONS
+
+
+def zip_table_members(file_path: Path) -> list[tuple[str, int]]:
+    """List ``(member path, size)`` for every table file inside a ZIP.
+
+    Nested ZIPs are not opened; hidden and OS metadata members are ignored.
+    """
+
+    try:
+        with zipfile.ZipFile(file_path) as archive:
+            members = _validate_zip_members(archive, label="ZIP archive")
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise ValueError("ZIP archive is invalid") from exc
+    return sorted(
+        (member.filename, member.file_size)
+        for member in members
+        if not member.is_dir()
+        and not _is_skipped_document_path(PurePosixPath(member.filename))
+        and is_table_path(member.filename)
+    )
+
+
+def extract_zip_table_member(
+    file_path: Path, member_name: str, destination_dir: Path, *, max_bytes: int
+) -> Path:
+    """Extract one table member into ``destination_dir`` for the standard loaders.
+
+    The member keeps only its extension on disk (``member.csv``), so its name
+    cannot escape the destination. Raises ``DirectoryTooLargeError`` when the
+    member exceeds ``max_bytes``.
+    """
+
+    if not is_table_path(member_name):
+        raise ValueError("ZIP member is not a table file")
+    try:
+        with zipfile.ZipFile(file_path) as archive:
+            members = _validate_zip_members(archive, label="ZIP archive")
+            member = next(
+                (item for item in members if item.filename == member_name), None
+            )
+            if member is None or member.is_dir():
+                raise ValueError("ZIP member not found")
+            if member.file_size > max_bytes:
+                raise DirectoryTooLargeError("ZIP member is too large to load")
+            target = destination_dir / f"member{PurePosixPath(member_name).suffix.lower()}"
+            written = 0
+            with archive.open(member) as source, target.open("wb") as sink:
+                while chunk := source.read(1024 * 1024):
+                    written += len(chunk)
+                    if written > max_bytes:
+                        raise DirectoryTooLargeError("ZIP member is too large to load")
+                    sink.write(chunk)
+            return target
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+        raise ValueError("ZIP archive is invalid") from exc
+
+
 def validate_spreadsheet_container(file_path: Path) -> None:
     """Bound and validate ZIP-based spreadsheet containers before parsing."""
 

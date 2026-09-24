@@ -39,6 +39,19 @@ class FileWorksheetsResource(_StrictModel):
     default_sheet: str = Field(min_length=1)
 
 
+class ZipTableMember(_StrictModel):
+    """One table file inside a ZIP archive."""
+
+    path: str
+    size: int = Field(ge=0)
+
+
+class ZipTableMembersResource(_StrictModel):
+    """Table files inside one ZIP, each loadable as its own Data Block."""
+
+    members: list[ZipTableMember]
+
+
 class CreateFolderRequest(_StrictModel):
     """Create one validated child under a relative parent path."""
 

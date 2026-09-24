@@ -8,7 +8,12 @@ import { queryKeys } from '@/lib/queryKeys';
  * Used by: `AddFilePanel` and `FilePreviewPanel`.
  * Flow: reset page/sheet state when the dialog closes, query the requested preview page, then expose rows, columns, paging, and sheet controls.
  */
-export const useFilePreview = (filename: string | null, isOpen: boolean) => {
+export const useFilePreview = (
+  filename: string | null,
+  isOpen: boolean,
+  /** A table file inside the ZIP named by `filename` (issue 136). */
+  member: string | null = null,
+) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
@@ -22,7 +27,7 @@ export const useFilePreview = (filename: string | null, isOpen: boolean) => {
   }, [isOpen, filename]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const isExcel = Boolean(filename && /\.(xlsx?|xlsb)$/i.test(filename));
+  const isExcel = !member && Boolean(filename && /\.(xlsx?|xlsb)$/i.test(filename));
   const worksheetsQuery = useQuery({
     queryKey: queryKeys.fileWorksheets(filename ?? ''),
     queryFn: async () => {
@@ -38,7 +43,7 @@ export const useFilePreview = (filename: string | null, isOpen: boolean) => {
   });
 
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, selectedSheet),
+    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, selectedSheet, member),
     /** Loads the current preview page only when the dialog has a filename to display. */
     /** Called by: TanStack Query inside useFilePreview. */
     queryFn: async () => {
@@ -49,6 +54,7 @@ export const useFilePreview = (filename: string | null, isOpen: boolean) => {
           page,
           page_size: pageSize,
           sheet_name: selectedSheet,
+          member,
         },
       });
     },

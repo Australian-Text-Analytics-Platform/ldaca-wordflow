@@ -64,6 +64,8 @@ class FileNodeCreateRequest(_StrictRequest):
     file_path: str = Field(min_length=1)
     sheet_name: str | None = None
     name: NodeName | None = None
+    # A table file inside the ZIP at ``file_path``, loaded as its own Data Block.
+    zip_member: str | None = Field(default=None, min_length=1, max_length=4_000)
 
 
 class CloneNodeCreateRequest(CloneDerivation):
