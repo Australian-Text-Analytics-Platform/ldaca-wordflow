@@ -32,7 +32,7 @@ Below the tool list, the **Data Blocks** panel shows every data block in the act
 - Click a data block to toggle its selection. Click again to deselect it. For tools that require more than one data block (e.g. Join or Stack), simply click each block in turn to build up a multi-selection.
 - A filled circular checkbox indicates a selected data block; an empty circle indicates an unselected one.
 - The list is sorted so that selected blocks always appear at the top, ordered by most recently selected first. Unselected blocks follow in alphabetical order.
-- Selected data blocks automatically populate the tool interface (section 6) and the Data Viewer (section 5).
+- Selected data blocks automatically populate the tool interface (section 6) and the Data Editor (section 5).
 - Most tools can only process a limited number of data blocks at a time; by default these are the most recently selected ones.
 
 <h2 id="help-ui-task-centre">3. Task Centre</h2>
@@ -52,7 +52,7 @@ from the active Project together with your retained User File Imports.
 
 <h2 id="help-ui-workspace-graph-view">4. Project Graph</h2>
 
-**Note:** The entire right column (Project Graph and Data Viewer) can be collapsed to save screen space. Click the top-right arrow button to hide or show the right pane.
+**Note:** The entire right column (Project Graph and Data Editor) can be collapsed to save screen space. Click the top-right arrow button to hide or show the right pane.
 
 The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a Derived Data Block draws an edge from parent to child. Updating an existing Data Block does not change the graph.
 
@@ -69,12 +69,19 @@ The **Project Graph** occupies the top-right area and visualises Data Block crea
   - **Delete (n)** — asks for confirmation, then deletes all selected Data Blocks. Greyed out when nothing is selected.
 - Asterisked nodes indicate the currently selected data blocks.
 
-<h2 id="help-ui-data-viewer">5. Data Viewer</h2>
+<h2 id="help-ui-data-viewer">5. Data Editor</h2>
 
-The **Data Viewer** fills the bottom-right area and displays the contents of selected data blocks in a tabular format.
+The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make a new data block (Filter, Sample, Join, Stack) are in Data Preprocessing.
 
 - Tabs along the top let you switch between multiple selected data blocks.
-- The **Data View** sub-tab shows the raw table; the **Rename** button lets you rename the data block.
+- The **Rename** button lets you rename the data block.
+- **Column tools** change the selected data block without creating a new one:
+  - **Add column**: **Combine columns** (join several columns with a separator), **Duplicate column** (the copy is placed right of the original and named like a copied file, for example `text copy`, then `text copy 2`), **Extract text** (copy the matches of a pattern into a new column), and **Split column** (split on a delimiter into several columns, the last keeping any remaining text).
+  - **Find & replace**: replace the matches of a regular expression, in the same column or a new one.
+  - **Clean text**: trim spaces, collapse repeated spaces, change case (lowercase, UPPERCASE, Title Case), or remove punctuation, digits, web links, or HTML tags, in the same column or a new one.
+  - The same tools are in each column's settings menu, with that column already chosen.
+- A tool opens in a panel above the table, in place of the Project Graph (use **Show Project Graph** to look at the graph, and **Back to** *tool* to return). While you set it up, the table previews the result with the affected columns highlighted, and the panel reports how many rows change across the whole data block. **Apply** makes the change as one step, so **Undo** reverses it; **Cancel** discards it.
+- If you select another data block while a tool has unfinished settings, Wordflow asks whether to **Keep editing** or **Discard** them.
 - **Delete columns** opens a list of the Data Block's columns: tick the ones to remove (filter, **Select all**, **Select none**), then confirm. They are removed in one step, so a single **Undo** brings them all back. At least one column must remain.
 - **Undo** and **Redo** revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
 - Each column header shows the column name and its data type (e.g. `datetime`, `string`). Click the settings icon on a column to rename or delete it; use the data-type menu to convert its type. These operations update the selected Data Block without creating a new one. When converting, the app attempts to guess the date format automatically. This works for many common formats but can fail or produce incorrect results when the format is ambiguous (e.g. `01/02/03` could be read as DD/MM/YY, MM/DD/YY, or YY/MM/DD). If the conversion fails or the dates look wrong, use the **Format** field to specify the format explicitly using [Python strftime/strptime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes). Common examples:
@@ -87,7 +94,7 @@ The **Data Viewer** fills the bottom-right area and displays the contents of sel
 - Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The <a href="tutorials/assets/ui/row_details.png" target="_blank">row details</a> panel has two sections:
   - **Document** — shows the full text of the data block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the data block, this section is omitted.
   - **Metadata** — shows all remaining columns as a two-column key/value table, making it easy to inspect structured fields such as speaker, date, or source alongside the document text.
-- Use **Previous row** and **Next row** at the bottom of the Row Details panel to review adjacent displayed rows. The Data Viewer changes table pages automatically when you move past the first or last row on a page.
+- Use **Previous row** and **Next row** at the bottom of the Row Details panel to review adjacent displayed rows. The Data Editor changes table pages automatically when you move past the first or last row on a page.
 - The table is paginated — use the controls at the bottom to navigate through large data blocks.
 - Scroll vertically with your mouse scroll wheel. Hold **Shift** to scroll horizontally.
 
@@ -96,7 +103,7 @@ The **Data Viewer** fills the bottom-right area and displays the contents of sel
 The centre column is the main working area and shows the interface of whichever tool is selected in section 1. Each tool provides its own configuration options, previews, and action buttons.
 
 - The tool name and a short description appear at the top.
-- Sub-tabs (e.g. Filter, Sample, Join, Stack, Find, Create in Preprocessing) let you switch between related operations within the same tool.
+- Sub-tabs (e.g. Filter, Sample, Join, Stack in Preprocessing) let you switch between related operations within the same tool.
 - Most tools follow a common workflow: configure parameters → review a preview → click **Create Data Block** or **Update Data Block**. Tools that change rows (Filter, Sample, Join, Stack) always create a new block; Find and Create always update the selected block in place without changing its rows.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
 

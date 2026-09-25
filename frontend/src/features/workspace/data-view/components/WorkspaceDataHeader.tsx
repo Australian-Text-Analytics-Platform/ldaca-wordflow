@@ -1,8 +1,16 @@
 import { useEffect, useState, useRef } from 'react';
-import { Columns3, Pencil, Redo2, Undo2 } from 'lucide-react';
+import { ChevronDown, Columns3, Eraser, Pencil, Plus, Redo2, Replace, Undo2 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import HelpIcon from '@/components/help/HelpIcon';
 import { cn } from '@/lib/utils';
 import { DeleteColumnsDialog } from './DeleteColumnsDialog';
+import { CLEAN_TEXT_OPERATIONS } from '../dataEditorRequests';
+import type { DataEditorTool } from '../dataEditorToolStore';
 
 import type { WorkspaceDataTableHeaderInfo } from '../hooks/useWorkspaceDataTable';
 
@@ -13,7 +21,15 @@ interface WorkspaceDataHeaderProps {
   onRedo?: () => void;
   /** Deletes several columns in one edit (issue 141). */
   onDeleteColumns?: (columns: string[]) => Promise<void>;
+  /** Opens a Data Editor tool (issue 143). */
+  onOpenTool?: (
+    tool: DataEditorTool,
+    options?: { column?: string | null; operation?: string | null },
+  ) => void;
 }
+
+const TOOL_BUTTON =
+  'inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50';
 
 /**
  * Keeps the selected data-node label on the header row while preserving the
@@ -85,6 +101,7 @@ export const WorkspaceDataHeader = ({
   onRename,
   onUndo,
   onDeleteColumns,
+  onOpenTool,
   onRedo,
 }: WorkspaceDataHeaderProps) => {
   const [renameDraft, setRenameDraft] = useState<{ baseLabel: string; value: string }>();
@@ -122,10 +139,10 @@ export const WorkspaceDataHeader = ({
   return (
     <div className="shrink-0 border-b border-surface-border bg-panel p-2">
       <div className="flex min-w-0 items-center gap-2">
-        <h3 className="shrink-0 text-body font-medium text-foreground">Data View</h3>
+        <h3 className="shrink-0 text-body font-medium text-foreground">Data Editor</h3>
         <HelpIcon
           targetKey="ui.data-viewer"
-          label="Data Viewer"
+          label="Data Editor"
           className="h-5 w-5 shrink-0 text-description"
         />
         <span className="shrink-0 text-description">|</span>
@@ -169,7 +186,81 @@ export const WorkspaceDataHeader = ({
           )}
         </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5">
+        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+          {onOpenTool ? (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={TOOL_BUTTON}>
+                    <Plus className="h-3 w-3" />
+                    Add column
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      onOpenTool('combine');
+                    }}
+                  >
+                    Combine columns…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      onOpenTool('duplicate');
+                    }}
+                  >
+                    Duplicate column…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      onOpenTool('extract');
+                    }}
+                  >
+                    Extract text…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      onOpenTool('split');
+                    }}
+                  >
+                    Split column…
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <button
+                type="button"
+                className={TOOL_BUTTON}
+                onClick={() => {
+                  onOpenTool('find_replace');
+                }}
+              >
+                <Replace className="h-3 w-3" />
+                Find &amp; replace
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button type="button" className={TOOL_BUTTON}>
+                    <Eraser className="h-3 w-3" />
+                    Clean text
+                    <ChevronDown className="h-3 w-3" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {CLEAN_TEXT_OPERATIONS.map((option) => (
+                    <DropdownMenuItem
+                      key={option.value}
+                      onSelect={() => {
+                        onOpenTool('clean_text', { operation: option.value });
+                      }}
+                    >
+                      {option.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : null}
           {onDeleteColumns ? (
             <button
               type="button"

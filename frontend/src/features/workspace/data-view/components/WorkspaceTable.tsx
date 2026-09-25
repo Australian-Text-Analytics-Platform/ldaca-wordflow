@@ -30,6 +30,7 @@ import { RowDetailPanel } from '@/features/views/common/components/RowDetailPane
 import { useRowDetailDialog } from '@/features/views/common/components/useRowDetailDialog';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 import { WorkspaceColumnHeader } from './WorkspaceColumnHeader';
+import type { DataEditorTool } from '../dataEditorToolStore';
 import { TopicCoverageBar } from './TopicCoverageBar';
 import type { DataRow, NodeTablePagination } from '../types';
 import { arrowTypeName, type ArrowField } from '@/lib/arrow/arrowTable';
@@ -78,6 +79,10 @@ export interface WorkspaceTableProps {
   onSortingChange?: (sorting: SortingState) => void;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  /** Columns a Data Editor tool preview adds or changes (issue 143). */
+  highlightColumns?: string[];
+  /** Opens a Data Editor tool with a column pre-filled (issue 143). */
+  onOpenTool?: (tool: DataEditorTool, options?: { column?: string | null }) => void;
 }
 
 /**
@@ -107,7 +112,10 @@ export function WorkspaceTable({
   onSortingChange,
   onPageChange,
   onPageSizeChange,
+  highlightColumns,
+  onOpenTool,
 }: WorkspaceTableProps) {
+  const highlighted = useMemo(() => new Set(highlightColumns ?? []), [highlightColumns]);
   const viewportRef = useRef<HTMLDivElement>(null);
   const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: [], end: [] });
@@ -277,6 +285,13 @@ export function WorkspaceTable({
           onRequestDelete={() => {
             requestDeleteColumn(column);
           }}
+          onOpenTool={
+            onOpenTool
+              ? (tool) => {
+                  onOpenTool(tool, { column });
+                }
+              : undefined
+          }
         />
       ),
       /**
@@ -453,7 +468,9 @@ export function WorkspaceTable({
                           meta?.headerClassName,
                           'h-8 px-1 py-1 last:border-r-0',
                           header.column.getIsPinned() ? 'bg-panel' : 'bg-panel',
+                          highlighted.has(header.column.id) && 'bg-button/20',
                         )}
+                        data-preview-column={highlighted.has(header.column.id) || undefined}
                         style={{
                           ...(meta?.headerMinWidth
                             ? { minWidth: `${String(meta.headerMinWidth)}px` }
@@ -501,6 +518,7 @@ export function WorkspaceTable({
                           meta?.cellClassName,
                           'last:border-r-0',
                           cell.column.getIsPinned() ? 'bg-surface' : undefined,
+                          highlighted.has(cell.column.id) && 'bg-button/10',
                         )}
                         style={{
                           ...(meta?.cellMinWidth

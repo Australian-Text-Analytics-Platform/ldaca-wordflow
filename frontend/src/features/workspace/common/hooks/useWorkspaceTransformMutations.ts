@@ -17,7 +17,6 @@ import type {
 import type { PolarsExpressionRequest } from '@/api';
 import type { FilterRequest as FilterRequestPayload } from '@/features/views/preprocessing/types';
 import type { SliceRequestPayload } from '@/features/views/preprocessing/slice/hooks/sliceFormModel';
-import type { ReplaceRequest } from '@/features/views/preprocessing/replace/hooks/replaceRequestModel';
 import type { PreprocessingApplyMode } from '@/features/views/preprocessing/preprocessingApplyMode';
 import type { ColumnCastType } from '@/features/workspace/data-view/services/schemaMutations';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
@@ -84,9 +83,7 @@ export const useWorkspaceTransformMutations = ({
   type NodePreviewBody = NonNullable<PreviewNodeCreationData['body']>;
   type FilterNodeCreateBody = Extract<NodeCreateBody, { kind: 'filter' }>;
   type SliceNodeCreateBody = Extract<NodeCreateBody, { kind: 'slice' }>;
-  type ReplaceNodeCreateBody = Extract<NodeCreateBody, { kind: 'replace' }>;
   type ExpressionNodeCreateBody = Extract<NodeCreateBody, { kind: 'expression' }>;
-  type ReplaceNodeEditBody = Extract<NodeEditBody, { kind: 'replace' }>;
   type ExpressionNodeEditBody = Extract<NodeEditBody, { kind: 'expression' }>;
   type CastNodeEditBody = Extract<NodeEditBody, { kind: 'cast' }>;
 
@@ -102,19 +99,6 @@ export const useWorkspaceTransformMutations = ({
     source_node_id: nodeId,
     ...request,
   });
-  const replaceBody = (nodeId: string, request: ReplaceRequest): ReplaceNodeCreateBody => ({
-    kind: 'replace',
-    source_node_id: nodeId,
-    source_column: request.source_column,
-    pattern: request.pattern,
-    replacement: request.replacement,
-    output_column: request.output_column,
-    mode: request.mode,
-    count: request.count,
-    match_limit: request.match_limit,
-    connector: request.connector,
-    name: request.name,
-  });
   const expressionBody = (
     nodeId: string,
     request: PolarsExpressionRequest,
@@ -125,17 +109,6 @@ export const useWorkspaceTransformMutations = ({
     expressions: request.expressions,
     group_by: request.group_by,
     name: request.name,
-  });
-  const replaceEditBody = (request: ReplaceRequest): ReplaceNodeEditBody => ({
-    kind: 'replace',
-    source_column: request.source_column,
-    pattern: request.pattern,
-    replacement: request.replacement,
-    output_column: request.output_column,
-    mode: request.mode,
-    count: request.count,
-    match_limit: request.match_limit,
-    connector: request.connector,
   });
   // Data Block Edits never change rows, so in-place expressions may only add
   // or change columns; the backend rejects any other context.
@@ -180,39 +153,6 @@ export const useWorkspaceTransformMutations = ({
     onSuccess: (response) => {
       markCreatedNode(response);
       invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
-    },
-  });
-
-  const replaceTextMutation = useMutation({
-    mutationKey: ['workspace', 'replace-text'],
-    mutationFn: ({
-      nodeId,
-      request,
-      mode,
-    }: {
-      nodeId: string;
-      request: ReplaceRequest;
-      mode: PreprocessingApplyMode;
-    }) =>
-      (mode === 'update'
-        ? editNode({
-            body: replaceEditBody(request),
-            path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
-            throwOnError: true,
-          })
-        : createNode({
-            body: replaceBody(nodeId, request),
-            path: { workspace_id: ensureWorkspaceSelected() },
-            throwOnError: true,
-          })
-      ).then(({ data }) => requireNode(data)),
-    onSuccess: (response, variables) => {
-      if (variables.mode === 'update') {
-        invalidateEditedNode(variables.nodeId);
-      } else {
-        markCreatedNode(response);
-        invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
-      }
     },
   });
 
@@ -279,6 +219,19 @@ export const useWorkspaceTransformMutations = ({
     mutationFn: ({ nodeId, column }: { nodeId: string; column: string }) =>
       editNode({
         body: { kind: 'delete_column', column },
+        path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
+        throwOnError: true,
+      }).then(({ data }) => requireNode(data)),
+    onSuccess: (_response, variables) => {
+      invalidateEditedNode(variables.nodeId);
+    },
+  });
+
+  const applyEditMutation = useMutation({
+    mutationKey: ['workspace', 'apply-edit'],
+    mutationFn: ({ nodeId, body }: { nodeId: string; body: EditNodeData['body'] }) =>
+      editNode({
+        body,
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
       }).then(({ data }) => requireNode(data)),
@@ -455,39 +408,6 @@ export const useWorkspaceTransformMutations = ({
           query: { page, page_size: pageSize },
           signal,
         }).then((result) => toPreviewResponse(result, page, pageSize)),
-      replaceText: (
-        nodeId: string,
-        request: ReplaceRequest,
-        mode: PreprocessingApplyMode = 'create',
-      ) => replaceTextMutation.mutateAsync({ nodeId, request, mode }),
-      replaceTextPreview: ({
-        workspaceId,
-        nodeId,
-        payload,
-        page,
-        pageSize,
-        signal,
-      }: WorkspaceOperationPreviewRequest<ReplaceRequest>) =>
-        previewNodeCreationTable({
-          body: replaceBody(nodeId, payload) satisfies NodePreviewBody,
-          path: { workspace_id: workspaceId },
-          query: { page, page_size: pageSize },
-          signal,
-        }).then((result) => toPreviewResponse(result, page, pageSize)),
-      polarsExpressionPreview: ({
-        workspaceId,
-        nodeId,
-        payload,
-        page,
-        pageSize,
-        signal,
-      }: WorkspaceOperationPreviewRequest<PolarsExpressionRequest>) =>
-        previewNodeCreationTable({
-          body: expressionBody(nodeId, payload) satisfies NodePreviewBody,
-          path: { workspace_id: workspaceId },
-          query: { page, page_size: pageSize },
-          signal,
-        }).then((result) => toPreviewResponse(result, page, pageSize)),
       polarsExpressionApply: (
         nodeId: string,
         request: PolarsExpressionRequest,
@@ -499,6 +419,9 @@ export const useWorkspaceTransformMutations = ({
         renameColumnMutation.mutateAsync({ nodeId, column, newName }),
       deleteColumn: (nodeId: string, column: string) =>
         deleteColumnMutation.mutateAsync({ nodeId, column }),
+      /** Applies one Data Editor tool's edit (issue 143). */
+      applyEdit: (nodeId: string, body: EditNodeData['body']) =>
+        applyEditMutation.mutateAsync({ nodeId, body }),
       /** One edit, so a single Undo restores every column (issue 141). */
       deleteColumns: (nodeId: string, columns: string[]) =>
         deleteColumnsMutation.mutateAsync({ nodeId, columns }),

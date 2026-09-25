@@ -21,7 +21,7 @@ describe('WorkspaceDataHeader', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Data Viewer' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Data Editor' })).toBeInTheDocument();
   });
 
   it('keeps the selected node name in a leading-fade single-line wrapper', () => {

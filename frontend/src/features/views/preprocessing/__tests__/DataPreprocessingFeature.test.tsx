@@ -20,10 +20,6 @@ const mockSliceNode = vi.fn();
 const mockSlicePreview = vi.fn();
 const mockFilterNode = vi.fn();
 const mockFilterPreview = vi.fn();
-const mockPolarsExpressionPreview = vi.fn();
-const mockPolarsExpressionApply = vi.fn();
-const mockReplacePreview = vi.fn();
-const mockReplaceText = vi.fn();
 const mockRefreshNodeSchema = vi.fn();
 const mockGetNodeDataByWorkspaceId = vi.hoisted(() => vi.fn());
 const mockQueryWorkspaceSqlTable = vi.hoisted(() => vi.fn());
@@ -118,8 +114,6 @@ vi.mock('@/stores/preprocessingInputsStore', () => {
     byKey: {
       '__anonymous__::ws-1::filter': selectedInput,
       '__anonymous__::ws-1::slice': selectedInput,
-      '__anonymous__::ws-1::find': selectedInput,
-      '__anonymous__::ws-1::aggregate': selectedInput,
       '__anonymous__::ws-1::join': selectedInput,
       '__anonymous__::ws-1::concat': selectedInput,
     },
@@ -146,11 +140,7 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
     concatPreview: vi.fn(),
     sliceNode: mockSliceNode,
     slicePreview: mockSlicePreview,
-    replaceText: mockReplaceText,
-    replaceTextPreview: mockReplacePreview,
     refreshNodeSchema: mockRefreshNodeSchema,
-    polarsExpressionPreview: mockPolarsExpressionPreview,
-    polarsExpressionApply: mockPolarsExpressionApply,
   }),
 }));
 
@@ -249,21 +239,6 @@ describe('DataPreprocessingFeature replace tab', () => {
         node_name: 'Corpus_sampled',
       },
     });
-    mockReplacePreview.mockResolvedValue({
-      columns: ['Body', 'Count'],
-      data: [{ Body: 'Invoice #', Count: 1 }],
-      pagination: {
-        page: 1,
-        page_size: 10,
-        has_next: false,
-      },
-    });
-    mockReplaceText.mockResolvedValue({
-      state: 'successful',
-      node_id: 'node-1',
-      column_name: 'Body',
-      message: 'Updated column Body',
-    });
   });
 
   it('uses the shared editor-tab strip with one-row horizontal overflow', () => {
@@ -278,52 +253,6 @@ describe('DataPreprocessingFeature replace tab', () => {
       'data-guidance',
       'preprocessing-operation-filter',
     );
-  });
-
-  it('builds a regex replace expression from the Find tab', async () => {
-    const user = userEvent.setup();
-    const regexPattern = String.raw`\d+`;
-
-    renderPreprocessingFeature();
-
-    await user.click(screen.getByRole('tab', { name: 'Find' }));
-
-    await user.type(screen.getByLabelText('Regex pattern'), regexPattern);
-    await user.type(screen.getByLabelText('Replacement'), '#');
-
-    await waitFor(() => {
-      const [previewRequest] = mockReplacePreview.mock.calls[0] ?? [];
-      expect(previewRequest).toMatchObject({
-        workspaceId: 'ws-1',
-        nodeId: 'node-1',
-        page: 1,
-        pageSize: 10,
-        signal: expect.any(AbortSignal),
-        payload: {
-          source_column: 'Body',
-          pattern: regexPattern,
-          replacement: '#',
-          output_column: 'Body',
-        },
-      });
-    });
-
-    expect(screen.getByText('Invoice #')).toBeInTheDocument();
-
-    await user.click(screen.getByRole('button', { name: 'Update Data Block' }));
-
-    await waitFor(() => {
-      const [nodeId, payload, applyMode] = mockReplaceText.mock.calls[0] ?? [];
-      expect(nodeId).toBe('node-1');
-      // Find always edits the selected Data Block in place (#129).
-      expect(applyMode).toBe('update');
-      expect(payload).toMatchObject({
-        source_column: 'Body',
-        pattern: regexPattern,
-        replacement: '#',
-        output_column: 'Body',
-      });
-    });
   });
 
   it('shows one preprocessing input panel and uses input node metadata for filter schema', async () => {
@@ -676,27 +605,16 @@ describe('DataPreprocessingFeature replace tab', () => {
     });
   });
 
-  it("shows every tool's fixed result destination without a choice", async () => {
-    const user = userEvent.setup();
+  it("shows each tool's fixed result and leaves column tools to the Data Editor", () => {
     renderPreprocessingFeature();
 
     const applyBar = screen.getByRole('group', { name: 'Apply result' });
     expect(applyBar).toHaveTextContent('Result: New Data Block');
     expect(within(applyBar).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(within(applyBar).getByLabelText('New data block name')).toBeInTheDocument();
     expect(within(applyBar).getByRole('button', { name: 'Create Data Block' })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: 'Find' }));
-    const findBar = screen.getByRole('group', { name: 'Apply result' });
-    expect(findBar).toHaveTextContent('Result: Updates the selected Data Block');
-    expect(screen.queryByLabelText('New data block name')).not.toBeInTheDocument();
-    expect(within(findBar).getByRole('button', { name: 'Update Data Block' })).toBeInTheDocument();
-
-    await user.click(screen.getByRole('tab', { name: 'Create' }));
-    expect(screen.getByRole('group', { name: 'Apply result' })).toHaveTextContent(
-      'Result: Updates the selected Data Block',
-    );
-
-    expect(screen.queryByRole('tab', { name: /expression/i })).not.toBeInTheDocument();
+    // Find and Create moved to the Data Editor (issue 143).
+    expect(screen.queryByRole('tab', { name: 'Find' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: 'Create' })).not.toBeInTheDocument();
   });
 });

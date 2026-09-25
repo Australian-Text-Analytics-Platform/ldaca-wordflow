@@ -6,12 +6,11 @@
 
 ![Preprocessing screenshot](tutorials/assets/preprocessing.png)
 
-The Preprocessing tools transform and prepare raw text data blocks into analysis-ready datasets. Each sub-tab performs a specific type of transformation, and each has a fixed result:
+The Preprocessing tools change which rows are present in your data. Every sub-tab creates a new Derived Data Block, and the source is never altered.
 
-- Tools that change which rows are present (Filter, Sample, Join, Stack) always create a new Derived Data Block. The source is never altered.
-- Tools that add or change columns (Find, Create) always update the selected Data Block in place. They never change the number or order of rows.
+Tools that add or change columns (Find & replace, Extract text, Combine columns, Duplicate column, Split column, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
-There are currently six sub-tabs:
+There are currently four sub-tabs:
 
 | Sub-tab | What it does | Apply behavior |
 |---|---|---|
@@ -19,16 +18,13 @@ There are currently six sub-tabs:
 | Sample | Extract a contiguous slice or a random subset of rows | New Data Block |
 | Join | Combine two data blocks side-by-side on a shared column | New Data Block |
 | Stack | Vertically concatenate two data blocks that share the same columns | New Data Block |
-| Find | Match text patterns with Regular Expressions, then remove, replace, or extract matches | Updates the selected Data Block |
-| Create | Build a new column by combining the contents of existing columns | Updates the selected Data Block |
 
 The general workflow for any sub-tab is:
 
 1. Select one or more data blocks from the project.
 2. Configure the transformation.
 3. Review the **Preview** table to check the expected output.
-4. Check the **Result** line beside the action button: it says whether the tool creates a new Data Block or updates the selected one.
-5. Click **Create Data Block** or **Update Data Block**.
+4. Click **Create Data Block**.
 
 <h2 id="help-preprocessing-common-section">Common controls</h2>
 
@@ -36,7 +32,7 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter, Sample, Find, Create; two for Join, Stack).
+Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter and Sample; two for Join and Stack).
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
@@ -44,12 +40,9 @@ The preview pane shows the result of the current configuration in a paginated fo
 
 <h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
-Each tool has one fixed destination, shown as **Result** beside its action button. There is no choice to make.
+Every Preprocessing tool creates a **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack), shown as **Result** beside its action button. The source is preserved and the new block records its creation lineage.
 
-- **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack): the source is preserved and the new block records its creation lineage.
-- **Updates the selected Data Block** (Find, Create): the new or changed column is added to the selected block. Rows are never added, removed, or reordered, so everything that refers to those rows (annotations, analyses, descendants) stays aligned.
-
-An update keeps the selected Data Block's identity, graph edges, parents, descendants, and creation provenance unchanged. Descendants keep their existing independent plans and are not recomputed. Undo/Redo stores only plans for the current open Project session, up to 50 edits per Data Block. Closing and reopening the Project, importing it, or restarting the backend preserves the latest data but clears Undo/Redo history.
+To add or change columns on the selected Data Block instead, use the Data Editor. Its edits keep the Data Block's identity, graph edges, and rows unchanged, and each one can be undone from the Data Editor header.
 
 <h2 id="help-preprocessing-filter-section">Filter</h2>
 
@@ -189,52 +182,3 @@ Provide a label for the stacked output. Leave it blank to use the auto-generated
 1. Select two datasets with the same column structure.
 2. Review the schema status to confirm no mismatches.
 3. Add the stacked result and confirm the row count equals the sum of both sources.
-
-<h2 id="help-preprocessing-find-replace">Find</h2>
-
-![Find screenshot](tutorials/assets/preprocessing/find.png)
-
-The Find sub-tab performs text manipulation on a selected column using Regular Expressions (RegEx). It supports two operations, **Replace** and **Extract**, and the transformation can overwrite the source column or write an output column. The result always updates the selected Data Block in place.
-
-**Replace**
-
-![Replace screenshot](tutorials/assets/preprocessing/find_replace.png)
-
-Match a pattern and replace each match with a fixed string. To delete matched text, replace with an empty string. For example, to remove all URLs from a column, match `https?://\S+` and replace with an empty string.
-
-**Extract**
-
-![Extract screenshot](tutorials/assets/preprocessing/find_extract.png)
-
-Match a pattern and extract all captured matches into a new column. For example, to extract all @-mentions from a tweet column, match `@\w+` and save to a new column named *mentioned*.
-
-**Practice exercise**
-
-1. Select a dataset with a text column that contains noise (e.g. XML tags, URLs).
-2. Write a RegEx pattern to match the noise and replace it with an empty string.
-3. Review the preview, then click **Update Data Block**.
-
-<h2 id="help-preprocessing-aggregate-section">Create</h2>
-
-![Create screenshot](tutorials/assets/preprocessing/create.png)
-
-The Create sub-tab builds new columns by combining the contents of existing columns as text. Use it when you need to analyse multiple columns together — for example, concatenating a title and a body into a single full-text column for topic modelling.
-
-<h3 id="help-preprocessing-aggregate-builder">Basic builder</h3>
-
-Drag column tokens and custom text blocks into the builder to assemble the expression without typing.
-
-- Drag column bubbles into the builder to add them to the expression.
-- Add a **Custom Text** bubble for separators or literals, then click it to edit the value.
-- Reorder bubbles by dragging them to a new position.
-
-<h3 id="help-preprocessing-aggregate-column-name">New column name</h3>
-
-Set a clear label for the new column so it is easy to find downstream. The column is added to the selected Data Block.
-
-**Practice exercise**
-
-1. Select a dataset with a title column and a body or abstract column.
-2. Use the Basic builder to drag both columns into the expression with a space separator.
-3. Preview the combined column, then click **Update Data Block**.
-

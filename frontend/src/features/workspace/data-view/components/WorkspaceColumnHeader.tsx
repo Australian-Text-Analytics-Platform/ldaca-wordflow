@@ -24,6 +24,7 @@ import {
 import { isColumnCastType, type ColumnCastType } from '../services/schemaMutations';
 import { RenameInput } from './RenameInput';
 import type { WorkspaceTableColumn } from './workspaceTableFeatures';
+import type { DataEditorTool } from '../dataEditorToolStore';
 
 interface DataTypeOption {
   value: string;
@@ -66,7 +67,17 @@ export interface WorkspaceColumnHeaderProps {
   onCancelRename: () => void;
   onTypeChange: (newType: ColumnCastType) => void;
   onRequestDelete: () => void;
+  /** Opens a Data Editor tool with this column pre-filled (issue 143). */
+  onOpenTool?: (tool: DataEditorTool) => void;
 }
+
+const COLUMN_TOOLS: { tool: DataEditorTool; label: string }[] = [
+  { tool: 'find_replace', label: 'Find & replace…' },
+  { tool: 'clean_text', label: 'Clean text…' },
+  { tool: 'extract', label: 'Extract text…' },
+  { tool: 'split', label: 'Split…' },
+  { tool: 'duplicate', label: 'Duplicate…' },
+];
 
 /**
  * Renders one server-backed table column header with identity-preserving cast,
@@ -93,6 +104,7 @@ export function WorkspaceColumnHeader({
   onCancelRename,
   onTypeChange,
   onRequestDelete,
+  onOpenTool,
 }: WorkspaceColumnHeaderProps) {
   const isPinnedStart = colInst.getIsPinned() === 'start';
 
@@ -208,7 +220,7 @@ export function WorkspaceColumnHeader({
         </Button>
       )}
 
-      {(canRename || canDelete) && !isRenaming && (
+      {(canRename || canDelete || onOpenTool) && !isRenaming && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
@@ -229,7 +241,21 @@ export function WorkspaceColumnHeader({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40 p-1">
+          <DropdownMenuContent align="end" className="w-44 p-1">
+            {onOpenTool
+              ? COLUMN_TOOLS.map((item) => (
+                  <DropdownMenuItem
+                    key={item.tool}
+                    disabled={isColumnBusy}
+                    onSelect={() => {
+                      onOpenTool(item.tool);
+                    }}
+                    className="text-label-secondary"
+                  >
+                    {item.label}
+                  </DropdownMenuItem>
+                ))
+              : null}
             {canRename && (
               <DropdownMenuItem
                 disabled={isColumnBusy}

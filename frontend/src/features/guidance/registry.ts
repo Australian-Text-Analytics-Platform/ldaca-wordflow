@@ -16,11 +16,8 @@ export const CONTEXTUAL_HINT_IDS = {
     sample: 'preprocessing.operation.sample',
     join: 'preprocessing.operation.join',
     stack: 'preprocessing.operation.stack',
-    find: 'preprocessing.operation.find',
-    create: 'preprocessing.operation.create',
     preview: 'preprocessing.preview',
     createOutcome: 'preprocessing.outcome.create',
-    updateOutcome: 'preprocessing.outcome.update',
   },
   tokenFrequency: {
     inputs: 'token-frequency.inputs',
@@ -182,18 +179,6 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     'Stack Data Blocks with the same schema, optionally removing exact duplicates. Resolve any schema mismatch, then choose Preview.',
   ),
   hint(
-    CONTEXTUAL_HINT_IDS.preprocessing.find,
-    '[data-guidance="preprocessing-operation-find"]',
-    'Transform text with a pattern',
-    'Choose Replace or Extract, enter a regular expression, and select the output column. Configure the pattern, then choose Preview.',
-  ),
-  hint(
-    CONTEXTUAL_HINT_IDS.preprocessing.create,
-    '[data-guidance="preprocessing-operation-create"]',
-    'Build an analysis-ready column',
-    'Combine existing columns and text, then name the new column. Finish the expression, then choose Preview.',
-  ),
-  hint(
     CONTEXTUAL_HINT_IDS.preprocessing.preview,
     '[data-guidance="preprocessing-preview"]',
     'Check the transformation before applying',
@@ -204,12 +189,6 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     '[data-guidance="data-blocks"]',
     'Your Derived Data Block is ready',
     'Create added a new Data Block with creation lineage back to its inputs. Select it in the sidebar or graph to inspect and continue.',
-  ),
-  hint(
-    CONTEXTUAL_HINT_IDS.preprocessing.updateOutcome,
-    '[data-guidance="data-blocks"]',
-    'Your Data Block was updated',
-    'Update changed the existing Data Block in place, so its identity and lineage stay the same. Inspect it now, or use session Undo to reverse the edit.',
   ),
 
   hint(

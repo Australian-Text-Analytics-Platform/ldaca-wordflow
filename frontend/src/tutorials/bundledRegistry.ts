@@ -59,7 +59,7 @@ const tutorial = {
   'ui.data-viewer': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-data-viewer',
-    label: 'Data Viewer',
+    label: 'Data Editor',
   },
   'ui.working-directory': {
     file: 'tutorials/ui.md',
@@ -220,26 +220,6 @@ const tutorial = {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-concat-schema-status',
     label: 'Schema status',
-  },
-  'preprocessing.aggregate.tab': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-section',
-    label: 'Create sub-tab overview',
-  },
-  'preprocessing.aggregate.builder': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-builder',
-    label: 'Expression builder',
-  },
-  'preprocessing.aggregate.column-name': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-column-name',
-    label: 'Computed column name',
-  },
-  'preprocessing.find.tab': {
-    file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-find-replace',
-    label: 'Find sub-tab overview',
   },
   'analysis.token-frequency.tab': {
     file: 'tutorials/token-frequency.md',

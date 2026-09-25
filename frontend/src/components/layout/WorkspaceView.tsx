@@ -1,9 +1,14 @@
 import { useRef } from 'react';
-import { PanelRightOpen } from 'lucide-react';
+import { PanelRightOpen, Wrench } from 'lucide-react';
 import { WorkspaceControls } from './WorkspaceControls';
 import { InsetCard } from './InsetCard';
 import { useResizableSplit } from '@/hooks/useResizableSplit';
 import { WorkspaceDataTableFeature } from '@/features/workspace/data-view';
+import { DataEditorToolPanel } from '@/features/workspace/data-view/components/DataEditorToolPanel';
+import {
+  DATA_EDITOR_TOOL_LABELS,
+  useDataEditorToolStore,
+} from '@/features/workspace/data-view/dataEditorToolStore';
 import { WorkspaceGraphFeature } from '@/features/workspace/graph-view';
 import { ResizeHandle } from './ResizeHandle';
 
@@ -26,6 +31,11 @@ function WorkspaceView({
   onToggleCollapse?: () => void;
 } = {}) {
   const topRef = useRef<HTMLDivElement | null>(null);
+  // An open Data Editor tool takes the Project Graph's place (issue 143).
+  const tool = useDataEditorToolStore((state) => state.tool);
+  const graphVisible = useDataEditorToolStore((state) => state.graphVisible);
+  const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
+  const showingTool = tool !== null && !graphVisible;
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const {
     containerRef,
@@ -67,11 +77,30 @@ function WorkspaceView({
         className="min-h-30 p-2 pt-0 pb-0 pl-0 max-md:pl-2 @max-[639px]/workspace-shell:pl-2"
         style={{ height: `calc(${String(ratio * 100)}% - 0.125rem)` }}
       >
-        <div className="p-2 bg-panel border-b border-surface-border shrink-0">
-          <WorkspaceControls onToggleCollapse={onToggleCollapse} />
-        </div>
-        <div className="flex-1 min-h-0">
-          <WorkspaceGraphFeature />
+        {tool ? (
+          <div className={showingTool ? 'flex-1 min-h-0' : 'hidden'}>
+            <DataEditorToolPanel key={tool} />
+          </div>
+        ) : null}
+        <div className={showingTool ? 'hidden' : 'contents'}>
+          <div className="p-2 bg-panel border-b border-surface-border shrink-0">
+            <WorkspaceControls onToggleCollapse={onToggleCollapse} />
+          </div>
+          {tool ? (
+            <button
+              type="button"
+              className="flex shrink-0 items-center gap-2 border-b border-surface-border bg-button/10 px-3 py-1.5 text-left text-label-secondary text-foreground hover:bg-button/20"
+              onClick={() => {
+                setGraphVisible(false);
+              }}
+            >
+              <Wrench className="h-3.5 w-3.5" />
+              Back to {DATA_EDITOR_TOOL_LABELS[tool]}
+            </button>
+          ) : null}
+          <div className="flex-1 min-h-0">
+            <WorkspaceGraphFeature />
+          </div>
         </div>
       </InsetCard>
 

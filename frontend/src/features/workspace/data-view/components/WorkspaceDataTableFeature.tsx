@@ -1,5 +1,15 @@
 import { Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { WorkspaceDataHeader } from './WorkspaceDataHeader';
 import { WorkspaceSelectionTabs } from './WorkspaceSelectionTabs';
 import { WorkspaceTable } from './WorkspaceTable';
@@ -60,14 +70,38 @@ const EmptyState = () => (
  * Flow: read the table view model, branch to loading or empty states, then render selection tabs, header actions, and the server-backed table.
  */
 export function WorkspaceDataTableFeature(_props: WorkspaceDataTableFeatureProps) {
-  const { selectedNode, header, tabs, table, loading, nodeActions } = useWorkspaceDataTable();
+  const { selectedNode, header, tabs, table, loading, nodeActions, switchGuard } =
+    useWorkspaceDataTable();
+  const guardDialog = (
+    <AlertDialog open={switchGuard !== null}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            Discard your unfinished {switchGuard?.toolLabel} on {switchGuard?.nodeName}?
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            The settings have not been applied. Keep editing to return to that Data Block.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={switchGuard?.onKeepEditing}>Keep editing</AlertDialogCancel>
+          <AlertDialogAction onClick={switchGuard?.onDiscard}>Discard</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 
   if (loading.nodeData) {
     return <LoadingState />;
   }
 
   if (!selectedNode) {
-    return <EmptyState />;
+    return (
+      <>
+        <EmptyState />
+        {guardDialog}
+      </>
+    );
   }
 
   return (
@@ -80,11 +114,13 @@ export function WorkspaceDataTableFeature(_props: WorkspaceDataTableFeatureProps
           onUndo={nodeActions.onUndo}
           onRedo={nodeActions.onRedo}
           onDeleteColumns={nodeActions.onDeleteColumns}
+          onOpenTool={nodeActions.onOpenTool}
         />
         <div className="min-h-0 flex-1">
-          <WorkspaceTable {...table} />
+          <WorkspaceTable {...table} onOpenTool={nodeActions.onOpenTool} />
         </div>
       </div>
+      {guardDialog}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import {
   getNodeSchema,
   previewFile,
   previewNodeCreation,
+  previewNodeEdit,
   queryConcordanceDocumentProjection,
   queryQuotationPreviewTable as queryQuotationPreviewTableRequest,
   type ConcordanceDocumentProjectionQuery,
@@ -119,6 +120,25 @@ export async function previewFileTable(
 ): Promise<ArrowTablePage> {
   const { data, response } = await previewFile({ ...options, throwOnError: true });
   return decodeArrowPage(data, response);
+}
+
+/** One previewed page of a Data Block Edit and how many rows it changes. */
+export interface EditPreviewPage extends ArrowTablePage {
+  /** Rows the edit changes across the whole Data Block. */
+  changedRows: number | null;
+}
+
+/** Previews a Data Block Edit without applying it (issue 143). */
+export async function previewNodeEditTable(
+  options: Parameters<typeof previewNodeEdit>[0],
+): Promise<EditPreviewPage> {
+  const { data, response } = await previewNodeEdit({ ...options, throwOnError: true });
+  const raw = response.headers.get('X-Wordflow-Changed-Rows');
+  const parsed = raw === null ? Number.NaN : Number.parseInt(raw, 10);
+  return {
+    ...(await decodeArrowPage(data, response)),
+    changedRows: Number.isFinite(parsed) && parsed >= 0 ? parsed : null,
+  };
 }
 
 export async function previewNodeCreationTable(

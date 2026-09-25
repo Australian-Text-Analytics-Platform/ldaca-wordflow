@@ -1,4 +1,4 @@
-import { Calculator, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
+import { Filter, Layers, Merge, Shuffle } from 'lucide-react';
 import { useState } from 'react';
 import InfoIcon from '@/components/help/InfoIcon';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
@@ -21,22 +21,18 @@ import { useWorkspaceNodeInputs } from '@/features/views/common/nodeInputs';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
-import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import { useAuthStore } from '@/stores/authStore';
 import {
   preprocessingInputsKey,
   usePreprocessingInputsStore,
 } from '@/stores/preprocessingInputsStore';
-import { AggregateSubTab } from './aggregate/AggregateSubTab';
 import { ConcatSubTab } from './concat/ConcatSubTab';
 import { FilterSubTab } from './filter/FilterSubTab';
 import { JoinSubTab } from './join/JoinSubTab';
-import { CREATE_DATA_BLOCK_MODE, type PreprocessingApplyMode } from './preprocessingApplyMode';
-import { ReplaceSubTab } from './replace/ReplaceSubTab';
 import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
 
-type DataPrepSubtab = 'filter' | 'slice' | 'join' | 'concat' | 'find' | 'aggregate';
+type DataPrepSubtab = 'filter' | 'slice' | 'join' | 'concat';
 
 const PREPROCESSING_TABS: EditorTabItem[] = [
   {
@@ -71,22 +67,6 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     panelDomId: 'preprocessing-panel-concat',
     'data-guidance': 'preprocessing-operation-stack',
   },
-  {
-    id: 'find',
-    title: 'Find',
-    icon: <Search className="size-4" />,
-    tabDomId: 'preprocessing-tab-find',
-    panelDomId: 'preprocessing-panel-find',
-    'data-guidance': 'preprocessing-operation-find',
-  },
-  {
-    id: 'aggregate',
-    title: 'Create',
-    icon: <Calculator className="size-4" />,
-    tabDomId: 'preprocessing-tab-aggregate',
-    panelDomId: 'preprocessing-panel-aggregate',
-    'data-guidance': 'preprocessing-operation-create',
-  },
 ];
 
 const EMPTY_PREPROCESSING_INPUTS: [] = [];
@@ -111,11 +91,6 @@ function DataPreprocessingFeature() {
     concatPreview,
     sliceNode,
     slicePreview,
-    replaceText,
-    replaceTextPreview,
-    refreshNodeSchema,
-    polarsExpressionPreview,
-    polarsExpressionApply,
   } = useWorkspaceActions();
   const { isLoading } = useWorkspaceStatus();
 
@@ -138,7 +113,6 @@ function DataPreprocessingFeature() {
     },
     constraints: {
       maxNodes: maxInputNodes,
-      ...(activeSubtab === 'find' ? { fieldPredicate: isArrowStringField } : {}),
     },
   });
   const selectedNodes = nodeInputs.selectedNodes;
@@ -162,7 +136,7 @@ function DataPreprocessingFeature() {
       }),
     );
   };
-  const showInputColumnPicker = activeSubtab === 'find' || activeSubtab === 'join';
+  const showInputColumnPicker = activeSubtab === 'join';
   const preprocessingColumnLabel = ({ nodeId }: NodeSelectionRenderArgs) => {
     if (activeSubtab === 'join') {
       if (nodeId === selectedNodeIds[0]) return 'Left column:';
@@ -181,12 +155,8 @@ function DataPreprocessingFeature() {
     setAlertOpen(true);
   };
 
-  const reachApplyOutcome = (mode: PreprocessingApplyMode) => {
-    reachContextualHint(
-      mode === CREATE_DATA_BLOCK_MODE
-        ? CONTEXTUAL_HINT_IDS.preprocessing.createOutcome
-        : CONTEXTUAL_HINT_IDS.preprocessing.updateOutcome,
-    );
+  const reachApplyOutcome = () => {
+    reachContextualHint(CONTEXTUAL_HINT_IDS.preprocessing.createOutcome);
   };
   const guidedFilterPreview = async (...args: Parameters<typeof filterPreview>) => {
     const response = await filterPreview(...args);
@@ -195,7 +165,7 @@ function DataPreprocessingFeature() {
   };
   const guidedFilterNode = async (...args: Parameters<typeof filterNode>) => {
     const response = await filterNode(...args);
-    reachApplyOutcome(CREATE_DATA_BLOCK_MODE);
+    reachApplyOutcome();
     return response;
   };
   const guidedSlicePreview = async (...args: Parameters<typeof slicePreview>) => {
@@ -205,12 +175,12 @@ function DataPreprocessingFeature() {
   };
   const guidedSliceNode = async (...args: Parameters<typeof sliceNode>) => {
     const response = await sliceNode(...args);
-    reachApplyOutcome(CREATE_DATA_BLOCK_MODE);
+    reachApplyOutcome();
     return response;
   };
   const guidedJoinNodes = async (...args: Parameters<typeof joinNodes>) => {
     const response = await joinNodes(...args);
-    reachApplyOutcome(CREATE_DATA_BLOCK_MODE);
+    reachApplyOutcome();
     return response;
   };
   const guidedConcatPreview = async (...args: Parameters<typeof concatPreview>) => {
@@ -220,30 +190,9 @@ function DataPreprocessingFeature() {
   };
   const guidedConcatNodes = async (...args: Parameters<typeof concatNodes>) => {
     const response = await concatNodes(...args);
-    reachApplyOutcome(CREATE_DATA_BLOCK_MODE);
+    reachApplyOutcome();
     return response;
   };
-  const guidedReplaceTextPreview = async (...args: Parameters<typeof replaceTextPreview>) => {
-    const response = await replaceTextPreview(...args);
-    reachContextualHint(CONTEXTUAL_HINT_IDS.preprocessing.preview);
-    return response;
-  };
-  const guidedReplaceText = async (...args: Parameters<typeof replaceText>) => {
-    const response = await replaceText(...args);
-    reachApplyOutcome(args[2] ?? CREATE_DATA_BLOCK_MODE);
-    return response;
-  };
-  const guidedExpressionPreview = async (...args: Parameters<typeof polarsExpressionPreview>) => {
-    const response = await polarsExpressionPreview(...args);
-    reachContextualHint(CONTEXTUAL_HINT_IDS.preprocessing.preview);
-    return response;
-  };
-  const guidedExpressionApply = async (...args: Parameters<typeof polarsExpressionApply>) => {
-    const response = await polarsExpressionApply(...args);
-    reachApplyOutcome(args[2] ?? CREATE_DATA_BLOCK_MODE);
-    return response;
-  };
-
   const operationReady =
     activeSubtab === 'join'
       ? selectedNodeIds.length >= 2
@@ -255,8 +204,6 @@ function DataPreprocessingFeature() {
     slice: CONTEXTUAL_HINT_IDS.preprocessing.sample,
     join: CONTEXTUAL_HINT_IDS.preprocessing.join,
     concat: CONTEXTUAL_HINT_IDS.preprocessing.stack,
-    find: CONTEXTUAL_HINT_IDS.preprocessing.find,
-    aggregate: CONTEXTUAL_HINT_IDS.preprocessing.create,
   }[activeSubtab];
   useProgressiveContextualHints([
     CONTEXTUAL_HINT_IDS.preprocessing.inputs,
@@ -398,45 +345,6 @@ function DataPreprocessingFeature() {
             concatPreview={guidedConcatPreview}
             isLoading={isLoading}
             onAlert={handleAlert}
-          />
-        </TabsContent>
-
-        <TabsContent
-          id="preprocessing-panel-find"
-          aria-labelledby="preprocessing-tab-find"
-          value="find"
-          className="space-y-4"
-        >
-          <ReplaceSubTab
-            renderNodeInputsPanel={renderNodeInputsPanel}
-            currentWorkspaceId={currentWorkspaceId}
-            selectedColumn={selectedNodeId ? (selectedNodeColumns[selectedNodeId] ?? '') : ''}
-            selectedNodes={selectedNodes}
-            getColumnInfos={nodeInputs.getColumnInfos}
-            isLoading={isLoading}
-            onAlert={handleAlert}
-            replaceTextPreview={guidedReplaceTextPreview}
-            replaceText={guidedReplaceText}
-            refreshNodeSchema={refreshNodeSchema}
-          />
-        </TabsContent>
-
-        <TabsContent
-          id="preprocessing-panel-aggregate"
-          aria-labelledby="preprocessing-tab-aggregate"
-          value="aggregate"
-          className="space-y-4"
-        >
-          <AggregateSubTab
-            renderNodeInputsPanel={renderNodeInputsPanel}
-            currentWorkspaceId={currentWorkspaceId}
-            selectedNodes={selectedNodes}
-            getColumnInfos={nodeInputs.getColumnInfos}
-            isLoading={isLoading}
-            onAlert={handleAlert}
-            polarsExpressionPreview={guidedExpressionPreview}
-            polarsExpressionApply={guidedExpressionApply}
-            refreshNodeSchema={refreshNodeSchema}
           />
         </TabsContent>
       </Tabs>

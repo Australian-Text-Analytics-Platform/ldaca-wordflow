@@ -1,10 +1,17 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
 import { queryWorkspaceSqlTable, sqlOrder, sqlTable } from '@/api';
+import { previewNodeEditTable } from '@/api/tableApi';
+import { useSelectionStore } from '@/stores/selectionStore';
+import {
+  DATA_EDITOR_TOOL_LABELS,
+  type DataEditorTool,
+  useDataEditorToolStore,
+} from '../dataEditorToolStore';
 import type { NodeDataResponse } from '@/api/frontendModels';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
@@ -27,6 +34,19 @@ interface WorkspaceDataTableNodeActions {
   onUndo?: () => void;
   onRedo?: () => void;
   onDeleteColumns?: (columns: string[]) => Promise<void>;
+  /** Opens a Data Editor tool on this Data Block (issue 143). */
+  onOpenTool?: (
+    tool: DataEditorTool,
+    options?: { column?: string | null; operation?: string | null },
+  ) => void;
+}
+
+/** A block switch while a tool has unfinished settings (issue 143). */
+interface DataEditorSwitchGuard {
+  toolLabel: string;
+  nodeName: string;
+  onKeepEditing: () => void;
+  onDiscard: () => void;
 }
 
 interface WorkspaceSelectionTab {
@@ -49,6 +69,8 @@ export interface WorkspaceDataTableViewModel {
   selectedNode: ReturnType<typeof useWorkspaceSelection>['selectedNode'];
   header: WorkspaceDataTableHeaderInfo;
   nodeActions: WorkspaceDataTableNodeActions;
+  /** Set while the user must choose to keep or discard unfinished tool settings. */
+  switchGuard: DataEditorSwitchGuard | null;
   tabs: WorkspaceSelectionTabsState;
   table: WorkspaceTableProps;
   loading: {
@@ -276,6 +298,82 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       }
     : EMPTY_NODE_DATA;
 
+  // A Data Editor tool previews its edit in this table (issue 143).
+  const toolState = useDataEditorToolStore();
+  const previewRequest =
+    toolState.tool && toolState.nodeId === activeNodeId ? toolState.request : null;
+  const previewQuery = useQuery({
+    queryKey: [
+      'workspaces',
+      currentWorkspaceId ?? '',
+      'nodes',
+      activeNodeId ?? '',
+      'edit-preview',
+      previewRequest,
+      nodeTableRequest.page,
+      nodeTableRequest.page_size,
+    ],
+    enabled: Boolean(currentWorkspaceId && activeNodeId && previewRequest),
+    placeholderData: (previousData) => previousData,
+    queryFn: async () => {
+      if (!currentWorkspaceId || !activeNodeId || !previewRequest) {
+        throw new Error('Missing project, node, or edit to preview');
+      }
+      return await previewNodeEditTable({
+        path: { workspace_id: currentWorkspaceId, node_id: activeNodeId },
+        body: previewRequest,
+        query: { page: nodeTableRequest.page, page_size: nodeTableRequest.page_size },
+      });
+    },
+  });
+  const previewing = Boolean(previewRequest && previewQuery.data);
+  const setChangedRows = toolState.setChangedRows;
+  const previewChangedRows = previewRequest ? (previewQuery.data?.changedRows ?? null) : null;
+  useEffect(() => {
+    setChangedRows(previewChangedRows);
+  }, [previewChangedRows, setChangedRows]);
+  const shownData: NodeDataResponse =
+    previewing && previewQuery.data
+      ? {
+          page: nodeTableRequest.page,
+          page_size: nodeTableRequest.page_size,
+          rows: previewQuery.data.rows,
+          columns: previewQuery.data.columns,
+          columnFields: Object.fromEntries(
+            previewQuery.data.schema.map((column) => [column.name, column.field]),
+          ),
+          has_next: previewQuery.data.hasNext,
+        }
+      : nodeData;
+
+  // Switching blocks: close an untouched tool, or ask before discarding.
+  const toolNodeId = toolState.tool ? toolState.nodeId : null;
+  const switchedAway = toolNodeId !== null && activeNodeId !== toolNodeId;
+  const closeTool = toolState.close;
+  const untouchedSwitch = switchedAway && !toolState.dirty;
+  useEffect(() => {
+    if (untouchedSwitch) closeTool();
+  }, [untouchedSwitch, closeTool]);
+  const switchGuard: DataEditorSwitchGuard | null =
+    switchedAway && toolState.dirty && toolState.tool && toolNodeId
+      ? {
+          toolLabel: DATA_EDITOR_TOOL_LABELS[toolState.tool],
+          nodeName: toolState.nodeName,
+          onKeepEditing: () => {
+            const selection = useSelectionStore.getState();
+            if (selection.selectedNodeIds.includes(toolNodeId)) {
+              selection.activateNode(toolNodeId);
+            } else {
+              selection.replaceSelectedNodes(
+                [...selection.selectedNodeIds, toolNodeId],
+                toolNodeId,
+              );
+            }
+          },
+          onDiscard: closeTool,
+        }
+      : null;
+
   const header: WorkspaceDataTableHeaderInfo = {
     nodeLabel: resolveNodeDisplayLabel(selectedNode) ?? 'Unknown node',
     tabPosition,
@@ -296,6 +394,16 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     onDeleteColumns: selectedNode?.id
       ? async (columns: string[]) => {
           await deleteColumns(selectedNode.id, columns);
+        }
+      : undefined,
+    onOpenTool: selectedNode?.id
+      ? (tool, options = {}) => {
+          toolState.open(tool, selectedNode.id, {
+            nodeName: header.nodeLabel,
+            columns: nodeData.columns,
+            column: options.column ?? null,
+            operation: options.operation ?? null,
+          });
         }
       : undefined,
   };
@@ -378,9 +486,10 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   const nodeRowCount = selectedNode?.shape?.[0] ?? undefined;
 
   const table: WorkspaceTableProps = {
-    data: nodeData.rows,
-    columns: nodeData.columns,
-    columnFields: nodeData.columnFields,
+    data: shownData.rows,
+    columns: shownData.columns,
+    columnFields: shownData.columnFields,
+    highlightColumns: previewing ? toolState.highlightColumns : undefined,
     loading: nodeDataQuery.isLoading,
     fetching: nodeDataQuery.isFetching,
     pageError: nodeDataQuery.error,
@@ -393,7 +502,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     onRefreshSchema: selectedNodeIdForCallbacks ? handleRefreshSchema : undefined,
     pagination: { page: nodeData.page, page_size: nodeData.page_size },
     rowCount: nodeRowCount,
-    hasNext: nodeRowCount === undefined ? nodeData.has_next : undefined,
+    hasNext: nodeRowCount === undefined ? shownData.has_next : undefined,
     sorting,
     onSortingChange,
     onPageChange: (page) => {
@@ -408,6 +517,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     selectedNode,
     header,
     nodeActions,
+    switchGuard,
     tabs,
     table,
     loading: {
