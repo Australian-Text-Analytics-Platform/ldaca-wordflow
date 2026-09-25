@@ -42,7 +42,9 @@ export function groupCountSql(nodeId: string, column: string, grouping: Grouping
   const table = sqlTable(nodeId);
   const limit = MAX_GROUPS + 1;
   if (grouping.kind === 'values') {
-    return `SELECT CAST(${col} AS VARCHAR) AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY n DESC, value ASC NULLS LAST LIMIT ${String(limit)}`;
+    // Blank text joins the empty group, matching Filter's is empty (issue 166).
+    const text = `CAST(${col} AS VARCHAR)`;
+    return `SELECT CASE WHEN TRIM(${text}) = '' THEN NULL ELSE ${text} END AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY n DESC, value ASC NULLS LAST LIMIT ${String(limit)}`;
   }
   if (grouping.kind === 'dates') {
     return `SELECT STRFTIME(${col}, '${DATE_FORMATS[grouping.by]}') AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY value ASC NULLS LAST LIMIT ${String(limit)}`;

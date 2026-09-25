@@ -64,8 +64,9 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 - Select **AND** or **OR** to control how conditions are combined.
 - Check **Negate** on any individual condition to invert it.
 - When a selected column contains missing values, a warning reports how many.
-  Ordinary filter conditions do not match those rows; choose **is null** to
-  target them explicitly.
+  Ordinary filter conditions do not match those rows; choose **is empty** to
+  target them explicitly. **is empty** matches missing values, NaN, and text
+  that is empty or only spaces; tick **Negate** for "is not empty".
 - The preview shows how many rows the current condition set would keep. An empty result is possible if no rows satisfy the conditions or if conditions conflict.
 - Categorical values load in ordered pages. Scroll to load more, use search to
   filter on the server, and use **Select loaded** to select only the values

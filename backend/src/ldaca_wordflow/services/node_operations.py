@@ -625,6 +625,21 @@ def _filter_expression(
     return result
 
 
+def _empty_value_expression(column: pl.Expr, dtype: pl.DataType) -> pl.Expr:
+    """Missing values, NaN, and empty or whitespace-only text count as empty.
+
+    Null and "" differ to data scientists but not to researchers reading texts,
+    so the Filter's is empty / is not empty treat them alike (issue 166).
+    """
+
+    missing = column.is_null()
+    if dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum)):
+        return missing | (column.cast(pl.String).str.strip_chars() == "")
+    if dtype.is_float():
+        return missing | column.is_nan()
+    return missing
+
+
 def _condition_expression(
     condition: FilterCondition,
     schema: dict[str, pl.DataType],
@@ -699,10 +714,9 @@ def _condition_expression(
         expression = column.cast(pl.String).str.starts_with(str(value or ""))
     elif operator == "ends_with":
         expression = column.cast(pl.String).str.ends_with(str(value or ""))
-    elif operator == "is_null":
-        expression = column.is_null()
-    elif operator == "is_not_null":
-        expression = column.is_not_null()
+    elif operator in ("is_null", "is_not_null"):
+        empty = _empty_value_expression(column, dtype)
+        expression = empty if operator == "is_null" else ~empty
     elif operator == "between":
         if not isinstance(value, dict):
             raise InvalidInputError("Between filters require start and end values")

@@ -80,7 +80,7 @@ const formatFilterConditionToken = (condition: FilterConditionWithId): string =>
 
   switch (condition.operator) {
     case 'is_null':
-      return `${columnToken}_${negatePrefix}is_null`;
+      return `${columnToken}_${negatePrefix}is_empty`;
     case 'between':
       return `${columnToken}_${negatePrefix}between_${formatConditionValue(condition.value)}`;
     case 'contains': {

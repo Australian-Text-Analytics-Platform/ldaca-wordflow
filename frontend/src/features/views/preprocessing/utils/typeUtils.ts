@@ -35,7 +35,7 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
       { value: 'eq', label: 'equals' },
       { value: 'starts_with', label: 'starts with' },
       { value: 'ends_with', label: 'ends with' },
-      { value: 'is_null', label: 'is null' },
+      { value: 'is_null', label: 'is empty' },
     ];
   }
   if (field && (isArrowIntegerField(field) || isArrowFloatField(field))) {
@@ -43,13 +43,13 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
       { value: 'eq', label: 'equals' },
       { value: 'gte', label: 'greater than or equal' },
       { value: 'lte', label: 'less than or equal' },
-      { value: 'is_null', label: 'is null' },
+      { value: 'is_null', label: 'is empty' },
     ];
   }
   if (field && isArrowBooleanField(field)) {
     return [
       { value: 'eq', label: 'equals' },
-      { value: 'is_null', label: 'is null' },
+      { value: 'is_null', label: 'is empty' },
     ];
   }
   if (field && isArrowTemporalField(field)) {
@@ -57,12 +57,12 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
       { value: 'gte', label: 'after or equal' },
       { value: 'lte', label: 'before or equal' },
       { value: 'between', label: 'between' },
-      { value: 'is_null', label: 'is null' },
+      { value: 'is_null', label: 'is empty' },
     ];
   }
   return [
     { value: 'eq', label: 'equals' },
-    { value: 'is_null', label: 'is null' },
+    { value: 'is_null', label: 'is empty' },
   ];
 };
 
