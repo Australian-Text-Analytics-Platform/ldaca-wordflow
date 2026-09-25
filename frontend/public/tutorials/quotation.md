@@ -83,10 +83,11 @@ Click **Run All** at any time to submit an independent Run All Analysis that
 retains a complete table Result from its own immutable snapshot. Later source
 edits do not alter that Analysis's meaning, and Run All does not add a Data
 Block to the Project. After success, **Review** reads the immutable Result.
-**Page by Documents** shows the highlighted reading view, while **Page by
-Matches** shows one raw extract per row with scalar `QUOTE_*` fields. Changing
-the paging unit returns to page 1. Review does not show the Preview page
-summary.
+Review pages by match: each row is one extract with its scalar `QUOTE_*`
+fields, so a page never grows unexpectedly long. Click a row to open **Row
+Details**, where the document scrolls to the quotation and the metadata below
+it shows which document the extract comes from. Review does not show the
+Preview page summary.
 
 Use **Add to Project** to publish selected Result columns as a Derived Data
 Block. The document column is required, metadata columns start unselected, and

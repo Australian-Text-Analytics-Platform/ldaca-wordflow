@@ -27,7 +27,6 @@ interface QuotationResultsPanelProps {
   activeSelections: NodeColumnSelection[];
   resultsByNode: Record<string, QuotationResultState>;
   reviewRowUnit: QuotationReviewRowUnit | null;
-  onReviewRowUnitChange: (rowUnit: QuotationReviewRowUnit) => void;
   selectedMetadataColumns: string[];
   onSelectedMetadataColumnsChange: (columns: string[]) => void;
   contextLength: number;
@@ -64,7 +63,6 @@ export function QuotationResultsPanel({
   activeSelections,
   resultsByNode,
   reviewRowUnit,
-  onReviewRowUnitChange,
   selectedMetadataColumns,
   onSelectedMetadataColumnsChange,
   contextLength,
@@ -111,26 +109,6 @@ export function QuotationResultsPanel({
             only appears when the value needs fixing. */}
         <div className="space-y-1 text-body">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-            {reviewRowUnit ? (
-              <fieldset className="flex items-center gap-3">
-                <legend className="sr-only">Page quotation review by</legend>
-                <span className="text-label-secondary font-medium text-description">Page by</span>
-                {(['documents', 'matches'] as const).map((unit) => (
-                  <label key={unit} className="flex items-center gap-1.5">
-                    <input
-                      type="radio"
-                      name="quotation-review-row-unit"
-                      value={unit}
-                      checked={reviewRowUnit === unit}
-                      onChange={() => {
-                        onReviewRowUnitChange(unit);
-                      }}
-                    />
-                    {unit === 'documents' ? 'Documents' : 'Matches'}
-                  </label>
-                ))}
-              </fieldset>
-            ) : null}
             <div className="flex items-center gap-2">
               <label
                 htmlFor="quotation-context-length"

@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { cn } from '@/lib/utils';
 
 // ---- Public types ----
 
@@ -38,6 +39,11 @@ export interface RowDetailCustomization {
    * to it when the dialog opens or the row changes.
    */
   renderDocumentText?: (text: string, record: Record<string, unknown>) => React.ReactNode;
+  /**
+   * Height cap for the document box (default `max-h-96`). A shorter box keeps
+   * the metadata table in view below it; the box still scrolls.
+   */
+  documentMaxHeightClassName?: string;
 }
 
 export interface RowDetailNavigation {
@@ -189,7 +195,10 @@ export function RowDetailPanel({
                 <div
                   ref={setDocumentBox}
                   data-testid="row-detail-document"
-                  className="font-mono text-body whitespace-pre-wrap max-h-96 overflow-y-auto"
+                  className={cn(
+                    'font-mono text-body whitespace-pre-wrap overflow-y-auto',
+                    customization?.documentMaxHeightClassName ?? 'max-h-96',
+                  )}
                 >
                   {documentContent}
                 </div>

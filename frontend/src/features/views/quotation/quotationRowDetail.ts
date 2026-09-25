@@ -17,6 +17,10 @@ export const buildQuotationRowDetailCustomization = (
     { label: 'Quote', value: row.cellText(QUOTATION_COLUMN_KEYS.quote) },
   ],
   renderDocumentText: () => renderQuotationDetailText(row),
+  // Shorter than the default so the metadata shows below, telling users when
+  // several extractions come from the same document (issue 161). The box
+  // scrolls to the quotation and can be scrolled for more context.
+  documentMaxHeightClassName: 'max-h-48',
 });
 
 /** Converts one normalized quotation row into the shared detail payload. */

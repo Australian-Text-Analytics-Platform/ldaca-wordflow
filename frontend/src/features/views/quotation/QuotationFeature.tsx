@@ -127,8 +127,9 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       descending: false,
     }),
   );
-  const [runAllReviewRowUnit, setRunAllReviewRowUnit] =
-    useState<QuotationReviewRowUnit>('documents');
+  // Review always pages by matches, so a page never grows unexpectedly long
+  // (issue 161).
+  const runAllReviewRowUnit: QuotationReviewRowUnit = 'matches';
   const [isClearing, setIsClearing] = useState(false);
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);
@@ -662,10 +663,6 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             }
             resultsByNode={resultsByNode}
             reviewRowUnit={runAllSource ? runAllReviewRowUnit : null}
-            onReviewRowUnitChange={(rowUnit) => {
-              setRunAllReviewRowUnit(rowUnit);
-              setRunAllReviewQuery((current) => ({ ...current, page: 1 }));
-            }}
             selectedMetadataColumns={selectedMetadataColumns}
             onSelectedMetadataColumnsChange={setSelectedMetadataColumns}
             contextLength={contextLength}
