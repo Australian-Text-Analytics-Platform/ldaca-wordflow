@@ -23,6 +23,7 @@ const nodeResult = (rowCount: number, filteredCount = rowCount): NodeResultView 
   filteredOutCount: 0,
   appliedDisplayLimit: 30,
   maxFrequency: rowCount,
+  totalTokens: rowCount,
 });
 
 const changeEvent = (value: string): ChangeEvent<HTMLInputElement> =>

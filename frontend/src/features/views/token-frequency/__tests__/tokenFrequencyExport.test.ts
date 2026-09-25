@@ -170,6 +170,16 @@ describe('tokenFrequencyExport', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:zip-export');
   });
 
+  it('labels the per-million column in frequency list downloads (issue 172)', async () => {
+    const rows = [{ token: 'alpha', frequency: 3, per_million: 750000 }];
+
+    const csv = await buildFrequencyExportFile('My Corpus', rows, 'csv').blob.text();
+    const markdown = await buildFrequencyExportFile('My Corpus', rows, 'markdown').blob.text();
+
+    expect(csv).toBe('"word","count","per_million"\r\n"alpha","3","750000"');
+    expect(markdown.split('\n')[0]).toBe('| Word | Count | Per million |');
+  });
+
   it('builds token frequency zip names from node leaf names and truncates them', () => {
     expect(
       buildTokenFrequencyZipFilename(

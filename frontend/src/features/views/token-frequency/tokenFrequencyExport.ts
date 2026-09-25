@@ -101,6 +101,8 @@ const downloadExportedFile = (file: ExportedDownloadFile, overrideFilename?: str
 };
 
 const DEFAULT_TOKEN_COLUMNS = ['token', 'frequency'] as const;
+/** The frequency list's own download adds the per-million column (issue 172). */
+const PER_MILLION_COLUMN = 'per_million';
 
 /** Infers stable export columns from result rows while preserving the default token shape. */
 /**
@@ -126,12 +128,15 @@ const deriveExportColumns = (rows: Record<string, unknown>[]) => {
     };
   }
 
+  const withPerMillion = seen.has(PER_MILLION_COLUMN);
   const isDefaultTokenFrequencyShape =
-    columns.length === DEFAULT_TOKEN_COLUMNS.length &&
+    columns.length === DEFAULT_TOKEN_COLUMNS.length + (withPerMillion ? 1 : 0) &&
     DEFAULT_TOKEN_COLUMNS.every((key) => seen.has(key));
 
   return {
-    columns,
+    columns: isDefaultTokenFrequencyShape
+      ? [...DEFAULT_TOKEN_COLUMNS, ...(withPerMillion ? [PER_MILLION_COLUMN] : [])]
+      : columns,
     isDefaultTokenFrequencyShape,
   };
 };
@@ -142,9 +147,10 @@ const deriveExportColumns = (rows: Record<string, unknown>[]) => {
  */
 const getExportHeaders = (columns: string[], isDefaultTokenFrequencyShape: boolean) => {
   if (isDefaultTokenFrequencyShape) {
+    const withPerMillion = columns.includes(PER_MILLION_COLUMN);
     return {
-      csv: ['word', 'count'],
-      markdown: ['Word', 'Count'],
+      csv: ['word', 'count', ...(withPerMillion ? ['per_million'] : [])],
+      markdown: ['Word', 'Count', ...(withPerMillion ? ['Per million'] : [])],
     };
   }
 
@@ -181,7 +187,7 @@ const getRowValues = (
   isDefaultTokenFrequencyShape: boolean,
 ) => {
   if (isDefaultTokenFrequencyShape) {
-    return [toCellString(row.token), toCellString(row.frequency)];
+    return columns.map((column) => toCellString(row[column]));
   }
 
   return columns.map((column) => toCellString(row[column]));

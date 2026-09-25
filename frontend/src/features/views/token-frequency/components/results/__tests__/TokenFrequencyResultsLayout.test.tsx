@@ -65,6 +65,12 @@ const buildNodeResult = (overrides: Partial<NodeResultView> = {}): NodeResultVie
   filteredOutCount: overrides.filteredOutCount ?? 0,
   appliedDisplayLimit: overrides.appliedDisplayLimit ?? 30,
   maxFrequency: overrides.maxFrequency ?? 12,
+  totalTokens:
+    overrides.totalTokens ??
+    (overrides.rows ?? [{ token: 'alpha', frequency: 12 }]).reduce(
+      (total, row) => total + row.frequency,
+      0,
+    ),
 });
 
 const baseSingleSectionProps = {
@@ -306,7 +312,14 @@ describe('Token frequency result layouts', () => {
 
       expect(onTokenClick).toHaveBeenCalledWith('token-1');
       expect(onTokenRightClick).toHaveBeenCalledWith('token-1');
-      expect(onDownloadFrequencyCsv).toHaveBeenCalledWith('Node 1', fullVocabulary);
+      const vocabularyTotal = fullVocabulary.reduce((total, row) => total + row.frequency, 0);
+      expect(onDownloadFrequencyCsv).toHaveBeenCalledWith(
+        'Node 1',
+        fullVocabulary.map((row) => ({
+          ...row,
+          per_million: (row.frequency / vocabularyTotal) * 1_000_000,
+        })),
+      );
     } finally {
       restoreViewport();
     }
@@ -628,7 +641,11 @@ describe('Token frequency result layouts', () => {
       expect(screen.queryByRole('button', { name: 'target-last' })).not.toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: 'Download frequencies' }));
-      expect(onDownloadFrequencyCsv).toHaveBeenCalledWith('Node 1', [rows[2], rows[3]]);
+      // Per million uses the whole block (140 tokens), not just the matches (issue 172).
+      expect(onDownloadFrequencyCsv).toHaveBeenCalledWith('Node 1', [
+        { ...rows[2], per_million: (30 / 140) * 1_000_000 },
+        { ...rows[3], per_million: (20 / 140) * 1_000_000 },
+      ]);
 
       rerender(
         <TokenFrequencySingleTokenSection

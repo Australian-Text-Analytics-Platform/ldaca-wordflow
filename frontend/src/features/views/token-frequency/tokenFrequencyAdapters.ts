@@ -23,7 +23,13 @@ export type NodeResultView = NormalizedNodeResult & {
   filteredOutCount: number;
   appliedDisplayLimit: number | null;
   maxFrequency: number;
+  /** Every token counted in the block, before stop-word filtering (issue 172). */
+  totalTokens: number;
 };
+
+/** Occurrences per million tokens of the block, the usual normalised frequency. */
+export const perMillion = (frequency: number, totalTokens: number): number =>
+  totalTokens > 0 ? (frequency / totalTokens) * 1_000_000 : 0;
 
 /** Extracts token-frequency rows from either raw arrays or backend node-result envelopes. */
 /**
@@ -230,6 +236,8 @@ export const deriveNodeDisplayResults = (
 
     const maxFrequencyRaw = rawRows.length > 0 ? maxBy(rawRows, (r) => r.frequency || 0, 0) : 0;
     const maxFrequency = maxFrequencyRaw > 0 ? maxFrequencyRaw : 1;
+    let totalTokens = 0;
+    for (const row of rawRows) totalTokens += row.frequency || 0;
 
     return {
       ...result,
@@ -239,6 +247,7 @@ export const deriveNodeDisplayResults = (
       filteredOutCount: rawRows.length - filteredRows.length,
       appliedDisplayLimit: normalizedLimit,
       maxFrequency,
+      totalTokens,
     };
   });
 };

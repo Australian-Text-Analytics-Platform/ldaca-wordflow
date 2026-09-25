@@ -98,7 +98,7 @@ List view shows a ranked horizontal bar chart for each selected data block, with
 
 **Word ranking**
 
-Tokens are listed in descending order of frequency. The bar length for each token is proportional to its count relative to the most frequent token in that block. When two data blocks are shown side by side, the blocks are scrolled **synchronously** — scrolling one list scrolls the other to the same position, making it easy to compare the same rank across both corpora.
+Tokens are listed in descending order of frequency. The bar length for each token is proportional to its count relative to the most frequent token in that block. Beside each token, **Count** is its raw frequency and **Per million** is its normalised frequency: count ÷ all tokens in the block × 1,000,000. Per million is calculated from every token in the block, so stop words and the token filter do not change it; use it to compare blocks of different sizes. The frequency download includes both columns. When two data blocks are shown side by side, the blocks are scrolled **synchronously** — scrolling one list scrolls the other to the same position, making it easy to compare the same rank across both corpora.
 
 <h3 id="help-token-frequency-statistical-measures">Keyword Analysis</h3>
 

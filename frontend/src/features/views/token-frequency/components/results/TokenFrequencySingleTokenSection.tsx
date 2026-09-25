@@ -1,5 +1,5 @@
 import type { NodeResultView } from '../../tokenFrequencyAdapters';
-import { createTokenFilterMatcher } from '../../tokenFrequencyAdapters';
+import { createTokenFilterMatcher, perMillion } from '../../tokenFrequencyAdapters';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { memo, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -38,6 +38,12 @@ const BAR_LIST_MAX_HEIGHT_REM =
   VISIBLE_BAR_ROWS * BAR_ROW_HEIGHT_REM + (VISIBLE_BAR_ROWS - 1) * BAR_ROW_GAP_REM;
 const ESTIMATED_BAR_ROW_HEIGHT_PX = 40;
 const ESTIMATED_BAR_LIST_HEIGHT_PX = 392;
+
+const countFormat = new Intl.NumberFormat('en');
+const perMillionFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });
+
+/** Rank, token bar, count, and per-million columns shared by the header and rows. */
+const listGridColumns = (rankWidthCh: number) => `${String(rankWidthCh)}ch minmax(0,1fr) 72px 88px`;
 const BAR_ROW_OVERSCAN = 5;
 
 // Aspect ratio applied when the per-card cloud is sized from the container
@@ -94,6 +100,7 @@ interface VirtualizedTokenListProps {
   displayName: string;
   rows: RankedTokenFrequencyRow[];
   rankWidthCh: number;
+  totalTokens: number;
   color: string;
   registerScrollElement: (element: HTMLDivElement | null) => void;
   onScroll: (event: React.UIEvent<HTMLDivElement>) => void;
@@ -121,6 +128,7 @@ const VirtualizedTokenList = ({
   displayName,
   rows,
   rankWidthCh,
+  totalTokens,
   color,
   registerScrollElement,
   onScroll,
@@ -179,7 +187,7 @@ const VirtualizedTokenList = ({
               aria-setsize={rows.length}
               className="absolute top-0 left-0 grid w-full items-center gap-2 pb-2"
               style={{
-                gridTemplateColumns: `${String(rankWidthCh)}ch minmax(0,1fr) 90px`,
+                gridTemplateColumns: listGridColumns(rankWidthCh),
                 transform: `translateY(${String(virtualRow.start)}px)`,
               }}
             >
@@ -210,7 +218,10 @@ const VirtualizedTokenList = ({
                 </span>
               </button>
               <span className="text-right text-label-secondary tabular-nums text-description">
-                {frequency}
+                {countFormat.format(frequency)}
+              </span>
+              <span className="text-right text-label-secondary tabular-nums text-description">
+                {perMillionFormat.format(perMillion(frequency, totalTokens))}
               </span>
             </div>
           );
@@ -356,7 +367,14 @@ const TokenFrequencySingleTokenSectionInner = ({
                       aria-label="Download frequencies"
                       title="Download frequencies"
                       onClick={() => {
-                        onDownloadFrequencyCsv(result.displayName, matchingRows);
+                        onDownloadFrequencyCsv(
+                          result.displayName,
+                          matchingRows.map((row) => ({
+                            token: row.token,
+                            frequency: row.frequency,
+                            per_million: perMillion(row.frequency || 0, result.totalTokens),
+                          })),
+                        );
                       }}
                     >
                       <Download className="h-4 w-4" />
@@ -379,22 +397,40 @@ const TokenFrequencySingleTokenSectionInner = ({
                   />
                 </div>
               ) : (
-                <VirtualizedTokenList
-                  nodeKey={nodeKey}
-                  displayName={result.displayName}
-                  rows={filteredListRows}
-                  rankWidthCh={rankWidthCh}
-                  color={color}
-                  registerScrollElement={(element) => {
-                    listScrollRefs.current[index] = element;
-                    if (element && element.scrollTop !== retainedListScrollOffsetRef.current) {
-                      element.scrollTop = retainedListScrollOffsetRef.current;
-                    }
-                  }}
-                  onScroll={handleListScroll(index)}
-                  onTokenClick={onTokenClick}
-                  onTokenRightClick={onTokenRightClick}
-                />
+                <>
+                  <div
+                    className="grid items-center gap-2 pr-1 text-label-secondary font-medium text-description"
+                    style={{ gridTemplateColumns: listGridColumns(rankWidthCh) }}
+                    aria-hidden="true"
+                  >
+                    <span />
+                    <span className="px-2">Token</span>
+                    <span className="text-right">Count</span>
+                    <span
+                      className="text-right"
+                      title={`Occurrences per million tokens (${result.totalTokens.toLocaleString('en')} tokens in this block)`}
+                    >
+                      Per million
+                    </span>
+                  </div>
+                  <VirtualizedTokenList
+                    nodeKey={nodeKey}
+                    displayName={result.displayName}
+                    rows={filteredListRows}
+                    rankWidthCh={rankWidthCh}
+                    totalTokens={result.totalTokens}
+                    color={color}
+                    registerScrollElement={(element) => {
+                      listScrollRefs.current[index] = element;
+                      if (element && element.scrollTop !== retainedListScrollOffsetRef.current) {
+                        element.scrollTop = retainedListScrollOffsetRef.current;
+                      }
+                    }}
+                    onScroll={handleListScroll(index)}
+                    onTokenClick={onTokenClick}
+                    onTokenRightClick={onTokenRightClick}
+                  />
+                </>
               )}
             </CardContent>
           </Card>
