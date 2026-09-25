@@ -142,4 +142,10 @@ describe('DataEditorToolPanel (issue 143)', () => {
     expect(screen.getByText(/Not a column on this Data Block: nope/)).toBeInTheDocument();
     expect(useDataEditorToolStore.getState().request).toBeNull();
   });
+
+  it("starts in the tool's first field", () => {
+    open('combine');
+    render(<DataEditorToolPanel />);
+    expect(screen.getByLabelText('Template')).toHaveFocus();
+  });
 });

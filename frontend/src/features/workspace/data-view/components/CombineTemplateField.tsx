@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -46,6 +46,16 @@ export function CombineTemplateField({
   const listboxId = `${id}-suggestions`;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const caretRef = useRef(value.length);
+  // Caret to restore right after an autocomplete insertion renders. It is set
+  // in the same commit, so a key typed straight after lands in the right place.
+  const pendingCaretRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const position = pendingCaretRef.current;
+    const textarea = textareaRef.current;
+    if (position === null || !textarea) return;
+    pendingCaretRef.current = null;
+    textarea.setSelectionRange(position, position);
+  });
   const [caret, setCaret] = useState<number | null>(null);
   const [active, setActive] = useState(0);
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
@@ -69,8 +79,12 @@ export function CombineTemplateField({
     setCaret(position);
   };
 
-  /** Replaces `start..end` with the column token and puts the caret after it. */
-  const insertAt = (column: string, start: number, end: number) => {
+  /**
+   * Replaces `start..end` with the column token and puts the caret after it.
+   * From the Insert column picker, focus is still in its popup, so the
+   * textarea is focused once that closes.
+   */
+  const insertAt = (column: string, start: number, end: number, fromPicker = false) => {
     const skipClose = value[end] === '}';
     const token = templateColumnToken(column);
     const next = value.slice(0, start) + token + value.slice(skipClose ? end + 1 : end);
@@ -79,6 +93,10 @@ export function CombineTemplateField({
     caretRef.current = position;
     setCaret(position);
     setActive(0);
+    if (!fromPicker) {
+      pendingCaretRef.current = position;
+      return;
+    }
     setTimeout(() => {
       const textarea = textareaRef.current;
       if (!textarea) return;
@@ -96,7 +114,7 @@ export function CombineTemplateField({
           options={columns.map((column) => ({ value: column }))}
           value=""
           onChange={(column) => {
-            insertAt(column, caretRef.current, caretRef.current);
+            insertAt(column, caretRef.current, caretRef.current, true);
           }}
           placeholder={
             <span className="inline-flex items-center gap-1 text-foreground">

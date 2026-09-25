@@ -9,6 +9,7 @@ import {
   Pin,
   Settings2,
 } from 'lucide-react';
+import { useRef } from 'react';
 
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import { isColumnCastType, type ColumnCastType } from '../services/schemaMutatio
 import { RenameInput } from './RenameInput';
 import type { WorkspaceTableColumn } from './workspaceTableFeatures';
 import type { DataEditorTool } from '../dataEditorToolStore';
+import { focusDataEditorTool } from '../focusDataEditorTool';
 
 interface DataTypeOption {
   value: string;
@@ -107,6 +109,7 @@ export function WorkspaceColumnHeader({
   onRequestDelete,
   onOpenTool,
 }: WorkspaceColumnHeaderProps) {
+  const openedToolRef = useRef(false);
   const isPinnedStart = colInst.getIsPinned() === 'start';
 
   return (
@@ -242,13 +245,24 @@ export function WorkspaceColumnHeader({
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44 p-1">
+          <DropdownMenuContent
+            align="end"
+            className="w-44 p-1"
+            onCloseAutoFocus={(event) => {
+              // A tool takes focus into its panel; Rename and Delete keep the default.
+              if (!openedToolRef.current) return;
+              openedToolRef.current = false;
+              event.preventDefault();
+              focusDataEditorTool();
+            }}
+          >
             {onOpenTool
               ? COLUMN_TOOLS.map((item) => (
                   <DropdownMenuItem
                     key={item.tool}
                     disabled={isColumnBusy}
                     onSelect={() => {
+                      openedToolRef.current = true;
                       onOpenTool(item.tool);
                     }}
                     className="text-label-secondary"

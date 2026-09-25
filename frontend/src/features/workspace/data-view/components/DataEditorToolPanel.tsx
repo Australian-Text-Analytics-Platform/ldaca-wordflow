@@ -36,6 +36,7 @@ import {
 } from '../dataEditorRequests';
 import { CombineTemplateField } from './CombineTemplateField';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
+import { focusDataEditorTool } from '../focusDataEditorTool';
 
 function ColumnSelect({
   label,
@@ -204,6 +205,10 @@ export function DataEditorToolPanel() {
   const [measure, setMeasure] = useState<CountMeasure>('words');
   const [parts, setParts] = useState('2');
   const [touched, setTouched] = useState(false);
+  // Start in the tool's first field (issue 154 follow-up).
+  useEffect(() => {
+    focusDataEditorTool();
+  }, []);
   const [applying, setApplying] = useState(false);
 
   const touch =
@@ -302,7 +307,7 @@ export function DataEditorToolPanel() {
         </Button>
       </header>
 
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+      <div data-editor-tool-form className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {tool === 'combine' ? (
           <>
             <CombineTemplateField

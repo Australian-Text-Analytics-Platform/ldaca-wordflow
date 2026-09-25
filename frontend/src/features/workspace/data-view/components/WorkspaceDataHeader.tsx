@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { DeleteColumnsDialog } from './DeleteColumnsDialog';
 import { CLEAN_TEXT_OPERATIONS } from '../dataEditorRequests';
 import type { DataEditorTool } from '../dataEditorToolStore';
+import { focusDataEditorTool } from '../focusDataEditorTool';
 
 import type { WorkspaceDataTableHeaderInfo } from '../hooks/useWorkspaceDataTable';
 
@@ -27,6 +28,15 @@ interface WorkspaceDataHeaderProps {
     options?: { column?: string | null; operation?: string | null },
   ) => void;
 }
+
+/**
+ * Choosing a tool moves focus into its panel's first field once the menu has
+ * closed, instead of back to the menu trigger (which stole the first keystroke).
+ */
+const keepToolFocus = (event: Event) => {
+  event.preventDefault();
+  focusDataEditorTool();
+};
 
 const TOOL_BUTTON =
   'inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50';
@@ -199,7 +209,7 @@ export const WorkspaceDataHeader = ({
                     <ChevronDown className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" onCloseAutoFocus={keepToolFocus}>
                   <DropdownMenuItem
                     onSelect={() => {
                       onOpenTool('combine');
@@ -255,7 +265,7 @@ export const WorkspaceDataHeader = ({
                     <ChevronDown className="h-3 w-3" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" onCloseAutoFocus={keepToolFocus}>
                   {CLEAN_TEXT_OPERATIONS.map((option) => (
                     <DropdownMenuItem
                       key={option.value}
