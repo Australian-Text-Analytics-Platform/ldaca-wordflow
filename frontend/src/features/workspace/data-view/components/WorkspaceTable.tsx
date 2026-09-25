@@ -133,6 +133,34 @@ export function WorkspaceTable({
     viewportRef.current.scrollTop = 0;
   }, [workspaceId, nodeId]);
 
+  // Data Editor previews (issue 154): bring the highlighted column into view,
+  // its right edge at the panel's right edge, so the source column on its
+  // left is usually visible too. Only a new set of highlighted columns
+  // scrolls, so the user's own scrolling is kept while they edit settings.
+  // Declared after the owner reset above so a first preview is not undone.
+  const highlightKey = (highlightColumns ?? []).join('\u0000');
+  const alignedKeyRef = useRef('');
+  useEffect(() => {
+    if (!highlightKey) {
+      alignedKeyRef.current = '';
+      return;
+    }
+    const viewport = viewportRef.current;
+    const target = highlightColumns?.at(-1);
+    if (!viewport || !target || alignedKeyRef.current === highlightKey) return;
+    const headers = Array.from(viewport.querySelectorAll<HTMLElement>('th[data-column-id]'));
+    const cell = headers.find((header) => header.dataset.columnId === target);
+    // A new column appears once its preview arrives; try again then.
+    if (!cell) return;
+    const rightPinned = headers
+      .filter((header) => header.dataset.pinned === 'right')
+      .reduce((width, header) => width + header.getBoundingClientRect().width, 0);
+    const visibleRight = viewport.getBoundingClientRect().right - rightPinned;
+    const delta = cell.getBoundingClientRect().right - visibleRight;
+    viewport.scrollLeft = Math.max(0, viewport.scrollLeft + delta);
+    alignedKeyRef.current = highlightKey;
+  }, [highlightKey, highlightColumns, backendColumns, loading]);
+
   const mutations = useColumnMutations({
     workspaceId,
     nodeId,
@@ -471,6 +499,8 @@ export function WorkspaceTable({
                           highlighted.has(header.column.id) && 'bg-button/20',
                         )}
                         data-preview-column={highlighted.has(header.column.id) || undefined}
+                        data-column-id={header.column.id}
+                        data-pinned={header.column.getIsPinned() || undefined}
                         style={{
                           ...(meta?.headerMinWidth
                             ? { minWidth: `${String(meta.headerMinWidth)}px` }

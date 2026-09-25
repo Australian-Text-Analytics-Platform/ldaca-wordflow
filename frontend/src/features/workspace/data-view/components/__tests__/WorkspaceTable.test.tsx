@@ -210,4 +210,47 @@ describe('WorkspaceTable', () => {
       expect(viewport.scrollTop).toBe(0);
     });
   });
+
+  it('aligns a new preview column with the right edge of the panel (issue 154)', () => {
+    const props = {
+      workspaceId: 'workspace-1',
+      nodeId: 'node-1',
+      columns: ['a', 'b', 'c'],
+      columnFields: {
+        a: new Field('a', new Utf8()),
+        b: new Field('b', new Utf8()),
+        c: new Field('c', new Utf8()),
+      },
+      data: [{ a: '1', b: '2', c: '3' }],
+    };
+    // jsdom has no layout: the viewport's right edge is at 300 and column c
+    // ends at 800 minus however far the viewport has scrolled.
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(function (this: HTMLElement) {
+        const scroller = this.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
+        const scroll = scroller?.scrollLeft ?? 0;
+        if (this.dataset.slot === 'scroll-area-viewport') {
+          return { right: 300, width: 300 } as DOMRect;
+        }
+        const right = { a: 200, b: 500, c: 800 }[this.dataset.columnId ?? ''] ?? 0;
+        return { right: right - scroll, width: 100 } as DOMRect;
+      });
+    const { container, rerender } = render(<WorkspaceTable {...props} highlightColumns={['c']} />);
+    const viewport = container.querySelector<HTMLDivElement>('[data-slot="scroll-area-viewport"]');
+    expect(viewport?.scrollLeft).toBe(500);
+    if (!viewport) return;
+
+    // The same preview keeps the user's own scrolling while they edit settings.
+    viewport.scrollLeft = 40;
+    rerender(
+      <WorkspaceTable {...props} highlightColumns={['c']} data={[{ a: 'x', b: 'y', c: 'z' }]} />,
+    );
+    expect(viewport.scrollLeft).toBe(40);
+
+    // A different preview column aligns again.
+    rerender(<WorkspaceTable {...props} highlightColumns={['b']} />);
+    expect(viewport.scrollLeft).toBe(200);
+    rect.mockRestore();
+  });
 });
