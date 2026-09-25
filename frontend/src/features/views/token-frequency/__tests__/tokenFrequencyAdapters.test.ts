@@ -3,6 +3,8 @@ import {
   createTokenFilterMatcher,
   deriveNodeDisplayResults,
   deriveResultDisplayNodeIds,
+  normalizeNodeResults,
+  perMillion,
   type NormalizedNodeResult,
 } from '../tokenFrequencyAdapters';
 
@@ -113,5 +115,27 @@ describe('deriveNodeDisplayResults', () => {
     expect(result.filteredOutCount).toBe(2);
     expect(result.filteredRows).toHaveLength(2);
     expect(result.displayRows).toHaveLength(2);
+  });
+});
+
+describe('per-million totals (issue 172)', () => {
+  it('adds Arrow Int64 counts that arrive as strings instead of joining them', () => {
+    // arrowTable serialises bigint counts as text, as the real Result does.
+    const data = {
+      'node-1': {
+        data: [
+          { token: 'the', frequency: '2249' },
+          { token: 'and', frequency: '1215' },
+          { token: 'tail', frequency: '36' },
+        ],
+      },
+    };
+
+    const [normalized] = normalizeNodeResults(data, ['node-1'], (nodeId) => nodeId);
+    const [view] = deriveNodeDisplayResults([normalized!], new Set(), null);
+
+    expect(view!.rows[0]!.frequency).toBe(2249);
+    expect(view!.totalTokens).toBe(3500);
+    expect(perMillion(view!.rows[0]!.frequency, view!.totalTokens)).toBeCloseTo(642571.43, 2);
   });
 });

@@ -37,7 +37,7 @@ export const perMillion = (frequency: number, totalTokens: number): number =>
  */
 const extractRows = (entry: unknown): TokenFrequencyRow[] => {
   if (Array.isArray(entry)) {
-    return entry as TokenFrequencyRow[];
+    return withNumericFrequencies(entry as TokenFrequencyRow[]);
   }
   if (
     entry &&
@@ -45,10 +45,19 @@ const extractRows = (entry: unknown): TokenFrequencyRow[] => {
     !Array.isArray(entry) &&
     Array.isArray((entry as Record<string, unknown>).data)
   ) {
-    return (entry as Record<string, unknown>).data as TokenFrequencyRow[];
+    return withNumericFrequencies((entry as Record<string, unknown>).data as TokenFrequencyRow[]);
   }
   return [];
 };
+
+/**
+ * Arrow Int64 counts arrive as strings (bigint is serialised as text), so
+ * sums such as the per-million total would concatenate them (issue 172).
+ */
+const withNumericFrequencies = (rows: TokenFrequencyRow[]): TokenFrequencyRow[] =>
+  rows.map((row) =>
+    typeof row.frequency === 'number' ? row : { ...row, frequency: Number(row.frequency) || 0 },
+  );
 
 /** Pulls backend metadata from a node-result envelope for display-name recovery. */
 /**
