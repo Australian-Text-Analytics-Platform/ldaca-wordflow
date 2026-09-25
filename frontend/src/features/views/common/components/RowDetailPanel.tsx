@@ -96,6 +96,23 @@ const DOCUMENT_ANCHOR_MARGIN_PX = 48;
  * near the top, or back to the start when the renderer marks no anchor.
  * Called by: RowDetailPanel after the dialog opens or its payload changes.
  */
+/**
+ * A stable key per row record. The document box is remounted for each row:
+ * Safari could keep painting the previous row's highlights (or their absence)
+ * when the same scrolled box was updated in place and scrolled in one frame.
+ */
+const recordKeys = new WeakMap<object, number>();
+let nextRecordKey = 0;
+const keyForRecord = (record: object): number => {
+  let key = recordKeys.get(record);
+  if (key === undefined) {
+    nextRecordKey += 1;
+    key = nextRecordKey;
+    recordKeys.set(record, key);
+  }
+  return key;
+};
+
 const scrollDocumentToAnchor = (documentBox: HTMLElement) => {
   documentBox.scrollTop = 0;
   const anchor = documentBox.querySelector<HTMLElement>('[data-row-detail-anchor]');
@@ -193,6 +210,7 @@ export function RowDetailPanel({
               </h4>
               <div className="bg-panel p-4 rounded-lg border">
                 <div
+                  key={keyForRecord(record)}
                   ref={setDocumentBox}
                   data-testid="row-detail-document"
                   className={cn(
