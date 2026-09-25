@@ -7,3 +7,5 @@ Wordflow is a web-based platform that helps you explore and analyse text collect
 Your work is organised into **projects**. Each project keeps your uploaded data, processed results, and derived outputs together so you can pick up where you left off. Results from one tool can be fed directly into another, making it easy to combine different types of analysis.
 
 No programming or command-line knowledge is required. The platform is designed for researchers across all disciplines.
+
+Wordflow also runs as a desktop app for macOS and Windows, which keeps your projects on your own computer. In the web version, the download icon next to **About Wordflow** in the title bar opens the [download page](https://sih.tools/wordflow#run).

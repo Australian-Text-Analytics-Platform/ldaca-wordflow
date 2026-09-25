@@ -107,6 +107,18 @@ describe('DesktopNavigationHeaderView', () => {
     expect(screen.getByTestId('desktop-navigation-header')).toHaveClass('pl-[78px]');
   });
 
+  it('links the web build to the desktop app downloads, and not the desktop app itself (issue 171)', () => {
+    const { unmount } = renderHeader({ ...baseProps, showDesktopAppLink: true });
+
+    const link = screen.getByRole('link', { name: 'Get the desktop app (opens in a new tab)' });
+    expect(link).toHaveAttribute('href', 'https://sih.tools/wordflow#run');
+    expect(link).toHaveAttribute('target', '_blank');
+    unmount();
+
+    renderHeader(baseProps);
+    expect(screen.queryByRole('link', { name: /desktop app/i })).not.toBeInTheDocument();
+  });
+
   it('opens with focused search, filters Tabs, and marks the active Tab', async () => {
     const user = userEvent.setup();
     renderHeader(baseProps);

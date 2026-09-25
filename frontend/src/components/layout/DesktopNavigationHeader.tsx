@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, MonitorDown, Search } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { Tab } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,7 @@ import {
 import { useWorkspaceTabResources } from '@/features/views/common/tabs/workspaceTabsQuery';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { isMacOSDesktop } from '@/lib/isMacOSDesktop';
+import { isTauri } from '@/lib/isTauri';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -43,6 +44,8 @@ interface DesktopNavigationHeaderViewProps {
   canGoBack: boolean;
   canGoForward: boolean;
   hasNativeTrafficLights: boolean;
+  /** Web build only: link to the desktop app downloads (issue 171). */
+  showDesktopAppLink?: boolean;
   onBack: () => void;
   onForward: () => void;
   onSelectTab: (tab: Tab) => void;
@@ -50,6 +53,9 @@ interface DesktopNavigationHeaderViewProps {
 }
 
 const EMPTY_TABS: Tab[] = [];
+
+/** The landing page's download section, which offers every platform's installer. */
+const DESKTOP_APP_DOWNLOADS_URL = 'https://sih.tools/wordflow#run';
 
 /** VS Code-style macOS title-bar controls with a searchable Workspace Tab picker. */
 export function DesktopNavigationHeaderView({
@@ -62,6 +68,7 @@ export function DesktopNavigationHeaderView({
   canGoBack,
   canGoForward,
   hasNativeTrafficLights,
+  showDesktopAppLink = false,
   onBack,
   onForward,
   onSelectTab,
@@ -151,6 +158,19 @@ export function DesktopNavigationHeaderView({
             iconClassName="!size-[18px]"
           />
         </span>
+        {showDesktopAppLink ? (
+          <a
+            href={DESKTOP_APP_DOWNLOADS_URL}
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Get the desktop app (opens in a new tab)"
+            title="Get the desktop app"
+            data-testid="desktop-header-desktop-app-link"
+            className="flex size-[22px] shrink-0 items-center justify-center rounded-md text-link hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            <MonitorDown className="!size-[18px]" aria-hidden="true" />
+          </a>
+        ) : null}
         <span className="ml-1 text-[13px] leading-none text-description max-[700px]:hidden">
           by
         </span>
@@ -396,6 +416,7 @@ function DesktopNavigationHeaderController() {
         history.workspaceId === currentWorkspaceId && history.index < history.entries.length - 1
       }
       hasNativeTrafficLights={isMacOSDesktop()}
+      showDesktopAppLink={!isTauri()}
       onBack={() => {
         moveHistory(-1);
       }}
