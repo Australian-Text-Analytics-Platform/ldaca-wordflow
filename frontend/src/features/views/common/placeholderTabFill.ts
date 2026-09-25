@@ -14,7 +14,10 @@ interface PlaceholderTabFillArgs {
  */
 const scheduleCaretRestore = (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   const restore = () => {
-    if (document.activeElement !== input) {
+    // Skip if the user has already typed: moving the caret then would drop
+    // their next keys into the middle of the name ("replaced v2" became
+    // "replaced2 v").
+    if (document.activeElement !== input || input.value !== value) {
       return;
     }
     input.setSelectionRange(value.length, value.length);
