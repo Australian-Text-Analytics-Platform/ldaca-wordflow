@@ -164,4 +164,34 @@ describe('DataEditorToolPanel (issue 143)', () => {
     await user.keyboard('s');
     expect(name).toHaveValue('text word counts');
   });
+
+  it('adds split delimiters as chips on Enter, without duplicates (issue 163)', async () => {
+    const user = userEvent.setup();
+    open('split', 'text');
+    render(<DataEditorToolPanel />);
+
+    expect(screen.getByLabelText('Number of columns')).toHaveValue(2);
+    const input = screen.getByLabelText('Delimiters');
+    await user.click(input);
+    await user.keyboard('; {Enter}');
+    await user.keyboard(';{Enter}');
+    await user.keyboard(' {Enter}');
+    await user.keyboard(';{Enter}');
+    await user.keyboard('::{Enter}');
+    // A space shows as a word, and the duplicate ";" was not added again.
+    expect(screen.getByRole('button', { name: 'Remove delimiter space' })).toBeInTheDocument();
+    await user.keyboard('{Backspace}');
+    await user.click(screen.getByLabelText('Also split at each new line'));
+    await user.click(screen.getByRole('button', { name: 'Remove delimiter ,' }));
+
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toEqual({
+        kind: 'split_column',
+        column: 'text',
+        delimiters: ['; ', ';', ' ', '\n'],
+        direction: 'left',
+        parts: 2,
+      });
+    });
+  });
 });

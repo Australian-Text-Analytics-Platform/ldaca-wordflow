@@ -222,15 +222,6 @@ export function buildCleanText(
   };
 }
 
-export const SPLIT_DELIMITER_PRESETS = [
-  { key: 'comma', label: 'Comma', value: ',' },
-  { key: 'semicolon', label: 'Semicolon', value: ';' },
-  { key: 'space', label: 'Space', value: ' ' },
-  { key: 'tab', label: 'Tab', value: '\t' },
-  { key: 'pipe', label: 'Pipe ( | )', value: '|' },
-  { key: 'newline', label: 'New line', value: '\n' },
-] as const;
-
 export type SplitDirection = 'left' | 'right';
 
 export function buildSplit(

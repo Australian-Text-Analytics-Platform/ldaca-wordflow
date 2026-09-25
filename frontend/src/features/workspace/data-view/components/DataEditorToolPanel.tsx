@@ -26,7 +26,6 @@ import {
   CLEAN_TEXT_OPERATIONS,
   COUNT_MEASURES,
   defaultCountName,
-  SPLIT_DELIMITER_PRESETS,
   type CountMeasure,
   type SplitDirection,
   templateColumnToken,
@@ -36,6 +35,7 @@ import {
   type OutputTarget,
 } from '../dataEditorRequests';
 import { CombineTemplateField } from './CombineTemplateField';
+import { DelimiterChips } from './DelimiterChips';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
 import { focusDataEditorTool } from '../focusDataEditorTool';
 
@@ -210,8 +210,8 @@ export function DataEditorToolPanel() {
     CLEAN_TEXT_OPERATIONS.find((option) => option.value === initialOperation)?.value ?? 'trim',
   );
   const [regex, setRegex] = useState(false);
-  const [splitPresets, setSplitPresets] = useState<string[]>(['comma']);
-  const [otherDelimiter, setOtherDelimiter] = useState('');
+  const [splitDelimiters, setSplitDelimiters] = useState<string[]>([',']);
+  const [splitNewLine, setSplitNewLine] = useState(false);
   const [direction, setDirection] = useState<SplitDirection>('left');
   const [measure, setMeasure] = useState<CountMeasure>('words');
   const [parts, setParts] = useState('2');
@@ -244,12 +244,7 @@ export function DataEditorToolPanel() {
   } else if (tool === 'clean_text') {
     draft = buildCleanText({ column, operation, target, outputName }, columns);
   } else if (tool === 'split') {
-    const delimiters = [
-      ...SPLIT_DELIMITER_PRESETS.filter((preset) => splitPresets.includes(preset.key)).map(
-        (preset) => preset.value,
-      ),
-      otherDelimiter,
-    ];
+    const delimiters = [...splitDelimiters, ...(splitNewLine ? ['\n'] : [])];
     draft = buildSplit({ column, delimiters, direction, parts: Number(parts) }, columns);
   } else if (tool === 'count') {
     draft = buildCount({ column, measure, pattern, regex, outputName }, columns);
@@ -376,12 +371,32 @@ export function DataEditorToolPanel() {
             ) : null}
           </>
         ) : (
-          <ColumnSelect
-            label="Column"
-            value={column}
-            columns={columns}
-            onChange={touch(setColumn)}
-          />
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-48 flex-1">
+              <ColumnSelect
+                label="Column"
+                value={column}
+                columns={columns}
+                onChange={touch(setColumn)}
+              />
+            </div>
+            {tool === 'split' ? (
+              <div className="flex flex-col gap-1">
+                <Label htmlFor="split-parts">Number of columns</Label>
+                <Input
+                  id="split-parts"
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={parts}
+                  className="w-24 text-right tabular-nums"
+                  onChange={(event) => {
+                    touch(setParts)(event.target.value);
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
         )}
 
         {tool === 'find_replace' ? (
@@ -538,40 +553,19 @@ export function DataEditorToolPanel() {
 
         {tool === 'split' ? (
           <>
-            <fieldset className="space-y-1">
-              <legend className="text-body font-medium">Split on any of</legend>
-              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
-                {SPLIT_DELIMITER_PRESETS.map((preset) => (
-                  <label
-                    key={preset.key}
-                    htmlFor={`split-${preset.key}`}
-                    className="flex items-center gap-2 text-body"
-                  >
-                    <Checkbox
-                      id={`split-${preset.key}`}
-                      checked={splitPresets.includes(preset.key)}
-                      onCheckedChange={(checked) => {
-                        touch(setSplitPresets)(
-                          checked === true
-                            ? [...splitPresets, preset.key]
-                            : splitPresets.filter((key) => key !== preset.key),
-                        );
-                      }}
-                    />
-                    {preset.label}
-                  </label>
-                ))}
-              </div>
-              <TextField
-                id="split-other"
-                label="Other text"
-                value={otherDelimiter}
-                placeholder="e.g. :: or  - "
-                onChange={touch(setOtherDelimiter)}
+            <DelimiterChips delimiters={splitDelimiters} onChange={touch(setSplitDelimiters)} />
+            <label className="flex items-center gap-2 text-body">
+              <Checkbox
+                checked={splitNewLine}
+                onCheckedChange={(checked) => {
+                  touch(setSplitNewLine)(checked === true);
+                }}
               />
-            </fieldset>
-            <fieldset className="space-y-1">
-              <legend className="text-body font-medium">Split from</legend>
+              Also split at each new line
+            </label>
+            <fieldset className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <legend className="sr-only">Split from</legend>
+              <span className="text-body font-medium">Split from</span>
               <label className="flex items-center gap-2 text-body">
                 <input
                   type="radio"
@@ -595,19 +589,6 @@ export function DataEditorToolPanel() {
                 The right (the first column keeps the rest)
               </label>
             </fieldset>
-            <div className="space-y-1">
-              <Label htmlFor="split-parts">Number of columns</Label>
-              <Input
-                id="split-parts"
-                type="number"
-                min={2}
-                max={50}
-                value={parts}
-                onChange={(event) => {
-                  touch(setParts)(event.target.value);
-                }}
-              />
-            </div>
             <p className="text-label-secondary text-description">
               New columns {column ? `${column}_1, ${column}_2, …` : ''} are placed right of the
               column. Text left over after the split keeps its original delimiters.
