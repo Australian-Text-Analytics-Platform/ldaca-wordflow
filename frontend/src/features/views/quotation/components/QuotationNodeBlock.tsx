@@ -195,11 +195,9 @@ function QuotationNodeBlockContent({
 
   return (
     <section className="space-y-4">
-      <div className="border-b border-surface-border/60 pb-4">
-        <p className="text-body text-description">
-          Text column: {textCol || 'Select a text column to view highlighted quotations.'}
-        </p>
-      </div>
+      <p className="text-label-secondary text-description">
+        Text column: {textCol || 'Select a text column to view highlighted quotations.'}
+      </p>
 
       <AnalysisTableFrame
         maxHeightClass="max-h-[70vh]"

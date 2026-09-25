@@ -107,49 +107,42 @@ export function QuotationResultsPanel({
           </CardTitle>
           {headerAction}
         </div>
-        {reviewRowUnit ? (
-          <fieldset className="flex items-center gap-4 text-body">
-            <legend className="sr-only">Page quotation review by</legend>
-            <span>Page by:</span>
-            {(['documents', 'matches'] as const).map((unit) => (
-              <label key={unit} className="flex items-center gap-1.5">
-                <input
-                  type="radio"
-                  name="quotation-review-row-unit"
-                  value={unit}
-                  checked={reviewRowUnit === unit}
-                  onChange={() => {
-                    onReviewRowUnitChange(unit);
-                  }}
-                />
-                {unit === 'documents' ? 'Documents' : 'Matches'}
+        {/* One compact row with consistent labels (issue 160); the range hint
+            only appears when the value needs fixing. */}
+        <div className="space-y-1 text-body">
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+            {reviewRowUnit ? (
+              <fieldset className="flex items-center gap-3">
+                <legend className="sr-only">Page quotation review by</legend>
+                <span className="text-label-secondary font-medium text-description">Page by</span>
+                {(['documents', 'matches'] as const).map((unit) => (
+                  <label key={unit} className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="quotation-review-row-unit"
+                      value={unit}
+                      checked={reviewRowUnit === unit}
+                      onChange={() => {
+                        onReviewRowUnitChange(unit);
+                      }}
+                    />
+                    {unit === 'documents' ? 'Documents' : 'Matches'}
+                  </label>
+                ))}
+              </fieldset>
+            ) : null}
+            <div className="flex items-center gap-2">
+              <label
+                htmlFor="quotation-context-length"
+                className="text-label-secondary font-medium text-description"
+              >
+                Context
               </label>
-            ))}
-          </fieldset>
-        ) : null}
-        <div className="space-y-2 text-body">
-          <div className="flex flex-wrap items-center gap-4">
-            <MetadataColumnSelector
-              availableColumns={quotationMetadataColumns}
-              selectedColumns={resolvedMetadataColumns}
-              onSelectedColumnsChange={onSelectedMetadataColumnsChange}
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex items-center gap-2">
-                <label
-                  htmlFor="quotation-context-length"
-                  className="text-body font-medium text-foreground"
-                >
-                  Context length (words per side)
-                </label>
-                <HelpIcon
-                  targetKey="analysis.quotation.context-length"
-                  label="Quotation context length"
-                />
-              </div>
               <Input
                 id="quotation-context-length"
                 aria-label="Context length in words"
+                aria-invalid={contextLengthError ? true : undefined}
+                aria-describedby={contextLengthError ? 'quotation-context-length-error' : undefined}
                 type="number"
                 min={0}
                 max={MAX_CONTEXT_LENGTH}
@@ -160,24 +153,34 @@ export function QuotationResultsPanel({
                 }}
                 onBlur={onContextLengthBlur}
                 onKeyDown={onContextLengthKeyDown}
-                className="h-9 w-24 text-right"
+                className="h-8 w-20 text-right tabular-nums"
                 inputMode="numeric"
                 disabled={isSavingContextLength}
               />
-              {isSavingContextLength && (
-                <div className="flex items-center gap-1 text-label-secondary text-description">
+              <span className="text-description">words per side</span>
+              <HelpIcon
+                targetKey="analysis.quotation.context-length"
+                label="Quotation context length"
+                tooltip={`Words shown on each side of a quotation, from 0 to ${String(MAX_CONTEXT_LENGTH)}.`}
+              />
+              {isSavingContextLength ? (
+                <span className="flex items-center gap-1 text-label-secondary text-description">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  <span>Saving…</span>
-                </div>
-              )}
+                  Saving…
+                </span>
+              ) : null}
             </div>
+            <MetadataColumnSelector
+              availableColumns={quotationMetadataColumns}
+              selectedColumns={resolvedMetadataColumns}
+              onSelectedColumnsChange={onSelectedMetadataColumnsChange}
+            />
           </div>
-          <span
-            className={`text-label-secondary ${contextLengthError ? 'text-error' : 'text-description'}`}
-          >
-            {contextLengthError ??
-              `Enter a whole number between 0 and ${String(MAX_CONTEXT_LENGTH)}.`}
-          </span>
+          {contextLengthError ? (
+            <p id="quotation-context-length-error" className="text-label-secondary text-error">
+              {contextLengthError}
+            </p>
+          ) : null}
         </div>
       </CardHeader>
       <CardContent className="space-y-8">

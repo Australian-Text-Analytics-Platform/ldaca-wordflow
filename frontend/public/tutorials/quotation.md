@@ -38,7 +38,7 @@ ID, never a host URL.
 
 <h3 id="help-quotation-context-length">Step 3 — Set display context</h3>
 
-**Context length (words per side)** controls how much source text the Result
+**Context** (words per side) controls how much source text the Result
 table displays around the highlighted quotation spans. It is a presentation
 setting, not an extraction-engine parameter.
 
