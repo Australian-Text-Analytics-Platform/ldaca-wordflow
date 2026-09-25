@@ -97,7 +97,7 @@ export function SplitByGroupSubTab({
     <BuilderToolCard
       title="Group into Data Blocks"
       subtitle="One Data Block per value, date period, or number range of a column."
-      icon={<Split className="h-5 w-5" />}
+      icon={<Split className="h-5 w-5 rotate-90" />}
       helpKey="preprocessing.split-group.tab"
       helpLabel="Group overview"
       tooltip="Make one Data Block per value, date period, or number range of a column."

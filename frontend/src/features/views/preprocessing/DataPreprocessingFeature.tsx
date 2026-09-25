@@ -63,7 +63,8 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'split_group',
     title: 'Group',
-    icon: <Split className="size-4" />,
+    // Rotated so it reads as rows dividing, not as the mirror of Join's icon.
+    icon: <Split className="size-4 rotate-90" />,
     tabDomId: 'preprocessing-tab-split-group',
     panelDomId: 'preprocessing-panel-split-group',
   },
