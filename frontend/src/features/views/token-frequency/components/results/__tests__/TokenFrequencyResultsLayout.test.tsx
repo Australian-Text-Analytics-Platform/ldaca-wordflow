@@ -736,14 +736,17 @@ describe('Token frequency result layouts', () => {
       'LL',
       'Log-likelihood score measuring the strength of the frequency difference between the two Data Blocks.',
     ],
-    ['Overuse', 'Which Data Block has the higher observed token frequency: Reference or Study.'],
+    [
+      'Overuse',
+      'Which Data Block uses the token more, relative to its size: Study (overuse) or Reference (underuse).',
+    ],
     [
       'Signed LL',
-      'The log-likelihood score, positive when Study has the higher frequency and negative when Reference does.',
+      'The log-likelihood score, positive when the token is relatively more frequent in Study and negative when it is relatively more frequent in Reference.',
     ],
     [
       '%DIFF',
-      'Reference relative frequency minus Study relative frequency, shown as a percentage.',
+      'How much more (or less) frequent the token is in Study than in Reference: (Study − Reference) ÷ Reference relative frequency × 100. 0 means equal.',
     ],
     [
       'Bayes',
@@ -755,13 +758,13 @@ describe('Token frequency result layouts', () => {
     ],
     [
       'RRisk',
-      'Reference relative frequency divided by Study relative frequency; 1 means equal relative frequency.',
+      'Study relative frequency divided by Reference relative frequency; 1 means equal relative frequency.',
     ],
     [
       'LogRatio',
-      'Natural logarithm of the Reference-to-Study relative-frequency ratio; 0 means equal relative frequency.',
+      'Binary logarithm (log2) of the Study-to-Reference relative-frequency ratio; 0 means equal, 1 means twice as frequent in Study.',
     ],
-    ['OddsRatio', 'Reference token odds divided by Study token odds; 1 means equal odds.'],
+    ['OddsRatio', 'Study token odds divided by Reference token odds; 1 means equal odds.'],
     [
       'Significance',
       'Significance level derived from log likelihood: more stars indicate stronger evidence of a difference.',
@@ -790,7 +793,7 @@ describe('Token frequency result layouts', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent(explanation);
   });
 
-  it('labels numeric-string frequency direction as Reference or Study', () => {
+  it('labels frequency direction by relative frequency, not raw counts (issue 168)', () => {
     const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
     const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
 
@@ -801,8 +804,22 @@ describe('Token frequency result layouts', () => {
         nodeDisplayResults={[nodeA, nodeB]}
         lastCompareNodeIds={['node-a', 'node-b']}
         statistics={[
-          buildStatistic({ token: 'reference-token', freq_reference: '59', freq_study: '8' }),
-          buildStatistic({ token: 'study-token', freq_reference: '8', freq_study: '59' }),
+          buildStatistic({
+            token: 'reference-token',
+            freq_reference: '59',
+            percent_reference: '5.9',
+            freq_study: '8',
+            percent_study: '0.8',
+          }),
+          // More raw hits in the larger Reference block, but relatively more
+          // frequent in Study.
+          buildStatistic({
+            token: 'study-token',
+            freq_reference: '80',
+            percent_reference: '0.8',
+            freq_study: '59',
+            percent_study: '5.9',
+          }),
         ]}
         getColorForNode={(_nodeId, index) => (index === 0 ? '#2563eb' : '#dc2626')}
         view="list"

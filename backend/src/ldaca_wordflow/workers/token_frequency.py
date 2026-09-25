@@ -20,15 +20,18 @@ from .utils import process_entrypoint
 
 logger = logging.getLogger(__name__)
 
+# ``token_frequency_stats`` measures corpus_0 against a corpus_1 baseline
+# (%DIFF, relative risk, log ratio, odds ratio), so Study is corpus_0 and
+# Reference, the baseline, is corpus_1 (issue 168).
 _COMPARATIVE_STATISTICS_COLUMN_NAMES = {
-    "freq_corpus_0": "freq_reference",
-    "percent_corpus_0": "percent_reference",
-    "expected_0": "expected_reference",
-    "corpus_0_total": "reference_total",
-    "freq_corpus_1": "freq_study",
-    "percent_corpus_1": "percent_study",
-    "expected_1": "expected_study",
-    "corpus_1_total": "study_total",
+    "freq_corpus_0": "freq_study",
+    "percent_corpus_0": "percent_study",
+    "expected_0": "expected_study",
+    "corpus_0_total": "study_total",
+    "freq_corpus_1": "freq_reference",
+    "percent_corpus_1": "percent_reference",
+    "expected_1": "expected_reference",
+    "corpus_1_total": "reference_total",
 }
 
 
@@ -100,6 +103,7 @@ def _compute_token_frequencies(
     progress_callback: Callable[[float, str], None] | None = None,
     node_token_streams: dict[uuid.UUID, str] | None = None,
     node_tokenizer_models: dict[uuid.UUID, str] | None = None,
+    node_order: list[uuid.UUID] | None = None,
 ) -> dict[str, Any]:
     """Execute token-frequency analysis inside a worker process.
 
@@ -144,7 +148,14 @@ def _compute_token_frequencies(
             if model and model.strip()
         }
 
-        prepared_node_ids = list({**corpora, **token_streams}.keys())
+        # Keep the requested [Reference, Study] order: raw-text and tokenized
+        # nodes arrive in separate mappings, so merging them can reorder a
+        # mixed pair (issue 168).
+        prepared = {**corpora, **token_streams}
+        prepared_node_ids = [
+            *(node_id for node_id in node_order or () if node_id in prepared),
+            *(node_id for node_id in prepared if node_id not in (node_order or ())),
+        ]
         if not prepared_node_ids:
             raise ValueError("At least one corpus is required")
         if len(prepared_node_ids) > 2:
@@ -211,9 +222,10 @@ def _compute_token_frequencies(
                 )
 
         if len(prepared_node_ids) == 2:
+            reference_node_id, study_node_id = prepared_node_ids
             stats_df = pt.token_frequency_stats(
-                frequency_results[prepared_node_ids[0]],
-                frequency_results[prepared_node_ids[1]],
+                frequency_results[study_node_id],
+                frequency_results[reference_node_id],
             )
             stats_df = stats_df.rename(
                 {
@@ -323,4 +335,5 @@ def run_token_frequency_analysis(
         progress_callback=progress_callback,
         node_token_streams=token_streams,
         node_tokenizer_models=node_tokenizer_models,
+        node_order=node_ids,
     )

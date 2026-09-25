@@ -125,20 +125,21 @@ const STATISTICS_COLUMN_TOOLTIPS: Record<string, string> = {
   percent_study: 'The token count as a percentage of all tokens in the Study Data Block.',
   log_likelihood_llv:
     'Log-likelihood score measuring the strength of the frequency difference between the two Data Blocks.',
-  overuse: 'Which Data Block has the higher observed token frequency: Reference or Study.',
+  overuse:
+    'Which Data Block uses the token more, relative to its size: Study (overuse) or Reference (underuse).',
   signed_ll:
-    'The log-likelihood score, positive when Study has the higher frequency and negative when Reference does.',
+    'The log-likelihood score, positive when the token is relatively more frequent in Study and negative when it is relatively more frequent in Reference.',
   percent_diff:
-    'Reference relative frequency minus Study relative frequency, shown as a percentage.',
+    'How much more (or less) frequent the token is in Study than in Reference: (Study − Reference) ÷ Reference relative frequency × 100. 0 means equal.',
   bayes_factor_bic:
     'A BIC-adjusted evidence score for the frequency difference; larger values indicate stronger evidence.',
   effect_size_ell:
     'ELL effect-size estimate for the frequency difference, adjusted for corpus size and expected frequency.',
   relative_risk:
-    'Reference relative frequency divided by Study relative frequency; 1 means equal relative frequency.',
+    'Study relative frequency divided by Reference relative frequency; 1 means equal relative frequency.',
   log_ratio:
-    'Natural logarithm of the Reference-to-Study relative-frequency ratio; 0 means equal relative frequency.',
-  odds_ratio: 'Reference token odds divided by Study token odds; 1 means equal odds.',
+    'Binary logarithm (log2) of the Study-to-Reference relative-frequency ratio; 0 means equal, 1 means twice as frequent in Study.',
+  odds_ratio: 'Study token odds divided by Reference token odds; 1 means equal odds.',
   significance:
     'Significance level derived from log likelihood: more stars indicate stronger evidence of a difference.',
 };
@@ -303,9 +304,11 @@ const buildColumns = (
  */
 const enhanceRows = (statistics: TokenFrequencyStatisticsEntry[]): EnhancedStatisticsRow[] =>
   statistics.map((stat) => {
-    const or = parseStatisticsNumericValue(stat.freq_reference);
-    const os = parseStatisticsNumericValue(stat.freq_study);
-    const overuse = os > or;
+    // Compare relative frequencies, not raw counts, so blocks of different
+    // sizes get the right direction (issue 168).
+    const overuse =
+      parseStatisticsNumericValue(stat.percent_study) >
+      parseStatisticsNumericValue(stat.percent_reference);
     const ll = parseStatisticsNumericValue(stat.log_likelihood_llv);
     const llAbs = Number.isFinite(ll) ? Math.abs(ll) : NaN;
     const signed_ll = Number.isFinite(llAbs) ? (overuse ? llAbs : -llAbs) : NaN;

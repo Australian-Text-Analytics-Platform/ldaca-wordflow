@@ -4,6 +4,7 @@ from types import ModuleType
 from typing import Any, cast
 
 import polars as pl
+import pytest
 from ldaca_wordflow.workers.token_frequency import _compute_token_frequencies
 
 
@@ -145,3 +146,42 @@ def test_token_frequency_worker_uses_per_node_tokenizer_models(tmp_path, monkeyp
         "English",
         "Japanese",
     ]
+
+
+def test_keyness_measures_study_against_the_reference_baseline(tmp_path, monkeypatch):
+    """Issue 168: %DIFF and the ratios are Study relative to Reference.
+
+    Reference arrives as a token stream and Study as raw text, so the merged
+    mappings would put Study first; the requested order must still hold.
+    """
+    from polars_text.token_frequencies import token_frequency_stats
+
+    reference_id, study_id = _id("reference"), _id("study")
+    reference_stream = tmp_path / "reference-tokens.parquet"
+    pl.DataFrame({"token": ["a"] * 10 + ["b"] * 90}).write_parquet(reference_stream)
+
+    fake_polars_text = cast(Any, ModuleType("polars_text"))
+    fake_polars_text.token_frequencies = lambda series, model: {"a": 30, "b": 70}
+    fake_polars_text.token_frequency_stats = token_frequency_stats
+    monkeypatch.setitem(sys.modules, "polars_text", fake_polars_text)
+
+    result = _compute_token_frequencies(
+        node_corpora={study_id: ["study text"]},
+        node_token_streams={reference_id: str(reference_stream)},
+        node_display_names={reference_id: "Reference", study_id: "Study"},
+        artifact_dir=str(tmp_path / "output"),
+        node_tokenizer_models={
+            reference_id: "lindera:jieba",
+            study_id: "native:plain_words_en",
+        },
+        node_order=[reference_id, study_id],
+    )
+
+    statistics = pl.read_ipc_stream(result["tables"]["statistics"]["artifact"])
+    row = statistics.filter(pl.col("token") == "a").row(0, named=True)
+    assert (row["freq_study"], row["freq_reference"]) == (30, 10)
+    assert (row["study_total"], row["reference_total"]) == (100, 100)
+    assert row["percent_diff"] == pytest.approx(200.0)
+    assert row["relative_risk"] == pytest.approx(3.0)
+    assert row["log_ratio"] > 0
+    assert row["odds_ratio"] > 1

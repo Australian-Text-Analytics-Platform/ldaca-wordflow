@@ -24,7 +24,7 @@ Every Token Frequency run requires a tokenizer model for every selected data blo
 
 When two data blocks are selected, each selected-node card shows a **Use as Study Corpus** toggle. Exactly one toggle is on: that block is the study corpus, and the other block is the reference corpus. The first block is the study corpus by default. Turning a toggle on makes its block the study corpus, and turning the active toggle off makes the other block the study corpus.
 
-The reference block provides the baseline for the statistical keyword analysis: its frequencies appear as **O1** and **%1** in the statistics table, and the study block appears as **O2** and **%2**. Swapping the corpus roles flips which side each statistic measures from, which can change the sign of directional measures like LogRatio.
+The study corpus is the collection whose key words you want to find. The reference corpus is the baseline it is compared against. In the statistics table the reference block appears as **OR** and **%R**, and the study block as **OS** and **%S**. Directional measures (%DIFF, RRisk, LogRatio, OddsRatio, Overuse, and Signed LL) describe the study corpus relative to the reference corpus, so swapping the roles flips their direction.
 
 <h3 id="help-token-frequency-stop-words">Step 3 — Stop words</h3>
 
@@ -34,7 +34,7 @@ Stop words are terms you want to exclude from the frequency count — commonly w
 
 - Enable the filter, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
 - Pick a list from the **Select language** dropdown next to the switch to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
-- Lists picked under **From other tabs** (for example *Topic Modeling · Analysis 1*) are copied into this tab's list; later edits in either tab do not affect the other.
+- Lists picked under **From other tabs** (for example _Topic Modeling · Analysis 1_) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
@@ -104,24 +104,42 @@ Tokens are listed in descending order of frequency. The bar length for each toke
 
 ![Keyword Analysis table screenshot](tutorials/assets/token_frequency/statistical_measures.png)
 
-The **Keyword Analysis** table summarises token-level differences between the two data blocks. A caption directly under the section heading shows _Reference corpus: {name}; Study corpus: {name}_ with each name coloured to match the chart palette colour you picked for that block — so it's always clear at a glance which side of the comparison is which. Click any column header to sort ascending or descending.
+The **Keyword Analysis** table summarises token-level differences between the study and reference data blocks. The **Reference** and **Study** labels above the table use the chart colour you picked for each block; hover over a label to see the block's name. Hover over any column header for a short explanation, and click it to sort ascending or descending.
 
-| Column       | What it shows                                                                 |
-| ------------ | ----------------------------------------------------------------------------- |
-| O1 / O2      | Observed frequency in each data block (O1 = reference block)                  |
-| %1 / %2      | Percentage of total tokens in each data block                                 |
-| LL           | Log-likelihood G² statistic — higher means a more significant difference      |
-| %DIFF        | Percentage-point difference between the two data blocks                       |
-| Bayes        | Bayes factor (BIC)                                                            |
-| ELL          | Effect size for log-likelihood                                                |
-| RRisk        | Relative risk ratio                                                           |
-| LogRatio     | Log of relative frequencies — positive values skew toward the reference block |
-| OddsRatio    | Odds ratio between data blocks                                                |
-| Significance | \*\*\*\* p < 0.0001, \*\*\* p < 0.001, \*\* p < 0.01, \* p < 0.05             |
+| Column       | What it shows                                                                                    |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| OR / OS      | Observed frequency in the reference and study data blocks                                        |
+| %R / %S      | The token's share of all tokens in each data block, as a percentage (relative frequency)         |
+| LL           | Log-likelihood (G²): higher means a more significant difference                                  |
+| Overuse      | **Study** when the token is relatively more frequent in the study block, otherwise **Reference** |
+| Signed LL    | LL, positive for study overuse and negative for study underuse                                   |
+| %DIFF        | How much more (or less) frequent the token is in the study block, as a percentage                |
+| Bayes        | Bayes factor (BIC): above 2 is positive evidence, above 6 strong, above 10 very strong           |
+| ELL          | Effect size for log-likelihood                                                                   |
+| RRisk        | Relative risk: study relative frequency divided by reference relative frequency                  |
+| LogRatio     | Binary log of RRisk: 1 means twice as frequent in the study block, −1 half as frequent           |
+| OddsRatio    | Odds of the token in the study block divided by its odds in the reference block                  |
+| Significance | \*\*\*\* p < 0.0001, \*\*\* p < 0.001, \*\* p < 0.01, \* p < 0.05                                |
+
+<h4 id="help-token-frequency-keyness-formulas">How the statistics are calculated</h4>
+
+For a token, O<sub>S</sub> and O<sub>R</sub> are its counts in the study and reference blocks, N<sub>S</sub> and N<sub>R</sub> are the blocks' total token counts, and N = N<sub>S</sub> + N<sub>R</sub>.
+
+- **Relative frequency:** %S = O<sub>S</sub> ÷ N<sub>S</sub> × 100 and %R = O<sub>R</sub> ÷ N<sub>R</sub> × 100.
+- **Expected frequencies:** E<sub>S</sub> = N<sub>S</sub> × (O<sub>S</sub> + O<sub>R</sub>) ÷ N, and E<sub>R</sub> likewise with N<sub>R</sub>.
+- **LL** = 2 × (O<sub>S</sub> × ln(O<sub>S</sub> ÷ E<sub>S</sub>) + O<sub>R</sub> × ln(O<sub>R</sub> ÷ E<sub>R</sub>)), where a zero count adds nothing (Rayson and Garside 2000). The significance stars use the critical values 3.84, 6.63, 10.83, and 15.13.
+- **%DIFF** = (%S − %R) ÷ %R × 100 (Gabrielatos and Marchi 2012). A token that never occurs in the reference block gets a very large %DIFF.
+- **Bayes (BIC)** = LL − ln(N) (Wilson 2013).
+- **ELL** = LL ÷ (N × ln(the smaller of E<sub>S</sub> and E<sub>R</sub>)) (Johnston et al. 2006).
+- **RRisk** = %S ÷ %R.
+- **LogRatio** = log₂(%S ÷ %R), counting a zero frequency as 0.5 so the ratio stays finite (Hardie 2014).
+- **OddsRatio** = (O<sub>S</sub> ÷ (N<sub>S</sub> − O<sub>S</sub>)) ÷ (O<sub>R</sub> ÷ (N<sub>R</sub> − O<sub>R</sub>)).
+
+Results created before Wordflow 0.7.8 measured the reference block against the study block, so their %DIFF, RRisk, LogRatio, and OddsRatio are reversed. Run the analysis again to get the current direction.
 
 Use the **Head / Tail Rows (N)** control to show the first and last N rows of the sorted table. Sorting always applies to the full dataset before trimming.
 
-The full table can be downloaded as a CSV file; when the shared token filter is active, the download contains all matching rows. For further reading on keyword analysis methodology, see the [Lancaster corpus linguistics resource](https://www.lancaster.ac.uk/fss/courses/ling/corpus/blue/l03_2.htm).
+The full table can be downloaded as a CSV file; when the shared token filter is active, the download contains all matching rows. For further reading on keyword analysis methodology, see the [Lancaster corpus linguistics resource](https://www.lancaster.ac.uk/fss/courses/ling/corpus/blue/l03_2.htm) and Paul Rayson's [log-likelihood and effect size calculator](https://ucrel.lancs.ac.uk/llwizard.html), which these formulas follow.
 
 <h3 id="help-token-frequency-clear-results">Clear results</h3>
 
@@ -132,27 +150,27 @@ until you choose Clear Results.
 
 <h2 id="help-token-frequency-troubleshooting">Troubleshooting</h2>
 
-| Symptom                                                 | Likely cause                                                   | What to try                                                                               |
-| ------------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Results unchanged after removing stop words             | Filter off, or the text box still has focus                    | Turn on the stop words switch, then click outside the text box to apply your edits        |
-| Word cloud dominated by common words                    | No stop words applied                                          | Pick your corpus language from the stop words **Select language** dropdown                |
-| Juxtorpus or Keyword Analysis table are missing         | Only one data block selected                                   | Select a second data block to enable comparison mode                                      |
-| Keyword Analysis table shows no significant words       | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
+| Symptom                                               | Likely cause                                                   | What to try                                                                               |
+| ----------------------------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Results unchanged after removing stop words           | Filter off, or the text box still has focus                    | Turn on the stop words switch, then click outside the text box to apply your edits        |
+| Word cloud dominated by common words                  | No stop words applied                                          | Pick your corpus language from the stop words **Select language** dropdown                |
+| Juxtorpus or Keyword Analysis table are missing       | Only one data block selected                                   | Select a second data block to enable comparison mode                                      |
+| Keyword Analysis table shows no significant words     | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
 | A project block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
-| Right-clicked stop word is hard to find                 | List was already long when the word was added                  | New words are inserted at the top — scroll to the start, or click **Sort** to alphabetise |
-| Analyze button is disabled                              | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
+| Right-clicked stop word is hard to find               | List was already long when the word was added                  | New words are inserted at the top — scroll to the start, or click **Sort** to alphabetise |
+| Analyze button is disabled                            | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
 
 <h2 id="help-token-frequency-defaults">Quick-reference defaults</h2>
 
-| Setting              | Default              | Notes                                                                                                                                         |
-| -------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Data blocks          | None                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected workspace-wide, only the 2 most recent show in the panel. |
-| Tokenizer model      | Saved Data Block preference or none | Required for each selected block; the submitted Analysis freezes the exact mapping                                                |
-| Corpus role switches | First selected block is Study Corpus | Changes O1/O2 assignment in the statistics table                                                                                  |
-| Stop words           | Empty                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
-| Token filter         | Empty                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                      |
-| Cloud display limit  | 50                   | Range 10–100; mirrors to list limit                                                                                                           |
-| List display limit   | 50                   | Range 10 – vocabulary size; values > 100 diverge from cloud                                                                                   |
+| Setting              | Default                              | Notes                                                                                                                                         |
+| -------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Data blocks          | None                                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected workspace-wide, only the 2 most recent show in the panel. |
+| Tokenizer model      | Saved Data Block preference or none  | Required for each selected block; the submitted Analysis freezes the exact mapping                                                            |
+| Corpus role switches | First selected block is Study Corpus | Changes O1/O2 assignment in the statistics table                                                                                              |
+| Stop words           | Empty                                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
+| Token filter         | Empty                                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                       |
+| Cloud display limit  | 50                                   | Range 10–100; mirrors to list limit                                                                                                           |
+| List display limit   | 50                                   | Range 10 – vocabulary size; values > 100 diverge from cloud                                                                                   |
 
 ## Practice exercise
 
