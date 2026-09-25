@@ -15,7 +15,8 @@ export type DataEditorTool =
   | 'combine'
   | 'duplicate'
   | 'clean_text'
-  | 'split';
+  | 'split'
+  | 'count';
 
 export type DataEditorEdit = EditNodeData['body'];
 
@@ -26,6 +27,7 @@ export const DATA_EDITOR_TOOL_LABELS: Record<DataEditorTool, string> = {
   duplicate: 'Duplicate column',
   clean_text: 'Clean text',
   split: 'Split column',
+  count: 'Count',
 };
 
 interface DataEditorToolState {

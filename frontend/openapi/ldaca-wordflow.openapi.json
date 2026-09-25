@@ -3907,6 +3907,65 @@
         "title": "ConcordanceTabUpdate",
         "type": "object"
       },
+      "CountNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Count words, characters, or matches in a text column (issue 147).\n\nThe count goes into a new column right of the source. Words are runs of\nnon-whitespace, as word processors count them. ``matches`` counts\n``pattern`` as plain text unless ``regex`` is set.",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "count",
+            "default": "count",
+            "title": "Kind",
+            "type": "string"
+          },
+          "measure": {
+            "enum": [
+              "words",
+              "characters",
+              "characters_no_spaces",
+              "matches"
+            ],
+            "title": "Measure",
+            "type": "string"
+          },
+          "output_column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Output Column",
+            "type": "string"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          },
+          "regex": {
+            "default": false,
+            "title": "Regex",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "column",
+          "measure",
+          "output_column"
+        ],
+        "title": "CountNodeEditRequest",
+        "type": "object"
+      },
       "CreateFolderRequest": {
         "additionalProperties": false,
         "description": "Create one validated child under a relative parent path.",
@@ -6552,6 +6611,11 @@
             "title": "Kind",
             "type": "string"
           },
+          "literal": {
+            "default": false,
+            "title": "Literal",
+            "type": "boolean"
+          },
           "match_limit": {
             "anyOf": [
               {
@@ -6632,6 +6696,11 @@
             "default": "replace",
             "title": "Kind",
             "type": "string"
+          },
+          "literal": {
+            "default": false,
+            "title": "Literal",
+            "type": "boolean"
           },
           "match_limit": {
             "anyOf": [
@@ -6732,6 +6801,11 @@
             "default": "replace",
             "title": "Kind",
             "type": "string"
+          },
+          "literal": {
+            "default": false,
+            "title": "Literal",
+            "type": "boolean"
           },
           "match_limit": {
             "anyOf": [
@@ -8066,7 +8140,7 @@
       },
       "SplitColumnNodeEditRequest": {
         "additionalProperties": false,
-        "description": "Split one text column on a delimiter into ``parts`` new columns.\n\nThe new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;\nthe last holds any remainder, and missing parts are empty (null).",
+        "description": "Split one text column on any of several delimiters into ``parts`` columns.\n\nThe new columns (``<name>_1`` ... ``<name>_n``) sit right of the source.\nSplitting from the ``left`` leaves any remainder in the last column; from\nthe ``right``, in the first (like Python ``split`` and ``rsplit``). The\nremainder keeps its original delimiters, and missing parts are empty\n(null). Delimiters are plain text (issue 146).",
         "properties": {
           "column": {
             "maxLength": 200,
@@ -8074,10 +8148,24 @@
             "title": "Column",
             "type": "string"
           },
-          "delimiter": {
-            "maxLength": 100,
-            "minLength": 1,
-            "title": "Delimiter",
+          "delimiters": {
+            "items": {
+              "maxLength": 100,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Delimiters",
+            "type": "array"
+          },
+          "direction": {
+            "default": "left",
+            "enum": [
+              "left",
+              "right"
+            ],
+            "title": "Direction",
             "type": "string"
           },
           "kind": {
@@ -8095,7 +8183,7 @@
         },
         "required": [
           "column",
-          "delimiter",
+          "delimiters",
           "parts"
         ],
         "title": "SplitColumnNodeEditRequest",
@@ -18366,6 +18454,7 @@
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
                     "combine_columns": "#/components/schemas/CombineColumnsNodeEditRequest",
+                    "count": "#/components/schemas/CountNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
@@ -18398,6 +18487,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CountNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"
@@ -18573,6 +18665,7 @@
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
                     "combine_columns": "#/components/schemas/CombineColumnsNodeEditRequest",
+                    "count": "#/components/schemas/CountNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
@@ -18605,6 +18698,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CountNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"

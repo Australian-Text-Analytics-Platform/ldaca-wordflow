@@ -477,7 +477,7 @@ const info = {
   'preprocessing.overview': {
     file: 'information/preprocessing.md',
     anchor: 'info-preprocessing-overview',
-    label: 'About Data Preprocessing',
+    label: 'About Data Builder',
   },
   'concordance.overview': {
     file: 'information/concordance.md',

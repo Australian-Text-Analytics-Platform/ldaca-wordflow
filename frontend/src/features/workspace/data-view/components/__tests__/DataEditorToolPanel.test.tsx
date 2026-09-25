@@ -68,14 +68,20 @@ describe('DataEditorToolPanel (issue 143)', () => {
 
     expect(screen.getByRole('status')).toHaveTextContent('Complete the settings');
     expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
-    await user.type(screen.getByLabelText('Find (regular expression)'), 'a');
+    await user.type(screen.getByLabelText('Find'), '.');
 
+    // Plain text by default: "." is a dot, not "any character".
     await waitFor(() => {
       expect(useDataEditorToolStore.getState().request).toMatchObject({
         kind: 'replace',
         source_column: 'text',
-        pattern: 'a',
+        pattern: '.',
+        literal: true,
       });
+    });
+    await user.click(screen.getByLabelText('Use regular expression'));
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toMatchObject({ literal: false });
     });
     expect(useDataEditorToolStore.getState().dirty).toBe(true);
     await user.click(screen.getByRole('button', { name: 'Show Project Graph' }));

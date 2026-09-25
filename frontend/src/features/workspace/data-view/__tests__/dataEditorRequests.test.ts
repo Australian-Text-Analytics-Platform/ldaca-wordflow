@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCleanText,
   buildCombine,
+  buildCount,
   parseCombineTemplate,
   buildDuplicate,
   buildExtract,
@@ -30,6 +31,7 @@ describe('Data Editor request builders (issue 143)', () => {
       replacement: ' ',
       firstOnly: false,
       outputName: '',
+      regex: true,
     };
     expect(buildFindReplace({ ...base, target: 'same' }, columns)).toEqual({
       request: {
@@ -40,9 +42,14 @@ describe('Data Editor request builders (issue 143)', () => {
         output_column: null,
         mode: 'replace',
         count: 'all',
+        literal: false,
       },
       highlightColumns: ['text'],
     });
+    // Plain text is the default in the form: the pattern is matched as written.
+    expect(
+      buildFindReplace({ ...base, pattern: '.', regex: false, target: 'same' }, columns)?.request,
+    ).toMatchObject({ pattern: '.', literal: true });
     expect(buildFindReplace({ ...base, target: 'new' }, columns)).toBeNull();
     expect(buildFindReplace({ ...base, target: 'new', outputName: 'party' }, columns)).toBeNull();
     expect(
@@ -55,7 +62,14 @@ describe('Data Editor request builders (issue 143)', () => {
   it('requires a fresh name for extracted and combined columns', () => {
     expect(
       buildExtract(
-        { column: 'text', pattern: '#\\w+', outputName: 'tags', firstOnly: false, connector: ' ' },
+        {
+          column: 'text',
+          pattern: '#\\w+',
+          outputName: 'tags',
+          firstOnly: false,
+          connector: ' ',
+          regex: true,
+        },
         columns,
       )?.request,
     ).toMatchObject({ kind: 'replace', mode: 'extract', output_column: 'tags' });
@@ -95,11 +109,52 @@ describe('Data Editor request builders (issue 143)', () => {
       buildCleanText({ column: 'text', operation: 'trim', target: 'same', outputName: '' }, columns)
         ?.request,
     ).toEqual({ kind: 'clean_text', column: 'text', operation: 'trim', output_column: null });
-    expect(buildSplit({ column: 'party', delimiter: '-', parts: 3 }, columns)).toEqual({
-      request: { kind: 'split_column', column: 'party', delimiter: '-', parts: 3 },
+    const split = (delimiters: string[], parts = 3) =>
+      buildSplit({ column: 'party', delimiters, direction: 'right', parts }, columns);
+    expect(split(['-', ';', '-', ''])).toEqual({
+      request: {
+        kind: 'split_column',
+        column: 'party',
+        delimiters: ['-', ';'],
+        direction: 'right',
+        parts: 3,
+      },
       highlightColumns: ['party_1', 'party_2', 'party_3'],
     });
-    expect(buildSplit({ column: 'party', delimiter: '-', parts: 1 }, columns)).toBeNull();
-    expect(buildSplit({ column: 'party', delimiter: '', parts: 2 }, columns)).toBeNull();
+    expect(split(['-'], 1)).toBeNull();
+    expect(split(['', ''], 2)).toBeNull();
+  });
+
+  it('counts into a named column, defaulting to "<column> <measure>"', () => {
+    const count = (overrides: Partial<Parameters<typeof buildCount>[0]> = {}) =>
+      buildCount(
+        {
+          column: 'text',
+          measure: 'words',
+          pattern: '',
+          regex: false,
+          outputName: '',
+          ...overrides,
+        },
+        columns,
+      );
+    expect(count()).toEqual({
+      request: {
+        kind: 'count',
+        column: 'text',
+        measure: 'words',
+        pattern: null,
+        regex: false,
+        output_column: 'text word count',
+      },
+      highlightColumns: ['text word count'],
+    });
+    expect(count({ measure: 'matches' })).toBeNull();
+    expect(count({ measure: 'matches', pattern: '.', outputName: 'dots' })?.request).toMatchObject({
+      pattern: '.',
+      regex: false,
+      output_column: 'dots',
+    });
+    expect(count({ outputName: 'party' })).toBeNull();
   });
 });

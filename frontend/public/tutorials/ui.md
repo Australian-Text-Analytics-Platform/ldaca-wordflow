@@ -13,7 +13,7 @@ The LDaCA app interface is organised into three columns containing eight main se
 The left sidebar lists the available tool modules. Click a tool name to switch the main area (section 6) to that tool's interface. The available tools include:
 
 - [**Data Loader**](./data-loader.md) — create or load projects and upload data files.
-- [**Preprocessing**](./preprocessing.md) — filter, sample, join, stack, find, and create columns.
+- [**Data Builder**](./preprocessing.md): make new Data Blocks by filtering, sampling, joining, and stacking.
 - [**Token Frequency**](./token-frequency.md) — count and explore the most common terms.
 - [**Concordance**](./concordance.md) — inspect search terms in their surrounding context.
 - [**Trends and Sequence**](./sequential-analysis.md) — count documents over time or any ordered numeric axis.
@@ -71,13 +71,14 @@ The **Project Graph** occupies the top-right area and visualises Data Block crea
 
 <h2 id="help-ui-data-viewer">5. Data Editor</h2>
 
-The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make a new data block (Filter, Sample, Join, Stack) are in Data Preprocessing.
+The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make a new data block (Filter, Sample, Join, Stack) are in the Data Builder.
 
 - Tabs along the top let you switch between multiple selected data blocks.
 - The **Rename** button lets you rename the data block.
 - **Column tools** change the selected data block without creating a new one:
-  - **Add column**: **Combine columns** (write a template such as `{title}: {body}`: type `{` to pick a column from a filtered list, or use **Insert column**; any other text, such as separators or labels, is kept as written, and columns of any type are joined as text; choose whether a missing value counts as blank text or leaves the combined value empty), **Duplicate column** (the copy is placed right of the original and named like a copied file, for example `text copy`, then `text copy 2`), **Extract text** (copy the matches of a pattern into a new column), and **Split column** (split on a delimiter into several columns, the last keeping any remaining text).
-  - **Find & replace**: replace the matches of a regular expression, in the same column or a new one.
+  - **Add column**: **Combine columns** (write a template such as `{title}: {body}`: type `{` to pick a column from a filtered list, or use **Insert column**; any other text, such as separators or labels, is kept as written, and columns of any type are joined as text; choose whether a missing value counts as blank text or leaves the combined value empty), **Count** (words, characters with or without spaces, or matches of a text or pattern, in a new column right of the source; words are runs of text between spaces or line breaks), **Duplicate column** (the copy is placed right of the original and named like a copied file, for example `text copy`, then `text copy 2`), **Extract text** (copy the matches of a text or pattern into a new column), and **Split column** (split on any of several delimiters, such as comma, semicolon, space, tab, pipe, new line, or your own text, into several columns; split from the left so the last column keeps the rest, or from the right so the first column keeps the rest).
+  - **Find & replace**: replace a text, in the same column or a new one.
+  - Find & replace, Extract text, and Count match plain text as written. Tick **Use regular expression** to match a pattern instead; for example, a plain `.` finds only dots, while the regular expression `.` matches any character.
   - **Clean text**: trim spaces, collapse repeated spaces, change case (lowercase, UPPERCASE, Title Case), or remove punctuation, digits, web links, or HTML tags, in the same column or a new one.
   - The same tools are in each column's settings menu, with that column already chosen.
   - Column choices in every tool can be filtered by typing, so long column lists never need scrolling.
@@ -104,7 +105,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 The centre column is the main working area and shows the interface of whichever tool is selected in section 1. Each tool provides its own configuration options, previews, and action buttons.
 
 - The tool name and a short description appear at the top.
-- Sub-tabs (e.g. Filter, Sample, Join, Stack in Preprocessing) let you switch between related operations within the same tool.
+- Sub-tabs (e.g. Filter, Sample, Join, Stack in the Data Builder) let you switch between related operations within the same tool.
 - Most tools follow a common workflow: configure parameters → review a preview → click **Create Data Block** or **Update Data Block**. Tools that change rows (Filter, Sample, Join, Stack) always create a new block; Find and Create always update the selected block in place without changing its rows.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
 

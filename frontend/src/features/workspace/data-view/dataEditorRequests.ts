@@ -51,6 +51,7 @@ export function buildFindReplace(
     target: OutputTarget;
     outputName: string;
     firstOnly: boolean;
+    regex: boolean;
   },
   columns: readonly string[],
 ): DataEditorDraft | null {
@@ -66,6 +67,7 @@ export function buildFindReplace(
       output_column: output,
       mode: 'replace',
       count: form.firstOnly ? 'first' : 'all',
+      literal: !form.regex,
     },
     highlightColumns: [output ?? form.column],
   };
@@ -78,6 +80,7 @@ export function buildExtract(
     outputName: string;
     firstOnly: boolean;
     connector: string;
+    regex: boolean;
   },
   columns: readonly string[],
 ): DataEditorDraft | null {
@@ -92,6 +95,7 @@ export function buildExtract(
       mode: 'extract',
       count: form.firstOnly ? 'first' : 'all',
       connector: form.connector,
+      literal: !form.regex,
     },
     highlightColumns: [output],
   };
@@ -206,11 +210,23 @@ export function buildCleanText(
   };
 }
 
+export const SPLIT_DELIMITER_PRESETS = [
+  { key: 'comma', label: 'Comma', value: ',' },
+  { key: 'semicolon', label: 'Semicolon', value: ';' },
+  { key: 'space', label: 'Space', value: ' ' },
+  { key: 'tab', label: 'Tab', value: '\t' },
+  { key: 'pipe', label: 'Pipe ( | )', value: '|' },
+  { key: 'newline', label: 'New line', value: '\n' },
+] as const;
+
+export type SplitDirection = 'left' | 'right';
+
 export function buildSplit(
-  form: { column: string; delimiter: string; parts: number },
+  form: { column: string; delimiters: string[]; direction: SplitDirection; parts: number },
   columns: readonly string[],
 ): DataEditorDraft | null {
-  if (!columns.includes(form.column) || !form.delimiter) return null;
+  const delimiters = [...new Set(form.delimiters.filter((delimiter) => delimiter.length > 0))];
+  if (!columns.includes(form.column) || delimiters.length === 0) return null;
   if (!Number.isInteger(form.parts) || form.parts < 2 || form.parts > 50) return null;
   const outputs = Array.from(
     { length: form.parts },
@@ -221,9 +237,56 @@ export function buildSplit(
     request: {
       kind: 'split_column',
       column: form.column,
-      delimiter: form.delimiter,
+      delimiters,
+      direction: form.direction,
       parts: form.parts,
     },
     highlightColumns: outputs,
+  };
+}
+
+export const COUNT_MEASURES = [
+  { value: 'words', label: 'Words', suffix: 'word count' },
+  { value: 'characters', label: 'Characters', suffix: 'character count' },
+  {
+    value: 'characters_no_spaces',
+    label: 'Characters, not counting spaces',
+    suffix: 'character count (no spaces)',
+  },
+  { value: 'matches', label: 'Matches of a text or pattern', suffix: 'match count' },
+] as const;
+
+export type CountMeasure = (typeof COUNT_MEASURES)[number]['value'];
+
+/** The count column's name when the user leaves it blank: "text word count". */
+export function defaultCountName(column: string, measure: CountMeasure): string {
+  const suffix = COUNT_MEASURES.find((option) => option.value === measure)?.suffix ?? 'count';
+  return `${column || 'text'} ${suffix}`;
+}
+
+export function buildCount(
+  form: {
+    column: string;
+    measure: CountMeasure;
+    pattern: string;
+    regex: boolean;
+    outputName: string;
+  },
+  columns: readonly string[],
+): DataEditorDraft | null {
+  if (!columns.includes(form.column)) return null;
+  if (form.measure === 'matches' && !form.pattern) return null;
+  const output = newName(form.outputName || defaultCountName(form.column, form.measure), columns);
+  if (!output) return null;
+  return {
+    request: {
+      kind: 'count',
+      column: form.column,
+      measure: form.measure,
+      pattern: form.measure === 'matches' ? form.pattern : null,
+      regex: form.measure === 'matches' && form.regex,
+      output_column: output,
+    },
+    highlightColumns: [output],
   };
 }

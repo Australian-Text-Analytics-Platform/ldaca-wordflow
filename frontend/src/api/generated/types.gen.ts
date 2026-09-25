@@ -1969,6 +1969,42 @@ export type ConcordanceTabUpdate = {
 };
 
 /**
+ * CountNodeEditRequest
+ *
+ * Count words, characters, or matches in a text column (issue 147).
+ *
+ * The count goes into a new column right of the source. Words are runs of
+ * non-whitespace, as word processors count them. ``matches`` counts
+ * ``pattern`` as plain text unless ``regex`` is set.
+ */
+export type CountNodeEditRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'count';
+    /**
+     * Measure
+     */
+    measure: 'words' | 'characters' | 'characters_no_spaces' | 'matches';
+    /**
+     * Output Column
+     */
+    output_column: string;
+    /**
+     * Pattern
+     */
+    pattern?: string | null;
+    /**
+     * Regex
+     */
+    regex?: boolean;
+};
+
+/**
  * CreateFolderRequest
  *
  * Create one validated child under a relative parent path.
@@ -3358,6 +3394,10 @@ export type ReplaceDerivation = {
      */
     kind?: 'replace';
     /**
+     * Literal
+     */
+    literal?: boolean;
+    /**
      * Match Limit
      */
     match_limit?: number | null;
@@ -3401,6 +3441,10 @@ export type ReplaceNodeCreateRequest = {
      * Kind
      */
     kind?: 'replace';
+    /**
+     * Literal
+     */
+    literal?: boolean;
     /**
      * Match Limit
      */
@@ -3453,6 +3497,10 @@ export type ReplaceNodeEditRequest = {
      * Kind
      */
     kind?: 'replace';
+    /**
+     * Literal
+     */
+    literal?: boolean;
     /**
      * Match Limit
      */
@@ -4159,10 +4207,13 @@ export type SourceProvenance = {
 /**
  * SplitColumnNodeEditRequest
  *
- * Split one text column on a delimiter into ``parts`` new columns.
+ * Split one text column on any of several delimiters into ``parts`` columns.
  *
- * The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;
- * the last holds any remainder, and missing parts are empty (null).
+ * The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source.
+ * Splitting from the ``left`` leaves any remainder in the last column; from
+ * the ``right``, in the first (like Python ``split`` and ``rsplit``). The
+ * remainder keeps its original delimiters, and missing parts are empty
+ * (null). Delimiters are plain text (issue 146).
  */
 export type SplitColumnNodeEditRequest = {
     /**
@@ -4170,9 +4221,13 @@ export type SplitColumnNodeEditRequest = {
      */
     column: string;
     /**
-     * Delimiter
+     * Delimiters
      */
-    delimiter: string;
+    delimiters: Array<string>;
+    /**
+     * Direction
+     */
+    direction?: 'left' | 'right';
     /**
      * Kind
      */
@@ -9603,6 +9658,8 @@ export type EditNodeData = {
     } & CleanTextNodeEditRequest) | ({
         kind: 'split_column';
     } & SplitColumnNodeEditRequest) | ({
+        kind: 'count';
+    } & CountNodeEditRequest) | ({
         kind: 'combine_columns';
     } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';
@@ -9688,6 +9745,8 @@ export type PreviewNodeEditData = {
     } & CleanTextNodeEditRequest) | ({
         kind: 'split_column';
     } & SplitColumnNodeEditRequest) | ({
+        kind: 'count';
+    } & CountNodeEditRequest) | ({
         kind: 'combine_columns';
     } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';

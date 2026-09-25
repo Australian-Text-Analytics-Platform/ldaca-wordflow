@@ -95,7 +95,7 @@ def test_duplicate_split_and_clean_apply_as_single_edits(tmp_path: Path) -> None
         for body in (
             {"kind": "duplicate_column", "column": "text"},
             {"kind": "duplicate_column", "column": "text"},
-            {"kind": "split_column", "column": "party", "delimiter": "b", "parts": 2},
+            {"kind": "split_column", "column": "party", "delimiters": ["b"], "parts": 2},
             {
                 "kind": "clean_text",
                 "column": "text",
@@ -134,7 +134,7 @@ def test_combine_columns_template_handles_types_and_missing_values(
             json={
                 "kind": "split_column",
                 "column": "party",
-                "delimiter": "b",
+                "delimiters": ["b"],
                 "parts": 2,
             },
             headers=unsafe,
@@ -188,5 +188,112 @@ def test_combine_columns_template_handles_types_and_missing_values(
             headers=unsafe,
         )
         assert text_only.status_code == 422
+    finally:
+        client.__exit__(None, None, None)
+
+
+def test_split_on_several_delimiters_from_either_side(tmp_path: Path) -> None:
+    client, unsafe, workspace_id, node_id = _setup(tmp_path)
+    try:
+        base = f"/api/workspaces/{workspace_id}/nodes/{node_id}"
+
+        def split(direction: str) -> dict[str, list[str | None]]:
+            response = client.post(
+                f"{base}/edits/preview",
+                json={
+                    "kind": "split_column",
+                    "column": "text",
+                    "delimiters": ["-", " "],
+                    "direction": direction,
+                    "parts": 3,
+                },
+                headers=unsafe,
+            )
+            assert response.status_code == 200, response.text
+            frame = pl.read_ipc_stream(BytesIO(response.content))
+            return {name: frame[name].to_list() for name in ("text_1", "text_2", "text_3")}
+
+        # "  a-b-c " splits on spaces and hyphens; the remainder keeps them.
+        assert split("left") == {
+            "text_1": ["", "plain", ""],
+            "text_2": ["", None, ""],
+            "text_3": ["Hello World  ", None, "a-b-c "],
+        }
+        assert split("right") == {
+            # Trailing spaces are delimiters too, so the last parts are empty.
+            "text_1": ["  Hello World", "plain", "  a-b"],
+            "text_2": ["", None, "c"],
+            "text_3": ["", None, ""],
+        }
+    finally:
+        client.__exit__(None, None, None)
+
+
+def test_count_and_plain_text_replace(tmp_path: Path) -> None:
+    client, unsafe, workspace_id, node_id = _setup(tmp_path)
+    try:
+        base = f"/api/workspaces/{workspace_id}/nodes/{node_id}"
+
+        def preview(body: dict[str, object]) -> pl.DataFrame:
+            response = client.post(f"{base}/edits/preview", json=body, headers=unsafe)
+            assert response.status_code == 200, response.text
+            return pl.read_ipc_stream(BytesIO(response.content))
+
+        counts = {
+            measure: preview(
+                {
+                    "kind": "count",
+                    "column": "text",
+                    "measure": measure,
+                    "output_column": "n",
+                }
+            )["n"].to_list()
+            for measure in ("words", "characters", "characters_no_spaces")
+        }
+        assert counts == {
+            "words": [2, 1, 1],
+            "characters": [15, 5, 8],
+            "characters_no_spaces": [10, 5, 5],
+        }
+        dots = preview(
+            {
+                "kind": "count",
+                "column": "text",
+                "measure": "matches",
+                "pattern": "-",
+                "output_column": "hyphens",
+            }
+        )
+        assert dots.columns == ["id", "text", "hyphens", "party"]
+        assert dots["hyphens"].to_list() == [0, 0, 2]
+
+        # Plain text: "." is a dot, not "any character", and "$1" is literal.
+        replaced = preview(
+            {
+                "kind": "replace",
+                "source_column": "text",
+                "pattern": "-",
+                "replacement": "$1.",
+                "literal": True,
+            }
+        )
+        assert replaced["text"].to_list() == ["  Hello World  ", "plain", "  a$1.b$1.c "]
+        extracted = preview(
+            {
+                "kind": "replace",
+                "source_column": "text",
+                "pattern": ".",
+                "mode": "extract",
+                "output_column": "dots",
+                "literal": True,
+            }
+        )
+        assert extracted["dots"].to_list() == [None, None, None]
+        missing_pattern = client.post(
+            f"{base}/edits/preview",
+            json={"kind": "count", "column": "text", "measure": "matches", "output_column": "n"},
+            headers=unsafe,
+        )
+        assert missing_pattern.status_code == 422
     finally:
         client.__exit__(None, None, None)

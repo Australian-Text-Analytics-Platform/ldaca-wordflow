@@ -308,7 +308,7 @@ describe('Sidebar view visibility menu', () => {
     await user.click(screen.getAllByRole('button', { name: /edit visible views/i })[0]!);
 
     expect(screen.queryByRole('menuitemcheckbox', { name: 'Data Loader' })).not.toBeInTheDocument();
-    expect(screen.getByRole('menuitemcheckbox', { name: 'Preprocessing' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitemcheckbox', { name: 'Data Builder' })).toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.getAllByRole('button', { name: 'Data Loader' }).length).toBeGreaterThan(0);
   });

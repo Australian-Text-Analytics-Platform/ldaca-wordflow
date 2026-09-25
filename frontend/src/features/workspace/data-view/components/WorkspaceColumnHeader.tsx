@@ -76,6 +76,7 @@ const COLUMN_TOOLS: { tool: DataEditorTool; label: string }[] = [
   { tool: 'clean_text', label: 'Clean text…' },
   { tool: 'extract', label: 'Extract text…' },
   { tool: 'split', label: 'Split…' },
+  { tool: 'count', label: 'Count…' },
   { tool: 'duplicate', label: 'Duplicate…' },
 ];
 

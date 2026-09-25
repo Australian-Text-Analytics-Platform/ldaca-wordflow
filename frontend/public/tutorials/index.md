@@ -38,7 +38,7 @@ The text corpus and metadata can be uploaded to Wordflow then loaded as a data b
 Most operations (filtering, sampling, joining, stacking, and creating derived data) on a Data Block create a new Data Block in the Project, and
 
 - Data Loader: Upload your text files and load  the text corpus (e.g., interview transcripts, articles) into a project project.
-- Preprocessing: Use built-in cleaning tools to prepare your text, including removal of stopwords, stemming, and normalization.
+- Data Editor and Data Builder: Clean and add columns in place with the Data Editor, and make new Data Blocks (filter, sample, join, stack) with the Data Builder.
 - Analysis Modules: Select from available tools — such as frequency analysis, quotation extraction, topic modelling, or concordance analysis — to process your data.
 -	Results Integration: Combine the findings from different modules to gain holistic insights, e.g., linking topics to historical trends.
 - Export & Share: Export your results in various formats (CSV, image or a whole zip archived project) and share with your collaborators.
@@ -63,7 +63,7 @@ Most operations (filtering, sampling, joining, stacking, and creating derived da
 
 - [User Interface Overview](./ui.md) — learn what each section of the main screen does.
 - [Data loader](./data-loader.md) — create projects and upload data.
-- [Data Preprocessing](./preprocessing.md) — filter, slice, join, stack, and create columns.
+- [Data Builder](./preprocessing.md): make new Data Blocks by filtering, sampling, joining, and stacking.
 - [Token frequency](./token-frequency.md) — count and explore common terms.
 - [Concordance](./concordance.md) — inspect terms in context.
 - [Topic modelling](./topic-modeling.md) — discover themes with native semantic clustering.

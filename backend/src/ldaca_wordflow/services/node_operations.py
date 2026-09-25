@@ -53,6 +53,7 @@ from ..models.node_resources import (
     DeleteColumnsNodeEditRequest,
     DuplicateColumnNodeEditRequest,
     SplitColumnNodeEditRequest,
+    CountNodeEditRequest,
     CombineColumnPart,
     CombineColumnsNodeEditRequest,
     ExpressionNodeEditRequest,
@@ -300,14 +301,29 @@ def build_edited_lazyframe(
             raise InvalidInputError(
                 f"Split would overwrite existing columns: {', '.join(clashes)}"
             )
-        fields = (
-            pl.col(request.column)
-            .cast(pl.String)
-            .str.splitn(request.delimiter, request.parts)
-            .struct.rename_fields(outputs)
+        pieces = _split_pieces(pl.col(request.column).cast(pl.String), request.delimiters)
+        edited = node.data.with_columns(
+            expression.alias(output)
+            for expression, output in zip(
+                _split_parts(pieces, request.delimiters, request.parts, request.direction),
+                outputs,
+                strict=True,
+            )
         )
-        edited = node.data.with_columns(fields.struct.unnest())
         return _place_right_of(edited, request.column, outputs), None
+
+    if isinstance(request, CountNodeEditRequest):
+        names = node.data.collect_schema().names()
+        if request.column not in names:
+            raise InvalidInputError("Count column is not present on the Data Block")
+        output = request.output_column.strip()
+        if not output:
+            raise InvalidInputError("New column name cannot be blank")
+        if output in names:
+            raise InvalidInputError("New column name already exists on the Data Block")
+        expression = _count_expression(pl.col(request.column).cast(pl.String), request)
+        edited = node.data.with_columns(expression.alias(output))
+        return _place_right_of(edited, request.column, [output]), None
 
     if isinstance(request, CombineColumnsNodeEditRequest):
         names = node.data.collect_schema().names()
@@ -736,6 +752,60 @@ _URL_PATTERN = r"(?i)\b(?:https?://|www\.)\S+"
 _HTML_TAG_PATTERN = r"<[^>]+>"
 
 
+# Marks the end of each delimiter so a split keeps which delimiter it used.
+_SPLIT_MARK = "\x1f"
+
+
+def _delimiter_pattern(delimiters: list[str]) -> str:
+    # Longest first, so ", " wins over "," at the same position.
+    ordered = sorted(delimiters, key=len, reverse=True)
+    return "(?:" + "|".join(pl.escape_regex(delimiter) for delimiter in ordered) + ")"
+
+
+def _split_pieces(column: pl.Expr, delimiters: list[str]) -> pl.Expr:
+    """A list of pieces, each ending with its delimiter except the last."""
+
+    return column.str.replace_all(
+        _delimiter_pattern(delimiters), "${0}" + _SPLIT_MARK
+    ).str.split(_SPLIT_MARK)
+
+
+def _split_parts(
+    pieces: pl.Expr, delimiters: list[str], parts: int, direction: str
+) -> list[pl.Expr]:
+    trailing = _delimiter_pattern(delimiters) + "$"
+
+    def strip(piece: pl.Expr) -> pl.Expr:
+        return piece.str.replace(trailing, "")
+
+    count = pieces.list.len().cast(pl.Int64)
+    if direction == "left":
+        leading = [
+            strip(pieces.list.get(index, null_on_oob=True)) for index in range(parts - 1)
+        ]
+        rest = pl.when(count >= parts).then(pieces.list.slice(parts - 1).list.join(""))
+        return [*leading, rest]
+    # From the right, the first column keeps the remainder; a short row fills
+    # from the left, as Python rsplit does.
+    head = pl.max_horizontal(count - (parts - 1), pl.lit(1, dtype=pl.Int64))
+    remainder = strip(pieces.list.slice(0, head).list.join(""))
+    trailing_parts = [
+        strip(pieces.list.get(head + offset, null_on_oob=True))
+        for offset in range(parts - 1)
+    ]
+    return [remainder, *trailing_parts]
+
+
+def _count_expression(column: pl.Expr, request: CountNodeEditRequest) -> pl.Expr:
+    if request.measure == "words":
+        return column.str.count_matches(r"\S+")
+    if request.measure == "characters":
+        return column.str.len_chars()
+    if request.measure == "characters_no_spaces":
+        return column.str.replace_all(r"\s", "").str.len_chars()
+    return column.str.count_matches(request.pattern or "", literal=not request.regex)
+
+
 def _clean_text_expression(column: pl.Expr, operation: str) -> pl.Expr:
     text = column.cast(pl.String)
     if operation == "trim":
@@ -770,7 +840,8 @@ def _replace_expression(
         raise InvalidInputError("Output column name cannot be blank")
     column = pl.col(request.source_column).cast(pl.String)
     if request.mode == "extract":
-        extracted = column.str.extract_all(request.pattern)
+        pattern = pl.escape_regex(request.pattern) if request.literal else request.pattern
+        extracted = column.str.extract_all(pattern)
         if request.count == "first":
             extracted = extracted.list.head(request.match_limit or 1)
         expression = (
@@ -779,11 +850,14 @@ def _replace_expression(
             .otherwise(pl.lit(None))
         )
     elif request.count == "all":
-        expression = column.str.replace_all(request.pattern, request.replacement)
+        expression = column.str.replace_all(
+            request.pattern, request.replacement, literal=request.literal
+        )
     else:
         expression = column.str.replace(
             request.pattern,
             request.replacement,
+            literal=request.literal,
             n=request.match_limit or 1,
         )
     return output[:120], expression.alias(output[:120])

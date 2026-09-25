@@ -17,11 +17,17 @@ import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorksp
 import {
   buildCleanText,
   buildCombine,
+  buildCount,
   buildDuplicate,
   buildExtract,
   buildFindReplace,
   buildSplit,
   CLEAN_TEXT_OPERATIONS,
+  COUNT_MEASURES,
+  defaultCountName,
+  SPLIT_DELIMITER_PRESETS,
+  type CountMeasure,
+  type SplitDirection,
   templateColumnToken,
   type CleanTextOperation,
   type DataEditorDraft,
@@ -82,6 +88,30 @@ function TextField({
         }}
       />
     </div>
+  );
+}
+
+/** Plain text by default: a stray "." should not match every character (issue 145). */
+function RegexOption({
+  id,
+  checked,
+  onChange,
+}: {
+  id: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <label htmlFor={id} className="flex items-center gap-2 text-body">
+      <Checkbox
+        id={id}
+        checked={checked}
+        onCheckedChange={(value) => {
+          onChange(value === true);
+        }}
+      />
+      Use regular expression
+    </label>
   );
 }
 
@@ -167,7 +197,11 @@ export function DataEditorToolPanel() {
   const [operation, setOperation] = useState<CleanTextOperation>(
     CLEAN_TEXT_OPERATIONS.find((option) => option.value === initialOperation)?.value ?? 'trim',
   );
-  const [delimiter, setDelimiter] = useState(',');
+  const [regex, setRegex] = useState(false);
+  const [splitPresets, setSplitPresets] = useState<string[]>(['comma']);
+  const [otherDelimiter, setOtherDelimiter] = useState('');
+  const [direction, setDirection] = useState<SplitDirection>('left');
+  const [measure, setMeasure] = useState<CountMeasure>('words');
   const [parts, setParts] = useState('2');
   const [touched, setTouched] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -182,11 +216,11 @@ export function DataEditorToolPanel() {
   let draft: DataEditorDraft | null = null;
   if (tool === 'find_replace') {
     draft = buildFindReplace(
-      { column, pattern, replacement, target, outputName, firstOnly },
+      { column, pattern, replacement, target, outputName, firstOnly, regex },
       columns,
     );
   } else if (tool === 'extract') {
-    draft = buildExtract({ column, pattern, outputName, firstOnly, connector }, columns);
+    draft = buildExtract({ column, pattern, outputName, firstOnly, connector, regex }, columns);
   } else if (tool === 'combine') {
     draft = buildCombine({ template, outputName, emptyValues }, columns);
   } else if (tool === 'duplicate') {
@@ -194,7 +228,15 @@ export function DataEditorToolPanel() {
   } else if (tool === 'clean_text') {
     draft = buildCleanText({ column, operation, target, outputName }, columns);
   } else if (tool === 'split') {
-    draft = buildSplit({ column, delimiter, parts: Number(parts) }, columns);
+    const delimiters = [
+      ...SPLIT_DELIMITER_PRESETS.filter((preset) => splitPresets.includes(preset.key)).map(
+        (preset) => preset.value,
+      ),
+      otherDelimiter,
+    ];
+    draft = buildSplit({ column, delimiters, direction, parts: Number(parts) }, columns);
+  } else if (tool === 'count') {
+    draft = buildCount({ column, measure, pattern, regex, outputName }, columns);
   }
   const draftKey = draft ? JSON.stringify(draft) : '';
 
@@ -325,11 +367,12 @@ export function DataEditorToolPanel() {
           <>
             <TextField
               id="find-pattern"
-              label="Find (regular expression)"
+              label="Find"
               value={pattern}
-              placeholder="e.g. \s+"
+              placeholder={regex ? 'e.g. \\s+' : 'e.g. .txt'}
               onChange={touch(setPattern)}
             />
+            <RegexOption id="find-regex" checked={regex} onChange={touch(setRegex)} />
             <TextField
               id="find-replacement"
               label="Replace with"
@@ -358,11 +401,12 @@ export function DataEditorToolPanel() {
           <>
             <TextField
               id="extract-pattern"
-              label="Extract matches of (regular expression)"
+              label="Extract matches of"
               value={pattern}
-              placeholder="e.g. #\w+"
+              placeholder={regex ? 'e.g. #\\w+' : 'e.g. #auspol'}
               onChange={touch(setPattern)}
             />
+            <RegexOption id="extract-regex" checked={regex} onChange={touch(setRegex)} />
             <label className="flex items-center gap-2 text-body">
               <Checkbox
                 checked={firstOnly}
@@ -425,14 +469,110 @@ export function DataEditorToolPanel() {
           </>
         ) : null}
 
+        {tool === 'count' ? (
+          <>
+            <fieldset className="space-y-1">
+              <legend className="text-body font-medium">Count</legend>
+              {COUNT_MEASURES.map((option) => (
+                <label key={option.value} className="flex items-center gap-2 text-body">
+                  <input
+                    type="radio"
+                    name="count-measure"
+                    checked={measure === option.value}
+                    onChange={() => {
+                      touch(setMeasure)(option.value);
+                    }}
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </fieldset>
+            {measure === 'words' ? (
+              <p className="text-label-secondary text-description">
+                Words are runs of text between spaces or line breaks, as word processors count them.
+              </p>
+            ) : null}
+            {measure === 'matches' ? (
+              <>
+                <TextField
+                  id="count-pattern"
+                  label="Text to count"
+                  value={pattern}
+                  placeholder={regex ? 'e.g. \\bthe\\b' : 'e.g. !'}
+                  onChange={touch(setPattern)}
+                />
+                <RegexOption id="count-regex" checked={regex} onChange={touch(setRegex)} />
+              </>
+            ) : null}
+            <TextField
+              id="count-name"
+              label="New column name"
+              value={outputName}
+              placeholder={defaultCountName(column, measure)}
+              onChange={touch(setOutputName)}
+            />
+          </>
+        ) : null}
+
         {tool === 'split' ? (
           <>
-            <TextField
-              id="split-delimiter"
-              label="Split on"
-              value={delimiter}
-              onChange={touch(setDelimiter)}
-            />
+            <fieldset className="space-y-1">
+              <legend className="text-body font-medium">Split on any of</legend>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-1">
+                {SPLIT_DELIMITER_PRESETS.map((preset) => (
+                  <label
+                    key={preset.key}
+                    htmlFor={`split-${preset.key}`}
+                    className="flex items-center gap-2 text-body"
+                  >
+                    <Checkbox
+                      id={`split-${preset.key}`}
+                      checked={splitPresets.includes(preset.key)}
+                      onCheckedChange={(checked) => {
+                        touch(setSplitPresets)(
+                          checked === true
+                            ? [...splitPresets, preset.key]
+                            : splitPresets.filter((key) => key !== preset.key),
+                        );
+                      }}
+                    />
+                    {preset.label}
+                  </label>
+                ))}
+              </div>
+              <TextField
+                id="split-other"
+                label="Other text"
+                value={otherDelimiter}
+                placeholder="e.g. :: or  - "
+                onChange={touch(setOtherDelimiter)}
+              />
+            </fieldset>
+            <fieldset className="space-y-1">
+              <legend className="text-body font-medium">Split from</legend>
+              <label className="flex items-center gap-2 text-body">
+                <input
+                  type="radio"
+                  name="split-direction"
+                  checked={direction === 'left'}
+                  onChange={() => {
+                    touch(setDirection)('left');
+                  }}
+                />
+                The left (the last column keeps the rest)
+              </label>
+              <label className="flex items-center gap-2 text-body">
+                <input
+                  type="radio"
+                  name="split-direction"
+                  checked={direction === 'right'}
+                  onChange={() => {
+                    touch(setDirection)('right');
+                  }}
+                />
+                The right (the first column keeps the rest)
+              </label>
+            </fieldset>
             <div className="space-y-1">
               <Label htmlFor="split-parts">Number of columns</Label>
               <Input
@@ -448,7 +588,7 @@ export function DataEditorToolPanel() {
             </div>
             <p className="text-label-secondary text-description">
               New columns {column ? `${column}_1, ${column}_2, …` : ''} are placed right of the
-              column. The last one keeps any remaining text.
+              column. Text left over after the split keeps its original delimiters.
             </p>
           </>
         ) : null}

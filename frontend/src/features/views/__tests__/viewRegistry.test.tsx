@@ -8,7 +8,7 @@ describe('view registry', () => {
     expect(VIEW_DEFINITIONS.map((view) => view.id)).toEqual(ALL_VIEWS);
     expect(VIEW_DEFINITIONS.map((view) => view.label)).toEqual([
       'Data Loader',
-      'Preprocessing',
+      'Data Builder',
       'Frequency',
       'Concordance',
       'Trends',

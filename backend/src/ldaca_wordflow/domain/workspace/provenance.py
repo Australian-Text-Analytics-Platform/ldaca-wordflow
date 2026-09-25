@@ -200,6 +200,9 @@ class ReplaceDerivation(_StrictModel):
     count: Literal["all", "first"] = "all"
     match_limit: int | None = Field(default=None, ge=1)
     connector: str = " "
+    # Plain-text matching (issue 145): the pattern and replacement are taken
+    # as written. Older saved plans have no flag and stay regular expressions.
+    literal: bool = False
 
 
 class ExpressionDerivation(_StrictModel):

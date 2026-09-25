@@ -38,7 +38,7 @@ export const VIEW_DEFINITIONS: ViewDefinition[] = [
   },
   {
     id: 'filter',
-    label: 'Preprocessing',
+    label: 'Data Builder',
     icon: Filter,
     requiresWorkspace: true,
     ownsMainCard: false,

@@ -228,7 +228,7 @@ function DataPreprocessingFeature() {
         onColumnChange={nodeInputs.setColumn}
         showColumnPicker={showInputColumnPicker}
         columnLabel={showInputColumnPicker ? preprocessingColumnLabel : undefined}
-        title="Preprocessing Inputs"
+        title="Data Builder Inputs"
       />
     </div>
   );
@@ -239,17 +239,15 @@ function DataPreprocessingFeature() {
         <div>
           <div className="flex items-center gap-2">
             <h1 className="font-semibold leading-none tracking-tight text-foreground">
-              Data Preprocessing
+              Data Builder
             </h1>
             <InfoIcon
               targetKey="preprocessing.overview"
-              label="About Data Preprocessing"
-              tooltip="Learn what data preprocessing is and how it can help you."
+              label="About Data Builder"
+              tooltip="Learn how the Data Builder makes new Data Blocks for analysis."
             />
           </div>
-          <p className="text-body text-description">
-            Prepare your dataset with filtering, sampling, join, stack, find, and create tools.
-          </p>
+          <p className="text-body text-description">Make new Data Blocks from existing ones.</p>
         </div>
       </div>
 

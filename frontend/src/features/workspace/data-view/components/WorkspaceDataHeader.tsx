@@ -138,7 +138,9 @@ export const WorkspaceDataHeader = ({
 
   return (
     <div className="shrink-0 border-b border-surface-border bg-panel p-2">
-      <div className="flex min-w-0 items-center gap-2">
+      {/* Wraps instead of squeezing: on a narrow panel the tools move to a
+          second line rather than overlapping the Data Block name. */}
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
         <h3 className="shrink-0 text-body font-medium text-foreground">Data Editor</h3>
         <HelpIcon
           targetKey="ui.data-viewer"
@@ -146,7 +148,7 @@ export const WorkspaceDataHeader = ({
           className="h-5 w-5 shrink-0 text-description"
         />
         <span className="shrink-0 text-description">|</span>
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-48 flex-1 basis-48 items-center gap-2">
           {isRenaming ? (
             <input
               ref={inputRef}
@@ -186,7 +188,7 @@ export const WorkspaceDataHeader = ({
           )}
         </div>
 
-        <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-1.5">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
           {onOpenTool ? (
             <>
               <DropdownMenu>
@@ -204,6 +206,13 @@ export const WorkspaceDataHeader = ({
                     }}
                   >
                     Combine columns…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
+                      onOpenTool('count');
+                    }}
+                  >
+                    Count words, characters, or matches…
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {

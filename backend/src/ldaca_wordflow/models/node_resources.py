@@ -206,16 +206,53 @@ class CleanTextNodeEditRequest(_StrictRequest):
 
 
 class SplitColumnNodeEditRequest(_StrictRequest):
-    """Split one text column on a delimiter into ``parts`` new columns.
+    """Split one text column on any of several delimiters into ``parts`` columns.
 
-    The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;
-    the last holds any remainder, and missing parts are empty (null).
+    The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source.
+    Splitting from the ``left`` leaves any remainder in the last column; from
+    the ``right``, in the first (like Python ``split`` and ``rsplit``). The
+    remainder keeps its original delimiters, and missing parts are empty
+    (null). Delimiters are plain text (issue 146).
     """
 
     kind: Literal["split_column"] = "split_column"
     column: str = Field(min_length=1, max_length=200)
-    delimiter: str = Field(min_length=1, max_length=100)
+    delimiters: list[Annotated[str, Field(min_length=1, max_length=100)]] = Field(
+        min_length=1, max_length=20
+    )
+    direction: Literal["left", "right"] = "left"
     parts: int = Field(ge=2, le=50)
+
+    @model_validator(mode="after")
+    def validate_delimiters(self) -> SplitColumnNodeEditRequest:
+        if len(set(self.delimiters)) != len(self.delimiters):
+            raise ValueError("Delimiters must be unique")
+        return self
+
+
+CountMeasure = Literal["words", "characters", "characters_no_spaces", "matches"]
+
+
+class CountNodeEditRequest(_StrictRequest):
+    """Count words, characters, or matches in a text column (issue 147).
+
+    The count goes into a new column right of the source. Words are runs of
+    non-whitespace, as word processors count them. ``matches`` counts
+    ``pattern`` as plain text unless ``regex`` is set.
+    """
+
+    kind: Literal["count"] = "count"
+    column: str = Field(min_length=1, max_length=200)
+    measure: CountMeasure
+    pattern: str | None = Field(default=None, min_length=1, max_length=1_000)
+    regex: bool = False
+    output_column: str = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_pattern(self) -> CountNodeEditRequest:
+        if self.measure == "matches" and not self.pattern:
+            raise ValueError("Counting matches needs a pattern")
+        return self
 
 
 class CombineTextPart(_StrictRequest):
@@ -325,6 +362,7 @@ NodeEditRequest = Annotated[
     | DuplicateColumnNodeEditRequest
     | CleanTextNodeEditRequest
     | SplitColumnNodeEditRequest
+    | CountNodeEditRequest
     | CombineColumnsNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest

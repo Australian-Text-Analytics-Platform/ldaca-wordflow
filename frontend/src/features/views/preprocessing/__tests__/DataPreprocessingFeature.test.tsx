@@ -258,7 +258,7 @@ describe('DataPreprocessingFeature replace tab', () => {
   it('shows one preprocessing input panel and uses input node metadata for filter schema', async () => {
     renderPreprocessingFeature();
 
-    expect(screen.getAllByText('Preprocessing Inputs (1/1)')).toHaveLength(1);
+    expect(screen.getAllByText('Data Builder Inputs (1/1)')).toHaveLength(1);
     expect(screen.queryByText(/Selected Data Blocks/)).not.toBeInTheDocument();
 
     const filterPanel = screen.getByRole('tabpanel', { name: 'Filter' });
@@ -301,7 +301,7 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Join' }));
     expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Preprocessing Inputs (1/2)')).toBeInTheDocument();
+    expect(await screen.findByText('Data Builder Inputs (1/2)')).toBeInTheDocument();
     expect(
       screen.queryByText('All rows from the left data block plus matching rows from the right.'),
     ).not.toBeInTheDocument();
@@ -309,8 +309,8 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Stack' }));
     expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Preprocessing Inputs (1/6)')).toBeInTheDocument();
-    expect(screen.queryByText(/Preprocessing Inputs \(1\/12\)/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Data Builder Inputs (1/6)')).toBeInTheDocument();
+    expect(screen.queryByText(/Data Builder Inputs \(1\/12\)/)).not.toBeInTheDocument();
   });
 
   it('shows the Sample tab and submits a random sample request', async () => {

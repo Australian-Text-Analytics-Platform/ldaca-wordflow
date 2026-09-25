@@ -2,11 +2,11 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-preprocessing-section">Preprocessing tutorial</h1>
+<h1 id="help-preprocessing-section">Data Builder tutorial</h1>
 
-![Preprocessing screenshot](tutorials/assets/preprocessing.png)
+![Data Builder screenshot](tutorials/assets/preprocessing.png)
 
-The Preprocessing tools change which rows are present in your data. Every sub-tab creates a new Derived Data Block, and the source is never altered.
+The Data Builder makes new Data Blocks from existing ones. Its tools change which rows are present: every sub-tab creates a new Derived Data Block, and the source is never altered.
 
 Tools that add or change columns (Find & replace, Extract text, Combine columns, Duplicate column, Split column, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
@@ -40,7 +40,7 @@ The preview pane shows the result of the current configuration in a paginated fo
 
 <h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
-Every Preprocessing tool creates a **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack), shown as **Result** beside its action button. The source is preserved and the new block records its creation lineage.
+Every Data Builder tool creates a **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack), shown as **Result** beside its action button. The source is preserved and the new block records its creation lineage.
 
 To add or change columns on the selected Data Block instead, use the Data Editor. Its edits keep the Data Block's identity, graph edges, and rows unchanged, and each one can be undone from the Data Editor header.
 
