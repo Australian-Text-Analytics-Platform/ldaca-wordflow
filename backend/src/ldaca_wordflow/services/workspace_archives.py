@@ -1051,7 +1051,7 @@ def _compile_materialized_archive(
         raise
     except Exception as exc:
         raise InvalidWorkspaceArchiveError(
-            "Project materialized data is invalid"
+            "This project file contains data that could not be read. Export the project again and retry."
         ) from exc
 
     marker = staging / SAFE_WORKSPACE_IMPORT_MARKER

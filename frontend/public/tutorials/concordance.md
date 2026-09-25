@@ -95,7 +95,7 @@ editing a source cannot silently change that Preview Analysis.
 
 In separated Preview tables, selected source metadata headers are sortable.
 Generated scalar headers such as matched text, L1/R1, frequencies, and offsets
-show **Run All to enable sorting** because Preview has not materialized the
+show **Run All to enable sorting** because Preview has not processed the
 whole Result. Full document and left/right context strings stay unsorted.
 
 <h3 id="help-concordance-views">Table and dispersion views</h3>
@@ -213,8 +213,7 @@ sorting, counting, and paging, and the selected page size applies independently
 to each source. Review has no page-local Found summary.
 
 Separated Review Table View can sort selected metadata, matched text, L1/R1,
-their frequencies, and start/end offsets across the complete materialized
-Result. Sorting is case-sensitive and uses Polars' default null ordering. Equal
+their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive and uses Polars' default null ordering. Equal
 values have no guaranteed secondary order. The document and full context
 headers remain plain, and combined Review remains unsorted.
 
@@ -257,7 +256,7 @@ disabled until Clear Results.
 | Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
 | Too many partial matches | Whole Word is off in Text mode | Enable **Whole Word** |
 | A regular expression fails | Invalid pattern syntax | Test the pattern on regexr.com |
-| A generated Preview header does not sort | Whole-Result generated sorting requires materialized matches | Run All, then sort the separated Review table |
+| A generated Preview header does not sort | Sorting generated columns needs every match, which only Run All processes | Run All, then sort the separated Review table |
 | Run All is disabled | Inputs are incomplete or another Run All is active | Complete the inputs or wait for the active Analysis |
 | Preview differs from the edited Data Block | You reopened a historical Preview Analysis | Change an execution input and choose **Preview** to capture a new snapshot |
 

@@ -1106,7 +1106,7 @@ class WorkspaceService:
             marker_content = marker.read_text(encoding="ascii")
         except (OSError, UnicodeError) as exc:
             raise InvalidWorkspaceArchiveError(
-                "Project import was not compiled from safe materialized data"
+                "This project file could not be imported safely. Export the project again and retry."
             ) from exc
         if (
             marker.is_symlink()
@@ -1114,7 +1114,7 @@ class WorkspaceService:
             or marker_content != SAFE_WORKSPACE_IMPORT_MARKER_CONTENT
         ):
             raise InvalidWorkspaceArchiveError(
-                "Project import was not compiled from safe materialized data"
+                "This project file could not be imported safely. Export the project again and retry."
             )
         imported_at = datetime.now(UTC)
         self._store.prepare_import_identity(

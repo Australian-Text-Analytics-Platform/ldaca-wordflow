@@ -4,7 +4,7 @@
 
 A concordance shows every match from the current source-document page with its
 left and right context. It supports close reading, comparison, and dispersion
-analysis without materializing a whole-corpus result in the browser.
+analysis without loading a whole-corpus result into the browser.
 
 - What do I select?
   Add one or two Data Blocks and choose a source text column for each. Document
@@ -36,7 +36,7 @@ analysis without materializing a whole-corpus result in the browser.
 - What can I sort?
   In separated Preview tables, selected source metadata is sortable and
   generated scalar headers explain that Run All is required. After Run All,
-  separated Review tables also sort materialized matched text, L1/R1, their
+  separated Review tables also sort the matched text, L1/R1, their
   frequencies, and match offsets. String ordering is case-sensitive and equal
   values have no guaranteed secondary order. Full document and left/right
   context strings remain display-only, as do all combined-table headers.
