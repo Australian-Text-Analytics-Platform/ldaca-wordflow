@@ -132,7 +132,9 @@ export function DedupeSubTab({
           Rows are duplicates when they match on {basis ? `“${basis}”` : 'the deduplicating column'}
           {chosen > 0 ? ' and every ticked column' : ''}. Select all to compare whole rows.
         </p>
-        <ul className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto">
+        {/* Capped and bordered so a Data Block with hundreds of columns scrolls
+            inside the list; the filter above narrows it. */}
+        <ul className="grid max-h-48 grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-x-3 gap-y-1 overflow-y-auto rounded-md border border-surface-border p-2">
           {shown.map((column) => (
             <li key={column.name}>
               <label className="flex min-w-0 items-center gap-2 text-body">
