@@ -23,7 +23,7 @@ from ldaca_wordflow.services.node_operations import build_edited_lazyframe
 EDIT_ADAPTER: TypeAdapter[Any] = TypeAdapter(NodeEditRequest)
 DERIVATION_ADAPTER: TypeAdapter[Any] = TypeAdapter(NodeDerivationRequest)
 
-EDITS: list[dict[str, object]] = [
+EDITS: list[dict[str, Any]] = [
     {"kind": "duplicate_column", "column": "text"},
     *[
         {"kind": "clean_text", "column": "text", "operation": operation}
@@ -83,7 +83,7 @@ EDITS: list[dict[str, object]] = [
 @pytest.mark.parametrize(
     "body", EDITS, ids=lambda body: str(body.get("operation", body["kind"]))
 )
-def test_edit_plan_can_be_read_back(tmp_path: Path, body: dict[str, object]) -> None:
+def test_edit_plan_can_be_read_back(tmp_path: Path, body: dict[str, Any]) -> None:
     source = tmp_path / "source.parquet"
     pl.DataFrame({"id": [1, 2], "text": ["it's a, b", None]}).write_parquet(source)
     node = SimpleNamespace(data=pl.scan_parquet(source))
@@ -113,7 +113,7 @@ def test_title_case_keeps_apostrophes_inside_words(tmp_path: Path) -> None:
     assert edited.collect()["text"].to_list() == ["It's O'neil-Smith  Élan", None]
 
 
-BUILDER_REQUESTS: list[dict[str, object]] = [
+BUILDER_REQUESTS: list[dict[str, Any]] = [
     *[
         {"kind": "segment", "column": "text", "unit": unit}
         for unit in ("sentence", "paragraph", "line")
@@ -158,7 +158,7 @@ BUILDER_REQUESTS: list[dict[str, object]] = [
 
 @pytest.mark.parametrize("body", BUILDER_REQUESTS, ids=lambda body: str(body["kind"]))
 def test_data_builder_plan_can_be_read_back(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: dict[str, object]
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, body: dict[str, Any]
 ) -> None:
     source = tmp_path / "source.parquet"
     pl.DataFrame({"id": [1, 2], "text": ["it's a, b. Next", None]}).write_parquet(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import polars as pl
 from fastapi.testclient import TestClient
@@ -56,7 +57,7 @@ def _preview(
     client: TestClient,
     unsafe: dict[str, str],
     workspace_id: str,
-    body: dict[str, object],
+    body: dict[str, Any],
 ) -> pl.DataFrame:
     response = client.post(
         f"/api/workspaces/{workspace_id}/nodes/previews",
