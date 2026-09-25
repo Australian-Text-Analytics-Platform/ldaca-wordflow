@@ -57,6 +57,8 @@ class TopicColorGroups(_StrictModel):
     """
 
     columns: list[str]
+    # Distinct non-missing values of each entry in ``columns``, in the same order.
+    column_value_counts: list[int] = Field(default_factory=list)
     column: str | None
     groups: list[TopicColorGroup]
     topic_counts: list[list[int]]

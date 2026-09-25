@@ -12,6 +12,8 @@ from .topic_inclusion import topic_activation_thresholds
 
 # More values than this cannot be told apart as blended bubble colours.
 MAX_TOPIC_COLOR_GROUPS = 8
+# One value would give every bubble the same colour (issue 153).
+MIN_TOPIC_COLOR_GROUPS = 2
 MISSING_GROUP_LABEL = "(missing)"
 
 
@@ -25,8 +27,9 @@ def _is_groupable_dtype(dtype: pl.DataType) -> bool:
     )
 
 
-def eligible_color_columns(frame: pl.DataFrame, text_column: str) -> list[str]:
-    """Return columns whose model rows hold 1 to 8 distinct non-missing values."""
+def eligible_color_columns(frame: pl.DataFrame, text_column: str) -> dict[str, int]:
+    """Map each column whose model rows hold 2 to 8 distinct non-missing values
+    to that number, in column order."""
 
     candidates = [
         name
@@ -34,15 +37,15 @@ def eligible_color_columns(frame: pl.DataFrame, text_column: str) -> list[str]:
         if name != text_column and _is_groupable_dtype(dtype)
     ]
     if not candidates or frame.height == 0:
-        return []
+        return {}
     distinct = frame.select(
         pl.col(name).drop_nulls().n_unique().alias(name) for name in candidates
     ).row(0, named=True)
-    return [
-        name
+    return {
+        name: int(distinct[name])
         for name in candidates
-        if 1 <= int(distinct[name]) <= MAX_TOPIC_COLOR_GROUPS
-    ]
+        if MIN_TOPIC_COLOR_GROUPS <= int(distinct[name]) <= MAX_TOPIC_COLOR_GROUPS
+    }
 
 
 def _group_label(value: Any) -> str:

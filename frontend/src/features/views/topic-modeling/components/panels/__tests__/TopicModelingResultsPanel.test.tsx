@@ -443,6 +443,7 @@ describe('TopicModelingResultsPanel', () => {
     const onColumnChange = vi.fn();
     const colorBy = {
       columns: ['party', 'year'],
+      valueCounts: { party: 3, year: 8 },
       column: null,
       scheme: null,
       pending: false,
@@ -465,7 +466,14 @@ describe('TopicModelingResultsPanel', () => {
     expect(select).toHaveTextContent('Data Block colour');
     select.focus();
     await user.keyboard('{ArrowDown}');
-    await user.click(await screen.findByRole('option', { name: 'party' }));
+    // Each column shows its number of values (issue 153).
+    const options = await screen.findAllByRole('option');
+    expect(options.map((option) => option.textContent)).toEqual([
+      'Data Block colour',
+      'party (3)',
+      'year (8)',
+    ]);
+    await user.click(screen.getByRole('option', { name: /^party/ }));
     expect(onColumnChange).toHaveBeenCalledWith('party');
   });
 

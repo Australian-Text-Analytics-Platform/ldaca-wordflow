@@ -568,6 +568,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             resultSources.length === 1
               ? {
                   columns: colorBy.columns,
+                  valueCounts: colorBy.columnValueCounts,
                   column: colorBy.activeColumn,
                   scheme: colorBy.scheme,
                   pending: colorBy.pending,

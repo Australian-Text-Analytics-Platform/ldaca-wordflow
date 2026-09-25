@@ -1175,14 +1175,20 @@ def _topic_color_groups(
         raise InvalidTopicTopNError(
             "Top topics per row is outside the supported range"
         ) from exc
-    columns = eligible_color_columns(frame, text_column)
+    eligible = eligible_color_columns(frame, text_column)
+    columns = list(eligible)
+    value_counts = list(eligible.values())
     if query.column is None or query.cluster_count == 0:
         return TopicColorGroups(
-            columns=columns, column=None, groups=[], topic_counts=[]
+            columns=columns,
+            column_value_counts=value_counts,
+            column=None,
+            groups=[],
+            topic_counts=[],
         )
-    if query.column not in columns:
+    if query.column not in eligible:
         raise InvalidInputError(
-            "Colour column must have at most 8 distinct values in this result"
+            "Colour column must have 2 to 8 distinct values in this result"
         )
     if context_path is None or not context_path.is_file():
         raise ArtifactGoneError("Topic projection context is unavailable")
@@ -1205,7 +1211,12 @@ def _topic_color_groups(
     except ValueError as exc:
         raise AnalysisCorruptError("Topic projection context is corrupt") from exc
     return TopicColorGroups.model_validate(
-        {"columns": columns, "column": query.column, **grouped}
+        {
+            "columns": columns,
+            "column_value_counts": value_counts,
+            "column": query.column,
+            **grouped,
+        }
     )
 
 

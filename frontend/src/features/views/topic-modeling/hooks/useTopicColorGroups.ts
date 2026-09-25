@@ -58,6 +58,14 @@ export function useTopicColorGroups({
     placeholderData: keepPreviousData,
   });
   const columns = ready ? (columnsQuery.data?.columns ?? []) : [];
+  const counts = columnsQuery.data?.column_value_counts ?? [];
+  // Shown after each name in the Colour by list (issue 153).
+  const columnValueCounts = Object.fromEntries(
+    columns.flatMap((name, index) => {
+      const count = counts[index];
+      return count === undefined ? [] : [[name, count] as const];
+    }),
+  );
   const activeColumn = column !== null && columns.includes(column) ? column : null;
   const groupsQuery = useQuery({
     queryKey: queryKeys.topicColorGroups(workspaceId ?? '', analysisId ?? '', {
@@ -76,6 +84,7 @@ export function useTopicColorGroups({
   }
   return {
     columns,
+    columnValueCounts,
     activeColumn,
     scheme,
     pending: groupsQuery.isFetching,

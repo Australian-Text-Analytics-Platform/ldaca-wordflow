@@ -9305,6 +9305,13 @@
             ],
             "title": "Column"
           },
+          "column_value_counts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Column Value Counts",
+            "type": "array"
+          },
           "columns": {
             "items": {
               "type": "string"

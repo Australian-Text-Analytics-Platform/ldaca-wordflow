@@ -159,8 +159,10 @@ search, lasso filters, pan, zoom, or an open Add to Project dialog.
 For a single-corpus result, **Colour by** colours the bubbles by a metadata
 column instead of the Data Block colour, so you can see, for example, which
 topics each party or decade talks about most. The list offers every column
-(other than the text column) with at most 8 distinct values among the analysed
-documents: text, true/false, or numbers. Values are read from the Data Block
+(other than the text column) with 2 to 8 distinct values among the analysed
+documents: text, true/false, or numbers. Each name is followed by its number of
+values, for example *Country (3)*. A column with a single value is not listed,
+because every bubble would get the same colour. Values are read from the Data Block
 when you choose them, so columns added after the run, such as annotation
 columns, are included. Empty values form a grey **(missing)** group.
 

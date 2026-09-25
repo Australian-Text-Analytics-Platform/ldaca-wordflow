@@ -4795,6 +4795,10 @@ export type TopicColorGroups = {
      */
     column: string | null;
     /**
+     * Column Value Counts
+     */
+    column_value_counts?: Array<number>;
+    /**
      * Columns
      */
     columns: Array<string>;

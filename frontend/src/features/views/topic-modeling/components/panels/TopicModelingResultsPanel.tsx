@@ -82,8 +82,10 @@ interface Props {
 }
 
 interface TopicColorByState {
-  /** Columns with at most 8 distinct values in this result's documents. */
+  /** Columns with 2 to 8 distinct values in this result's documents. */
   columns: string[];
+  /** Each column's number of distinct values, shown after its name. */
+  valueCounts?: Record<string, number>;
   column: string | null;
   scheme: TopicColorScheme | null;
   pending: boolean;
@@ -111,7 +113,7 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
             </button>
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-72">
-            Colour bubbles by a column with up to 8 values. Each bubble blends the two values most
+            Colour bubbles by a column with 2 to 8 values. Each bubble blends the two values most
             over-represented in its documents, relative to how common each value is.
           </TooltipContent>
         </Tooltip>
@@ -130,6 +132,9 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
           {colorBy.columns.map((column) => (
             <SelectItem key={column} value={column}>
               {column}
+              {colorBy.valueCounts?.[column] === undefined ? null : (
+                <span className="text-description"> ({colorBy.valueCounts[column]})</span>
+              )}
             </SelectItem>
           ))}
         </SelectContent>

@@ -34,7 +34,7 @@ _DOCUMENTS = [
 ]
 
 
-def test_eligible_columns_have_one_to_eight_distinct_non_missing_values() -> None:
+def test_eligible_columns_have_two_to_eight_distinct_non_missing_values() -> None:
     frame = pl.DataFrame(
         {
             "text": ["a", "b", "c", "d"],
@@ -43,6 +43,7 @@ def test_eligible_columns_have_one_to_eight_distinct_non_missing_values() -> Non
             "many": [str(index) for index in range(4)],
             "flag": [True, False, True, True],
             "empty": pl.Series([None, None, None, None], dtype=pl.String),
+            "constant": ["same", "same", None, "same"],
             "tags": [["x"], ["y"], [], ["x"]],
         }
     )
@@ -50,8 +51,14 @@ def test_eligible_columns_have_one_to_eight_distinct_non_missing_values() -> Non
         many=pl.int_range(0, 12).cast(pl.String)
     )
 
-    assert eligible_color_columns(frame, "text") == ["party", "year", "many", "flag"]
-    assert eligible_color_columns(wide, "text") == ["party", "year", "flag"]
+    # "constant" has one value, so every bubble would get the same colour.
+    assert eligible_color_columns(frame, "text") == {
+        "party": 2,
+        "year": 4,
+        "many": 4,
+        "flag": 2,
+    }
+    assert list(eligible_color_columns(wide, "text")) == ["party", "year", "flag"]
 
 
 def test_groups_count_top_n_documents_per_value_with_missing_last() -> None:
@@ -173,6 +180,7 @@ def test_color_groups_project_the_requested_cluster_count(
         context_path,
     )
     assert listing.columns == ["party"]
+    assert listing.column_value_counts == [2]
     assert listing.groups == []
     assert calls == []
 
@@ -191,7 +199,7 @@ def test_color_groups_project_the_requested_cluster_count(
     ]
     assert grouped.topic_counts == [[1, 1, 0], [1, 0, 1]]
 
-    with pytest.raises(InvalidInputError, match="at most 8 distinct"):
+    with pytest.raises(InvalidInputError, match="2 to 8 distinct"):
         _topic_color_groups(
             _stored(),
             TopicColorGroupsQuery(cluster_count=2, top_n_topics=1, column="text"),
