@@ -787,6 +787,24 @@ def _place_right_of(lazyframe: pl.LazyFrame, anchor: str, new_columns: list[str]
 
 _URL_PATTERN = r"(?i)\b(?:https?://|www\.)\S+"
 _HTML_TAG_PATTERN = r"<[^>]+>"
+# XML markup (issue 155): declarations and processing instructions, comments,
+# a DOCTYPE with or without an internal subset, and element tags whose quoted
+# attributes may contain ">". CDATA wrappers go but their text is kept.
+_XML_MARKUP_PATTERN = (
+    r"<\?[\s\S]*?\?>"
+    r"|<!--[\s\S]*?-->"
+    r"|<!DOCTYPE[^>\[]*(?:\[[\s\S]*?\])?\s*>"
+    r"|<!\[CDATA\[|\]\]>"
+    r"|</?[A-Za-z_][\w.:-]*(?:\s+(?:\"[^\"]*\"|'[^']*'|[^'\"<>])*)?/?>"
+)
+# The five predefined XML entities; "&amp;" last so "&amp;lt;" stays "&lt;".
+_XML_ENTITIES = (
+    ("&lt;", "<"),
+    ("&gt;", ">"),
+    ("&quot;", '"'),
+    ("&apos;", "'"),
+    ("&amp;", "&"),
+)
 
 
 # Marks the end of each delimiter so a split keeps which delimiter it used.
@@ -1060,6 +1078,11 @@ def _clean_text_expression(column: pl.Expr, operation: str) -> pl.Expr:
         return text.str.replace_all(_URL_PATTERN, "")
     if operation == "remove_html_tags":
         return text.str.replace_all(_HTML_TAG_PATTERN, "")
+    if operation == "remove_xml_tags":
+        cleaned = text.str.replace_all(_XML_MARKUP_PATTERN, "")
+        for entity, character in _XML_ENTITIES:
+            cleaned = cleaned.str.replace_all(entity, character, literal=True)
+        return cleaned
     raise InvalidInputError("Unsupported text cleaning operation")
 
 

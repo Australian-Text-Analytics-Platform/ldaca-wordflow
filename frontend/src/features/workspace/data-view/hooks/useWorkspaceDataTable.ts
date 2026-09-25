@@ -508,6 +508,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     columns: shownData.columns,
     columnFields: shownData.columnFields,
     highlightColumns: previewing ? toolState.highlightColumns : undefined,
+    previewKey: previewing ? JSON.stringify(previewRequest) : undefined,
     loading: nodeDataQuery.isLoading,
     fetching: nodeDataQuery.isFetching,
     pageError: nodeDataQuery.error,

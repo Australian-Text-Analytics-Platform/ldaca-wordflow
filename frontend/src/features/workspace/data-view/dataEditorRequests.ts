@@ -22,6 +22,7 @@ export const CLEAN_TEXT_OPERATIONS = [
   { value: 'remove_digits', label: 'Remove digits' },
   { value: 'remove_urls', label: 'Remove web links (URLs)' },
   { value: 'remove_html_tags', label: 'Remove HTML tags' },
+  { value: 'remove_xml_tags', label: 'Remove XML tags and markup' },
 ] as const;
 
 export type CleanTextOperation = (typeof CLEAN_TEXT_OPERATIONS)[number]['value'];

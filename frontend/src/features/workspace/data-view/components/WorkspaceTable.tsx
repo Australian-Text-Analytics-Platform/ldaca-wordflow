@@ -81,6 +81,8 @@ export interface WorkspaceTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   /** Columns a Data Editor tool preview adds or changes (issue 143). */
   highlightColumns?: string[];
+  /** Identity of the current Data Editor preview; each new one realigns. */
+  previewKey?: string;
   /** Opens a Data Editor tool with a column pre-filled (issue 143). */
   onOpenTool?: (tool: DataEditorTool, options?: { column?: string | null }) => void;
 }
@@ -113,6 +115,7 @@ export function WorkspaceTable({
   onPageChange,
   onPageSizeChange,
   highlightColumns,
+  previewKey,
   onOpenTool,
 }: WorkspaceTableProps) {
   const highlighted = useMemo(() => new Set(highlightColumns ?? []), [highlightColumns]);
@@ -135,10 +138,12 @@ export function WorkspaceTable({
 
   // Data Editor previews (issue 154): bring the highlighted column into view,
   // its right edge at the panel's right edge, so the source column on its
-  // left is usually visible too. Only a new set of highlighted columns
-  // scrolls, so the user's own scrolling is kept while they edit settings.
+  // left is usually visible too. Each new preview (a settings change)
+  // realigns; paging through the preview does not.
   // Declared after the owner reset above so a first preview is not undone.
-  const highlightKey = (highlightColumns ?? []).join('\u0000');
+  const highlightKey = highlightColumns?.length
+    ? `${previewKey ?? ''}\u0001${highlightColumns.join('\u0000')}`
+    : '';
   const alignedKeyRef = useRef('');
   useEffect(() => {
     if (!highlightKey) {

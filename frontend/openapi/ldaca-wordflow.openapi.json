@@ -2542,7 +2542,8 @@
               "remove_punctuation",
               "remove_digits",
               "remove_urls",
-              "remove_html_tags"
+              "remove_html_tags",
+              "remove_xml_tags"
             ],
             "title": "Operation",
             "type": "string"

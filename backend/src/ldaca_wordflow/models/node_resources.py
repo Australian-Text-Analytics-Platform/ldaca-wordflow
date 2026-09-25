@@ -223,6 +223,7 @@ CleanTextOperation = Literal[
     "remove_digits",
     "remove_urls",
     "remove_html_tags",
+    "remove_xml_tags",
 ]
 
 

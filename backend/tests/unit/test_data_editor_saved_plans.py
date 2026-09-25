@@ -37,6 +37,7 @@ EDITS: list[dict[str, Any]] = [
             "remove_digits",
             "remove_urls",
             "remove_html_tags",
+            "remove_xml_tags",
         )
     ],
     *[
@@ -178,3 +179,25 @@ def test_data_builder_plan_can_be_read_back(
         "source.parquet"
     ]
     derived.collect()
+
+
+def test_remove_xml_tags_keeps_text_and_decodes_entities(tmp_path: Path) -> None:
+    source = tmp_path / "source.parquet"
+    xml = (
+        '<?xml version="1.0"?><!DOCTYPE TEI [<!ENTITY x "y">]>'
+        '<tei:p rend="a>b">Fish &amp; chips <!-- note > here -->cost '
+        "<hi>&lt;5</hi><lb/> <![CDATA[a > b]]></tei:p>"
+    )
+    pl.DataFrame({"text": [xml, "no tags, 3 < 4", None]}).write_parquet(source)
+    node = SimpleNamespace(data=pl.scan_parquet(source))
+    edited, _ = build_edited_lazyframe(
+        cast(Any, node),
+        EDIT_ADAPTER.validate_python(
+            {"kind": "clean_text", "column": "text", "operation": "remove_xml_tags"}
+        ),
+    )
+    assert edited.collect()["text"].to_list() == [
+        "Fish & chips cost <5 a > b",
+        "no tags, 3 < 4",
+        None,
+    ]

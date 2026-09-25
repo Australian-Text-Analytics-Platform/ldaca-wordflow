@@ -1193,7 +1193,7 @@ export type CleanTextNodeEditRequest = {
     /**
      * Operation
      */
-    operation: 'trim' | 'collapse_whitespace' | 'lowercase' | 'uppercase' | 'title_case' | 'remove_punctuation' | 'remove_digits' | 'remove_urls' | 'remove_html_tags';
+    operation: 'trim' | 'collapse_whitespace' | 'lowercase' | 'uppercase' | 'title_case' | 'remove_punctuation' | 'remove_digits' | 'remove_urls' | 'remove_html_tags' | 'remove_xml_tags';
     /**
      * Output Column
      */

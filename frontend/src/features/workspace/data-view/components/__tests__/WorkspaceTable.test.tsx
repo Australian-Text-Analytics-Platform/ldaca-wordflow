@@ -236,20 +236,31 @@ describe('WorkspaceTable', () => {
         const right = { a: 200, b: 500, c: 800 }[this.dataset.columnId ?? ''] ?? 0;
         return { right: right - scroll, width: 100 } as DOMRect;
       });
-    const { container, rerender } = render(<WorkspaceTable {...props} highlightColumns={['c']} />);
+    const { container, rerender } = render(
+      <WorkspaceTable {...props} highlightColumns={['c']} previewKey="trim" />,
+    );
     const viewport = container.querySelector<HTMLDivElement>('[data-slot="scroll-area-viewport"]');
     expect(viewport?.scrollLeft).toBe(500);
     if (!viewport) return;
 
-    // The same preview keeps the user's own scrolling while they edit settings.
+    // Paging through the same preview keeps the user's own scrolling.
     viewport.scrollLeft = 40;
     rerender(
-      <WorkspaceTable {...props} highlightColumns={['c']} data={[{ a: 'x', b: 'y', c: 'z' }]} />,
+      <WorkspaceTable
+        {...props}
+        highlightColumns={['c']}
+        previewKey="trim"
+        data={[{ a: 'x', b: 'y', c: 'z' }]}
+      />,
     );
     expect(viewport.scrollLeft).toBe(40);
 
-    // A different preview column aligns again.
-    rerender(<WorkspaceTable {...props} highlightColumns={['b']} />);
+    // A new preview of the same column (another setting) aligns again.
+    rerender(<WorkspaceTable {...props} highlightColumns={['c']} previewKey="lowercase" />);
+    expect(viewport.scrollLeft).toBe(500);
+
+    // So does a different preview column.
+    rerender(<WorkspaceTable {...props} highlightColumns={['b']} previewKey="lowercase" />);
     expect(viewport.scrollLeft).toBe(200);
     rect.mockRestore();
   });
