@@ -356,7 +356,7 @@ export function TopicModelingParameterPanel({
             />
           </div>
 
-          <fieldset className="space-y-1" aria-describedby="topic-max-cluster-size-note">
+          <fieldset className="space-y-1">
             <ParameterLabel
               as="legend"
               help="The smallest and largest topic, in Topic Segments (not documents). Min sets the HDBSCAN minimum: smaller values can produce more natural topics. Leave Max empty for Auto: it only steps in when one topic holds more than half of all segments, splitting it into its sub-topics, and keeps the result only if that topic is not lost to outliers. A fixed Max must be larger than Min. Changing either requires running a new analysis; Number of topics only merges the resulting topics."
@@ -387,7 +387,9 @@ export function TopicModelingParameterPanel({
                 id="topic-max-cluster-size"
                 aria-label="Max topic size"
                 aria-invalid={maxTopicSizeInvalid || undefined}
-                aria-describedby="topic-max-cluster-size-note"
+                aria-describedby={
+                  maxTopicSizeInvalid ? 'topic-max-cluster-size-error' : 'topic-last-run-summary'
+                }
                 type="number"
                 min={minClusterSize + 1}
                 step={1}
@@ -403,12 +405,11 @@ export function TopicModelingParameterPanel({
                 onBlur={handleMaxClusterSizeBlur}
               />
             </div>
-            <p
-              id="topic-max-cluster-size-note"
-              className={`max-w-56 text-label-secondary ${maxTopicSizeInvalid ? 'text-error' : 'text-description'}`}
-            >
-              {maxTopicSizeInvalid ? 'Max must be larger than Min' : lastRunSummary}
-            </p>
+            {maxTopicSizeInvalid ? (
+              <p id="topic-max-cluster-size-error" className="text-label-secondary text-error">
+                Max must be larger than Min
+              </p>
+            ) : null}
           </fieldset>
 
           <div className="space-y-1">
@@ -432,6 +433,14 @@ export function TopicModelingParameterPanel({
             />
           </div>
         </div>
+        {/* The segment count depends on every setting in the row (Segments and
+            Max tokens make the segments; Topic size groups them), so it spans
+            the row instead of sitting under Topic size. */}
+        {lastRunSummary ? (
+          <p id="topic-last-run-summary" className="mt-2 text-label-secondary text-description">
+            {lastRunSummary}
+          </p>
+        ) : null}
       </div>
     </AnalysisCardLayout>
   );
