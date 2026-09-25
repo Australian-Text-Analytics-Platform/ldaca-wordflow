@@ -8,7 +8,7 @@ import {
   type ChartExportHeaderItem,
   type ChartImageFormat,
 } from '@/lib/chartExport';
-import { saveBlob } from '@/lib/download';
+import { csvBlob, saveBlob } from '@/lib/download';
 import { buildTopicsCSV } from './topicModelingCsv';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { buildTopicBubbleModels, type TopicColorScheme } from './topicModelingGraph';
@@ -163,9 +163,7 @@ export function TopicModelingBubbleChartSection({
         zip.file(imageFilename, imageBlob);
         zip.file(
           `${safeBaseName}_tm_topics.csv`,
-          new Blob([buildTopicsCSV(exportTopics, selectedTopicIds, nodeNames ?? [])], {
-            type: 'text/csv;charset=utf-8;',
-          }),
+          csvBlob(buildTopicsCSV(exportTopics, selectedTopicIds, nodeNames ?? [])),
         );
         await saveBlob(await zip.generateAsync({ type: 'blob' }), `${safeBaseName}_tm.zip`);
       } else {

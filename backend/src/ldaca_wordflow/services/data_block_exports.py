@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 import uuid
 import zipfile
@@ -14,7 +15,7 @@ import polars as pl
 
 from ..domain.workspace import Node
 from ..models.node_resources import DataBlockExportFormat, DataBlockExportRequest
-from ..shared.errors import NodeNotFoundError, ResourceTooLargeError
+from ..shared.errors import InvalidInputError, NodeNotFoundError, ResourceTooLargeError
 from ..infrastructure.storage.bounded_io import BoundedSeekableWriter
 from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from .workspace import WorkspaceService
@@ -28,15 +29,18 @@ class _ExportFormatSpec:
 
 _FORMAT_SPECS = {
     DataBlockExportFormat.CSV: _ExportFormatSpec("csv", "text/csv; charset=utf-8"),
+    DataBlockExportFormat.XLSX: _ExportFormatSpec(
+        "xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    ),
     DataBlockExportFormat.JSON: _ExportFormatSpec("json", "application/json"),
-    DataBlockExportFormat.NDJSON: _ExportFormatSpec("ndjson", "application/x-ndjson"),
     DataBlockExportFormat.PARQUET: _ExportFormatSpec(
         "parquet", "application/vnd.apache.parquet"
     ),
-    DataBlockExportFormat.IPC: _ExportFormatSpec(
-        "arrow", "application/vnd.apache.arrow.file"
-    ),
 }
+
+# Excel's worksheet limits: rows include the header row.
+_EXCEL_MAX_ROWS = 1_048_576
+_EXCEL_MAX_CELL_CHARACTERS = 32_767
 
 
 class DataBlockExportService:
@@ -184,22 +188,79 @@ def _write_lazyframe(
 ) -> None:
     try:
         if export_format is DataBlockExportFormat.CSV:
-            frame.sink_csv(cast(BinaryIO, writer))
+            # The byte-order mark makes Excel read the file as UTF-8, not
+            # Windows-1252, so curly quotes do not show as â€™ (issue 169).
+            _flatten_nested_columns(frame).sink_csv(
+                cast(BinaryIO, writer), include_bom=True
+            )
+        elif export_format is DataBlockExportFormat.XLSX:
+            writer.write(_excel_workbook_bytes(frame))
         elif export_format is DataBlockExportFormat.JSON:
             content = frame.collect().write_json().encode()
             writer.write(content)
-        elif export_format is DataBlockExportFormat.NDJSON:
-            frame.sink_ndjson(cast(BinaryIO, writer))
-        elif export_format is DataBlockExportFormat.PARQUET:
-            frame.sink_parquet(cast(BinaryIO, writer))
         else:
-            frame.sink_ipc(cast(BinaryIO, writer))
+            frame.sink_parquet(cast(BinaryIO, writer))
     except pl.exceptions.ComputeError as exc:
         if writer.exceeded:
             raise ResourceTooLargeError(
                 "Data Block export exceeds its storage budget"
             ) from exc
         raise
+
+
+def _flatten_nested_columns(frame: pl.LazyFrame) -> pl.LazyFrame:
+    """Write list and struct values as JSON text: CSV and Excel cells are flat."""
+
+    schema = frame.collect_schema()
+    nested = [name for name, dtype in schema.items() if dtype.is_nested()]
+    if not nested:
+        return frame
+    return frame.with_columns(
+        pl.when(pl.col(name).is_not_null())
+        .then(
+            pl.struct(pl.col(name).alias("value"))
+            .struct.json_encode()
+            .str.strip_prefix('{"value":')
+            .str.strip_suffix("}")
+        )
+        .alias(name)
+        for name in nested
+    )
+
+
+def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
+    """One worksheet named Data, within Excel's row and cell-length limits."""
+
+    data = _flatten_nested_columns(frame).collect()
+    if data.height + 1 > _EXCEL_MAX_ROWS:
+        raise InvalidInputError(
+            f"This Data Block has {data.height:,} rows, more than an Excel worksheet "
+            f"holds ({_EXCEL_MAX_ROWS - 1:,}). Export it as CSV or Parquet instead."
+        )
+    text_columns = [name for name, dtype in data.schema.items() if dtype == pl.String]
+    if text_columns:
+        longest = data.select(pl.col(text_columns).str.len_chars().max()).row(
+            0, named=True
+        )
+        too_long = [
+            name
+            for name in text_columns
+            if (longest[name] or 0) > _EXCEL_MAX_CELL_CHARACTERS
+        ]
+        if too_long:
+            raise InvalidInputError(
+                "Excel cells hold at most 32,767 characters, and some text in "
+                + ", ".join(f"'{name}'" for name in too_long)
+                + " is longer. Export it as CSV or Parquet to keep the full text."
+            )
+    buffer = io.BytesIO()
+    data.write_excel(
+        buffer,
+        worksheet="Data",
+        autofit=False,
+        include_header=True,
+    )
+    return buffer.getvalue()
 
 
 def _archive_names(nodes: tuple[Node, ...], extension: str) -> list[str]:

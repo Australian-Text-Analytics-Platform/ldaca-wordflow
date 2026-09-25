@@ -7,10 +7,9 @@ export const DATA_BLOCK_EXPORT_FORMATS: {
   extension: string;
 }[] = [
   { value: 'csv', label: 'CSV (.csv)', extension: 'csv' },
+  { value: 'xlsx', label: 'Excel (.xlsx)', extension: 'xlsx' },
   { value: 'json', label: 'JSON (.json)', extension: 'json' },
-  { value: 'ndjson', label: 'NDJSON (.ndjson)', extension: 'ndjson' },
   { value: 'parquet', label: 'Parquet (.parquet)', extension: 'parquet' },
-  { value: 'ipc', label: 'Arrow IPC (.arrow)', extension: 'arrow' },
 ];
 
 export interface DataBlockExportSelection {

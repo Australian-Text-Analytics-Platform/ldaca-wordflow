@@ -4102,10 +4102,9 @@
         "description": "Portable file formats supported by Data Block export.",
         "enum": [
           "csv",
+          "xlsx",
           "json",
-          "ndjson",
-          "parquet",
-          "ipc"
+          "parquet"
         ],
         "title": "DataBlockExportFormat",
         "type": "string"
@@ -18141,19 +18140,13 @@
                   "type": "string"
                 }
               },
-              "application/vnd.apache.arrow.file": {
-                "schema": {
-                  "format": "binary",
-                  "type": "string"
-                }
-              },
               "application/vnd.apache.parquet": {
                 "schema": {
                   "format": "binary",
                   "type": "string"
                 }
               },
-              "application/x-ndjson": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
                 "schema": {
                   "format": "binary",
                   "type": "string"

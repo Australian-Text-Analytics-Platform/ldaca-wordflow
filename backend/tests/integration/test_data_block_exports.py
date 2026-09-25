@@ -44,13 +44,11 @@ def _read_export(format_name: str, content: bytes) -> pl.DataFrame:
     source = io.BytesIO(content)
     if format_name == "csv":
         return pl.read_csv(source)
+    if format_name == "xlsx":
+        return pl.read_excel(source)
     if format_name == "json":
         return pl.read_json(source)
-    if format_name == "ndjson":
-        return pl.read_ndjson(source)
-    if format_name == "parquet":
-        return pl.read_parquet(source)
-    return pl.read_ipc(source)
+    return pl.read_parquet(source)
 
 
 def test_single_data_block_export_returns_the_requested_file_format(
@@ -65,10 +63,12 @@ def test_single_data_block_export_returns_the_requested_file_format(
     )
     formats = {
         "csv": (".csv", "text/csv"),
+        "xlsx": (
+            ".xlsx",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        ),
         "json": (".json", "application/json"),
-        "ndjson": (".ndjson", "application/x-ndjson"),
         "parquet": (".parquet", "application/vnd.apache.parquet"),
-        "ipc": (".arrow", "application/vnd.apache.arrow.file"),
     }
 
     for format_name, (extension, media_type) in formats.items():
@@ -139,3 +139,67 @@ def test_data_block_export_rejects_invalid_selection(
 
     assert duplicate.status_code == 422
     assert missing.status_code == 404
+
+
+def test_csv_export_starts_with_a_utf8_byte_order_mark(
+    files_test_client: TestClient,
+) -> None:
+    """Issue 169: Excel reads BOM-less CSV as Windows-1252."""
+
+    workspace_id = _create_workspace(files_test_client)
+    node_id = _create_node(
+        files_test_client,
+        workspace_id,
+        file_path="bom.csv",
+        name="BOM data",
+    )
+
+    response = files_test_client.post(
+        f"/api/workspaces/{workspace_id}/nodes/exports",
+        json={"node_ids": [node_id], "format": "csv"},
+    )
+
+    assert response.status_code == 200, response.text
+    assert response.content.startswith(b"\xef\xbb\xbftext,count")
+
+
+def test_data_block_export_no_longer_offers_ndjson_or_arrow(
+    files_test_client: TestClient,
+) -> None:
+    workspace_id = _create_workspace(files_test_client)
+    node_id = _create_node(
+        files_test_client,
+        workspace_id,
+        file_path="retired.csv",
+        name="Retired formats",
+    )
+
+    for format_name in ("ndjson", "ipc"):
+        response = files_test_client.post(
+            f"/api/workspaces/{workspace_id}/nodes/exports",
+            json={"node_ids": [node_id], "format": format_name},
+        )
+        assert response.status_code == 422
+
+
+def test_excel_export_explains_when_a_block_is_too_large(
+    files_test_client: TestClient, monkeypatch
+) -> None:
+    from ldaca_wordflow.services import data_block_exports
+
+    monkeypatch.setattr(data_block_exports, "_EXCEL_MAX_ROWS", 2)
+    workspace_id = _create_workspace(files_test_client)
+    node_id = _create_node(
+        files_test_client,
+        workspace_id,
+        file_path="large.csv",
+        name="Large data",
+    )
+
+    response = files_test_client.post(
+        f"/api/workspaces/{workspace_id}/nodes/exports",
+        json={"node_ids": [node_id], "format": "xlsx"},
+    )
+
+    assert response.status_code == 400
+    assert "CSV or Parquet" in response.text

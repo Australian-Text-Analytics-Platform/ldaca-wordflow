@@ -41,10 +41,9 @@ class DataBlockExportFormat(StrEnum):
     """Portable file formats supported by Data Block export."""
 
     CSV = "csv"
+    XLSX = "xlsx"
     JSON = "json"
-    NDJSON = "ndjson"
     PARQUET = "parquet"
-    IPC = "ipc"
 
 
 class DataBlockExportRequest(_StrictRequest):

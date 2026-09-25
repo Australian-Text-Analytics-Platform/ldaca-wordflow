@@ -1,5 +1,5 @@
 import JSZip from 'jszip';
-import { saveBlob } from '@/lib/download';
+import { csvBlob, saveBlob } from '@/lib/download';
 
 /** Creates a filesystem-safe export filename for generated token-frequency artifacts. */
 /**
@@ -352,7 +352,7 @@ export const buildFrequencyExportFile = (
 
   return {
     filename: toSafeExportFilename(label, 'frequencies', 'csv'),
-    blob: new Blob([serializeRowsAsCsv(rows)], { type: 'text/csv;charset=utf-8;' }),
+    blob: csvBlob(serializeRowsAsCsv(rows)),
   };
 };
 

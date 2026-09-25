@@ -237,7 +237,7 @@ fn data_block_export_request(
     if !valid_workspace_id || node_ids.is_empty() {
         return Err("invalid_data_block_export".to_owned());
     }
-    if !matches!(format, "csv" | "json" | "ndjson" | "parquet" | "ipc") {
+    if !matches!(format, "csv" | "xlsx" | "json" | "parquet") {
         return Err("invalid_data_block_export".to_owned());
     }
     let api_path = format!("/api/workspaces/{workspace_id}/nodes/exports");

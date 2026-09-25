@@ -68,14 +68,11 @@ async def list_nodes(
         status.HTTP_200_OK: {
             "content": {
                 "text/csv": {"schema": {"type": "string", "format": "binary"}},
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                    "schema": {"type": "string", "format": "binary"}
+                },
                 "application/json": {"schema": {"type": "string", "format": "binary"}},
-                "application/x-ndjson": {
-                    "schema": {"type": "string", "format": "binary"}
-                },
                 "application/vnd.apache.parquet": {
-                    "schema": {"type": "string", "format": "binary"}
-                },
-                "application/vnd.apache.arrow.file": {
                     "schema": {"type": "string", "format": "binary"}
                 },
                 "application/zip": {"schema": {"type": "string", "format": "binary"}},

@@ -156,8 +156,9 @@ describe('tokenFrequencyExport', () => {
       'my-corpus-frequencies.csv',
       'my-corpus-stopwords.txt',
     ]);
+    // The UTF-8 byte-order mark lets Excel read curly quotes correctly (issue 169).
     expect(await zip.file('my-corpus-frequencies.csv')?.async('string')).toBe(
-      '"word","count"\r\n"alpha","3"',
+      '\uFEFF"word","count"\r\n"alpha","3"',
     );
     expect(await zip.file('my-corpus-stopwords.txt')?.async('string')).toBe('the\nand');
 

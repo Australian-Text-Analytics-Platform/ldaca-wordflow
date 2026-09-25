@@ -24,13 +24,16 @@ Use the **Format** dropdown to choose the output file format:
 
 | Format | Extension | Best used for |
 |---|---|---|
-| CSV | .csv | Maximum compatibility; opens in any spreadsheet or text editor |
+| CSV | .csv | Maximum compatibility; opens in any spreadsheet, text editor, or corpus tool |
+| Excel | .xlsx | Opening and sharing in Microsoft Excel |
 | JSON | .json | Hierarchical or nested data; web and API workflows |
-| NDJSON | .ndjson | Streaming JSON; one JSON object per line |
 | Parquet | .parquet | Efficient columnar storage; best for large datasets or re-importing into the app |
-| Arrow IPC | .arrow | High-performance binary format for data pipeline use |
 
 The same format applies to all blocks in a bundle export.
+
+CSV files are saved as UTF-8 with a byte-order mark, so Excel shows curly quotes and non-English text correctly. Columns that hold lists or structured values (such as tokens) are written as JSON text in CSV and Excel files.
+
+An Excel worksheet holds at most 1,048,576 rows, and each cell at most 32,767 characters. If a Data Block is larger, or has longer texts, Excel export stops with a message; export it as CSV or Parquet instead to keep every row and the full text.
 
 <h2 id="help-export-results">Step 3 — Download</h2>
 

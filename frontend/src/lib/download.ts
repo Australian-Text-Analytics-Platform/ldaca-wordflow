@@ -10,6 +10,13 @@ import { toast } from 'sonner';
 import { getCsrfToken } from '@/lib/backend/csrfToken';
 import { isTauri } from '@/lib/isTauri';
 
+/**
+ * CSV text as a UTF-8 Blob with a byte-order mark, so Excel reads it as UTF-8
+ * instead of Windows-1252 (curly quotes would show as â€™, issue 169).
+ */
+export const csvBlob = (csv: string): Blob =>
+  new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8;' });
+
 export const safeDownloadStem = (value: string, fallback: string): string =>
   (value.trim() || fallback).replace(/[^\p{L}\p{N}_-]+/gu, '_').replace(/^_+|_+$/g, '') || fallback;
 

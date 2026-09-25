@@ -2085,7 +2085,7 @@ export type DataBlockCreationSource = {
  *
  * Portable file formats supported by Data Block export.
  */
-export type DataBlockExportFormat = 'csv' | 'json' | 'ndjson' | 'parquet' | 'ipc';
+export type DataBlockExportFormat = 'csv' | 'xlsx' | 'json' | 'parquet';
 
 /**
  * DataBlockExportRequest

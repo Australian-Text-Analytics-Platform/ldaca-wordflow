@@ -42,6 +42,7 @@ dependencies = [
     "spacy>=3.8.16,<3.9",
     "rtoml>=0.12.0",
     "uvicorn[standard]>=0.52.4,<1",
+    "xlsxwriter>=3.2.0,<4",                     # Excel (.xlsx) Data Block export
 ]
 
 [project.optional-dependencies]
