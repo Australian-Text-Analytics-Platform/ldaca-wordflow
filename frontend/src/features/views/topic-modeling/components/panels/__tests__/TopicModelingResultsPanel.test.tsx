@@ -509,10 +509,10 @@ describe('TopicModelingResultsPanel', () => {
     expect(screen.getByRole('button', { name: 'Add to Project' })).toBeDisabled();
   });
 
-  it('organizes Result settings and moves the Top-N explanation into help', async () => {
+  it('keeps Result settings compact and moves the Top-N explanation into help', async () => {
     const user = userEvent.setup();
     const explanation =
-      'Each row may count toward multiple bubbles. Cutoff ties can include more than this number.';
+      'Top topics per document: each row counts toward this many bubbles. Cutoff ties can include more than this number.';
     render(
       <TooltipProvider>
         <TopicModelingResultsPanel {...baseProps} />
@@ -520,8 +520,11 @@ describe('TopicModelingResultsPanel', () => {
     );
 
     expect(screen.getByText('Result settings')).toBeInTheDocument();
-    expect(screen.getByText('Topic structure')).toBeInTheDocument();
-    expect(screen.getByText('Representative words')).toBeInTheDocument();
+    // Short visible labels (issue 152); the inputs keep their full names.
+    expect(screen.queryByText('Topic structure')).not.toBeInTheDocument();
+    expect(screen.getByText('Per document')).toBeInTheDocument();
+    expect(screen.getByLabelText('Top topics per document')).toBeInTheDocument();
+    expect(screen.getByLabelText('Words per topic')).toBeInTheDocument();
     expect(screen.queryByText(explanation)).not.toBeInTheDocument();
 
     await user.hover(screen.getByRole('button', { name: 'About Top topics per document' }));

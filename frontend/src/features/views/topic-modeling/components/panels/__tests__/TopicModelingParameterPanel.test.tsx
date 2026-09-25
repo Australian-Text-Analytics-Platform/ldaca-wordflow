@@ -241,7 +241,7 @@ describe('TopicModelingParameterPanel', () => {
   it('flags a Max topic size that is not larger than Min topic size', () => {
     render(<TopicModelingParameterPanel {...baseProps} minClusterSize={10} maxClusterSize={10} />);
 
-    expect(screen.getByText('Must be larger than Min topic size')).toBeInTheDocument();
+    expect(screen.getByText('Max must be larger than Min')).toBeInTheDocument();
     expect(screen.getByLabelText('Max topic size')).toHaveAttribute('aria-invalid', 'true');
   });
 

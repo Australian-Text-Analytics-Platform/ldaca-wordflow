@@ -26,7 +26,7 @@ small topics less stable. The label reports the effective document count.
 
 <h3 id="help-topic-modeling-options">Step 3 — Configure the model</h3>
 
-<h4 id="help-topic-modeling-segmentation-method">Segmentation method</h4>
+<h4 id="help-topic-modeling-segmentation-method">Segments (segmentation method)</h4>
 
 This setting controls which spans become Topic Segments. The same method is
 used for every selected Data Block.
@@ -51,7 +51,7 @@ between paragraphs: Automatic keeps each blank-line block together, while
 Paragraph starts a new segment at every line break. Sentence uses a language-independent Unicode boundary
 algorithm, so abbreviations may occasionally form a short segment.
 
-<h4 id="help-topic-modeling-max-segment-tokens">Maximum tokens per segment</h4>
+<h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per segment)</h4>
 
 Sets the maximum size of a Topic Segment in model tokens. The default is 256
 and the allowed range is 32–256. Tokens may be complete words or parts of
@@ -65,14 +65,14 @@ Very small caps (such as 32 tokens) produce many short, fragment-like segments,
 which can make the number of topics unstable; 128–256 tokens usually gives more
 stable topics.
 
-<h4 id="help-topic-modeling-min-cluster-size">Min topic size</h4>
+<h4 id="help-topic-modeling-min-cluster-size">Topic size: minimum (Min topic size)</h4>
 
 Sets the smallest number of Topic Segments that can form a natural HDBSCAN
 Topic. The default is 10 and the minimum is 2. Smaller values can produce more,
 finer natural Topics but may be noisier; larger values require more supporting
 segments per natural Topic. Changing this value requires a new run.
 
-<h4 id="help-topic-modeling-max-cluster-size">Max topic size</h4>
+<h4 id="help-topic-modeling-max-cluster-size">Topic size: maximum (Max topic size)</h4>
 
 Limits the largest number of Topic Segments one Topic can hold. Topic size
 counts segments, not documents. Leave it empty for **Auto**: HDBSCAN sometimes
@@ -84,7 +84,7 @@ A fixed value must be larger than Min topic size. The number of segments is only
 known after a run, so after each run the field shows the segment count and
 whether Auto applied a cap, to help you choose a fixed value.
 
-<h4 id="help-topic-modeling-random-seed">Random seed</h4>
+<h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 
 Controls stochastic dimensionality reduction. The default is 0. Keep the same
 seed to reproduce a configuration, or compare several seeds to assess topic
@@ -115,7 +115,7 @@ your segmentation method, token cap, and Min topic size stay selected.
 
 ![Topic modelling results](tutorials/assets/topic_modelling/results.png)
 
-<h3 id="help-topic-modeling-number-of-clusters">Number of topics</h3>
+<h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
 The Result starts at HDBSCAN's natural number of real Topics. Use **Number of
 topics** to merge that fit down to one Topic without rerunning embedding or
@@ -139,7 +139,7 @@ Rerunning creates a new Analysis at its natural count and Top 2. Export and Add
 to Project use the displayed successful projection and are unavailable while
 an update is pending.
 
-<h3 id="help-topic-modeling-top-topics-per-row">Top topics per document</h3>
+<h3 id="help-topic-modeling-top-topics-per-row">Per document (top topics per document)</h3>
 
 **Top topics per document** controls how many of each source row's strongest
 positive real-topic shares contribute to bubble counts. The default is 2. Topic
@@ -173,7 +173,7 @@ maps colours to values, and a downloaded graph includes that legend. Choose
 **Data Block colour** to return to the usual colouring. The choice is not
 saved and resets when you run the analysis again. No re-run is needed.
 
-<h3 id="help-topic-modeling-words-per-topic">Words per topic and stop words</h3>
+<h3 id="help-topic-modeling-words-per-topic">Words (words per topic) and stop words</h3>
 
 **Words per topic** controls how many representative words appear in the topic
 list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
@@ -267,13 +267,12 @@ available for the next run.
 | Setting | Default |
 | --- | --- |
 | Sampling | 100% per Data Block |
-| Segmentation method | Automatic |
-| Maximum tokens per segment | 256 |
-| Min topic size | 10 |
-| Max topic size | Auto |
-| Random seed | 0 |
-| Top topics per document | 2, or the available Topic count when smaller |
-| Words per topic | 15 |
+| Segments | Automatic |
+| Max tokens | 256 |
+| Topic size | 10 to Auto |
+| Seed | 0 |
+| Per document | 2, or the available Topic count when smaller |
+| Words | 15 |
 
 ## Practice exercise
 

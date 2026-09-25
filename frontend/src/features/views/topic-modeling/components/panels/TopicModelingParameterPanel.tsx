@@ -72,6 +72,43 @@ interface Props {
   hasMissingColumns: boolean;
   parametersLocked: boolean;
 }
+const INTEGER_INPUT = 'h-8 w-20 px-2 text-right text-body tabular-nums';
+
+/** A short visible label with its full explanation in a help tooltip. */
+function ParameterLabel({
+  htmlFor,
+  help,
+  as = 'label',
+  children,
+}: {
+  htmlFor?: string;
+  help: string;
+  as?: 'label' | 'legend';
+  children: string;
+}) {
+  const content = (
+    <>
+      {children}
+      <span
+        aria-label={help}
+        title={help}
+        className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
+      >
+        <CircleHelp className="h-3.5 w-3.5" />
+      </span>
+    </>
+  );
+  const className =
+    'flex items-center gap-1 whitespace-nowrap text-label-secondary font-medium text-description';
+  return as === 'legend' ? (
+    <legend className={className}>{content}</legend>
+  ) : (
+    <Label htmlFor={htmlFor} className={className}>
+      {content}
+    </Label>
+  );
+}
+
 /**
  * Renders topic-modeling node inputs, sampling controls, run parameters, and shared actions.
  * Rendered by: TopicModelingFeature, which owns the selected-node and task state supplied here.
@@ -261,22 +298,17 @@ export function TopicModelingParameterPanel({
         renderColumnAddon={renderSamplingInput}
       />
 
+      {/* Compact on small screens (issue 152): short labels, integer-sized
+          inputs, and one Topic size range; full wording stays in the help. */}
       <div className="mt-4 px-3">
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="min-w-[11rem] space-y-1">
-            <Label
+        <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
+          <div className="space-y-1">
+            <ParameterLabel
               htmlFor="topic-segmentation-method"
-              className="flex items-center gap-1.5 whitespace-nowrap text-label-secondary font-medium text-description"
+              help="Which text spans become Topic Segments. Automatic starts from paragraphs (blank-line blocks, or single lines when the text has no blank lines). Paragraph treats every non-empty line as a paragraph. Sentence starts from Unicode sentence boundaries. A unit that fits the token budget is one segment; an oversized unit is split into sentences, then at the clause punctuation nearest its middle."
             >
-              Segmentation method
-              <span
-                aria-label="Segmentation method controls which text spans become Topic Segments"
-                title="Automatic starts from paragraphs (blank-line blocks, or single lines when the text has no blank lines). Paragraph treats every non-empty line as a paragraph. Sentence starts from Unicode sentence boundaries. A unit that fits the token budget is one segment; an oversized unit is split into sentences, then at the clause punctuation nearest its middle."
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
-              >
-                <CircleHelp className="h-4 w-4" />
-              </span>
-            </Label>
+              Segments
+            </ParameterLabel>
             <Select
               value={segmentationMethod}
               onValueChange={(value) => {
@@ -286,7 +318,7 @@ export function TopicModelingParameterPanel({
               <SelectTrigger
                 id="topic-segmentation-method"
                 aria-label="Segmentation method"
-                className="h-9 w-full"
+                className="h-8 w-32"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -298,20 +330,13 @@ export function TopicModelingParameterPanel({
             </Select>
           </div>
 
-          <div className="min-w-[12rem] space-y-1">
-            <Label
+          <div className="space-y-1">
+            <ParameterLabel
               htmlFor="topic-max-segment-tokens"
-              className="flex items-center gap-1.5 whitespace-nowrap text-label-secondary font-medium text-description"
+              help="Maximum tokens per segment, from 32 to 256. Tokens are model units and may be words or parts of words. Oversized Line and Sentence units are split into complete non-overlapping segments."
             >
-              Maximum tokens per segment
-              <span
-                aria-label="Tokens are model units and may be words or parts of words"
-                title="Sets the largest Topic Segment from 32 to 256 model tokens. Oversized Line and Sentence units are split into complete non-overlapping segments."
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
-              >
-                <CircleHelp className="h-4 w-4" />
-              </span>
-            </Label>
+              Max tokens
+            </ParameterLabel>
             <Input
               id="topic-max-segment-tokens"
               aria-label="Maximum tokens per segment"
@@ -320,7 +345,7 @@ export function TopicModelingParameterPanel({
               max={256}
               step={1}
               value={maxSegmentTokensValueDraft}
-              className="h-9 w-full px-2 text-right text-body"
+              className={INTEGER_INPUT}
               onChange={(event) => {
                 setMaxSegmentTokensDraft({
                   source: maxSegmentTokens,
@@ -331,94 +356,76 @@ export function TopicModelingParameterPanel({
             />
           </div>
 
-          <div className="min-w-[11rem] space-y-1">
-            <Label
-              htmlFor="topic-min-cluster-size"
-              className="flex items-center gap-1.5 whitespace-nowrap text-label-secondary font-medium text-description"
+          <fieldset className="space-y-1" aria-describedby="topic-max-cluster-size-note">
+            <ParameterLabel
+              as="legend"
+              help="The smallest and largest topic, in Topic Segments (not documents). Min sets the HDBSCAN minimum: smaller values can produce more natural topics. Leave Max empty for Auto: it only steps in when one topic holds more than half of all segments, splitting it into its sub-topics, and keeps the result only if that topic is not lost to outliers. A fixed Max must be larger than Min. Changing either requires running a new analysis; Number of topics only merges the resulting topics."
             >
-              Min topic size
-              <span
-                aria-label="Min topic size controls the smallest number of Topic Segments that can form a natural topic"
-                title="Sets the HDBSCAN minimum topic size for the initial run. Smaller values can produce more natural topics. Changing it requires running a new analysis; Number of topics only merges the resulting topics."
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
-              >
-                <CircleHelp className="h-4 w-4" />
+              Topic size
+            </ParameterLabel>
+            <div className="flex items-center gap-1.5">
+              <Input
+                id="topic-min-cluster-size"
+                aria-label="Min topic size"
+                type="number"
+                min={2}
+                step={1}
+                value={minClusterSizeValueDraft}
+                className={INTEGER_INPUT}
+                onChange={(event) => {
+                  setMinClusterSizeDraft({
+                    source: minClusterSize,
+                    value: event.target.value,
+                  });
+                }}
+                onBlur={handleMinClusterSizeBlur}
+              />
+              <span aria-hidden="true" className="text-description">
+                to
               </span>
-            </Label>
-            <Input
-              id="topic-min-cluster-size"
-              aria-label="Min topic size"
-              type="number"
-              min={2}
-              step={1}
-              value={minClusterSizeValueDraft}
-              className="h-9 w-full px-2 text-right text-body"
-              onChange={(event) => {
-                setMinClusterSizeDraft({
-                  source: minClusterSize,
-                  value: event.target.value,
-                });
-              }}
-              onBlur={handleMinClusterSizeBlur}
-            />
-          </div>
-
-          <div className="min-w-[11rem] space-y-1">
-            <Label
-              htmlFor="topic-max-cluster-size"
-              className="flex items-center gap-1.5 whitespace-nowrap text-label-secondary font-medium text-description"
-            >
-              Max topic size
-              <span
-                aria-label="Max topic size limits the largest number of Topic Segments one topic can hold"
-                title="The largest topic, in Topic Segments (not documents). Leave empty for Auto: it only steps in when one topic holds more than half of all segments, splitting it into its sub-topics, and keeps the result only if that topic is not lost to outliers. A fixed value must be larger than Min topic size. Changing it requires running a new analysis."
-                className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
-              >
-                <CircleHelp className="h-4 w-4" />
-              </span>
-            </Label>
-            <Input
-              id="topic-max-cluster-size"
-              aria-label="Max topic size"
-              aria-invalid={maxTopicSizeInvalid || undefined}
-              aria-describedby="topic-max-cluster-size-note"
-              type="number"
-              min={minClusterSize + 1}
-              step={1}
-              placeholder="Auto"
-              value={maxClusterSizeValueDraft}
-              className="h-9 w-full px-2 text-right text-body"
-              onChange={(event) => {
-                setMaxClusterSizeDraft({
-                  source: maxClusterSize,
-                  value: event.target.value,
-                });
-              }}
-              onBlur={handleMaxClusterSizeBlur}
-            />
+              <Input
+                id="topic-max-cluster-size"
+                aria-label="Max topic size"
+                aria-invalid={maxTopicSizeInvalid || undefined}
+                aria-describedby="topic-max-cluster-size-note"
+                type="number"
+                min={minClusterSize + 1}
+                step={1}
+                placeholder="Auto"
+                value={maxClusterSizeValueDraft}
+                className={INTEGER_INPUT}
+                onChange={(event) => {
+                  setMaxClusterSizeDraft({
+                    source: maxClusterSize,
+                    value: event.target.value,
+                  });
+                }}
+                onBlur={handleMaxClusterSizeBlur}
+              />
+            </div>
             <p
               id="topic-max-cluster-size-note"
-              className={`text-label-secondary ${maxTopicSizeInvalid ? 'text-error' : 'text-description'}`}
+              className={`max-w-56 text-label-secondary ${maxTopicSizeInvalid ? 'text-error' : 'text-description'}`}
             >
-              {maxTopicSizeInvalid ? 'Must be larger than Min topic size' : lastRunSummary}
+              {maxTopicSizeInvalid ? 'Max must be larger than Min' : lastRunSummary}
             </p>
-          </div>
+          </fieldset>
 
-          {/* Random seed */}
-          <div className="min-w-[9rem] space-y-1">
-            <Label
+          <div className="space-y-1">
+            <ParameterLabel
               htmlFor="random-seed"
-              className="block whitespace-nowrap text-label-secondary font-medium text-description"
+              help="Random seed. The same seed and settings give the same topics."
             >
-              Random Seed
-            </Label>
+              Seed
+            </ParameterLabel>
             <Input
               id="random-seed"
+              aria-label="Random Seed"
               type="number"
               min={0}
               step={1}
               value={randomSeed}
-              className={`h-9 w-full text-right text-body${!randomSeedUserSet ? ' text-description' : ''}`}
+              className={`${INTEGER_INPUT}${!randomSeedUserSet ? ' text-description' : ''}`}
               onChange={(e) => {
                 onRandomSeedChange(Math.max(0, Number(e.target.value) || 0));
               }}
