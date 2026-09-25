@@ -2638,6 +2638,108 @@
         "title": "ColumnExpression",
         "type": "object"
       },
+      "CombineColumnPart": {
+        "additionalProperties": false,
+        "description": "A column reference inside a Combine columns template.",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "column",
+            "default": "column",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column"
+        ],
+        "title": "CombineColumnPart",
+        "type": "object"
+      },
+      "CombineColumnsNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Build a new text column from a template of columns and text (issue 143).\n\nColumns of any type are converted to text. ``empty_values`` decides what a\nmissing value does: ``blank`` treats it as empty text, ``empty_result``\nleaves the whole combined value empty (null).",
+        "properties": {
+          "empty_values": {
+            "default": "blank",
+            "enum": [
+              "blank",
+              "empty_result"
+            ],
+            "title": "Empty Values",
+            "type": "string"
+          },
+          "kind": {
+            "const": "combine_columns",
+            "default": "combine_columns",
+            "title": "Kind",
+            "type": "string"
+          },
+          "output_column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Output Column",
+            "type": "string"
+          },
+          "parts": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "column": "#/components/schemas/CombineColumnPart",
+                  "text": "#/components/schemas/CombineTextPart"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CombineTextPart"
+                },
+                {
+                  "$ref": "#/components/schemas/CombineColumnPart"
+                }
+              ]
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Parts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "parts",
+          "output_column"
+        ],
+        "title": "CombineColumnsNodeEditRequest",
+        "type": "object"
+      },
+      "CombineTextPart": {
+        "additionalProperties": false,
+        "description": "Literal text inside a Combine columns template.",
+        "properties": {
+          "kind": {
+            "const": "text",
+            "default": "text",
+            "title": "Kind",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "CombineTextPart",
+        "type": "object"
+      },
       "CompleteTableResource": {
         "additionalProperties": false,
         "description": "One immutable table fetched as a complete Arrow IPC stream.",
@@ -18263,6 +18365,7 @@
                     "annotation_classes": "#/components/schemas/AnnotationClassesNodeEditRequest",
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
+                    "combine_columns": "#/components/schemas/CombineColumnsNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
@@ -18295,6 +18398,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/ReplaceNodeEditRequest"
@@ -18466,6 +18572,7 @@
                     "annotation_classes": "#/components/schemas/AnnotationClassesNodeEditRequest",
                     "cast": "#/components/schemas/CastNodeEditRequest",
                     "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
+                    "combine_columns": "#/components/schemas/CombineColumnsNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
@@ -18498,6 +18605,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/ReplaceNodeEditRequest"

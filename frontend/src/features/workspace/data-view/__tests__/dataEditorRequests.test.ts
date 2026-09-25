@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCleanText,
   buildCombine,
+  parseCombineTemplate,
   buildDuplicate,
   buildExtract,
   buildFindReplace,
@@ -58,31 +59,35 @@ describe('Data Editor request builders (issue 143)', () => {
         columns,
       )?.request,
     ).toMatchObject({ kind: 'replace', mode: 'extract', output_column: 'tags' });
-    expect(
-      buildCombine({ columns: ['text'], separator: ' ', outputName: 'both' }, columns),
-    ).toBeNull();
-    const combined = buildCombine(
-      { columns: ['party', 'text'], separator: ': ', outputName: 'both' },
-      columns,
-    );
-    expect(combined?.request).toEqual({
-      kind: 'expression',
-      context: 'with_columns',
-      expressions: [
-        {
-          alias: 'both',
-          expression: {
-            op: 'add',
-            left: {
-              op: 'add',
-              left: { op: 'column', name: 'party' },
-              right: { op: 'literal', value: ': ' },
-            },
-            right: { op: 'column', name: 'text' },
-          },
-        },
-      ],
+    const combine = (template: string, outputName = 'both') =>
+      buildCombine({ template, outputName, emptyValues: 'blank' }, columns);
+    expect(combine('{text}', 'text')).toBeNull();
+    expect(combine('just text')).toBeNull();
+    expect(combine('{nope} {text}')).toBeNull();
+    expect(combine('{party}: {text} {{x}}')).toEqual({
+      request: {
+        kind: 'combine_columns',
+        parts: [
+          { kind: 'column', column: 'party' },
+          { kind: 'text', text: ': ' },
+          { kind: 'column', column: 'text' },
+          { kind: 'text', text: ' {x}' },
+        ],
+        output_column: 'both',
+        empty_values: 'blank',
+      },
+      highlightColumns: ['both'],
     });
+  });
+
+  it('reports unknown columns and unreadable templates', () => {
+    expect(parseCombineTemplate('{nope} and {nope}', columns)).toMatchObject({
+      unknown: ['nope'],
+      error: null,
+    });
+    expect(parseCombineTemplate('{text', columns).error).toMatch(/no matching/);
+    expect(parseCombineTemplate('a } b', columns).error).toMatch(/}}/);
+    expect(parseCombineTemplate('{}', columns).error).toMatch(/column name/);
   });
 
   it('builds cleaning and splitting edits and names split columns', () => {

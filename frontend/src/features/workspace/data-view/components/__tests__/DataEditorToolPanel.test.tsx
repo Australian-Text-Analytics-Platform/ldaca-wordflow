@@ -81,4 +81,59 @@ describe('DataEditorToolPanel (issue 143)', () => {
     await user.click(screen.getByRole('button', { name: 'Show Project Graph' }));
     expect(useDataEditorToolStore.getState().graphVisible).toBe(true);
   });
+
+  it('builds a Combine template with brace suggestions and the Insert column picker', async () => {
+    const user = userEvent.setup();
+    open('combine', 'party');
+    render(<DataEditorToolPanel />);
+
+    const template = screen.getByLabelText('Template');
+    expect(template).toHaveValue('{party}');
+    await user.click(template);
+    await user.keyboard('{End}: {{te');
+    const suggestions = screen.getByRole('listbox', { name: 'Matching columns' });
+    expect(suggestions).toHaveTextContent('text');
+    await user.keyboard('{Enter}');
+    expect(template).toHaveValue('{party}: {text}');
+    expect(screen.queryByRole('listbox', { name: 'Matching columns' })).not.toBeInTheDocument();
+
+    await user.keyboard(' #');
+    await user.click(screen.getByRole('combobox', { name: 'Insert column' }));
+    await user.keyboard('id{Enter}');
+    await waitFor(() => {
+      expect(template).toHaveValue('{party}: {text} #{id}');
+    });
+    await user.type(screen.getByLabelText('New column name'), 'label');
+    await user.click(screen.getByLabelText('Leave the combined value empty'));
+
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toEqual({
+        kind: 'combine_columns',
+        parts: [
+          { kind: 'column', column: 'party' },
+          { kind: 'text', text: ': ' },
+          { kind: 'column', column: 'text' },
+          { kind: 'text', text: ' #' },
+          { kind: 'column', column: 'id' },
+        ],
+        output_column: 'label',
+        empty_values: 'empty_result',
+      });
+    });
+    expect(screen.getByText(/Uses party, text, id/)).toBeInTheDocument();
+    act(() => {
+      useDataEditorToolStore.getState().setPreviewSample('Labor: Hello #1');
+    });
+    expect(screen.getByText(/First row on this page/)).toHaveTextContent('Labor: Hello #1');
+  });
+
+  it('flags template columns that are not on the Data Block', async () => {
+    const user = userEvent.setup();
+    open('combine');
+    render(<DataEditorToolPanel />);
+
+    await user.type(screen.getByLabelText('Template'), '{{nope}');
+    expect(screen.getByText(/Not a column on this Data Block: nope/)).toBeInTheDocument();
+    expect(useDataEditorToolStore.getState().request).toBeNull();
+  });
 });

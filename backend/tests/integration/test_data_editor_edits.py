@@ -120,3 +120,73 @@ def test_duplicate_split_and_clean_apply_as_single_edits(tmp_path: Path) -> None
         assert "loud" not in columns()
     finally:
         client.__exit__(None, None, None)
+
+
+def test_combine_columns_template_handles_types_and_missing_values(
+    tmp_path: Path,
+) -> None:
+    client, unsafe, workspace_id, node_id = _setup(tmp_path)
+    try:
+        base = f"/api/workspaces/{workspace_id}/nodes/{node_id}"
+        # "Greens" has no "b", so party_2 is missing on that row.
+        split = client.post(
+            f"{base}/edits",
+            json={
+                "kind": "split_column",
+                "column": "party",
+                "delimiter": "b",
+                "parts": 2,
+            },
+            headers=unsafe,
+        )
+        assert split.status_code == 200, split.text
+        parts = [
+            {"kind": "text", "text": "#"},
+            {"kind": "column", "column": "id"},
+            {"kind": "text", "text": " "},
+            {"kind": "column", "column": "party_1"},
+            {"kind": "text", "text": "/"},
+            {"kind": "column", "column": "party_2"},
+        ]
+
+        def preview(empty_values: str) -> list[str | None]:
+            response = client.post(
+                f"{base}/edits/preview",
+                json={
+                    "kind": "combine_columns",
+                    "parts": parts,
+                    "output_column": "label",
+                    "empty_values": empty_values,
+                },
+                headers=unsafe,
+            )
+            assert response.status_code == 200, response.text
+            return pl.read_ipc_stream(BytesIO(response.content))["label"].to_list()
+
+        # The integer id column joins as text; a missing part reads as blank.
+        assert preview("blank") == ["#1 La/or", "#2 Greens/", "#3 La/or"]
+        assert preview("empty_result") == ["#1 La/or", None, "#3 La/or"]
+
+        unknown = client.post(
+            f"{base}/edits/preview",
+            json={
+                "kind": "combine_columns",
+                "parts": [{"kind": "column", "column": "missing"}],
+                "output_column": "label",
+            },
+            headers=unsafe,
+        )
+        assert unknown.status_code == 400
+        assert "missing" in unknown.text
+        text_only = client.post(
+            f"{base}/edits/preview",
+            json={
+                "kind": "combine_columns",
+                "parts": [{"kind": "text", "text": "x"}],
+                "output_column": "label",
+            },
+            headers=unsafe,
+        )
+        assert text_only.status_code == 422
+    finally:
+        client.__exit__(None, None, None)

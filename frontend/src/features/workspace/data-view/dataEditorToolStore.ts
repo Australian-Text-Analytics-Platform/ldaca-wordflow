@@ -43,6 +43,11 @@ interface DataEditorToolState {
   /** Columns the preview adds or changes, highlighted in the table. */
   highlightColumns: string[];
   changedRows: number | null;
+  /**
+   * First previewed value of the first highlighted column: `undefined` until a
+   * preview arrives, `null` when that value is empty.
+   */
+  previewSample: string | null | undefined;
   dirty: boolean;
   /** The Project Graph can be shown again without closing the tool. */
   graphVisible: boolean;
@@ -59,6 +64,7 @@ interface DataEditorToolState {
   close: () => void;
   setDraft: (request: DataEditorEdit | null, highlightColumns: string[], dirty: boolean) => void;
   setChangedRows: (changedRows: number | null) => void;
+  setPreviewSample: (previewSample: string | null | undefined) => void;
   setGraphVisible: (visible: boolean) => void;
 }
 
@@ -72,6 +78,7 @@ const CLOSED = {
   request: null,
   highlightColumns: [],
   changedRows: null,
+  previewSample: undefined,
   dirty: false,
   graphVisible: false,
 } satisfies Partial<DataEditorToolState>;
@@ -93,10 +100,18 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
     set(CLOSED);
   },
   setDraft: (request, highlightColumns, dirty) => {
-    set({ request, highlightColumns, dirty, ...(request ? {} : { changedRows: null }) });
+    set({
+      request,
+      highlightColumns,
+      dirty,
+      ...(request ? {} : { changedRows: null, previewSample: undefined }),
+    });
   },
   setChangedRows: (changedRows) => {
     set({ changedRows });
+  },
+  setPreviewSample: (previewSample) => {
+    set({ previewSample });
   },
   setGraphVisible: (graphVisible) => {
     set({ graphVisible });

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import {
   Select,
   SelectContent,
@@ -21,20 +22,21 @@ import {
   buildFindReplace,
   buildSplit,
   CLEAN_TEXT_OPERATIONS,
+  templateColumnToken,
   type CleanTextOperation,
   type DataEditorDraft,
+  type EmptyValues,
   type OutputTarget,
 } from '../dataEditorRequests';
+import { CombineTemplateField } from './CombineTemplateField';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
 
 function ColumnSelect({
-  id,
   label,
   value,
   columns,
   onChange,
 }: {
-  id: string;
   label: string;
   value: string;
   columns: string[];
@@ -42,19 +44,15 @@ function ColumnSelect({
 }) {
   return (
     <div className="space-y-1">
-      <Label htmlFor={id}>{label}</Label>
-      <Select value={value || undefined} onValueChange={onChange}>
-        <SelectTrigger id={id} aria-label={label}>
-          <SelectValue placeholder="Choose a column" />
-        </SelectTrigger>
-        <SelectContent>
-          {columns.map((column) => (
-            <SelectItem key={column} value={column}>
-              {column}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
+      <span className="text-body font-medium">{label}</span>
+      <SearchableSelect
+        options={columns.map((column) => ({ value: column }))}
+        value={value}
+        onChange={onChange}
+        placeholder="Choose a column"
+        ariaLabel={label}
+        searchPlaceholder="Find a column… (* and ? wildcards)"
+      />
     </div>
   );
 }
@@ -151,6 +149,7 @@ export function DataEditorToolPanel() {
   const initialOperation = useDataEditorToolStore((state) => state.initialOperation);
   const request = useDataEditorToolStore((state) => state.request);
   const changedRows = useDataEditorToolStore((state) => state.changedRows);
+  const previewSample = useDataEditorToolStore((state) => state.previewSample);
   const setDraft = useDataEditorToolStore((state) => state.setDraft);
   const close = useDataEditorToolStore((state) => state.close);
   const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
@@ -163,8 +162,8 @@ export function DataEditorToolPanel() {
   const [outputName, setOutputName] = useState('');
   const [firstOnly, setFirstOnly] = useState(false);
   const [connector, setConnector] = useState(' ');
-  const [combined, setCombined] = useState<string[]>(initialColumn ? [initialColumn] : []);
-  const [separator, setSeparator] = useState(' ');
+  const [template, setTemplate] = useState(initialColumn ? templateColumnToken(initialColumn) : '');
+  const [emptyValues, setEmptyValues] = useState<EmptyValues>('blank');
   const [operation, setOperation] = useState<CleanTextOperation>(
     CLEAN_TEXT_OPERATIONS.find((option) => option.value === initialOperation)?.value ?? 'trim',
   );
@@ -189,7 +188,7 @@ export function DataEditorToolPanel() {
   } else if (tool === 'extract') {
     draft = buildExtract({ column, pattern, outputName, firstOnly, connector }, columns);
   } else if (tool === 'combine') {
-    draft = buildCombine({ columns: combined, separator, outputName }, columns);
+    draft = buildCombine({ template, outputName, emptyValues }, columns);
   } else if (tool === 'duplicate') {
     draft = buildDuplicate({ column }, columns);
   } else if (tool === 'clean_text') {
@@ -263,41 +262,11 @@ export function DataEditorToolPanel() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
         {tool === 'combine' ? (
-          <fieldset className="space-y-1">
-            <legend className="text-body font-medium">Columns to combine, in order</legend>
-            <ul className="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2">
-              {columns.map((candidate) => {
-                const position = combined.indexOf(candidate);
-                return (
-                  <li key={candidate} className="flex items-center gap-2">
-                    <Checkbox
-                      id={`combine-${candidate}`}
-                      checked={position >= 0}
-                      onCheckedChange={(checked) => {
-                        touch(setCombined)(
-                          checked === true
-                            ? [...combined, candidate]
-                            : combined.filter((item) => item !== candidate),
-                        );
-                      }}
-                    />
-                    <label htmlFor={`combine-${candidate}`} className="min-w-0 truncate text-body">
-                      {candidate}
-                    </label>
-                    {position >= 0 ? (
-                      <span className="ml-auto text-label-secondary text-description">
-                        {position + 1}
-                      </span>
-                    ) : null}
-                  </li>
-                );
-              })}
-            </ul>
-            <TextField
-              id="combine-separator"
-              label="Separator"
-              value={separator}
-              onChange={touch(setSeparator)}
+          <>
+            <CombineTemplateField
+              value={template}
+              columns={columns}
+              onChange={touch(setTemplate)}
             />
             <TextField
               id="combine-name"
@@ -305,10 +274,46 @@ export function DataEditorToolPanel() {
               value={outputName}
               onChange={touch(setOutputName)}
             />
-          </fieldset>
+            <fieldset className="space-y-1">
+              <legend className="text-body font-medium">When a value is missing</legend>
+              <label className="flex items-center gap-2 text-body">
+                <input
+                  type="radio"
+                  name="combine-empty-values"
+                  checked={emptyValues === 'blank'}
+                  onChange={() => {
+                    touch(setEmptyValues)('blank');
+                  }}
+                />
+                Treat it as blank text
+              </label>
+              <label className="flex items-center gap-2 text-body">
+                <input
+                  type="radio"
+                  name="combine-empty-values"
+                  checked={emptyValues === 'empty_result'}
+                  onChange={() => {
+                    touch(setEmptyValues)('empty_result');
+                  }}
+                />
+                Leave the combined value empty
+              </label>
+            </fieldset>
+            {request && previewSample !== undefined ? (
+              <p className="text-label-secondary text-description">
+                First row on this page:{' '}
+                {previewSample === null ? (
+                  <span className="italic">empty</span>
+                ) : (
+                  <span className="break-words font-mono text-foreground">
+                    &ldquo;{previewSample}&rdquo;
+                  </span>
+                )}
+              </p>
+            ) : null}
+          </>
         ) : (
           <ColumnSelect
-            id="data-editor-column"
             label="Column"
             value={column}
             columns={columns}

@@ -3,7 +3,6 @@
  * Each returns the edit to preview and apply plus the columns it adds or
  * changes (highlighted in the table), or `null` while the form is incomplete.
  */
-import type { ExpressionItemInput } from '@/api';
 import type { DataEditorEdit } from './dataEditorToolStore';
 
 export interface DataEditorDraft {
@@ -98,30 +97,81 @@ export function buildExtract(
   };
 }
 
-type ExpressionSpec = ExpressionItemInput['expression'];
+type CombinePart = { kind: 'text'; text: string } | { kind: 'column'; column: string };
+
+export type EmptyValues = 'blank' | 'empty_result';
+
+export interface ParsedTemplate {
+  parts: CombinePart[];
+  /** Column names in braces that are not on the Data Block. */
+  unknown: string[];
+  /** Why the template cannot be read, such as an unclosed brace. */
+  error: string | null;
+}
+
+/**
+ * Reads a Combine columns template such as "{title}: {body}". A column is
+ * written in braces; "{{" and "}}" stand for literal braces.
+ */
+export function parseCombineTemplate(template: string, columns: readonly string[]): ParsedTemplate {
+  const parts: CombinePart[] = [];
+  const unknown: string[] = [];
+  let text = '';
+  const flushText = () => {
+    if (text) parts.push({ kind: 'text', text });
+    text = '';
+  };
+  let index = 0;
+  while (index < template.length) {
+    const char = template.charAt(index);
+    const next = template.charAt(index + 1);
+    if ((char === '{' && next === '{') || (char === '}' && next === '}')) {
+      text += char;
+      index += 2;
+      continue;
+    }
+    if (char === '}') {
+      return { parts, unknown, error: 'Write }} for a literal closing brace.' };
+    }
+    if (char === '{') {
+      const close = template.indexOf('}', index + 1);
+      if (close < 0) {
+        return { parts, unknown, error: 'A { has no matching }.' };
+      }
+      const column = template.slice(index + 1, close);
+      if (!column) {
+        return { parts, unknown, error: 'Put a column name inside the braces.' };
+      }
+      flushText();
+      parts.push({ kind: 'column', column });
+      if (!columns.includes(column) && !unknown.includes(column)) unknown.push(column);
+      index = close + 1;
+      continue;
+    }
+    text += char;
+    index += 1;
+  }
+  flushText();
+  return { parts, unknown, error: null };
+}
+
+/** Text for inserting a column into a template, as "{name}". */
+export const templateColumnToken = (column: string): string => `{${column}}`;
 
 export function buildCombine(
-  form: { columns: string[]; separator: string; outputName: string },
+  form: { template: string; outputName: string; emptyValues: EmptyValues },
   columns: readonly string[],
 ): DataEditorDraft | null {
   const output = newName(form.outputName, columns);
-  const parts = form.columns.filter((column) => columns.includes(column));
-  const [first, ...rest] = parts;
-  if (!output || !first || rest.length === 0) return null;
-  const expression = rest.reduce<ExpressionSpec>(
-    (left, column) => {
-      const withSeparator: ExpressionSpec = form.separator
-        ? { op: 'add', left, right: { op: 'literal', value: form.separator } }
-        : left;
-      return { op: 'add', left: withSeparator, right: { op: 'column', name: column } };
-    },
-    { op: 'column', name: first },
-  );
+  const parsed = parseCombineTemplate(form.template, columns);
+  if (!output || parsed.error || parsed.unknown.length > 0) return null;
+  if (!parsed.parts.some((part) => part.kind === 'column')) return null;
   return {
     request: {
-      kind: 'expression',
-      context: 'with_columns',
-      expressions: [{ expression, alias: output }],
+      kind: 'combine_columns',
+      parts: parsed.parts,
+      output_column: output,
+      empty_values: form.emptyValues,
     },
     highlightColumns: [output],
   };

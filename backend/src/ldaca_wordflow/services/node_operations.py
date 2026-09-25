@@ -53,6 +53,8 @@ from ..models.node_resources import (
     DeleteColumnsNodeEditRequest,
     DuplicateColumnNodeEditRequest,
     SplitColumnNodeEditRequest,
+    CombineColumnPart,
+    CombineColumnsNodeEditRequest,
     ExpressionNodeEditRequest,
     ExpressionNodeCreateRequest,
     FilterNodeCreateRequest,
@@ -306,6 +308,32 @@ def build_edited_lazyframe(
         )
         edited = node.data.with_columns(fields.struct.unnest())
         return _place_right_of(edited, request.column, outputs), None
+
+    if isinstance(request, CombineColumnsNodeEditRequest):
+        names = node.data.collect_schema().names()
+        referenced = [
+            part.column for part in request.parts if isinstance(part, CombineColumnPart)
+        ]
+        missing = sorted({column for column in referenced if column not in names})
+        if missing:
+            raise InvalidInputError(
+                "Columns in the template are not present on the Data Block: "
+                + ", ".join(missing)
+            )
+        output = request.output_column.strip()
+        if not output:
+            raise InvalidInputError("New column name cannot be blank")
+        if output in names:
+            raise InvalidInputError("New column name already exists on the Data Block")
+        pieces = [
+            pl.col(part.column).cast(pl.String)
+            if isinstance(part, CombineColumnPart)
+            else pl.lit(part.text, dtype=pl.String)
+            for part in request.parts
+        ]
+        if request.empty_values == "blank":
+            pieces = [piece.fill_null("") for piece in pieces]
+        return node.data.with_columns(pl.concat_str(pieces).alias(output)), None
 
     if isinstance(request, ReplaceNodeEditRequest):
         output_column, expression = _replace_expression(node, request)

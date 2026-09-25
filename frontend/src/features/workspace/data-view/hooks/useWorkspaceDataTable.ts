@@ -332,6 +332,24 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   useEffect(() => {
     setChangedRows(previewChangedRows);
   }, [previewChangedRows, setChangedRows]);
+  const setPreviewSample = toolState.setPreviewSample;
+  const sampleColumn = toolState.highlightColumns[0];
+  const previewPage = previewRequest ? previewQuery.data : undefined;
+  const sampleRaw =
+    sampleColumn && previewPage?.columns.includes(sampleColumn)
+      ? previewPage.rows[0]?.[sampleColumn]
+      : undefined;
+  const previewSample =
+    sampleRaw === undefined
+      ? undefined
+      : sampleRaw === null
+        ? null
+        : typeof sampleRaw === 'string'
+          ? sampleRaw
+          : JSON.stringify(sampleRaw);
+  useEffect(() => {
+    setPreviewSample(previewSample);
+  }, [previewSample, setPreviewSample]);
   const shownData: NodeDataResponse =
     previewing && previewQuery.data
       ? {

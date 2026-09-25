@@ -218,6 +218,45 @@ class SplitColumnNodeEditRequest(_StrictRequest):
     parts: int = Field(ge=2, le=50)
 
 
+class CombineTextPart(_StrictRequest):
+    """Literal text inside a Combine columns template."""
+
+    kind: Literal["text"] = "text"
+    text: str = Field(min_length=1, max_length=1_000)
+
+
+class CombineColumnPart(_StrictRequest):
+    """A column reference inside a Combine columns template."""
+
+    kind: Literal["column"] = "column"
+    column: str = Field(min_length=1, max_length=200)
+
+
+CombinePart = Annotated[
+    CombineTextPart | CombineColumnPart, Field(discriminator="kind")
+]
+
+
+class CombineColumnsNodeEditRequest(_StrictRequest):
+    """Build a new text column from a template of columns and text (issue 143).
+
+    Columns of any type are converted to text. ``empty_values`` decides what a
+    missing value does: ``blank`` treats it as empty text, ``empty_result``
+    leaves the whole combined value empty (null).
+    """
+
+    kind: Literal["combine_columns"] = "combine_columns"
+    parts: list[CombinePart] = Field(min_length=1, max_length=200)
+    output_column: str = Field(min_length=1, max_length=200)
+    empty_values: Literal["blank", "empty_result"] = "blank"
+
+    @model_validator(mode="after")
+    def validate_parts(self) -> CombineColumnsNodeEditRequest:
+        if not any(isinstance(part, CombineColumnPart) for part in self.parts):
+            raise ValueError("Combine columns needs at least one column")
+        return self
+
+
 class ReplaceNodeEditRequest(ReplaceDerivation):
     """Replace or extract text on the target Data Block."""
 
@@ -286,6 +325,7 @@ NodeEditRequest = Annotated[
     | DuplicateColumnNodeEditRequest
     | CleanTextNodeEditRequest
     | SplitColumnNodeEditRequest
+    | CombineColumnsNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest
     | SetCellNodeEditRequest

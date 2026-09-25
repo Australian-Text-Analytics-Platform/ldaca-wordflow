@@ -1245,6 +1245,66 @@ export type ColumnExpression = {
 };
 
 /**
+ * CombineColumnPart
+ *
+ * A column reference inside a Combine columns template.
+ */
+export type CombineColumnPart = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'column';
+};
+
+/**
+ * CombineColumnsNodeEditRequest
+ *
+ * Build a new text column from a template of columns and text (issue 143).
+ *
+ * Columns of any type are converted to text. ``empty_values`` decides what a
+ * missing value does: ``blank`` treats it as empty text, ``empty_result``
+ * leaves the whole combined value empty (null).
+ */
+export type CombineColumnsNodeEditRequest = {
+    /**
+     * Empty Values
+     */
+    empty_values?: 'blank' | 'empty_result';
+    /**
+     * Kind
+     */
+    kind?: 'combine_columns';
+    /**
+     * Output Column
+     */
+    output_column: string;
+    /**
+     * Parts
+     */
+    parts: Array<CombineTextPart | CombineColumnPart>;
+};
+
+/**
+ * CombineTextPart
+ *
+ * Literal text inside a Combine columns template.
+ */
+export type CombineTextPart = {
+    /**
+     * Kind
+     */
+    kind?: 'text';
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
  * CompleteTableResource
  *
  * One immutable table fetched as a complete Arrow IPC stream.
@@ -9543,6 +9603,8 @@ export type EditNodeData = {
     } & CleanTextNodeEditRequest) | ({
         kind: 'split_column';
     } & SplitColumnNodeEditRequest) | ({
+        kind: 'combine_columns';
+    } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';
     } & ReplaceNodeEditRequest) | ({
         kind: 'expression';
@@ -9626,6 +9688,8 @@ export type PreviewNodeEditData = {
     } & CleanTextNodeEditRequest) | ({
         kind: 'split_column';
     } & SplitColumnNodeEditRequest) | ({
+        kind: 'combine_columns';
+    } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';
     } & ReplaceNodeEditRequest) | ({
         kind: 'expression';
