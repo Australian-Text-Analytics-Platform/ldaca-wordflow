@@ -806,6 +806,24 @@ def _count_expression(column: pl.Expr, request: CountNodeEditRequest) -> pl.Expr
     return column.str.count_matches(request.pattern or "", literal=not request.regex)
 
 
+def _title_case(text: pl.Expr) -> pl.Expr:
+    """Capitalise each word, keeping apostrophes inside words ("It's").
+
+    ``str.to_titlecase`` is not used: polars-source-utils cannot read it back
+    from a saved plan, which would break Project save and load.
+    """
+
+    return (
+        text.str.replace_all(r"(\w+(?:['’]\w+)*)", _SPLIT_MARK + "${1}")
+        .str.split(_SPLIT_MARK)
+        .list.eval(
+            pl.element().str.slice(0, 1).str.to_uppercase()
+            + pl.element().str.slice(1).str.to_lowercase()
+        )
+        .list.join("")
+    )
+
+
 def _clean_text_expression(column: pl.Expr, operation: str) -> pl.Expr:
     text = column.cast(pl.String)
     if operation == "trim":
@@ -817,7 +835,7 @@ def _clean_text_expression(column: pl.Expr, operation: str) -> pl.Expr:
     if operation == "uppercase":
         return text.str.to_uppercase()
     if operation == "title_case":
-        return text.str.to_titlecase()
+        return _title_case(text)
     if operation == "remove_punctuation":
         return text.str.replace_all(r"[\p{P}\p{S}]", "")
     if operation == "remove_digits":
