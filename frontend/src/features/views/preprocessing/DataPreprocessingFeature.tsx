@@ -50,6 +50,7 @@ type DataPrepSubtab =
 /** Data Builder tools that read the inputs panel's text column (issues 148, 150, 151). */
 const TEXT_COLUMN_TABS: ReadonlySet<DataPrepSubtab> = new Set(['segment', 'summarise', 'dedupe']);
 
+// Tool order agreed in issue 159.
 const PREPROCESSING_TABS: EditorTabItem[] = [
   {
     id: 'filter',
@@ -60,12 +61,11 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     'data-guidance': 'preprocessing-operation-filter',
   },
   {
-    id: 'slice',
-    title: 'Sample',
-    icon: <Shuffle className="size-4" />,
-    tabDomId: 'preprocessing-tab-slice',
-    panelDomId: 'preprocessing-panel-slice',
-    'data-guidance': 'preprocessing-operation-sample',
+    id: 'split_group',
+    title: 'Group',
+    icon: <Split className="size-4" />,
+    tabDomId: 'preprocessing-tab-split-group',
+    panelDomId: 'preprocessing-panel-split-group',
   },
   {
     id: 'join',
@@ -76,14 +76,6 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     'data-guidance': 'preprocessing-operation-join',
   },
   {
-    id: 'concat',
-    title: 'Stack',
-    icon: <Layers className="size-4" />,
-    tabDomId: 'preprocessing-tab-concat',
-    panelDomId: 'preprocessing-panel-concat',
-    'data-guidance': 'preprocessing-operation-stack',
-  },
-  {
     id: 'segment',
     title: 'Segment',
     icon: <Scissors className="size-4" />,
@@ -91,25 +83,34 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     panelDomId: 'preprocessing-panel-segment',
   },
   {
-    id: 'split_group',
-    title: 'Split by group',
-    icon: <Split className="size-4" />,
-    tabDomId: 'preprocessing-tab-split-group',
-    panelDomId: 'preprocessing-panel-split-group',
-  },
-  {
     id: 'summarise',
-    title: 'Group & summarise',
+    title: 'Aggregate',
     icon: <Sigma className="size-4" />,
     tabDomId: 'preprocessing-tab-summarise',
     panelDomId: 'preprocessing-panel-summarise',
   },
   {
+    id: 'slice',
+    title: 'Sample',
+    icon: <Shuffle className="size-4" />,
+    tabDomId: 'preprocessing-tab-slice',
+    panelDomId: 'preprocessing-panel-slice',
+    'data-guidance': 'preprocessing-operation-sample',
+  },
+  {
     id: 'dedupe',
-    title: 'Remove duplicates',
+    title: 'Deduplicate',
     icon: <CopyMinus className="size-4" />,
     tabDomId: 'preprocessing-tab-dedupe',
     panelDomId: 'preprocessing-panel-dedupe',
+  },
+  {
+    id: 'concat',
+    title: 'Stack',
+    icon: <Layers className="size-4" />,
+    tabDomId: 'preprocessing-tab-concat',
+    panelDomId: 'preprocessing-panel-concat',
+    'data-guidance': 'preprocessing-operation-stack',
   },
 ];
 
@@ -199,7 +200,7 @@ function DataPreprocessingFeature() {
       if (nodeId === selectedNodeIds[1]) return 'Right column:';
       return 'Join column:';
     }
-    // Remove duplicates always compares this column (issue 158).
+    // Deduplicate always compares this column (issue 158).
     if (activeSubtab === 'dedupe') return 'Deduplicating column:';
     return 'Text column:';
   };

@@ -319,7 +319,8 @@ describe('DataPreprocessingFeature replace tab', () => {
     renderPreprocessingFeature();
 
     screen.getByRole('tab', { name: 'Filter' }).focus();
-    await user.keyboard('{ArrowRight}');
+    // Sample is the sixth tool (issue 159 order).
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Sample' })).toHaveAttribute('aria-selected', 'true');
@@ -363,7 +364,8 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     const [filterTab] = screen.getAllByRole('tab', { name: 'Filter' });
     filterTab!.focus();
-    await user.keyboard('{ArrowRight}');
+    // Sample is the sixth tool (issue 159 order).
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Sample' })).toHaveAttribute('aria-selected', 'true');
@@ -398,7 +400,8 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     const [filterTab] = screen.getAllByRole('tab', { name: 'Filter' });
     filterTab!.focus();
-    await user.keyboard('{ArrowRight}');
+    // Sample is the sixth tool (issue 159 order).
+    await user.keyboard('{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}{ArrowRight}');
 
     await waitFor(() => {
       expect(screen.getByRole('tab', { name: 'Sample' })).toHaveAttribute('aria-selected', 'true');

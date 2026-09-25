@@ -95,10 +95,11 @@ export function SplitByGroupSubTab({
 
   return (
     <BuilderToolCard
-      title="Split by group"
+      title="Group into Data Blocks"
+      subtitle="One Data Block per value, date period, or number range of a column."
       icon={<Split className="h-5 w-5" />}
       helpKey="preprocessing.split-group.tab"
-      helpLabel="Split by group overview"
+      helpLabel="Group overview"
       tooltip="Make one Data Block per value, date period, or number range of a column."
       renderNodeInputsPanel={renderNodeInputsPanel}
       workspaceId={workspaceId}

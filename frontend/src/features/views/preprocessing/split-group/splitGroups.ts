@@ -1,5 +1,5 @@
 /**
- * Pure helpers for Split by group (issue 149): the SQL that counts each group,
+ * Pure helpers for Group (issue 149, renamed in issue 159): the SQL that counts each group,
  * and the Filter conditions that make one Data Block per ticked group.
  */
 import type { FilterConditionInput } from '@/api';

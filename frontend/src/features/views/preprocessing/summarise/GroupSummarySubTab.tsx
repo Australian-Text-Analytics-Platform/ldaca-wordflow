@@ -75,10 +75,11 @@ export function GroupSummarySubTab({
 
   return (
     <BuilderToolCard
-      title="Group & summarise"
+      title="Aggregate"
+      subtitle="One row per group, such as one document per speaker, with each column summarised."
       icon={<Sigma className="h-5 w-5" />}
       helpKey="preprocessing.summarise.tab"
-      helpLabel="Group & summarise overview"
+      helpLabel="Aggregate overview"
       tooltip="Make a new Data Block with one row per group, such as one document per speaker."
       renderNodeInputsPanel={renderNodeInputsPanel}
       workspaceId={workspaceId}

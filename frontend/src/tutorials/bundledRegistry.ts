@@ -214,17 +214,17 @@ const tutorial = {
   'preprocessing.split-group.tab': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-split-group-section',
-    label: 'Split by group overview',
+    label: 'Group overview',
   },
   'preprocessing.summarise.tab': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-summarise-section',
-    label: 'Group & summarise overview',
+    label: 'Aggregate overview',
   },
   'preprocessing.dedupe.tab': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-dedupe-section',
-    label: 'Remove duplicates overview',
+    label: 'Deduplicate overview',
   },
   'preprocessing.concat.new-node-name': {
     file: 'tutorials/preprocessing.md',

@@ -15,6 +15,8 @@ import type { DerivationBody } from './builderTypes';
 
 export interface BuilderToolCardProps {
   title: string;
+  /** One line saying what the tool makes, shown under the title (issue 159). */
+  subtitle?: string;
   icon: ReactNode;
   helpKey: string;
   helpLabel: string;
@@ -50,6 +52,7 @@ export interface BuilderToolCardProps {
  */
 export function BuilderToolCard({
   title,
+  subtitle,
   icon,
   helpKey,
   helpLabel,
@@ -119,6 +122,7 @@ export function BuilderToolCard({
             {title}
             <HelpIcon targetKey={helpKey} label={helpLabel} tooltip={tooltip} />
           </CardTitle>
+          {subtitle ? <p className="pt-1 text-body text-description">{subtitle}</p> : null}
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           {renderNodeInputsPanel?.()}

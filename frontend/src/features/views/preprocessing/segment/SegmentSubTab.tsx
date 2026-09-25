@@ -49,6 +49,7 @@ export function SegmentSubTab({
   return (
     <BuilderToolCard
       title="Segment"
+      subtitle="One row per sentence, paragraph, line, or pattern-led segment."
       icon={<Scissors className="h-5 w-5" />}
       helpKey="preprocessing.segment.tab"
       helpLabel="Segment overview"

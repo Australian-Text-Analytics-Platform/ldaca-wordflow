@@ -1,7 +1,7 @@
 import type { BuilderInput, DerivationBody } from '../builder/builderTypes';
 
 /**
- * Remove duplicates always compares the deduplicating column (the one picked
+ * Deduplicate always compares the deduplicating column (the one picked
  * in the inputs panel), plus any additional columns; selecting every other
  * column compares whole rows (issue 158). Near-duplicate matching applies to
  * the deduplicating column when it holds text.

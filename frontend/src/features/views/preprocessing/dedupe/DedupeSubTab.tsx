@@ -53,10 +53,11 @@ export function DedupeSubTab({
 
   return (
     <BuilderToolCard
-      title="Remove duplicates"
+      title="Deduplicate"
+      subtitle="Keep the first of each duplicate, and save the duplicate groups separately."
       icon={<CopyMinus className="h-5 w-5" />}
       helpKey="preprocessing.dedupe.tab"
-      helpLabel="Remove duplicates overview"
+      helpLabel="Deduplicate overview"
       tooltip="Keep the first of each duplicate, and save every duplicate group in a second Data Block."
       renderNodeInputsPanel={renderNodeInputsPanel}
       workspaceId={workspaceId}
