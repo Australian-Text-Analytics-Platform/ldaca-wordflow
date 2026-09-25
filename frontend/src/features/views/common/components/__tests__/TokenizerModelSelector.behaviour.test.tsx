@@ -78,7 +78,12 @@ describe('TokenizerModelSelector', () => {
       data: [
         { id: 'native:plain_words_en', label: 'Plain words (English)', languages: ['en'] },
         { id: 'huggingface:bert-base-uncased', label: 'BERT base uncased', languages: ['en'] },
-        { id: 'lindera:ja-ipadic', label: 'IPADIC', languages: ['ja'] },
+        {
+          id: 'lindera:ja-ipadic',
+          label: 'IPADIC',
+          languages: ['ja'],
+          docs_url: 'https://taku910.github.io/mecab/',
+        },
       ],
     } as never);
     vi.mocked(detectLanguageIso6391).mockResolvedValue('en');
@@ -132,5 +137,23 @@ describe('TokenizerModelSelector', () => {
 
     expect(onChange).toHaveBeenCalledWith('', 'en');
     expect(onChange).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows each tokenizer language and links the selected one to its page (issue 167)', async () => {
+    const user = userEvent.setup();
+    renderSelector({ value: 'lindera:ja-ipadic', autoSelectRecommended: true });
+
+    const trigger = screen.getByRole('combobox', { name: /tokenizer model/i });
+    await waitFor(() => {
+      expect(trigger).toHaveTextContent('IPADIC · Japanese');
+    });
+    const link = screen.getByRole('link', { name: 'About IPADIC (opens in a new tab)' });
+    expect(link).toHaveAttribute('href', 'https://taku910.github.io/mecab/');
+    expect(link).toHaveAttribute('target', '_blank');
+
+    await user.click(trigger);
+    expect(
+      await screen.findByRole('option', { name: /BERT base uncased.*English/ }),
+    ).toBeInTheDocument();
   });
 });

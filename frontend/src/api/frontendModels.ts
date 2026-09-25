@@ -154,6 +154,8 @@ export interface TokenizerModelInfo {
   model: TokenizerModelResource['id'];
   label: TokenizerModelResource['label'];
   languages: string[];
+  /** The tokenizer's or dictionary's own page (issue 167). */
+  docsUrl?: string | null;
 }
 
 export function toFileTree(resources: FileResource[]): FileTreeNodeResponse[] {

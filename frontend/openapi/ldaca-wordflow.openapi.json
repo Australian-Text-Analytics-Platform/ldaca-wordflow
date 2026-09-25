@@ -9167,6 +9167,18 @@
       "TokenizerModelResource": {
         "additionalProperties": false,
         "properties": {
+          "docs_url": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Docs Url"
+          },
           "id": {
             "maxLength": 500,
             "minLength": 1,

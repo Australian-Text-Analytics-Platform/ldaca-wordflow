@@ -4716,6 +4716,10 @@ export type TokenResultMetadata = {
  */
 export type TokenizerModelResource = {
     /**
+     * Docs Url
+     */
+    docs_url?: string | null;
+    /**
      * Id
      */
     id: string;
