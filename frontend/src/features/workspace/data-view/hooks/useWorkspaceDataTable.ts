@@ -339,10 +339,14 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     sampleColumn && previewPage?.columns.includes(sampleColumn)
       ? previewPage.rows[0]?.[sampleColumn]
       : undefined;
+  // Missing, NaN, and blank text all read as "empty" (issues 166 and 176);
+  // JSON.stringify would otherwise show NaN as "null".
   const previewSample =
     sampleRaw === undefined
       ? undefined
-      : sampleRaw === null
+      : sampleRaw === null ||
+          (typeof sampleRaw === 'number' && Number.isNaN(sampleRaw)) ||
+          (typeof sampleRaw === 'string' && sampleRaw.trim() === '')
         ? null
         : typeof sampleRaw === 'string'
           ? sampleRaw

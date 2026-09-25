@@ -294,7 +294,7 @@ export const useFilterSubTabSections = (
         `Found ${missingCount.toLocaleString()} missing ${missingCount === 1 ? 'value' : 'values'} in “${column}”`,
         {
           description:
-            'Rows with missing values won’t match ordinary filter conditions. Choose “is null” to target them.',
+            'Rows with missing values won’t match ordinary filter conditions. Choose “is empty” to target them.',
         },
       );
     } catch {

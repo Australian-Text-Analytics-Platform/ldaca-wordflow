@@ -82,7 +82,9 @@ export interface RowDetailPanelProps {
  * Called by: RowDetailPanel metadata table rendering.
  */
 const formatMetadataValue = (value: unknown): string => {
-  if (value === null || value === undefined) return 'null';
+  // Shown blank, as in the Data View; "null" is jargon for most users (issue 176).
+  if (value === null || value === undefined) return '';
+  if (typeof value === 'number' && Number.isNaN(value)) return '';
   if (typeof value === 'object') return JSON.stringify(value, null, 2);
   // eslint-disable-next-line @typescript-eslint/no-base-to-string -- value is a non-object primitive after the guards above; String() never yields '[object Object]'
   return String(value);

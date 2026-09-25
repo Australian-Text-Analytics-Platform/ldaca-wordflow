@@ -65,7 +65,11 @@ export const buildCategoricalOptionEntries = (
       uniqueEntries.set(optionKey, {
         key: optionKey,
         value: primitive,
-        label: formatPreviewValue(primitive),
+        // A checklist entry needs a visible label (issue 176).
+        label:
+          typeof primitive === 'string' && primitive.trim() === ''
+            ? '(blank text)'
+            : formatPreviewValue(primitive),
         isNull: false,
       });
     }
@@ -76,7 +80,7 @@ export const buildCategoricalOptionEntries = (
     optionList.push({
       key: NULL_OPTION_KEY,
       value: null,
-      label: 'Null (no value)',
+      label: '(empty)',
       isNull: true,
     });
   }

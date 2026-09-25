@@ -69,20 +69,22 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
 /**
  * Formats arbitrary preview cell values for tables and checklist labels.
  * Used by categorical-option helpers and `PreviewTable` for readable cell labels.
- * Steps: map nullish/empty primitives to readable labels, preserve scalar text, JSON-stringify
- * objects when possible, and fall back to String conversion.
+ * Steps: show missing, NaN, and blank values as an empty cell (as the Data View
+ * does; "null" is jargon for most users, issue 176), preserve scalar text,
+ * JSON-stringify objects when possible, and fall back to String conversion.
  */
+/** Missing, NaN, and blank text: the values Filter's "is empty" matches (issue 166). */
+export const isEmptyValue = (value: unknown): boolean =>
+  value === null ||
+  value === undefined ||
+  (typeof value === 'number' && Number.isNaN(value)) ||
+  (typeof value === 'string' && value.trim() === '');
+
 export const formatPreviewValue = (value: unknown): string => {
-  if (value === null) {
-    return '(null)';
-  }
-  if (value === undefined) {
-    return '(undefined)';
+  if (isEmptyValue(value)) {
+    return '';
   }
   if (typeof value === 'string') {
-    if (value.trim() === '') {
-      return '(empty string)';
-    }
     return value;
   }
   if (typeof value === 'boolean') {

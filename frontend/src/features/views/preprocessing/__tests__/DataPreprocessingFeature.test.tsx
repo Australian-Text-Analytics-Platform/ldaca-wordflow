@@ -524,7 +524,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     });
     expect(mockToastWarning).toHaveBeenCalledWith('Found 1,234 missing values in “Body”', {
       description:
-        'Rows with missing values won’t match ordinary filter conditions. Choose “is null” to target them.',
+        'Rows with missing values won’t match ordinary filter conditions. Choose “is empty” to target them.',
     });
   });
 

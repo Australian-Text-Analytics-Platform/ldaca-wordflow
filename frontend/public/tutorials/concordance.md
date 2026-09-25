@@ -213,7 +213,7 @@ sorting, counting, and paging, and the selected page size applies independently
 to each source. Review has no page-local Found summary.
 
 Separated Review Table View can sort selected metadata, matched text, L1/R1,
-their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive and uses Polars' default null ordering. Equal
+their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
 values have no guaranteed secondary order. The document and full context
 headers remain plain, and combined Review remains unsorted.
 

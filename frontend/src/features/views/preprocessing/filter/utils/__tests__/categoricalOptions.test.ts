@@ -33,8 +33,19 @@ describe('categoricalOptions', () => {
     ]);
     expect(options[0]).toMatchObject({
       value: null,
-      label: 'Null (no value)',
+      label: '(empty)',
       isNull: true,
     });
+  });
+
+  it('labels blank text so it is not confused with an empty value (issue 176)', () => {
+    const options = buildCategoricalOptionEntries(['', '  ', 'a'], true);
+
+    expect(options.map((option) => option.label)).toEqual([
+      '(empty)',
+      '(blank text)',
+      '(blank text)',
+      'a',
+    ]);
   });
 });

@@ -25,7 +25,7 @@ const sanitizeToken = (value: string): string => {
  * Called by `formatConditionValue` for scalar list/range values.
  */
 const formatScalar = (value: string | number | boolean | Date | null): string => {
-  if (value === null) return 'null';
+  if (value === null) return 'empty';
   if (value instanceof Date) return sanitizeToken(value.toISOString());
   if (typeof value === 'number') {
     return sanitizeToken(String(value).replace(/\./g, '_'));

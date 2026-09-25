@@ -148,9 +148,9 @@ export function FilterValueChecklist({
                   />
                   <span
                     className={`min-w-0 truncate ${option.isNull ? 'font-medium' : ''}`}
-                    title={option.isNull ? 'Null (no value)' : option.label}
+                    title={option.isNull ? '(empty)' : option.label}
                   >
-                    {option.isNull ? 'Null (no value)' : option.label}
+                    {option.isNull ? '(empty)' : option.label}
                   </span>
                   {option.count !== undefined ? (
                     <span className="shrink-0 text-label-secondary tabular-nums text-description">
