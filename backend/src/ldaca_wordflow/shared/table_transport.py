@@ -13,6 +13,7 @@ from .topic_types import TOPIC_COVERAGE_EXTENSION, topic_coverage_dtype
 ARROW_STREAM_MEDIA_TYPE = "application/vnd.apache.arrow.stream"
 HAS_NEXT_HEADER = "X-Wordflow-Has-Next"
 TOTAL_ROWS_HEADER = "X-Wordflow-Total-Rows"
+CHANGED_ROWS_HEADER = "X-Wordflow-Changed-Rows"
 
 
 @dataclass(frozen=True, slots=True)

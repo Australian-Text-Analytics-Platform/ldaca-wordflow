@@ -2516,6 +2516,58 @@
         "title": "CastNodeEditRequest",
         "type": "object"
       },
+      "CleanTextNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Clean one text column in place, or into a new column right of it.",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "clean_text",
+            "default": "clean_text",
+            "title": "Kind",
+            "type": "string"
+          },
+          "operation": {
+            "enum": [
+              "trim",
+              "collapse_whitespace",
+              "lowercase",
+              "uppercase",
+              "title_case",
+              "remove_punctuation",
+              "remove_digits",
+              "remove_urls",
+              "remove_html_tags"
+            ],
+            "title": "Operation",
+            "type": "string"
+          },
+          "output_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Column"
+          }
+        },
+        "required": [
+          "column",
+          "operation"
+        ],
+        "title": "CleanTextNodeEditRequest",
+        "type": "object"
+      },
       "CloneDerivation": {
         "additionalProperties": false,
         "properties": {
@@ -4652,6 +4704,29 @@
           "reason"
         ],
         "title": "DtypeNormalizationChange",
+        "type": "object"
+      },
+      "DuplicateColumnNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Copy one column; the copy sits right of it as ``<name> copy`` (issue 143).",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "duplicate_column",
+            "default": "duplicate_column",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column"
+        ],
+        "title": "DuplicateColumnNodeEditRequest",
         "type": "object"
       },
       "ExpressionDerivation": {
@@ -7885,6 +7960,43 @@
           }
         },
         "title": "SourceProvenance",
+        "type": "object"
+      },
+      "SplitColumnNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Split one text column on a delimiter into ``parts`` new columns.\n\nThe new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;\nthe last holds any remainder, and missing parts are empty (null).",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "delimiter": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Delimiter",
+            "type": "string"
+          },
+          "kind": {
+            "const": "split_column",
+            "default": "split_column",
+            "title": "Kind",
+            "type": "string"
+          },
+          "parts": {
+            "maximum": 50.0,
+            "minimum": 2.0,
+            "title": "Parts",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "delimiter",
+          "parts"
+        ],
+        "title": "SplitColumnNodeEditRequest",
         "type": "object"
       },
       "SqlDerivation": {
@@ -18150,12 +18262,15 @@
                   "mapping": {
                     "annotation_classes": "#/components/schemas/AnnotationClassesNodeEditRequest",
                     "cast": "#/components/schemas/CastNodeEditRequest",
+                    "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
                     "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
+                    "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
                     "expression": "#/components/schemas/ExpressionNodeEditRequest",
                     "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
                     "replace": "#/components/schemas/ReplaceNodeEditRequest",
-                    "set_cell": "#/components/schemas/SetCellNodeEditRequest"
+                    "set_cell": "#/components/schemas/SetCellNodeEditRequest",
+                    "split_column": "#/components/schemas/SplitColumnNodeEditRequest"
                   },
                   "propertyName": "kind"
                 },
@@ -18171,6 +18286,15 @@
                   },
                   {
                     "$ref": "#/components/schemas/DeleteColumnsNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DuplicateColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CleanTextNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/ReplaceNodeEditRequest"
@@ -18279,6 +18403,200 @@
           }
         ],
         "summary": "Edit Node",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/edits/preview": {
+      "post": {
+        "description": "Preview a Data Block Edit; X-Wordflow-Changed-Rows counts the whole block.",
+        "operationId": "preview_node_edit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 50,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "discriminator": {
+                  "mapping": {
+                    "annotation_classes": "#/components/schemas/AnnotationClassesNodeEditRequest",
+                    "cast": "#/components/schemas/CastNodeEditRequest",
+                    "clean_text": "#/components/schemas/CleanTextNodeEditRequest",
+                    "delete_column": "#/components/schemas/DeleteColumnNodeEditRequest",
+                    "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
+                    "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
+                    "expression": "#/components/schemas/ExpressionNodeEditRequest",
+                    "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
+                    "replace": "#/components/schemas/ReplaceNodeEditRequest",
+                    "set_cell": "#/components/schemas/SetCellNodeEditRequest",
+                    "split_column": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  "propertyName": "kind"
+                },
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CastNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/RenameColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeleteColumnsNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DuplicateColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CleanTextNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SplitColumnNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ReplaceNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/ExpressionNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SetCellNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/AnnotationClassesNodeEditRequest"
+                  }
+                ],
+                "title": "Request"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Arrow IPC stream"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request or resource exceeds the configured size limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Preview Node Edit",
         "tags": [
           "nodes"
         ]

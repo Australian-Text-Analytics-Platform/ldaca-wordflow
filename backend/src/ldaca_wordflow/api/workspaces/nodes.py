@@ -25,6 +25,7 @@ from ...models.workspace import DataBlockResource, WorkspaceNodeInfo
 from ..dependencies import RuntimeDep
 from ..security import CurrentSessionSecurityDep
 from ..responses import api_errors, route_path, workspace_etag
+from ...shared.table_transport import CHANGED_ROWS_HEADER
 from ..table_responses import (
     ARROW_STREAM_RESPONSE,
     arrow_page_response,
@@ -165,6 +166,36 @@ async def preview_node_creation(
     )
     result = arrow_page_response(rows)
     result.headers["ETag"] = workspace_etag(revision)
+    return result
+
+
+@router.post(
+    "/{node_id}/edits/preview",
+    response_class=Response,
+    responses={**api_errors(400, 403, 404, 413, 422), **ARROW_STREAM_RESPONSE},
+)
+async def preview_node_edit(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    request: NodeEditRequest,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=500),
+) -> Response:
+    """Preview a Data Block Edit; X-Wordflow-Changed-Rows counts the whole block."""
+
+    rows, changed, revision = await runtime.node_service.preview_edit(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        request,
+        page=page,
+        page_size=page_size,
+    )
+    result = arrow_page_response(rows)
+    result.headers["ETag"] = workspace_etag(revision)
+    result.headers[CHANGED_ROWS_HEADER] = str(changed)
     return result
 
 

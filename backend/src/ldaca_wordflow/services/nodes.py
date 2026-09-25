@@ -253,6 +253,29 @@ class NodeService:
             )
             return response, lease.revision
 
+    async def preview_edit(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        request: NodeEditRequest,
+        *,
+        page: int,
+        page_size: int,
+    ) -> tuple[IpcTablePage, int, int]:
+        """Preview a Data Block Edit without applying it (issue 143).
+
+        Returns the edited page, how many rows the edit changes across the
+        whole Data Block, and the Workspace revision.
+        """
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = _editable_node(lease.workspace, node_id)
+            page_result, changed = await self._run_io(
+                _preview_edit, node, request, page, page_size
+            )
+            return page_result, changed, lease.revision
+
     async def list_nodes(
         self,
         user_id: str,
@@ -600,6 +623,68 @@ def _preview_derivation(
         raise InvalidInputError(
             "The Data Block operation could not be applied to the selected data"
         ) from exc
+
+
+def _preview_edit(
+    node: Node,
+    request: NodeEditRequest,
+    page: int,
+    page_size: int,
+) -> tuple[IpcTablePage, int]:
+    try:
+        edited, _renamed = build_edited_lazyframe(node, request)
+        page_result = _materialize_rows(edited, page, page_size, None, False)
+        return page_result, _count_changed_rows(node.data, edited, request)
+    except (
+        pl.exceptions.ColumnNotFoundError,
+        pl.exceptions.ComputeError,
+        pl.exceptions.InvalidOperationError,
+        pl.exceptions.SchemaError,
+        pl.exceptions.ShapeError,
+    ) as exc:
+        raise InvalidInputError("The edit could not be applied to this Data Block") from exc
+
+
+def _count_changed_rows(
+    before: pl.LazyFrame, after: pl.LazyFrame, request: NodeEditRequest
+) -> int:
+    """Rows where an edited column differs, or a new column has a value.
+
+    Only columns the request names (plus new columns) are compared, so the
+    count stays cheap on wide Data Blocks.
+    """
+
+    before_names = before.collect_schema().names()
+    after_names = after.collect_schema().names()
+    named = {
+        value
+        for value in request.model_dump(mode="json").values()
+        if isinstance(value, str)
+    }
+    shared = [name for name in after_names if name in before_names and name in named]
+    added = [name for name in after_names if name not in before_names]
+    if not shared and not added:
+        return 0
+    old = before.select(
+        [pl.col(name).cast(pl.String).alias(f"__before_{index}") for index, name in enumerate(shared)]
+    )
+    new = after.select(
+        [
+            *[pl.col(name).cast(pl.String).alias(f"__after_{index}") for index, name in enumerate(shared)],
+            *[pl.col(name).cast(pl.String).alias(f"__added_{index}") for index, name in enumerate(added)],
+        ]
+    )
+    frames = [new] if not shared else [old, new]
+    combined = pl.concat(frames, how="horizontal")
+    conditions = [
+        pl.col(f"__before_{index}").ne_missing(pl.col(f"__after_{index}"))
+        for index in range(len(shared))
+    ] + [
+        pl.col(f"__added_{index}").is_not_null() & (pl.col(f"__added_{index}") != "")
+        for index in range(len(added))
+    ]
+    changed = combined.select(pl.any_horizontal(conditions).sum()).collect().item()
+    return int(changed or 0)
 
 
 def _schema_names(lazyframe: pl.LazyFrame) -> list[str]:

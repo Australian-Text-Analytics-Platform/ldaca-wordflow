@@ -182,6 +182,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "POST",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/edits/preview",
+        "preview_node_edit",
+    ),
+    (
+        "POST",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/undo",
         "undo_node",
     ),

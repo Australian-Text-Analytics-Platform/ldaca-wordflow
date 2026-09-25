@@ -176,6 +176,48 @@ class DeleteColumnsNodeEditRequest(_StrictRequest):
         return self
 
 
+class DuplicateColumnNodeEditRequest(_StrictRequest):
+    """Copy one column; the copy sits right of it as ``<name> copy`` (issue 143)."""
+
+    kind: Literal["duplicate_column"] = "duplicate_column"
+    column: str = Field(min_length=1, max_length=200)
+
+
+CleanTextOperation = Literal[
+    "trim",
+    "collapse_whitespace",
+    "lowercase",
+    "uppercase",
+    "title_case",
+    "remove_punctuation",
+    "remove_digits",
+    "remove_urls",
+    "remove_html_tags",
+]
+
+
+class CleanTextNodeEditRequest(_StrictRequest):
+    """Clean one text column in place, or into a new column right of it."""
+
+    kind: Literal["clean_text"] = "clean_text"
+    column: str = Field(min_length=1, max_length=200)
+    operation: CleanTextOperation
+    output_column: str | None = Field(default=None, min_length=1, max_length=200)
+
+
+class SplitColumnNodeEditRequest(_StrictRequest):
+    """Split one text column on a delimiter into ``parts`` new columns.
+
+    The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;
+    the last holds any remainder, and missing parts are empty (null).
+    """
+
+    kind: Literal["split_column"] = "split_column"
+    column: str = Field(min_length=1, max_length=200)
+    delimiter: str = Field(min_length=1, max_length=100)
+    parts: int = Field(ge=2, le=50)
+
+
 class ReplaceNodeEditRequest(ReplaceDerivation):
     """Replace or extract text on the target Data Block."""
 
@@ -241,6 +283,9 @@ NodeEditRequest = Annotated[
     | RenameColumnNodeEditRequest
     | DeleteColumnNodeEditRequest
     | DeleteColumnsNodeEditRequest
+    | DuplicateColumnNodeEditRequest
+    | CleanTextNodeEditRequest
+    | SplitColumnNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest
     | SetCellNodeEditRequest

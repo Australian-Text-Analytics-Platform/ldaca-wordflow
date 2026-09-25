@@ -49,7 +49,10 @@ from ..models.node_resources import (
     CloneNodeCreateRequest,
     ConcatNodeCreateRequest,
     DeleteColumnNodeEditRequest,
+    CleanTextNodeEditRequest,
     DeleteColumnsNodeEditRequest,
+    DuplicateColumnNodeEditRequest,
+    SplitColumnNodeEditRequest,
     ExpressionNodeEditRequest,
     ExpressionNodeCreateRequest,
     FilterNodeCreateRequest,
@@ -262,9 +265,57 @@ def build_edited_lazyframe(
             raise InvalidInputError("Keep at least one column on the Data Block")
         return node.data.drop(request.columns), None
 
+    if isinstance(request, DuplicateColumnNodeEditRequest):
+        names = node.data.collect_schema().names()
+        if request.column not in names:
+            raise InvalidInputError("Duplicate column is not present on the Data Block")
+        copy_name = duplicate_column_name(request.column, names)
+        edited = node.data.with_columns(pl.col(request.column).alias(copy_name))
+        return _place_right_of(edited, request.column, [copy_name]), None
+
+    if isinstance(request, CleanTextNodeEditRequest):
+        names = node.data.collect_schema().names()
+        if request.column not in names:
+            raise InvalidInputError("Clean column is not present on the Data Block")
+        output = (request.output_column or request.column).strip()
+        if not output:
+            raise InvalidInputError("Output column name cannot be blank")
+        if output != request.column and output in names:
+            raise InvalidInputError("Output column name already exists on the Data Block")
+        expression = _clean_text_expression(pl.col(request.column), request.operation)
+        edited = node.data.with_columns(expression.alias(output))
+        if output == request.column:
+            return edited, None
+        return _place_right_of(edited, request.column, [output]), None
+
+    if isinstance(request, SplitColumnNodeEditRequest):
+        names = node.data.collect_schema().names()
+        if request.column not in names:
+            raise InvalidInputError("Split column is not present on the Data Block")
+        outputs = [f"{request.column}_{index}" for index in range(1, request.parts + 1)]
+        clashes = [name for name in outputs if name in names]
+        if clashes:
+            raise InvalidInputError(
+                f"Split would overwrite existing columns: {', '.join(clashes)}"
+            )
+        fields = (
+            pl.col(request.column)
+            .cast(pl.String)
+            .str.splitn(request.delimiter, request.parts)
+            .struct.rename_fields(outputs)
+        )
+        edited = node.data.with_columns(fields.struct.unnest())
+        return _place_right_of(edited, request.column, outputs), None
+
     if isinstance(request, ReplaceNodeEditRequest):
-        _output_column, expression = _replace_expression(node, request)
-        return node.data.with_columns(expression), None
+        output_column, expression = _replace_expression(node, request)
+        edited = node.data.with_columns(expression)
+        if output_column != request.source_column and output_column not in (
+            node.data.collect_schema().names()
+        ):
+            # A new Find output (such as Extract) sits right of its source.
+            return _place_right_of(edited, request.source_column, [output_column]), None
+        return edited, None
 
     if isinstance(request, ExpressionNodeEditRequest):
         return _apply_expression(node.data, request), None
@@ -631,6 +682,53 @@ def _topic_coverage_expression(condition: FilterCondition) -> pl.Expr:
     if expression is None:
         raise InvalidInputError("Unsupported Topic Coverage filter operator")
     return expression
+
+
+def duplicate_column_name(column: str, existing: list[str]) -> str:
+    """Finder-style copy name: ``text copy``, then ``text copy 2``, ``text copy 3``."""
+
+    taken = set(existing)
+    candidate = f"{column} copy"
+    number = 2
+    while candidate in taken:
+        candidate = f"{column} copy {number}"
+        number += 1
+    return candidate
+
+
+def _place_right_of(lazyframe: pl.LazyFrame, anchor: str, new_columns: list[str]) -> pl.LazyFrame:
+    """Reorder so ``new_columns`` follow ``anchor``; a pure reorder keeps rows."""
+
+    names = [name for name in lazyframe.collect_schema().names() if name not in new_columns]
+    position = names.index(anchor) + 1
+    return lazyframe.select([*names[:position], *new_columns, *names[position:]])
+
+
+_URL_PATTERN = r"(?i)\b(?:https?://|www\.)\S+"
+_HTML_TAG_PATTERN = r"<[^>]+>"
+
+
+def _clean_text_expression(column: pl.Expr, operation: str) -> pl.Expr:
+    text = column.cast(pl.String)
+    if operation == "trim":
+        return text.str.strip_chars()
+    if operation == "collapse_whitespace":
+        return text.str.replace_all(r"\s+", " ").str.strip_chars()
+    if operation == "lowercase":
+        return text.str.to_lowercase()
+    if operation == "uppercase":
+        return text.str.to_uppercase()
+    if operation == "title_case":
+        return text.str.to_titlecase()
+    if operation == "remove_punctuation":
+        return text.str.replace_all(r"[\p{P}\p{S}]", "")
+    if operation == "remove_digits":
+        return text.str.replace_all(r"\d", "")
+    if operation == "remove_urls":
+        return text.str.replace_all(_URL_PATTERN, "")
+    if operation == "remove_html_tags":
+        return text.str.replace_all(_HTML_TAG_PATTERN, "")
+    raise InvalidInputError("Unsupported text cleaning operation")
 
 
 def _replace_expression(

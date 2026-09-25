@@ -1177,6 +1177,30 @@ export type CastNodeEditRequest = {
 };
 
 /**
+ * CleanTextNodeEditRequest
+ *
+ * Clean one text column in place, or into a new column right of it.
+ */
+export type CleanTextNodeEditRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'clean_text';
+    /**
+     * Operation
+     */
+    operation: 'trim' | 'collapse_whitespace' | 'lowercase' | 'uppercase' | 'title_case' | 'remove_punctuation' | 'remove_digits' | 'remove_urls' | 'remove_html_tags';
+    /**
+     * Output Column
+     */
+    output_column?: string | null;
+};
+
+/**
  * CloneDerivation
  */
 export type CloneDerivation = {
@@ -2379,6 +2403,22 @@ export type DtypeNormalizationChange = {
      * To Dtype
      */
     to_dtype: string;
+};
+
+/**
+ * DuplicateColumnNodeEditRequest
+ *
+ * Copy one column; the copy sits right of it as ``<name> copy`` (issue 143).
+ */
+export type DuplicateColumnNodeEditRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'duplicate_column';
 };
 
 /**
@@ -4054,6 +4094,33 @@ export type SourceProvenance = {
      * Type
      */
     type?: 'source';
+};
+
+/**
+ * SplitColumnNodeEditRequest
+ *
+ * Split one text column on a delimiter into ``parts`` new columns.
+ *
+ * The new columns (``<name>_1`` ... ``<name>_n``) sit right of the source;
+ * the last holds any remainder, and missing parts are empty (null).
+ */
+export type SplitColumnNodeEditRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Delimiter
+     */
+    delimiter: string;
+    /**
+     * Kind
+     */
+    kind?: 'split_column';
+    /**
+     * Parts
+     */
+    parts: number;
 };
 
 /**
@@ -9470,6 +9537,12 @@ export type EditNodeData = {
     } & DeleteColumnNodeEditRequest) | ({
         kind: 'delete_columns';
     } & DeleteColumnsNodeEditRequest) | ({
+        kind: 'duplicate_column';
+    } & DuplicateColumnNodeEditRequest) | ({
+        kind: 'clean_text';
+    } & CleanTextNodeEditRequest) | ({
+        kind: 'split_column';
+    } & SplitColumnNodeEditRequest) | ({
         kind: 'replace';
     } & ReplaceNodeEditRequest) | ({
         kind: 'expression';
@@ -9533,6 +9606,94 @@ export type EditNodeResponses = {
 };
 
 export type EditNodeResponse = EditNodeResponses[keyof EditNodeResponses];
+
+export type PreviewNodeEditData = {
+    /**
+     * Request
+     */
+    body: ({
+        kind: 'cast';
+    } & CastNodeEditRequest) | ({
+        kind: 'rename_column';
+    } & RenameColumnNodeEditRequest) | ({
+        kind: 'delete_column';
+    } & DeleteColumnNodeEditRequest) | ({
+        kind: 'delete_columns';
+    } & DeleteColumnsNodeEditRequest) | ({
+        kind: 'duplicate_column';
+    } & DuplicateColumnNodeEditRequest) | ({
+        kind: 'clean_text';
+    } & CleanTextNodeEditRequest) | ({
+        kind: 'split_column';
+    } & SplitColumnNodeEditRequest) | ({
+        kind: 'replace';
+    } & ReplaceNodeEditRequest) | ({
+        kind: 'expression';
+    } & ExpressionNodeEditRequest) | ({
+        kind: 'set_cell';
+    } & SetCellNodeEditRequest) | ({
+        kind: 'annotation_classes';
+    } & AnnotationClassesNodeEditRequest);
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Page Size
+         */
+        page_size?: number;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/edits/preview';
+};
+
+export type PreviewNodeEditErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type PreviewNodeEditError = PreviewNodeEditErrors[keyof PreviewNodeEditErrors];
+
+export type PreviewNodeEditResponses = {
+    /**
+     * Arrow IPC stream
+     */
+    200: Blob | File;
+};
+
+export type PreviewNodeEditResponse = PreviewNodeEditResponses[keyof PreviewNodeEditResponses];
 
 export type RedoNodeData = {
     body?: never;
