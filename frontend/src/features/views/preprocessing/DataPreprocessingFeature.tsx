@@ -199,6 +199,8 @@ function DataPreprocessingFeature() {
       if (nodeId === selectedNodeIds[1]) return 'Right column:';
       return 'Join column:';
     }
+    // Remove duplicates always compares this column (issue 158).
+    if (activeSubtab === 'dedupe') return 'Deduplicating column:';
     return 'Text column:';
   };
 

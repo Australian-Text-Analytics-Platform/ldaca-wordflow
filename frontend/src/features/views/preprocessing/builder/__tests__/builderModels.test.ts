@@ -73,28 +73,36 @@ describe('Data Builder request models (issues 148 to 151)', () => {
     });
   });
 
-  it('makes a deduplicated and a duplicates block from the same comparison', () => {
-    const form = { compare: null, nearText: false, ignoreLinks: true, name: '' };
+  it('always compares the deduplicating column, plus any additional columns (issue 158)', () => {
+    const form = { additional: [], nearText: false, ignoreLinks: true, name: '' };
     expect(buildDedupeBodies(input, form)).toEqual({
       kept: expect.objectContaining({
-        columns: [],
+        columns: ['text'],
         near_text_column: null,
         ignore_links_mentions: false,
         output: 'kept',
         name: 'posts_deduplicated',
       }) as unknown,
       duplicates: expect.objectContaining({
+        columns: ['text'],
         output: 'duplicates',
         name: 'posts_duplicates',
       }) as unknown,
     });
-    expect(buildDedupeBodies(input, { ...form, compare: [] })).toBeNull();
-    // Chosen columns with only near-duplicate text compares that text alone.
-    expect(buildDedupeBodies(input, { ...form, compare: [], nearText: true })?.kept).toMatchObject({
+    // Additional columns follow the Data Block's order; "Select all" compares whole rows.
+    expect(
+      buildDedupeBodies(input, { ...form, additional: ['created', 'party', 'text', 'gone'] })?.kept,
+    ).toMatchObject({ columns: ['text', 'party', 'created'] });
+    expect(buildDedupeBodies(input, { ...form, nearText: true })?.kept).toMatchObject({
       columns: ['text'],
       near_text_column: 'text',
       ignore_links_mentions: true,
     });
+    // Near-duplicate matching needs a text column, and a basis column is required.
+    expect(
+      buildDedupeBodies({ ...input, column: 'id' }, { ...form, nearText: true })?.kept,
+    ).toMatchObject({ columns: ['id'], near_text_column: null });
+    expect(buildDedupeBodies({ ...input, column: '' }, form)).toBeNull();
   });
 
   it('turns counted values, dates and ranges into filter groups', () => {

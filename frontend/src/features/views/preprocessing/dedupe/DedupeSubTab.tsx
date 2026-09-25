@@ -25,8 +25,8 @@ export function DedupeSubTab({
   onAlert: (message: string) => void;
 }) {
   const { createDerivedNode } = useWorkspaceActions();
-  // null compares every column.
-  const [compare, setCompare] = useState<string[] | null>(null);
+  // Columns compared besides the deduplicating column (issue 158).
+  const [additional, setAdditional] = useState<string[]>([]);
   const [nearText, setNearText] = useState(false);
   const [ignoreLinks, setIgnoreLinks] = useState(false);
   const [filter, setFilter] = useState('');
@@ -39,11 +39,16 @@ export function DedupeSubTab({
   );
   const counted = count.data?.rows[0]?.n;
   const sourceRows = counted === undefined || counted === null ? null : Number(counted);
-  const columns = input?.columns ?? [];
-  const bodies = input ? buildDedupeBodies(input, { compare, nearText, ignoreLinks, name }) : null;
-  const shown = columns.filter((column) =>
+  const basis = input?.column ?? '';
+  const others = (input?.columns ?? []).filter((column) => column.name !== basis);
+  const basisIsText = input?.columns.find((column) => column.name === basis)?.kind === 'text';
+  const bodies = input
+    ? buildDedupeBodies(input, { additional, nearText, ignoreLinks, name })
+    : null;
+  const shown = others.filter((column) =>
     column.name.toLowerCase().includes(filter.trim().toLowerCase()),
   );
+  const chosen = others.filter((column) => additional.includes(column.name)).length;
   const base = name.trim() || (input?.name ?? 'data');
 
   return (
@@ -58,7 +63,7 @@ export function DedupeSubTab({
       sourceNodeId={input?.id ?? null}
       operation="deduplicate"
       previewBody={bodies?.kept ?? null}
-      incompleteMessage="Choose at least one column to compare."
+      incompleteMessage="Choose the deduplicating column in the inputs panel."
       nameLabel="Name the new data blocks"
       name={name}
       namePlaceholder={input?.name ?? ''}
@@ -66,7 +71,7 @@ export function DedupeSubTab({
       createLabel="Create 2 Data Blocks"
       canCreate={bodies !== null}
       onCreate={async () => {
-        if (!bodies) throw new Error('Choose at least one column to compare.');
+        if (!bodies) throw new Error('Choose the deduplicating column in the inputs panel.');
         await createDerivedNode(bodies.kept);
         await createDerivedNode(bodies.duplicates);
         return `Created ${base}_deduplicated and ${base}_duplicates.`;
@@ -83,80 +88,86 @@ export function DedupeSubTab({
       previewDescription={`Creates ${base}_deduplicated (the first of each duplicate, in the original order) and ${base}_duplicates (every duplicate group, with "duplicate_group" and "kept" columns).`}
       onAlert={onAlert}
     >
-      <fieldset className="space-y-2">
-        <legend className="text-body font-medium">Rows are duplicates when they match on</legend>
-        <label className="flex items-center gap-2 text-body">
-          <input
-            type="radio"
-            name="dedupe-compare"
-            checked={compare === null}
-            onChange={() => {
-              setCompare(null);
-            }}
-          />
-          Every column
-        </label>
-        <label className="flex items-center gap-2 text-body">
-          <input
-            type="radio"
-            name="dedupe-compare"
-            checked={compare !== null}
-            onChange={() => {
-              setCompare([]);
-            }}
-          />
-          Chosen columns
-        </label>
-        {compare !== null ? (
-          <div className="ml-6 space-y-1">
-            {columns.length > 8 ? (
+      <fieldset className="space-y-1">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <legend className="text-body font-medium">
+            Additional columns to include ({chosen} of {others.length})
+          </legend>
+          <div className="flex items-center gap-2 text-label-secondary">
+            {others.length > 8 ? (
               <Input
-                aria-label="Find a column to compare"
+                aria-label="Find a column to include"
                 placeholder="Find a column"
                 value={filter}
-                className="h-7 w-48"
+                className="h-7 w-44"
                 onChange={(event) => {
                   setFilter(event.target.value);
                 }}
               />
             ) : null}
-            <ul className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto">
-              {shown.map((column) => (
-                <li key={column.name}>
-                  <label className="flex min-w-0 items-center gap-2 text-body">
-                    <Checkbox
-                      checked={compare.includes(column.name)}
-                      onCheckedChange={(checked) => {
-                        setCompare(
-                          checked === true
-                            ? [...compare, column.name]
-                            : compare.filter((item) => item !== column.name),
-                        );
-                      }}
-                    />
-                    <span className="truncate">{column.name}</span>
-                  </label>
-                </li>
-              ))}
-            </ul>
+            <button
+              type="button"
+              className="underline disabled:no-underline disabled:opacity-50"
+              disabled={others.length === 0}
+              onClick={() => {
+                setAdditional(others.map((column) => column.name));
+              }}
+            >
+              Select all
+            </button>
+            <button
+              type="button"
+              className="underline disabled:no-underline disabled:opacity-50"
+              disabled={chosen === 0}
+              onClick={() => {
+                setAdditional([]);
+              }}
+            >
+              Select none
+            </button>
           </div>
-        ) : null}
+        </div>
+        <p className="text-label-secondary text-description">
+          Rows are duplicates when they match on {basis ? `“${basis}”` : 'the deduplicating column'}
+          {chosen > 0 ? ' and every ticked column' : ''}. Select all to compare whole rows.
+        </p>
+        <ul className="grid max-h-48 grid-cols-2 gap-1 overflow-y-auto">
+          {shown.map((column) => (
+            <li key={column.name}>
+              <label className="flex min-w-0 items-center gap-2 text-body">
+                <Checkbox
+                  checked={additional.includes(column.name)}
+                  onCheckedChange={(checked) => {
+                    setAdditional(
+                      checked === true
+                        ? [...additional, column.name]
+                        : additional.filter((item) => item !== column.name),
+                    );
+                  }}
+                />
+                <span className="truncate">{column.name}</span>
+              </label>
+            </li>
+          ))}
+        </ul>
       </fieldset>
       <div className="space-y-1">
         <label className="flex items-center gap-2 text-body">
           <Checkbox
-            checked={nearText}
-            disabled={!input?.column}
+            checked={nearText && basisIsText}
+            disabled={!basisIsText}
             onCheckedChange={(checked) => {
               setNearText(checked === true);
             }}
           />
-          Match near-duplicate text in “{input?.column ?? 'the text column'}”
+          Match near-duplicate text in {basis ? `“${basis}”` : 'the deduplicating column'}
         </label>
         <p className="ml-6 text-label-secondary text-description">
-          Texts match when they are the same after ignoring case, spacing, and punctuation.
+          {basisIsText || !basis
+            ? 'Texts match when they are the same after ignoring case, spacing, and punctuation.'
+            : 'Available when the deduplicating column holds text.'}
         </p>
-        {nearText ? (
+        {nearText && basisIsText ? (
           <label className="ml-6 flex items-center gap-2 text-body">
             <Checkbox
               checked={ignoreLinks}

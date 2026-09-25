@@ -225,5 +225,5 @@ Remove duplicates makes two data blocks and never changes the source:
 1. `…_deduplicated` keeps the first row of each set of duplicates, in the original order.
 2. `…_duplicates` holds every row that has a duplicate, including the kept one, with a **duplicate_group** number and a **kept** column, so you can check what matched.
 
-Rows are duplicates when they match on every column, or on the columns you choose. Tick **Match near-duplicate text** to compare the text column from the inputs panel after ignoring case, spacing, and punctuation. You can also ignore web links and @mentions, so a re-post such as `RT @user: Save the reef!` matches `save the reef`. The preview reports how many rows would be removed.
+Choose the **Deduplicating column** in the inputs panel: rows are always compared on it. Tick any **Additional columns to include** so rows must match on those too, or use **Select all** to compare whole rows. When the deduplicating column holds text, tick **Match near-duplicate text** to compare it after ignoring case, spacing, and punctuation. You can also ignore web links and @mentions, so a re-post such as `RT @user: Save the reef!` matches `save the reef`. The preview reports how many rows would be removed.
 
