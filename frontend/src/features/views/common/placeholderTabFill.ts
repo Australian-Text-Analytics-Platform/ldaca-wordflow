@@ -1,7 +1,7 @@
 import type React from 'react';
 
 interface PlaceholderTabFillArgs {
-  event: React.KeyboardEvent<HTMLInputElement>;
+  event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>;
   value: string;
   setValue: (value: string) => void;
 }
@@ -12,7 +12,7 @@ interface PlaceholderTabFillArgs {
  * Flow: schedule after React commits the value, prefer animation-frame timing,
  * fall back to a timer, and move the caret only while the input retains focus.
  */
-const scheduleCaretRestore = (input: HTMLInputElement, value: string) => {
+const scheduleCaretRestore = (input: HTMLInputElement | HTMLTextAreaElement, value: string) => {
   const restore = () => {
     if (document.activeElement !== input) {
       return;

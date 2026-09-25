@@ -148,4 +148,20 @@ describe('DataEditorToolPanel (issue 143)', () => {
     render(<DataEditorToolPanel />);
     expect(screen.getByLabelText('Template')).toHaveFocus();
   });
+
+  it('fills the suggested Count column name on Tab so it can be edited (issue 156)', async () => {
+    const user = userEvent.setup();
+    open('count', 'text');
+    render(<DataEditorToolPanel />);
+
+    const name = screen.getByLabelText('New column name');
+    expect(name).toHaveValue('');
+    expect(name).toHaveAttribute('placeholder', 'text word count');
+    await user.click(name);
+    await user.keyboard('{Tab}');
+    expect(name).toHaveValue('text word count');
+    expect(name).toHaveFocus();
+    await user.keyboard('s');
+    expect(name).toHaveValue('text word counts');
+  });
 });

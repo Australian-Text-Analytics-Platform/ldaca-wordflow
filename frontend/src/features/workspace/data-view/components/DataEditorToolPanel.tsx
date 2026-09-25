@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
   buildCleanText,
@@ -69,12 +70,15 @@ function TextField({
   label,
   value,
   placeholder,
+  acceptPlaceholder = false,
   onChange,
 }: {
   id: string;
   label: string;
   value: string;
   placeholder?: string;
+  /** The placeholder is a suggested value that Tab accepts (issue 156). */
+  acceptPlaceholder?: boolean;
   onChange: (value: string) => void;
 }) {
   return (
@@ -87,6 +91,13 @@ function TextField({
         onChange={(event) => {
           onChange(event.target.value);
         }}
+        onKeyDown={
+          acceptPlaceholder
+            ? (event) => {
+                acceptPlaceholderOnTab({ event, value, setValue: onChange });
+              }
+            : undefined
+        }
       />
     </div>
   );
@@ -519,6 +530,7 @@ export function DataEditorToolPanel() {
               label="New column name"
               value={outputName}
               placeholder={defaultCountName(column, measure)}
+              acceptPlaceholder
               onChange={touch(setOutputName)}
             />
           </>

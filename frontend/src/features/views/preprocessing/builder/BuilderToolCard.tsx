@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { PreviewTable } from '../components/PreviewTable';
 import { usePreprocessingPreview } from '../hooks/usePreprocessingPreview';
@@ -139,6 +140,10 @@ export function BuilderToolCard({
               placeholder={namePlaceholder}
               onChange={(event) => {
                 onNameChange(event.target.value);
+              }}
+              // Tab takes the suggested name so it can be edited (issue 156).
+              onKeyDown={(event) => {
+                acceptPlaceholderOnTab({ event, value: name, setValue: onNameChange });
               }}
               className="min-w-0 flex-1"
             />

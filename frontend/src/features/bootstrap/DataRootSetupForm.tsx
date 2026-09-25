@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { isTauri } from '@/lib/isTauri';
+import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
 
 interface DataRootSetupFormProps {
   currentPath?: string | null;
@@ -88,6 +89,14 @@ export function DataRootSetupForm({
               onChange={(event) => {
                 setPath(event.target.value);
               }}
+              // Tab takes the suggested folder, not the example (issue 156).
+              onKeyDown={
+                suggestedPath
+                  ? (event) => {
+                      acceptPlaceholderOnTab({ event, value: path, setValue: setPath });
+                    }
+                  : undefined
+              }
             />
             <p className="text-label-secondary text-description">
               This is an absolute filesystem path on the machine running Wordflow, not a folder
