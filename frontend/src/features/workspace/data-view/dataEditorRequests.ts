@@ -262,6 +262,18 @@ export const COUNT_MEASURES = [
 
 export type CountMeasure = (typeof COUNT_MEASURES)[number]['value'];
 
+/**
+ * The new column's name when the user leaves it blank (issue 164), such as
+ * "file_path replaced", so choosing a new column previews straight away.
+ */
+export function defaultNewColumnName(
+  tool: 'find_replace' | 'clean_text' | 'extract',
+  column: string,
+): string {
+  const suffix = { find_replace: 'replaced', clean_text: 'cleaned', extract: 'matches' }[tool];
+  return `${column || 'text'} ${suffix}`;
+}
+
 /** The count column's name when the user leaves it blank: "text word count". */
 export function defaultCountName(column: string, measure: CountMeasure): string {
   const suffix = COUNT_MEASURES.find((option) => option.value === measure)?.suffix ?? 'count';

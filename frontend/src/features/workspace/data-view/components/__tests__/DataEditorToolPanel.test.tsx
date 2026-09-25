@@ -194,4 +194,34 @@ describe('DataEditorToolPanel (issue 143)', () => {
       });
     });
   });
+
+  it('previews a new column under a default name, which Tab accepts for editing (issue 164)', async () => {
+    const user = userEvent.setup();
+    open('find_replace', 'text');
+    render(<DataEditorToolPanel />);
+
+    await user.type(screen.getByLabelText('Find'), '_');
+    await user.click(screen.getByLabelText('A new column, right of it'));
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toMatchObject({
+        kind: 'replace',
+        output_column: 'text replaced',
+      });
+    });
+    expect(useDataEditorToolStore.getState().highlightColumns).toEqual(['text replaced']);
+
+    const name = screen.getByLabelText('New column name');
+    expect(name).toHaveAttribute('placeholder', 'text replaced');
+    await user.click(name);
+    await user.keyboard('{Tab}');
+    expect(name).toHaveValue('text replaced');
+    expect(name).toHaveFocus();
+    await user.keyboard(' v2');
+    expect(name).toHaveValue('text replaced v2');
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toMatchObject({
+        output_column: 'text replaced v2',
+      });
+    });
+  });
 });

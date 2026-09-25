@@ -24,6 +24,7 @@ import {
   buildFindReplace,
   buildSplit,
   CLEAN_TEXT_OPERATIONS,
+  defaultNewColumnName,
   COUNT_MEASURES,
   defaultCountName,
   type CountMeasure,
@@ -130,11 +131,14 @@ function RegexOption({
 function OutputChoice({
   target,
   outputName,
+  placeholder,
   onTarget,
   onName,
 }: {
   target: OutputTarget;
   outputName: string;
+  /** The default name, used when the box is left empty (issue 164). */
+  placeholder: string;
   onTarget: (target: OutputTarget) => void;
   onName: (name: string) => void;
 }) {
@@ -152,27 +156,34 @@ function OutputChoice({
         />
         The same column
       </label>
-      <label className="flex items-center gap-2 text-body">
-        <input
-          type="radio"
-          name="data-editor-output"
-          checked={target === 'new'}
-          onChange={() => {
-            onTarget('new');
-          }}
-        />
-        A new column, right of it
-      </label>
-      {target === 'new' ? (
-        <Input
-          aria-label="New column name"
-          value={outputName}
-          placeholder="New column name"
-          onChange={(event) => {
-            onName(event.target.value);
-          }}
-        />
-      ) : null}
+      {/* The name box shares the option's line so it never falls out of view. */}
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+        <label className="flex items-center gap-2 text-body">
+          <input
+            type="radio"
+            name="data-editor-output"
+            checked={target === 'new'}
+            onChange={() => {
+              onTarget('new');
+            }}
+          />
+          A new column, right of it
+        </label>
+        {target === 'new' ? (
+          <Input
+            aria-label="New column name"
+            value={outputName}
+            placeholder={placeholder}
+            className="h-8 min-w-40 flex-1"
+            onChange={(event) => {
+              onName(event.target.value);
+            }}
+            onKeyDown={(event) => {
+              acceptPlaceholderOnTab({ event, value: outputName, setValue: onName });
+            }}
+          />
+        ) : null}
+      </div>
     </fieldset>
   );
 }
@@ -232,17 +243,43 @@ export function DataEditorToolPanel() {
   let draft: DataEditorDraft | null = null;
   if (tool === 'find_replace') {
     draft = buildFindReplace(
-      { column, pattern, replacement, target, outputName, firstOnly, regex },
+      {
+        column,
+        pattern,
+        replacement,
+        target,
+        outputName: outputName.trim() || defaultNewColumnName('find_replace', column),
+        firstOnly,
+        regex,
+      },
       columns,
     );
   } else if (tool === 'extract') {
-    draft = buildExtract({ column, pattern, outputName, firstOnly, connector, regex }, columns);
+    draft = buildExtract(
+      {
+        column,
+        pattern,
+        outputName: outputName.trim() || defaultNewColumnName('extract', column),
+        firstOnly,
+        connector,
+        regex,
+      },
+      columns,
+    );
   } else if (tool === 'combine') {
     draft = buildCombine({ template, outputName, emptyValues }, columns);
   } else if (tool === 'duplicate') {
     draft = buildDuplicate({ column }, columns);
   } else if (tool === 'clean_text') {
-    draft = buildCleanText({ column, operation, target, outputName }, columns);
+    draft = buildCleanText(
+      {
+        column,
+        operation,
+        target,
+        outputName: outputName.trim() || defaultNewColumnName('clean_text', column),
+      },
+      columns,
+    );
   } else if (tool === 'split') {
     const delimiters = [...splitDelimiters, ...(splitNewLine ? ['\n'] : [])];
     draft = buildSplit({ column, delimiters, direction, parts: Number(parts) }, columns);
@@ -427,6 +464,7 @@ export function DataEditorToolPanel() {
             <OutputChoice
               target={target}
               outputName={outputName}
+              placeholder={defaultNewColumnName('find_replace', column)}
               onTarget={touch(setTarget)}
               onName={touch(setOutputName)}
             />
@@ -462,6 +500,8 @@ export function DataEditorToolPanel() {
               id="extract-name"
               label="New column name"
               value={outputName}
+              placeholder={defaultNewColumnName('extract', column)}
+              acceptPlaceholder
               onChange={touch(setOutputName)}
             />
           </>
@@ -499,6 +539,7 @@ export function DataEditorToolPanel() {
             <OutputChoice
               target={target}
               outputName={outputName}
+              placeholder={defaultNewColumnName('clean_text', column)}
               onTarget={touch(setTarget)}
               onName={touch(setOutputName)}
             />
