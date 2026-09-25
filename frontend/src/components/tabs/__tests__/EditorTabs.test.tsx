@@ -230,4 +230,37 @@ describe('EditorTabs', () => {
     expect(screen.queryByRole('button', { name: /new tab/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /close tab/i })).toBeNull();
   });
+
+  it('shows an indicator at each end with hidden tabs and scrolls by a page (issue 157)', () => {
+    // jsdom has no layout: a 300px strip over 900px of tabs.
+    const sizes = { scrollWidth: 900, clientWidth: 300 };
+    const width = vi
+      .spyOn(HTMLElement.prototype, 'scrollWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.getAttribute('role') === 'tablist' ? sizes.scrollWidth : 0;
+      });
+    const client = vi
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.getAttribute('role') === 'tablist' ? sizes.clientWidth : 0;
+      });
+    renderTabs({ onCreate: undefined });
+    const strip = screen.getByRole('tablist');
+    fireEvent.scroll(strip);
+
+    expect(screen.queryByRole('button', { name: 'Show earlier tabs' })).not.toBeInTheDocument();
+    const more = screen.getByRole('button', { name: 'Show more tabs' });
+    // The indicators sit outside the tablist, so tab keyboard order is unchanged.
+    expect(strip).not.toContainElement(more);
+    strip.scrollBy = vi.fn();
+    fireEvent.click(more);
+    expect(strip.scrollBy).toHaveBeenCalledWith({ left: 240, behavior: 'smooth' });
+
+    strip.scrollLeft = 600;
+    fireEvent.scroll(strip);
+    expect(screen.getByRole('button', { name: 'Show earlier tabs' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Show more tabs' })).not.toBeInTheDocument();
+    width.mockRestore();
+    client.mockRestore();
+  });
 });
