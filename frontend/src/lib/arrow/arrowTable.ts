@@ -101,14 +101,21 @@ export const isArrowTemporalField = (field: ArrowField): boolean =>
   DataType.isDuration(field.type) ||
   DataType.isInterval(field.type);
 
+/**
+ * Arrow hands Date and Timestamp values over as epoch milliseconds; show them
+ * as dates rather than numbers such as 1580428800000 (issue 165). Also used by
+ * Quotation's native-value decoder (issue 177).
+ */
+export const formatArrowTemporalValue = (value: unknown, type: ArrowDataType): unknown => {
+  if (typeof value !== 'number') return value;
+  if (DataType.isTimestamp(type)) return new Date(value).toISOString();
+  if (DataType.isDate(type)) return new Date(value).toISOString().slice(0, 10);
+  return value;
+};
+
 const normalizeArrowValue = (value: unknown, type?: ArrowDataType): unknown => {
-  if (type && DataType.isTimestamp(type) && typeof value === 'number') {
-    return new Date(value).toISOString();
-  }
-  // Arrow hands Date values over as epoch milliseconds; show them as dates
-  // rather than numbers such as 1580428800000 (issue 165).
-  if (type && DataType.isDate(type) && typeof value === 'number') {
-    return new Date(value).toISOString().slice(0, 10);
+  if (type && typeof value === 'number' && (DataType.isTimestamp(type) || DataType.isDate(type))) {
+    return formatArrowTemporalValue(value, type);
   }
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();

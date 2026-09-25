@@ -1,7 +1,7 @@
-import { Vector } from 'apache-arrow';
+import { DataType, Vector } from 'apache-arrow';
 
 import type { QuotationMetadata, RunAllSourceTableResource } from '@/api';
-import type { ArrowTablePage } from '@/lib/arrow/arrowTable';
+import { formatArrowTemporalValue, type ArrowTablePage } from '@/lib/arrow/arrowTable';
 import type { NodeDataRequest } from '@/lib/queryKeys';
 
 import { normalizeQuotationRow, type QuotationResultRow } from './quotationResultsModel';
@@ -79,11 +79,24 @@ const materializeNativeArrowValue = (value: unknown): unknown => {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const nativeRows = (page: ArrowTablePage): Record<string, unknown>[] =>
-  page.table.toArray().flatMap((row) => {
+/**
+ * Keeps native Int64 offsets exact, but shows source Date and Timestamp
+ * columns as dates instead of epoch milliseconds (issue 177).
+ */
+const nativeRows = (page: ArrowTablePage): Record<string, unknown>[] => {
+  const temporalFields = page.schema
+    .map((column) => column.field)
+    .filter((field) => DataType.isDate(field.type) || DataType.isTimestamp(field.type));
+  return page.table.toArray().flatMap((row) => {
     const value = materializeNativeArrowValue(row);
-    return isRecord(value) ? [value] : [];
+    if (!isRecord(value)) return [];
+    for (const field of temporalFields) {
+      if (field.name in value)
+        value[field.name] = formatArrowTemporalValue(value[field.name], field.type);
+    }
+    return [value];
   });
+};
 
 const projectQuotationHit = (value: Record<string, unknown>): Record<string, unknown> =>
   Object.fromEntries(

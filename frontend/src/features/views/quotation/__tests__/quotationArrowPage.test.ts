@@ -1,4 +1,15 @@
-import { Field, Int64, List, Struct, Table, Utf8, tableToIPC, vectorFromArray } from 'apache-arrow';
+import {
+  DateDay,
+  Field,
+  Int64,
+  List,
+  Struct,
+  Table,
+  TimestampMicrosecond,
+  Utf8,
+  tableToIPC,
+  vectorFromArray,
+} from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 
 import type { RunAllSourceTableResource } from '@/api';
@@ -68,6 +79,39 @@ describe('Quotation Arrow page projection', () => {
 
     expect(state.rows[0]?.raw.QUOTE_quote_start_idx).toBe(13n);
     expect(state.rows[0]?.spans).toEqual([{ start: 14, end: 19, type: 'quote' }]);
+  });
+
+  it('shows source Date and Timestamp columns as dates, keeping Int64 offsets exact (issue 177)', async () => {
+    const table = new Table({
+      text: vectorFromArray(['Alice said hello'], new Utf8()),
+      published: vectorFromArray([new Date(Date.UTC(2020, 0, 31))], new DateDay()),
+      updated: vectorFromArray(
+        [new Date(Date.UTC(2020, 0, 31, 10, 30))],
+        new TimestampMicrosecond(),
+      ),
+      QUOTE_quote: vectorFromArray(['hello'], new Utf8()),
+      QUOTE_quote_start_idx: vectorFromArray([11n], new Int64()),
+      QUOTE_quote_end_idx: vectorFromArray([16n], new Int64()),
+    });
+    const page = await decodeArrowPage(
+      tableToIPC(table, 'stream').buffer as ArrayBuffer,
+      new Response(null, { headers: { 'X-Wordflow-Total-Rows': '1' } }),
+    );
+
+    const state = projectQuotationArrowPage(
+      {
+        kind: 'run_all',
+        resource: { ...source, metadata_columns: ['published', 'updated'] },
+        rowUnit: 'matches',
+      },
+      page,
+      request,
+    );
+
+    const row = state.rows[0]!;
+    expect(row.cellText('published')).toBe('2020-01-31');
+    expect(row.cellText('updated')).toBe('2020-01-31T10:30:00.000Z');
+    expect(row.raw.QUOTE_quote_start_idx).toBe(11n);
   });
 
   it('projects equivalent Preview and Run All document pages identically', async () => {

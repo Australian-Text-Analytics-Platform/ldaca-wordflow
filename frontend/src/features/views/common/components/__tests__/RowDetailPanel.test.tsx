@@ -15,6 +15,20 @@ const navigation = (overrides: Partial<RowDetailNavigation> = {}): RowDetailNavi
 });
 
 describe('RowDetailPanel', () => {
+  it('shows nested big integers and leaves missing values empty (issues 176 and 177)', () => {
+    render(
+      <RowDetailPanel
+        open
+        onOpenChange={vi.fn()}
+        payload={{ record: { offsets: [11n, 16n], missing: null } }}
+        navigation={navigation()}
+      />,
+    );
+
+    expect(screen.getByText(/"11"/)).toBeInTheDocument();
+    expect(screen.queryByText('null')).not.toBeInTheDocument();
+  });
+
   it('renders persistent accessible row navigation outside the scroll body', async () => {
     const user = userEvent.setup();
     const controls = navigation();
