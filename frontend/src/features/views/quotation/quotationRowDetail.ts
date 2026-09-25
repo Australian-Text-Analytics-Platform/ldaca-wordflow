@@ -2,6 +2,7 @@ import type { RowDetailCustomization, RowDetailPayload } from '../common/compone
 import { QUOTATION_COLUMN_KEYS } from '../common/generatedColumns';
 import { renderQuotationDetailText } from './components/quotationDetailText';
 import type { QuotationResultRow } from './quotationResultsModel';
+import { formatQuoteType } from './quoteTypes';
 
 const GENERATED_QUOTATION_DETAIL_COLUMNS = [...Object.values(QUOTATION_COLUMN_KEYS), '__spans'];
 
@@ -11,7 +12,7 @@ export const buildQuotationRowDetailCustomization = (
 ): RowDetailCustomization => ({
   label: 'Quotation',
   summaryFields: [
-    { label: 'Quote Type', value: row.cellText(QUOTATION_COLUMN_KEYS.quoteType) },
+    { label: 'Quote Type', value: formatQuoteType(row.cellText(QUOTATION_COLUMN_KEYS.quoteType)) },
     { label: 'Speaker', value: row.cellText(QUOTATION_COLUMN_KEYS.speaker) },
     { label: 'Verb', value: row.cellText(QUOTATION_COLUMN_KEYS.verb) },
     { label: 'Quote', value: row.cellText(QUOTATION_COLUMN_KEYS.quote) },

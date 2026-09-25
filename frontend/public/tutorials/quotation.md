@@ -93,6 +93,31 @@ Use **Add to Project** to publish selected Result columns as a Derived Data
 Block. The document column is required, metadata columns start unselected, and
 analysis columns start selected.
 
+<h3 id="help-quotation-quote-types">Quote types</h3>
+
+Each extract has a **Quote Type** (`QUOTE_quote_type`), which Row Details also
+explains in words. Most types are letter codes that list the parts of the quote
+in the order they appear in the sentence: **Q** a quotation mark, **C** the
+quoted content, **V** the speech verb, and **S** the speaker.
+
+| Quote Type | Example | Meaning |
+|---|---|---|
+| QCQVS | "We will act," said the minister. | Quote in quotation marks, then verb, then speaker |
+| QCQSV | "We will act," the minister said. | Quote in quotation marks, then speaker, then verb |
+| SVQCQ | The minister said, "We will act." | Speaker, then verb, then quote in quotation marks |
+| SVC | The minister said the government would act. | Reported speech: speaker, then verb, then quote, with no quotation marks |
+| CSV, CVS | The government would act, the minister said. | Reported speech with the quote first |
+| QCQ | A quoted sentence straight after another quote | A floating quote: it continues the previous quote and takes its speaker, so it has no verb |
+| AccordingTo | According to the minister, the government will act. | The speaker is introduced with "according to" |
+| Heuristic | Any other text in quotation marks | Found by a fallback rule for quotation marks; the nearest verb and speaker are used and may be missing |
+
+Other orders of the same letters follow the same pattern.
+
+The exported columns `QUOTE_speaker`, `QUOTE_verb`, and `QUOTE_quote` hold the
+text of each part, and their `_start_idx` and `_end_idx` columns give its
+character positions in the document, so each part can be located or marked up
+in other software.
+
 <h3 id="help-quotation-clear-results">Clear results</h3>
 
 The Tab retains its Analysis forest across navigation and Project reopen.
