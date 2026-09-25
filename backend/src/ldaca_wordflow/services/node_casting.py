@@ -60,6 +60,10 @@ def _datetime_cast_expr(
     try:
         if orig_lower.startswith("datetime"):
             parsed = pl.col(column_name)
+        elif orig_lower == "date":
+            # A real Date column (such as one read from Excel) is converted,
+            # not parsed as text (issue 165).
+            parsed = pl.col(column_name).cast(pl.Datetime("us"))
         elif datetime_format:
             parsed = pl.col(column_name).str.to_datetime(
                 format=datetime_format, strict=bool(strict_flag)
@@ -108,7 +112,7 @@ def _cast_expr(
             strict_flag=strict_flag,
         )
     if target_lower in ("string", "utf8", "str", "text"):
-        if original_type.startswith("Datetime") and datetime_format:
+        if (original_type.startswith("Datetime") or original_type == "Date") and datetime_format:
             return pl.col(column_name).dt.strftime(datetime_format).alias(column_name)
         return pl.col(column_name).cast(pl.Utf8).alias(column_name)
     if target_lower == "integer":

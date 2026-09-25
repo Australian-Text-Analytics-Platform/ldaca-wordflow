@@ -9,6 +9,7 @@ import {
   Schema,
   Struct,
   Table,
+  DateDay,
   TimestampMicrosecond,
   TimestampNanosecond,
   Uint32,
@@ -116,6 +117,16 @@ describe('Arrow table transport', () => {
       'Timestamp<MICROSECOND, UTC>',
     );
     expect(decoded.rows).toEqual([{ created_at: '2020-10-16T15:20:22.000Z' }]);
+  });
+
+  it('decodes date values into ISO dates, not epoch numbers (issue 165)', async () => {
+    const source = new Table({
+      adopted: vectorFromArray([new Date('2020-01-31T00:00:00.000Z'), null], new DateDay()),
+    });
+
+    const decoded = await decodeArrowTable(stream(source).buffer as ArrayBuffer);
+
+    expect(decoded.rows).toEqual([{ adopted: '2020-01-31' }, { adopted: null }]);
   });
 
   it('retains Utf8View and LargeList<Utf8View> native Arrow type names', async () => {

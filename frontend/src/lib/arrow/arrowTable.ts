@@ -105,6 +105,11 @@ const normalizeArrowValue = (value: unknown, type?: ArrowDataType): unknown => {
   if (type && DataType.isTimestamp(type) && typeof value === 'number') {
     return new Date(value).toISOString();
   }
+  // Arrow hands Date values over as epoch milliseconds; show them as dates
+  // rather than numbers such as 1580428800000 (issue 165).
+  if (type && DataType.isDate(type) && typeof value === 'number') {
+    return new Date(value).toISOString().slice(0, 10);
+  }
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map((child) => normalizeArrowValue(child));

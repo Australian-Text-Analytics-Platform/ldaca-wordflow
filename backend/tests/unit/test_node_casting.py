@@ -41,3 +41,26 @@ def test_cast_lazyframe_column_rejects_unsupported_target() -> None:
         )
 
     assert "not yet supported" in exc_info.value.message
+
+
+def test_date_columns_convert_to_datetime_without_text_parsing() -> None:
+    """A real Date column (such as one read from Excel) converts (issue 165)."""
+
+    import datetime as dt
+
+    frame = pl.LazyFrame({"Date adopted": [dt.date(2020, 1, 31), None]})
+    result = cast_lazyframe_column(
+        frame, column_name="Date adopted", target_type="datetime"
+    )
+    assert result.original_type == "Date"
+    values = result.lazyframe.collect()["Date adopted"].to_list()
+    assert values[0] == dt.datetime(2020, 1, 31, tzinfo=dt.UTC)
+    assert values[1] is None
+
+    as_text = cast_lazyframe_column(
+        frame,
+        column_name="Date adopted",
+        target_type="string",
+        datetime_format="%d/%m/%Y",
+    )
+    assert as_text.lazyframe.collect()["Date adopted"].to_list() == ["31/01/2020", None]
