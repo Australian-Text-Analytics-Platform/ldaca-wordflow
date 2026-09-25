@@ -19,10 +19,13 @@ from ..domain.workspace.provenance import (
     CastDerivation,
     CloneDerivation,
     ConcatDerivation,
+    DeduplicateDerivation,
     ExpressionDerivation,
     FilterDerivation,
+    GroupSummaryDerivation,
     JoinDerivation,
     ReplaceDerivation,
+    SegmentDerivation,
     SliceDerivation,
 )
 from .names import NodeName
@@ -118,6 +121,27 @@ class JoinNodeCreateRequest(JoinDerivation):
     name: NodeName | None = None
 
 
+class SegmentNodeCreateRequest(SegmentDerivation):
+    """Create a child with one row per segment of a text column."""
+
+    source_node_id: uuid.UUID
+    name: NodeName | None = None
+
+
+class GroupSummaryNodeCreateRequest(GroupSummaryDerivation):
+    """Create a child with one summary row per group."""
+
+    source_node_id: uuid.UUID
+    name: NodeName | None = None
+
+
+class DeduplicateNodeCreateRequest(DeduplicateDerivation):
+    """Create a child without duplicate rows, or holding the duplicate groups."""
+
+    source_node_id: uuid.UUID
+    name: NodeName | None = None
+
+
 NodeCreateRequest = Annotated[
     FileNodeCreateRequest
     | CloneNodeCreateRequest
@@ -126,7 +150,10 @@ NodeCreateRequest = Annotated[
     | ReplaceNodeCreateRequest
     | ExpressionNodeCreateRequest
     | ConcatNodeCreateRequest
-    | JoinNodeCreateRequest,
+    | JoinNodeCreateRequest
+    | SegmentNodeCreateRequest
+    | GroupSummaryNodeCreateRequest
+    | DeduplicateNodeCreateRequest,
     Field(discriminator="kind"),
 ]
 
@@ -137,7 +164,10 @@ NodeDerivationRequest = Annotated[
     | ReplaceNodeCreateRequest
     | ExpressionNodeCreateRequest
     | ConcatNodeCreateRequest
-    | JoinNodeCreateRequest,
+    | JoinNodeCreateRequest
+    | SegmentNodeCreateRequest
+    | GroupSummaryNodeCreateRequest
+    | DeduplicateNodeCreateRequest,
     Field(discriminator="kind"),
 ]
 

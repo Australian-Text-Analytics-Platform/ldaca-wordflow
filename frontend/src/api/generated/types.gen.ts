@@ -1245,6 +1245,24 @@ export type ColumnExpression = {
 };
 
 /**
+ * ColumnSummary
+ */
+export type ColumnSummary = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Separator
+     */
+    separator?: string;
+    /**
+     * Summary
+     */
+    summary: 'join_text' | 'count_distinct' | 'distinct_values' | 'first' | 'last' | 'sum' | 'mean' | 'min' | 'max' | 'earliest' | 'latest' | 'earliest_latest';
+};
+
+/**
  * CombineColumnPart
  *
  * A column reference inside a Combine columns template.
@@ -2374,6 +2392,70 @@ export type DataRootUpdateRequest = {
 };
 
 /**
+ * DeduplicateDerivation
+ *
+ * Rows without duplicates, or the duplicate groups themselves (issue 151).
+ */
+export type DeduplicateDerivation = {
+    /**
+     * Columns
+     */
+    columns?: Array<string>;
+    /**
+     * Ignore Links Mentions
+     */
+    ignore_links_mentions?: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'deduplicate';
+    /**
+     * Near Text Column
+     */
+    near_text_column?: string | null;
+    /**
+     * Output
+     */
+    output?: 'kept' | 'duplicates';
+};
+
+/**
+ * DeduplicateNodeCreateRequest
+ *
+ * Create a child without duplicate rows, or holding the duplicate groups.
+ */
+export type DeduplicateNodeCreateRequest = {
+    /**
+     * Columns
+     */
+    columns?: Array<string>;
+    /**
+     * Ignore Links Mentions
+     */
+    ignore_links_mentions?: boolean;
+    /**
+     * Kind
+     */
+    kind?: 'deduplicate';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Near Text Column
+     */
+    near_text_column?: string | null;
+    /**
+     * Output
+     */
+    output?: 'kept' | 'duplicates';
+    /**
+     * Source Node Id
+     */
+    source_node_id: string;
+};
+
+/**
  * DeleteColumnNodeEditRequest
  *
  * Delete one column from the target Data Block.
@@ -2459,6 +2541,12 @@ export type DerivationProvenance = {
     } & CastDerivation) | ({
         kind: 'sql';
     } & SqlDerivation) | ({
+        kind: 'segment';
+    } & SegmentDerivation) | ({
+        kind: 'group_summary';
+    } & GroupSummaryDerivation) | ({
+        kind: 'deduplicate';
+    } & DeduplicateDerivation) | ({
         kind: 'annotation';
     } & AnnotationDerivation) | ({
         kind: 'concordance_match_data_block_creation';
@@ -2907,6 +2995,54 @@ export type FilterValueInput = FilterScalar | Array<FilterScalar> | {
 
 export type FilterValueOutput = FilterScalar | Array<FilterScalar> | {
     [key: string]: JsonDataOutput;
+};
+
+/**
+ * GroupSummaryDerivation
+ *
+ * One row per group with a rows count and per-column summaries (issue 150).
+ */
+export type GroupSummaryDerivation = {
+    /**
+     * Group By
+     */
+    group_by: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'group_summary';
+    /**
+     * Summaries
+     */
+    summaries?: Array<ColumnSummary>;
+};
+
+/**
+ * GroupSummaryNodeCreateRequest
+ *
+ * Create a child with one summary row per group.
+ */
+export type GroupSummaryNodeCreateRequest = {
+    /**
+     * Group By
+     */
+    group_by: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'group_summary';
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Source Node Id
+     */
+    source_node_id: string;
+    /**
+     * Summaries
+     */
+    summaries?: Array<ColumnSummary>;
 };
 
 /**
@@ -3802,6 +3938,78 @@ export type SampleUserFileImportResult = {
      * Kind
      */
     kind?: 'sample';
+};
+
+/**
+ * SegmentDerivation
+ *
+ * One row per sentence, paragraph, line, or pattern-led segment (issue 148).
+ */
+export type SegmentDerivation = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'segment';
+    /**
+     * Lead
+     */
+    lead?: 'column' | 'drop';
+    /**
+     * Lead Column
+     */
+    lead_column?: string | null;
+    /**
+     * Pattern
+     */
+    pattern?: string | null;
+    /**
+     * Unit
+     */
+    unit: 'sentence' | 'paragraph' | 'line' | 'pattern';
+};
+
+/**
+ * SegmentNodeCreateRequest
+ *
+ * Create a child with one row per segment of a text column.
+ */
+export type SegmentNodeCreateRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Kind
+     */
+    kind?: 'segment';
+    /**
+     * Lead
+     */
+    lead?: 'column' | 'drop';
+    /**
+     * Lead Column
+     */
+    lead_column?: string | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Pattern
+     */
+    pattern?: string | null;
+    /**
+     * Source Node Id
+     */
+    source_node_id: string;
+    /**
+     * Unit
+     */
+    unit: 'sentence' | 'paragraph' | 'line' | 'pattern';
 };
 
 /**
@@ -9234,7 +9442,13 @@ export type CreateNodeData = {
         kind: 'concat';
     } & ConcatNodeCreateRequest) | ({
         kind: 'join';
-    } & JoinNodeCreateRequest);
+    } & JoinNodeCreateRequest) | ({
+        kind: 'segment';
+    } & SegmentNodeCreateRequest) | ({
+        kind: 'group_summary';
+    } & GroupSummaryNodeCreateRequest) | ({
+        kind: 'deduplicate';
+    } & DeduplicateNodeCreateRequest);
     path: {
         /**
          * Workspace Id
@@ -9417,7 +9631,13 @@ export type PreviewNodeCreationData = {
         kind: 'concat';
     } & ConcatNodeCreateRequest) | ({
         kind: 'join';
-    } & JoinNodeCreateRequest);
+    } & JoinNodeCreateRequest) | ({
+        kind: 'segment';
+    } & SegmentNodeCreateRequest) | ({
+        kind: 'group_summary';
+    } & GroupSummaryNodeCreateRequest) | ({
+        kind: 'deduplicate';
+    } & DeduplicateNodeCreateRequest);
     path: {
         /**
          * Workspace Id

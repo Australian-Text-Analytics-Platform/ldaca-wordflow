@@ -206,6 +206,26 @@ const tutorial = {
     anchor: 'help-preprocessing-concat-section',
     label: 'Stack sub-tab overview',
   },
+  'preprocessing.segment.tab': {
+    file: 'tutorials/preprocessing.md',
+    anchor: 'help-preprocessing-segment-section',
+    label: 'Segment overview',
+  },
+  'preprocessing.split-group.tab': {
+    file: 'tutorials/preprocessing.md',
+    anchor: 'help-preprocessing-split-group-section',
+    label: 'Split by group overview',
+  },
+  'preprocessing.summarise.tab': {
+    file: 'tutorials/preprocessing.md',
+    anchor: 'help-preprocessing-summarise-section',
+    label: 'Group & summarise overview',
+  },
+  'preprocessing.dedupe.tab': {
+    file: 'tutorials/preprocessing.md',
+    anchor: 'help-preprocessing-dedupe-section',
+    label: 'Remove duplicates overview',
+  },
   'preprocessing.concat.new-node-name': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-concat-new-node-name',

@@ -1,4 +1,4 @@
-import { Filter, Layers, Merge, Shuffle } from 'lucide-react';
+import { CopyMinus, Filter, Layers, Merge, Scissors, Shuffle, Sigma, Split } from 'lucide-react';
 import { useState } from 'react';
 import InfoIcon from '@/components/help/InfoIcon';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
@@ -26,13 +26,29 @@ import {
   preprocessingInputsKey,
   usePreprocessingInputsStore,
 } from '@/stores/preprocessingInputsStore';
+import { columnKind, type BuilderInput } from './builder/builderTypes';
 import { ConcatSubTab } from './concat/ConcatSubTab';
+import { DedupeSubTab } from './dedupe/DedupeSubTab';
+import { SegmentSubTab } from './segment/SegmentSubTab';
+import { SplitByGroupSubTab } from './split-group/SplitByGroupSubTab';
+import { GroupSummarySubTab } from './summarise/GroupSummarySubTab';
 import { FilterSubTab } from './filter/FilterSubTab';
 import { JoinSubTab } from './join/JoinSubTab';
 import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
 
-type DataPrepSubtab = 'filter' | 'slice' | 'join' | 'concat';
+type DataPrepSubtab =
+  | 'filter'
+  | 'slice'
+  | 'join'
+  | 'concat'
+  | 'segment'
+  | 'split_group'
+  | 'summarise'
+  | 'dedupe';
+
+/** Data Builder tools that read the inputs panel's text column (issues 148, 150, 151). */
+const TEXT_COLUMN_TABS: ReadonlySet<DataPrepSubtab> = new Set(['segment', 'summarise', 'dedupe']);
 
 const PREPROCESSING_TABS: EditorTabItem[] = [
   {
@@ -66,6 +82,34 @@ const PREPROCESSING_TABS: EditorTabItem[] = [
     tabDomId: 'preprocessing-tab-concat',
     panelDomId: 'preprocessing-panel-concat',
     'data-guidance': 'preprocessing-operation-stack',
+  },
+  {
+    id: 'segment',
+    title: 'Segment',
+    icon: <Scissors className="size-4" />,
+    tabDomId: 'preprocessing-tab-segment',
+    panelDomId: 'preprocessing-panel-segment',
+  },
+  {
+    id: 'split_group',
+    title: 'Split by group',
+    icon: <Split className="size-4" />,
+    tabDomId: 'preprocessing-tab-split-group',
+    panelDomId: 'preprocessing-panel-split-group',
+  },
+  {
+    id: 'summarise',
+    title: 'Group & summarise',
+    icon: <Sigma className="size-4" />,
+    tabDomId: 'preprocessing-tab-summarise',
+    panelDomId: 'preprocessing-panel-summarise',
+  },
+  {
+    id: 'dedupe',
+    title: 'Remove duplicates',
+    icon: <CopyMinus className="size-4" />,
+    tabDomId: 'preprocessing-tab-dedupe',
+    panelDomId: 'preprocessing-panel-dedupe',
   },
 ];
 
@@ -136,7 +180,19 @@ function DataPreprocessingFeature() {
       }),
     );
   };
-  const showInputColumnPicker = activeSubtab === 'join';
+  const showInputColumnPicker = activeSubtab === 'join' || TEXT_COLUMN_TABS.has(activeSubtab);
+  const resolvedInput = nodeInputs.resolvedNodes[0];
+  const builderInput: BuilderInput | null = resolvedInput
+    ? {
+        id: resolvedInput.id,
+        name: resolvedInput.name,
+        column: resolvedInput.column,
+        columns: resolvedInput.columnOptions.map((option) => ({
+          name: option.name,
+          kind: columnKind(option.field),
+        })),
+      }
+    : null;
   const preprocessingColumnLabel = ({ nodeId }: NodeSelectionRenderArgs) => {
     if (activeSubtab === 'join') {
       if (nodeId === selectedNodeIds[0]) return 'Left column:';
@@ -204,10 +260,14 @@ function DataPreprocessingFeature() {
     slice: CONTEXTUAL_HINT_IDS.preprocessing.sample,
     join: CONTEXTUAL_HINT_IDS.preprocessing.join,
     concat: CONTEXTUAL_HINT_IDS.preprocessing.stack,
+    segment: null,
+    split_group: null,
+    summarise: null,
+    dedupe: null,
   }[activeSubtab];
   useProgressiveContextualHints([
     CONTEXTUAL_HINT_IDS.preprocessing.inputs,
-    ...(operationReady ? [activeOperationHint] : []),
+    ...(operationReady && activeOperationHint ? [activeOperationHint] : []),
   ]);
 
   /**
@@ -342,6 +402,57 @@ function DataPreprocessingFeature() {
             concatNodes={guidedConcatNodes}
             concatPreview={guidedConcatPreview}
             isLoading={isLoading}
+            onAlert={handleAlert}
+          />
+        </TabsContent>
+        <TabsContent
+          id="preprocessing-panel-segment"
+          aria-labelledby="preprocessing-tab-segment"
+          value="segment"
+        >
+          <SegmentSubTab
+            input={builderInput}
+            workspaceId={currentWorkspaceId}
+            renderNodeInputsPanel={renderNodeInputsPanel}
+            onAlert={handleAlert}
+          />
+        </TabsContent>
+
+        <TabsContent
+          id="preprocessing-panel-split-group"
+          aria-labelledby="preprocessing-tab-split-group"
+          value="split_group"
+        >
+          <SplitByGroupSubTab
+            input={builderInput}
+            workspaceId={currentWorkspaceId}
+            renderNodeInputsPanel={renderNodeInputsPanel}
+            onAlert={handleAlert}
+          />
+        </TabsContent>
+
+        <TabsContent
+          id="preprocessing-panel-summarise"
+          aria-labelledby="preprocessing-tab-summarise"
+          value="summarise"
+        >
+          <GroupSummarySubTab
+            input={builderInput}
+            workspaceId={currentWorkspaceId}
+            renderNodeInputsPanel={renderNodeInputsPanel}
+            onAlert={handleAlert}
+          />
+        </TabsContent>
+
+        <TabsContent
+          id="preprocessing-panel-dedupe"
+          aria-labelledby="preprocessing-tab-dedupe"
+          value="dedupe"
+        >
+          <DedupeSubTab
+            input={builderInput}
+            workspaceId={currentWorkspaceId}
+            renderNodeInputsPanel={renderNodeInputsPanel}
             onAlert={handleAlert}
           />
         </TabsContent>

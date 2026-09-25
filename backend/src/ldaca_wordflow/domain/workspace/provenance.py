@@ -246,6 +246,91 @@ class CastDerivation(_StrictModel):
     strict: bool = False
 
 
+class SegmentDerivation(_StrictModel):
+    """One row per sentence, paragraph, line, or pattern-led segment (issue 148)."""
+
+    kind: Literal["segment"] = "segment"
+    column: str = Field(min_length=1, max_length=200)
+    unit: Literal["sentence", "paragraph", "line", "pattern"]
+    # A regular expression marking where each segment starts; "^" is a line start.
+    pattern: str | None = Field(default=None, min_length=1, max_length=1_000)
+    # The matched lead goes into its own column, or is dropped like a delimiter.
+    lead: Literal["column", "drop"] = "column"
+    lead_column: str | None = Field(default=None, min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_pattern(self) -> SegmentDerivation:
+        if self.unit == "pattern":
+            if not self.pattern:
+                raise ValueError("Segmenting by pattern needs a pattern")
+            if self.lead == "column" and not self.lead_column:
+                raise ValueError("Name the column for the matched text")
+        return self
+
+
+GroupSummaryKind = Literal[
+    "join_text",
+    "count_distinct",
+    "distinct_values",
+    "first",
+    "last",
+    "sum",
+    "mean",
+    "min",
+    "max",
+    "earliest",
+    "latest",
+    "earliest_latest",
+]
+
+
+class ColumnSummary(_StrictModel):
+    column: str = Field(min_length=1, max_length=200)
+    summary: GroupSummaryKind
+    separator: str = Field(default="\n\n", max_length=100)
+
+
+class GroupSummaryDerivation(_StrictModel):
+    """One row per group with a rows count and per-column summaries (issue 150)."""
+
+    kind: Literal["group_summary"] = "group_summary"
+    group_by: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
+        min_length=1, max_length=10
+    )
+    summaries: list[ColumnSummary] = Field(default_factory=list, max_length=200)
+
+    @model_validator(mode="after")
+    def validate_columns(self) -> GroupSummaryDerivation:
+        if len(set(self.group_by)) != len(self.group_by):
+            raise ValueError("Group columns must be unique")
+        summarised = [item.column for item in self.summaries]
+        if len(set(summarised)) != len(summarised):
+            raise ValueError("Summarise each column once")
+        if set(summarised) & set(self.group_by):
+            raise ValueError("Group columns cannot also be summarised")
+        return self
+
+
+class DeduplicateDerivation(_StrictModel):
+    """Rows without duplicates, or the duplicate groups themselves (issue 151)."""
+
+    kind: Literal["deduplicate"] = "deduplicate"
+    # Columns to compare; empty compares every column.
+    columns: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
+        default_factory=list, max_length=200
+    )
+    # Compared after lowercasing and removing punctuation and extra spaces.
+    near_text_column: str | None = Field(default=None, min_length=1, max_length=200)
+    ignore_links_mentions: bool = False
+    output: Literal["kept", "duplicates"] = "kept"
+
+    @model_validator(mode="after")
+    def validate_columns(self) -> DeduplicateDerivation:
+        if len(set(self.columns)) != len(self.columns):
+            raise ValueError("Columns to compare must be unique")
+        return self
+
+
 class SqlDerivation(_StrictModel):
     """Exact SQL submitted when a Derived Data Block was created."""
 
@@ -296,6 +381,9 @@ DerivationOperation = Annotated[
     | JoinDerivation
     | CastDerivation
     | SqlDerivation
+    | SegmentDerivation
+    | GroupSummaryDerivation
+    | DeduplicateDerivation
     | AnnotationDerivation
     | ConcordanceMatchDataBlockCreationDerivation
     | ConcordanceDocumentDataBlockCreationDerivation
@@ -317,6 +405,9 @@ _DERIVATION_OPERATION_TYPES: dict[str, type[_StrictModel]] = {
         JoinDerivation,
         CastDerivation,
         SqlDerivation,
+        SegmentDerivation,
+        GroupSummaryDerivation,
+        DeduplicateDerivation,
         AnnotationDerivation,
         ConcordanceMatchDataBlockCreationDerivation,
         ConcordanceDocumentDataBlockCreationDerivation,
@@ -489,6 +580,13 @@ def describe_provenance(
             return f"{prefix} of {', '.join(inputs)}"
         if isinstance(operation, SqlDerivation):
             return f"SQL query of {', '.join(inputs)}"
+        if isinstance(operation, SegmentDerivation):
+            return f"{operation.unit} segments of {inputs[0]}"
+        if isinstance(operation, GroupSummaryDerivation):
+            return f"summary of {inputs[0]} by {', '.join(operation.group_by)}"
+        if isinstance(operation, DeduplicateDerivation):
+            prefix = "duplicates in" if operation.output == "duplicates" else "deduplicated"
+            return f"{prefix} {inputs[0]}"
         labels: dict[type[BaseModel], str] = {
             CloneDerivation: "clone",
             SliceDerivation: operation.mode
@@ -522,7 +620,11 @@ __all__ = [
     "CloneDerivation",
     "ColumnExpression",
     "ConcatDerivation",
+    "ColumnSummary",
     "ConcatStringExpression",
+    "DeduplicateDerivation",
+    "GroupSummaryDerivation",
+    "SegmentDerivation",
     "ConcordanceMatchDataBlockCreationDerivation",
     "ConcordanceDocumentDataBlockCreationDerivation",
     "DerivationInput",

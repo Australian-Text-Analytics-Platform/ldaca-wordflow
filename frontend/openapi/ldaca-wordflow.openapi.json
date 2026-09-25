@@ -2638,6 +2638,47 @@
         "title": "ColumnExpression",
         "type": "object"
       },
+      "ColumnSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "separator": {
+            "default": "\n\n",
+            "maxLength": 100,
+            "title": "Separator",
+            "type": "string"
+          },
+          "summary": {
+            "enum": [
+              "join_text",
+              "count_distinct",
+              "distinct_values",
+              "first",
+              "last",
+              "sum",
+              "mean",
+              "min",
+              "max",
+              "earliest",
+              "latest",
+              "earliest_latest"
+            ],
+            "title": "Summary",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "summary"
+        ],
+        "title": "ColumnSummary",
+        "type": "object"
+      },
       "CombineColumnPart": {
         "additionalProperties": false,
         "description": "A column reference inside a Combine columns template.",
@@ -4646,6 +4687,129 @@
         "title": "DataRootUpdateRequest",
         "type": "object"
       },
+      "DeduplicateDerivation": {
+        "additionalProperties": false,
+        "description": "Rows without duplicates, or the duplicate groups themselves (issue 151).",
+        "properties": {
+          "columns": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Columns",
+            "type": "array"
+          },
+          "ignore_links_mentions": {
+            "default": false,
+            "title": "Ignore Links Mentions",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "deduplicate",
+            "default": "deduplicate",
+            "title": "Kind",
+            "type": "string"
+          },
+          "near_text_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Near Text Column"
+          },
+          "output": {
+            "default": "kept",
+            "enum": [
+              "kept",
+              "duplicates"
+            ],
+            "title": "Output",
+            "type": "string"
+          }
+        },
+        "title": "DeduplicateDerivation",
+        "type": "object"
+      },
+      "DeduplicateNodeCreateRequest": {
+        "additionalProperties": false,
+        "description": "Create a child without duplicate rows, or holding the duplicate groups.",
+        "properties": {
+          "columns": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 200,
+            "title": "Columns",
+            "type": "array"
+          },
+          "ignore_links_mentions": {
+            "default": false,
+            "title": "Ignore Links Mentions",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "deduplicate",
+            "default": "deduplicate",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "near_text_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Near Text Column"
+          },
+          "output": {
+            "default": "kept",
+            "enum": [
+              "kept",
+              "duplicates"
+            ],
+            "title": "Output",
+            "type": "string"
+          },
+          "source_node_id": {
+            "format": "uuid",
+            "title": "Source Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_node_id"
+        ],
+        "title": "DeduplicateNodeCreateRequest",
+        "type": "object"
+      },
       "DeleteColumnNodeEditRequest": {
         "additionalProperties": false,
         "description": "Delete one column from the target Data Block.",
@@ -4762,11 +4926,14 @@
                 "concat": "#/components/schemas/ConcatDerivation",
                 "concordance_document_data_block_creation": "#/components/schemas/ConcordanceDocumentDataBlockCreationDerivation",
                 "concordance_match_data_block_creation": "#/components/schemas/ConcordanceMatchDataBlockCreationDerivation",
+                "deduplicate": "#/components/schemas/DeduplicateDerivation",
                 "expression": "#/components/schemas/ExpressionDerivation",
                 "filter": "#/components/schemas/FilterDerivation",
+                "group_summary": "#/components/schemas/GroupSummaryDerivation",
                 "join": "#/components/schemas/JoinDerivation",
                 "quotation_result_data_block_creation": "#/components/schemas/QuotationResultDataBlockCreationDerivation",
                 "replace": "#/components/schemas/ReplaceDerivation",
+                "segment": "#/components/schemas/SegmentDerivation",
                 "sequential_data_block_creation": "#/components/schemas/SequentialDataBlockCreationDerivation",
                 "slice": "#/components/schemas/SliceDerivation",
                 "sql": "#/components/schemas/SqlDerivation",
@@ -4801,6 +4968,15 @@
               },
               {
                 "$ref": "#/components/schemas/SqlDerivation"
+              },
+              {
+                "$ref": "#/components/schemas/SegmentDerivation"
+              },
+              {
+                "$ref": "#/components/schemas/GroupSummaryDerivation"
+              },
+              {
+                "$ref": "#/components/schemas/DeduplicateDerivation"
               },
               {
                 "$ref": "#/components/schemas/AnnotationDerivation"
@@ -5699,6 +5875,97 @@
             "type": "object"
           }
         ]
+      },
+      "GroupSummaryDerivation": {
+        "additionalProperties": false,
+        "description": "One row per group with a rows count and per-column summaries (issue 150).",
+        "properties": {
+          "group_by": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Group By",
+            "type": "array"
+          },
+          "kind": {
+            "const": "group_summary",
+            "default": "group_summary",
+            "title": "Kind",
+            "type": "string"
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnSummary"
+            },
+            "maxItems": 200,
+            "title": "Summaries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group_by"
+        ],
+        "title": "GroupSummaryDerivation",
+        "type": "object"
+      },
+      "GroupSummaryNodeCreateRequest": {
+        "additionalProperties": false,
+        "description": "Create a child with one summary row per group.",
+        "properties": {
+          "group_by": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "maxItems": 10,
+            "minItems": 1,
+            "title": "Group By",
+            "type": "array"
+          },
+          "kind": {
+            "const": "group_summary",
+            "default": "group_summary",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "source_node_id": {
+            "format": "uuid",
+            "title": "Source Node Id",
+            "type": "string"
+          },
+          "summaries": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnSummary"
+            },
+            "maxItems": 200,
+            "title": "Summaries",
+            "type": "array"
+          }
+        },
+        "required": [
+          "group_by",
+          "source_node_id"
+        ],
+        "title": "GroupSummaryNodeCreateRequest",
+        "type": "object"
       },
       "InvalidAnalysisIntegrity": {
         "additionalProperties": false,
@@ -7388,6 +7655,163 @@
           "bytes_written"
         ],
         "title": "SampleUserFileImportResult",
+        "type": "object"
+      },
+      "SegmentDerivation": {
+        "additionalProperties": false,
+        "description": "One row per sentence, paragraph, line, or pattern-led segment (issue 148).",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "segment",
+            "default": "segment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "lead": {
+            "default": "column",
+            "enum": [
+              "column",
+              "drop"
+            ],
+            "title": "Lead",
+            "type": "string"
+          },
+          "lead_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Column"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          },
+          "unit": {
+            "enum": [
+              "sentence",
+              "paragraph",
+              "line",
+              "pattern"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "unit"
+        ],
+        "title": "SegmentDerivation",
+        "type": "object"
+      },
+      "SegmentNodeCreateRequest": {
+        "additionalProperties": false,
+        "description": "Create a child with one row per segment of a text column.",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "kind": {
+            "const": "segment",
+            "default": "segment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "lead": {
+            "default": "column",
+            "enum": [
+              "column",
+              "drop"
+            ],
+            "title": "Lead",
+            "type": "string"
+          },
+          "lead_column": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lead Column"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "pattern": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pattern"
+          },
+          "source_node_id": {
+            "format": "uuid",
+            "title": "Source Node Id",
+            "type": "string"
+          },
+          "unit": {
+            "enum": [
+              "sentence",
+              "paragraph",
+              "line",
+              "pattern"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "unit",
+          "source_node_id"
+        ],
+        "title": "SegmentNodeCreateRequest",
         "type": "object"
       },
       "SequentialAnalysisRequest": {
@@ -17506,11 +17930,14 @@
                   "mapping": {
                     "clone": "#/components/schemas/CloneNodeCreateRequest",
                     "concat": "#/components/schemas/ConcatNodeCreateRequest",
+                    "deduplicate": "#/components/schemas/DeduplicateNodeCreateRequest",
                     "expression": "#/components/schemas/ExpressionNodeCreateRequest",
                     "file": "#/components/schemas/FileNodeCreateRequest",
                     "filter": "#/components/schemas/FilterNodeCreateRequest",
+                    "group_summary": "#/components/schemas/GroupSummaryNodeCreateRequest",
                     "join": "#/components/schemas/JoinNodeCreateRequest",
                     "replace": "#/components/schemas/ReplaceNodeCreateRequest",
+                    "segment": "#/components/schemas/SegmentNodeCreateRequest",
                     "slice": "#/components/schemas/SliceNodeCreateRequest"
                   },
                   "propertyName": "kind"
@@ -17539,6 +17966,15 @@
                   },
                   {
                     "$ref": "#/components/schemas/JoinNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SegmentNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GroupSummaryNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeduplicateNodeCreateRequest"
                   }
                 ],
                 "title": "Request"
@@ -17966,10 +18402,13 @@
                   "mapping": {
                     "clone": "#/components/schemas/CloneNodeCreateRequest",
                     "concat": "#/components/schemas/ConcatNodeCreateRequest",
+                    "deduplicate": "#/components/schemas/DeduplicateNodeCreateRequest",
                     "expression": "#/components/schemas/ExpressionNodeCreateRequest",
                     "filter": "#/components/schemas/FilterNodeCreateRequest",
+                    "group_summary": "#/components/schemas/GroupSummaryNodeCreateRequest",
                     "join": "#/components/schemas/JoinNodeCreateRequest",
                     "replace": "#/components/schemas/ReplaceNodeCreateRequest",
+                    "segment": "#/components/schemas/SegmentNodeCreateRequest",
                     "slice": "#/components/schemas/SliceNodeCreateRequest"
                   },
                   "propertyName": "kind"
@@ -17995,6 +18434,15 @@
                   },
                   {
                     "$ref": "#/components/schemas/JoinNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SegmentNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/GroupSummaryNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/DeduplicateNodeCreateRequest"
                   }
                 ],
                 "title": "Request"

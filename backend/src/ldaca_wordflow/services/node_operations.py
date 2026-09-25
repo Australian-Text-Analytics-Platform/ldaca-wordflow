@@ -53,6 +53,9 @@ from ..models.node_resources import (
     DeleteColumnsNodeEditRequest,
     DuplicateColumnNodeEditRequest,
     SplitColumnNodeEditRequest,
+    SegmentNodeCreateRequest,
+    GroupSummaryNodeCreateRequest,
+    DeduplicateNodeCreateRequest,
     CountNodeEditRequest,
     CombineColumnPart,
     CombineColumnsNodeEditRequest,
@@ -204,6 +207,34 @@ def build_derived_lazyframe(
             f"{left.name}_join_{right.name}",
             operation,
             [left, right],
+        )
+
+    if isinstance(request, SegmentNodeCreateRequest):
+        source = _node(workspace, request.source_node_id)
+        return (
+            _segment(source.data, request),
+            f"{source.name}_{request.unit}s",
+            operation,
+            [source],
+        )
+
+    if isinstance(request, GroupSummaryNodeCreateRequest):
+        source = _node(workspace, request.source_node_id)
+        return (
+            _group_summary(source.data, request),
+            f"{source.name}_by_{'_'.join(request.group_by)}",
+            operation,
+            [source],
+        )
+
+    if isinstance(request, DeduplicateNodeCreateRequest):
+        source = _node(workspace, request.source_node_id)
+        suffix = "duplicates" if request.output == "duplicates" else "deduplicated"
+        return (
+            _deduplicate(source.data, request),
+            f"{source.name}_{suffix}",
+            operation,
+            [source],
         )
 
     raise InvalidInputError("Unsupported node operation")
@@ -605,10 +636,18 @@ def _condition_expression(
     value = condition.value
     operator = condition.operator
 
+    # Text columns compare as text: "2020" or a postcode must not become a number.
+    text_column = dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum))
+
+    def coerce(item: object) -> object:
+        if text_column and isinstance(item, (str, int, float)) and not isinstance(item, bool):
+            return str(item)
+        return _coerce_scalar(_parse_temporal(item))
+
     if is_topic_coverage_storage_dtype(dtype):
         expression = _topic_coverage_expression(condition)
     elif operator in {"eq", "ne", "gt", "gte", "lt", "lte"}:
-        scalar = _coerce_scalar(_parse_temporal(value))
+        scalar = coerce(value)
         literal = cast(
             Any,
             _temporal_literal(scalar, dtype)
@@ -630,9 +669,7 @@ def _condition_expression(
     elif operator == "in":
         values = value if isinstance(value, list) else [value]
         include_null = any(item is None for item in values)
-        normalized = [
-            _coerce_scalar(_parse_temporal(item)) for item in values if item is not None
-        ]
+        normalized = [coerce(item) for item in values if item is not None]
         if dtype == pl.List(pl.String):
             expression = column.list.eval(
                 pl.element().cast(pl.String).is_in([str(item) for item in normalized]),
@@ -804,6 +841,185 @@ def _count_expression(column: pl.Expr, request: CountNodeEditRequest) -> pl.Expr
     if request.measure == "characters_no_spaces":
         return column.str.replace_all(r"\s", "").str.len_chars()
     return column.str.count_matches(request.pattern or "", literal=not request.regex)
+
+
+_SENTENCE_END = r"""([.!?\u2026]+["'\u201d\u2019)\]]*)\s+"""
+_PARAGRAPH_BREAK = r"\n[ \t]*\n\s*"
+_URL_OR_MENTION = r"https?://\S+|www\.\S+|@\w+"
+
+
+def _segment(data: pl.LazyFrame, request: SegmentNodeCreateRequest) -> pl.LazyFrame:
+    """One row per segment; the other columns repeat and "segment" counts from 1."""
+
+    names = data.collect_schema().names()
+    column = request.column
+    if column not in names:
+        raise InvalidInputError("Segment column is not present on the Data Block")
+    text = pl.col(column).cast(pl.String).str.replace_all("\r\n", "\n")
+    lead_name: str | None = None
+    if request.unit == "pattern":
+        pieces = text.str.replace_all(f"(?m)({request.pattern})", _SPLIT_MARK + "${1}")
+        if request.lead == "column":
+            lead_name = (request.lead_column or "").strip()
+            if not lead_name:
+                raise InvalidInputError("Name the column for the matched text")
+            if lead_name in names:
+                raise InvalidInputError("The matched-text column name is already in use")
+    elif request.unit == "sentence":
+        pieces = text.str.replace_all(_SENTENCE_END, "${1}" + _SPLIT_MARK)
+    elif request.unit == "paragraph":
+        pieces = text.str.replace_all(_PARAGRAPH_BREAK, _SPLIT_MARK)
+    else:
+        pieces = text.str.replace_all("\n", _SPLIT_MARK)
+    if "segment" in names:
+        raise InvalidInputError('The Data Block already has a "segment" column')
+
+    row = "__segment_row"
+    exploded = data.with_row_index(row).with_columns(pieces.str.split(_SPLIT_MARK)).explode(
+        column
+    )
+    segment = pl.col(column)
+    keep = segment.str.strip_chars() != ""
+    if request.unit == "pattern":
+        anchored = f"^(?m:{request.pattern})"
+        lead = segment.str.extract(f"^((?m:{request.pattern}))", 1)
+        body = segment.str.replace(anchored, "").str.strip_chars()
+        exploded = exploded.with_columns(
+            body.alias(column),
+            lead.str.strip_chars().str.strip_chars_end(":").str.strip_chars().alias(
+                "__segment_lead"
+            ),
+        )
+        keep = pl.col(column) != ""
+        if request.lead == "column":
+            keep = keep | pl.col("__segment_lead").is_not_null()
+    else:
+        exploded = exploded.with_columns(segment.str.strip_chars())
+    result = exploded.filter(keep).with_columns(
+        pl.int_range(1, pl.len() + 1, dtype=pl.UInt32).over(row).alias("segment")
+    )
+    new_columns = ["segment"]
+    if request.unit == "pattern" and lead_name:
+        result = result.rename({"__segment_lead": lead_name})
+        new_columns.append(lead_name)
+    elif request.unit == "pattern":
+        result = result.drop("__segment_lead")
+    ordered: list[str] = []
+    for name in names:
+        if name == column:
+            ordered.extend(new_columns)
+        ordered.append(name)
+    return result.select(ordered)
+
+
+_NUMERIC_SUMMARIES = {"sum", "mean"}
+_ORDERED_SUMMARIES = {"min", "max", "earliest", "latest", "earliest_latest"}
+
+
+def _group_summary(
+    data: pl.LazyFrame, request: GroupSummaryNodeCreateRequest
+) -> pl.LazyFrame:
+    schema = data.collect_schema()
+    missing = [
+        name
+        for name in [*request.group_by, *(item.column for item in request.summaries)]
+        if name not in schema
+    ]
+    if missing:
+        raise InvalidInputError(
+            f"Columns are not present on the Data Block: {', '.join(missing)}"
+        )
+    rows_name = "rows" if "rows" not in request.group_by else "row_count"
+    aggregations: list[pl.Expr] = [pl.len().alias(rows_name)]
+    for item in request.summaries:
+        dtype = schema[item.column]
+        column = pl.col(item.column)
+        if item.summary in _NUMERIC_SUMMARIES and not dtype.is_numeric():
+            raise InvalidInputError(f"{item.column} is not numeric, so it cannot be summed or averaged")
+        if item.summary in _ORDERED_SUMMARIES and dtype.is_nested():
+            raise InvalidInputError(f"{item.column} has no order to take a minimum or maximum")
+        if item.summary == "join_text":
+            aggregations.append(column.cast(pl.String).str.join(item.separator).alias(item.column))
+        elif item.summary == "count_distinct":
+            aggregations.append(column.n_unique().alias(f"{item.column}_count_distinct"))
+        elif item.summary == "distinct_values":
+            aggregations.append(
+                column.cast(pl.String)
+                .drop_nulls()
+                .unique(maintain_order=True)
+                .str.join(item.separator)
+                .alias(f"{item.column}_distinct_values")
+            )
+        elif item.summary == "earliest_latest":
+            aggregations.append(column.min().alias(f"{item.column}_earliest"))
+            aggregations.append(column.max().alias(f"{item.column}_latest"))
+        else:
+            expression = {
+                "first": column.first(),
+                "last": column.last(),
+                "sum": column.sum(),
+                "mean": column.mean(),
+                "min": column.min(),
+                "max": column.max(),
+                "earliest": column.min(),
+                "latest": column.max(),
+            }[item.summary]
+            aggregations.append(expression.alias(f"{item.column}_{item.summary}"))
+    return data.group_by(request.group_by, maintain_order=True).agg(aggregations)
+
+
+def _near_text_key(column: pl.Expr, ignore_links_mentions: bool) -> pl.Expr:
+    text = column.cast(pl.String).str.to_lowercase()
+    if ignore_links_mentions:
+        # "RT @user: text" re-posts match the original text.
+        text = text.str.replace_all(_URL_OR_MENTION, " ").str.replace(r"^\s*rt\b", "")
+    return (
+        text.str.replace_all(r"[\p{P}\p{S}]", "")
+        .str.replace_all(r"\s+", " ")
+        .str.strip_chars()
+    )
+
+
+def _deduplicate(
+    data: pl.LazyFrame, request: DeduplicateNodeCreateRequest
+) -> pl.LazyFrame:
+    names = data.collect_schema().names()
+    compared = list(request.columns) or list(names)
+    near = request.near_text_column
+    missing = [name for name in [*compared, *([near] if near else [])] if name not in names]
+    if missing:
+        raise InvalidInputError(
+            f"Columns are not present on the Data Block: {', '.join(missing)}"
+        )
+    keys = [name for name in compared if name != near]
+    prepared = data
+    if near:
+        prepared = prepared.with_columns(
+            _near_text_key(pl.col(near), request.ignore_links_mentions).alias("__dedupe_text")
+        )
+        keys.append("__dedupe_text")
+    if request.output == "kept":
+        kept = prepared.unique(subset=keys, keep="first", maintain_order=True)
+        return kept.drop("__dedupe_text") if near else kept
+    for name in ("duplicate_group", "kept"):
+        if name in names:
+            raise InvalidInputError(f'The Data Block already has a "{name}" column')
+    row = "__dedupe_row"
+    first = "__dedupe_first"
+    groups = (
+        prepared.with_row_index(row)
+        .with_columns(
+            pl.len().over(keys).alias("__dedupe_size"),
+            pl.col(row).min().over(keys).alias(first),
+        )
+        .filter(pl.col("__dedupe_size") > 1)
+        .with_columns(
+            pl.col(first).rank("dense").cast(pl.UInt32).alias("duplicate_group"),
+            (pl.col(row) == pl.col(first)).alias("kept"),
+        )
+        .sort(["duplicate_group", row])
+    )
+    return groups.select(["duplicate_group", "kept", *names])
 
 
 def _title_case(text: pl.Expr) -> pl.Expr:

@@ -71,6 +71,8 @@ export interface PreviewPagination {
   page: number;
   page_size: number;
   has_next: boolean;
+  /** Result size, reported by the Data Builder tools that count their rows. */
+  total_rows?: number | null;
 }
 
 export type PreviewRow = Record<string, unknown>;

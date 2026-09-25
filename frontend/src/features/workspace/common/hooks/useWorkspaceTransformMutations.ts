@@ -361,6 +361,21 @@ export const useWorkspaceTransformMutations = ({
     },
   });
 
+  // Data Builder tools (issues 148 to 151) send complete derivation bodies.
+  const createDerivedNodeMutation = useMutation({
+    mutationKey: ['workspace', 'derive-node'],
+    mutationFn: (body: NodePreviewBody) =>
+      createNode({
+        body,
+        path: { workspace_id: ensureWorkspaceSelected() },
+        throwOnError: true,
+      }).then(({ data }) => requireNode(data)),
+    onSuccess: (response) => {
+      markCreatedNode(response);
+      invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
+    },
+  });
+
   const createSqlDataBlockMutation = useMutation({
     mutationKey: ['workspace', 'create-sql-data-block'],
     mutationFn: ({ nodeIds, sql, name }: { nodeIds: string[]; sql: string; name: string }) =>
@@ -441,6 +456,37 @@ export const useWorkspaceTransformMutations = ({
           descriptionColumn,
           rows,
         }),
+      /** Creates one derived Data Block from a complete derivation body. */
+      createDerivedNode: (body: NodePreviewBody) => createDerivedNodeMutation.mutateAsync(body),
+      /** Previews a derivation body; `total_rows` is set by tools that count. */
+      previewDerivation: ({
+        workspaceId,
+        body,
+        page,
+        pageSize,
+        signal,
+      }: {
+        workspaceId: string;
+        body: NodePreviewBody;
+        page: number;
+        pageSize: number;
+        signal: AbortSignal;
+      }) =>
+        previewNodeCreationTable({
+          body,
+          path: { workspace_id: workspaceId },
+          query: { page, page_size: pageSize },
+          signal,
+        }).then((result) => ({
+          data: result.rows,
+          columns: result.columns,
+          pagination: {
+            page,
+            page_size: pageSize,
+            has_next: result.hasNext,
+            total_rows: result.totalRows,
+          },
+        })),
       createSqlDataBlock: (nodeIds: string[], sql: string, name: string) =>
         createSqlDataBlockMutation.mutateAsync({ nodeIds, sql, name }),
     }),

@@ -10,7 +10,7 @@ The Data Builder makes new Data Blocks from existing ones. Its tools change whic
 
 Tools that add or change columns (Find & replace, Extract text, Combine columns, Duplicate column, Split column, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
-There are currently four sub-tabs:
+There are currently eight sub-tabs:
 
 | Sub-tab | What it does | Apply behavior |
 |---|---|---|
@@ -18,6 +18,10 @@ There are currently four sub-tabs:
 | Sample | Extract a contiguous slice or a random subset of rows | New Data Block |
 | Join | Combine two data blocks side-by-side on a shared column | New Data Block |
 | Stack | Vertically concatenate two data blocks that share the same columns | New Data Block |
+| Segment | One row per sentence, paragraph, line, or pattern-led segment, such as speaker turns | New Data Block |
+| Split by group | One data block per value, date period, or number range of a column | One new Data Block per group |
+| Group & summarise | One row per group, such as one document per speaker, with a summary of each column | New Data Block |
+| Remove duplicates | Keep the first of each duplicate, and save the duplicate groups separately | Two new Data Blocks |
 
 The general workflow for any sub-tab is:
 
@@ -32,7 +36,7 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter and Sample; two for Join and Stack).
+Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (two or more for Join and Stack; one for the other tools).
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
@@ -40,7 +44,7 @@ The preview pane shows the result of the current configuration in a paginated fo
 
 <h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
-Every Data Builder tool creates a **New Data Block** (Filter, Sample including Slice, Random Sample, and Shuffle, Join, Stack), shown as **Result** beside its action button. The source is preserved and the new block records its creation lineage.
+Every Data Builder tool creates new Data Blocks and never changes its sources: one for Filter, Sample (including Slice, Random Sample, and Shuffle), Join, Stack, Segment, and Group & summarise; one per ticked group for Split by group; and two for Remove duplicates. The source is preserved and the new block records its creation lineage.
 
 To add or change columns on the selected Data Block instead, use the Data Editor. Its edits keep the Data Block's identity, graph edges, and rows unchanged, and each one can be undone from the Data Editor header.
 
@@ -182,3 +186,44 @@ Provide a label for the stacked output. Leave it blank to use the auto-generated
 1. Select two datasets with the same column structure.
 2. Review the schema status to confirm no mismatches.
 3. Add the stacked result and confirm the row count equals the sum of both sources.
+
+<h2 id="help-preprocessing-segment-section">Segment</h2>
+
+Segment makes a new data block with one row per segment of the text column chosen in the inputs panel. Each segment keeps its source row's other columns, and a **segment** column counts the segments within each source row from 1, so you can trace every segment back.
+
+- **Sentences** end at `.`, `!`, `?`, or `…` followed by a space. A sentence keeps its own punctuation. This is a simple rule, so abbreviations such as "Dr. Smith" also end a sentence, and it can differ slightly from Topic Modelling's sentence option.
+- **Paragraphs** are separated by a blank line.
+- **Lines** split at every line break.
+- **A pattern** is a regular expression marking where each segment starts; `^` means the start of a line. For a transcript written as `JOHN SMITH: Hello`, the pattern `^[\w\s]+:` starts a segment at each speaker. Choose whether the matched text **goes into its own column** (for example *speaker*, with the trailing colon removed) or **is dropped, like a delimiter**. Text before the first match becomes segment 1.
+
+Separators are not kept, segments are trimmed, and empty segments are skipped.
+
+<h2 id="help-preprocessing-split-group-section">Split by group</h2>
+
+Split by group makes one data block per group of a column, so analyses that compare data blocks need one step instead of several filters.
+
+- For **text** and other categorical columns, each value is a group. Values are listed with their row counts, most frequent first.
+- For **dates**, group by year, year and month, or day.
+- For **numbers**, use ranges of a fixed size from a start value, or split the full range into a number of equal ranges.
+
+Every group starts ticked; untick any you don't need. Each data block is a Filter of the source, named like `speeches · Labor`, with a name prefix you can change. At most 50 data blocks are made at a time. If a column has more groups, narrow the data first, for example with Filter.
+
+<h2 id="help-preprocessing-summarise-section">Group & summarise</h2>
+
+Group & summarise makes a new data block with one row per group, for example one document per speaker. Choose one or more **group by** columns, then a summary for each other column:
+
+- Text: **Join text**, **Count distinct**, **Distinct values**, **First**, **Last**
+- Numbers: **Sum**, **Mean**, **Minimum**, **Maximum**, **Count distinct**, **First**, **Last**
+- Dates: **Earliest & latest**, **Earliest**, **Latest**, **Count distinct**, **First**, **Last**
+
+The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts. Dates keep their earliest and latest values. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur.
+
+<h2 id="help-preprocessing-dedupe-section">Remove duplicates</h2>
+
+Remove duplicates makes two data blocks and never changes the source:
+
+1. `…_deduplicated` keeps the first row of each set of duplicates, in the original order.
+2. `…_duplicates` holds every row that has a duplicate, including the kept one, with a **duplicate_group** number and a **kept** column, so you can check what matched.
+
+Rows are duplicates when they match on every column, or on the columns you choose. Tick **Match near-duplicate text** to compare the text column from the inputs panel after ignoring case, spacing, and punctuation. You can also ignore web links and @mentions, so a re-post such as `RT @user: Save the reef!` matches `save the reef`. The preview reports how many rows would be removed.
+

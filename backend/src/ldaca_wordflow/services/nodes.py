@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import os
 import tempfile
 import uuid
@@ -37,11 +38,14 @@ from ..shared.table_transport import (
 )
 from .user_files import UserFileStore
 from ..models.node_resources import (
+    DeduplicateNodeCreateRequest,
     FileNodeCreateRequest,
+    GroupSummaryNodeCreateRequest,
     NodeCreateRequest,
     NodeDerivationRequest,
     NodeEditRequest,
     NodeUpdateRequest,
+    SegmentNodeCreateRequest,
 )
 from ..models.workspace import (
     DataBlockResource,
@@ -602,6 +606,13 @@ def _materialize_rows(
     )
 
 
+_COUNTED_PREVIEWS = (
+    SegmentNodeCreateRequest,
+    GroupSummaryNodeCreateRequest,
+    DeduplicateNodeCreateRequest,
+)
+
+
 def _preview_derivation(
     workspace: Workspace,
     request: NodeDerivationRequest,
@@ -613,9 +624,15 @@ def _preview_derivation(
             workspace,
             request,
         )
-        return _materialize_rows(lazyframe, page, page_size, None, False)
+        result = _materialize_rows(lazyframe, page, page_size, None, False)
+        if isinstance(request, _COUNTED_PREVIEWS):
+            # These tools report their result size (such as rows removed).
+            total = lazyframe.select(pl.len()).collect().item()
+            result = dataclasses.replace(result, total_rows=int(total))
+        return result
     except (
         pl.exceptions.ColumnNotFoundError,
+        pl.exceptions.ComputeError,
         pl.exceptions.InvalidOperationError,
         pl.exceptions.SchemaError,
         pl.exceptions.ShapeError,
