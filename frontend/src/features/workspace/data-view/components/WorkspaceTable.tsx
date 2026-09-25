@@ -81,8 +81,12 @@ export interface WorkspaceTableProps {
   onPageSizeChange?: (pageSize: number) => void;
   /** Columns a Data Editor tool preview adds or changes (issue 143). */
   highlightColumns?: string[];
-  /** Identity of the current Data Editor preview; each new one realigns. */
-  previewKey?: string;
+  /**
+   * Data Editor preview scrolling (issue 154): `column` goes to the left edge
+   * (after pinned columns), or `null` scrolls to the end. Each new `key` (a
+   * settings change) scrolls again; paging through the preview does not.
+   */
+  previewScroll?: { key: string; column: string | null };
   /** Opens a Data Editor tool with a column pre-filled (issue 143). */
   onOpenTool?: (tool: DataEditorTool, options?: { column?: string | null }) => void;
 }
@@ -115,7 +119,7 @@ export function WorkspaceTable({
   onPageChange,
   onPageSizeChange,
   highlightColumns,
-  previewKey,
+  previewScroll,
   onOpenTool,
 }: WorkspaceTableProps) {
   const highlighted = useMemo(() => new Set(highlightColumns ?? []), [highlightColumns]);
@@ -136,35 +140,84 @@ export function WorkspaceTable({
     viewportRef.current.scrollTop = 0;
   }, [workspaceId, nodeId]);
 
-  // Data Editor previews (issue 154): bring the highlighted column into view,
-  // its right edge at the panel's right edge, so the source column on its
-  // left is usually visible too. Each new preview (a settings change)
-  // realigns; paging through the preview does not.
+  // Data Editor previews (issue 154): the source column goes to the left
+  // edge so the changed or new column beside it shows; Combine scrolls to the
+  // end, where its column is added. Safari moves the scroll position again
+  // while it re-renders the preview rows (and can settle widths late), so for
+  // a short window the alignment is reapplied when the table resizes or the
+  // position drifts, until the user scrolls, clicks, or presses a key there.
   // Declared after the owner reset above so a first preview is not undone.
-  const highlightKey = highlightColumns?.length
-    ? `${previewKey ?? ''}\u0001${highlightColumns.join('\u0000')}`
-    : '';
-  const alignedKeyRef = useRef('');
+  const scrollKey = previewScroll ? `${previewScroll.key}\u0001${previewScroll.column ?? ''}` : '';
+  const scrollColumn = previewScroll?.column ?? null;
+  const scrolledKeyRef = useRef('');
+  const stopSettlingRef = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      stopSettlingRef.current?.();
+    },
+    [],
+  );
   useEffect(() => {
-    if (!highlightKey) {
-      alignedKeyRef.current = '';
+    if (!scrollKey) {
+      scrolledKeyRef.current = '';
       return;
     }
     const viewport = viewportRef.current;
-    const target = highlightColumns?.at(-1);
-    if (!viewport || !target || alignedKeyRef.current === highlightKey) return;
-    const headers = Array.from(viewport.querySelectorAll<HTMLElement>('th[data-column-id]'));
-    const cell = headers.find((header) => header.dataset.columnId === target);
+    if (!viewport || scrolledKeyRef.current === scrollKey) return;
+    const headers = () => Array.from(viewport.querySelectorAll<HTMLElement>('th[data-column-id]'));
     // A new column appears once its preview arrives; try again then.
-    if (!cell) return;
-    const rightPinned = headers
-      .filter((header) => header.dataset.pinned === 'right')
-      .reduce((width, header) => width + header.getBoundingClientRect().width, 0);
-    const visibleRight = viewport.getBoundingClientRect().right - rightPinned;
-    const delta = cell.getBoundingClientRect().right - visibleRight;
-    viewport.scrollLeft = Math.max(0, viewport.scrollLeft + delta);
-    alignedKeyRef.current = highlightKey;
-  }, [highlightKey, highlightColumns, backendColumns, loading]);
+    if (scrollColumn !== null && !headers().some((h) => h.dataset.columnId === scrollColumn)) {
+      return;
+    }
+    scrolledKeyRef.current = scrollKey;
+    stopSettlingRef.current?.();
+    const align = () => {
+      if (scrollColumn === null) {
+        viewport.scrollLeft = viewport.scrollWidth - viewport.clientWidth;
+        return;
+      }
+      const all = headers();
+      const cell = all.find((header) => header.dataset.columnId === scrollColumn);
+      if (!cell) return;
+      const leftPinned = all
+        .filter((header) => header.dataset.pinned === 'left' && header !== cell)
+        .reduce((width, header) => width + header.getBoundingClientRect().width, 0);
+      const visibleLeft = viewport.getBoundingClientRect().left + leftPinned;
+      const delta = cell.getBoundingClientRect().left - visibleLeft;
+      viewport.scrollLeft = Math.max(0, viewport.scrollLeft + delta);
+    };
+    let aligned = 0;
+    const alignAndRemember = () => {
+      align();
+      aligned = viewport.scrollLeft;
+    };
+    alignAndRemember();
+    const onScroll = () => {
+      if (Math.abs(viewport.scrollLeft - aligned) > 1) alignAndRemember();
+    };
+    const table = viewport.querySelector('table');
+    const observer =
+      typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(alignAndRemember);
+    if (table) observer?.observe(table);
+    observer?.observe(viewport);
+    // The scrollbars sit beside the viewport, inside the scroll area root.
+    const area = viewport.closest('[data-slot="scroll-area"]') ?? viewport;
+    const stop = () => {
+      stopSettlingRef.current = null;
+      observer?.disconnect();
+      window.clearTimeout(timeout);
+      viewport.removeEventListener('scroll', onScroll);
+      area.removeEventListener('wheel', stop);
+      area.removeEventListener('pointerdown', stop);
+      area.removeEventListener('keydown', stop);
+    };
+    const timeout = window.setTimeout(stop, 1500);
+    viewport.addEventListener('scroll', onScroll, { passive: true });
+    area.addEventListener('wheel', stop, { passive: true });
+    area.addEventListener('pointerdown', stop);
+    area.addEventListener('keydown', stop);
+    stopSettlingRef.current = stop;
+  }, [scrollKey, scrollColumn, backendColumns, loading]);
 
   const mutations = useColumnMutations({
     workspaceId,

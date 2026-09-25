@@ -8,6 +8,12 @@ import type { DataEditorEdit } from './dataEditorToolStore';
 export interface DataEditorDraft {
   request: DataEditorEdit;
   highlightColumns: string[];
+  /**
+   * The column the table scrolls to the left edge of the panel while
+   * previewing, so the changed or new column beside it shows (issue 154);
+   * `null` scrolls to the end, where Combine columns adds its column.
+   */
+  scrollAnchor: string | null;
 }
 
 export type OutputTarget = 'same' | 'new';
@@ -71,6 +77,7 @@ export function buildFindReplace(
       literal: !form.regex,
     },
     highlightColumns: [output ?? form.column],
+    scrollAnchor: form.column,
   };
 }
 
@@ -99,6 +106,7 @@ export function buildExtract(
       literal: !form.regex,
     },
     highlightColumns: [output],
+    scrollAnchor: form.column,
   };
 }
 
@@ -179,6 +187,7 @@ export function buildCombine(
       empty_values: form.emptyValues,
     },
     highlightColumns: [output],
+    scrollAnchor: null,
   };
 }
 
@@ -190,6 +199,7 @@ export function buildDuplicate(
   return {
     request: { kind: 'duplicate_column', column: form.column },
     highlightColumns: [duplicateColumnName(form.column, columns)],
+    scrollAnchor: form.column,
   };
 }
 
@@ -208,6 +218,7 @@ export function buildCleanText(
       output_column: output,
     },
     highlightColumns: [output ?? form.column],
+    scrollAnchor: form.column,
   };
 }
 
@@ -243,6 +254,7 @@ export function buildSplit(
       parts: form.parts,
     },
     highlightColumns: outputs,
+    scrollAnchor: form.column,
   };
 }
 
@@ -289,5 +301,6 @@ export function buildCount(
       output_column: output,
     },
     highlightColumns: [output],
+    scrollAnchor: form.column,
   };
 }

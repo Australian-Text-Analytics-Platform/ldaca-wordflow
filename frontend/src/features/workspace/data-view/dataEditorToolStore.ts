@@ -44,6 +44,8 @@ interface DataEditorToolState {
   request: DataEditorEdit | null;
   /** Columns the preview adds or changes, highlighted in the table. */
   highlightColumns: string[];
+  /** Column scrolled to the panel's left edge; `null` scrolls to the end. */
+  scrollAnchor: string | null;
   changedRows: number | null;
   /**
    * First previewed value of the first highlighted column: `undefined` until a
@@ -64,7 +66,12 @@ interface DataEditorToolState {
     },
   ) => void;
   close: () => void;
-  setDraft: (request: DataEditorEdit | null, highlightColumns: string[], dirty: boolean) => void;
+  setDraft: (
+    request: DataEditorEdit | null,
+    highlightColumns: string[],
+    dirty: boolean,
+    scrollAnchor?: string | null,
+  ) => void;
   setChangedRows: (changedRows: number | null) => void;
   setPreviewSample: (previewSample: string | null | undefined) => void;
   setGraphVisible: (visible: boolean) => void;
@@ -79,6 +86,7 @@ const CLOSED = {
   initialOperation: null,
   request: null,
   highlightColumns: [],
+  scrollAnchor: null,
   changedRows: null,
   previewSample: undefined,
   dirty: false,
@@ -101,10 +109,11 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
   close: () => {
     set(CLOSED);
   },
-  setDraft: (request, highlightColumns, dirty) => {
+  setDraft: (request, highlightColumns, dirty, scrollAnchor = null) => {
     set({
       request,
       highlightColumns,
+      scrollAnchor,
       dirty,
       ...(request ? {} : { changedRows: null, previewSample: undefined }),
     });

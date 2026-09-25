@@ -211,7 +211,7 @@ describe('WorkspaceTable', () => {
     });
   });
 
-  it('aligns a new preview column with the right edge of the panel (issue 154)', () => {
+  it('scrolls the source column to the left edge while previewing (issue 154)', () => {
     const props = {
       workspaceId: 'workspace-1',
       nodeId: 'node-1',
@@ -223,45 +223,65 @@ describe('WorkspaceTable', () => {
       },
       data: [{ a: '1', b: '2', c: '3' }],
     };
-    // jsdom has no layout: the viewport's right edge is at 300 and column c
-    // ends at 800 minus however far the viewport has scrolled.
+    // jsdom has no layout: the viewport starts at 0 and column c starts at 600
+    // minus however far the viewport has scrolled.
     const rect = vi
       .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
       .mockImplementation(function (this: HTMLElement) {
         const scroller = this.closest<HTMLElement>('[data-slot="scroll-area-viewport"]');
         const scroll = scroller?.scrollLeft ?? 0;
         if (this.dataset.slot === 'scroll-area-viewport') {
-          return { right: 300, width: 300 } as DOMRect;
+          return { left: 0, right: 300, width: 300 } as DOMRect;
         }
-        const right = { a: 200, b: 500, c: 800 }[this.dataset.columnId ?? ''] ?? 0;
-        return { right: right - scroll, width: 100 } as DOMRect;
+        const left = { a: 0, b: 300, c: 600 }[this.dataset.columnId ?? ''] ?? 0;
+        return { left: left - scroll, right: left - scroll + 300, width: 300 } as DOMRect;
       });
     const { container, rerender } = render(
-      <WorkspaceTable {...props} highlightColumns={['c']} previewKey="trim" />,
+      <WorkspaceTable
+        {...props}
+        highlightColumns={['c']}
+        previewScroll={{ key: 'trim', column: 'c' }}
+      />,
     );
     const viewport = container.querySelector<HTMLDivElement>('[data-slot="scroll-area-viewport"]');
-    expect(viewport?.scrollLeft).toBe(500);
+    expect(viewport?.scrollLeft).toBe(600);
     if (!viewport) return;
 
-    // Paging through the same preview keeps the user's own scrolling.
+    // Scrolling or clicking in the table ends the alignment for this preview,
+    // and paging through the same preview keeps the user's position.
+    fireEvent.pointerDown(viewport);
     viewport.scrollLeft = 40;
     rerender(
       <WorkspaceTable
         {...props}
         highlightColumns={['c']}
-        previewKey="trim"
+        previewScroll={{ key: 'trim', column: 'c' }}
         data={[{ a: 'x', b: 'y', c: 'z' }]}
       />,
     );
     expect(viewport.scrollLeft).toBe(40);
 
-    // A new preview of the same column (another setting) aligns again.
-    rerender(<WorkspaceTable {...props} highlightColumns={['c']} previewKey="lowercase" />);
-    expect(viewport.scrollLeft).toBe(500);
+    // A new preview (another setting) aligns again, here to column b.
+    rerender(
+      <WorkspaceTable
+        {...props}
+        highlightColumns={['c']}
+        previewScroll={{ key: 'lowercase', column: 'b' }}
+      />,
+    );
+    expect(viewport.scrollLeft).toBe(300);
 
-    // So does a different preview column.
-    rerender(<WorkspaceTable {...props} highlightColumns={['b']} previewKey="lowercase" />);
-    expect(viewport.scrollLeft).toBe(200);
+    // Combine columns adds its column at the end, so the table scrolls there.
+    Object.defineProperty(viewport, 'scrollWidth', { configurable: true, value: 900 });
+    Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 300 });
+    rerender(
+      <WorkspaceTable
+        {...props}
+        highlightColumns={['c']}
+        previewScroll={{ key: 'combine', column: null }}
+      />,
+    );
+    expect(viewport.scrollLeft).toBe(600);
     rect.mockRestore();
   });
 });

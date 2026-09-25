@@ -20,6 +20,7 @@ describe('Data Editor request builders (issue 143)', () => {
     expect(buildDuplicate({ column: 'text' }, columns)).toEqual({
       request: { kind: 'duplicate_column', column: 'text' },
       highlightColumns: ['text copy 2'],
+      scrollAnchor: 'text',
     });
     expect(buildDuplicate({ column: 'missing' }, columns)).toBeNull();
   });
@@ -45,6 +46,7 @@ describe('Data Editor request builders (issue 143)', () => {
         literal: false,
       },
       highlightColumns: ['text'],
+      scrollAnchor: 'text',
     });
     // Plain text is the default in the form: the pattern is matched as written.
     expect(
@@ -91,6 +93,7 @@ describe('Data Editor request builders (issue 143)', () => {
         empty_values: 'blank',
       },
       highlightColumns: ['both'],
+      scrollAnchor: null,
     });
   });
 
@@ -120,6 +123,7 @@ describe('Data Editor request builders (issue 143)', () => {
         parts: 3,
       },
       highlightColumns: ['party_1', 'party_2', 'party_3'],
+      scrollAnchor: 'party',
     });
     expect(split(['-'], 1)).toBeNull();
     expect(split(['', ''], 2)).toBeNull();
@@ -148,6 +152,7 @@ describe('Data Editor request builders (issue 143)', () => {
         output_column: 'text word count',
       },
       highlightColumns: ['text word count'],
+      scrollAnchor: 'text',
     });
     expect(count({ measure: 'matches' })).toBeNull();
     expect(count({ measure: 'matches', pattern: '.', outputName: 'dots' })?.request).toMatchObject({

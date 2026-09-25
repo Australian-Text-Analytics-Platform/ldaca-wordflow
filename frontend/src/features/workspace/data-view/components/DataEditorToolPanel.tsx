@@ -247,7 +247,12 @@ export function DataEditorToolPanel() {
 
   useEffect(() => {
     // The tool starts clean when only the pre-filled column is set.
-    setDraft(draft?.request ?? null, draft?.highlightColumns ?? [], touched);
+    setDraft(
+      draft?.request ?? null,
+      draft?.highlightColumns ?? [],
+      touched,
+      draft?.scrollAnchor ?? null,
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- draftKey captures the draft value
   }, [draftKey, touched, setDraft]);
 
