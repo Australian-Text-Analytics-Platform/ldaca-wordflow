@@ -586,7 +586,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           open
           onOpenChange={setAddToWorkspaceDialogOpen}
           sources={addToWorkspaceSources}
-          selectedTopicCount={selectedTopicIds.size > 0 ? selectedTopicIds.size : null}
+          selectedTopicIds={selectedTopicIds.size > 0 ? [...selectedTopicIds] : null}
           isSubmitting={isAddingToWorkspace}
           onSubmit={(selections, rowUnit) => {
             void handleAddToWorkspace(selections, rowUnit);

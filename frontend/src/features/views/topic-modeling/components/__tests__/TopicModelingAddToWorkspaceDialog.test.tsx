@@ -25,7 +25,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
             documentColumn: 'body',
           },
         ]}
-        selectedTopicCount={null}
+        selectedTopicIds={null}
         isSubmitting={false}
         onSubmit={onSubmit}
       />,
@@ -73,7 +73,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
       open: true,
       onOpenChange: vi.fn(),
       sources: [],
-      selectedTopicCount: null,
+      selectedTopicIds: null,
       isSubmitting: false,
       onSubmit: vi.fn(),
     };
@@ -97,7 +97,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
             documentColumn: 'text',
           },
         ]}
-        selectedTopicCount={2}
+        selectedTopicIds={[5, 2]}
         isSubmitting={false}
         onSubmit={onSubmit}
       />,
@@ -117,7 +117,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
         {
           sourceId: 'node-1',
           selectedColumns: ['text'],
-          newName: 'Corpus topics',
+          newName: 'Corpus topics 2, 5',
         },
       ],
       'documents',
@@ -138,7 +138,7 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
             documentColumn: 'text',
           },
         ]}
-        selectedTopicCount={null}
+        selectedTopicIds={null}
         isSubmitting={false}
         onSubmit={onSubmit}
       />,
@@ -167,4 +167,33 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
       'topics',
     );
   });
+
+  it.each([
+    [[4], 'documents', 'Corpus topic 4'],
+    [[4], 'topics', 'Corpus topic 4 segments'],
+    [[9, 1, 4, 7], 'documents', 'Corpus 4 topics'],
+  ] as const)(
+    'names a block from topics %j (%s rows) with its topic numbers (issue 170)',
+    (topicIds, rowUnit, expectedName) => {
+      const onSubmit = vi.fn();
+      render(
+        <TopicModelingAddToWorkspaceDialog
+          open
+          onOpenChange={vi.fn()}
+          sources={[{ id: 'node-1', name: 'Corpus', columns: ['text'], documentColumn: 'text' }]}
+          selectedTopicIds={topicIds}
+          isSubmitting={false}
+          onSubmit={onSubmit}
+        />,
+      );
+
+      if (rowUnit === 'topics') {
+        fireEvent.mouseDown(screen.getByRole('tab', { name: 'Per topic' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'Per topic' }));
+      }
+      fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+
+      expect(onSubmit.mock.calls[0]?.[0]?.[0]?.newName).toBe(expectedName);
+    },
+  );
 });

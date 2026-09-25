@@ -239,6 +239,10 @@ The **Rows** choice in the dialog sets how rows are formed:
   out. Use this when you are interested in particular topics rather than whole
   documents.
 
+The suggested name for each new Data Block includes the selected topic numbers,
+for example _Corpus topic 5_ or _Corpus topics 3, 7_ (with more than three
+topics selected, _Corpus 8 topics_). You can edit the name before adding it.
+
 Both modes use the topics as currently shown, including any merging from
 **Number of topics**. Per topic needs a result from this version of Wordflow;
 for older results, re-run the analysis first.

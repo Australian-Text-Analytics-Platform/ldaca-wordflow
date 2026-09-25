@@ -24,7 +24,8 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   sources: TopicModelingAddToWorkspaceSource[];
-  selectedTopicCount: number | null;
+  /** Selected topic ids, or null when every topic is included. */
+  selectedTopicIds: readonly number[] | null;
   isSubmitting: boolean;
   onSubmit: (
     sources: TopicModelingAddToWorkspaceSelection[],
@@ -34,15 +35,33 @@ interface Props {
 
 const PER_TOPIC_COLUMNS = ['TOPIC_topic', 'TOPIC_share', 'TOPIC_segment_count'];
 
+/** Topic numbers listed in a default block name before it falls back to a count. */
+const MAX_TOPICS_IN_NAME = 3;
+
+/**
+ * "topic 5", "topics 3, 5", or "8 topics" for a selection; "topics" for all
+ * topics (issue 170).
+ */
+const topicNamePart = (selectedTopicIds: readonly number[] | null): string => {
+  if (!selectedTopicIds || selectedTopicIds.length === 0) return 'topics';
+  const ids = [...selectedTopicIds].sort((a, b) => a - b);
+  if (ids.length === 1) return `topic ${String(ids[0])}`;
+  if (ids.length <= MAX_TOPICS_IN_NAME) return `topics ${ids.join(', ')}`;
+  return `${String(ids.length)} topics`;
+};
+
 const createDialogSource = (
   source: TopicModelingAddToWorkspaceSource,
   rowUnit: TopicModelingDetachRowUnit,
+  selectedTopicIds: readonly number[] | null,
 ): AddToWorkspaceSource => {
+  const topics = topicNamePart(selectedTopicIds);
   if (rowUnit === 'topics') {
     return {
       id: source.id,
       name: source.name,
-      defaultName: `${source.name} topic segments`,
+      defaultName:
+        topics === 'topics' ? `${source.name} topic segments` : `${source.name} ${topics} segments`,
       columns: [
         ...PER_TOPIC_COLUMNS.map((name) => ({
           name,
@@ -65,7 +84,7 @@ const createDialogSource = (
   return {
     id: source.id,
     name: source.name,
-    defaultName: `${source.name} topics`,
+    defaultName: `${source.name} ${topics}`,
     columns: [
       {
         name: 'TOPIC_top1',
@@ -86,10 +105,12 @@ export function TopicModelingAddToWorkspaceDialog({
   open,
   onOpenChange,
   sources,
-  selectedTopicCount,
+  selectedTopicIds,
   isSubmitting,
   onSubmit,
 }: Props) {
+  const selectedTopicCount =
+    selectedTopicIds && selectedTopicIds.length > 0 ? selectedTopicIds.length : null;
   const [rowUnit, setRowUnit] = useState<TopicModelingDetachRowUnit>('documents');
   const topicScope =
     selectedTopicCount === null
@@ -127,7 +148,7 @@ export function TopicModelingAddToWorkspaceDialog({
           </Tabs>
         </div>
       }
-      sources={sources.map((source) => createDialogSource(source, rowUnit))}
+      sources={sources.map((source) => createDialogSource(source, rowUnit, selectedTopicIds))}
       isSubmitting={isSubmitting}
       allowSourceSelection
       columnsLabel="Source columns"
