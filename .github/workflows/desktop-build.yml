@@ -139,7 +139,8 @@ jobs:
           if [ "$NO_SOURCES" = "true" ]; then
             args+=(--no-sources)
           fi
-          pnpm prepare:backend-runtime "${args[@]}"
+          # macOS runs bash 3.2, where "${args[@]}" on an empty array fails under set -u.
+          pnpm prepare:backend-runtime ${args[@]+"${args[@]}"}
 
       - name: Require updater signing key
         shell: bash

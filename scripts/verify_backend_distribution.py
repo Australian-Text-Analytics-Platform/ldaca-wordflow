@@ -43,7 +43,7 @@ def verify_distribution(dist_dir: pathlib.Path) -> None:
             "pyarrow",
             "rocrate-tabular",
             "tomli-w",
-            "xlsxwriter",
+            # xlsxwriter came back for Excel Data Block export (issue 169).
         ):
             if f"Requires-Dist: {removed}" in metadata:
                 raise RuntimeError(f"wheel metadata retains removed dependency {removed}")
