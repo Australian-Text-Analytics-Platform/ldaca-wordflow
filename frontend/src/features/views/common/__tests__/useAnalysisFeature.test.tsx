@@ -29,6 +29,13 @@ vi.mock('@/api', async (importOriginal) => ({
   clearTabAnalysis: mocks.clearTabAnalysis,
 }));
 
+// The handoff query must not reach the network: a slow runner could settle a
+// real request before the assertions and flip the handoff state.
+vi.mock('../analysisApi', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getAnalysisResource: () => new Promise<never>(() => undefined),
+}));
+
 vi.mock('../hooks/useAnalysisSession', () => ({
   useAnalysisSession: (options: typeof mocks.sessionOptions) => {
     mocks.sessionOptions = options;
