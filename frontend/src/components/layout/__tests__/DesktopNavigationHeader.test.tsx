@@ -66,10 +66,8 @@ describe('DesktopNavigationHeaderView', () => {
     expect(header).toHaveClass('pl-2');
     expect(within(header).getByText('Wordflow')).toHaveClass('text-[15px]');
     expect(within(header).getByText('by')).toBeVisible();
-    expect(within(header).getByRole('img', { name: 'LDaCA Logo' })).toHaveClass(
-      'ml-1.5',
-      'h-[28px]',
-    );
+    expect(within(header).getByRole('img', { name: 'LDaCA Logo' })).toHaveClass('h-[28px]');
+    expect(screen.getByTestId('desktop-header-ldaca-link')).toHaveClass('ml-1.5');
     expect(header).toContainElement(navigation);
     expect(navigation.compareDocumentPosition(settings)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
     expect(navigation).toHaveAttribute('data-tauri-drag-region', 'false');
@@ -107,15 +105,16 @@ describe('DesktopNavigationHeaderView', () => {
     expect(screen.getByTestId('desktop-navigation-header')).toHaveClass('pl-[78px]');
   });
 
-  it('links the web build to the desktop app downloads, and not the desktop app itself (issue 171)', () => {
-    const { unmount } = renderHeader({ ...baseProps, showDesktopAppLink: true });
-
-    const link = screen.getByRole('link', { name: 'Get the desktop app (opens in a new tab)' });
-    expect(link).toHaveAttribute('href', 'https://sih.tools/wordflow#run');
-    expect(link).toHaveAttribute('target', '_blank');
-    unmount();
-
+  it('links the Wordflow name and LDaCA logo to their websites (issue 171)', () => {
     renderHeader(baseProps);
+
+    const wordflow = screen.getByTestId('desktop-header-wordflow-link');
+    expect(wordflow).toHaveAttribute('href', 'https://sih.tools/wordflow');
+    expect(wordflow).toHaveAttribute('target', '_blank');
+    expect(wordflow).toHaveAttribute('data-tauri-drag-region', 'false');
+    const ldaca = screen.getByTestId('desktop-header-ldaca-link');
+    expect(ldaca).toHaveAttribute('href', 'https://www.ldaca.edu.au/');
+    expect(ldaca).toContainElement(screen.getByAltText('LDaCA Logo'));
     expect(screen.queryByRole('link', { name: /desktop app/i })).not.toBeInTheDocument();
   });
 

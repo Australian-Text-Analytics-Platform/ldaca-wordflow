@@ -1,4 +1,4 @@
-import { ArrowLeft, ArrowRight, MonitorDown, Search } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Search } from 'lucide-react';
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import type { Tab } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,6 @@ import {
 import { useWorkspaceTabResources } from '@/features/views/common/tabs/workspaceTabsQuery';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { isMacOSDesktop } from '@/lib/isMacOSDesktop';
-import { isTauri } from '@/lib/isTauri';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { useUIStore } from '@/stores/uiStore';
@@ -44,8 +43,6 @@ interface DesktopNavigationHeaderViewProps {
   canGoBack: boolean;
   canGoForward: boolean;
   hasNativeTrafficLights: boolean;
-  /** Web build only: link to the desktop app downloads (issue 171). */
-  showDesktopAppLink?: boolean;
   onBack: () => void;
   onForward: () => void;
   onSelectTab: (tab: Tab) => void;
@@ -54,8 +51,8 @@ interface DesktopNavigationHeaderViewProps {
 
 const EMPTY_TABS: Tab[] = [];
 
-/** The landing page's download section, which offers every platform's installer. */
-const DESKTOP_APP_DOWNLOADS_URL = 'https://sih.tools/wordflow#run';
+const WORDFLOW_HOME_URL = 'https://sih.tools/wordflow';
+const LDACA_HOME_URL = 'https://www.ldaca.edu.au/';
 
 /** VS Code-style macOS title-bar controls with a searchable Workspace Tab picker. */
 export function DesktopNavigationHeaderView({
@@ -68,7 +65,6 @@ export function DesktopNavigationHeaderView({
   canGoBack,
   canGoForward,
   hasNativeTrafficLights,
-  showDesktopAppLink = false,
   onBack,
   onForward,
   onSelectTab,
@@ -133,7 +129,18 @@ export function DesktopNavigationHeaderView({
       )}
     >
       <div className="flex min-w-0 items-center gap-0.5 overflow-hidden whitespace-nowrap">
-        <span className="truncate text-[15px] leading-none font-semibold">Wordflow</span>
+        {/* The name and logo open our pages in a new tab or the system browser (issue 171). */}
+        <a
+          href={WORDFLOW_HOME_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="Wordflow website (opens in a new tab)"
+          data-tauri-drag-region="false"
+          data-testid="desktop-header-wordflow-link"
+          className="truncate rounded-sm text-[15px] leading-none font-semibold text-inherit hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          Wordflow
+        </a>
         <span
           data-testid="desktop-header-about-control"
           data-tauri-drag-region="false"
@@ -158,27 +165,20 @@ export function DesktopNavigationHeaderView({
             iconClassName="!size-[18px]"
           />
         </span>
-        {showDesktopAppLink ? (
-          <a
-            href={DESKTOP_APP_DOWNLOADS_URL}
-            target="_blank"
-            rel="noreferrer"
-            aria-label="Get the desktop app (opens in a new tab)"
-            title="Get the desktop app"
-            data-testid="desktop-header-desktop-app-link"
-            className="flex size-[22px] shrink-0 items-center justify-center rounded-md text-link hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            <MonitorDown className="!size-[18px]" aria-hidden="true" />
-          </a>
-        ) : null}
         <span className="ml-1 text-[13px] leading-none text-description max-[700px]:hidden">
           by
         </span>
-        <img
-          src={logo}
-          alt="LDaCA Logo"
-          className="ml-1.5 h-[28px] w-auto shrink-0 object-contain max-[700px]:hidden"
-        />
+        <a
+          href={LDACA_HOME_URL}
+          target="_blank"
+          rel="noreferrer"
+          title="LDaCA website (opens in a new tab)"
+          data-tauri-drag-region="false"
+          data-testid="desktop-header-ldaca-link"
+          className="ml-1.5 shrink-0 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus max-[700px]:hidden"
+        >
+          <img src={logo} alt="LDaCA Logo" className="h-[28px] w-auto object-contain" />
+        </a>
       </div>
 
       <div className="flex items-center">
@@ -416,7 +416,6 @@ function DesktopNavigationHeaderController() {
         history.workspaceId === currentWorkspaceId && history.index < history.entries.length - 1
       }
       hasNativeTrafficLights={isMacOSDesktop()}
-      showDesktopAppLink={!isTauri()}
       onBack={() => {
         moveHistory(-1);
       }}

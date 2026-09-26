@@ -159,7 +159,8 @@ describe('desktop configuration contracts', () => {
     const [mainWindow] = tauri.app.windows;
     const explicitWindowPermissions = capability.permissions.filter(
       (permission) =>
-        permission.startsWith('core:window:') || permission.startsWith('core:webview:'),
+        typeof permission === 'string' &&
+        (permission.startsWith('core:window:') || permission.startsWith('core:webview:')),
     );
 
     expect(tauri.app.windows).toHaveLength(1);
@@ -191,17 +192,13 @@ describe('desktop configuration contracts', () => {
     expect(desktopFrame).toContain("['--desktop-titlebar-height' as string]: '35px'");
     expect(workspaceShell).toContain('<DesktopNavigationHeader />');
     expect(desktopHeader).toContain('data-tauri-drag-region="deep"');
-    expect(desktopHeader).toContain(
-      'app-glass-titlebar-foreground app-titlebar-backplane',
-    );
+    expect(desktopHeader).toContain('app-glass-titlebar-foreground app-titlebar-backplane');
     expect(desktopHeader).toContain('hasNativeTrafficLights={isMacOSDesktop()}');
     expect(desktopHeader).toContain('data-tauri-drag-region="false"');
     expect(desktopHeader).toContain('h-[22px] w-[38vw] max-w-[600px]');
     expect(desktopHeader).toContain('sideOffset={-22}');
     expect(desktopHeader).not.toContain('border-b');
-    expect(workspaceShell).toContain(
-      'className="app-titlebar-backplane h-full min-h-0"',
-    );
+    expect(workspaceShell).toContain('className="app-titlebar-backplane h-full min-h-0"');
     expect(workspaceShell).toContain('p-2 pt-0 pl-0');
     expect(workspaceView).toContain('p-2 pt-0 pb-0 pl-0');
     expect(sidebar).toContain('@container/sidebar pt-0! pr-0!');
@@ -267,7 +264,11 @@ describe('desktop configuration contracts', () => {
     expect(packageJson.dependencies).not.toHaveProperty('@tauri-apps/plugin-fs');
     expect(cargo).not.toMatch(/^tauri-plugin-fs\s*=/m);
     expect(desktopShell).not.toContain('tauri_plugin_fs::init');
-    expect(capability.permissions.some((permission) => permission.startsWith('fs:'))).toBe(false);
+    expect(
+      capability.permissions.some(
+        (permission) => typeof permission === 'string' && permission.startsWith('fs:'),
+      ),
+    ).toBe(false);
   });
 
   it('uses least-privilege desktop capabilities and a production-only strict CSP', () => {
@@ -279,6 +280,12 @@ describe('desktop configuration contracts', () => {
       'core:window:allow-start-dragging',
       'core:webview:allow-set-webview-zoom',
       'opener:allow-reveal-item-in-dir',
+      // External links (target="_blank") open in the system browser: https and
+      // mailto only.
+      {
+        identifier: 'opener:allow-open-url',
+        allow: [{ url: 'https://*' }, { url: 'mailto:*' }],
+      },
       'dialog:allow-open',
     ]);
     expect(tauri.app.security.csp).not.toContain("'unsafe-eval'");

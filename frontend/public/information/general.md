@@ -8,4 +8,4 @@ Your work is organised into **projects**. Each project keeps your uploaded data,
 
 No programming or command-line knowledge is required. The platform is designed for researchers across all disciplines.
 
-Wordflow also runs as a desktop app for macOS and Windows, which keeps your projects on your own computer. In the web version, the download icon next to **About Wordflow** in the title bar opens the [download page](https://sih.tools/wordflow#run).
+Wordflow also runs as a desktop app for macOS and Windows, which keeps your projects on your own computer. Select **Wordflow** in the title bar to open its [website](https://sih.tools/wordflow), where you can download the desktop app, or the LDaCA logo to open the [LDaCA website](https://www.ldaca.edu.au/).
