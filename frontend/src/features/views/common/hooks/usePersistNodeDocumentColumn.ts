@@ -23,7 +23,8 @@ export function usePersistNodeDocumentColumn({
       try {
         const { data } = await updateNode({
           path: { workspace_id: workspaceId, node_id: nodeId },
-          body: { document: column.trim() || null },
+          // The exact column name: whitespace around it is part of the name (issue 108).
+          body: { document: column === '' ? null : column },
           throwOnError: true,
         });
         updateNodePreferenceCache(

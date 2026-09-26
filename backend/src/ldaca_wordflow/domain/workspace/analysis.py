@@ -37,6 +37,10 @@ NonEmptyText = Annotated[
     StringConstraints(strip_whitespace=True, min_length=1),
 ]
 
+# Column names are exact identifiers: a CSV header such as "ID, text" names a
+# column " text", so column fields must not strip whitespace (issue 108).
+ColumnName = Annotated[str, StringConstraints(min_length=1)]
+
 
 AnalysisState = BackgroundState
 
@@ -106,7 +110,7 @@ def _validate_node_columns(
 class TokenFrequencyAnalysisRequest(_StrictModel):
     kind: Literal["token_frequency"] = "token_frequency"
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
-    node_columns: dict[uuid.UUID, NonEmptyText]
+    node_columns: dict[uuid.UUID, ColumnName]
     token_limit: int = Field(default=25, ge=1, le=5000)
     node_tokenizer_models: dict[uuid.UUID, NonEmptyText]
 
@@ -127,7 +131,7 @@ class TopicSegmentationMethod(StrEnum):
 class TopicModelingAnalysisRequest(_StrictModel):
     kind: Literal["topic_modeling"] = "topic_modeling"
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
-    node_columns: dict[uuid.UUID, NonEmptyText]
+    node_columns: dict[uuid.UUID, ColumnName]
     min_cluster_size: int = Field(default=10, ge=2)
     # Max topic size in Topic Segments. None means Auto: the native pipeline caps
     # a topic only when one holds more than half of all segments.
@@ -160,7 +164,7 @@ class TopicModelingAnalysisRequest(_StrictModel):
 class ConcordanceAnalysisRequest(_StrictModel):
     kind: Literal["concordance"] = "concordance"
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
-    node_columns: dict[uuid.UUID, NonEmptyText]
+    node_columns: dict[uuid.UUID, ColumnName]
     search_word: NonEmptyText
     num_left_tokens: int = Field(default=10, ge=0, le=1000)
     num_right_tokens: int = Field(default=10, ge=0, le=1000)
@@ -188,15 +192,15 @@ class ConcordanceAnalysisRequest(_StrictModel):
 class QuotationAnalysisRequest(_StrictModel):
     kind: Literal["quotation"] = "quotation"
     node_id: uuid.UUID
-    column: NonEmptyText
+    column: ColumnName
     engine: QuotationEngineSelection
 
 
 class SequentialAnalysisRequest(_StrictModel):
     kind: Literal["sequential"] = "sequential"
     node_id: uuid.UUID
-    time_column: NonEmptyText
-    group_by_columns: list[NonEmptyText] = Field(default_factory=list, max_length=3)
+    time_column: ColumnName
+    group_by_columns: list[ColumnName] = Field(default_factory=list, max_length=3)
     frequency: Literal[
         "second",
         "minute",
@@ -237,15 +241,15 @@ class SequentialAnalysisRequest(_StrictModel):
 class _AnnotationInferenceFields(AnnotationProviderSnapshot):
     kind: Literal["annotation"] = "annotation"
     node_id: uuid.UUID
-    text_column: NonEmptyText = Field(max_length=500)
-    annotation_column: NonEmptyText = Field(max_length=500)
-    correction_column: NonEmptyText | None = Field(default=None, max_length=500)
+    text_column: ColumnName = Field(max_length=500)
+    annotation_column: ColumnName = Field(max_length=500)
+    correction_column: ColumnName | None = Field(default=None, max_length=500)
     class_node_id: uuid.UUID
-    class_column: NonEmptyText = Field(max_length=500)
-    description_column: NonEmptyText = Field(max_length=500)
+    class_column: ColumnName = Field(max_length=500)
+    description_column: ColumnName = Field(max_length=500)
     example_node_id: uuid.UUID | None = None
-    example_text_column: NonEmptyText | None = Field(default=None, max_length=500)
-    example_annotation_column: NonEmptyText | None = Field(default=None, max_length=500)
+    example_text_column: ColumnName | None = Field(default=None, max_length=500)
+    example_annotation_column: ColumnName | None = Field(default=None, max_length=500)
     max_examples_per_class: int = Field(default=10, ge=1)
     example_sampling_method: AnnotationExampleSamplingMethod = "random"
     example_random_seed: int = Field(default=0, ge=0)
@@ -333,7 +337,7 @@ class DataBlockCreationSource(_StrictModel):
     """One immutable selection for publishing a successful Analysis Result."""
 
     source_node_id: uuid.UUID
-    selected_columns: list[NonEmptyText] = Field(min_length=1)
+    selected_columns: list[ColumnName] = Field(min_length=1)
     new_node_name: NonEmptyText = Field(max_length=500)
 
     @model_validator(mode="after")
@@ -369,7 +373,7 @@ class ConcordanceDocumentDataBlockCreationSource(_StrictModel):
     """One source and exact Review filter for document-wise Data Block Creation."""
 
     source_node_id: uuid.UUID
-    selected_metadata_columns: list[NonEmptyText] = Field(default_factory=list)
+    selected_metadata_columns: list[ColumnName] = Field(default_factory=list)
     new_node_name: NonEmptyText = Field(max_length=500)
     excluded_matched_texts: list[NonEmptyText] = Field(default_factory=list)
     bin_count: Literal[4, 5, 10, 20, 25, 50, 100] | None = None
@@ -477,7 +481,7 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
         "topic_modeling_data_block_creation"
     )
     node_ids: list[uuid.UUID] = Field(min_length=1, max_length=2)
-    selected_columns: dict[uuid.UUID, list[NonEmptyText]]
+    selected_columns: dict[uuid.UUID, list[ColumnName]]
     new_node_names: dict[uuid.UUID, NonEmptyText]
     topic_ids: list[int] | None = None
     cluster_count: int = Field(ge=0)

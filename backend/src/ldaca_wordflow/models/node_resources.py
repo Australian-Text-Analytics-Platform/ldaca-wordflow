@@ -339,9 +339,10 @@ class ExpressionNodeEditRequest(ExpressionDerivation):
     context: Literal["with_columns"]
 
 
+# Exact column names: whitespace around a name is part of it (issue 108).
 NonEmptyColumnName = Annotated[
     str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=200),
+    StringConstraints(min_length=1, max_length=200),
 ]
 
 
