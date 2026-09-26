@@ -125,13 +125,13 @@ describe('DesktopNavigationHeaderView', () => {
     await user.click(screen.getByRole('button', { name: 'Open quick access' }));
     const search = screen.getByRole('textbox', { name: 'Search analysis tabs' });
     expect(search).toHaveFocus();
-    expect(screen.getByRole('option', { name: 'Token Frequency: Analysis 1' })).toHaveAttribute(
+    expect(screen.getByRole('option', { name: 'Token Frequency: 1' })).toHaveAttribute(
       'aria-selected',
       'true',
     );
 
     await user.type(search, 'timeline');
-    expect(screen.queryByRole('option', { name: 'Token Frequency: Analysis 1' })).toBeNull();
+    expect(screen.queryByRole('option', { name: 'Token Frequency: 1' })).toBeNull();
     expect(screen.getByRole('option', { name: 'Trends: Timeline comparison' })).toBeVisible();
   });
 

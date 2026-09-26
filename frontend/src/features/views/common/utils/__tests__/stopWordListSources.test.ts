@@ -38,8 +38,8 @@ describe('buildStopWordListSources', () => {
     );
 
     expect(sources).toEqual([
-      { tabId: 'freq-2', label: 'Frequency · Analysis 2', words: ['the'] },
-      { tabId: 'topics-1', label: 'Topic Modeling · Analysis 1', words: ['staff', 'university'] },
+      { tabId: 'freq-2', label: 'Frequency · 2', words: ['the'] },
+      { tabId: 'topics-1', label: 'Topic Modeling · 1', words: ['staff', 'university'] },
     ]);
   });
 

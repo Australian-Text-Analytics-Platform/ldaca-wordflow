@@ -64,7 +64,7 @@ describe('DesktopNavigationHeader controller', () => {
     render(<DesktopNavigationHeader />);
 
     await user.click(screen.getByRole('button', { name: 'Open quick access' }));
-    await user.click(screen.getByRole('option', { name: 'Token Frequency: Analysis 1' }));
+    await user.click(screen.getByRole('option', { name: 'Token Frequency: 1' }));
 
     expect(mocks.rememberActiveTab).toHaveBeenCalledWith(
       'user-1',

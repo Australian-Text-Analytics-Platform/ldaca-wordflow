@@ -115,7 +115,7 @@ export function AnalysisTabsHost({
     if (autoCreateKeyRef.current === autoCreateKey) return;
     autoCreateKeyRef.current = autoCreateKey;
     if (tabs.length === 0) {
-      void createTab('Analysis 1');
+      void createTab('1');
     }
   }, [currentWorkspaceId, tabGroup, isLoading, tabs.length, createTab]);
 

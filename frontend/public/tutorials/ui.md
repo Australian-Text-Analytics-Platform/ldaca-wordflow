@@ -41,6 +41,20 @@ Below the tool list, the **Data Blocks** panel shows every data block in the act
 The **Tasks** panel sits below data selection and projects background Analyses
 from the active Project together with your retained User File Imports.
 
+- Each analysis task is named after its tool and tab, for example
+  **Freq - 1** or **Topic - JP vs AUS**, and follows the tab when you rename
+  it. New tabs are numbered 1, 2, 3, and so on.
+- The finished steps of one tab share a row: click the row to see each step
+  (**Preview**, **Run**, **Run All**, or **Add to Project**), the data blocks it
+  used, and when it finished. A step that failed or is still running has its
+  own row, for example **Conc - 2 · Run All**.
+- Failed and cancelled tasks are listed first, then running ones, then
+  finished ones.
+- The arrow button at the right end of a row opens that task's tab (or the
+  Data Loader for a file import). Clicking anywhere else on the row shows or
+  hides its details.
+- When a name is too long for the panel, its beginning and end stay visible
+  and the middle fades out; rest the pointer on it to read the full name.
 - Analysis rows show progress and status only. Use the Analysis's owning Tab to
   cancel, clear, or re-run it.
 - Queued and running User File Imports show **Stop**. The row remains visible if

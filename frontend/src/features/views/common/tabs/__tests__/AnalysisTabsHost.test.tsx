@@ -148,7 +148,7 @@ describe('AnalysisTabsHost', () => {
     );
 
     await waitFor(() => {
-      expect(createTab).toHaveBeenCalledWith('Analysis 1');
+      expect(createTab).toHaveBeenCalledWith('1');
     });
     expect(createTab).toHaveBeenCalledTimes(1);
 

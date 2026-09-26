@@ -5,6 +5,7 @@
  * drafts, active selection, and input controls in memory while the server
  * remains the source of truth for tab identity and analysis ownership.
  */
+import { displayTabTitle } from '@/features/views/common/analysisNavigation';
 import type { AnalysisKind, Tab, TopicModelingProjectionSelection } from '@/api';
 import type { NodeInput } from '../nodeInputs/nodeInputsCore';
 
@@ -52,7 +53,7 @@ export function tabFromResource(tab: Tab, local?: Partial<AnalysisTab>): Analysi
   }
   return {
     tab_id: tab.id,
-    title: local?.title ?? tab.name,
+    title: local?.title ?? displayTabTitle(tab.name),
     kind: tab.kind,
     input_sets: local?.input_sets ?? { [DEFAULT_TAB_INPUT_SET_ID]: [] },
     settings: local?.settings ?? {},

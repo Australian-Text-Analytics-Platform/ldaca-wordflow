@@ -26,6 +26,10 @@ interface AnalysisTaskItem extends TaskItemBase {
   resource_type: 'analysis';
   workspace_id: string;
   tab_id: string;
+  /** The analysis request kind, for example `concordance_run_all`; null when unavailable. */
+  request_kind?: string | null;
+  /** Data Blocks the request reads, for task details (issue 199). */
+  node_ids?: string[];
 }
 
 interface UserFileImportTaskItem extends TaskItemBase {
@@ -46,6 +50,24 @@ export const isRunningTaskState = (state: string | null | undefined): boolean =>
 const toTaskState = (state: Analysis['state']): TaskState =>
   state === 'succeeded' ? 'successful' : state;
 
+/** Collects the Data Block ids an analysis request reads, however it nests them. */
+const requestNodeIds = (request: unknown): string[] => {
+  if (!request || typeof request !== 'object') return [];
+  const record = request as Record<string, unknown>;
+  const direct = Array.isArray(record.node_ids)
+    ? record.node_ids
+    : typeof record.node_id === 'string'
+      ? [record.node_id]
+      : [];
+  const ids = direct.filter((id): id is string => typeof id === 'string');
+  if (ids.length > 0) return ids;
+  if (record.source) return requestNodeIds(record.source);
+  if (Array.isArray(record.sources)) {
+    return [...new Set(record.sources.flatMap((source) => requestNodeIds(source)))];
+  }
+  return [];
+};
+
 const failureMessage = (value: unknown): string | undefined => {
   if (!value || typeof value !== 'object') return undefined;
   const message = (value as { message?: unknown }).message;
@@ -64,6 +86,8 @@ export const analysisToTask = (
       task_type: resource.request.kind,
       workspace_id: workspaceId,
       tab_id: resource.tab_id,
+      request_kind: resource.request.kind,
+      node_ids: requestNodeIds(resource.request),
       state: toTaskState(resource.state),
       progress: progress?.fraction ?? undefined,
       progress_message: progress?.message ?? undefined,
@@ -81,6 +105,8 @@ export const analysisToTask = (
     task_type: 'analysis_unavailable',
     workspace_id: workspaceId,
     tab_id: resource.tab_id,
+    request_kind: null,
+    node_ids: [],
     state: 'failed',
     message: resource.warning,
     error: resource.reason,

@@ -25,6 +25,11 @@ import { useUIStore } from '@/stores';
 import { tutorialIndexTarget } from '@/tutorials/documentationRegistry';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import SidebarTasksSection from '@/components/layout/sidebar/SidebarTasksSection';
+import type { TaskRowTarget, TaskTab } from '@/components/layout/sidebar/taskRows';
+import { analysisNavigationForKind } from '@/features/views/common/analysisNavigation';
+import { useAnalysisTabsPresentationStore } from '@/features/views/common/tabs/analysisTabsPresentationStore';
+import { useWorkspaceTabResources } from '@/features/views/common/tabs/workspaceTabsQuery';
+import { useAuthStore } from '@/stores/authStore';
 import WorkspaceNodeList from '@/components/layout/WorkspaceNodeList';
 import { NodeActionsToolbar, NodePinButton } from '@/components/layout/NodeActionsToolbar';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
@@ -137,6 +142,27 @@ function Sidebar() {
     clearingAnalysisTabId,
   } = useWorkspaceTaskInbox(currentWorkspaceId);
   const { workspaceGraph } = useWorkspaceData();
+  // Task names use the tab names; the go-to button opens the tab (issue 199).
+  const tabsQuery = useWorkspaceTabResources(currentWorkspaceId);
+  const taskTabsById = new Map<string, TaskTab>(
+    (tabsQuery.data ?? []).flatMap((tab): [string, TaskTab][] =>
+      tab.availability === 'available' ? [[tab.id, { kind: tab.kind, name: tab.name }]] : [],
+    ),
+  );
+  const taskNodeNames = new Map<string, string>(
+    (workspaceGraph?.nodes ?? []).map((node) => [node.id, node.name || node.id]),
+  );
+  const sessionUserId = useAuthStore((state) => state.session?.user?.id ?? '__anonymous__');
+  const rememberActiveTab = useAnalysisTabsPresentationStore((state) => state.rememberActiveTab);
+  const openTaskTarget = (target: TaskRowTarget) => {
+    if (target.kind === 'data-loader') {
+      setCurrentView('data-loader');
+      return;
+    }
+    if (!currentWorkspaceId) return;
+    rememberActiveTab(sessionUserId, currentWorkspaceId, target.tabKind, target.tabId);
+    setCurrentView(analysisNavigationForKind(target.tabKind).view);
+  };
   const { selectedNodeIds } = useWorkspaceSelection();
   const { toggleNode, clearSelection, deleteNode, copyNode, renameNode } = useWorkspaceActions();
   const requestNodeInputAdd = useNodeInputRequestsStore((state) => state.requestAdd);
@@ -446,6 +472,9 @@ function Sidebar() {
                             {key === 'tasks' && (
                               <SidebarTasksSection
                                 tasks={tasks}
+                                tabsById={taskTabsById}
+                                nodeNameById={taskNodeNames}
+                                onOpenTarget={openTaskTarget}
                                 isConnected={isConnected}
                                 isConnecting={isConnecting}
                                 connectionError={connectionError}

@@ -1,9 +1,10 @@
+import { displayTabTitle } from '@/features/views/common/analysisNavigation';
 import type { TabResource } from '@/api';
 
 /** Another tab's saved stop-word list offered for copying. */
 export interface StopWordListSource {
   tabId: string;
-  /** "<Tool> · <Tab name>", e.g. "Frequency · Analysis 1". */
+  /** "<Tool> · <Tab name>", e.g. "Frequency · 1". */
   label: string;
   words: string[];
 }
@@ -35,7 +36,7 @@ export const buildStopWordListSources = (
       return [
         {
           tabId: tab.id,
-          label: `${STOP_WORD_TOOL_LABELS[settings.kind]} · ${tab.name}`,
+          label: `${STOP_WORD_TOOL_LABELS[settings.kind]} · ${displayTabTitle(tab.name)}`,
           words,
         },
       ];

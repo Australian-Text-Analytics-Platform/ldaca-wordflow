@@ -1,4 +1,5 @@
 /** Manage durable Workspace Tabs plus frontend-owned tab presentation state. */
+import { nextTabTitle } from '@/features/views/common/analysisNavigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -270,12 +271,12 @@ export function useWorkspaceTabs(
   const { isPending: isCreating, mutateAsync: createServerTabAsync } = createMutation;
 
   const createTab = useCallback(
-    async (title = `Analysis ${String(serverTabs.length + 1)}`): Promise<Tab | null> => {
+    async (title?: string): Promise<Tab | null> => {
       if (!workspaceId || isCreating || creatingRef.current) return null;
       creatingRef.current = true;
-      return await createServerTabAsync(title);
+      return await createServerTabAsync(title ?? nextTabTitle(serverTabs.map((tab) => tab.name)));
     },
-    [createServerTabAsync, isCreating, serverTabs.length, workspaceId],
+    [createServerTabAsync, isCreating, serverTabs, workspaceId],
   );
 
   const closeMutation = useMutation({

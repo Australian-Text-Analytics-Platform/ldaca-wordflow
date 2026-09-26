@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import type { Tab } from '@/api';
 import {
   analysisNavigationForKind,
+  displayTabTitle,
+  nextTabTitle,
   analysisNavigationForView,
   analysisTabQuickAccessLabel,
   filterAnalysisTabs,
@@ -22,12 +24,22 @@ describe('analysis navigation metadata', () => {
       kind: 'token_frequency',
       view: 'token-frequency',
       label: 'Token Frequency',
+      shortLabel: 'Freq',
     });
     expect(analysisNavigationForView('analysis')?.kind).toBe('sequential');
     expect(analysisNavigationForView('data-loader')).toBeNull();
     expect(analysisTabQuickAccessLabel(tab('token_frequency', 'Analysis 1'))).toBe(
-      'Token Frequency: Analysis 1',
+      'Token Frequency: 1',
     );
+  });
+
+  it('names tabs with plain numbers and shows legacy "Analysis N" as N (issue 199)', () => {
+    expect(displayTabTitle('Analysis 3')).toBe('3');
+    expect(displayTabTitle('JP vs AUS')).toBe('JP vs AUS');
+    expect(displayTabTitle('Analysis of tweets')).toBe('Analysis of tweets');
+    expect(nextTabTitle([])).toBe('1');
+    expect(nextTabTitle(['Analysis 1', '4', 'JP vs AUS'])).toBe('5');
+    expect(nextTabTitle(['JP vs AUS'])).toBe('2');
   });
 
   it('filters case-insensitively by analysis type or Tab name', () => {
