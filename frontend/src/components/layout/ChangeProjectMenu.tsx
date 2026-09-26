@@ -3,6 +3,7 @@ import { ArrowLeftRight, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 
 import type { WorkspaceSummary } from '@/api/frontendModels';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -81,14 +82,14 @@ export function ChangeProjectMenu() {
   };
 
   return (
-    <>
+    <div className="ml-auto flex items-center gap-1">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             type="button"
             variant="outline"
             size="sm"
-            className="ml-auto h-7 gap-1.5"
+            className="h-7 gap-1.5"
             disabled={switching}
           >
             <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
@@ -125,6 +126,12 @@ export function ChangeProjectMenu() {
           )}
         </DropdownMenuContent>
       </DropdownMenu>
+      <HelpIcon
+        targetKey="ui.change-project"
+        label="About switching projects"
+        tooltip="Close this project and open another one without going to the Data Loader."
+        className="h-5 w-5 shrink-0 text-description"
+      />
 
       <AlertDialog
         open={target !== null}
@@ -155,6 +162,6 @@ export function ChangeProjectMenu() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }

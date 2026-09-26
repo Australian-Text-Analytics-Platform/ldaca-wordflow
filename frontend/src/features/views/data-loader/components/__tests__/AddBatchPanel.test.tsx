@@ -3,6 +3,9 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AddBatchPanel } from '../AddBatchPanel';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const previews = vi.hoisted(() => [] as { path: string | null; member: string | null }[]);
 
 vi.mock('../../hooks/useFilePreview', () => ({

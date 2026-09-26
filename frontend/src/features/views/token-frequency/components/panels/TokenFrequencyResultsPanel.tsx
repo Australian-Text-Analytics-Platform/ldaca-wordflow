@@ -200,7 +200,7 @@ export const TokenFrequencyResultsPanel = ({
                 <HelpIcon
                   targetKey="analysis.token-frequency.stop-words"
                   label="Stop words"
-                  tooltip="Words entered here are removed from the displayed token tables and comparison views after a run completes. Pick a language to append its default stop words (the detected language is marked Recommended), or right-click a word to add it. Edits apply when you leave the text box."
+                  tooltip="Words entered here are removed from the displayed token tables and comparison views after a run completes. Pick a language to append its default stop words (the detected language is marked Detected), or right-click a word to add it. Edits apply when you leave the text box."
                 />
               </div>
               <textarea

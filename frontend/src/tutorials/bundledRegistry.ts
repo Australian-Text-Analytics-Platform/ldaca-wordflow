@@ -71,6 +71,21 @@ const tutorial = {
     anchor: 'help-ui-help-feedback',
     label: 'Help and Feedback',
   },
+  'ui.change-project': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-change-project',
+    label: 'Change Project',
+  },
+  'ui.data-editor.column-tools': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-data-editor-column-tools',
+    label: 'Data Editor column tools',
+  },
+  'ui.analysis-layout': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-analysis-layout',
+    label: 'Parameters and results layout',
+  },
   'data-loader.active-workspace.section': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-active-workspace',
@@ -130,6 +145,16 @@ const tutorial = {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-add-button',
     label: 'Add file to project',
+  },
+  'data-loader.add-folder': {
+    file: 'tutorials/data-loader.md',
+    anchor: 'help-data-loader-add-folder',
+    label: 'Add a folder or ZIP',
+  },
+  'data-loader.file-organisation': {
+    file: 'tutorials/data-loader.md',
+    anchor: 'help-data-loader-file-organisation',
+    label: 'Organising files',
   },
   'preprocessing.join.tab': {
     file: 'tutorials/preprocessing.md',
@@ -391,6 +416,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-words-per-topic',
     label: 'Words per topic',
   },
+  'analysis.topic-modeling.color-by': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-color-by',
+    label: 'Colour by',
+  },
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-section',
@@ -436,6 +466,11 @@ const tutorial = {
     anchor: 'help-annotation-setup',
     label: 'Annotation setup',
   },
+  'analysis.annotation.row-viewer': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-row-viewer',
+    label: 'Row viewer',
+  },
   'analysis.quotation.parameters': {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-parameters',
@@ -455,6 +490,11 @@ const tutorial = {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-context-length',
     label: 'Quotation context length',
+  },
+  'analysis.quotation.quote-types': {
+    file: 'tutorials/quotation.md',
+    anchor: 'help-quotation-quote-types',
+    label: 'Quote types',
   },
   'analysis.export.tab': {
     file: 'tutorials/export.md',

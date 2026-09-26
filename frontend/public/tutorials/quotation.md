@@ -38,9 +38,10 @@ ID, never a host URL.
 
 <h3 id="help-quotation-context-length">Step 3 — Set display context</h3>
 
-**Context** (words per side) controls how much source text the Result
-table displays around the highlighted quotation spans. It is a presentation
-setting, not an extraction-engine parameter.
+**Context** (words per side), in the Result panel header beside **Show
+metadata**, controls how much source text the Result table displays around the
+highlighted quotation spans. It is a presentation setting, not an
+extraction-engine parameter, so changing it never needs a new Preview.
 
 - Default: 5 words per side.
 - Range: 0–2000.
@@ -68,13 +69,15 @@ quotation. A source document can contribute several quotation rows.
 | Green | Quote | The quoted text |
 | Violet | Verb | The speech verb, such as *said* or *argued* |
 
-Click a row to inspect the full source document. The metadata selector can add
-source fields and generated quotation fields to the table. The virtual
+Click a row to inspect the full source document in Row Details, which opens
+scrolled to the highlighted quote. The metadata selector (**Show metadata**)
+can add source fields and generated quotation fields to the table. Date and
+date-time columns are shown as dates. The virtual
 `QUOTE_extraction` document header sorts by the Analysis's selected source text
 column. Other source metadata headers remain sortable; generated quotation
 headers are display-only because they are produced after source paging.
 
-Changing the page, documents-per-batch value, or sort order recomputes another
+Changing the page, **Documents per page**, or sort order recomputes another
 projection of the same Preview Analysis. It does not mutate that Analysis.
 
 <h3 id="help-quotation-run-all">Run All and Review</h3>

@@ -278,6 +278,12 @@ export const WorkspaceDataHeader = ({
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              <HelpIcon
+                targetKey="ui.data-editor.column-tools"
+                label="About the column tools"
+                tooltip="Add, change, or clean columns of this Data Block in place. Rows are never added, removed, or reordered."
+                className="h-5 w-5 shrink-0 text-description"
+              />
             </>
           ) : null}
           {onDeleteColumns ? (

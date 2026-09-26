@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileTree } from '../FileTree';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 describe('FileTree project routing', () => {
   afterEach(() => {
     vi.restoreAllMocks();

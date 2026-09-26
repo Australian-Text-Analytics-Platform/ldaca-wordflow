@@ -7,6 +7,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { IntercoderReliabilityMetric } from '@/features/views/common/columnComparisonModel';
 import { RunAllReviewTable } from '../RunAllReviewTable';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const queryWorkspaceSqlTable = vi.hoisted(() => vi.fn());
 const setCell = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 vi.mock('@/api', async (importOriginal) => ({

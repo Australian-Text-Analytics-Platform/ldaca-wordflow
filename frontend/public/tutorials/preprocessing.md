@@ -8,7 +8,7 @@
 
 The Data Builder makes new Data Blocks from existing ones. Its tools change which rows are present: every sub-tab creates a new Derived Data Block, and the source is never altered.
 
-Tools that add or change columns (Find & replace, Extract text, Combine columns, Duplicate column, Split column, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
+Tools that add or change columns (Combine columns, Count, Duplicate column, Extract text, Split column, Find & replace, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
 There are currently eight sub-tabs:
 
@@ -25,10 +25,10 @@ There are currently eight sub-tabs:
 
 The general workflow for any sub-tab is:
 
-1. Select one or more data blocks from the project.
+1. Add one or more data blocks under **Data Builder Inputs**.
 2. Configure the transformation.
 3. Review the **Preview** table to check the expected output.
-4. Click **Create Data Block**.
+4. Click **Create Data Block** (Group shows **Create N Data Blocks**, one per ticked group).
 
 <h2 id="help-preprocessing-common-section">Common controls</h2>
 
@@ -36,7 +36,7 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks (two or more for Join and Stack; one for the other tools).
+Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks: exactly two for Join, two to six for Stack, and one for the other tools. Segment, Aggregate, and Deduplicate also use the column chosen beside the data block (the **Text column**, or the **Deduplicating column** for Deduplicate).
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
@@ -71,6 +71,8 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 - Categorical values load in ordered pages. Scroll to load more, use search to
   filter on the server, and use **Select loaded** to select only the values
   currently available. Existing selections remain selected across searches.
+- In a value list, missing values are listed as **(empty)** and text that is
+  empty or only spaces as **(blank text)**.
 
 <h3 id="help-preprocessing-filter-new-node-name">New data block name</h3>
 
@@ -175,7 +177,7 @@ The schema status panel tells you whether all selected data blocks share the sam
 
 <h3 id="help-preprocessing-concat-deduplicate">Drop duplicate rows after stacking</h3>
 
-Tick **Drop duplicate rows after stacking** to remove exact duplicate rows from the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset).
+Tick **Drop duplicate rows after stacking** to remove exact duplicate rows from the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset). To compare only some columns, or to keep a record of the duplicates, use [Deduplicate](#help-preprocessing-dedupe-section) on the stacked result instead.
 
 <h3 id="help-preprocessing-concat-new-node-name">New data block name</h3>
 

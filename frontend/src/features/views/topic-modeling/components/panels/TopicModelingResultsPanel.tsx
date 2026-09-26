@@ -6,6 +6,7 @@ import type {
   TopicModelingResponse,
   TopicModelingTopic,
 } from '@/api';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -102,22 +103,12 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
         <span id="topic-color-by-label" className="font-medium">
           Colour by
         </span>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label="About Colour by"
-              className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-description transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <CircleHelp className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-72">
-            Colour bubbles by a column with 2 to 8 values. Each bubble blends the two values most
-            over-represented in its documents, relative to how common each value is. A more solid
-            bubble is concentrated in few values; a paler one is spread evenly.
-          </TooltipContent>
-        </Tooltip>
+        <HelpIcon
+          targetKey="analysis.topic-modeling.color-by"
+          label="About Colour by"
+          tooltip="Colour bubbles by a column with 2 to 8 values. Each bubble blends the two values most over-represented in its documents, relative to how common each value is. A more solid bubble is concentrated in few values; a paler one is spread evenly."
+          className="size-5 shrink-0 text-description"
+        />
       </div>
       <Select
         value={colorBy.column ?? COLOR_BY_DATA_BLOCK}

@@ -4,6 +4,9 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { AnalysisSplitLayout } from '../AnalysisSplitLayout';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const STORAGE_KEY = 'ldaca.layout.analysisParametersHeight.test-view';
 
 /** Renders the split with results that can be toggled from the test. */

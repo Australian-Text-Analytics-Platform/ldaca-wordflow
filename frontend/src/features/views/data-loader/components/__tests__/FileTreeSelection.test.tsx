@@ -4,6 +4,9 @@ import { describe, expect, it, vi } from 'vitest';
 import type { FileTreeNode } from '../../types';
 import { FileTree } from '../FileTree';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const nodes: FileTreeNode[] = [
   {
     type: 'directory',

@@ -12,7 +12,7 @@ Token Frequency counts how often each word appears in your text data. It is one 
 
 <h3 id="help-token-frequency-data-block">Step 1 — Select your data</h3>
 
-Use the data-block selector to choose which corpus (or corpora) to analyse. The tool is strictly pairwise — at most two data blocks at a time — because keyword analysis is defined between exactly one reference and one study corpus. If more than two blocks are selected at the project level, the tool only shows the **two most recent** picks; any older selections are silently dropped from the panel until you deselect a newer block to make room.
+Use the data-block selector to choose which corpus (or corpora) to analyse. The tool is strictly pairwise — at most two data blocks at a time — because keyword analysis is defined between exactly one study corpus and one reference corpus. If more than two blocks are selected in the project, the tool only shows the **two most recent** picks; any older selections are silently dropped from the panel until you deselect a newer block to make room.
 
 When two are selected, the tool runs in comparison mode and produces the Juxtorpus cloud and statistical measures in addition to the per-block results.
 
@@ -32,7 +32,7 @@ The study corpus is the collection whose key words you want to find. The referen
 
 Stop words are terms you want to exclude from the frequency count — commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
-- Enable the filter, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
+- Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
 - Pick a list from the **Select language** dropdown next to the switch to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
 - Lists picked under **From other tabs** (for example _Topic Modeling · Analysis 1_) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
@@ -49,7 +49,7 @@ Cloud/List display limits change only the presentation and do not enable Run.
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 
-The results panel shows controls for stop words and display limits at the top, followed by a shared **Filter tokens** card and the **Cloud view / List view** selector. The stopword switch resets off whenever a Result is loaded; re-enabling immediately applies the saved Tab list.
+The results panel shows controls for stop words and display limits at the top, followed by a shared **Filter tokens** card and the **Cloud view / List view** selector. The **Enable stop words** switch is remembered with the tab, so it stays on across tool switches, reloads, and new runs until you turn it off. Results for each data block appear in the same order as the data block cards in the parameter panel.
 
 <h3 id="help-token-frequency-token-limit">Cloud display limit</h3>
 
@@ -75,7 +75,7 @@ Click **Clear** to remove the filter. Downloads also follow the active filter: f
 
 Cloud view shows a word cloud for each selected data block, followed by the Juxtorpus cloud when two blocks are selected. The shared token filter applies before the cloud display limit.
 
-Word size in each per-block cloud corresponds to frequency. Interaction:
+Word size in each per-block cloud follows frequency, scaled by the square root of each count so that the most frequent words do not crowd out the rest (the counts shown are unchanged). Words are sized to fill the cloud, and they rescale when you resize it. Interaction:
 
 - **Left-click** any word to jump to the Concordance tab and search for that term in context.
 - **Right-click** any word to add it to the stop-word list (it is inserted at the start of the list).
@@ -88,7 +88,7 @@ When two data blocks are selected, the Juxtorpus cloud appears below the per-blo
 
 - **Size** reflects combined frequency across both blocks.
 - **Colour** shifts toward the block where the word has the higher proportional share, so differences in corpus size do not dominate the palette.
-- Words are ranked by log₁₀(O₁ + O₂) × LogRatio; the cloud shows the highest and lowest N words by that score (up to twice the cloud display limit).
+- Words are ranked by log₁₀(O<sub>S</sub> + O<sub>R</sub>) × LogRatio; the cloud shows the highest and lowest N words by that score (up to twice the cloud display limit).
 
 <h2 id="help-token-frequency-list-view">List view</h2>
 
@@ -128,7 +128,7 @@ For a token, O<sub>S</sub> and O<sub>R</sub> are its counts in the study and ref
 - **Relative frequency:** %S = O<sub>S</sub> ÷ N<sub>S</sub> × 100 and %R = O<sub>R</sub> ÷ N<sub>R</sub> × 100.
 - **Expected frequencies:** E<sub>S</sub> = N<sub>S</sub> × (O<sub>S</sub> + O<sub>R</sub>) ÷ N, and E<sub>R</sub> likewise with N<sub>R</sub>.
 - **LL** = 2 × (O<sub>S</sub> × ln(O<sub>S</sub> ÷ E<sub>S</sub>) + O<sub>R</sub> × ln(O<sub>R</sub> ÷ E<sub>R</sub>)), where a zero count adds nothing (Rayson and Garside 2000). The significance stars use the critical values 3.84, 6.63, 10.83, and 15.13.
-- **%DIFF** = (%S − %R) ÷ %R × 100 (Gabrielatos and Marchi 2012). A token that never occurs in the reference block gets a very large %DIFF.
+- **%DIFF** = (%S − %R) ÷ %R × 100 (Gabrielatos and Marchi 2012). A token that never occurs in the reference block has no %DIFF (shown as N/A).
 - **Bayes (BIC)** = LL − ln(N) (Wilson 2013).
 - **ELL** = LL ÷ (N × ln(the smaller of E<sub>S</sub> and E<sub>R</sub>)) (Johnston et al. 2006).
 - **RRisk** = %S ÷ %R.
@@ -158,15 +158,15 @@ until you choose Clear Results.
 | Keyword Analysis table shows no significant words     | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
 | A project block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
 | Right-clicked stop word is hard to find               | List was already long when the word was added                  | New words are inserted at the top — scroll to the start, or click **Sort** to alphabetise |
-| Analyze button is disabled                            | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
+| Run button is disabled                                | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
 
 <h2 id="help-token-frequency-defaults">Quick-reference defaults</h2>
 
 | Setting              | Default                              | Notes                                                                                                                                         |
 | -------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Data blocks          | None                                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected workspace-wide, only the 2 most recent show in the panel. |
+| Data blocks          | None                                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected project-wide, only the 2 most recent show in the panel.   |
 | Tokenizer model      | Saved Data Block preference or none  | Required for each selected block; the submitted Analysis freezes the exact mapping                                                            |
-| Corpus role switches | First selected block is Study Corpus | Changes O1/O2 assignment in the statistics table                                                                                              |
+| Corpus role switches | First selected block is Study Corpus | Swaps which block is OS/%S and which is OR/%R in the statistics table                                                                         |
 | Stop words           | Empty                                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
 | Token filter         | Empty                                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                       |
 | Cloud display limit  | 50                                   | Range 10–100; mirrors to list limit                                                                                                           |
@@ -174,7 +174,7 @@ until you choose Clear Results.
 
 ## Practice exercise
 
-1. Select a data block and click **Analyze** with the default settings.
+1. Select a data block and click **Run** with the default settings.
 2. Pick the detected language from the stop words **Select language** dropdown to add its default stop words, and compare the top tokens.
 3. Right-click one of the remaining high-frequency words in the cloud to add it as a custom stop word. The stop words filter switches on automatically if it was off. Confirm the word appears at the start of the stop-word list.
 4. Select a second data block. Use the card-level **Use as Study Corpus** toggles to choose the study corpus (the other block becomes the reference baseline), then choose **Run** again.

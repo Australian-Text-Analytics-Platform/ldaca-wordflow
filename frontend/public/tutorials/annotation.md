@@ -10,7 +10,7 @@ either directly or with predictions from a configured AI provider.
 
 1. Under **Annotation Data Block**, add one Data Block and choose the text
    column.
-2. Select an existing string annotation column, or choose **Start new
+2. Select an existing text annotation column, or choose **Start new
    annotation** and create one. This is an immediate Data Block Edit.
 3. Under **Codebook**, add a Data Block and map its code and description
    columns. Use **Create New** when you need an empty Codebook, then review and
@@ -66,9 +66,13 @@ active correction column appears in neither menu. Add a correction column when
 you want reviewed decisions kept separately, and use metadata columns to retain
 useful source context in the table.
 
+<span id="help-annotation-row-viewer"></span>
 Long metadata values wrap within their column. To read a whole row, select the
-**View row** button at the start of the row (in the Manual, Preview, and Review
-tables): it shows the full text and every visible column. Comparison values stay
+**View row** button (the expand icon, **View the whole row**) at the start of
+the row in the Manual, Preview, and Review tables. It opens Row Details with
+the full text and every visible column in table order: the annotation (or the
+predicted label beside the existing annotation), any correction, Compare To
+columns, and metadata. Comparison values stay
 hidden until you reveal that column, and the viewer is read-only; use
 **Previous** and **Next** to move between rows.
 

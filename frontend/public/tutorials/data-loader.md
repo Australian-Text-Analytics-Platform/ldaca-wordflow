@@ -50,6 +50,7 @@ Click **Close** beside the open project in the project manager (the open project
 The project manager lists all saved projects, enabling you to switch between projects and maintain an organised inventory.
 
 - Click **Open** to make a project the active project. The open project is listed first and highlighted, with a **Close** button.
+- Click the star beside a project's name to mark it as a favourite. Favourites are listed after the open project, then the others by most recent change.
 - Review the last-modified timestamp and data-block count to confirm you are opening the intended project.
 - Click **Import project** to add a project from a ZIP archive, such as one downloaded from another Wordflow.
 - Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or import. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can import the ZIP (**Import project**) into another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
@@ -59,7 +60,7 @@ The project manager lists all saved projects, enabling you to switch between pro
 
 ![Files section screenshot](tutorials/assets/data_loader/files_section.png)
 
-This panel is used to bring data into the application. It supports file and folder uploads, sample data imports, LDaCA imports, and add-to-workspace operations. You can also create subfolder structures, reorganise files via drag-and-drop, and remove files that are no longer needed.
+This panel is used to bring data into the application. It supports file and folder uploads, sample data imports, LDaCA imports, and adding files to the active project as Data Blocks. You can also create subfolder structures, reorganise files via drag-and-drop, and remove files that are no longer needed.
 
 <h2 id="help-data-loader-upload-button">Upload files and folders</h2>
 
@@ -98,6 +99,7 @@ contain no supported files.
 Supported file types can be previewed before being added to the project as a
 Data Block.
 
+<span id="help-data-loader-add-folder"></span>
 A ZIP archive or a whole folder becomes a document table with one row per text
 document. The table records each document's path (relative to the ZIP or
 folder), filename stem, extension, and complete text. The rules are the same
@@ -142,8 +144,9 @@ Use this option to download curated sample datasets from the Wordflow sample-dat
 Use this option to import a collection directly from the Language Data Commons
 of Australia ([LDaCA Data Portal](https://data.ldaca.edu.au)).
 
-1. Click **Import LDaCA collections**. The dialog lists every collection on the
-   portal. Each title links to its portal page.
+1. Click **Import LDaCA collections**. The dialog lists every top-level
+   collection on the portal, with its number of items and its licence. Each
+   title links to its portal page.
 2. Type in **Filter collections** to narrow the list by name or description.
 3. Click **Download** on a collection to import its texts.
 
@@ -154,7 +157,9 @@ For these you can:
 - **Import metadata only**: one row per item (for example each interview), with
   its descriptive metadata and speaker details such as gender, birth date,
   and location, but no text. This uses the metadata the portal publishes for
-  every item.
+  every item. A collection that publishes no item metadata (marked
+  **Collection description only**) offers **Import collection metadata**
+  instead, which gives one row describing the collection.
 - **Update API token**: enter or change your token in place. The list then
   checks access again, so collections you have been granted access to become
   downloadable.
@@ -169,12 +174,17 @@ click the refresh button in the top-right corner of the panel.
 
 ![Files operations](tutorials/assets/data_loader/file_operations.png)
 
-Once a file is uploaded, imported, or downloaded, the following actions are available:
+Once a file is uploaded, imported, or downloaded, its row offers the following actions:
 
 - **Preview** the file contents before adding it to the project.
-- **Add to Project** to load the file as a data block in the active project.
+- **Add** opens the add panel, where you can check the preview (and choose a
+  sheet for a spreadsheet) and click **Add to Project** to load the file as a
+  data block in the active project. A project must be open first.
 - **Download** the original file to your local machine.
-- **Remove** the file from the application.
+- **Delete** (the trash icon) removes the file from the application.
+
+A folder row has its own **+** button to add the folder's files as Data Blocks
+(see [Upload files and folders](#help-data-loader-upload-button)).
 
 <h2 id="help-data-loader-file-organisation">Organising files</h2>
 
@@ -182,7 +192,7 @@ The files panel supports folder management and drag-and-drop reorganisation so y
 
 **Creating folders**
 
-Click the <kbd>+</kbd> folder icon next to any existing folder to create a subfolder inside it, or use the equivalent button at the root level to create a top-level folder. A dialog will prompt you for a name. Folders can be nested to any depth.
+Click the folder icon with a <kbd>+</kbd> (**Add folder inside**) next to any existing folder to create a subfolder inside it, or use the equivalent button at the root level to create a top-level folder. A dialog will prompt you for a name. Folders can be nested to any depth.
 
 **Deleting files and folders**
 
@@ -224,14 +234,16 @@ Some folders — particularly those created by the LDaCA importer — display a 
 | File fails to load | Unsupported format or encoding | Check that the file is UTF-8 encoded and uses a supported format |
 | CSV preview shows all data in one column | Wrong delimiter | Re-export with a comma delimiter, or contact the developer team |
 | LDaCA import does not appear | Import still in progress | Wait a moment and click the refresh button |
-| Project not visible in the manager | Working directory changed | Check the working directory setting at the bottom of the sidebar |
-| Duplicate project names | Created before uniqueness was enforced | Activate each, review contents, and rename to distinct labels |
+| Project not visible in the manager | Working directory changed | Check the working directory under **Settings → Project → Working Directory** |
+| Duplicate project names | Project names do not have to be unique | Open each, review its contents, and rename them to distinct names |
+| Some files were not added from a folder or ZIP | They are not UTF-8 text files, or they are tables | Read the skipped-files message; add tables in **Tables as separate Data Blocks** mode |
 
 <h2 id="help-data-loader-defaults">Quick-reference defaults</h2>
 
 | Setting | Default | Notes |
 |---|---|---|
-| Working directory | `~/Documents/ldaca` | Changeable via the edit icon at the bottom of the sidebar |
+| Working directory | The recommended data folder for your operating system | Opened automatically on first start; change it under **Settings → Project → Working Directory** |
+| Folder or ZIP mode | Texts as one Data Block | Switch to **Tables as separate Data Blocks** to add each table file |
 
 ## Practice exercise
 

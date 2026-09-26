@@ -1,8 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AnalysisSplitLayout } from '../AnalysisSplitLayout';
 import { ResultFrame } from '../ResultFrame';
+
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 
 const KEY = 'ldaca.layout.resultHeight.test.chart';
 

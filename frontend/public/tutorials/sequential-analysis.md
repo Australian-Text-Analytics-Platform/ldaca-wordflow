@@ -18,7 +18,7 @@ Use the data-block selector to pick the corpus you want to analyse. Only one dat
 
 <h3 id="help-sequential-time-column">Step 2 — Choose a time or numeric column</h3>
 
-The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
+The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, date, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
 - **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
 - **Numeric columns** (integer or decimal) are bucketed by a fixed interval width you specify.
@@ -115,7 +115,7 @@ Three plot modes are available in the **Chart Type** dropdown:
 
 The **X-axis** dropdown next to the chart type selector switches the horizontal axis between two modes:
 
-- **Categorical** *(default)* — every time bucket gets an equal slot on the axis, regardless of the real gap between them. Best when buckets are dense and you want a clean, evenly-spaced view.
+- **Categorical** *(default)* — every time bucket gets an equal slot on the axis, regardless of the real gap between them. Best when buckets are dense and you want a clean, evenly-spaced view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
 - **Linear** — the axis is a true number/date line and bucket positions are proportional to their values. Gaps in the data become visible as visible gaps on the axis. Useful for spotting unevenly-spaced events or comparing rates of change across long time spans.
 
 In Linear mode with a datetime column, axis ticks render as date labels (e.g. *Apr 2018*) rather than raw epoch numbers. The tool aims for about ten ticks across the visible range, dropping labels automatically if the chart is too narrow.
@@ -206,7 +206,7 @@ visibility.
 | Numeric Origin | Auto-detect | Leave blank unless you need a specific start |
 | Numeric Interval | 1 | Required; must be > 0 |
 | Group By | None | Up to 3 columns |
-| Case Sensitive | Off | Only appears when a group-by column is added |
+| Uncased | Off | Beside the legend of a grouped result; merges case variants of a group |
 | Minimum group count | 10 | Grouped results only; enter 0 to show all groups |
 | Chart Type | Line Chart | — |
 | X-axis | Categorical | Switch to Linear for time-proportional spacing |

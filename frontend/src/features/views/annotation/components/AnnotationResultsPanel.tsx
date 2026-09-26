@@ -1,3 +1,4 @@
+import HelpIcon from '@/components/help/HelpIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 import { useRef, useState } from 'react';
@@ -390,6 +391,12 @@ export function AnnotationResultsPanel({
               <TableRow className="[&>th]:align-bottom">
                 <TableHead className="w-8 px-1">
                   <span className="sr-only">View row</span>
+                  <HelpIcon
+                    targetKey="analysis.annotation.row-viewer"
+                    label="About the row viewer"
+                    tooltip="Use the button at the start of a row to read the whole row."
+                    className="h-5 w-5 text-description"
+                  />
                 </TableHead>
                 <TableHead>{textColumn}</TableHead>
                 <TableHead className="w-px whitespace-nowrap">

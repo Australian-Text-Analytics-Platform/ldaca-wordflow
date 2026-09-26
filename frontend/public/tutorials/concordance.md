@@ -35,7 +35,8 @@ separately from its Document Column Preference. A fresh Concordance Analysis
 always starts in Text mode, including when every selected Data Block already has
 a saved model or you arrive from Token Frequency. Select Tokens mode explicitly
 to enable the tokenizer selectors, then choose or confirm a model for each
-source.
+source. As in Frequency, each tokenizer in the list shows the language it is
+for, and the link icon beside the selected tokenizer opens its project page.
 
 Preview records the exact source columns, tokenizer mapping, and search mode in
 the immutable Analysis request. Reopening an existing Preview Analysis uses
@@ -159,7 +160,10 @@ reinterpreted under new boundaries.
 
 In Review, click anywhere inside the plot to select the bin nearest the vertical
 axis pointer; Shift-click another bin to extend
-the range. **Clear Selection** removes the bin filter. Click a legend term to
+the range. Selected bins are shaded with a soft band across the chart, as in
+Trends: in Line and Area charts their points become large solid dots while the
+other points stay small hollow circles, and in Bar charts the unselected bars
+are dimmed. **Clear Selection** removes the bin filter. Click a legend term to
 hide or show it. Visible terms intersected with selected bins control the
 displayed documents, match markers, legend counts, and Concordance Document
 Data Block Creation.

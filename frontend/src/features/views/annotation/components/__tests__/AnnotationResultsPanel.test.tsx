@@ -8,6 +8,9 @@ import type { IntercoderReliabilityMetric } from '@/features/views/common/column
 import { toBgColor } from '@/features/views/common/vizPalette';
 import { AnnotationResultsPanel } from '../AnnotationResultsPanel';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const queryWorkspaceSqlTable = vi.hoisted(() => vi.fn());
 const setCell = vi.hoisted(() => vi.fn());
 const setPagination = vi.hoisted(() => vi.fn());

@@ -8,9 +8,9 @@ Token Frequency
   This tool retrieves each token (~word) in your text / text collection. It creates a word cloud visualisation as well as a frequency list (= a list of each word and the raw/absolute frequency with which it occurs). You can download both to your Downloads folder.
 
 - What do I need to know before using this?
-  Your textual data should be consistently encoded (UTF8) and should not contain any xml tags. If necessary, you can use the Data Editor (Clean text, Remove HTML tags) to remove any content within angle brackets. Search for this regex pattern _'<[^>]+>'_ in the ‘document’ text column of your collection and replace with empty string.
+  Your textual data should be consistently encoded (UTF8) and should not contain any xml tags. If necessary, you can use the Data Editor (Clean text, Remove HTML tags or Remove XML tags and markup) to remove any content within angle brackets. Alternatively, use Find & replace with **Use regular expression** ticked: search for the pattern _'<[^>]+>'_ in the ‘document’ text column of your collection and replace it with nothing.
 
-The word cloud currently displays the top 25 tokens by default. Because of known limitations of such visualisations and critiques of how they represent frequency, it is recommended to use the frequency list for analysis rather than relying on the word cloud visualisation.
+The word cloud currently displays the top 50 tokens by default. Because of known limitations of such visualisations and critiques of how they represent frequency, it is recommended to use the frequency list for analysis rather than relying on the word cloud visualisation.
 
 The output differs depending on how a ‘token’ is defined. For example, whether punctuation counts as a token, whether a word like high-school is treated as one or two tokens or whether contractions like you’re, don’t, isn’t are treated as one or two tokens. Choose a tokenizer model for every selected data block before running the analysis. The choice is saved as that data block's tokenizer preference for fresh selectors, but each submitted Analysis keeps the exact model mapping it used. There is no account-wide default, and changing a data block preference does not rewrite historical results.
 
@@ -19,8 +19,8 @@ The frequency list shows, and its download includes, both the raw (absolute) fre
 **Q&A**
 
 - Can I change any of the settings/parameters?
-  Yes. You can change the word cloud so that it displays more than just the top 25 tokens, although there is an upper limit of 100 tokens.
-  You can also adjust the token frequency list by using stop words – words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by filling a default stop list matched to the saved language of the selected column.
+  Yes. You can change the word cloud so that it displays more or fewer than the top 50 tokens (from 10 up to 100 tokens).
+  You can also adjust the token frequency list by using stop words – words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by picking a list from the stop words dropdown: a default list for the language detected in the selected column, a Wordflow classic list, or the list from another Frequency or Topic Modelling tab.
   Use the result-level token filter to narrow every cloud, frequency list, and two-block Keyword Analysis result with wildcard patterns. The same filter is applied to result downloads.
   When doing a keywords analysis, you can change the order in which keywords appear by sorting them differently. [anything else you can change?]
 

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Loader2, Plus } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -96,19 +97,27 @@ function AddBatchPanelBody({
   };
 
   const modeSwitch = (
-    <Tabs
-      value={mode}
-      onValueChange={(value) => {
-        setMode(value as BatchMode);
-      }}
-    >
-      <TabsList aria-label={isZip ? 'Add ZIP as' : 'Add folder as'}>
-        <TabsTrigger value="texts">Texts as one Data Block</TabsTrigger>
-        <TabsTrigger value="tables" disabled={tablesLoading || tableFiles.length === 0}>
-          Tables as separate Data Blocks ({tablesLoading ? '…' : tableFiles.length})
-        </TabsTrigger>
-      </TabsList>
-    </Tabs>
+    <div className="flex flex-wrap items-center gap-1">
+      <Tabs
+        value={mode}
+        onValueChange={(value) => {
+          setMode(value as BatchMode);
+        }}
+      >
+        <TabsList aria-label={isZip ? 'Add ZIP as' : 'Add folder as'}>
+          <TabsTrigger value="texts">Texts as one Data Block</TabsTrigger>
+          <TabsTrigger value="tables" disabled={tablesLoading || tableFiles.length === 0}>
+            Tables as separate Data Blocks ({tablesLoading ? '…' : tableFiles.length})
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+      <HelpIcon
+        targetKey="data-loader.add-folder"
+        label="About adding a folder or ZIP"
+        tooltip="Texts: one Data Block with a row per UTF-8 text file. Tables: one Data Block per ticked table file."
+        className="h-5 w-5 text-description"
+      />
+    </div>
   );
 
   const tablePicker =

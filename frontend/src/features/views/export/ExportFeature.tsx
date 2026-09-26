@@ -154,9 +154,17 @@ function ExportFeature() {
             className="flex flex-wrap items-end justify-between gap-4 border-t pt-4"
           >
             <div className="w-full max-w-xs space-y-2">
-              <label htmlFor="data-block-export-format" className="text-body font-medium">
-                Format
-              </label>
+              <div className="flex items-center gap-1">
+                <label htmlFor="data-block-export-format" className="text-body font-medium">
+                  Format
+                </label>
+                <HelpIcon
+                  targetKey="analysis.export.format"
+                  label="About export formats"
+                  tooltip="CSV opens in Excel and most tools; Excel (.xlsx) writes date-times in UTC; Parquet keeps data types exactly."
+                  className="h-5 w-5 text-description"
+                />
+              </div>
               <Select
                 value={format}
                 disabled={exportingDataBlocks}

@@ -4,6 +4,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChangeProjectMenu } from '../ChangeProjectMenu';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const mocks = vi.hoisted(() => ({
   setCurrentWorkspace: vi.fn(),
   tasks: [] as Record<string, unknown>[],

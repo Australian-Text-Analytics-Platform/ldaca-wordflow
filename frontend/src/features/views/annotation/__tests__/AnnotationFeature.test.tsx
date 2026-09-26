@@ -10,6 +10,9 @@ import {
   DEFAULT_ANNOTATION_TAB_SETTINGS,
 } from '../annotationTabSettings';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const annotationSettings = (
   values: Partial<typeof DEFAULT_ANNOTATION_TAB_SETTINGS>,
 ): Record<string, string> => ({

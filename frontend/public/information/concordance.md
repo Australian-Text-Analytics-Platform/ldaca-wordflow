@@ -37,7 +37,7 @@ analysis without loading a whole-corpus result into the browser.
   In separated Preview tables, selected source metadata is sortable and
   generated scalar headers explain that Run All is required. After Run All,
   separated Review tables also sort the matched text, L1/R1, their
-  frequencies, and match offsets. String ordering is case-sensitive and equal
+  frequencies, and match offsets. Text ordering is case-sensitive and equal
   values have no guaranteed secondary order. Full document and left/right
   context strings remain display-only, as do all combined-table headers.
 

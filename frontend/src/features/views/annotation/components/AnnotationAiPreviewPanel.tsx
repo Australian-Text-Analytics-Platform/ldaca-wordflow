@@ -1,3 +1,4 @@
+import HelpIcon from '@/components/help/HelpIcon';
 import { ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { AnnotationRowViewButton } from '@/features/views/common/components/AnnotationRowViewer';
 import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
@@ -356,6 +357,12 @@ export function AnnotationAiPreviewPanel({
             <TableRow className="[&>th]:align-bottom">
               <TableHead className="w-8 px-1">
                 <span className="sr-only">View row</span>
+                <HelpIcon
+                  targetKey="analysis.annotation.row-viewer"
+                  label="About the row viewer"
+                  tooltip="Use the button at the start of a row to read the whole row."
+                  className="h-5 w-5 text-description"
+                />
               </TableHead>
               <TableHead>{columns.text}</TableHead>
               <TableHead className="w-px whitespace-nowrap">

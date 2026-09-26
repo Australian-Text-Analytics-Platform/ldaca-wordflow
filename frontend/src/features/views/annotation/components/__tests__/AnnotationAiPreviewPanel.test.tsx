@@ -7,6 +7,9 @@ import { toBgColor } from '@/features/views/common/vizPalette';
 import type { AnnotationAiPreview } from '../../hooks/useAnnotationAiPreview';
 import { AnnotationAiPreviewPanel } from '../AnnotationAiPreviewPanel';
 
+// The help icon needs the app's TooltipProvider; these tests do not cover it.
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 const mocks = vi.hoisted(() => ({
   setCell: vi.fn(),
 }));

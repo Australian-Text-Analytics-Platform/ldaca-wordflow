@@ -11,6 +11,7 @@ import {
   Trash2,
   X,
 } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -865,6 +866,14 @@ function FileTreeContent({
           ) : (
             <span className="text-description">Select all at root</span>
           )}
+          <span className="ml-auto flex">
+            <HelpIcon
+              targetKey="data-loader.file-organisation"
+              label="About organising files"
+              tooltip="Tick files and folders to move, download, or delete them together, or drag them onto a folder."
+              className="h-5 w-5 text-description"
+            />
+          </span>
         </div>
       ) : null}
       {nodes.map((node) => renderNode(node))}

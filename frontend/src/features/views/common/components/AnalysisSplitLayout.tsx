@@ -1,5 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
+import HelpIcon from '@/components/help/HelpIcon';
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { cn } from '@/lib/utils';
 
@@ -141,48 +142,59 @@ export function AnalysisSplitLayout({
       </div>
 
       {showHandle ? (
-        <ResizeHandle
-          orientation="horizontal"
-          isDragging={drag !== null}
-          role="separator"
-          aria-label="Resize parameters and results"
-          aria-valuenow={parametersHeight ?? undefined}
-          aria-valuemin={ANALYSIS_SPLIT_MIN_PARAMETERS_HEIGHT}
-          tabIndex={0}
-          title="Drag to resize. Double-click to reset."
-          data-testid="analysis-split-handle"
-          className="my-1.5 shrink-0"
-          onPointerDown={(event) => {
-            if (event.button !== 0) return;
-            event.preventDefault();
-            event.currentTarget.setPointerCapture(event.pointerId);
-            const startHeight = clampHeight(currentHeight());
-            setDrag({ startY: event.clientY, startHeight, height: startHeight });
-          }}
-          onPointerMove={(event) => {
-            if (!drag) return;
-            const next = clampHeight(drag.startHeight + event.clientY - drag.startY);
-            if (next !== drag.height) setDrag({ ...drag, height: next });
-          }}
-          onPointerUp={(event) => {
-            if (!drag) return;
-            event.currentTarget.releasePointerCapture(event.pointerId);
-            if (drag.height !== drag.startHeight) commit(drag.height);
-            setDrag(null);
-          }}
-          onPointerCancel={() => {
-            setDrag(null);
-          }}
-          onDoubleClick={() => {
-            commit(null);
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
-            event.preventDefault();
-            const step = event.key === 'ArrowUp' ? -KEYBOARD_STEP : KEYBOARD_STEP;
-            commit(clampHeight(currentHeight() + step));
-          }}
-        />
+        // The help icon floats at the right end so the handle keeps its height.
+        <div className="relative my-1.5 shrink-0">
+          <ResizeHandle
+            orientation="horizontal"
+            isDragging={drag !== null}
+            role="separator"
+            aria-label="Resize parameters and results"
+            aria-valuenow={parametersHeight ?? undefined}
+            aria-valuemin={ANALYSIS_SPLIT_MIN_PARAMETERS_HEIGHT}
+            tabIndex={0}
+            title="Drag to resize. Double-click to reset."
+            data-testid="analysis-split-handle"
+            className="w-full"
+            onPointerDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              event.currentTarget.setPointerCapture(event.pointerId);
+              const startHeight = clampHeight(currentHeight());
+              setDrag({ startY: event.clientY, startHeight, height: startHeight });
+            }}
+            onPointerMove={(event) => {
+              if (!drag) return;
+              const next = clampHeight(drag.startHeight + event.clientY - drag.startY);
+              if (next !== drag.height) setDrag({ ...drag, height: next });
+            }}
+            onPointerUp={(event) => {
+              if (!drag) return;
+              event.currentTarget.releasePointerCapture(event.pointerId);
+              if (drag.height !== drag.startHeight) commit(drag.height);
+              setDrag(null);
+            }}
+            onPointerCancel={() => {
+              setDrag(null);
+            }}
+            onDoubleClick={() => {
+              commit(null);
+            }}
+            onKeyDown={(event) => {
+              if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+              event.preventDefault();
+              const step = event.key === 'ArrowUp' ? -KEYBOARD_STEP : KEYBOARD_STEP;
+              commit(clampHeight(currentHeight() + step));
+            }}
+          />
+          <div className="absolute top-1/2 right-0 -translate-y-1/2">
+            <HelpIcon
+              targetKey="ui.analysis-layout"
+              label="About resizing parameters and results"
+              tooltip="Drag the bar to share the height between parameters and results. Drag a result's bottom-right corner to size it on its own."
+              className="h-5 w-5 text-description"
+            />
+          </div>
+        </div>
       ) : null}
 
       <div

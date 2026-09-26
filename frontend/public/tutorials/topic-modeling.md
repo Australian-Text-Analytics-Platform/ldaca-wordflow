@@ -115,6 +115,12 @@ your segmentation method, token cap, and Min topic size stay selected.
 
 ![Topic modelling results](tutorials/assets/topic_modelling/results.png)
 
+The **Result settings** row above the bubble chart holds **Topics**, **Per
+document**, **Words**, and, for a single-corpus result, **Colour by**, with
+**Add to Project** at its right. Question-mark icons beside some of these
+controls give a short explanation. Below the chart, the **Selected Topics** and **All
+Topics** lists each have their own resize grip, like the chart itself.
+
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
 The Result starts at HDBSCAN's natural number of real Topics. Use **Number of
@@ -269,7 +275,8 @@ The **Rows** choice in the dialog sets how rows are formed:
 
 The suggested name for each new Data Block includes the selected topic numbers,
 for example _Corpus topic 5_ or _Corpus topics 3, 7_ (with more than three
-topics selected, _Corpus 8 topics_). You can edit the name before adding it.
+topics selected, _Corpus 8 topics_). **Per topic** names end in _segments_,
+for example _Corpus topic 5 segments_. You can edit the name before adding it.
 
 Both modes use the topics as currently shown, including any merging from
 **Number of topics**. Per topic needs a result from this version of Wordflow;
@@ -283,7 +290,7 @@ result and its current counts.
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
 **Clear Results** removes the retained Analysis and Result. The selected
-segmentation method, maximum-token value, and minimum cluster size remain
+**Segments** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 
 <h2 id="help-topic-modeling-troubleshooting">Troubleshooting</h2>
