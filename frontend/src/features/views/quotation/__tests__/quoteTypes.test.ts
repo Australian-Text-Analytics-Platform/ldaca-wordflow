@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 
-import { describeQuoteType, formatQuoteType } from '../quoteTypes';
+import { describeQuoteType, explainQuoteType } from '../quoteTypes';
 
 describe('quote types (issue 174)', () => {
   it.each([
-    ['QCQVS', 'QCQVS: The quote in quotation marks, then the verb, then the speaker'],
-    ['SVQCQ', 'SVQCQ: The speaker, then the verb, then the quote in quotation marks'],
-    ['SVC', 'SVC: The speaker, then the verb, then the quote (reported speech)'],
-    ['AccordingTo', 'AccordingTo: Attributed with "according to"'],
-  ])('describes %s', (code, expected) => {
-    expect(formatQuoteType(code)).toBe(expected);
+    ['QCQVS', 'The quote in quotation marks, then the verb, then the speaker.'],
+    ['SVQCQ', 'The speaker, then the verb, then the quote in quotation marks.'],
+    ['SVC', 'The speaker, then the verb, then the quote (reported speech).'],
+    ['AccordingTo', 'Attributed with "according to".'],
+  ])('explains %s', (code, expected) => {
+    expect(explainQuoteType(code)).toBe(expected);
   });
 
   it('describes floating and heuristic quotes', () => {
@@ -18,8 +18,8 @@ describe('quote types (issue 174)', () => {
   });
 
   it('leaves unknown or empty codes as they are', () => {
-    expect(formatQuoteType('')).toBe('');
-    expect(formatQuoteType('XYZ')).toBe('XYZ');
-    expect(formatQuoteType('VS')).toBe('VS');
+    expect(explainQuoteType('')).toBeNull();
+    expect(explainQuoteType('XYZ')).toBeNull();
+    expect(explainQuoteType('VS')).toBeNull();
   });
 });

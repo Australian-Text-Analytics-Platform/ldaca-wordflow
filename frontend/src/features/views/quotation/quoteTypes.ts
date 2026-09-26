@@ -29,9 +29,8 @@ export const describeQuoteType = (code: string): string | null => {
     .join(', then ');
 };
 
-/** "QCQVS: The quote in quotation marks, then the verb, then the speaker". */
-export const formatQuoteType = (code: string): string => {
+/** The explanation shown under a Quote Type code, as a sentence, or null. */
+export const explainQuoteType = (code: string): string | null => {
   const description = describeQuoteType(code);
-  if (!description) return code;
-  return `${code}: ${description.charAt(0).toUpperCase()}${description.slice(1)}`;
+  return description ? `${description.charAt(0).toUpperCase()}${description.slice(1)}.` : null;
 };

@@ -1,3 +1,4 @@
+import { QuoteTypeValue } from '../../components/QuoteTypeValue';
 import { describe, expect, it } from 'vitest';
 
 import { QUOTATION_COLUMN_KEYS } from '../../../common/generatedColumns';
@@ -36,7 +37,7 @@ describe('quotationRowDetail', () => {
 
     const fields = customization.summaryFields ?? [];
     expect(fields.map((field) => [field.label, field.value])).toEqual([
-      ['Quote Type', 'direct'],
+      ['Quote Type', <QuoteTypeValue code="direct" />],
       ['Speaker', 'Alice'],
       ['Verb', 'said'],
       ['Quote', 'hello'],
