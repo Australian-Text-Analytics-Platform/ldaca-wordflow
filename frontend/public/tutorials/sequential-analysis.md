@@ -25,6 +25,8 @@ The **Time/Numeric Column** dropdown lists every column in the selected data blo
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
+![Selected data block with its Time/Numeric Column, and the Frequency setting](tutorials/assets/sequential_analysis/parameters.png)
+
 <h3 id="help-sequential-frequency">Step 3 — Set the frequency (datetime columns)</h3>
 
 When a datetime column is selected, choose how to group records into time buckets.
@@ -42,9 +44,13 @@ When a datetime column is selected, choose how to group records into time bucket
 | Quarterly | Each quarter (Q1–Q4) |
 | Yearly | Each calendar year |
 
+![The Frequency list](tutorials/assets/sequential_analysis/frequency_menu.png)
+
 **Customised interval**
 
 Select **Customised** to bucket by a fixed duration you define: enter a positive whole number and choose a unit (seconds, minutes, hours, days, or weeks). For example, *Every 30 minutes* groups records into half-hour windows.
+
+![Customised frequency: Every 1 minutes](tutorials/assets/sequential_analysis/custom_interval.png)
 
 - Smaller intervals show more detail but may produce many sparse buckets.
 - Larger intervals smooth the trend and reduce noise.
@@ -61,7 +67,9 @@ When an integer or decimal column is selected, two fields appear:
 
 To split the trend into multiple lines — one per category — add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
 
-Click **Add Group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced.
+Click **Add Group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
+
+![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
 When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.
 
@@ -89,6 +97,8 @@ period-selection controls together. Time column, frequency or interval, and
 Group By settings remain visible in the parameter panel instead of being
 repeated in the result.
 
+![Chart controls: Chart Type, X-axis, download, Select range, and zoom](tutorials/assets/sequential_analysis/chart_toolbar.png)
+
 <h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
 
 For grouped results, **Minimum group count** hides any group whose total count
@@ -102,6 +112,8 @@ filtered group was struck out, lowering the threshold restores it still struck
 out. Selected periods do not change which groups meet the threshold. With
 **Uncased** enabled, case variants are merged before their total is compared
 with the threshold.
+
+![Legend card with Uncased, Minimum group count, and Clear Selection](tutorials/assets/sequential_analysis/legend.png)
 
 <h3 id="help-sequential-chart-type">Chart type</h3>
 
@@ -162,6 +174,8 @@ With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**,
 
 Use **Clear Selection** to deselect all periods without losing any other settings.
 
+![Three selected periods shaded, with selected / total counts in the legend](tutorials/assets/sequential_analysis/period_selection.png)
+
 <h3 id="help-sequential-add-to-workspace">Add to Project</h3>
 
 Click **Add to Project** to create a Data Block containing original source
@@ -177,7 +191,10 @@ spelling represented by that entry.
 The time or numeric axis column is required. The source Document Column and
 Group By columns start selected but remain optional, while other source columns
 start unselected. The dialog preserves source-column order and defaults the new
-name to the source name followed by `_trends`.
+name to the source name followed by `_trends`. Its description says how many
+source rows and selected periods will be added.
+
+![Add Trends selection to Project dialog](tutorials/assets/sequential_analysis/add_to_project.png)
 
 <h3 id="help-sequential-clear-results">Clear results</h3>
 

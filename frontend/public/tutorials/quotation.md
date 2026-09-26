@@ -31,6 +31,8 @@ The engine is an Analysis parameter in the Quotation panel:
   operator. Enter the operator-provided **Engine id**. Wordflow does not accept
   arbitrary service URLs from the browser, and an unknown ID is rejected.
 
+![Quotation engine set to Remote, with the Engine id field](tutorials/assets/quotation/engine_remote.png)
+
 Use Remote only when the administrator of your Wordflow deployment has given
 you a valid engine ID and its data-handling policy is appropriate for the text.
 The immutable Analysis request stores `Built-in` or the selected remote engine
@@ -63,11 +65,16 @@ mutable Data Block. Preview pages are not cached.
 The table pages through source documents and omits documents with no extracted
 quotation. A source document can contribute several quotation rows.
 
+![Quotation Preview: each row marks the speaker, verb, and quote, with its quote type at the end](tutorials/assets/quotation/results.png)
+
 | Colour | Entity | Meaning |
 |---|---|---|
 | Blue | Speaker | The person attributed as speaking |
 | Green | Quote | The quoted text |
 | Violet | Verb | The speech verb, such as *said* or *argued* |
+
+To see more rows at once, drag the table's bottom-right corner down
+(double-click the corner to let it fill the space again).
 
 Click a row to inspect the full source document in Row Details, which opens
 scrolled to the highlighted quote. The metadata selector (**Show metadata**)
@@ -76,6 +83,8 @@ date-time columns are shown as dates. The virtual
 `QUOTE_extraction` document header sorts by the Analysis's selected source text
 column. Other source metadata headers remain sortable; generated quotation
 headers are display-only because they are produced after source paging.
+
+![Row Details for a quotation: quote type, speaker, verb, quote, and the document scrolled to the quote](tutorials/assets/quotation/row_details.png)
 
 Changing the page, **Documents per page**, or sort order recomputes another
 projection of the same Preview Analysis. It does not mutate that Analysis.

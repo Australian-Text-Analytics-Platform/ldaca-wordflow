@@ -10,23 +10,35 @@ either directly or with predictions from a configured AI provider.
 
 1. Under **Annotation Data Block**, add one Data Block and choose the text
    column.
-2. Select an existing text annotation column, or choose **Start new
-   annotation** and create one. This is an immediate Data Block Edit.
+2. Under **Annotation Column**, select an existing text column, or choose
+   **Start new annotation** and name a new, empty column. This is an immediate
+   Data Block Edit.
+
+   ![Create annotation column dialog](tutorials/assets/annotation/create_annotation_column.png)
+
 3. Under **Codebook**, add a Data Block and map its code and description
-   columns. Use **Create New** when you need an empty Codebook, then review and
-   edit its rows before labelling.
-4. Choose **Manual** or **AI**. The source and Codebook are shared between both
-   modes.
+   columns. Use **Create New** when you need an empty Codebook, then click
+   **Edit** beside **Codes** to add, rename, or remove codes and their
+   descriptions before labelling.
+
+   ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
+
+4. Use the **Manual / AI** switch to choose a mode. The source and Codebook are
+   shared between both modes.
+
+![Annotation setup: source data block, annotation column, Codebook, and the Manual / AI switch](tutorials/assets/annotation/setup.png)
 
 <h2 id="help-annotation-manual">Manual workflow</h2>
 
 Choose **Start** to open the annotation table. Select a Codebook value for each
-row; each change is written directly to the annotation column as a Data Block
+row from its **Select class** list; each change is written directly to the annotation column as a Data Block
 Edit. Start captures the source, annotation column, Codebook mapping, and table
 inputs. You can edit the setup as the draft for the next table without changing
 the open table. Choose **Close** even if that draft is incomplete; the next
 Start captures the new setup. Switching modes hides but does not rewrite the
 open Manual snapshot.
+
+![Manual annotation table with the class list open for one row](tutorials/assets/annotation/manual_table.png)
 
 Use **Compare To** to add another coder or model. Each comparison starts masked
 as `•••` so you can code without seeing how individual rows were coded. Its
@@ -34,7 +46,11 @@ header always shows the reliability score (hover or focus it for the confusion
 matrix) and the row-filter menu; reveal the column from the eye button to show
 its values and difference colours. Removing the filtered column clears the
 filter; hiding it does not. Reliability statistics summarize agreement but do
-not explain why labels differ.
+not explain why labels differ. Choose the statistic at the top of the **Compare
+To** list: **Percent Agreement**, **Cohen's Kappa** (the default), or
+**Krippendorff's Alpha**.
+
+![Compare To list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
 
 The funnel button in the annotation column header and in each comparison header
 opens a filter menu with two independent conditions: **Differs** and a value
@@ -46,6 +62,8 @@ out Differs because an empty cell never differs. Only one column carries a filte
 at a time; setting a filter on another column replaces it. Filtered rows and
 counts are calculated before server pagination. Preview has no row filter
 because its rows are chosen by the AI request.
+
+![Row filter menu of the annotation column](tutorials/assets/annotation/row_filter_menu.png)
 
 A cell counts as **empty** when it is blank or holds a value that is not a
 Codebook class (for example `P` instead of `promise`, or a date pasted by
@@ -78,7 +96,9 @@ hidden until you reveal that column, and the viewer is read-only; use
 
 <h2 id="help-annotation-ai">AI workflow</h2>
 
-Expand AI settings and choose a named provider configuration and model. Provider
+![AI mode: optional Example Data Block, example sampling, and the provider and model row](tutorials/assets/annotation/ai_settings.png)
+
+Expand AI settings (the arrow at the right of the provider and model row) and choose a named provider configuration and model. Provider
 credentials stay in Settings and are attached only when the request is sent.
 Create or edit connections under **Settings → AI**. API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,

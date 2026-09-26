@@ -55,6 +55,9 @@ The project manager lists all saved projects, enabling you to switch between pro
 - Click **Import project** to add a project from a ZIP archive, such as one downloaded from another Wordflow.
 - Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or import. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can import the ZIP (**Import project**) into another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
 - Click **Delete** to permanently remove a project that is no longer needed.
+- Click the **…** beside a project's name to read its description.
+
+![A project's description, opened from the … beside its name](tutorials/assets/data_loader/project_description.png)
 
 <h2 id="help-data-loader-files-section">Files and uploads section</h2>
 
@@ -120,12 +123,19 @@ When you add a folder (its **+** button) or a ZIP archive (**Add**), choose
 how to load it:
 
 - **Texts as one Data Block** (default) follows the document rules above.
+
+  ![Add Folder dialog in Texts mode, with a preview of the document table](tutorials/assets/data_loader/folder_add_dialog.png)
+
 - **Tables as separate Data Blocks** lists every table file in the folder and
   its subfolders, or inside the ZIP (CSV, TSV, JSON/JSONL, Parquet, Avro,
   Arrow/IPC, and spreadsheets, which use their first sheet). Tick the files
   you want, or use **Select all** or **Select none**, and select a file name to
   preview it. Each ticked file becomes its own Data Block named after the file
-  (a spreadsheet in a folder also adds its sheet name).
+  (a spreadsheet in a folder also adds its sheet name). No file is ticked at
+  first, and the button shows how many Data Blocks will be added.
+
+  ![Add Folder dialog in Tables mode, with one of two table files ticked](tutorials/assets/data_loader/folder_add_tables.png)
+
 
 A ZIP inside a folder, or inside another ZIP, is never opened: it is skipped
 (and listed as skipped in Texts mode). Add the ZIP on its own to load its
@@ -137,7 +147,13 @@ on `base_name`.
 
 <h2 id="help-data-loader-import-sample-button">Import sample data</h2>
 
-Use this option to download curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities. All sample data is publicly available and may be freely tested or removed. If sample data is used in a research output, please cite <img alt="citemark" src="references/assets/mark_ref.png" style="display: inline; height: 1em; vertical-align: middle;"> the dataset appropriately.
+Use this option to download curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities.
+
+Tick one or more datasets and click **Import selected**. Each dataset shows its size and the tools it suits, a quote icon for its citation, and **✓ Imported** once it is in your files. Imported datasets appear under the **sample_data** folder.
+
+All sample data is publicly available and may be freely tested or removed. If sample data is used in a research output, please cite <img alt="citemark" src="references/assets/mark_ref.png" style="display: inline; height: 1em; vertical-align: middle;"> the dataset appropriately.
+
+![Import sample content dialog](tutorials/assets/data_loader/sample_data_dialog.png)
 
 <h2 id="help-data-loader-import-ldaca-button">Import LDaCA collections</h2>
 
@@ -149,6 +165,8 @@ of Australia ([LDaCA Data Portal](https://data.ldaca.edu.au)).
    title links to its portal page.
 2. Type in **Filter collections** to narrow the list by name or description.
 3. Click **Download** on a collection to import its texts.
+
+![Import LDaCA collections dialog](tutorials/assets/data_loader/ldaca_dialog.png)
 
 Some collections are access-controlled. A collection your LDaCA API token
 cannot read is marked **Restricted**, with the licence you need to apply for.
@@ -163,6 +181,8 @@ For these you can:
 - **Update API token**: enter or change your token in place. The list then
   checks access again, so collections you have been granted access to become
   downloadable.
+
+![A restricted collection, with Import metadata only and Update API token](tutorials/assets/data_loader/ldaca_restricted.png)
 
 Imports run in the background and may take from 30 seconds to a few minutes,
 depending on collection size and network speed. The imported collection
@@ -180,6 +200,9 @@ Once a file is uploaded, imported, or downloaded, its row offers the following a
 - **Add** opens the add panel, where you can check the preview (and choose a
   sheet for a spreadsheet) and click **Add to Project** to load the file as a
   data block in the active project. A project must be open first.
+
+  ![Add File dialog with a preview of the first rows](tutorials/assets/data_loader/add_file_dialog.png)
+
 - **Download** the original file to your local machine.
 - **Delete** (the trash icon) removes the file from the application.
 
@@ -207,6 +230,9 @@ Drag any file or folder row and drop it onto a target folder (or onto any file i
 Tick the checkbox beside a file or folder (it appears when you hover, and on every row once something is selected) to select it. Shift-click selects everything between two rows, and Ctrl-click (Cmd-click on a Mac) adds or removes one row. **Select all at root** at the top of the panel selects every top-level item, and each open folder shows **Select all in** *folder* while you are selecting.
 
 With items selected, the bar at the top shows how many are selected and offers:
+
+![Two files selected, with the selection bar above the file list](tutorials/assets/data_loader/selection_bar.png)
+
 
 - **Move to…**: move the whole selection into a folder or the top level. You can also drag any selected row to move them all.
 - **Download**: download the selection as one ZIP. Folders keep their structure, and paths start from the folder that contains the selection, so selecting `speeches` and `one.csv` gives `speeches/…` and `one.csv`.

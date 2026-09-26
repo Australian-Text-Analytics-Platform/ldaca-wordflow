@@ -36,7 +36,11 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Select one or more data blocks from the project graph or the data block list. Each sub-tab requires a specific number of data blocks: exactly two for Join, two to six for Stack, and one for the other tools. Segment, Aggregate, and Deduplicate also use the column chosen beside the data block (the **Text column**, or the **Deduplicating column** for Deduplicate).
+Add data blocks under **Data Builder Inputs** with **Add data block**, or with a data block's **+** button in the Data Blocks list or the Project Graph. Each sub-tab requires a specific number of data blocks: exactly two for Join, two to six for Stack, and one for the other tools. The heading shows how many are added out of the maximum (for example **1/1**), and **Add data block** is greyed out once the maximum is reached. Remove a block with its **×**, or all of them with **Clear all**. Segment, Aggregate, and Deduplicate also use the column chosen beside the data block (the **Text column**, or the **Deduplicating column** for Deduplicate).
+
+![Data Builder Inputs with one data block and its text column](tutorials/assets/preprocessing/inputs_panel.png)
+
+A topic coverage column (`TOPIC_coverage`, made by Topic Modelling) is not listed in the column choices of Group, Join, Segment, Aggregate, or Deduplicate, because these tools cannot read it yet. Filter, Group, Join, Sample, Stack, and Deduplicate still carry it into their results unchanged, and Filter can also keep rows by a topic threshold on it.
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
@@ -144,6 +148,10 @@ Choose which column to match in each data block. The app pre-populates the most 
 
 Join type controls how unmatched rows are handled. The first data block you add is the left block, and the second is the right block. The explanation of the chosen type appears beside the selector.
 
+![Join type selector with the explanation of Left](tutorials/assets/preprocessing/join_type.png)
+
+![The six join types](tutorials/assets/preprocessing/join_type_menu.png)
+
 | Type | Keeps |
 |---|---|
 | Left (default) | Every row of the left block, with matching values from the right; rows without a match get empty cells |
@@ -198,17 +206,31 @@ Segment makes a new data block with one row per segment of the text column chose
 - **Lines** split at every line break.
 - **A pattern** is a regular expression marking where each segment starts; `^` means the start of a line. For a transcript written as `JOHN SMITH: Hello`, the pattern `^[\w\s]+:` starts a segment at each speaker. Choose whether the matched text **goes into its own column** (for example *speaker*, with the trailing colon removed) or **is dropped, like a delimiter**. Text before the first match becomes segment 1.
 
+The count below the choices (for example **5,885 segment rows**) shows how many rows the new data block will have.
+
+![Segment choices for the text column, with Sentences selected](tutorials/assets/preprocessing/segment_methods.png)
+
+With **A pattern** selected, type the pattern and choose what happens to the matched text. Here each re-post of the form `RT @user:` starts a segment, and the matched text goes into a new column named `retweet_of`:
+
+![Segment with a pattern whose matched text goes into its own column](tutorials/assets/preprocessing/segment_pattern.png)
+
 Separators are not kept, segments are trimmed, and empty segments are skipped.
 
 <h2 id="help-preprocessing-split-group-section">Group</h2>
 
 Group makes one data block per group of a column (not to be confused with Aggregate, which makes one row per group), so analyses that compare data blocks need one step instead of several filters.
 
+Choose the column under **Split by**; the choices below it depend on the column's type.
+
 - For **text** and other categorical columns, each value is a group. Values are listed with their row counts, most frequent first.
 - For **dates**, group by year, year and month, or day.
 - For **numbers**, use ranges of a fixed size from a start value, or split the full range into a number of equal ranges.
 
-Every group starts ticked; untick any you don't need. Each data block is a Filter of the source, named like `speeches · Labor`, with a name prefix you can change. At most 50 data blocks are made at a time. If a column has more groups, narrow the data first, for example with Filter.
+![Group by party, with three small groups unticked](tutorials/assets/preprocessing/group_values.png)
+
+![Group by a date column, one data block per year and month](tutorials/assets/preprocessing/group_dates.png)
+
+Every group starts ticked; untick any you don't need, or use **Tick all** and **Untick all**. The button shows how many data blocks will be made. Each data block is a Filter of the source, named like `speeches · Labor`, with a name prefix you can change. At most 50 data blocks are made at a time. If a column has more groups, narrow the data first, for example with Filter.
 
 <h2 id="help-preprocessing-summarise-section">Aggregate</h2>
 
@@ -218,7 +240,9 @@ Aggregate makes a new data block with one row per group, for example one documen
 - Numbers: **Sum**, **Mean**, **Minimum**, **Maximum**, **Count distinct**, **First**, **Last**
 - Dates: **Earliest & latest**, **Earliest**, **Latest**, **Count distinct**, **First**, **Last**
 
-The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts. Dates keep their earliest and latest values. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur.
+The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Use **Find a column** to find a column in a long list.
+
+![Aggregate grouped by username, with a summary chosen for each column](tutorials/assets/preprocessing/aggregate.png)
 
 <h2 id="help-preprocessing-dedupe-section">Deduplicate</h2>
 
@@ -228,4 +252,6 @@ Deduplicate makes two data blocks and never changes the source:
 2. `…_duplicates` holds every row that has a duplicate, including the kept one, with a **duplicate_group** number and a **kept** column, so you can check what matched.
 
 Choose the **Deduplicating column** in the inputs panel: rows are always compared on it. Tick any **Additional columns to include** so rows must match on those too, or use **Select all** to compare whole rows. When the deduplicating column holds text, tick **Match near-duplicate text** to compare it after ignoring case, spacing, and punctuation. You can also ignore web links and @mentions, so a re-post such as `RT @user: Save the reef!` matches `save the reef`. The preview reports how many rows would be removed.
+
+![Deduplicate on the text column, matching near-duplicate text and ignoring links and @mentions](tutorials/assets/preprocessing/deduplicate.png)
 

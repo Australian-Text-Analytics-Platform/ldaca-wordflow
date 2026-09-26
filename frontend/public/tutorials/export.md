@@ -17,11 +17,16 @@ packaged by the backend into one ZIP containing one file per Data Block.
 Use **Add data block** to choose individual Data Blocks (or a Data Block's
 **+** button in the graph or the Data Blocks list), or **Add All** to select
 every remaining Data Block. There is
-no selector maximum. Remove a card or use **Clear all** to change the selection.
+no selector maximum. Remove a card with its **×**, or use **Clear all**, to change the selection.
+
+![Export Data Blocks with two Data Blocks added and CSV chosen](tutorials/assets/export/export_data_blocks.png)
 
 <h3 id="help-export-format">Step 2 — Choose a format</h3>
 
 Use the **Format** dropdown to choose the output file format:
+
+![The Format list](tutorials/assets/export/format_menu.png)
+
 
 | Format | Extension | Best used for |
 |---|---|---|
@@ -49,16 +54,22 @@ For a shortcut anywhere in the Project graph, open a Data Block's node menu,
 choose **Export**, select the format in the dialog, and click **Export**. This
 shortcut always exports that one Data Block directly.
 
+![Export dialog opened from a Data Block's menu in the Project Graph](tutorials/assets/export/node_export_dialog.png)
+
 With two or more selections, the action becomes **Export N Data Blocks**. The
 backend writes every Data Block in the selected format and returns one ZIP in
 the same order. Files inside the ZIP are named after their Data Blocks, with a
-numeric suffix when names collide.
+numeric suffix when names collide. A note below the button says whether the
+download will be one file or one ZIP.
 
 <h3 id="help-export-bundle">Complete Project archive</h3>
 
 **Export project archive**, in the **Export Project** card, remains a separate
 action. It exports the complete portable Project, including its graph, Tabs, Analyses, and Data Blocks, for
-later import into Wordflow.
+later import into Wordflow. It is the same archive as **Download** in the Data
+Loader's project manager.
+
+![Export Project card](tutorials/assets/export/export_project.png)
 
 <h2 id="help-export-troubleshooting">Troubleshooting</h2>
 
@@ -75,6 +86,9 @@ later import into Wordflow.
 | Setting | Default | Notes |
 |---|---|---|
 | Format | CSV | CSV, Excel, JSON, or Parquet; change to match your downstream tool |
+
+Topic coverage columns (`TOPIC_coverage`, from Topic Modelling) are written as
+text in CSV and Excel files; Parquet keeps them as they are.
 
 ## Practice exercise
 

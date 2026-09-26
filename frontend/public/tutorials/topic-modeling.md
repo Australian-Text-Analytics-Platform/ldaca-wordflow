@@ -22,7 +22,11 @@ two corpora.
 
 Each Data Block has an independent sampling percentage. The default is 100%.
 Lower sampling makes exploratory runs faster but can hide rare themes or make
-small topics less stable. The label reports the effective document count.
+small topics less stable. The label reports the effective document count, for
+example **Sampling (1,380 documents)**. The **Color** square sets the data
+block's colour in the bubble chart and topic lists.
+
+![Two data block cards with sampling, and the model settings below them](tutorials/assets/topic_modelling/parameters.png)
 
 <h3 id="help-topic-modeling-options">Step 3 — Configure the model</h3>
 
@@ -30,6 +34,8 @@ small topics less stable. The label reports the effective document count.
 
 This setting controls which spans become Topic Segments. The same method is
 used for every selected Data Block.
+
+![The Segments list](tutorials/assets/topic_modelling/segments_menu.png)
 
 | Method | Starting unit | Oversized unit |
 | --- | --- | --- |
@@ -115,11 +121,13 @@ your segmentation method, token cap, and Min topic size stay selected.
 
 ![Topic modelling results](tutorials/assets/topic_modelling/results.png)
 
-The **Result settings** row above the bubble chart holds **Topics**, **Per
-document**, **Words**, and, for a single-corpus result, **Colour by**, with
-**Add to Project** at its right. Question-mark icons beside some of these
-controls give a short explanation. Below the chart, the **Selected Topics** and **All
+The **Result settings** row below the bubble chart holds **Topics**, **Per
+document**, **Words**, the stop word controls, and, for a single-corpus result,
+**Colour by**, with **Add to Project** at its right. Question-mark icons beside some of these
+controls give a short explanation. Below it, the **Selected Topics** and **All
 Topics** lists each have their own resize grip, like the chart itself.
+
+![Result settings: Topics, Per document, Words, and the stop word filter](tutorials/assets/topic_modelling/result_settings.png)
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
@@ -240,6 +248,8 @@ an outlier group and is not a real-Topic bubble membership. Topics with a total
 bubble count of zero are omitted from the graph but remain available in the
 Topic lists and Result data.
 
+![Hovering over a bubble shows its representative words and its counts in each corpus](tutorials/assets/topic_modelling/bubble_hover.png)
+
 Hover for a representative-word cloud. Word order reflects c-TF-IDF
 distinctiveness, while word size reflects occurrences in assigned Topic
 Segments. Because segments do not overlap, source tokens are not counted twice. These are
@@ -251,7 +261,13 @@ around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the
 filter shown in **All Topics**; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
-Search further narrows the filtered list. Choose **Add to Project** to publish
+Search further narrows the filtered list. Click a topic in the chart or in **All
+Topics** to add it to **Selected Topics**; the **×** removes it and **Clear all**
+removes them all.
+
+![Topic 12 selected, shown in Selected Topics and highlighted in All Topics](tutorials/assets/topic_modelling/topic_lists.png)
+
+Choose **Add to Project** to publish
 manually selected topic data and linked topic meanings as Derived Data Blocks.
 For a two-source result, **Sync columns** applies exact, case-sensitive shared
 source-column selections to both checked Data Blocks. Enabling it combines the
@@ -261,10 +277,18 @@ sync is active, and an unchecked source keeps its independent selection.
 `TOPIC_top1` remains required and is not synchronized. If fewer than two sources
 remain checked, Sync columns turns off automatically.
 
+![Add Topic Modelling results to Project, with the Rows choice at the top](tutorials/assets/topic_modelling/add_to_project.png)
+
 The **Rows** choice in the dialog sets how rows are formed:
 
 - **Per document** (default): one row per source document, with its dominant
   topic (`TOPIC_top1`) and full topic coverage (`TOPIC_coverage`).
+
+  Most tools cannot use the `TOPIC_coverage` column yet. Analyses leave it out
+  of the metadata they show and carry; in the Data Builder only Filter can use
+  it (to keep rows by a topic threshold), and in the Data Editor it can only be
+  duplicated, renamed, or deleted. CSV and Excel exports write it as text;
+  Parquet keeps it as it is.
 - **Per topic**: one row per document and topic. The document column holds only
   the segments assigned to that topic, joined by line breaks in source order, so
   a document with three topics becomes three rows. Each row also carries the

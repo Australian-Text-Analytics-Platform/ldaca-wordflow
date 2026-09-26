@@ -4,7 +4,7 @@
 
 <h1 id="help-ui-overview">User Interface Overview</h1>
 
-The LDaCA app interface is organised into three columns containing eight main sections. This page describes each section and how they work together.
+The LDaCA app interface is organised into three columns. This page describes its nine main parts and how they work together.
 
 ![LDaCA main app](tutorials/assets/ldaca_main.png)
 
@@ -22,18 +22,29 @@ The left sidebar lists the available tool modules. Click a tool name to switch t
 - [**Annotation**](./annotation.md) — label text manually or with a configured AI provider.
 - [**Export**](./export.md) — download selected Data Blocks or a Project archive.
 
-The edit icon next to the heading (**Edit visible views**) lets you choose which tools appear.
+![The Views list in the left sidebar](tutorials/assets/ui/views_list.png)
+
+The pencil icon next to the heading (**Edit visible views**) opens a list of the tools with a tick beside each one. Untick a tool to hide it from the sidebar, and tick it again to bring it back. The Data Loader is always shown.
+
+![The Edit visible views list](tutorials/assets/ui/edit_visible_views.png)
 
 <h2 id="help-ui-data-selection">2. Data Selection</h2>
 
 Below the tool list, the **Data Blocks** panel shows every data block in the active project. It is both a quick selector and a live indicator of what is selected in the [Project Graph](#help-ui-workspace-graph-view) (section 4) — selecting a block here is equivalent to clicking the corresponding node in the graph, and the two panels always stay in sync. It is especially useful when the right column is hidden.
 
-- The total count and the number of currently selected data blocks are shown at the top.
+- The heading shows how many data blocks are selected out of the total, for example **2/12** (only the total when nothing is selected). The **Clear selection** button beside it (a crossed-out circle) deselects them all.
 - Click a data block to toggle its selection. Click again to deselect it. Click several blocks in turn to build up a multi-selection.
-- A filled circular checkbox indicates a selected data block; an empty circle indicates an unselected one.
+- Each data block is filled with its own colour, the same colour it has in the Project Graph and in charts. A selected data block has a dark outline around it, and a pinned one shows a blue pin at its start.
 - Pinned blocks are listed first, then selected blocks, then the others.
+- When a name is too long for the panel, its end stays visible and its start fades out; rest the pointer on it to read the full name. You can also drag the right edge of the sidebar to make it wider.
+
+![Data Blocks list with a pinned block (candidate_info) and two selected blocks](tutorials/assets/ui/data_blocks_list.png)
+
 - Selected data blocks open as tabs in the Data Editor (section 5).
-- Hover a data block, here or in the Project Graph, to show its buttons. The pin keeps it at the top of this list. The **+** button (**Add to selection**) adds it to the inputs of the tool you are using. When the tool has one inputs panel, the block is added straight away; when it has several (for example Annotation's Annotation, Codebook, and Example Data Blocks), the block follows the pointer until you click the panel you want (press Esc or right-click to cancel). You can also use **Add data block** in the tool's inputs panel.
+- Hover a data block to show its buttons: the pin, **More options** (the sliders icon, with **Rename**, **Clone**, and **Delete**), and **+**. The pin keeps it at the top of this list; click it again to unpin. In the Project Graph, hovering a data block shows **More options** and **+** below it. The **+** button (**Add to selection**) adds it to the inputs of the tool you are using. When the tool has one inputs panel, the block is added straight away; when it has several (for example Annotation's Annotation, Codebook, and Example Data Blocks), the block follows the pointer until you click the panel you want (press Esc or right-click to cancel). You can also use **Add data block** in the tool's inputs panel.
+
+![Buttons shown when you hover a data block, with More options open](tutorials/assets/ui/data_block_menu.png)
+
 - Most tools can only process a limited number of data blocks at a time, shown in their inputs panel.
 
 <h2 id="help-ui-task-centre">3. Task Centre</h2>
@@ -48,6 +59,9 @@ from the active Project together with your retained User File Imports.
   (**Preview**, **Run**, **Run All**, or **Add to Project**), the data blocks it
   used, and when it finished. A step that failed or is still running has its
   own row, for example **Conc - 2 · Run All**.
+
+![Tasks panel with the Conc - 1 row expanded](tutorials/assets/ui/tasks_panel.png)
+
 - Failed and cancelled tasks are listed first, then running ones, then
   finished ones.
 - The arrow button at the right end of a row opens that task's tab (or the
@@ -62,8 +76,12 @@ from the active Project together with your retained User File Imports.
 - Successful, failed, and cancelled User File Imports remain available until
   you click **Clear**. Clearing the task removes its retained history record,
   not any files it successfully imported.
-- **Live updates** keeps the panel refreshed automatically so you can continue
-  working while tasks run in the background.
+- The panel refreshes automatically, so you can keep working while tasks run
+  in the background. The green dot beside the **Tasks** heading shows it is
+  connected for these live updates; if the connection drops, a message and a
+  **Retry** button appear instead.
+- To give the Tasks panel more room, collapse **Views** or **Data Blocks** by
+  clicking their headings, or drag the line between the sections.
 
 <h2 id="help-ui-workspace-graph-view">4. Project Graph</h2>
 
@@ -77,8 +95,12 @@ To switch projects without going to the Data Loader, use **Change Project** at t
 ![Change Project menu in the Project Graph title bar](tutorials/assets/ui/change_project.png)
 
 - Click a node to select that data block across the entire interface. Click it again to deselect. Selections made here are reflected immediately in the Data Blocks panel (section 2) and vice versa.
-- Each Data Block shows its name and size, for example **1,234 rows × 5 columns**.
-- Hover a Data Block and open its settings menu to **Rename**, **Clone**, **Export**, **Undo**, **Redo**, or **Delete** it. A clone is a copy named after the original with `_clone` added (for example `speeches_clone`). Undo and Redo availability comes from that Data Block's current backend session history.
+- Each Data Block shows its name. When you zoom in far enough, it also shows its size, for example **2,380 rows × 21 columns**.
+- Hover a Data Block and open its settings menu (the sliders icon below it) to **Rename**, **Clone**, **Export**, **Undo**, **Redo**, or **Delete** it. The **+** beside it adds the block to the inputs of the tool you are using.
+
+![A Data Block in the Project Graph, zoomed in, with its settings menu open](tutorials/assets/ui/graph_node_menu.png)
+
+- More of the graph is visible when you make the right column wider (drag its left edge) or give the graph more height (drag the line between the graph and the Data Editor). A clone is a copy named after the original with `_clone` added (for example `speeches_clone`). Undo and Redo availability comes from that Data Block's current backend session history.
 - Use **Rename** beside the project name in the title bar to rename the active project.
 - To move around a large project, drag an empty part of the graph, or scroll with two fingers on a trackpad (or with the mouse wheel). To zoom, pinch on a trackpad, or hold Ctrl (⌘ on a Mac) while scrolling.
 - To select several data blocks at once, hold Shift and drag a box around them, or switch the panel's drag button to **Drag to select** and drag without Shift. Every data block the box touches is added to the selection, as if you had clicked it. In **Drag to select** mode, drag with the right mouse button to move the graph.
@@ -99,8 +121,11 @@ To switch projects without going to the Data Loader, use **Change Project** at t
 
 The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make new data blocks or change which rows are present (Filter, Group, Join, Segment, Aggregate, Sample, Deduplicate, Stack) are in the [Data Builder](./preprocessing.md).
 
-- Tabs along the top let you switch between multiple selected data blocks.
+- When two or more data blocks are selected, tabs along the top let you switch between them. The **×** on the current tab deselects that data block.
 - The **Rename** button lets you rename the data block.
+
+![Data Editor header with two selected data blocks as tabs](tutorials/assets/ui/data_editor_header.png)
+
 <span id="help-ui-data-editor-column-tools"></span>
 
 ![Data Editor column tools, with the Add column menu open](tutorials/assets/ui/data_editor_tools.png)
@@ -114,11 +139,29 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - The same tools are in each column's settings menu, with that column already chosen.
   - Column names are used exactly as written, including any spaces at the start or end (for example, a CSV header `ID, text` names the second column ` text`).
   - Column choices in every tool can be filtered by typing, so long column lists never need scrolling.
-- A tool opens in a panel above the table, in place of the Project Graph (use **Show Project Graph** to look at the graph, and **Back to** *tool* to return). While you set it up, the table previews the result with the affected columns highlighted, and the panel reports how many rows change across the whole data block. The table scrolls so the column you are editing sits at the left edge, with any new column beside it; for **Combine columns**, whose new column is added at the end, it scrolls to the end. Scrolling or clicking in the table yourself stops this for the current preview. **Apply** makes the change as one step, so **Undo** reverses it; **Cancel** discards it.
+- A tool opens in a panel above the table, in place of the Project Graph (use **Show Project Graph** to look at the graph, and **Back to** *tool* to return; the **×** closes the tool). While you set it up, the table previews the result with the affected columns highlighted, and the panel reports how many rows change across the whole data block. The table scrolls so the column you are editing sits at the left edge, with any new column beside it; for **Combine columns**, whose new column is added at the end, it scrolls to the end. Scrolling or clicking in the table yourself stops this for the current preview. **Apply** makes the change as one step, so **Undo** reverses it; **Cancel** discards it.
+
+![Clean text open above the table: the text column is highlighted and the panel reports 1,779 rows changed](tutorials/assets/ui/column_tool_panel.png)
+
 - If you select another data block while a tool has unfinished settings, Wordflow asks whether to **Keep editing** or **Discard** them.
 - **Delete columns** opens a list of the Data Block's columns: tick the ones to remove (filter, **Select all**, **Select none**), then confirm. They are removed in one step, so a single **Undo** brings them all back. At least one column must remain.
+
+![Delete columns dialog with three columns ticked](tutorials/assets/ui/delete_columns.png)
+
 - **Undo** and **Redo** revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
-- Each column header shows the column name and its data type: `text`, `categorical`, `integer`, `decimal`, `datetime`, or `date` (`date` is a calendar date with no time of day, useful for publication or sitting dates). Use the pin button to keep a column at the left edge, click the sort button to sort the table by that column, and expand or collapse a wide text column. Click the settings icon on a column to rename or delete it; use the data-type menu to convert its type. These operations update the selected Data Block without creating a new one.
+- Each column header shows the column name and its data type: `text`, `categorical`, `integer`, `decimal`, `datetime`, or `date` (`date` is a calendar date with no time of day, useful for publication or sitting dates). Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column, and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
+
+![Column headers: pin, name, sort, data type, and settings](tutorials/assets/ui/column_header.png)
+
+- Click the settings icon (the sliders) at the right of a column header for that column's tools (**Find & replace**, **Clean text**, **Extract text**, **Split**, **Count**, **Duplicate**) and to **Rename** or **Delete** it.
+
+![A column's settings menu](tutorials/assets/ui/column_menu.png)
+
+- Click the data type (for example **datetime**) to convert the column to another type. The current type is ticked.
+
+![The data type menu of a column](tutorials/assets/ui/column_type_menu.png)
+
+- A topic coverage column (`TOPIC_coverage`, added by Topic Modelling's **Add to Project**) holds each row's share of every topic rather than a single value. Its **Sort** and data type buttons are disabled, and among the column tools its settings menu offers only **Duplicate** (you can still rename or delete it).
 - A type change never stops because of messy data: values that cannot be converted (for example a typo such as `5OO` in a column changed to integer) become empty, and a warning says how many there were and gives the row and value of the first one, so you can find and fix it. **Undo** restores them while the Project is open.
 - Missing values, NaN, and blank text are all shown as empty cells, in the table, previews, and Row Details.
 - When converting text to a date or datetime, the app attempts to guess the date format automatically. This works for many common formats but can fail or produce incorrect results when the format is ambiguous (e.g. `01/02/03` could be read as DD/MM/YY, MM/DD/YY, or YY/MM/DD). If the conversion fails or the dates look wrong, use the **Format** field to specify the format explicitly using [Python strftime/strptime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes). Common examples:
@@ -128,11 +171,17 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - `%Y-%m-%dT%H:%M:%S` → `2025-05-06T14:30:00` (ISO 8601)
   - `%d %b %Y` → `06 May 2025`
   - `%B %d, %Y` → `May 06, 2025`
-- Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The <a href="tutorials/assets/ui/row_details.png" target="_blank">row details</a> panel has two sections:
+- Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The panel has two sections:
   - **Document** — shows the full text of the data block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the data block, this section is omitted.
   - **Metadata** — shows all remaining columns as a two-column key/value table, making it easy to inspect structured fields such as speaker, date, or source alongside the document text.
 - Use **Previous row** and **Next row** at the bottom of the Row Details panel to review adjacent displayed rows. The Data Editor changes table pages automatically when you move past the first or last row on a page.
-- The table is paginated — use the controls at the bottom to navigate through large data blocks.
+
+![Row Details panel](tutorials/assets/ui/row_details.png)
+
+- The table is paginated: use the controls at the bottom to choose how many rows a page shows and to move between pages.
+
+![Table page controls](tutorials/assets/ui/pagination.png)
+
 - Scroll vertically with your mouse scroll wheel. Hold **Shift** to scroll horizontally.
 
 <h2 id="help-ui-tool-interface">6. Tool Interface</h2>
@@ -146,6 +195,9 @@ The centre column is the main working area and shows the interface of whichever 
 - In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused; double-click the bar to go back to the default. Each tool remembers its own setting.
 - The main results (tables, lists, and charts) fill the space below the bar, sharing it when there are several, so the bar makes them taller or shorter. To size one result on its own, drag its bottom-right corner, as with the Stop words box; the others share the space that is left. Double-click the corner to let it fill the space again. For example, in Topic Modelling make the bubble chart shorter to give the topic lists more room. Word clouds keep their width-based height until you resize them.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
+- The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open project, for example **Token Frequency: 1**: type to filter them, and choose one to open it.
+
+![Quick access list of analysis tabs](tutorials/assets/ui/quick_access.png)
 
 <h2 id="help-ui-working-directory">7. Working Directory</h2>
 
@@ -159,11 +211,13 @@ The Data Root is the filesystem directory where Wordflow stores durable applicat
 
 <h2 id="help-ui-appearance">8. Appearance</h2>
 
-Open **Settings → General → Appearance** to switch between **Light 2026** and
+Open **Settings** (the gear icon at the top right) **→ General → Appearance** and use the switch to change between **Light 2026** and
 **Dark 2026**. The interface changes immediately and the selection is saved to
 your account. Wordflow uses the last successful selection during startup so a
 reload does not briefly show the other theme. Charts and Data Block identity
 colors remain stable, while downloaded chart images keep a white background.
+
+![Appearance setting](tutorials/assets/ui/appearance.png)
 
 <h2 id="help-ui-help-feedback">9. Help and Feedback</h2>
 
@@ -172,6 +226,9 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 - **Help** opens the built-in written guides in a floating window (the one you are currently reading). Clicking any **?** icon scrolls Help to the relevant section.
 - **Feedback** opens a form where you can report bugs, request features, or ask questions. Your feedback goes directly to the developer team. Please do not include any confidential information.
 - In the title bar, the icons beside the **Wordflow** name open **About Wordflow** (i) and **Cite LDaCA Wordflow** (quote mark). Select the **Wordflow** name to open the [Wordflow website](https://sih.tools/wordflow), where the desktop app can be downloaded, or the LDaCA logo to open the [LDaCA website](https://www.ldaca.edu.au/). Both open in a new tab (in the desktop app, in your web browser).
+
+![Wordflow name, About and Cite icons, and the LDaCA logo in the title bar](tutorials/assets/ui/title_bar.png)
+
 <span id="help-ui-hint-system"></span>
 - Each of the nine functions can show brief **Contextual Hints** as you reach
   useful milestones. Several hints may form a progressive sequence, but each

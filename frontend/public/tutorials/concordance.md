@@ -22,6 +22,8 @@ Enter the word, phrase, or token alternatives to find. Each result includes the
 left context, matched text, right context, and any source metadata columns you
 choose to display.
 
+![Search term, context window, and search options](tutorials/assets/concordance/search_options.png)
+
 <h4 id="help-concordance-search-mode">Search mode</h4>
 
 - **Text** searches the original text column. Whole-word, regular-expression,
@@ -79,6 +81,8 @@ The footer reports the matches and matching documents found after processing
 the current source-document batch. An empty page does not mean later pages are
 empty.
 
+![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
+
 <h2 id="help-concordance-run">Step 5 — Preview</h2>
 
 Click **Preview** to create a durable Preview Analysis. The label always remains
@@ -107,6 +111,8 @@ Table view shows one row per match. Click a row to inspect the full source
 document and its metadata. Use the metadata selector to add source columns to
 the table.
 
+![Review Table View: the matched text is strongly highlighted, and L1 and R1 softly](tutorials/assets/concordance/table_view.png)
+
 **L1** (`CONC_l1`) is the token immediately left of the match and **R1**
 (`CONC_r1`) is the token immediately right. Their frequency columns count each
 value across the complete Run All Result. The matched-text cell always uses
@@ -123,6 +129,8 @@ Dispersion view groups the current page by source document. Vertical marks show
 the relative position of each match within the document. **Bar length
 proportional to text length** scales bars by document length; with it off, all
 bars use the same width for easier positional comparison.
+
+![Dispersion View: one bar per document, with a mark at each match](tutorials/assets/concordance/dispersion_view.png)
 
 Match markers and dispersion series use the colour assigned to their exact,
 case-sensitive matched text. Colours come from the sorted union of term labels
@@ -144,11 +152,15 @@ page does not change the chart.
 
 <h4 id="help-concordance-chart-type">Chart type</h4>
 
-Choose **Line**, **Bar**, or **Area**. This presentation choice applies to the
+Choose **Density: line**, **Density: bar**, or **Density: area** from the
+**Chart** menu; **More** offers **Cumulative**, which adds up the matches from
+the start of the document to each position. This presentation choice applies to the
 dispersion blocks in the current session. Bar charts use side-by-side series
 with alternating bin backgrounds at 4, 5, or 10 bins. At 20, 25, 50, or 100
 bins, the series stack into one bar per bin so the bars remain visible. Other
 chart types are unchanged by the selected bin count.
+
+![The Chart menu](tutorials/assets/concordance/chart_type_menu.png)
 
 <h4 id="help-concordance-bin-count">Bin count</h4>
 
@@ -160,7 +172,8 @@ reinterpreted under new boundaries.
 
 In Review, click anywhere inside the plot to select the bin nearest the vertical
 axis pointer; Shift-click another bin to extend
-the range. Selected bins are shaded with a soft band across the chart, as in
+the range. As in Trends, you can also turn on **Select range** and drag across
+the bins, and use the zoom buttons beside it. Selected bins are shaded with a soft band across the chart, as in
 Trends: in Line and Area charts their points become large solid dots while the
 other points stay small hollow circles, and in Bar charts the unselected bars
 are dimmed. **Clear Selection** removes the bin filter. Click a legend term to
@@ -176,6 +189,8 @@ case variants into one series, colour, and summed legend count; for example,
 all separated charts and Combined View. Changing it restores all hidden legend
 terms while preserving selected bins.
 
+![Two bins selected: the legend shows selected / total matches for each term](tutorials/assets/concordance/dispersion_summary.png)
+
 <h4 id="help-concordance-download">Download the plot</h4>
 
 ![Plot download dialog](tutorials/assets/concordance/download_dialog.png)
@@ -186,10 +201,13 @@ bin and term-filter summary.
 
 <h3 id="help-concordance-metadata">Show metadata</h3>
 
-Enable **Show metadata** and select source columns to display beside matches.
+Open **Show metadata** and tick the source columns to display beside matches; the
+number in brackets shows how many are shown.
 With two Data Blocks, common columns and source-specific columns are grouped
 and colour-coded. Generated Concordance fields are already part of the Result
 and do not become source-metadata sort keys.
+
+![Show metadata list with party and gender ticked](tutorials/assets/concordance/show_metadata.png)
 
 <h3 id="help-concordance-display-mode">Separated and combined display</h3>
 
@@ -218,6 +236,8 @@ View always shows qualifying **Documents per page**; filtering occurs before
 sorting, counting, and paging, and the selected page size applies independently
 to each source. Review has no page-local Found summary.
 
+![Review footer: Matches per page and the whole-Result summary](tutorials/assets/concordance/review_footer.png)
+
 Separated Review Table View can sort selected metadata, matched text, L1/R1,
 their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
 values have no guaranteed secondary order. The document and full context
@@ -245,6 +265,8 @@ columns remain locked on and are not synchronized. If fewer than two sources
 remain checked, Sync columns turns off automatically.
 Submitting the checked sources is atomic, including when a source has no
 qualifying rows and therefore creates a schema-only Data Block.
+
+![Add Concordance Documents to Project, from Dispersion View](tutorials/assets/concordance/add_to_project.png)
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
@@ -280,7 +302,7 @@ disabled until Clear Results.
 | View | Table | Returning to Concordance starts in Table View |
 | Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasized when off |
 | Bin No. | 20 | 4, 5, 10, 20, 25, 50, or 100 |
-| Chart type | Line | Line, Bar, or Area |
+| Chart type | Density: line | Density: line, bar, or area, or More → Cumulative |
 | Review term visibility | All terms | Exact, case-sensitive labels |
 
 ## Practice exercise

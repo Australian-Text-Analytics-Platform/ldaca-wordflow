@@ -16,7 +16,13 @@ Use the data-block selector to choose which corpus (or corpora) to analyse. The 
 
 When two are selected, the tool runs in comparison mode and produces the Juxtorpus cloud and statistical measures in addition to the per-block results.
 
-For each selected block, choose the **text column** that contains the documents you want to count and a **tokenizer model** that defines the tokens. Only columns that hold plain text are available. Each choice is saved independently on that data block and initializes the corresponding control the next time you add it to a fresh Token Frequency or Concordance selector. If a block has no saved tokenizer preference, Token Frequency detects the selected column's language and automatically saves the first recommended tokenizer; Jieba is the first recommendation for Chinese text. Clearing one preference does not clear the other. Each tokenizer in the list shows the language it is for, and the link icon beside the selected tokenizer opens its project page in a new tab.
+For each selected block, choose the **text column** that contains the documents you want to count and a **tokenizer model** that defines the tokens. Only columns that hold plain text are available. Each choice is saved independently on that data block and initializes the corresponding control the next time you add it to a fresh Token Frequency or Concordance selector. If a block has no saved tokenizer preference, Token Frequency detects the selected column's language and automatically saves the first recommended tokenizer; Jieba is the first recommendation for Chinese text. Clearing one preference does not clear the other. Each tokenizer in the list shows the language it is for, the ones recommended for the detected language are listed first under **Recommended**, and the link icon beside the selected tokenizer opens its project page in a new tab.
+
+![Two data block cards, each with a text column, tokenizer model, colour, and Use as Study Corpus switch](tutorials/assets/token_frequency/data_block_cards.png)
+
+![The tokenizer list, with the recommended English tokenizers first](tutorials/assets/token_frequency/tokenizer_menu.png)
+
+The **Color** square on each card sets the colour of that data block in the clouds, lists, and Keyword Analysis labels.
 
 Every Token Frequency run requires a tokenizer model for every selected data block. The Analysis stores the exact model mapping it used, so reopening a historical result does not substitute a tokenizer preference that was changed later.
 
@@ -33,8 +39,11 @@ The study corpus is the collection whose key words you want to find. The referen
 Stop words are terms you want to exclude from the frequency count — commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
 - Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
-- Pick a list from the **Select language** dropdown next to the switch to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
-- Lists picked under **From other tabs** (for example _Topic Modeling · Analysis 1_) are copied into this tab's list; later edits in either tab do not affect the other.
+- Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
+
+![The stop words dropdown, with lists from other tabs, the classic lists, and the detected language](tutorials/assets/token_frequency/stop_words_menu.png)
+
+- Lists picked under **From other tabs** (for example _Topic Modeling · 1_) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
@@ -53,7 +62,9 @@ The results panel shows controls for stop words and display limits at the top, f
 
 <h3 id="help-token-frequency-token-limit">Cloud display limit</h3>
 
-The **Cloud display limit** (range 10–100, default 50) sets the maximum number of tokens shown in the word clouds. Changing this value also updates the List display limit to the same number (capped at 100).
+![Cloud and List display limits, each with an Apply button](tutorials/assets/token_frequency/display_limits.png)
+
+The **Cloud display limit** (range 10–100, default 50) sets the maximum number of tokens shown in the word clouds. Type a number, or use the arrows, then click **Apply**. Changing this value also updates the List display limit to the same number (capped at 100).
 
 <h3 id="help-token-frequency-list-limit">List display limit</h3>
 
@@ -66,6 +77,8 @@ The result-level **Filter tokens** input remains active in both Cloud and List v
 - `pre*` — all tokens starting with _pre_
 - `*ing` — all tokens ending in _ing_
 - `*ation*` — all tokens containing _ation_
+
+![Filter tokens set to *ing, with both clouds showing only words ending in ing](tutorials/assets/token_frequency/filter_tokens.png)
 
 Click **Clear** to remove the filter. Downloads also follow the active filter: frequency and Keyword Analysis CSVs contain all matching rows, while cloud image exports capture the filtered cloud.
 
@@ -89,6 +102,9 @@ When two data blocks are selected, the Juxtorpus cloud appears below the per-blo
 - **Size** reflects combined frequency across both blocks.
 - **Colour** shifts toward the block where the word has the higher proportional share, so differences in corpus size do not dominate the palette.
 - Words are ranked by log₁₀(O<sub>S</sub> + O<sub>R</sub>) × LogRatio; the cloud shows the highest and lowest N words by that score (up to twice the cloud display limit).
+- The colour bar at the top shows which colour stands for the **Reference** block and which for the **Study** block.
+
+![Juxtorpus cloud comparing the study block (blue) with the reference block (green)](tutorials/assets/token_frequency/juxtorpus.png)
 
 <h2 id="help-token-frequency-list-view">List view</h2>
 

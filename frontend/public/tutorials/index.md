@@ -23,7 +23,8 @@ Wordflow offers an interface that prioritizes ease of use and efficient navigati
 5.	Data Editor: View and edit the selected data block(s) as a table.
 6.	Tool Interface: The main interface of the selected analytic tool.
 7.	Working Directory: Set the local directory where the data are saved.
-8.	Help and Feedback: When you encounter problems.
+8.	Appearance: Switch between the light and dark themes.
+9.	Help and Feedback: When you encounter problems.
 
 For detailed explanation of how each of the above sections work, please refer to [User Interface Overview](./ui.md).
 
@@ -56,8 +57,6 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 3. **Clean, reshape, and join** your data if needed, with the Data Editor and the Data Builder.
 4. **Run analyses** like token frequency, concordance, or topic modelling.
 5. **Export** results for sharing or downstream work.
-
-> **Placeholder (image):** Add a hero screenshot of the project with highlighted side panels.
 
 ## Help sections
 
