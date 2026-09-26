@@ -14,7 +14,6 @@
  */
 import { type ReactNode } from 'react';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import type { AnalysisTab } from './tabStateOps';
 
 export interface AnalysisTabbedPanelProps {
@@ -76,13 +75,14 @@ export function AnalysisTabbedPanel({
         />
       ) : null}
 
-      <ScrollArea
+      {/* A bounded flex column so AnalysisSplitLayout can size its panes;
+          it still scrolls if a view renders taller content without a split. */}
+      <div
         data-testid="analysis-editor-content"
-        scrollbars="both"
-        className="min-h-0 flex-1 bg-surface"
+        className="flex min-h-0 flex-1 flex-col overflow-auto bg-surface p-4"
       >
-        <div className="min-h-full p-4">{children}</div>
-      </ScrollArea>
+        {children}
+      </div>
     </div>
   );
 }

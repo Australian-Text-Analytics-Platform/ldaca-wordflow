@@ -111,6 +111,7 @@ The centre column is the main working area and shows the interface of whichever 
 - The tool name and a short description appear at the top.
 - Sub-tabs (e.g. Filter, Sample, Join, Stack in the Data Builder) let you switch between related operations within the same tool.
 - Most tools follow a common workflow: configure parameters → review a preview → click **Create Data Block** or **Update Data Block**. Tools that change rows (Filter, Sample, Join, Stack) always create a new block; Find and Create always update the selected block in place without changing its rows.
+- In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused. Each tool remembers its own setting; double-click the bar to go back to the default.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
 
 <h2 id="help-ui-working-directory">7. Working Directory</h2>

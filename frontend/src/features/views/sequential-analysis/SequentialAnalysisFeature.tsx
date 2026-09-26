@@ -1,3 +1,4 @@
+import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -421,88 +422,91 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   };
 
   return (
-    <div className="space-y-4">
-      <AnalysisCardLayout
-        title="Trends and Sequence"
-        info={{
-          targetKey: 'sequential-analysis.overview',
-          label: 'About Sequential Analysis',
-          tooltip: 'Learn what sequential analysis is and how it can help you.',
-        }}
-        help={{
-          targetKey: 'analysis.sequential-analysis.parameters',
-          label: 'Sequential analysis parameters',
-          tooltip: 'Select a time column, choose frequency, and configure group-by options.',
-        }}
-        actions={{
-          // Routes the Run button through live sequential analysis.
-          onRunAll: () => {
-            void handleRunOrUpdate();
-          },
-          // Stops the active sequential-analysis task from the shared layout action.
-          onStop: activeAnalysis
-            ? () => {
-                void stopTask();
-              }
-            : undefined,
-          // Clears live sequential-analysis results from the shared layout action.
-          onClear: () => {
-            void handleClearResults();
-          },
-          runAllDisabled:
-            parametersLocked ||
-            actionState.runDisabled ||
-            isLoading.operations ||
-            !activeTimeColumn,
-          runAllDisabledReason: (() => {
-            if (isAnalyzing || isLoading.operations) return undefined;
-            if (actionState.runDisabledReason) return actionState.runDisabledReason;
-            if (!activeTimeColumn) return 'Select a time column to run';
-            return undefined;
-          })(),
-          clearDisabled: actionState.clearDisabled,
-          clearDisabledReason: actionState.clearDisabledReason,
-          isRunningAll: isAnalyzing,
-          isStopping,
-          runAllLabel: 'Run',
-          clearHelp: {
-            targetKey: 'analysis.sequential-analysis.clear-results',
-            label: 'Clear results',
-          },
-        }}
-        actionsGuidanceTarget="trends-actions"
-        parametersLocked={parametersLocked}
-      >
-        <SequentialAnalysisParameterPanel
-          nodeInputs={nodeInputs}
-          onColumnChange={(nodeId, column) => {
-            setNodeColumnSelection(nodeId, column);
-            setTimeColumn(column);
+    <AnalysisSplitLayout
+      viewId="sequential-analysis"
+      parameters={
+        <AnalysisCardLayout
+          title="Trends and Sequence"
+          info={{
+            targetKey: 'sequential-analysis.overview',
+            label: 'About Sequential Analysis',
+            tooltip: 'Learn what sequential analysis is and how it can help you.',
           }}
-          derivedColumnType={derivedColumnType}
-          dateOnly={timeColumnIsDate}
-          inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
-          activeNodeId={activeNodeId}
-          selectedNodeId={activeNodeId}
-          currentWorkspaceId={currentWorkspaceId}
-          frequency={frequency}
-          onFrequencyChange={setFrequency}
-          customIntervalValueInput={customIntervalValueInput}
-          onCustomIntervalValueChange={setCustomIntervalValueInput}
-          customIntervalUnit={customIntervalUnit}
-          onCustomIntervalUnitChange={setCustomIntervalUnit}
-          numericOriginInput={numericOriginInput}
-          onNumericOriginChange={setNumericOriginInput}
-          numericIntervalInput={numericIntervalInput}
-          onNumericIntervalChange={setNumericIntervalInput}
-          availableColumns={availableColumns}
-          groupByColumns={groupByColumns}
-          onAddGroupByColumn={sequentialParameters.addGroupByColumn}
-          onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
-          onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
-        />
-      </AnalysisCardLayout>
-
+          help={{
+            targetKey: 'analysis.sequential-analysis.parameters',
+            label: 'Sequential analysis parameters',
+            tooltip: 'Select a time column, choose frequency, and configure group-by options.',
+          }}
+          actions={{
+            // Routes the Run button through live sequential analysis.
+            onRunAll: () => {
+              void handleRunOrUpdate();
+            },
+            // Stops the active sequential-analysis task from the shared layout action.
+            onStop: activeAnalysis
+              ? () => {
+                  void stopTask();
+                }
+              : undefined,
+            // Clears live sequential-analysis results from the shared layout action.
+            onClear: () => {
+              void handleClearResults();
+            },
+            runAllDisabled:
+              parametersLocked ||
+              actionState.runDisabled ||
+              isLoading.operations ||
+              !activeTimeColumn,
+            runAllDisabledReason: (() => {
+              if (isAnalyzing || isLoading.operations) return undefined;
+              if (actionState.runDisabledReason) return actionState.runDisabledReason;
+              if (!activeTimeColumn) return 'Select a time column to run';
+              return undefined;
+            })(),
+            clearDisabled: actionState.clearDisabled,
+            clearDisabledReason: actionState.clearDisabledReason,
+            isRunningAll: isAnalyzing,
+            isStopping,
+            runAllLabel: 'Run',
+            clearHelp: {
+              targetKey: 'analysis.sequential-analysis.clear-results',
+              label: 'Clear results',
+            },
+          }}
+          actionsGuidanceTarget="trends-actions"
+          parametersLocked={parametersLocked}
+        >
+          <SequentialAnalysisParameterPanel
+            nodeInputs={nodeInputs}
+            onColumnChange={(nodeId, column) => {
+              setNodeColumnSelection(nodeId, column);
+              setTimeColumn(column);
+            }}
+            derivedColumnType={derivedColumnType}
+            dateOnly={timeColumnIsDate}
+            inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
+            activeNodeId={activeNodeId}
+            selectedNodeId={activeNodeId}
+            currentWorkspaceId={currentWorkspaceId}
+            frequency={frequency}
+            onFrequencyChange={setFrequency}
+            customIntervalValueInput={customIntervalValueInput}
+            onCustomIntervalValueChange={setCustomIntervalValueInput}
+            customIntervalUnit={customIntervalUnit}
+            onCustomIntervalUnitChange={setCustomIntervalUnit}
+            numericOriginInput={numericOriginInput}
+            onNumericOriginChange={setNumericOriginInput}
+            numericIntervalInput={numericIntervalInput}
+            onNumericIntervalChange={setNumericIntervalInput}
+            availableColumns={availableColumns}
+            groupByColumns={groupByColumns}
+            onAddGroupByColumn={sequentialParameters.addGroupByColumn}
+            onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
+            onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
+          />
+        </AnalysisCardLayout>
+      }
+    >
       {sequentialWaitingBanner && (
         <AnalysisTaskBanner
           analysisName="Trends and Sequence"
@@ -574,7 +578,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           }}
         />
       ) : null}
-    </div>
+    </AnalysisSplitLayout>
   );
 };
 

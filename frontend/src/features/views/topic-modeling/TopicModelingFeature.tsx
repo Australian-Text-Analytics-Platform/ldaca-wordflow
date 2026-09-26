@@ -1,3 +1,4 @@
+import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import {
   readStopWordsEnabled,
   STOP_WORDS_ENABLED_SETTINGS,
@@ -450,55 +451,58 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <div className="space-y-4">
-      <TopicModelingParameterPanel
-        nodeInputs={nodeInputs}
-        onColumnChange={handleColumnChange}
-        actionState={actionState}
-        parametersLocked={parametersLocked}
-        corpusSamples={corpusSamples}
-        nodeDocCounts={nodeDocCounts}
-        onCorpusSampleChange={updateCorpusSample}
-        minClusterSize={minClusterSize}
-        onMinClusterSizeChange={setMinClusterSize}
-        maxClusterSize={maxClusterSize}
-        onMaxClusterSizeChange={setMaxClusterSize}
-        lastRunClustering={
-          result
-            ? {
-                segmentCount: result.segment_count,
-                appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
-                requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
-              }
-            : null
-        }
-        randomSeed={randomSeed}
-        randomSeedUserSet={randomSeedUserSet}
-        onRandomSeedChange={setRandomSeedFromUser}
-        segmentationMethod={segmentationMethod}
-        onSegmentationMethodChange={setSegmentationMethod}
-        maxSegmentTokens={maxSegmentTokens}
-        onMaxSegmentTokensChange={setMaxSegmentTokens}
-        isRunning={isRunning}
-        isStopping={isStopping}
-        isClearing={isClearing}
-        onRun={handleRun}
-        onStop={
-          activeAnalysis
-            ? () => {
-                void stopTask();
-              }
-            : undefined
-        }
-        onClear={handleClear}
-        hasMissingColumns={panelHasMissingColumns}
-        nodeColors={nodeColors}
-        onNodeColorChange={(nodeId, color) => {
-          setNodeColor(nodeId, color);
-        }}
-        defaultPalette={defaultPalette}
-      />
-
+    <AnalysisSplitLayout
+      viewId="topic-modeling"
+      parameters={
+        <TopicModelingParameterPanel
+          nodeInputs={nodeInputs}
+          onColumnChange={handleColumnChange}
+          actionState={actionState}
+          parametersLocked={parametersLocked}
+          corpusSamples={corpusSamples}
+          nodeDocCounts={nodeDocCounts}
+          onCorpusSampleChange={updateCorpusSample}
+          minClusterSize={minClusterSize}
+          onMinClusterSizeChange={setMinClusterSize}
+          maxClusterSize={maxClusterSize}
+          onMaxClusterSizeChange={setMaxClusterSize}
+          lastRunClustering={
+            result
+              ? {
+                  segmentCount: result.segment_count,
+                  appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
+                  requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
+                }
+              : null
+          }
+          randomSeed={randomSeed}
+          randomSeedUserSet={randomSeedUserSet}
+          onRandomSeedChange={setRandomSeedFromUser}
+          segmentationMethod={segmentationMethod}
+          onSegmentationMethodChange={setSegmentationMethod}
+          maxSegmentTokens={maxSegmentTokens}
+          onMaxSegmentTokensChange={setMaxSegmentTokens}
+          isRunning={isRunning}
+          isStopping={isStopping}
+          isClearing={isClearing}
+          onRun={handleRun}
+          onStop={
+            activeAnalysis
+              ? () => {
+                  void stopTask();
+                }
+              : undefined
+          }
+          onClear={handleClear}
+          hasMissingColumns={panelHasMissingColumns}
+          nodeColors={nodeColors}
+          onNodeColorChange={(nodeId, color) => {
+            setNodeColor(nodeId, color);
+          }}
+          defaultPalette={defaultPalette}
+        />
+      }
+    >
       {shouldShowResultsPanel && (
         <TopicModelingResultsPanel
           topicWaitingBanner={topicWaitingBanner}
@@ -593,7 +597,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           }}
         />
       ) : null}
-    </div>
+    </AnalysisSplitLayout>
   );
 }
 

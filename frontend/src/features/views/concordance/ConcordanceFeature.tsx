@@ -1,3 +1,4 @@
+import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { useState, useEffect, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -737,71 +738,74 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   ]);
 
   return (
-    <div className="space-y-4">
-      <ConcordanceParameterPanel
-        nodeInputs={nodeInputs}
-        handleColumnChange={handleColumnChange}
-        nodeColors={nodeColors}
-        onNodeColorChange={(nodeId, color) => {
-          setNodeColor(nodeId, color);
-        }}
-        defaultPalette={defaultPalette}
-        searchWord={searchWord}
-        setSearchWord={setSearchWord}
-        numLeftTokens={numLeftTokens}
-        setNumLeftTokens={setNumLeftTokens}
-        numRightTokens={numRightTokens}
-        setNumRightTokens={setNumRightTokens}
-        regex={regex}
-        setRegex={setRegex}
-        wholeWord={wholeWord}
-        setWholeWord={setWholeWord}
-        caseSensitive={caseSensitive}
-        setCaseSensitive={setCaseSensitive}
-        ignorePunctuation={ignorePunctuation}
-        setIgnorePunctuation={setIgnorePunctuation}
-        searchMode={searchMode}
-        setSearchMode={setSearchModeFromUser}
-        tokensModeAvailable={tokensModeAvailable}
-        renderTokenizerModelSelector={({ nodeId, column }) => (
-          <TokenizerModelSelector
-            workspaceId={currentWorkspaceId}
-            nodeId={nodeId}
-            column={column}
-            value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
-            disabled={searchMode !== 'tokens'}
-            disabledReason="Tokenizer models apply only in Tokens mode."
-            onChange={(model, detectedLanguage) => {
-              handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
-            }}
-          />
-        )}
-        isSearching={analysisActionLifecycle.isPreviewing}
-        actionState={{
-          ...actionState,
-          clearDisabled:
-            analyses.length === 0 ||
-            analysisActionLifecycle.isPreviewing ||
-            analysisActionLifecycle.isRunningAll ||
-            Boolean(activeAnalysis),
-        }}
-        handleRunOrUpdate={handleRunOrUpdate}
-        handleRunAll={handleRunAll}
-        runAllDisabled={
-          analysisActionLifecycle.runAllDisabled ||
-          runAllActionState.runDisabled ||
-          panelSelectedNodes.length === 0 ||
-          !searchWord.trim() ||
-          nodeColumnSelections.some((selection) => !selection.column)
-        }
-        runAllStateDisabledReason={runAllActionState.runDisabledReason}
-        isRunningAll={analysisActionLifecycle.isRunningAll}
-        parametersLocked={analysisActionLifecycle.parametersLocked}
-        handleStopTask={activeAnalysis ? stopTask : undefined}
-        isStopping={isStopping}
-        handleClearResults={handleClearResults}
-      />
-
+    <AnalysisSplitLayout
+      viewId="concordance"
+      parameters={
+        <ConcordanceParameterPanel
+          nodeInputs={nodeInputs}
+          handleColumnChange={handleColumnChange}
+          nodeColors={nodeColors}
+          onNodeColorChange={(nodeId, color) => {
+            setNodeColor(nodeId, color);
+          }}
+          defaultPalette={defaultPalette}
+          searchWord={searchWord}
+          setSearchWord={setSearchWord}
+          numLeftTokens={numLeftTokens}
+          setNumLeftTokens={setNumLeftTokens}
+          numRightTokens={numRightTokens}
+          setNumRightTokens={setNumRightTokens}
+          regex={regex}
+          setRegex={setRegex}
+          wholeWord={wholeWord}
+          setWholeWord={setWholeWord}
+          caseSensitive={caseSensitive}
+          setCaseSensitive={setCaseSensitive}
+          ignorePunctuation={ignorePunctuation}
+          setIgnorePunctuation={setIgnorePunctuation}
+          searchMode={searchMode}
+          setSearchMode={setSearchModeFromUser}
+          tokensModeAvailable={tokensModeAvailable}
+          renderTokenizerModelSelector={({ nodeId, column }) => (
+            <TokenizerModelSelector
+              workspaceId={currentWorkspaceId}
+              nodeId={nodeId}
+              column={column}
+              value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
+              disabled={searchMode !== 'tokens'}
+              disabledReason="Tokenizer models apply only in Tokens mode."
+              onChange={(model, detectedLanguage) => {
+                handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
+              }}
+            />
+          )}
+          isSearching={analysisActionLifecycle.isPreviewing}
+          actionState={{
+            ...actionState,
+            clearDisabled:
+              analyses.length === 0 ||
+              analysisActionLifecycle.isPreviewing ||
+              analysisActionLifecycle.isRunningAll ||
+              Boolean(activeAnalysis),
+          }}
+          handleRunOrUpdate={handleRunOrUpdate}
+          handleRunAll={handleRunAll}
+          runAllDisabled={
+            analysisActionLifecycle.runAllDisabled ||
+            runAllActionState.runDisabled ||
+            panelSelectedNodes.length === 0 ||
+            !searchWord.trim() ||
+            nodeColumnSelections.some((selection) => !selection.column)
+          }
+          runAllStateDisabledReason={runAllActionState.runDisabledReason}
+          isRunningAll={analysisActionLifecycle.isRunningAll}
+          parametersLocked={analysisActionLifecycle.parametersLocked}
+          handleStopTask={activeAnalysis ? stopTask : undefined}
+          isStopping={isStopping}
+          handleClearResults={handleClearResults}
+        />
+      }
+    >
       {concordanceWaitingBanner && (
         <AnalysisTaskBanner
           analysisName="Concordance"
@@ -973,7 +977,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           <p className="text-description mt-2">Loading project...</p>
         </div>
       )}
-    </div>
+    </AnalysisSplitLayout>
   );
 }
 

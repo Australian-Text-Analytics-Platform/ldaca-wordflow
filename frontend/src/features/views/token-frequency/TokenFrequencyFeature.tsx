@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import type { TokenFrequencyRequest, TokenFrequencyResponse } from '@/api';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
 import { useProgressiveContextualHints } from '@/features/guidance/useProgressiveContextualHints';
@@ -434,51 +435,54 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   ]);
 
   return (
-    <div className="space-y-4">
-      <TokenFrequencyParameterPanel
-        nodeInputs={nodeInputs}
-        onColumnChange={handleColumnChange}
-        actionState={actionState}
-        parametersLocked={parametersLocked}
-        isAnalyzing={isRunning}
-        isStopping={isStopping}
-        onAnalyze={() => {
-          void handleAnalyze();
-        }}
-        onStop={
-          activeAnalysis
-            ? () => {
-                void stopTask();
-              }
-            : undefined
-        }
-        onClearResults={() => {
-          void clearResults();
-        }}
-        hasIncompleteSelections={hasIncompleteSelections}
-        studyNodeId={effectiveStudyNodeId}
-        onStudyNodeChange={(nodeId: string) => {
-          setStudyNodeId(nodeId);
-        }}
-        nodeColors={nodeColors}
-        onNodeColorChange={(nodeId, color) => {
-          setNodeColor(nodeId, color);
-        }}
-        computeDisplayName={computeDisplayName}
-        renderTokenizerModelSelector={({ nodeId, column }) => (
-          <TokenizerModelSelector
-            workspaceId={currentWorkspaceId}
-            nodeId={nodeId}
-            column={column}
-            value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
-            autoSelectRecommended
-            onChange={(model, detectedLanguage) => {
-              handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
-            }}
-          />
-        )}
-      />
-
+    <AnalysisSplitLayout
+      viewId="token-frequency"
+      parameters={
+        <TokenFrequencyParameterPanel
+          nodeInputs={nodeInputs}
+          onColumnChange={handleColumnChange}
+          actionState={actionState}
+          parametersLocked={parametersLocked}
+          isAnalyzing={isRunning}
+          isStopping={isStopping}
+          onAnalyze={() => {
+            void handleAnalyze();
+          }}
+          onStop={
+            activeAnalysis
+              ? () => {
+                  void stopTask();
+                }
+              : undefined
+          }
+          onClearResults={() => {
+            void clearResults();
+          }}
+          hasIncompleteSelections={hasIncompleteSelections}
+          studyNodeId={effectiveStudyNodeId}
+          onStudyNodeChange={(nodeId: string) => {
+            setStudyNodeId(nodeId);
+          }}
+          nodeColors={nodeColors}
+          onNodeColorChange={(nodeId, color) => {
+            setNodeColor(nodeId, color);
+          }}
+          computeDisplayName={computeDisplayName}
+          renderTokenizerModelSelector={({ nodeId, column }) => (
+            <TokenizerModelSelector
+              workspaceId={currentWorkspaceId}
+              nodeId={nodeId}
+              column={column}
+              value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
+              autoSelectRecommended
+              onChange={(model, detectedLanguage) => {
+                handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
+              }}
+            />
+          )}
+        />
+      }
+    >
       <TokenFrequencyResultsPanel
         results={results}
         isRunning={isRunning || Boolean(taskStatus.runningTask)}
@@ -525,7 +529,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
           void confirmDownload(options);
         }}
       />
-    </div>
+    </AnalysisSplitLayout>
   );
 };
 

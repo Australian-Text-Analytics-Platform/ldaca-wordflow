@@ -1,3 +1,4 @@
+import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -521,88 +522,93 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
   return (
     <>
-      <div className="space-y-4">
-        <AnalysisCardLayout
-          title="Quotation Extraction"
-          info={{
-            targetKey: 'quotation.overview',
-            label: 'About Quotation Extraction',
-            tooltip: 'Learn what quotation extraction is and how it can help you.',
-          }}
-          help={{
-            targetKey: 'analysis.quotation.parameters',
-            label: 'Quotation parameters',
-            tooltip: 'Select a data block, choose a text column, and configure quotation settings.',
-          }}
-          actions={{
-            // Routes the Run button through live quotation execution.
-            onPreview: () => {
-              void handleRunOrUpdate();
-            },
-            onRunAll: handleRunAll,
-            // Stops the active quotation task from the shared layout action.
-            onStop: activeAnalysis
-              ? () => {
-                  void stopTask();
-                }
-              : undefined,
-            // Clears live quotation state and backend results from the shared layout action.
-            onClear: async () => {
-              if (!currentWorkspaceId) return;
-              setIsClearing(true);
-              await clearResults();
-              setIsClearing(false);
-            },
-            previewDisabled:
-              analysisActionLifecycle.previewDisabled ||
-              actionState.runDisabled ||
-              !canRunQuotation,
-            previewDisabledReason: (() => {
-              if (isLoadingQuotations) return undefined;
-              if (actionState.runDisabledReason) return actionState.runDisabledReason;
-              if (hasIncompleteSelections) return 'Select a column for each data block';
-              if (!engineReady) return 'Configure the remote engine before running';
-              return undefined;
-            })(),
-            runAllDisabled:
-              !canRunQuotation ||
-              analysisActionLifecycle.runAllDisabled ||
-              runAllActionState.runDisabled,
-            runAllDisabledReason: runAllActionState.runDisabledReason,
-            clearDisabled: actionState.clearDisabled || isClearing,
-            clearDisabledReason: actionState.clearDisabledReason,
-            isPreviewing: analysisActionLifecycle.isPreviewing,
-            isRunningAll: analysisActionLifecycle.isRunningAll,
-            isStopping,
-            isClearing,
-            clearHelp: {
-              targetKey: 'analysis.quotation.clear-results',
-              label: 'Clear results',
-            },
-          }}
-          actionsGuidanceTarget="quotation-actions"
-          parametersLocked={analysisActionLifecycle.parametersLocked}
-        >
-          <NodeInputsPanel
-            guidanceTarget="quotation-inputs"
-            resolvedNodes={nodeInputs.resolvedNodes}
-            availableNodes={nodeInputs.availableNodes}
-            canAddMore={nodeInputs.canAddMore}
-            maxNodes={1}
-            onAddNodes={nodeInputs.addNodes}
-            onRemoveNode={nodeInputs.removeNode}
-            onClear={nodeInputs.clear}
-            onColumnChange={handleColumnChange}
-          />
-          <QuotationEngineSettingsFields
-            idPrefix="quotation-parameter-engine"
-            engineConfig={engineConfig}
-            lastRemoteEngineId={lastRemoteEngineId}
-            error={engineError}
-            onEngineConfigChange={setTaskEngineConfig}
-            onRemoteEngineIdChange={updateRemoteEngineId}
-          />
-        </AnalysisCardLayout>
+      <AnalysisSplitLayout
+        viewId="quotation"
+        parameters={
+          <AnalysisCardLayout
+            title="Quotation Extraction"
+            info={{
+              targetKey: 'quotation.overview',
+              label: 'About Quotation Extraction',
+              tooltip: 'Learn what quotation extraction is and how it can help you.',
+            }}
+            help={{
+              targetKey: 'analysis.quotation.parameters',
+              label: 'Quotation parameters',
+              tooltip:
+                'Select a data block, choose a text column, and configure quotation settings.',
+            }}
+            actions={{
+              // Routes the Run button through live quotation execution.
+              onPreview: () => {
+                void handleRunOrUpdate();
+              },
+              onRunAll: handleRunAll,
+              // Stops the active quotation task from the shared layout action.
+              onStop: activeAnalysis
+                ? () => {
+                    void stopTask();
+                  }
+                : undefined,
+              // Clears live quotation state and backend results from the shared layout action.
+              onClear: async () => {
+                if (!currentWorkspaceId) return;
+                setIsClearing(true);
+                await clearResults();
+                setIsClearing(false);
+              },
+              previewDisabled:
+                analysisActionLifecycle.previewDisabled ||
+                actionState.runDisabled ||
+                !canRunQuotation,
+              previewDisabledReason: (() => {
+                if (isLoadingQuotations) return undefined;
+                if (actionState.runDisabledReason) return actionState.runDisabledReason;
+                if (hasIncompleteSelections) return 'Select a column for each data block';
+                if (!engineReady) return 'Configure the remote engine before running';
+                return undefined;
+              })(),
+              runAllDisabled:
+                !canRunQuotation ||
+                analysisActionLifecycle.runAllDisabled ||
+                runAllActionState.runDisabled,
+              runAllDisabledReason: runAllActionState.runDisabledReason,
+              clearDisabled: actionState.clearDisabled || isClearing,
+              clearDisabledReason: actionState.clearDisabledReason,
+              isPreviewing: analysisActionLifecycle.isPreviewing,
+              isRunningAll: analysisActionLifecycle.isRunningAll,
+              isStopping,
+              isClearing,
+              clearHelp: {
+                targetKey: 'analysis.quotation.clear-results',
+                label: 'Clear results',
+              },
+            }}
+            actionsGuidanceTarget="quotation-actions"
+            parametersLocked={analysisActionLifecycle.parametersLocked}
+          >
+            <NodeInputsPanel
+              guidanceTarget="quotation-inputs"
+              resolvedNodes={nodeInputs.resolvedNodes}
+              availableNodes={nodeInputs.availableNodes}
+              canAddMore={nodeInputs.canAddMore}
+              maxNodes={1}
+              onAddNodes={nodeInputs.addNodes}
+              onRemoveNode={nodeInputs.removeNode}
+              onClear={nodeInputs.clear}
+              onColumnChange={handleColumnChange}
+            />
+            <QuotationEngineSettingsFields
+              idPrefix="quotation-parameter-engine"
+              engineConfig={engineConfig}
+              lastRemoteEngineId={lastRemoteEngineId}
+              error={engineError}
+              onEngineConfigChange={setTaskEngineConfig}
+              onRemoteEngineIdChange={updateRemoteEngineId}
+            />
+          </AnalysisCardLayout>
+        }
+      >
         {quotationWaitingBanner && (
           <AnalysisTaskBanner
             analysisName="Quotation"
@@ -681,7 +687,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             isPageLoading={quotationPage.isFetching || isResultFetching}
           />
         ) : null}
-      </div>
+      </AnalysisSplitLayout>
       {addToWorkspaceDialogOpen && runAllSource ? (
         <ResultAddToWorkspaceDialog
           open
