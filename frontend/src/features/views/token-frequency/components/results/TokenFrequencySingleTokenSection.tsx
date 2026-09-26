@@ -40,7 +40,6 @@ const ESTIMATED_BAR_ROW_HEIGHT_PX = 40;
 const ESTIMATED_BAR_LIST_HEIGHT_PX = 392;
 
 const countFormat = new Intl.NumberFormat('en');
-const perMillionFormat = new Intl.NumberFormat('en', { maximumFractionDigits: 2 });
 
 /** Rank, token bar, count, and per-million columns shared by the header and rows. */
 const listGridColumns = (rankWidthCh: number) => `${String(rankWidthCh)}ch minmax(0,1fr) 72px 88px`;
@@ -221,7 +220,7 @@ const VirtualizedTokenList = ({
                 {countFormat.format(frequency)}
               </span>
               <span className="text-right text-label-secondary tabular-nums text-description">
-                {perMillionFormat.format(perMillion(frequency, totalTokens))}
+                {countFormat.format(perMillion(frequency, totalTokens))}
               </span>
             </div>
           );

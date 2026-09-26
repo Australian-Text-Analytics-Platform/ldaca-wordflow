@@ -27,9 +27,9 @@ export type NodeResultView = NormalizedNodeResult & {
   totalTokens: number;
 };
 
-/** Occurrences per million tokens of the block, the usual normalised frequency. */
+/** Occurrences per million tokens of the block, rounded to a whole number. */
 export const perMillion = (frequency: number, totalTokens: number): number =>
-  totalTokens > 0 ? (frequency / totalTokens) * 1_000_000 : 0;
+  totalTokens > 0 ? Math.round((frequency / totalTokens) * 1_000_000) : 0;
 
 /** Extracts token-frequency rows from either raw arrays or backend node-result envelopes. */
 /**

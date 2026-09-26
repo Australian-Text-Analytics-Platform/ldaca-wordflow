@@ -136,6 +136,6 @@ describe('per-million totals (issue 172)', () => {
 
     expect(view!.rows[0]!.frequency).toBe(2249);
     expect(view!.totalTokens).toBe(3500);
-    expect(perMillion(view!.rows[0]!.frequency, view!.totalTokens)).toBeCloseTo(642571.43, 2);
+    expect(perMillion(view!.rows[0]!.frequency, view!.totalTokens)).toBe(642571);
   });
 });

@@ -317,7 +317,7 @@ describe('Token frequency result layouts', () => {
         'Node 1',
         fullVocabulary.map((row) => ({
           ...row,
-          per_million: (row.frequency / vocabularyTotal) * 1_000_000,
+          per_million: Math.round((row.frequency / vocabularyTotal) * 1_000_000),
         })),
       );
     } finally {
@@ -643,8 +643,8 @@ describe('Token frequency result layouts', () => {
       await user.click(screen.getByRole('button', { name: 'Download frequencies' }));
       // Per million uses the whole block (140 tokens), not just the matches (issue 172).
       expect(onDownloadFrequencyCsv).toHaveBeenCalledWith('Node 1', [
-        { ...rows[2], per_million: (30 / 140) * 1_000_000 },
-        { ...rows[3], per_million: (20 / 140) * 1_000_000 },
+        { ...rows[2], per_million: Math.round((30 / 140) * 1_000_000) },
+        { ...rows[3], per_million: Math.round((20 / 140) * 1_000_000) },
       ]);
 
       rerender(
