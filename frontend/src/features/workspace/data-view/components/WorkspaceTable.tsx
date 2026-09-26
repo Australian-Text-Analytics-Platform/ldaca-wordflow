@@ -358,6 +358,7 @@ export function WorkspaceTable({
           canCast={Boolean(onCast)}
           canRename={Boolean(onRenameColumn)}
           canDelete={Boolean(onDeleteColumn)}
+          isTopicCoverage={isTopicCoverageField(currentField)}
           isWideColumn={isWideColumn}
           isCollapsedColumn={isCollapsedColumn}
           onToggleExpand={onToggleExpand}

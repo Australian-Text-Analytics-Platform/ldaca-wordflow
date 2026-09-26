@@ -22,6 +22,7 @@ import polars as pl
 
 from ..shared.serialization import serialize_json_rows
 from ..shared.errors import InvalidInputError
+from ..shared.unsupported_columns import without_unsupported_columns
 from .concordance_tokens import (
     compute_tokens_concordance_page,
     find_token_matches,
@@ -347,10 +348,11 @@ def compute_node_concordance_page(
     Tokens mode requires callers to supply the temporary token column produced
     from the immutable Analysis request. Text mode ignores tokenizer mappings.
     """
-    base_lf = src["lf"]
     column = src["column"]
     label = src.get("label")
     tokenization_column = src.get("tokenization_column")
+    # Topic Coverage is not shown as Concordance metadata (issue 200).
+    base_lf = without_unsupported_columns(src["lf"], keep=(column, tokenization_column))
     search_mode = str(request.get("search_mode") or "regex")
 
     node_request: dict[str, Any] = dict(request)

@@ -43,6 +43,7 @@ import { AnnotationTableFrame } from '@/features/views/annotation/components/Ann
 import { CurrentAnnotationValueItem } from '@/features/views/annotation/components/CurrentAnnotationValueItem';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { isArrowDictionaryField, isArrowStringField } from '@/lib/arrow/arrowTable';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 
 const DEFAULT_PAGE_SIZE = 10;
 const NO_CORRECTION_VALUE = '__no_correction__';
@@ -149,9 +150,18 @@ export function RunAllReviewTable({
   const data = query.data;
   const dataColumns = data?.columns.filter((column) => column !== sourceRowIndexColumn);
   const requiredColumnSet = new Set(requiredColumns);
+  // Topic coverage is not offered as metadata (issue 200).
+  const unsupportedColumnSet = new Set(
+    data?.schema
+      .filter((column) => !isSupportedColumnField(column.field))
+      .map((column) => column.name) ?? [],
+  );
   const availableMetadataColumns =
     dataColumns?.filter(
-      (column) => !requiredColumnSet.has(column) && column !== correctionColumn,
+      (column) =>
+        !requiredColumnSet.has(column) &&
+        column !== correctionColumn &&
+        !unsupportedColumnSet.has(column),
     ) ?? [];
   const comparableColumnSet = new Set(
     data?.schema

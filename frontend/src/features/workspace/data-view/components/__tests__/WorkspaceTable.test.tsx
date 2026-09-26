@@ -5,9 +5,11 @@ import userEvent from '@testing-library/user-event';
 import {
   Dictionary,
   Field,
+  FixedSizeList,
   Float64,
   Int64,
   LargeList,
+  Struct,
   TimestampMicrosecond,
   Uint32,
   Utf8,
@@ -15,7 +17,22 @@ import {
 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 
+import { TOPIC_COVERAGE_EXTENSION } from '@/lib/arrow/semanticTypes';
 import { WorkspaceTable } from '../WorkspaceTable';
+
+const topicCoverageField = (name: string) =>
+  new Field(
+    name,
+    new FixedSizeList(
+      2,
+      new Field(
+        'item',
+        new Struct([new Field('topic_id', new Int64()), new Field('coverage', new Float64())]),
+      ),
+    ),
+    true,
+    new Map([['ARROW:extension:name', TOPIC_COVERAGE_EXTENSION]]),
+  );
 
 describe('WorkspaceTable', () => {
   it('shows the native IPC type name instead of a frontend list alias', () => {
@@ -152,6 +169,38 @@ describe('WorkspaceTable', () => {
       expect(within(dialog).getByText('Project row two.')).toBeInTheDocument();
     });
     expect(within(dialog).getByRole('button', { name: 'Previous row' })).toBeEnabled();
+  });
+
+  it('offers topic coverage only the column tools that can use it (issue 200)', async () => {
+    const user = userEvent.setup();
+    const onSortingChange = vi.fn();
+    const onOpenTool = vi.fn();
+
+    render(
+      <WorkspaceTable
+        columns={['text', 'TOPIC_coverage']}
+        columnFields={{
+          text: new Field('text', new Utf8()),
+          TOPIC_coverage: topicCoverageField('TOPIC_coverage'),
+        }}
+        data={[{ text: 'row', TOPIC_coverage: null }]}
+        onCast={vi.fn()}
+        onSortingChange={onSortingChange}
+        onOpenTool={onOpenTool}
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: 'Sort by TOPIC_coverage' })).toBeDisabled();
+    expect(
+      screen.getByRole('button', { name: 'Change data type for column TOPIC_coverage' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Sort by text' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: 'Column settings for TOPIC_coverage' }));
+    const menu = await screen.findByRole('menu');
+    expect(within(menu).getByRole('menuitem', { name: 'Duplicate…' })).toBeInTheDocument();
+    expect(within(menu).queryByRole('menuitem', { name: 'Find & replace…' })).toBeNull();
+    expect(within(menu).queryByRole('menuitem', { name: 'Clean text…' })).toBeNull();
   });
 
   it('preserves both axes for sorting and resets only rows for pagination', () => {

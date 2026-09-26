@@ -100,6 +100,7 @@ from ..shared.table_transport import (
     encode_ipc_stream,
     encode_schema_stream,
 )
+from ..shared.unsupported_columns import supported_metadata_columns
 from ..infrastructure.storage.input_snapshots import (
     clone_worker_input_snapshot,
     load_snapshot_node,
@@ -1140,9 +1141,12 @@ def _topic_context_path(
 def _topic_color_frame(
     data: pl.LazyFrame, text_column: str, row_indices: list[int]
 ) -> pl.DataFrame:
-    """Collect every non-text column for the model documents, in model order."""
+    """Collect every non-text column for the model documents, in model order.
 
-    columns = [name for name in data.collect_schema().names() if name != text_column]
+    Topic Coverage is left out: it cannot colour a Topic Map (issue 200).
+    """
+
+    columns = supported_metadata_columns(data.collect_schema(), exclude=(text_column,))
     frame = data.select(columns).collect()
     if row_indices and max(row_indices) >= frame.height:
         raise InvalidInputError(

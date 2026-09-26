@@ -39,6 +39,7 @@ import { type ServerColumnDef, useServerTable } from '@/features/views/common/ho
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { queryKeys } from '@/lib/queryKeys';
 import { isArrowDictionaryField, isArrowStringField } from '@/lib/arrow/arrowTable';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { toBgColor } from '@/features/views/common/vizPalette';
 import {
   annotationValuesDiffer,
@@ -223,10 +224,19 @@ export function AnnotationResultsPanel({
         column !== correctionColumn &&
         comparableColumnSet.has(column),
     ) ?? [];
+  // Topic coverage is not offered as metadata (issue 200).
+  const unsupportedColumnSet = new Set(
+    resultsQuery.data?.schema
+      .filter((column) => !isSupportedColumnField(column.field))
+      .map((column) => column.name) ?? [],
+  );
   const availableMetadataColumns =
     dataColumns?.filter(
       (column) =>
-        column !== textColumn && column !== annotationColumn && column !== correctionColumn,
+        column !== textColumn &&
+        column !== annotationColumn &&
+        column !== correctionColumn &&
+        !unsupportedColumnSet.has(column),
     ) ?? [];
   const activeComparisonColumns = comparisonColumns.filter((column) =>
     availableComparisonColumns.includes(column),

@@ -97,6 +97,7 @@ def _collect_source_input_from_snapshot(
     import polars as pl
 
     from ..infrastructure.storage.input_snapshots import load_snapshot_node
+    from ..shared.unsupported_columns import supported_metadata_columns
 
     snapshot_node = load_snapshot_node(input_snapshot_dir, node_id)
     node_data = snapshot_node.data
@@ -113,18 +114,21 @@ def _collect_source_input_from_snapshot(
             cache_path=token_cache_path,
         )
 
-    schema_names = list(node_data.collect_schema().names())
-    if SOURCE_ROW_ID_COLUMN in schema_names:
+    schema = node_data.collect_schema()
+    if SOURCE_ROW_ID_COLUMN in schema:
         raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")
     node_data = node_data.with_row_index(SOURCE_ROW_ID_COLUMN)
+    # Metadata travels through Python lists and is cast back to its source
+    # type, which Topic Coverage cannot survive, so it is left out (issue 200).
+    supported = supported_metadata_columns(
+        schema, exclude=(document_column, tokenization_column)
+    )
     if include_all_metadata:
-        metadata_columns = [
-            column
-            for column in schema_names
-            if column != document_column and column != tokenization_column
-        ]
+        metadata_columns = supported
     else:
-        metadata_columns = list(extra_column_names or [])
+        metadata_columns = [
+            column for column in extra_column_names or [] if column in supported
+        ]
 
     select_exprs = [
         pl.col(SOURCE_ROW_ID_COLUMN),

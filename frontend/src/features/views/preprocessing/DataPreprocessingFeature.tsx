@@ -36,6 +36,7 @@ import { FilterSubTab } from './filter/FilterSubTab';
 import { JoinSubTab } from './join/JoinSubTab';
 import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 
 type DataPrepSubtab =
   | 'filter'
@@ -159,6 +160,9 @@ function DataPreprocessingFeature() {
     },
     constraints: {
       maxNodes: maxInputNodes,
+      // Only Filter can use topic coverage; the other tools leave it out of
+      // their column choices (issue 200).
+      fieldPredicate: activeSubtab === 'filter' ? undefined : isSupportedColumnField,
     },
   });
   const selectedNodes = nodeInputs.selectedNodes;

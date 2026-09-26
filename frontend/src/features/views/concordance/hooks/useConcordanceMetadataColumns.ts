@@ -5,6 +5,8 @@ import type {
 import type { NodeColumnSelection } from '../../common/nodeSelectionTypes';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { CONCORDANCE_COMBINED_NODE_KEY } from '../concordanceTableDomain';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 
 interface Section {
   columns: string[];
@@ -18,7 +20,7 @@ export interface ConcordanceMetadataColumnSet {
   metadataDisabledReason: string | undefined;
 }
 
-type GetColumnInfo = (node: WorkspaceNodeMetadata) => { name?: string }[];
+type GetColumnInfo = (node: WorkspaceNodeMetadata) => { name?: string; field?: ArrowField }[];
 type ResolveNodeIdForKey = (nodeKey: string) => string | null;
 
 interface Params {
@@ -67,7 +69,9 @@ export function useConcordanceMetadataColumns({
       const nodeKey = rawName || rawId;
       const sel = effectiveNodeColumnSelections.find((s) => s.nodeId === rawId);
       const textColumn = sel?.column;
+      // Topic coverage is not offered as metadata (issue 200).
       const cols = getColumnInfos(node)
+        .filter((info) => isSupportedColumnField(info.field))
         .map((info) => info.name)
         .filter(
           (name): name is string => !!name && name !== textColumn && name !== '__source_node',

@@ -11,7 +11,12 @@ export interface AnalysisNavigationDefinition {
 
 /** Canonical navigation and user-facing identity for each backend-owned analysis Tab kind. */
 const ANALYSIS_NAVIGATION: readonly AnalysisNavigationDefinition[] = [
-  { kind: 'token_frequency', view: 'token-frequency', label: 'Token Frequency', shortLabel: 'Freq' },
+  {
+    kind: 'token_frequency',
+    view: 'token-frequency',
+    label: 'Token Frequency',
+    shortLabel: 'Freq',
+  },
   { kind: 'concordance', view: 'concordance', label: 'Concordance', shortLabel: 'Conc' },
   { kind: 'sequential', view: 'analysis', label: 'Trends', shortLabel: 'Trends' },
   { kind: 'topic_modeling', view: 'topic-modeling', label: 'Topic Modelling', shortLabel: 'Topic' },

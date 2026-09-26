@@ -17,6 +17,7 @@ import {
   isArrowDateField,
   isArrowTemporalField,
 } from '@/lib/arrow/arrowTable';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { fetchNodeSchema } from '@/lib/nodeSchema';
 import AnalysisTaskBanner from '@/features/views/common/components/AnalysisTaskBanner';
 import { type AnalysisRequestOfKind, useAnalysisFeature } from '../common/hooks/useAnalysisFeature';
@@ -213,6 +214,10 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     });
 
   const timeColumnOptions = timeCompatibleColumns.map((column) => column.name);
+  // Topic coverage cannot group Trends (issue 200).
+  const groupableColumns = availableColumns.filter((column) =>
+    isSupportedColumnField(column.field),
+  );
 
   const activeTimeColumn = (() => {
     if (!activeNodeId) return '';
@@ -498,7 +503,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             onNumericOriginChange={setNumericOriginInput}
             numericIntervalInput={numericIntervalInput}
             onNumericIntervalChange={setNumericIntervalInput}
-            availableColumns={availableColumns}
+            availableColumns={groupableColumns}
             groupByColumns={groupByColumns}
             onAddGroupByColumn={sequentialParameters.addGroupByColumn}
             onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}

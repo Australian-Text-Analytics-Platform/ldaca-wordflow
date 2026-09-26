@@ -49,7 +49,9 @@ frontend column-kind registry. Type labels use the exact
 otherwise. Feature selectors and preprocessing controls inspect those fields
 directly. Decoder failures stay ordinary errors on the affected table query and
 retain the underlying Arrow cause. Known semantic extension identities select
-specialized behavior such as the Topic Coverage renderer. An unrecognized
+specialized behavior such as the Topic Coverage renderer, and
+`isSupportedColumnField` keeps Topic Coverage out of metadata, group, key, and
+text-tool pickers other than Filter. An unrecognized
 extension remains addressable by its exact name and retains its Arrow field
 metadata instead of being collapsed into a generic category.
 Raw network calls are limited to boundaries the generator cannot express

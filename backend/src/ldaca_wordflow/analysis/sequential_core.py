@@ -5,6 +5,8 @@ from __future__ import annotations
 
 import polars as pl
 
+from ..shared.unsupported_columns import supported_metadata_columns
+
 SEQUENTIAL_PERIOD_INDEX_COLUMN = "period_index"
 SEQUENTIAL_GROUP_INDEX_COLUMN = "group_index"
 SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN = "__wordflow_trends_period_index"
@@ -299,7 +301,8 @@ def _build_sequential_result_frames(
         )
         .drop(_SEQUENTIAL_ROW_INDEX_COLUMN)
         .select(
-            *source_df.columns,
+            # Topic Coverage is not carried into Trends Results (issue 200).
+            *supported_metadata_columns(source_df.schema),
             SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN,
             SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN,
         )

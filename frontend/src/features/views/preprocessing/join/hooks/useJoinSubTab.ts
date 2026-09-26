@@ -13,6 +13,7 @@ import type {
 } from '../../types';
 import { dedupeNodeIds } from '@/features/workspace/common/utils/selectionUtils';
 import { MAX_JOIN_NODES } from '../../types';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 
 const DEFAULT_JOIN_PALETTE = ['#2563eb', '#dc2626'];
 
@@ -165,7 +166,11 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
    */
   const getNodeColumnsForJoin = (nodeId: string): string[] => {
     const node = workspaceNodeMap.get(nodeId);
-    return node ? getColumnInfos(node).map((column) => column.name) : [];
+    return node
+      ? getColumnInfos(node)
+          .filter((column) => isSupportedColumnField(column.field))
+          .map((column) => column.name)
+      : [];
   };
 
   /**

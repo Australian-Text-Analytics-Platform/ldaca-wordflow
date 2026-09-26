@@ -209,22 +209,33 @@ def _write_lazyframe(
 
 
 def _flatten_nested_columns(frame: pl.LazyFrame) -> pl.LazyFrame:
-    """Write list and struct values as JSON text: CSV and Excel cells are flat."""
+    """Write list and struct values as JSON text: CSV and Excel cells are flat.
+
+    Extension columns such as Topic Coverage are written from their physical
+    storage, so a topic coverage cell reads as its topic and coverage pairs
+    (issue 200).
+    """
 
     schema = frame.collect_schema()
-    nested = [name for name, dtype in schema.items() if dtype.is_nested()]
+    nested = {
+        name: pl.col(name).ext.storage()
+        if isinstance(dtype, pl.Extension)
+        else pl.col(name)
+        for name, dtype in schema.items()
+        if dtype.is_nested() or isinstance(dtype, pl.Extension)
+    }
     if not nested:
         return frame
     return frame.with_columns(
         pl.when(pl.col(name).is_not_null())
         .then(
-            pl.struct(pl.col(name).alias("value"))
+            pl.struct(value.alias("value"))
             .struct.json_encode()
             .str.strip_prefix('{"value":')
             .str.strip_suffix("}")
         )
         .alias(name)
-        for name in nested
+        for name, value in nested.items()
     )
 
 

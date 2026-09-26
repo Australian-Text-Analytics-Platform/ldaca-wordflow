@@ -11,6 +11,7 @@ import {
 import { queryAnnotationPreviewWithProviderCredential } from '@/features/provider-credentials/providerCredentialRequests';
 import { queryKeys } from '@/lib/queryKeys';
 import { isArrowDictionaryField, isArrowStringField } from '@/lib/arrow/arrowTable';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 
 const AI_PREVIEW_PAGE_SIZE = 10;
 export type AnnotationPreviewRow = Record<string, unknown>;
@@ -130,7 +131,11 @@ export function useAnnotationAiPreview({
 
   return {
     columns: { text: textColumn, annotation: annotationColumn },
-    sourceColumns: sourcePageQuery.data?.columns ?? [],
+    // Topic coverage is not offered as metadata (issue 200).
+    sourceColumns:
+      sourcePageQuery.data?.schema
+        .filter((column) => isSupportedColumnField(column.field))
+        .map((column) => column.name) ?? [],
     sourceStringColumns:
       sourcePageQuery.data?.schema
         .filter((column) => isArrowStringField(column.field))

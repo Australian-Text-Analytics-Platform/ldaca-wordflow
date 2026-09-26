@@ -40,6 +40,7 @@ from ..domain.workspace.provenance import (
 )
 
 from ..shared.topic_types import is_topic_coverage_storage_dtype
+from ..shared.unsupported_columns import require_supported_columns
 from ..shared.errors import InvalidInputError, NodeNotFoundError
 from ..shared.json_data import JsonData
 from .node_casting import cast_lazyframe_column
@@ -248,9 +249,11 @@ def build_edited_lazyframe(
     """Build a replacement plan without mutating the target Data Block."""
 
     if isinstance(request, CastNodeEditRequest):
-        source_type = node.data.collect_schema().get(request.column)
+        schema = node.data.collect_schema()
+        source_type = schema.get(request.column)
         if source_type is None:
             raise InvalidInputError("Cast column is not present on the Data Block")
+        require_supported_columns(schema, [request.column], use="with a type change")
         if _cast_is_no_op(
             source_type,
             request.target_type,
@@ -312,6 +315,9 @@ def build_edited_lazyframe(
         names = node.data.collect_schema().names()
         if request.column not in names:
             raise InvalidInputError("Clean column is not present on the Data Block")
+        require_supported_columns(
+            node.data.collect_schema(), [request.column], use="as text"
+        )
         output = (request.output_column or request.column).strip()
         if not output:
             raise InvalidInputError("Output column name cannot be blank")
@@ -327,6 +333,9 @@ def build_edited_lazyframe(
         names = node.data.collect_schema().names()
         if request.column not in names:
             raise InvalidInputError("Split column is not present on the Data Block")
+        require_supported_columns(
+            node.data.collect_schema(), [request.column], use="as text"
+        )
         outputs = [f"{request.column}_{index}" for index in range(1, request.parts + 1)]
         clashes = [name for name in outputs if name in names]
         if clashes:
@@ -348,6 +357,9 @@ def build_edited_lazyframe(
         names = node.data.collect_schema().names()
         if request.column not in names:
             raise InvalidInputError("Count column is not present on the Data Block")
+        require_supported_columns(
+            node.data.collect_schema(), [request.column], use="as text"
+        )
         output = request.output_column.strip()
         if not output:
             raise InvalidInputError("New column name cannot be blank")
@@ -368,6 +380,7 @@ def build_edited_lazyframe(
                 "Columns in the template are not present on the Data Block: "
                 + ", ".join(missing)
             )
+        require_supported_columns(node.data.collect_schema(), referenced, use="as text")
         output = request.output_column.strip()
         if not output:
             raise InvalidInputError("New column name cannot be blank")
@@ -545,6 +558,8 @@ def _validate_join_keys(
     if right_on not in right_schema:
         raise InvalidInputError(f'Join right column "{right_on}" was not found')
 
+    require_supported_columns(left_schema, [left_on], use="as a join key")
+    require_supported_columns(right_schema, [right_on], use="as a join key")
     left_dtype = left_schema[left_on]
     right_dtype = right_schema[right_on]
     if left_dtype != right_dtype:
@@ -663,7 +678,7 @@ def _condition_expression(
         return _coerce_scalar(_parse_temporal(item))
 
     if is_topic_coverage_storage_dtype(dtype):
-        expression = _topic_coverage_expression(condition)
+        expression = _topic_coverage_expression(condition, dtype)
     elif operator in {"eq", "ne", "gt", "gte", "lt", "lte"}:
         scalar = coerce(value)
         literal = cast(
@@ -746,7 +761,9 @@ def _condition_expression(
     return ~expression if condition.negate else expression
 
 
-def _topic_coverage_expression(condition: FilterCondition) -> pl.Expr:
+def _topic_coverage_expression(
+    condition: FilterCondition, dtype: pl.DataType
+) -> pl.Expr:
     if not isinstance(condition.value, dict):
         raise InvalidInputError(
             "Topic Coverage filters require topic_id and threshold"
@@ -758,9 +775,12 @@ def _topic_coverage_expression(condition: FilterCondition) -> pl.Expr:
         raise InvalidInputError(
             "Topic Coverage filters require numeric topic_id and threshold"
         ) from exc
+    column = pl.col(condition.column)
+    if isinstance(dtype, pl.Extension):
+        # Array operations need the physical storage, not the extension.
+        column = column.ext.storage()
     coverage = (
-        pl.col(condition.column)
-        .arr.eval(
+        column.arr.eval(
             pl.when(pl.element().struct.field("topic_id") == topic_id)
             .then(pl.element().struct.field("coverage"))
             .otherwise(0.0)
@@ -890,6 +910,7 @@ def _segment(data: pl.LazyFrame, request: SegmentNodeCreateRequest) -> pl.LazyFr
     column = request.column
     if column not in names:
         raise InvalidInputError("Segment column is not present on the Data Block")
+    require_supported_columns(data.collect_schema(), [column], use="as text")
     text = pl.col(column).cast(pl.String).str.replace_all("\r\n", "\n")
     lead_name: str | None = None
     if request.unit == "pattern":
@@ -949,6 +970,8 @@ def _segment(data: pl.LazyFrame, request: SegmentNodeCreateRequest) -> pl.LazyFr
 
 _NUMERIC_SUMMARIES = {"sum", "mean"}
 _ORDERED_SUMMARIES = {"min", "max", "earliest", "latest", "earliest_latest"}
+# Summaries that copy or count values, so any column type works (issue 200).
+_CARRIED_SUMMARIES = {"first", "last", "count_distinct"}
 
 
 def _group_summary(
@@ -964,6 +987,16 @@ def _group_summary(
         raise InvalidInputError(
             f"Columns are not present on the Data Block: {', '.join(missing)}"
         )
+    require_supported_columns(schema, request.group_by, use="to group rows")
+    require_supported_columns(
+        schema,
+        [
+            item.column
+            for item in request.summaries
+            if item.summary not in _CARRIED_SUMMARIES
+        ],
+        use="with this summary",
+    )
     rows_name = "rows" if "rows" not in request.group_by else "row_count"
     aggregations: list[pl.Expr] = [pl.len().alias(rows_name)]
     for item in request.summaries:
@@ -1026,6 +1059,7 @@ def _deduplicate(
         raise InvalidInputError(
             f"Columns are not present on the Data Block: {', '.join(missing)}"
         )
+    require_supported_columns(data.collect_schema(), [near], use="as text")
     keys = [name for name in compared if name != near]
     prepared = data
     if near:
@@ -1107,8 +1141,10 @@ def _replace_expression(
     source: Node,
     request: ReplaceDerivation,
 ) -> tuple[str, pl.Expr]:
-    if request.source_column not in source.data.collect_schema().names():
+    schema = source.data.collect_schema()
+    if request.source_column not in schema:
         raise InvalidInputError("Replace source column is not present on the node")
+    require_supported_columns(schema, [request.source_column], use="as text")
     output = re.sub(r"\s+", " ", request.output_column or request.source_column).strip()
     if not output:
         raise InvalidInputError("Output column name cannot be blank")

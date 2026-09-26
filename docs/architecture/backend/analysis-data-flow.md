@@ -193,6 +193,17 @@ projection inputs. A missing retained snapshot fails clearly rather than
 falling back to a mutable Data Block. Topic Coverage remains a named Arrow
 extension through storage, transport, and Derived Data Block Creation.
 
+Topic Coverage is not yet supported as Analysis metadata or as a column that
+tools read. `shared/unsupported_columns.py` owns that rule: Concordance and
+Quotation previews and Run All, Trends Results, and Topic Modelling colours
+leave the column out of the metadata they carry, show, or group by; Trends
+refuses it as a time axis or group before execution. Data Builder and Data
+Editor plan builders refuse it as text, a group, a join key, an ordered
+summary, or a type change with `InvalidInputError`, while Filter (by Topic and
+threshold), Sample, Stack, Join on other keys, Deduplicate, Duplicate, Rename,
+and Delete carry it unchanged. CSV and Excel exports write it as JSON text of
+its Topic and coverage pairs.
+
 Concordance and Quotation Run All retain one row per matching source document.
 The row carries source metadata, an internal stable source-row ID, and a nested
 list of Concordance Matches or quotation extracts. Explicit document and match

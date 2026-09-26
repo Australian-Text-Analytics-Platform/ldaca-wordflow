@@ -14,6 +14,7 @@ import {
   useDataEditorToolStore,
 } from '../dataEditorToolStore';
 import type { NodeDataResponse } from '@/api/frontendModels';
+import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
 import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
@@ -423,7 +424,13 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       ? (tool, options = {}) => {
           toolState.open(tool, selectedNode.id, {
             nodeName: header.nodeLabel,
-            columns: nodeData.columns,
+            // Topic coverage can be duplicated but not read as text (issue 200).
+            columns:
+              tool === 'duplicate'
+                ? nodeData.columns
+                : nodeData.columns.filter((column) =>
+                    isSupportedColumnField(nodeData.columnFields[column]),
+                  ),
             column: options.column ?? null,
             operation: options.operation ?? null,
           });

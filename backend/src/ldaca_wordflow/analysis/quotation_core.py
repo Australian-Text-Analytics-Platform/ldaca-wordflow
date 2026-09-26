@@ -22,6 +22,7 @@ import polars as pl
 
 from ..domain.workspace import Node, QuotationEngineType
 from ..shared.errors import InvalidInputError
+from ..shared.unsupported_columns import without_unsupported_columns
 from ..models.quotation import (
     RemoteQuotationDocument,
     RemoteQuotationExtractResponse,
@@ -247,7 +248,10 @@ async def _compute_on_demand_page(
 
     Used by ``AnalysisResultService`` and quotation process workers.
     """
-    lazy_df = node.data
+    # Topic Coverage is not shown as Quotation metadata (issue 200).
+    lazy_df = await run_blocking(
+        partial(without_unsupported_columns, node.data, keep=(column,))
+    )
     schema = await run_blocking(lazy_df.collect_schema)
     available_columns = set(schema.keys())
 

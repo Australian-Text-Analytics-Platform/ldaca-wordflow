@@ -29,7 +29,12 @@ import {
   decodeArrowTable,
   fetchArrowTable,
 } from '../arrowTable';
-import { isTopicCoverageField, TOPIC_COVERAGE_EXTENSION } from '../semanticTypes';
+import {
+  isSupportedColumnField,
+  isTopicCoverageField,
+  isUnsupportedColumnField,
+  TOPIC_COVERAGE_EXTENSION,
+} from '../semanticTypes';
 
 const stream = (table: ReturnType<typeof tableFromArrays>): Uint8Array =>
   tableToIPC(table, 'stream');
@@ -163,6 +168,11 @@ describe('Arrow table transport', () => {
 
     expect(arrowTypeName(coverage)).toBe(TOPIC_COVERAGE_EXTENSION);
     expect(isTopicCoverageField(coverage)).toBe(true);
+    // Pickers leave topic coverage out (issue 200).
+    expect(isUnsupportedColumnField(coverage)).toBe(true);
+    expect(isSupportedColumnField(coverage)).toBe(false);
+    expect(isSupportedColumnField(new Field('text', new Utf8()))).toBe(true);
+    expect(isSupportedColumnField(new Field('item', new FixedSizeList(3, entry)))).toBe(true);
   });
 
   it('preserves the exact identity of an unknown foreign extension', () => {

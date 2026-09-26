@@ -37,6 +37,7 @@ from ..models.analysis_results import (
 )
 from ..settings import Settings
 from ..shared.errors import InvalidInputError
+from ..shared.unsupported_columns import require_supported_columns
 from ..workers.invocations import (
     AnalysisWorkerInput,
     AnnotationInput,
@@ -167,6 +168,15 @@ def _prepare_sequential(
     request: SequentialAnalysisRequest,
     context: AnalysisPreparationContext,
 ) -> SequentialInput:
+    node = context.workspace.nodes.get(request.node_id)
+    if node is not None:
+        schema = node.data.collect_schema()
+        require_supported_columns(
+            schema, [request.time_column], use="as a Trends time axis"
+        )
+        require_supported_columns(
+            schema, request.group_by_columns, use="to group Trends"
+        )
     return SequentialInput(
         input_snapshot_dir=str(context.snapshot_dir),
         node_id=request.node_id,

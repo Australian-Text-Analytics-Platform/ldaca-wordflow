@@ -49,12 +49,16 @@ def _collect_quotation_source_from_snapshot(
 
     import polars as pl
 
+    from ..shared.unsupported_columns import supported_metadata_columns
+
     node_data = snapshot_node.data
-    schema_names = list(node_data.collect_schema().names())
-    if SOURCE_ROW_ID_COLUMN in schema_names:
+    schema = node_data.collect_schema()
+    if SOURCE_ROW_ID_COLUMN in schema:
         raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")
     node_data = node_data.with_row_index(SOURCE_ROW_ID_COLUMN)
-    metadata_columns = [column for column in schema_names if column != document_column]
+    # Metadata is cast back from Python lists, which Topic Coverage cannot
+    # survive, so it is left out (issue 200).
+    metadata_columns = supported_metadata_columns(schema, exclude=(document_column,))
 
     corpus_df = (
         node_data.select(

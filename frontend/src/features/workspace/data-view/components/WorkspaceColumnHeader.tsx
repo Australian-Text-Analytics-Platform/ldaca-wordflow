@@ -21,6 +21,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 
 import { isColumnCastType, type ColumnCastType } from '../services/schemaMutations';
 import { RenameInput } from './RenameInput';
@@ -54,6 +55,11 @@ export interface WorkspaceColumnHeaderProps {
   canCast: boolean;
   canRename: boolean;
   canDelete: boolean;
+  /**
+   * The column holds topic coverage (issue 200): it cannot be sorted, change
+   * type, or be read by the text tools, so only Duplicate is offered.
+   */
+  isTopicCoverage?: boolean;
 
   // Wide column expand/collapse
   isWideColumn: boolean;
@@ -82,6 +88,10 @@ const COLUMN_TOOLS: { tool: DataEditorTool; label: string }[] = [
   { tool: 'duplicate', label: 'Duplicate…' },
 ];
 
+const TOPIC_COVERAGE_TOOLS = COLUMN_TOOLS.filter((item) => item.tool === 'duplicate');
+const TOPIC_COVERAGE_SORT_REASON = "Topic coverage columns can't be sorted yet.";
+const TOPIC_COVERAGE_TYPE_REASON = "Topic coverage columns can't change type yet.";
+
 /**
  * Renders one server-backed table column header with identity-preserving cast,
  * rename, and delete controls.
@@ -97,6 +107,7 @@ export function WorkspaceColumnHeader({
   canCast,
   canRename,
   canDelete,
+  isTopicCoverage = false,
   isWideColumn,
   isCollapsedColumn,
   onToggleExpand,
@@ -151,45 +162,50 @@ export function WorkspaceColumnHeader({
       )}
 
       {/* Sort indicator + click-to-sort */}
-      <button
-        type="button"
-        onClick={onSort}
-        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-description transition-colors hover:text-foreground"
-        aria-label={`Sort by ${column}`}
-      >
-        {sortState ? (
-          sortState.desc ? (
-            <ArrowDown className="h-3.5 w-3.5 text-link" />
+      <DisabledReasonTooltip reason={isTopicCoverage ? TOPIC_COVERAGE_SORT_REASON : null}>
+        <button
+          type="button"
+          onClick={onSort}
+          disabled={isTopicCoverage}
+          className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-sm text-description transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-40"
+          aria-label={`Sort by ${column}`}
+        >
+          {sortState ? (
+            sortState.desc ? (
+              <ArrowDown className="h-3.5 w-3.5 text-link" />
+            ) : (
+              <ArrowUp className="h-3.5 w-3.5 text-link" />
+            )
           ) : (
-            <ArrowUp className="h-3.5 w-3.5 text-link" />
-          )
-        ) : (
-          <ArrowUpDown className="h-3.5 w-3.5" />
-        )}
-      </button>
+            <ArrowUpDown className="h-3.5 w-3.5" />
+          )}
+        </button>
+      </DisabledReasonTooltip>
 
       {/* Data type selector */}
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={isColumnBusy || !canCast}
-            className={cn(
-              'h-7 w-fit justify-between gap-1 px-1.5 text-label-secondary font-medium',
-              isColumnBusy && 'cursor-progress opacity-80',
-            )}
-            aria-label={`Change data type for column ${column}`}
-          >
-            <span className="truncate">{displayLabel}</span>
-            {isColumnBusy ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin text-description" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 text-description" />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
+        <DisabledReasonTooltip reason={isTopicCoverage ? TOPIC_COVERAGE_TYPE_REASON : null}>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={isColumnBusy || !canCast || isTopicCoverage}
+              className={cn(
+                'h-7 w-fit justify-between gap-1 px-1.5 text-label-secondary font-medium',
+                isColumnBusy && 'cursor-progress opacity-80',
+              )}
+              aria-label={`Change data type for column ${column}`}
+            >
+              <span className="truncate">{displayLabel}</span>
+              {isColumnBusy ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-description" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 text-description" />
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+        </DisabledReasonTooltip>
         <DropdownMenuContent align="start" className="w-40 p-1">
           <DropdownMenuRadioGroup
             value={currentType}
@@ -257,7 +273,7 @@ export function WorkspaceColumnHeader({
             }}
           >
             {onOpenTool
-              ? COLUMN_TOOLS.map((item) => (
+              ? (isTopicCoverage ? TOPIC_COVERAGE_TOOLS : COLUMN_TOOLS).map((item) => (
                   <DropdownMenuItem
                     key={item.tool}
                     disabled={isColumnBusy}
