@@ -2241,6 +2241,7 @@
               "integer",
               "float",
               "datetime",
+              "date",
               "categorical"
             ],
             "title": "Target Type",
@@ -2503,6 +2504,7 @@
               "integer",
               "float",
               "datetime",
+              "date",
               "categorical"
             ],
             "title": "Target Type",

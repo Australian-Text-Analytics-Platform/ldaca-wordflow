@@ -65,6 +65,14 @@ def _build_sequential_result_frames(
     numeric_origin_value: float | None = None
 
     if normalized_column_type == "datetime":
+        sub_day = frequency in {"second", "minute", "hourly"} or (
+            frequency == "custom"
+            and custom_interval_unit in {"hours", "minutes", "seconds"}
+        )
+        if sub_day and df.schema.get(time_column) == pl.Date:
+            # A Date has no time of day; read it as midnight so sub-day
+            # periods still work (the UI hides them for Date columns, issue 187).
+            df = df.with_columns(pl.col(time_column).cast(pl.Datetime("us")))
         if frequency == "second":
             time_expr = pl.col(time_column).dt.truncate("1s").alias("time_period")
             time_format = "%Y-%m-%d %H:%M:%S"

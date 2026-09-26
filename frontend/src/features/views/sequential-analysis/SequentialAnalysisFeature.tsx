@@ -13,6 +13,7 @@ import {
   type ArrowField,
   isArrowFloatField,
   isArrowIntegerField,
+  isArrowDateField,
   isArrowTemporalField,
 } from '@/lib/arrow/arrowTable';
 import { fetchNodeSchema } from '@/lib/nodeSchema';
@@ -227,6 +228,8 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     (isArrowIntegerField(activeColumnField) || isArrowFloatField(activeColumnField))
       ? 'numeric'
       : 'datetime';
+  // A Date column has no time of day, so sub-day periods do not apply (issue 187).
+  const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
   const {
     numericOriginValue,
     numericIntervalValue,
@@ -477,6 +480,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             setTimeColumn(column);
           }}
           derivedColumnType={derivedColumnType}
+          dateOnly={timeColumnIsDate}
           inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
           activeNodeId={activeNodeId}
           selectedNodeId={activeNodeId}

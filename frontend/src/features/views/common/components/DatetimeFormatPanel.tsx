@@ -23,6 +23,8 @@ interface DatetimeFormatPanelProps {
   onConfirm: (format?: string) => void;
   columnName: string;
   sampleValues?: string[];
+  /** The type being converted to, "datetime" or "date" (issue 187). */
+  targetLabel?: string;
 }
 
 /**
@@ -57,6 +59,7 @@ function DatetimeFormatPanelContent({
   onConfirm,
   columnName,
   sampleValues = [],
+  targetLabel = 'datetime',
 }: Omit<DatetimeFormatPanelProps, 'open'>) {
   const initialFormat = sampleValues.length ? inferDatetimeFormat(sampleValues) : null;
   const [customFormat, setCustomFormat] = useState(initialFormat ?? '');
@@ -92,7 +95,9 @@ function DatetimeFormatPanelContent({
   return (
     <DialogContent className="w-full max-w-lg border-none bg-transparent p-0 shadow-none">
       <DialogHeader className="sr-only">
-        <DialogTitle>Convert {columnName || 'column'} to datetime</DialogTitle>
+        <DialogTitle>
+          Convert {columnName || 'column'} to {targetLabel}
+        </DialogTitle>
         <DialogDescription>
           Provide a strftime format or let Auto Fill guess it from sample values.
         </DialogDescription>
@@ -100,7 +105,8 @@ function DatetimeFormatPanelContent({
       <Card>
         <CardHeader>
           <CardTitle>
-            Convert <span className="text-description">&ldquo;{columnName}&rdquo;</span> to Datetime
+            Convert <span className="text-description">&ldquo;{columnName}&rdquo;</span> to{' '}
+            {targetLabel}
           </CardTitle>
           <CardDescription>
             Provide a strftime format or let Auto Fill guess it from sample values.

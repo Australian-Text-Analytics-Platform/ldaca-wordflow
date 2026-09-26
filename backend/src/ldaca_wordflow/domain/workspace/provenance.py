@@ -241,7 +241,7 @@ class JoinDerivation(_StrictModel):
 class CastDerivation(_StrictModel):
     kind: Literal["cast"] = "cast"
     column: str = Field(min_length=1)
-    target_type: Literal["string", "integer", "float", "datetime", "categorical"]
+    target_type: Literal["string", "integer", "float", "datetime", "date", "categorical"]
     datetime_format: str | None = None
     strict: bool = False
 

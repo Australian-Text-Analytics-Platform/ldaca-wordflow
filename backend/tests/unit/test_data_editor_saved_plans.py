@@ -201,3 +201,63 @@ def test_remove_xml_tags_keeps_text_and_decodes_entities(tmp_path: Path) -> None
         "no tags, 3 < 4",
         None,
     ]
+
+
+CASTS: list[tuple[str, str, str | None]] = [
+    # (column, target_type, datetime_format)
+    ("iso", "date", None),
+    ("dmy", "date", "%d/%m/%Y"),
+    ("stamp", "date", None),
+    ("day", "datetime", None),
+    ("day", "string", "%d %B %Y"),
+    ("iso", "datetime", None),
+    ("iso", "integer", None),
+    ("iso", "float", None),
+    ("iso", "categorical", None),
+]
+
+
+@pytest.mark.parametrize(
+    ("column", "target_type", "datetime_format"),
+    CASTS,
+    ids=lambda value: str(value),
+)
+def test_type_change_plan_can_be_read_back(
+    tmp_path: Path, column: str, target_type: str, datetime_format: str | None
+) -> None:
+    """Type changes, including the Date type (issue 187), reopen from a saved plan."""
+
+    import datetime as dt
+
+    source = tmp_path / "source.parquet"
+    pl.DataFrame(
+        {
+            "iso": ["2020-01-31", None],
+            "dmy": ["31/01/2020", "bad"],
+            "stamp": [dt.datetime(2020, 1, 31, 10, 30), None],
+            "day": [dt.date(2020, 1, 31), None],
+        }
+    ).write_parquet(source)
+    node = SimpleNamespace(data=pl.scan_parquet(source))
+
+    edited, _ = build_edited_lazyframe(
+        cast(Any, node),
+        EDIT_ADAPTER.validate_python(
+            {
+                "kind": "cast",
+                "column": column,
+                "target_type": target_type,
+                "datetime_format": datetime_format,
+            }
+        ),
+    )
+    plan = tmp_path / "plan.plbin"
+    plan.write_bytes(edited.serialize(format="binary"))
+
+    assert [Path(path).name for path in list_source_paths(str(plan))] == [
+        "source.parquet"
+    ]
+    reopened = pl.LazyFrame.deserialize(plan, format="binary").collect()
+    if target_type == "date":
+        assert reopened.schema[column] == pl.Date
+        assert reopened[column][0] == dt.date(2020, 1, 31)

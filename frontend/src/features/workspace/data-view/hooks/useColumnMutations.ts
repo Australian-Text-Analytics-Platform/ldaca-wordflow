@@ -139,8 +139,9 @@ export const useColumnMutations = ({
       if (!onCast) return;
       const currentField = mutationColumnFields[column];
       if (currentField && newType === arrowTypeName(currentField)) return;
+      // Text to datetime or date asks for the format first (issue 187).
       const isStringToDatetime =
-        newType.toLowerCase() === 'datetime' &&
+        (newType === 'datetime' || newType === 'date') &&
         currentField !== undefined &&
         isArrowStringField(currentField);
       if (isStringToDatetime) {

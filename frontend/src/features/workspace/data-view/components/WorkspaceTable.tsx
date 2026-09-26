@@ -35,7 +35,12 @@ import { TopicCoverageBar } from './TopicCoverageBar';
 import type { DataRow, NodeTablePagination } from '../types';
 import { arrowTypeName, type ArrowField } from '@/lib/arrow/arrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import { DATA_TYPES, getTypeDisplayName, type ColumnCastType } from '../services/schemaMutations';
+import {
+  castTypeLabel,
+  DATA_TYPES,
+  getTypeDisplayName,
+  type ColumnCastType,
+} from '../services/schemaMutations';
 import { useColumnMutations } from '../hooks/useColumnMutations';
 import {
   workspaceTableFeatures,
@@ -663,6 +668,9 @@ export function WorkspaceTable({
         onClose={closeDatetimeModal}
         onConfirm={handleDatetimeFormatConfirm}
         columnName={datetimeModal.column}
+        targetLabel={
+          datetimeModal.targetType ? castTypeLabel(datetimeModal.targetType) : 'datetime'
+        }
         sampleValues={sanitizedData
           .slice(0, 25)
           .map((row) => {

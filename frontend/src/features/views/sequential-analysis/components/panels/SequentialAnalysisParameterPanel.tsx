@@ -51,6 +51,10 @@ const DEFAULT_FREQUENCY_OPTIONS: { value: SequentialFrequency; label: string }[]
   { value: 'custom', label: FREQUENCY_LABELS.custom },
 ];
 
+/** Periods and units finer than a day, which a Date column cannot use (issue 187). */
+const SUB_DAY_FREQUENCIES = new Set<SequentialFrequency>(['second', 'minute', 'hourly']);
+const SUB_DAY_UNITS = new Set<SequentialCustomIntervalUnit>(['seconds', 'minutes', 'hours']);
+
 const CUSTOM_INTERVAL_UNIT_OPTIONS: {
   value: SequentialCustomIntervalUnit;
   label: string;
@@ -69,6 +73,8 @@ export interface SequentialAnalysisParameterPanelProps {
 
   // Configuration shared
   derivedColumnType: 'datetime' | 'numeric';
+  /** The time column is a Date (no time of day): hide sub-day periods. */
+  dateOnly?: boolean;
   inputsDisabled: boolean;
   activeNodeId: string | null | undefined;
   selectedNodeId: string | null | undefined;
@@ -107,6 +113,7 @@ export function SequentialAnalysisParameterPanel({
   nodeInputs,
   onColumnChange,
   derivedColumnType,
+  dateOnly = false,
   inputsDisabled,
   activeNodeId,
   selectedNodeId,
@@ -165,7 +172,9 @@ export function SequentialAnalysisParameterPanel({
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEFAULT_FREQUENCY_OPTIONS.map((option) => (
+                    {DEFAULT_FREQUENCY_OPTIONS.filter(
+                      (option) => !dateOnly || !SUB_DAY_FREQUENCIES.has(option.value),
+                    ).map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -198,7 +207,9 @@ export function SequentialAnalysisParameterPanel({
                         <SelectValue placeholder="Unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CUSTOM_INTERVAL_UNIT_OPTIONS.map((option) => (
+                        {CUSTOM_INTERVAL_UNIT_OPTIONS.filter(
+                          (option) => !dateOnly || !SUB_DAY_UNITS.has(option.value),
+                        ).map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}
                           </SelectItem>

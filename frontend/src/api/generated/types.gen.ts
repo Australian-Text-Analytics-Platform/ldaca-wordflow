@@ -1069,7 +1069,7 @@ export type CastDerivation = {
     /**
      * Target Type
      */
-    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'categorical';
+    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
 };
 
 /**
@@ -1173,7 +1173,7 @@ export type CastNodeEditRequest = {
     /**
      * Target Type
      */
-    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'categorical';
+    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
 };
 
 /**

@@ -21,7 +21,7 @@ import polars as pl
 from ..shared.errors import AppError, InvalidInputError
 
 
-SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, categorical"
+SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical"
 TIMEZONE_FORMAT_TOKENS = ("%z", "%:z", "%#z")
 
 
@@ -87,6 +87,38 @@ def _datetime_cast_expr(
         ) from exc
 
 
+def _date_cast_expr(
+    column_name: str,
+    *,
+    original_type: str,
+    datetime_format: str | None,
+    strict_flag: bool,
+) -> pl.Expr:
+    """A calendar date without a time of day (issue 187).
+
+    Datetime columns keep their date; text is parsed with the given format, or
+    an inferred one. Other types have no meaningful date, so they are refused.
+    """
+
+    orig_lower = original_type.lower()
+    column = pl.col(column_name)
+    if orig_lower == "date":
+        return column.alias(column_name)
+    if orig_lower.startswith("datetime"):
+        return column.dt.date().alias(column_name)
+    if orig_lower in ("string", "str", "utf8") or orig_lower.startswith("categorical"):
+        text = column.cast(pl.String)
+        if datetime_format:
+            return text.str.to_date(
+                format=datetime_format, strict=bool(strict_flag)
+            ).alias(column_name)
+        return text.str.to_date(strict=bool(strict_flag)).alias(column_name)
+    raise InvalidInputError(
+        f"Column '{column_name}' is {original_type}; only text and datetime "
+        "columns can be converted to date."
+    )
+
+
 def _cast_expr(
     column_name: str,
     *,
@@ -111,6 +143,13 @@ def _cast_expr(
             datetime_format=datetime_format,
             strict_flag=strict_flag,
         )
+    if target_lower == "date":
+        return _date_cast_expr(
+            column_name,
+            original_type=original_type,
+            datetime_format=datetime_format,
+            strict_flag=strict_flag,
+        )
     if target_lower in ("string", "utf8", "str", "text"):
         if (original_type.startswith("Datetime") or original_type == "Date") and datetime_format:
             return pl.col(column_name).dt.strftime(datetime_format).alias(column_name)
@@ -118,7 +157,9 @@ def _cast_expr(
     if target_lower == "integer":
         return pl.col(column_name).cast(pl.Int64, strict=False).alias(column_name)
     if target_lower == "float":
-        return pl.col(column_name).cast(pl.Float64).alias(column_name)
+        # Like integer: values that are not numbers become empty, and the
+        # Data Editor warns with Undo (issues 183 and 187).
+        return pl.col(column_name).cast(pl.Float64, strict=False).alias(column_name)
     if target_lower == "categorical":
         if any(
             token in orig_lower for token in ["utf8", "string", "str", "categorical"]

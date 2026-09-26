@@ -5,7 +5,33 @@ import type {
   FilterConditionWithId,
   FilterRequest,
 } from '../../types';
+import { isArrowDateField } from '@/lib/arrow/arrowTable';
 import { hasNonEmptyValue } from '../../utils/typeUtils';
+
+/**
+ * The date picker emits a UTC timestamp for the local day the user picked. A
+ * Date column has no time zone, so send that local calendar day instead;
+ * otherwise midnight in Sydney would compare as the previous day (issue 187).
+ */
+const toLocalCalendarDay = (value: string): string => {
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  const month = String(parsed.getMonth() + 1).padStart(2, '0');
+  const day = String(parsed.getDate()).padStart(2, '0');
+  return `${String(parsed.getFullYear())}-${month}-${day}`;
+};
+
+const toCalendarDays = (value: ConditionValue): ConditionValue => {
+  if (typeof value === 'string') return value ? toLocalCalendarDay(value) : value;
+  if (value && typeof value === 'object' && !Array.isArray(value) && 'start' in value) {
+    return {
+      start: typeof value.start === 'string' ? toLocalCalendarDay(value.start) : value.start,
+      end: typeof value.end === 'string' ? toLocalCalendarDay(value.end) : value.end,
+    };
+  }
+  return value;
+};
 
 /**
  * Converts UI-only filter condition records into the backend request condition
@@ -49,6 +75,8 @@ const serializeConditionsForRequest = (conditions: FilterConditionWithId[]) => {
       const currentValue = condition.value;
       value = currentValue ?? '';
     }
+
+    if (condition.field && isArrowDateField(condition.field)) value = toCalendarDays(value);
 
     const payload: FilterCondition = {
       column: condition.column,

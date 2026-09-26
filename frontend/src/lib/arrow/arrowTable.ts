@@ -19,6 +19,7 @@ const COMMON_ARROW_TYPE_DISPLAY_NAMES = new Map<string, string>([
   ['Int64', 'integer'],
   ['Float64', 'decimal'],
   ['Timestamp<MICROSECOND, UTC>', 'datetime'],
+  ['Date32<DAY>', 'date'],
 ]);
 
 /** Every concrete Arrow type supplies its native schema spelling via `toString`. */
@@ -93,6 +94,9 @@ export const isArrowIntegerField = (field: ArrowField): boolean => DataType.isIn
 
 export const isArrowFloatField = (field: ArrowField): boolean =>
   DataType.isFloat(field.type) || DataType.isDecimal(field.type);
+
+/** A calendar date with no time of day (Arrow Date32/Date64). */
+export const isArrowDateField = (field: ArrowField): boolean => DataType.isDate(field.type);
 
 export const isArrowBooleanField = (field: ArrowField): boolean => DataType.isBool(field.type);
 

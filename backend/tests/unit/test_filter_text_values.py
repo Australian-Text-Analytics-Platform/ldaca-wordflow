@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date
+
 import polars as pl
 import pytest
 
@@ -62,3 +64,34 @@ def test_is_empty_treats_blank_text_and_nan_as_missing(
     assert sorted(
         indexed.filter(not_empty).collect()["index"].to_list() + empty_rows
     ) == [0, 1, 2, 3]
+
+
+DATE_FRAME = pl.LazyFrame({"published": [date(2020, 1, 31), date(2021, 3, 1), None]})
+
+
+@pytest.mark.parametrize(
+    ("operator", "value", "expected"),
+    [
+        ("gt", "2020-06-01T00:00:00.000Z", [1]),
+        ("lt", "2020-06-01", [0]),
+        ("eq", "2020-01-31T00:00:00.000Z", [0]),
+        ("between", {"start": "2020-01-01", "end": "2020-12-31"}, [0]),
+        ("is_null", None, [2]),
+    ],
+)
+def test_filter_compares_date_columns(
+    operator: str, value: object, expected: list[int]
+) -> None:
+    """Issue 187: Date columns filter with the date pickers' ISO values."""
+
+    schema = dict(DATE_FRAME.collect_schema())
+    condition = FilterCondition.model_validate(
+        {"column": "published", "operator": operator, "value": value}
+    )
+    matched = (
+        DATE_FRAME.with_row_index()
+        .filter(_condition_expression(condition, schema))
+        .collect()["index"]
+        .to_list()
+    )
+    assert matched == expected

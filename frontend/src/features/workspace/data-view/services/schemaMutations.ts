@@ -6,6 +6,8 @@ export const DATA_TYPES = [
   { value: 'integer', label: 'integer' },
   { value: 'float', label: 'decimal' },
   { value: 'datetime', label: 'datetime' },
+  // A calendar date with no time of day (issue 187).
+  { value: 'date', label: 'date' },
 ] as const;
 
 export type ColumnCastType = (typeof DATA_TYPES)[number]['value'];

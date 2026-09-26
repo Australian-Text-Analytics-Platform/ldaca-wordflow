@@ -20,7 +20,7 @@ Use the data-block selector to pick the corpus you want to analyse. Only one dat
 
 The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
-- **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.).
+- **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
 - **Numeric columns** (integer or decimal) are bucketed by a fixed interval width you specify.
 
 The tool detects the column type automatically and shows the relevant configuration controls below.

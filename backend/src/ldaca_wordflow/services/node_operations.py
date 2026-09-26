@@ -73,6 +73,7 @@ from ..models.node_resources import (
 )
 from ..infrastructure.storage.layout import validate_display_name
 
+_DATE_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 _ISO_PATTERN = re.compile(
     r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?(Z|[+\-]\d{2}:?\d{2})$"
 )
@@ -513,6 +514,8 @@ def _cast_is_no_op(
         return source_type == pl.Float64
     if target_type == "categorical":
         return source_type == pl.Categorical
+    if target_type == "date":
+        return source_type == pl.Date
     return (
         target_type == "datetime"
         and isinstance(source_type, pl.Datetime)
@@ -1307,6 +1310,12 @@ def _aligned_concat_frames(nodes: list[Node]) -> list[pl.LazyFrame]:
 
 
 def _parse_temporal(value: object) -> object:
+    if isinstance(value, str) and _DATE_PATTERN.fullmatch(value):
+        # A calendar date, as the Filter sends for Date columns (issue 187).
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return value
     if not isinstance(value, str) or _ISO_PATTERN.fullmatch(value) is None:
         return value
     normalized = value[:-1] + "+00:00" if value.endswith("Z") else value
