@@ -175,6 +175,34 @@ maps colours to values, and a downloaded graph includes that legend. Choose
 **Data Block colour** to return to the usual colouring. The choice is not
 saved and resets when you run the analysis again. No re-run is needed.
 
+<h4 id="help-topic-modeling-color-by-opacity">What bubble opacity shows</h4>
+
+The blended colour shows the two values most over-represented in a topic, but
+not whether the topic is concentrated in those values or spread across all of
+them. Bubble opacity adds that: the more a topic is concentrated in a few
+values, the more solid its bubble; the more evenly it is spread, the paler.
+A topic from a single value is the most solid, and a topic spread evenly
+across every value is the palest.
+
+Opacity comes from the topic's concentration, which is one minus Pielou's
+evenness:
+
+1. Each value's share: its count in the topic divided by how many documents
+   have that value (as for the colour), then scaled so that the shares of all
+   K values of the column add up to 1: p₁, p₂, …, p<sub>K</sub>.
+2. Evenness J = H ÷ ln K, where H = −Σ pᵢ ln pᵢ is the Shannon entropy of the
+   shares (values with a share of 0 add nothing). J is 1 for a perfectly even
+   spread and 0 when one value has everything.
+3. Concentration C = 1 − J.
+4. Opacity = 0.25 + 0.55 × √C, so it ranges from 0.25 (even) to 0.8 (one
+   value). The square root spreads out the middle, where most topics are.
+
+For example, with three values of equal size, a topic with counts 60, 58, and
+10 has C ≈ 0.17 and opacity ≈ 0.48, while counts 60, 58, and 57 give C ≈ 0 and
+opacity ≈ 0.26. Hovering over a bubble lifts it above this range, and selected
+topics are marked by an outline, so neither changes what the opacity means.
+Without **Colour by**, every bubble uses the same opacity.
+
 <h3 id="help-topic-modeling-words-per-topic">Words (words per topic) and stop words</h3>
 
 **Words per topic** controls how many representative words appear in the topic

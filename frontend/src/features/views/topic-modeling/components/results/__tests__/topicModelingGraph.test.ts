@@ -7,6 +7,11 @@ import {
   findTopicIdsInsideLasso,
   normalizeTopicPositions,
   topicColorSchemeFill,
+  topicColorSchemeOpacity,
+  topicValueConcentration,
+  TOPIC_OPACITY_DEFAULT,
+  TOPIC_OPACITY_MAX,
+  TOPIC_OPACITY_MIN,
 } from '../topicModelingGraph';
 
 const topics = [
@@ -187,6 +192,35 @@ describe('topicModelingGraph', () => {
     expect(buildTopicColorScheme({ columns: [], column: null, groups: [], topic_counts: [] })).toBe(
       null,
     );
+  });
+
+  it('sets opacity from how evenly a topic spreads across the values (issue 188)', () => {
+    const scheme = {
+      column: 'party',
+      groups: [
+        { label: 'A', color: '#ff0000', documentCount: 100, missing: false },
+        { label: 'B', color: '#0000ff', documentCount: 100, missing: false },
+        { label: 'C', color: '#00ff00', documentCount: 100, missing: false },
+      ],
+      topicCounts: [
+        [60, 58, 10], // two values dominate
+        [60, 58, 57], // almost even
+        [40, 0, 0], // one value only
+        [0, 0, 0], // no documents
+      ],
+    };
+
+    expect(topicValueConcentration(scheme, 0)).toBeCloseTo(0.169, 3);
+    expect(topicValueConcentration(scheme, 1)).toBeCloseTo(0.0003, 3);
+    expect(topicValueConcentration(scheme, 2)).toBe(1);
+    expect(topicValueConcentration(scheme, 3)).toBeNull();
+
+    const opacities = [0, 1, 2, 3].map((topicId) => topicColorSchemeOpacity(scheme, topicId));
+    expect(opacities[0]).toBeCloseTo(TOPIC_OPACITY_MIN + 0.55 * Math.sqrt(0.169), 2);
+    expect(opacities[0]!).toBeGreaterThan(opacities[1]!);
+    expect(opacities[1]).toBeCloseTo(TOPIC_OPACITY_MIN + 0.55 * Math.sqrt(0.0003), 2);
+    expect(opacities[2]).toBe(TOPIC_OPACITY_MAX);
+    expect(opacities[3]).toBe(TOPIC_OPACITY_DEFAULT);
   });
 
   it('blends the two values most over-represented relative to their size', () => {

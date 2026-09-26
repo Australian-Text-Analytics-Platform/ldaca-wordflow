@@ -21,6 +21,8 @@ export interface TopicBubbleModel {
   position: TopicGraphPoint;
   radius: number;
   fill: string;
+  /** Resting fill opacity; hover shows the bubble above this range (issue 188). */
+  fillOpacity: number;
   selected: boolean;
   lassoed: boolean;
   hovered: boolean;
@@ -87,6 +89,45 @@ export function topicColorSchemeFill(
     second.color,
     second.weight / (first.weight + second.weight),
   );
+}
+
+/** Opacity range for bubbles coloured by a column: evenly spread to one value. */
+export const TOPIC_OPACITY_MIN = 0.25;
+export const TOPIC_OPACITY_MAX = 0.8;
+/** Resting opacity when bubbles are not coloured by a column. */
+export const TOPIC_OPACITY_DEFAULT = 0.6;
+/** Hovered bubbles stand out above the range. */
+export const TOPIC_OPACITY_HOVER = 0.92;
+
+/**
+ * How concentrated a Topic is across the colour-by values (issue 188):
+ * C = 1 − Pielou's evenness J, with J = H / ln K, where H = −Σ pᵢ ln pᵢ over
+ * the K values' shares pᵢ (each value's count divided by its document count,
+ * then normalised to sum to 1). C is 1 for one value and 0 for an even spread.
+ */
+export function topicValueConcentration(scheme: TopicColorScheme, topicId: number): number | null {
+  const counts = scheme.topicCounts[topicId] ?? [];
+  const weights = scheme.groups.map((group, index) =>
+    group.documentCount > 0 ? (counts[index] ?? 0) / group.documentCount : 0,
+  );
+  const total = weights.reduce((sum, weight) => sum + weight, 0);
+  const valueCount = weights.length;
+  if (total <= 0) return null;
+  if (valueCount < 2) return 1;
+  let entropy = 0;
+  for (const weight of weights) {
+    const share = weight / total;
+    if (share > 0) entropy -= share * Math.log(share);
+  }
+  const evenness = entropy / Math.log(valueCount);
+  return Math.min(1, Math.max(0, 1 - evenness));
+}
+
+/** Resting opacity: min + (max − min) × √C, so typical topics spread out. */
+export function topicColorSchemeOpacity(scheme: TopicColorScheme, topicId: number): number {
+  const concentration = topicValueConcentration(scheme, topicId);
+  if (concentration === null) return TOPIC_OPACITY_DEFAULT;
+  return TOPIC_OPACITY_MIN + (TOPIC_OPACITY_MAX - TOPIC_OPACITY_MIN) * Math.sqrt(concentration);
 }
 
 interface BuildTopicBubbleModelsOptions {
@@ -200,6 +241,10 @@ export function buildTopicBubbleModels({
             ? topicColorSchemeFill(colorScheme, topic.id, colorA)
             : colorA
           : interpolateColor(colorA, colorB, proportion),
+      fillOpacity:
+        corpusCount <= 1 && colorScheme
+          ? topicColorSchemeOpacity(colorScheme, topic.id)
+          : TOPIC_OPACITY_DEFAULT,
       selected: selectedTopicIds.has(topic.id),
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,

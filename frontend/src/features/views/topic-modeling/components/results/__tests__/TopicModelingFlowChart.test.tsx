@@ -112,6 +112,7 @@ const bubble: TopicBubbleModel = {
   position: { x: 50, y: 50 },
   radius: 20,
   fill: '#2563eb',
+  fillOpacity: 0.6,
   selected: false,
   lassoed: false,
   hovered: false,

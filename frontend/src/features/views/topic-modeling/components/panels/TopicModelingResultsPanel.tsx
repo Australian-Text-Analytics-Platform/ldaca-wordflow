@@ -114,7 +114,8 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-72">
             Colour bubbles by a column with 2 to 8 values. Each bubble blends the two values most
-            over-represented in its documents, relative to how common each value is.
+            over-represented in its documents, relative to how common each value is. A more solid
+            bubble is concentrated in few values; a paler one is spread evenly.
           </TooltipContent>
         </Tooltip>
       </div>

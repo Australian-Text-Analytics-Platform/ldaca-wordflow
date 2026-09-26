@@ -22,6 +22,7 @@ import {
   findTopicIdsInsideLasso,
   TOPIC_GRAPH_HEIGHT,
   TOPIC_GRAPH_WIDTH,
+  TOPIC_OPACITY_HOVER,
   type TopicBubbleModel,
   type TopicGraphPoint,
 } from './topicModelingGraph';
@@ -151,13 +152,16 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             cy={outerRadius}
             r={bubble.hovered && !bubble.filteredOut ? bubble.radius + 2 : bubble.radius}
             fill={bubble.fill}
-            fillOpacity={bubble.hovered ? 0.88 : bubble.selected ? 0.78 : 0.6}
+            // Opacity shows how evenly the topic spreads across the colour-by
+            // values; hover lifts it above that range, and selection is the
+            // outline ring rather than opacity (issue 188).
+            fillOpacity={bubble.hovered ? TOPIC_OPACITY_HOVER : bubble.fillOpacity}
             stroke={bubble.selected ? '#16a34a' : bubble.hovered ? '#3b82f6' : '#94a3b8'}
             strokeWidth={bubble.selected || bubble.hovered ? 2 : 1}
             className={cn(
               'transition-[fill-opacity,stroke,stroke-width] duration-100',
               !bubble.filteredOut &&
-                'group-hover:fill-opacity-[0.88] group-hover:stroke-focus group-hover:[stroke-width:2]',
+                'group-hover:fill-opacity-[0.92] group-hover:stroke-focus group-hover:[stroke-width:2]',
             )}
           />
           <text
@@ -397,7 +401,7 @@ function TopicExportSvg({
             <circle
               r={bubble.radius}
               fill={bubble.fill}
-              fillOpacity={bubble.selected ? 0.78 : 0.6}
+              fillOpacity={bubble.fillOpacity}
               stroke={bubble.selected ? '#16a34a' : '#94a3b8'}
               strokeWidth={bubble.selected ? 2 : 1}
             />
