@@ -928,7 +928,10 @@ def test_snapshot_can_be_compiled_and_validated_for_future_publication_root(
     ]["data_path"]
 
     assert not future.exists()
-    assert list_source_paths(plan) == [str(future / "data" / "source.parquet")]
+    # Compare paths: polars stores forward slashes on Windows.
+    assert [Path(path) for path in list_source_paths(plan)] == [
+        future / "data" / "source.parquet"
+    ]
     assert validated.workspace.nodes[node.id].name == "source"
 
     os.replace(staging, future)

@@ -205,7 +205,8 @@ def _rebase_plan_copy(
         except (OSError, ValueError) as exc:
             raise ValueError("Project plan source cannot be relocated") from exc
         published_source = published_data_dir / staged_source.name
-        if old != str(published_source):
+        # Compare paths: polars stores "C:/..." on Windows (issue 142).
+        if Path(old) != published_source:
             mapping[old] = str(published_source)
     if not mapping:
         return False
@@ -1256,7 +1257,7 @@ def _read_workspace(
                         "Project plan source escapes its project"
                     ) from exc
                 staged_source = _resolve_regular_under(root, relative_source)
-                if raw_source != str(staged_source):
+                if source_path != staged_source:
                     validation_mapping[raw_source] = str(staged_source)
             data_paths.add(absolute_data_path)
 

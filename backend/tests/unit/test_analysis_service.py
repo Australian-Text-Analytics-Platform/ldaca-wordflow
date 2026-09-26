@@ -326,10 +326,12 @@ async def test_multi_user_annotation_secret_reaches_execution_but_not_workspace_
 
     assert "api_key" not in created.request.model_dump(mode="json")
     assert execution.enqueued[0][2] == "request-only-secret"
+    # Lock files hold only "pid=N" and are unreadable while held on Windows.
+    lock_registry = tmp_path / "workspaces" / ".locks"
     assert all(
         b"request-only-secret" not in path.read_bytes()
         for path in tmp_path.rglob("*")
-        if path.is_file()
+        if path.is_file() and lock_registry not in path.parents
     )
 
 

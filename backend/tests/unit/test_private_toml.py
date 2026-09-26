@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 import stat
 from dataclasses import dataclass
 from pathlib import Path
@@ -80,7 +82,8 @@ async def test_private_toml_is_bounded_admitted_private_and_round_trips(
     assert admission.reservation.staged_path is not None
     assert admission.reservation.replacing_path is None
     assert admission.reservation.released is True
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    if os.name != "nt":  # Windows has no POSIX mode bits.
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
     assert await persistence.read("user-a", "preferences.toml") == {
         "schema_version": 2
     }

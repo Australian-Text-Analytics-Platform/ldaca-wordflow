@@ -151,7 +151,12 @@ def acquire_workspace_lock(
                 pass
             else:
                 if is_link_or_reparse(metadata):
-                    raise WorkspaceLockStorageError
+                    # Name the entry, as the POSIX O_NOFOLLOW path does (issue 142).
+                    raise OSError(
+                        errno.ELOOP,
+                        "Workspace lock entry is a link or reparse point",
+                        str(path),
+                    )
             descriptor = os.open(path, flags, 0o600)
     except (OSError, WorkspaceLockStorageError) as exc:
         raise WorkspaceLockStorageError from exc

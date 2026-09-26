@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -80,7 +82,8 @@ def test_config_store_is_versioned_atomic_and_ignores_legacy_backend_json(
     store.write(selected)
     assert store.read() == selected
     assert store.paths.config_file.read_text(encoding="utf-8")
-    if store.paths.config_file.stat().st_mode & 0o777:
+    # Windows has no POSIX mode bits; privacy comes from the user profile's ACL.
+    if os.name != "nt":
         assert store.paths.config_file.stat().st_mode & 0o777 == 0o600
 
 

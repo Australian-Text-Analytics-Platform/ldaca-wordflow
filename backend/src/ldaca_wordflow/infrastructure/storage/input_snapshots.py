@@ -285,7 +285,8 @@ def rebase_worker_input_snapshot_sources(
                 required_parent="sources",
             )
             published_source = published_root / "sources" / relocated.name
-            if raw_source != str(published_source):
+            # Compare paths: polars stores "C:/..." on Windows (issue 142).
+            if source_path != published_source:
                 mapping[raw_source] = str(published_source)
         if not mapping:
             continue

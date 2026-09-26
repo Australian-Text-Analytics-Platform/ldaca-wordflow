@@ -53,12 +53,11 @@ def test_abrupt_process_exit_releases_workspace_lock(tmp_path: Path) -> None:
         assert child.wait(timeout=10) == 17
 
         replacement = acquire_workspace_lock(lock_root, workspace_id)
-        try:
-            assert (lock_root / f"{workspace_id}.lock").read_text(
-                encoding="ascii"
-            ) == f"pid={os.getpid()}\n"
-        finally:
-            replacement.close()
+        # Windows byte-range locks are mandatory, so read the owner after release.
+        replacement.close()
+        assert (lock_root / f"{workspace_id}.lock").read_text(
+            encoding="ascii"
+        ) == f"pid={os.getpid()}\n"
     finally:
         if child.poll() is None:
             child.kill()
