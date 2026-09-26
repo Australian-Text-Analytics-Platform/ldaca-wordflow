@@ -39,6 +39,7 @@ from ..shared.table_transport import (
 )
 from .user_files import UserFileStore
 from ..models.node_resources import (
+    CastNodeEditRequest,
     DeduplicateNodeCreateRequest,
     FileNodeCreateRequest,
     GroupSummaryNodeCreateRequest,
@@ -54,6 +55,7 @@ from ..models.workspace import (
     WorkspaceNodeInfo,
 )
 from .node_operations import (
+    count_non_empty_values,
     build_derived_lazyframe,
     build_derived_node,
     build_edited_lazyframe,
@@ -399,6 +401,21 @@ class NodeService:
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Replace one Data Block plan without changing its graph identity."""
 
+        info, revision, _report = await self.edit_with_report(
+            user_id, workspace_id, node_id, request
+        )
+        return info, revision
+
+    async def edit_with_report(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        request: NodeEditRequest,
+    ) -> tuple[WorkspaceNodeInfo, int, EmptiedValuesReport | None]:
+        """Apply an edit; for a type change, also count the values it emptied."""
+
+        report: EmptiedValuesReport | None = None
         async with self._workspaces.mutation_context(
             user_id,
             workspace_id,
@@ -413,12 +430,16 @@ class NodeService:
                 lease.commit_requested = False
             else:
                 await self._run_io(_validate_edit_schema, lazyframe)
+                if isinstance(request, CastNodeEditRequest):
+                    report = await self._run_io(
+                        _emptied_values_report, node.data, lazyframe, request.column
+                    )
                 node.data = lazyframe
                 if renamed_column is not None:
                     _retarget_column_metadata(node, *renamed_column)
                 await self._run_io(_reconcile_node_metadata, node)
             info = await self._run_io(canonical_node_info, node)
-        return WorkspaceNodeInfo.model_validate(info), lease.revision
+        return WorkspaceNodeInfo.model_validate(info), lease.revision, report
 
     async def undo(
         self,
@@ -558,6 +579,22 @@ def _load_zip_member_dataframe(
             raise DataFileLoadError("ZIP member could not be loaded") from exc
         data = materialize_data_file(extracted)
     return normalize_dtypes(data)
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class EmptiedValuesReport:
+    """How many values a type change turned empty, out of the block's rows."""
+
+    emptied: int
+    rows: int
+
+
+def _emptied_values_report(
+    before: pl.LazyFrame, after: pl.LazyFrame, column: str
+) -> EmptiedValuesReport:
+    rows, present_before = count_non_empty_values(before, column)
+    _rows, present_after = count_non_empty_values(after, column)
+    return EmptiedValuesReport(emptied=max(0, present_before - present_after), rows=rows)
 
 
 def _first_sheet_name(path: Path) -> str | None:

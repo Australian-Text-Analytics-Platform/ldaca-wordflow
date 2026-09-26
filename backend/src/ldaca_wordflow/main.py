@@ -385,6 +385,7 @@ def create_app(
             "X-Wordflow-Has-Next",
             "X-Wordflow-Total-Rows",
             "X-Wordflow-Changed-Rows",
+            "X-Wordflow-Emptied-Values",
         ],
     )
     app.add_middleware(cast(Any, PrivateApiCacheMiddleware))

@@ -123,6 +123,11 @@ export const useWorkspaceTransformMutations = ({
       group_by: request.group_by,
     };
   };
+  const headerCount = (response: Response | undefined, name: string): number | null => {
+    const value = Number.parseInt(response?.headers.get(name) ?? '', 10);
+    return Number.isFinite(value) ? value : null;
+  };
+
   const castEditBody = (
     column: string,
     targetType: ColumnCastType,
@@ -187,7 +192,12 @@ export const useWorkspaceTransformMutations = ({
         body: castEditBody(column, targetType, format),
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
-      }).then(({ data }) => requireNode(data)),
+      }).then(({ data, response }) => ({
+        node: requireNode(data),
+        // How many values the change emptied, out of the block's rows (issue 183).
+        emptied: headerCount(response, 'X-Wordflow-Emptied-Values'),
+        rows: headerCount(response, 'X-Wordflow-Total-Rows'),
+      })),
     onSuccess: (_data, variables) => {
       invalidateEditedNode(variables.nodeId);
     },

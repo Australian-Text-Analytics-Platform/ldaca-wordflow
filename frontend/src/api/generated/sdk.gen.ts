@@ -1170,6 +1170,9 @@ export const updateNode = <ThrowOnError extends boolean = false>(options: Option
  * Edit Node
  *
  * Apply one identity-preserving Data Block Edit.
+ *
+ * A type change also reports the values it emptied in X-Wordflow-Emptied-Values
+ * and the block's rows in X-Wordflow-Total-Rows (issue 183).
  */
 export const editNode = <ThrowOnError extends boolean = false>(options: Options<EditNodeData, ThrowOnError>): RequestResult<EditNodeResponses, EditNodeErrors, ThrowOnError> => (options.client ?? client).post<EditNodeResponses, EditNodeErrors, ThrowOnError>({
     security: [{

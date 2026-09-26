@@ -14,6 +14,7 @@ ARROW_STREAM_MEDIA_TYPE = "application/vnd.apache.arrow.stream"
 HAS_NEXT_HEADER = "X-Wordflow-Has-Next"
 TOTAL_ROWS_HEADER = "X-Wordflow-Total-Rows"
 CHANGED_ROWS_HEADER = "X-Wordflow-Changed-Rows"
+EMPTIED_VALUES_HEADER = "X-Wordflow-Emptied-Values"
 
 
 @dataclass(frozen=True, slots=True)

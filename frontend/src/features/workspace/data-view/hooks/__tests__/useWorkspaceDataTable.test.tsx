@@ -10,6 +10,7 @@ const useWorkspaceDataMock = vi.hoisted(() => vi.fn());
 const useWorkspaceSelectionMock = vi.hoisted(() => vi.fn());
 const useWorkspaceStatusMock = vi.hoisted(() => vi.fn());
 const useWorkspaceActionsMock = vi.hoisted(() => vi.fn());
+const toastWarningMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@/api', () => ({
   queryWorkspaceSqlTable: queryWorkspaceSqlTableMock,
@@ -28,6 +29,9 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceStatus', () => ({
 }));
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
   useWorkspaceActions: useWorkspaceActionsMock,
+}));
+vi.mock('sonner', () => ({
+  toast: { warning: toastWarningMock, error: vi.fn(), success: vi.fn() },
 }));
 
 import { useWorkspaceDataTable } from '../useWorkspaceDataTable';
@@ -208,6 +212,39 @@ describe('useWorkspaceDataTable', () => {
     expect(result.current.table.columns).toEqual(['class', 'description']);
     expect(result.current.table.columnFields.class?.type.toString()).toBe('Utf8');
     expect(result.current.table.columnFields.description?.type.toString()).toBe('Utf8');
+  });
+
+  it('warns after a type change that empties much of a column and offers Undo (issue 183)', async () => {
+    const castColumn = vi
+      .fn()
+      .mockResolvedValueOnce({ node: {}, emptied: 900, rows: 1_000 })
+      .mockResolvedValueOnce({ node: {}, emptied: 5, rows: 1_000 });
+    const undoNode = vi.fn();
+    useWorkspaceActionsMock.mockReturnValue({
+      ...useWorkspaceActionsMock(),
+      castColumn,
+      undoNode,
+    });
+    toastWarningMock.mockReset();
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const { result } = renderHook(() => useWorkspaceDataTable(), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await act(async () => {
+      await result.current.table.onCast?.('year', 'integer');
+    });
+    expect(toastWarningMock).toHaveBeenCalledTimes(1);
+    const [message, options] = toastWarningMock.mock.calls[0]!;
+    expect(message).toBe('Converting "year" to integer left 900 of 1,000 values empty (90%).');
+    options.action.onClick();
+    expect(undoNode).toHaveBeenCalledWith('node-b');
+
+    // A small share does not warn.
+    await act(async () => {
+      await result.current.table.onCast?.('year', 'integer');
+    });
+    expect(toastWarningMock).toHaveBeenCalledTimes(1);
   });
 
   it('uses the selected Data Block shape as the exact Data View row count', () => {

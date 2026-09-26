@@ -25,7 +25,11 @@ from ...models.workspace import DataBlockResource, WorkspaceNodeInfo
 from ..dependencies import RuntimeDep
 from ..security import CurrentSessionSecurityDep
 from ..responses import api_errors, route_path, workspace_etag
-from ...shared.table_transport import CHANGED_ROWS_HEADER
+from ...shared.table_transport import (
+    CHANGED_ROWS_HEADER,
+    EMPTIED_VALUES_HEADER,
+    TOTAL_ROWS_HEADER,
+)
 from ..table_responses import (
     ARROW_STREAM_RESPONSE,
     arrow_page_response,
@@ -257,15 +261,22 @@ async def edit_node(
     principal: CurrentSessionSecurityDep,
     runtime: RuntimeDep,
 ) -> WorkspaceNodeInfo:
-    """Apply one identity-preserving Data Block Edit."""
+    """Apply one identity-preserving Data Block Edit.
 
-    node, revision = await runtime.node_service.edit(
+    A type change also reports the values it emptied in X-Wordflow-Emptied-Values
+    and the block's rows in X-Wordflow-Total-Rows (issue 183).
+    """
+
+    node, revision, report = await runtime.node_service.edit_with_report(
         principal.user.id,
         workspace_id,
         node_id,
         request,
     )
     response.headers["ETag"] = workspace_etag(revision)
+    if report is not None:
+        response.headers[EMPTIED_VALUES_HEADER] = str(report.emptied)
+        response.headers[TOTAL_ROWS_HEADER] = str(report.rows)
     return node
 
 

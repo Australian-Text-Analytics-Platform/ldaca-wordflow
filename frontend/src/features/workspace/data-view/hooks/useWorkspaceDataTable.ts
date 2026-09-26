@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { SortingState } from '@tanstack/react-table';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
@@ -15,7 +16,10 @@ import {
 import type { NodeDataResponse } from '@/api/frontendModels';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
-import type { ColumnCastType } from '../services/schemaMutations';
+import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
+
+/** Warn after a type change that empties at least this share of the column (issue 183). */
+const EMPTIED_WARNING_SHARE = 0.1;
 
 export interface WorkspaceDataTableHeaderInfo {
   nodeLabel: string;
@@ -473,9 +477,27 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   const handleCast = useCallback(
     async (column: string, targetType: ColumnCastType, format?: string) => {
       if (!selectedNodeIdForCallbacks) return;
-      await castColumn(selectedNodeIdForCallbacks, column, targetType, format);
+      const nodeId = selectedNodeIdForCallbacks;
+      const { emptied, rows } = await castColumn(nodeId, column, targetType, format);
+      // Casts that cannot convert a value leave it empty; say so when that
+      // hits a large share of the column, and offer Undo (issue 183).
+      if (emptied && rows && emptied / rows >= EMPTIED_WARNING_SHARE) {
+        toast.warning(
+          `Converting "${column}" to ${castTypeLabel(targetType)} left ${emptied.toLocaleString()} of ${rows.toLocaleString()} values empty (${String(Math.round((emptied / rows) * 100))}%).`,
+          {
+            description: 'Those values could not be converted. Undo restores them.',
+            duration: 12_000,
+            action: {
+              label: 'Undo',
+              onClick: () => {
+                void undoNode(nodeId);
+              },
+            },
+          },
+        );
+      }
     },
-    [selectedNodeIdForCallbacks, castColumn],
+    [selectedNodeIdForCallbacks, castColumn, undoNode],
   );
 
   /** Renames a column on the active Data Block. */

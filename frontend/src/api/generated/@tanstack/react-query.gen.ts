@@ -1573,6 +1573,9 @@ export const updateNodeMutation = (options?: Partial<Options<UpdateNodeData>>): 
  * Edit Node
  *
  * Apply one identity-preserving Data Block Edit.
+ *
+ * A type change also reports the values it emptied in X-Wordflow-Emptied-Values
+ * and the block's rows in X-Wordflow-Total-Rows (issue 183).
  */
 export const editNodeMutation = (options?: Partial<Options<EditNodeData>>): UseMutationOptions<EditNodeResponse, EditNodeError, Options<EditNodeData>> => {
     const mutationOptions: UseMutationOptions<EditNodeResponse, EditNodeError, Options<EditNodeData>> = {
