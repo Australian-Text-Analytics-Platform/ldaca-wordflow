@@ -71,6 +71,9 @@
   --color-resize-handle-active: var(--vscode-focusBorder);
   --color-editor-tab-active-background: var(--vscode-modernTab-activeBackground);
   --color-editor-tab-hover-background: var(--vscode-modernTab-hoverBackground);
+  /* Accent bar under the active tab, so it stays visible on low-contrast
+     screens where the active fill alone disappears. */
+  --color-tab-active-indicator: var(--vscode-focusBorder);
 }
 
 @layer base {

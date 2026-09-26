@@ -390,7 +390,7 @@ export function EditorTabs({
                               onReorder ? 'cursor-grab' : 'cursor-default',
                             ),
                         isActive
-                          ? 'z-10 text-foreground'
+                          ? 'z-10 font-semibold text-foreground'
                           : 'text-description hover:text-foreground',
                       )}
                     >
@@ -404,6 +404,14 @@ export function EditorTabs({
                             : 'bg-transparent group-hover:bg-editor-tab-hover-background group-focus-within:bg-editor-tab-hover-background',
                         )}
                       />
+                      {isActive ? (
+                        // The fill alone fades out on low-contrast screens.
+                        <span
+                          aria-hidden="true"
+                          data-testid="editor-tab-active-indicator"
+                          className="pointer-events-none absolute inset-x-[6px] bottom-[4px] h-[2px] rounded-full bg-tab-active-indicator"
+                        />
+                      ) : null}
 
                       {isRenaming ? (
                         <input
