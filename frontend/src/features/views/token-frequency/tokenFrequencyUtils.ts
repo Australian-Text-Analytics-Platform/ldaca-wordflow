@@ -170,3 +170,34 @@ export const deriveBackendTokenLimit = (results?: TokenFrequencyResponse | null)
     ? results.metadata.effective_token_limit
     : null;
 };
+
+/** Tab setting that remembers the parameter-card order across reloads (issue 198). */
+export const TOKEN_FREQUENCY_CARD_ORDER_SETTING = 'tokenFrequency.cardOrder';
+
+/** Reads the remembered card order; anything unreadable counts as none. */
+export const parseTokenFrequencyCardOrder = (value: string | undefined): string[] => {
+  if (!value) return [];
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === 'string') : [];
+  } catch {
+    return [];
+  }
+};
+
+/**
+ * Orders a saved request's nodes for the parameter cards.
+ * Used by: TokenFrequencyFeature hydration, because the request keeps the
+ * comparison order [Reference, Study] rather than the card order (issue 198).
+ * Flow: follow the remembered card order when it covers every node, otherwise
+ * put Study first, which is where a new comparison starts it.
+ */
+export const orderHydratedTokenFrequencyNodeIds = (
+  requestNodeIds: readonly string[],
+  cardOrder: readonly string[],
+): string[] => {
+  if (requestNodeIds.every((nodeId) => cardOrder.includes(nodeId))) {
+    return [...requestNodeIds].sort((a, b) => cardOrder.indexOf(a) - cardOrder.indexOf(b));
+  }
+  return [...requestNodeIds].reverse();
+};

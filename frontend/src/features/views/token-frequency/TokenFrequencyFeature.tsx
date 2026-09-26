@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import type { TokenFrequencyRequest, TokenFrequencyResponse } from '@/api';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
@@ -42,7 +42,10 @@ import {
   derivePanelNodeIds,
   deriveStudyNodeOrder,
   type NodeNameEntry,
+  orderHydratedTokenFrequencyNodeIds,
+  parseTokenFrequencyCardOrder,
   reconcileHydratedTokenFrequencyInputs,
+  TOKEN_FREQUENCY_CARD_ORDER_SETTING,
 } from './tokenFrequencyUtils';
 
 const MAX_TOKEN_LIMIT_INPUT = 100;
@@ -97,7 +100,10 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     setLastCompareNodeIds(nodeIds);
     setStudyNodeId(nodeIds[1] ?? null);
 
-    const hydratedInputs = nodeIds.map((nodeId) => ({
+    const cardOrder = parseTokenFrequencyCardOrder(
+      host.settings[TOKEN_FREQUENCY_CARD_ORDER_SETTING],
+    );
+    const hydratedInputs = orderHydratedTokenFrequencyNodeIds(nodeIds, cardOrder).map((nodeId) => ({
       node_id: nodeId,
       column: request.node_columns[nodeId] ?? '',
     }));
@@ -126,6 +132,15 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   };
 
   const panelNodeIds = derivePanelNodeIds(panelSelectedNodes);
+  // Remember the card order: the saved request only keeps [Reference, Study]
+  // (issue 198).
+  const panelNodeOrder = JSON.stringify(panelNodeIds);
+  const savedCardOrder = host.settings[TOKEN_FREQUENCY_CARD_ORDER_SETTING];
+  const setTabSetting = host.setSetting;
+  useEffect(() => {
+    if (panelNodeIds.length < 2 || savedCardOrder === panelNodeOrder) return;
+    setTabSetting(TOKEN_FREQUENCY_CARD_ORDER_SETTING, panelNodeOrder);
+  }, [panelNodeIds.length, panelNodeOrder, savedCardOrder, setTabSetting]);
   const { effectiveStudyNodeId, orderedPanelNodeIds } = deriveStudyNodeOrder(
     panelNodeIds,
     studyNodeId,

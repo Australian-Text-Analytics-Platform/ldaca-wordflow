@@ -9,6 +9,8 @@ import {
   deriveStudyNodeOrder,
   reconcileHydratedTokenFrequencyInputs,
   resolveTokenFrequencyDisplayName,
+  orderHydratedTokenFrequencyNodeIds,
+  parseTokenFrequencyCardOrder,
 } from '../tokenFrequencyUtils';
 
 describe('tokenFrequencyUtils', () => {
@@ -148,5 +150,24 @@ describe('tokenFrequencyUtils', () => {
         nodeIdToName: {},
       }),
     ).toBe('Backend Key');
+  });
+});
+
+describe('orderHydratedTokenFrequencyNodeIds (issue 198)', () => {
+  it('follows the remembered card order', () => {
+    expect(orderHydratedTokenFrequencyNodeIds(['ref', 'study'], ['ref', 'study'])).toEqual([
+      'ref',
+      'study',
+    ]);
+    expect(orderHydratedTokenFrequencyNodeIds(['ref', 'study'], ['study', 'x', 'ref'])).toEqual([
+      'study',
+      'ref',
+    ]);
+  });
+
+  it('puts Study first when no card order is remembered', () => {
+    expect(orderHydratedTokenFrequencyNodeIds(['ref', 'study'], [])).toEqual(['study', 'ref']);
+    expect(parseTokenFrequencyCardOrder('not json')).toEqual([]);
+    expect(parseTokenFrequencyCardOrder('["a",2,"b"]')).toEqual(['a', 'b']);
   });
 });
