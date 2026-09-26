@@ -150,5 +150,9 @@ export function useResultsFill(
     });
   }, [element, enabled, min, registry]);
 
-  return registry && enabled ? height : null;
+  return {
+    height: registry && enabled ? height : null,
+    /** Asks the pane to recalculate, for example when a table's rows arrive. */
+    schedule: registry?.schedule,
+  };
 }

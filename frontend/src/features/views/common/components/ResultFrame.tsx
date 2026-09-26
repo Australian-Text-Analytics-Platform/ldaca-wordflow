@@ -95,7 +95,7 @@ export function ResultFrame({
   } | null>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const userHeight = drag?.height ?? storedHeight;
-  const fillHeight = useResultsFill(frame, {
+  const { height: fillHeight, schedule: scheduleFill } = useResultsFill(frame, {
     min: minHeight,
     enabled: fill && userHeight === null,
     cap: fitContent && frame ? () => naturalFrameHeight(frame) : undefined,
@@ -106,6 +106,25 @@ export function ResultFrame({
       : fillHeight !== null
         ? `${String(fillHeight)}px`
         : toCssHeight(defaultHeight);
+
+  // A table's rows can arrive after the frame has its height; its full
+  // height then changes without the frame resizing, so watch the scrolled
+  // content and recalculate the fill (issue 196).
+  useEffect(() => {
+    if (!frame || !fitContent || !scheduleFill || typeof ResizeObserver === 'undefined') return;
+    const scroller = frame.querySelector<HTMLElement>(
+      '[data-result-frame-scroll], [data-slot="scroll-area-viewport"]',
+    );
+    const content = scroller?.firstElementChild;
+    if (!content) return;
+    const observer = new ResizeObserver(() => {
+      scheduleFill();
+    });
+    observer.observe(content);
+    return () => {
+      observer.disconnect();
+    };
+  }, [fitContent, frame, scheduleFill]);
 
   useEffect(() => {
     if (!frame || typeof ResizeObserver === 'undefined') return;
