@@ -220,8 +220,9 @@ describe('AnnotationAiPreviewPanel', () => {
       name: 'Second text new value previous correction',
     });
     const cells = within(secondRow).getAllByRole('cell');
-    expect(cells[1]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
+    // cells[0] holds the row viewer button (issue 92).
     expect(cells[2]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
+    expect(cells[3]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
     expect(
       screen.queryByRole('heading', { name: 'annotation (preview) vs review' }),
     ).not.toBeInTheDocument();
@@ -288,15 +289,16 @@ describe('AnnotationAiPreviewPanel', () => {
 
     const previewTable = screen.getAllByRole('table')[0];
     const headers = within(previewTable).getAllByRole('columnheader');
-    expect(headers).toHaveLength(5);
-    expect(headers.slice(0, 4).map((header) => header.textContent)).toEqual([
+    expect(headers).toHaveLength(6);
+    expect(headers.slice(0, 5).map((header) => header.textContent)).toEqual([
+      'View row',
       'text',
       'annotation (preview)',
       '',
       'Correction: correction',
     ]);
-    expect(within(headers[4]).getByText('review')).toBeInTheDocument();
-    expect(within(headers[4]).getByRole('button', { name: /Cohen’s Kappa/ })).toBeInTheDocument();
+    expect(within(headers[5]).getByText('review')).toBeInTheDocument();
+    expect(within(headers[5]).getByRole('button', { name: /Cohen’s Kappa/ })).toBeInTheDocument();
     const firstRow = within(previewTable).getByRole('row', { name: /First text/ });
     expect(within(firstRow).getAllByRole('cell').at(-1)).toHaveTextContent('replacement');
     expect(within(firstRow).getAllByRole('combobox')).toHaveLength(1);
@@ -320,7 +322,7 @@ describe('AnnotationAiPreviewPanel', () => {
       within(previewTable)
         .getAllByRole('columnheader')
         .map((header) => header.textContent),
-    ).toEqual(['text', 'annotation (preview)', 'review']);
+    ).toEqual(['View row', 'text', 'annotation (preview)', 'review']);
     expect(within(previewTable).getByRole('row', { name: /First text/ })).toHaveTextContent(
       'replacement',
     );

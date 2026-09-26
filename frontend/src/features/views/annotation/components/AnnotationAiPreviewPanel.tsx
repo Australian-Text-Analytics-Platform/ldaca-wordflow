@@ -1,4 +1,7 @@
 import { ArrowRight, Loader2, RefreshCw } from 'lucide-react';
+import { AnnotationRowViewButton } from '@/features/views/common/components/AnnotationRowViewer';
+import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
+import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
@@ -181,6 +184,36 @@ export function AnnotationAiPreviewPanel({
     pageSize: page.pagination.pageSize,
     onPaginationChange: page.setPagination,
   });
+  // Read-only viewer for a whole row, including long metadata (issue 92).
+  const { openRowAt, rowViewer } = useAnnotationRowViewer({
+    sequenceKey: `preview\0${columns.annotation}\0${String(page.pagination.pageSize)}`,
+    rows: page.rows,
+    page: page.pagination.pageIndex + 1,
+    hasPreviousPage: page.pagination.pageIndex > 0,
+    hasNextPage: (page.pagination.pageIndex + 1) * page.pagination.pageSize < page.rowCount,
+    loading: page.query.isFetching,
+    onPageChange: (next) => {
+      page.setPagination({ pageIndex: next - 1, pageSize: page.pagination.pageSize });
+    },
+    toPayload: (row) => {
+      const index = page.rows.indexOf(row);
+      const rowPosition = page.pagination.pageIndex * page.pagination.pageSize + index;
+      const selectionKey = correction.column ? `${correction.column}:${String(rowPosition)}` : '';
+      return buildAnnotationRowDetailPayload(row, {
+        textColumn: columns.text,
+        annotationColumn: previewColumn,
+        annotationValue: predictions.labels[index] ?? null,
+        correctionColumn: showCorrectionColumn ? correction.column : null,
+        correctionValue: correction.column
+          ? (selections[selectionKey] ?? row[correction.column])
+          : null,
+        comparisonColumns: activeComparisonColumns,
+        revealedComparisonColumns,
+        // The existing annotation, before the preview's label.
+        metadataColumns: [columns.annotation, ...activeMetadataColumns],
+      });
+    },
+  });
 
   const saveCorrection = ({
     rowPosition,
@@ -327,6 +360,9 @@ export function AnnotationAiPreviewPanel({
         <Table className="w-full table-auto" disableContainer>
           <TableHeader className="sticky top-0 z-10 bg-surface">
             <TableRow className="[&>th]:align-bottom">
+              <TableHead className="w-8 px-1">
+                <span className="sr-only">View row</span>
+              </TableHead>
               <TableHead>{columns.text}</TableHead>
               <TableHead className="w-px whitespace-nowrap">
                 {columns.annotation} (preview)
@@ -370,10 +406,13 @@ export function AnnotationAiPreviewPanel({
           </TableHeader>
           <TableBody>
             {page.query.isLoading ? (
-              <PaginatedTableProcessingRow columnCount={tableColumns.length} />
+              <PaginatedTableProcessingRow columnCount={tableColumns.length + 1} />
             ) : page.query.isError ? (
               <TableRow>
-                <TableCell className="h-24 text-center text-error" colSpan={tableColumns.length}>
+                <TableCell
+                  className="h-24 text-center text-error"
+                  colSpan={tableColumns.length + 1}
+                >
                   Could not load annotations.
                 </TableCell>
               </TableRow>
@@ -381,7 +420,7 @@ export function AnnotationAiPreviewPanel({
               <TableRow>
                 <TableCell
                   className="h-24 text-center text-description"
-                  colSpan={tableColumns.length}
+                  colSpan={tableColumns.length + 1}
                 >
                   No rows to annotate.
                 </TableCell>
@@ -406,6 +445,14 @@ export function AnnotationAiPreviewPanel({
                 const differenceColor = toBgColor(sourceColor);
                 return (
                   <TableRow key={rowPosition} className="align-top hover:bg-transparent">
+                    <TableCell className="w-8 px-1">
+                      <AnnotationRowViewButton
+                        rowNumber={rowPosition + 1}
+                        onClick={() => {
+                          openRowAt(index);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="break-words whitespace-pre-wrap">
                       {cellText(row[columns.text])}
                     </TableCell>
@@ -523,6 +570,7 @@ export function AnnotationAiPreviewPanel({
             )}
           </TableBody>
         </Table>
+        {rowViewer}
       </AnnotationTableFrame>
     </section>
   );

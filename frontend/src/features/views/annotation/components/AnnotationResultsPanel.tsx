@@ -29,6 +29,9 @@ import {
   ColumnComparisonSelector,
 } from '@/features/views/common/components/ColumnComparison';
 import { MetadataColumnSelector } from '@/features/views/common/components/MetadataColumnSelector';
+import { AnnotationRowViewButton } from '@/features/views/common/components/AnnotationRowViewer';
+import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
+import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 import { useFullColumnComparisons } from '@/features/views/common/hooks/useFullColumnComparisons';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
@@ -265,6 +268,41 @@ export function AnnotationResultsPanel({
       setPagination(next);
     },
   });
+  // Read-only viewer for a whole row, including long metadata (issue 92).
+  const { openRowAt, rowViewer } = useAnnotationRowViewer({
+    sequenceKey: `${nodeId}\0${annotationColumn}\0${String(pagination.pageSize)}\0${JSON.stringify(activeFilter ?? null)}`,
+    rows,
+    page: pagination.pageIndex + 1,
+    hasPreviousPage: pagination.pageIndex > 0,
+    hasNextPage: (pagination.pageIndex + 1) * pagination.pageSize < effectiveRowCount,
+    loading: resultsQuery.isFetching,
+    onPageChange: (page) => {
+      setPagination({ pageIndex: page - 1, pageSize: pagination.pageSize });
+    },
+    toPayload: (row) => {
+      const rowPosition = Number(row[sourceRowIndexColumn]);
+      const annotationValue = Object.hasOwn(selections, rowPosition)
+        ? selections[rowPosition]
+        : row[annotationColumn];
+      const correctionKey = correctionColumn ? `${correctionColumn}:${String(rowPosition)}` : '';
+      const correctionValue =
+        correctionColumn && Object.hasOwn(correctionSelections, correctionKey)
+          ? correctionSelections[correctionKey]
+          : correctionColumn
+            ? row[correctionColumn]
+            : null;
+      return buildAnnotationRowDetailPayload(row, {
+        textColumn,
+        annotationColumn,
+        annotationValue,
+        correctionColumn,
+        correctionValue,
+        comparisonColumns: activeComparisonColumns,
+        revealedComparisonColumns,
+        metadataColumns: activeMetadataColumns,
+      });
+    },
+  });
   const comparisonQueries = useFullColumnComparisons({
     workspaceId,
     nodeIds: [nodeId],
@@ -356,6 +394,9 @@ export function AnnotationResultsPanel({
           <Table className="w-full table-auto" disableContainer>
             <TableHeader className="sticky top-0 z-10 bg-surface">
               <TableRow className="[&>th]:align-bottom">
+                <TableHead className="w-8 px-1">
+                  <span className="sr-only">View row</span>
+                </TableHead>
                 <TableHead>{textColumn}</TableHead>
                 <TableHead className="w-px whitespace-nowrap">
                   <span className="inline-flex items-center gap-1.5">
@@ -418,7 +459,7 @@ export function AnnotationResultsPanel({
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     className="h-24 text-center text-description"
-                    colSpan={tableColumns.length}
+                    colSpan={tableColumns.length + 1}
                   >
                     {activeFilter ? 'No rows match the filter.' : 'No rows to annotate.'}
                   </TableCell>
@@ -461,6 +502,14 @@ export function AnnotationResultsPanel({
                           : 'var(--vscode-list-hoverBackground)',
                     }}
                   >
+                    <TableCell className="w-8 px-1">
+                      <AnnotationRowViewButton
+                        rowNumber={rowPosition + 1}
+                        onClick={() => {
+                          openRowAt(index);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell className="break-words whitespace-pre-wrap">
                       {cellText(row[textColumn])}
                     </TableCell>
@@ -704,6 +753,7 @@ export function AnnotationResultsPanel({
               })}
             </TableBody>
           </Table>
+          {rowViewer}
         </AnnotationTableFrame>
       )}
     </section>

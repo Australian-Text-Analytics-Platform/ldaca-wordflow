@@ -1,4 +1,7 @@
 import { ArrowRight } from 'lucide-react';
+import { AnnotationRowViewButton } from './AnnotationRowViewer';
+import { buildAnnotationRowDetailPayload } from './annotationRowDetail';
+import { useAnnotationRowViewer } from '../hooks/useAnnotationRowViewer';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
@@ -232,6 +235,42 @@ export function RunAllReviewTable({
     pageSize: pagination.pageSize,
     onPaginationChange: setPagination,
   });
+  // Read-only viewer for a whole row, including long metadata (issue 92).
+  const { openRowAt, rowViewer } = useAnnotationRowViewer({
+    sequenceKey: `review\0${nodeId}\0${comparisonColumn}\0${String(pagination.pageSize)}\0${JSON.stringify(activeFilter ?? null)}`,
+    rows: page.rows,
+    page: pagination.pageIndex + 1,
+    hasPreviousPage: pagination.pageIndex > 0,
+    hasNextPage: (pagination.pageIndex + 1) * pagination.pageSize < page.rowCount,
+    loading: query.isFetching,
+    onPageChange: (next) => {
+      setPagination({ pageIndex: next - 1, pageSize: pagination.pageSize });
+    },
+    toPayload: (row) => {
+      const rowPosition = Number(row[sourceRowIndexColumn]);
+      const correctionKey = correctionColumn ? `${correctionColumn}:${String(rowPosition)}` : '';
+      return buildAnnotationRowDetailPayload(row, {
+        textColumn: textColumn ?? '',
+        annotationColumn: comparisonColumn,
+        annotationValue: row[comparisonColumn],
+        correctionColumn,
+        correctionValue:
+          correctionColumn && Object.hasOwn(correctionSelections, correctionKey)
+            ? correctionSelections[correctionKey]
+            : correctionColumn
+              ? row[correctionColumn]
+              : null,
+        comparisonColumns: activeComparisonColumns,
+        revealedComparisonColumns,
+        metadataColumns: [
+          ...visibleRequiredColumns.filter(
+            (column) => column !== textColumn && column !== comparisonColumn,
+          ),
+          ...activeMetadataColumns,
+        ],
+      });
+    },
+  });
 
   return (
     <section aria-label={`${title} Review`} className="rounded-lg border bg-editor/60 p-4">
@@ -308,6 +347,9 @@ export function RunAllReviewTable({
           <Table className="w-full table-auto" disableContainer>
             <TableHeader className="sticky top-0 z-10 bg-surface">
               <TableRow className="[&>th]:align-bottom">
+                <TableHead className="w-8 px-1">
+                  <span className="sr-only">View row</span>
+                </TableHead>
                 {visibleRequiredColumns.map((column) => (
                   <TableHead
                     key={column}
@@ -400,13 +442,13 @@ export function RunAllReviewTable({
                 <TableRow className="hover:bg-transparent">
                   <TableCell
                     className="h-24 text-center text-description"
-                    colSpan={tableColumns.length}
+                    colSpan={tableColumns.length + 1}
                   >
                     {activeFilter ? 'No rows match the filter.' : 'No rows to review.'}
                   </TableCell>
                 </TableRow>
               ) : null}
-              {page.rows.map((row) => {
+              {page.rows.map((row, index) => {
                 const rowPosition = Number(row[sourceRowIndexColumn]);
                 const referenceValue = row[comparisonColumn];
                 const correctionKey = correctionColumn
@@ -429,6 +471,14 @@ export function RunAllReviewTable({
                 const differenceColor = toBgColor(sourceColor);
                 return (
                   <TableRow key={rowPosition} className="align-top">
+                    <TableCell className="w-8 px-1">
+                      <AnnotationRowViewButton
+                        rowNumber={rowPosition + 1}
+                        onClick={() => {
+                          openRowAt(index);
+                        }}
+                      />
+                    </TableCell>
                     {visibleRequiredColumns.map((column) => {
                       const comparisonDiffers =
                         revealedActiveComparisonColumns.includes(column) &&
@@ -580,6 +630,7 @@ export function RunAllReviewTable({
               })}
             </TableBody>
           </Table>
+          {rowViewer}
         </AnnotationTableFrame>
       )}
     </section>

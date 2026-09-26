@@ -65,6 +65,12 @@ active correction column appears in neither menu. Add a correction column when
 you want reviewed decisions kept separately, and use metadata columns to retain
 useful source context in the table.
 
+Long metadata values wrap within their column. To read a whole row, select the
+**View row** button at the start of the row (in the Manual, Preview, and Review
+tables): it shows the full text and every visible column. Comparison values stay
+hidden until you reveal that column, and the viewer is read-only; use
+**Previous** and **Next** to move between rows.
+
 <h2 id="help-annotation-ai">AI workflow</h2>
 
 Expand AI settings and choose a named provider configuration and model. Provider

@@ -343,21 +343,23 @@ describe('AnnotationResultsPanel', () => {
       'bg-surface',
     );
     const headers = screen.getAllByRole('columnheader');
-    expect(headers[0]).toHaveTextContent('text');
-    expect(headers[1]).toHaveTextContent('annotation');
-    expect(within(headers[2]).getByText('reviewer')).toBeInTheDocument();
+    // headers[0] is the row viewer button column (issue 92).
+    expect(headers[0]).toHaveTextContent('View row');
+    expect(headers[1]).toHaveTextContent('text');
+    expect(headers[2]).toHaveTextContent('annotation');
+    expect(within(headers[3]).getByText('reviewer')).toBeInTheDocument();
     expect(
-      await within(headers[2]).findByRole('button', {
+      await within(headers[3]).findByRole('button', {
         name: 'Cohen’s Kappa unavailable for annotation versus reviewer',
       }),
     ).toBeVisible();
     expect(
-      within(headers[2]).getByRole('button', { name: 'Show comparison values for reviewer' }),
+      within(headers[3]).getByRole('button', { name: 'Show comparison values for reviewer' }),
     ).toBeInTheDocument();
     expect(
-      within(headers[1]).getByRole('button', { name: 'Filter rows by annotation' }),
+      within(headers[2]).getByRole('button', { name: 'Filter rows by annotation' }),
     ).toBeEnabled();
-    const filterToggle = within(headers[2]).getByRole('button', {
+    const filterToggle = within(headers[3]).getByRole('button', {
       name: 'Filter rows by reviewer',
     });
     expect(filterToggle).toBeEnabled();
@@ -502,8 +504,8 @@ describe('AnnotationResultsPanel', () => {
     });
     const resultRow = screen.getByRole('row', { name: 'Example covid' });
     const cells = within(resultRow).getAllByRole('cell');
-    expect(cells[1]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
     expect(cells[2]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
+    expect(cells[3]).toHaveStyle({ backgroundColor: toBgColor('#2563eb') });
     expect(queryWorkspaceSqlTable).toHaveBeenCalledTimes(1);
   });
 

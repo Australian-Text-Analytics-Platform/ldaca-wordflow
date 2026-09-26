@@ -77,6 +77,40 @@ describe('RunAllReviewTable', () => {
     setCell.mockReset();
     setCell.mockResolvedValue(undefined);
   });
+  it('opens a read-only viewer with the whole row (issue 92)', async () => {
+    const user = userEvent.setup();
+    const longText = `Example ${'long text '.repeat(60)}end`;
+    queryWorkspaceSqlTable.mockResolvedValue({
+      columns: ['text', 'annotation'],
+      schema: [stringColumn('text'), stringColumn('annotation')],
+      rows: [{ text: longText, annotation: 'label' }],
+      hasNext: false,
+    });
+
+    render(
+      <QueryClientProvider
+        client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      >
+        <ReviewTable
+          workspaceId="workspace-1"
+          nodeId="node-1"
+          sourceColumns={['text', 'annotation']}
+          sourceColor="#2563eb"
+          sql={'SELECT * FROM "node-1"'}
+          title="Annotation"
+          requiredColumns={['text', 'annotation']}
+          comparisonColumn="annotation"
+          rowCount={1}
+        />
+      </QueryClientProvider>,
+    );
+
+    await user.click(await screen.findByRole('button', { name: /^View row/ }));
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText(/long text end$/)).toBeInTheDocument();
+    expect(within(dialog).getByText('label')).toBeInTheDocument();
+  });
+
   it('renders Review rows in the shared analysis table frame', async () => {
     queryWorkspaceSqlTable.mockResolvedValue({
       columns: ['text', 'annotation'],
@@ -432,19 +466,20 @@ describe('RunAllReviewTable', () => {
     ).not.toBeInTheDocument();
     const reviewTable = screen.getAllByRole('table')[0];
     const headers = within(reviewTable).getAllByRole('columnheader');
-    expect(headers[0]).toHaveTextContent('text');
-    expect(headers[1]).toHaveTextContent('annotation');
-    expect(headers[2]).toHaveTextContent('correction');
-    expect(within(headers[3]).getByText('reviewer_one')).toBeInTheDocument();
-    expect(within(headers[4]).getByText('reviewer_two')).toBeInTheDocument();
+    expect(headers[0]).toHaveTextContent('View row'); // row viewer column (issue 92)
+    expect(headers[1]).toHaveTextContent('text');
+    expect(headers[2]).toHaveTextContent('annotation');
+    expect(headers[3]).toHaveTextContent('correction');
+    expect(within(headers[4]).getByText('reviewer_one')).toBeInTheDocument();
+    expect(within(headers[5]).getByText('reviewer_two')).toBeInTheDocument();
     expect(
-      within(headers[1]).getByRole('button', { name: 'Filter rows by annotation' }),
+      within(headers[2]).getByRole('button', { name: 'Filter rows by annotation' }),
     ).toBeEnabled();
     expect(
-      within(headers[3]).getByRole('button', { name: 'Filter rows by reviewer_one' }),
+      within(headers[4]).getByRole('button', { name: 'Filter rows by reviewer_one' }),
     ).toHaveAttribute('aria-pressed', 'false');
     expect(
-      within(headers[4]).getByRole('button', { name: 'Filter rows by reviewer_two' }),
+      within(headers[5]).getByRole('button', { name: 'Filter rows by reviewer_two' }),
     ).toBeEnabled();
     await user.click(screen.getByRole('button', { name: 'Filter rows by reviewer_one' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Differs from annotation' }));
@@ -466,9 +501,10 @@ describe('RunAllReviewTable', () => {
         name: 'Example covid job job Comparison value hidden',
       }),
     ).getAllByRole('cell');
-    expect(resultCells[1]).toHaveAttribute('style', expect.stringContaining('background-color'));
-    expect(resultCells[3]).toHaveAttribute('style', expect.stringContaining('background-color'));
-    expect(resultCells[4]).not.toHaveAttribute('style');
+    // resultCells[0] holds the row viewer button (issue 92).
+    expect(resultCells[2]).toHaveAttribute('style', expect.stringContaining('background-color'));
+    expect(resultCells[4]).toHaveAttribute('style', expect.stringContaining('background-color'));
+    expect(resultCells[5]).not.toHaveAttribute('style');
     expect(queryWorkspaceSqlTable).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({ page: 1, page_size: 500 }),
