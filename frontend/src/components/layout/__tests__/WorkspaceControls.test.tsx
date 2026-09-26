@@ -10,7 +10,13 @@ vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
    */
   useWorkspaceData: () => ({
     currentWorkspace: { id: 'ws-1', name: 'Main Project' },
+    currentWorkspaceId: 'ws-1',
+    workspaces: [{ id: 'ws-1', name: 'Main Project' }],
   }),
+}));
+
+vi.mock('@/features/workspace/task-stream/useWorkspaceTaskInbox', () => ({
+  useTaskResources: () => ({ tasks: [], error: null }),
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({
@@ -29,6 +35,7 @@ describe('WorkspaceControls', () => {
     );
 
     expect(screen.getByRole('button', { name: 'Rename project' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: /Change Project/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   });
 });

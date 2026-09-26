@@ -56,6 +56,8 @@ from the active Project together with your retained User File Imports.
 
 The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a Derived Data Block draws an edge from parent to child. Updating an existing Data Block does not change the graph.
 
+To switch projects without going to the Data Loader, use **Change Project** at the right end of the Project Graph title bar and choose another project. Wordflow asks you to confirm, then closes the current project (it is saved automatically as you work) and opens the one you chose. While a task is still running in the current project, the projects in the list are disabled and a note says so: wait for the task to finish, or stop it in its tab, and then switch.
+
 - Click a node to select that data block across the entire interface. Click it again to deselect. Selections made here are reflected immediately in the Data Blocks panel (section 2) and vice versa.
 - Hover a Data Block and open its settings menu to **Rename**, **Clone**, **Undo**, **Redo**, or **Delete** it. Undo and Redo availability comes from that Data Block's current backend session history.
 - Use **Rename** to rename the active project.

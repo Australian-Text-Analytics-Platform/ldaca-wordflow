@@ -13,6 +13,7 @@ import {
 } from '../ui/alert-dialog';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
 import HelpIcon from '@/components/help/HelpIcon';
+import { ChangeProjectMenu } from './ChangeProjectMenu';
 
 /**
  * Workspace graph toolbar used above the graph pane. It centralizes workspace
@@ -121,6 +122,9 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           Rename
         </button>
       )}
+
+      {/* Switch projects without going to the Data Loader (issue 192). */}
+      <ChangeProjectMenu />
 
       <AlertDialog open={nameAlertOpen} onOpenChange={setNameAlertOpen}>
         <AlertDialogContent>
