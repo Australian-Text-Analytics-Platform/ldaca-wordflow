@@ -163,11 +163,21 @@ jobs:
         run: |
           Set-StrictMode -Version Latest
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+          $buildArgs = @()
           if ($env:TAURI_BUILD_FLAGS) {
-            pnpm tauri:build $env:TAURI_BUILD_FLAGS
-          } else {
-            pnpm tauri:build
+            $buildArgs += $env:TAURI_BUILD_FLAGS
           }
+          # WiX needs a numeric MSI version, so a test build such as
+          # 0.7.8-dev is packaged as 0.7.8.0.
+          $appVersion = (Get-Content src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ($appVersion -match '^(\d+\.\d+\.\d+)-(.+)$' -and $Matches[2] -notmatch '^\d+$') {
+            $wixConfig = Join-Path $env:RUNNER_TEMP 'tauri.wix-version.conf.json'
+            @{ bundle = @{ windows = @{ wix = @{ version = "$($Matches[1]).0" } } } } |
+              ConvertTo-Json -Depth 5 |
+              Set-Content -Path $wixConfig -Encoding utf8
+            $buildArgs += @('--config', $wixConfig)
+          }
+          pnpm tauri:build @buildArgs
 
       - name: Import Apple code-signing certificate
         if: inputs.platform == 'macos'

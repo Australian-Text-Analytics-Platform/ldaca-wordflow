@@ -292,7 +292,7 @@ def test_liveness_and_readiness_are_distinct_and_legacy_health_is_absent(
 ) -> None:
     """The control plane stays live independently of the complete Runtime."""
 
-    from ldaca_wordflow.main import RuntimeContextFactory, create_app
+    from ldaca_wordflow.main import RuntimeContextFactory, __version__, create_app
     from ldaca_wordflow.settings import load_settings
 
     runtime = _FakeRuntime("health")
@@ -312,9 +312,9 @@ def test_liveness_and_readiness_are_distinct_and_legacy_health_is_absent(
         ready = client.get("/health/ready")
 
         assert live.status_code == 200
-        assert live.json() == {"status": "live", "version": "0.7.7"}
+        assert live.json() == {"status": "live", "version": __version__}
         assert ready.status_code == 200
-        assert ready.json() == {"status": "ready", "version": "0.7.7"}
+        assert ready.json() == {"status": "ready", "version": __version__}
         assert client.get("/health").status_code == 404
         assert client.get("/status").status_code == 404
         assert client.get("/api").status_code == 404
