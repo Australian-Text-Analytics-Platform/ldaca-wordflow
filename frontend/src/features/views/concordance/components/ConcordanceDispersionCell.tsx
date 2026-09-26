@@ -8,7 +8,22 @@ interface Props {
   textLength?: number;
   barWidthPercent?: number;
   termColors?: Record<string, string>;
+  /** Selected bins of the relative-position axis, shaded behind the markers. */
+  selectedBins?: ReadonlySet<number>;
+  binCount?: number;
 }
+
+/** Contiguous runs of selected bins as [first, last + 1) bin numbers. */
+const selectedRuns = (bins: ReadonlySet<number>, binCount: number): [number, number][] => {
+  const sorted = [...bins].filter((bin) => bin >= 0 && bin < binCount).sort((a, b) => a - b);
+  const runs: [number, number][] = [];
+  for (const bin of sorted) {
+    const last = runs.at(-1);
+    if (last?.[1] === bin) last[1] = bin + 1;
+    else runs.push([bin, bin + 1]);
+  }
+  return runs;
+};
 
 const DEFAULT_BAR_COLOR = '#0284c7';
 
@@ -32,7 +47,10 @@ export function ConcordanceDispersionCell({
   textLength,
   barWidthPercent = 100,
   termColors = {},
+  selectedBins,
+  binCount,
 }: Props) {
+  const runs = selectedBins && binCount ? selectedRuns(selectedBins, binCount) : [];
   const fallbackLength = hits.reduce((max, hit) => {
     const endIndex = getNumericIndex(hit[CONCORDANCE_COLUMN_KEYS.endIdx]);
     return endIndex === null ? max : Math.max(max, endIndex);
@@ -48,6 +66,17 @@ export function ConcordanceDispersionCell({
           data-testid="concordance-dispersion-bar"
           style={{ width: `${String(widthPercent)}%` }}
         >
+          {runs.map(([start, end]) => (
+            <div
+              key={start}
+              data-testid="concordance-dispersion-selected-range"
+              className="absolute inset-y-0 bg-focus/15"
+              style={{
+                left: `${String((start * 100) / (binCount ?? 1))}%`,
+                width: `${String(((end - start) * 100) / (binCount ?? 1))}%`,
+              }}
+            />
+          ))}
           <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-chart-grid" />
           {hits.map((hit, index) => {
             const startIndex = getNumericIndex(hit[CONCORDANCE_COLUMN_KEYS.startIdx]);

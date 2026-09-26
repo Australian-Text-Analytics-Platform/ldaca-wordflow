@@ -40,9 +40,15 @@ vi.mock('../ConcordanceDispersionRowsTable', () => ({
   ConcordanceDispersionRowsTable: ({
     getRowStyle,
     termColors,
+    textColumn,
+    selectedBins,
+    binCount,
   }: {
     getRowStyle?: (row: Record<string, unknown>, index: number) => CSSProperties | undefined;
     termColors?: Record<string, string>;
+    textColumn?: string | ((row: Record<string, unknown>) => string);
+    selectedBins?: ReadonlySet<number>;
+    binCount?: number;
   }) => (
     <div
       data-testid="dispersion-rows"
@@ -50,6 +56,13 @@ vi.mock('../ConcordanceDispersionRowsTable', () => ({
         getRowStyle?.({ __source_node: 'Node 1' }, 0)?.backgroundColor ?? '',
       )}
       data-term-color={termColors?.alpha ?? ''}
+      data-text-column={
+        typeof textColumn === 'function'
+          ? `${textColumn({ __source_node: 'Node 1', CONC_dispersion: [] })}|${textColumn({ __source_node: 'Node 2', CONC_dispersion: [] })}`
+          : String(textColumn)
+      }
+      data-selected-bins={[...(selectedBins ?? [])].join(',')}
+      data-bin-count={String(binCount ?? '')}
     />
   ),
 }));
@@ -243,5 +256,34 @@ describe('ConcordanceDispersionNodeBlock', () => {
       'data-row-background',
       '#2563eb20',
     );
+  });
+
+  it('resolves each combined row to its own document column and passes the selected bins (issue 96)', () => {
+    render(
+      <ConcordanceDispersionNodeBlock
+        {...baseProps}
+        nodeKey={CONCORDANCE_COMBINED_NODE_KEY}
+        // The real panel passes no single column for the combined view.
+        context={{
+          nodeId: '',
+          paginationKey: CONCORDANCE_COMBINED_NODE_KEY,
+          requestNodeId: CONCORDANCE_COMBINED_NODE_KEY,
+          column: '',
+        }}
+        panelSelectedNodes={[
+          nodeMetadata('node-1', 'Node 1', '#2563eb'),
+          nodeMetadata('node-2', 'Node 2', '#dc2626'),
+        ]}
+        effectiveNodeColumnSelections={[
+          { nodeId: 'node-1', column: 'tweet' },
+          { nodeId: 'node-2', column: 'body' },
+        ]}
+        selectedBinIndices={{ [CONCORDANCE_COMBINED_NODE_KEY]: new Set([6, 7]) }}
+      />,
+    );
+
+    const rows = screen.getByTestId('dispersion-rows');
+    expect(rows).toHaveAttribute('data-text-column', 'tweet|body');
+    expect(rows).toHaveAttribute('data-selected-bins', '6,7');
   });
 });

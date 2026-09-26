@@ -180,10 +180,25 @@ export function ConcordanceDispersionNodeBlock({
   });
 
   if (nodeKey === CONCORDANCE_COMBINED_NODE_KEY) {
+    // Each row's own document column: sources in the combined view can differ,
+    // and the single `column` is empty here, which made every row's length fall
+    // back to its last visible match (issue 96).
+    const combinedTextColumn = (row: Record<string, unknown>): string => {
+      const hits = getDispersionHits(row);
+      const sourceLabel = hits[0]?.__source_node ?? row.__source_node;
+      const sourceNode =
+        typeof sourceLabel === 'string' && sourceLabel
+          ? findConcordanceSourceNode(panelSelectedNodes, sourceLabel)
+          : null;
+      return sourceNode
+        ? (effectiveNodeColumnSelections.find((entry) => entry.nodeId === sourceNode.id)?.column ??
+            '')
+        : '';
+    };
     const { rows, longestTextLength, tableColumns, dispersionColumnStyle, metadataColumnStyle } =
       buildConcordanceDispersionTableModel({
         nodeData,
-        textColumn: column,
+        textColumn: combinedTextColumn,
         showMetadata,
         selectedMetadataColumns,
         resultsViewportWidth,
@@ -277,8 +292,10 @@ export function ConcordanceDispersionNodeBlock({
                   rows={rows}
                   tableColumns={tableColumns}
                   searchWord={searchWord}
-                  textColumn={column}
+                  textColumn={combinedTextColumn}
                   longestTextLength={longestTextLength}
+                  selectedBins={selectedBinIndices[CONCORDANCE_COMBINED_NODE_KEY]}
+                  binCount={binCount}
                   dispersionColumnStyle={dispersionColumnStyle}
                   metadataColumnStyle={metadataColumnStyle}
                   proportionalDispersionBars={proportionalDispersionBars}
@@ -442,6 +459,8 @@ export function ConcordanceDispersionNodeBlock({
                 searchWord={searchWord}
                 textColumn={column}
                 longestTextLength={longestTextLength}
+                selectedBins={selectedBinIndices[nodeKey]}
+                binCount={binCount}
                 dispersionColumnStyle={dispersionColumnStyle}
                 metadataColumnStyle={metadataColumnStyle}
                 proportionalDispersionBars={proportionalDispersionBars}

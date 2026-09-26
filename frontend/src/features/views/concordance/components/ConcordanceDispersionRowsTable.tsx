@@ -12,6 +12,7 @@ import {
   getDispersionBarWidthPercent,
   getDispersionHits,
   getDispersionTextLength,
+  type DispersionTextColumn,
   type ConcordanceDispersionRow,
 } from '../concordanceDispersionDomain';
 import { toCellText } from '../concordanceTableDomain';
@@ -21,8 +22,11 @@ interface Props {
   rows: ConcordanceDispersionRow[];
   tableColumns: string[];
   searchWord: string;
-  textColumn: string;
+  textColumn: DispersionTextColumn;
   longestTextLength: number;
+  /** Selected dispersion bins, shaded on every row (issue 96). */
+  selectedBins?: ReadonlySet<number>;
+  binCount?: number;
   dispersionColumnStyle: CSSProperties | undefined;
   metadataColumnStyle: CSSProperties | undefined;
   proportionalDispersionBars: boolean;
@@ -46,6 +50,8 @@ export function ConcordanceDispersionRowsTable({
   searchWord,
   textColumn,
   longestTextLength,
+  selectedBins,
+  binCount,
   dispersionColumnStyle,
   metadataColumnStyle,
   proportionalDispersionBars,
@@ -113,6 +119,8 @@ export function ConcordanceDispersionRowsTable({
                           : 100
                       }
                       termColors={termColors}
+                      selectedBins={selectedBins}
+                      binCount={binCount}
                     />
                   ) : (
                     toCellText(row[columnKey])

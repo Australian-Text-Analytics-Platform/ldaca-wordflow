@@ -5,6 +5,7 @@ import {
   buildDispersionRows,
   getDispersionTextLength,
   type ConcordanceDispersionRow,
+  type DispersionTextColumn,
 } from '../concordanceDispersionDomain';
 
 const DISPERSION_COLUMN_WIDTH_RATIO = 0.85;
@@ -41,7 +42,7 @@ const getMetadataColumnStyle = (isMetadataVisible: boolean): CSSProperties | und
 
 interface Params {
   nodeData: ConcordanceNodeResult;
-  textColumn: string;
+  textColumn: DispersionTextColumn;
   showMetadata: boolean;
   selectedMetadataColumns: string[];
   resultsViewportWidth: number;

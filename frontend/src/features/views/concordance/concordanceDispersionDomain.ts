@@ -52,14 +52,35 @@ export function getDispersionHits(row: Record<string, unknown>): ConcordanceGrou
   return row[CONCORDANCE_COLUMN_KEYS.dispersion] as ConcordanceGroupedRow;
 }
 
+/**
+ * The row's document column: one column for a single source, or resolved per
+ * row in the combined view, where sources can use different columns (issue 96).
+ */
+export type DispersionTextColumn = string | ((row: Record<string, unknown>) => string);
+
+/**
+ * Length in Unicode code points, the unit of the match offsets and of the
+ * backend's bins. JS `length` counts an emoji twice, which drifted markers in
+ * tweets (issue 96).
+ */
+export const codePointLength = (text: string): number => {
+  let count = 0;
+  for (const _char of text) count += 1;
+  return count;
+};
+
 /** Chooses the source text length used to scale dispersion positions for a row. */
 /**
  * Used by: ConcordanceDispersionNodeBlock.tsx.
  */
-export function getDispersionTextLength(row: Record<string, unknown>, textColumn: string): number {
-  const textValue = row[textColumn];
+export function getDispersionTextLength(
+  row: Record<string, unknown>,
+  textColumn: DispersionTextColumn,
+): number {
+  const column = typeof textColumn === 'function' ? textColumn(row) : textColumn;
+  const textValue = column ? row[column] : undefined;
   if (typeof textValue === 'string') {
-    return textValue.length;
+    return codePointLength(textValue);
   }
 
   return getDispersionHits(row).reduce((max, hit) => {
@@ -74,7 +95,7 @@ export function getDispersionTextLength(row: Record<string, unknown>, textColumn
  */
 export function getDispersionBarWidthPercent(
   row: Record<string, unknown>,
-  textColumn: string,
+  textColumn: DispersionTextColumn,
   longestTextLength: number,
 ): number {
   if (longestTextLength <= 0) {

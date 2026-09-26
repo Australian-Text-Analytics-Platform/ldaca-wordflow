@@ -163,6 +163,8 @@ the range. **Clear Selection** removes the bin filter. Click a legend term to
 hide or show it. Visible terms intersected with selected bins control the
 displayed documents, match markers, legend counts, and Concordance Document
 Data Block Creation.
+Each document row shades the selected range, so its match markers line up with
+the selection (positions count characters, so emoji and other symbols count once).
 Documents without a surviving match disappear. Preview has a static legend and
 does not apply these filters. Select **Uncased** beside a chart legend to merge
 case variants into one series, colour, and summed legend count; for example,

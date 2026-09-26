@@ -59,4 +59,20 @@ describe('ConcordanceDispersionCell', () => {
       expect(marker).toHaveStyle({ backgroundColor: '#0284c7' });
     }
   });
+
+  it('shades the selected bins behind the markers (issue 96)', () => {
+    render(
+      <ConcordanceDispersionCell
+        hits={hits}
+        textLength={16}
+        selectedBins={new Set([6, 7, 8, 13])}
+        binCount={20}
+      />,
+    );
+
+    const ranges = screen.getAllByTestId('concordance-dispersion-selected-range');
+    expect(ranges).toHaveLength(2);
+    expect(ranges[0]).toHaveStyle({ left: '30%', width: '15%' });
+    expect(ranges[1]).toHaveStyle({ left: '65%', width: '5%' });
+  });
 });
