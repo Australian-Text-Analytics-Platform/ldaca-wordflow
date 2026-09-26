@@ -232,6 +232,18 @@ def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
     """One worksheet named Data, within Excel's row and cell-length limits."""
 
     data = _flatten_nested_columns(frame).collect()
+    # Excel has no time zones: write zoned datetimes as UTC wall-clock times
+    # (issue 169; xlsxwriter refuses zoned values).
+    zoned = [
+        name
+        for name, dtype in data.schema.items()
+        if isinstance(dtype, pl.Datetime) and dtype.time_zone is not None
+    ]
+    if zoned:
+        data = data.with_columns(
+            pl.col(name).dt.convert_time_zone("UTC").dt.replace_time_zone(None)
+            for name in zoned
+        )
     if data.height + 1 > _EXCEL_MAX_ROWS:
         raise InvalidInputError(
             f"This Data Block has {data.height:,} rows, more than an Excel worksheet "

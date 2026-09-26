@@ -51,3 +51,24 @@ def test_excel_export_refuses_more_rows_than_a_worksheet(monkeypatch) -> None:
 
     with pytest.raises(InvalidInputError, match="CSV or Parquet"):
         data_block_exports._excel_workbook_bytes(pl.LazyFrame({"n": [1, 2, 3]}))
+
+
+def test_excel_writes_zoned_datetimes_as_utc() -> None:
+    """Issue 169: xlsxwriter refused time-zone-aware datetimes."""
+
+    import datetime as dt
+
+    frame = pl.LazyFrame(
+        {
+            "created_at": [dt.datetime(2020, 10, 16, 15, 0, tzinfo=dt.UTC)],
+            "local": [dt.datetime(2020, 10, 17, 2, 0)],
+        }
+    ).with_columns(
+        pl.col("local").dt.replace_time_zone("Australia/Brisbane"),
+    )
+
+    workbook = pl.read_excel(io.BytesIO(data_block_exports._excel_workbook_bytes(frame)))
+
+    assert workbook["created_at"].to_list() == [dt.datetime(2020, 10, 16, 15, 0)]
+    # 02:00 in Brisbane (UTC+10) is 16:00 the previous day in UTC.
+    assert workbook["local"].to_list() == [dt.datetime(2020, 10, 16, 16, 0)]

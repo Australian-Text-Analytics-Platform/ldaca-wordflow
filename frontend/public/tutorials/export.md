@@ -33,6 +33,8 @@ The same format applies to all blocks in a bundle export.
 
 CSV files are saved as UTF-8 with a byte-order mark, so Excel shows curly quotes and non-English text correctly. Columns that hold lists or structured values (such as tokens) are written as JSON text in CSV and Excel files.
 
+Excel has no time zones, so date-times are written in UTC in Excel files; CSV, JSON, and Parquet keep the time zone.
+
 An Excel worksheet holds at most 1,048,576 rows, and each cell at most 32,767 characters. If a Data Block is larger, or has longer texts, Excel export stops with a message; export it as CSV or Parquet instead to keep every row and the full text.
 
 <h2 id="help-export-results">Step 3 — Download</h2>
