@@ -6,6 +6,7 @@ import {
   buildTopicColorScheme,
   findTopicIdsInsideLasso,
   normalizeTopicPositions,
+  relaxTopicPositions,
   topicColorSchemeFill,
   topicColorSchemeOpacity,
   topicValueConcentration,
@@ -257,5 +258,67 @@ describe('topicModelingGraph', () => {
       colorScheme: scheme,
     });
     expect(bubbles.map((bubble) => bubble.fill)).toEqual(['#ff0000', 'rgb(85, 0, 170)']);
+  });
+});
+
+describe('relaxTopicPositions (issue 189)', () => {
+  const required = (a: { radius: number }, b: { radius: number }) =>
+    Math.max(Math.max(a.radius, b.radius) + 0.35 * Math.min(a.radius, b.radius), 26);
+  const hiddenPairs = (
+    items: { id: number; radius: number }[],
+    positions: Map<number, { x: number; y: number }>,
+  ) =>
+    items.flatMap((a, i) =>
+      items.slice(i + 1).flatMap((b) => {
+        const pa = positions.get(a.id)!;
+        const pb = positions.get(b.id)!;
+        return Math.hypot(pa.x - pb.x, pa.y - pb.y) < required(a, b) - 0.5 ? [[a.id, b.id]] : [];
+      }),
+    );
+
+  it('pulls a covered bubble out until its centre is visible, moving the smaller one more', () => {
+    const items = [
+      { id: 6, x: 500, y: 250, radius: 40 },
+      { id: 7, x: 505, y: 250, radius: 25 },
+      { id: 1, x: 900, y: 500, radius: 20 },
+    ];
+    const positions = relaxTopicPositions(items);
+
+    expect(hiddenPairs(items, positions)).toEqual([]);
+    const big = positions.get(6)!;
+    const small = positions.get(7)!;
+    expect(Math.hypot(big.x - 500, big.y - 250)).toBeLessThan(
+      Math.hypot(small.x - 505, small.y - 250),
+    );
+    // A bubble with no neighbours stays where the projection put it.
+    expect(positions.get(1)).toEqual({ x: 900, y: 500 });
+    // Partial overlap remains: the bubbles are not pushed fully apart.
+    expect(Math.hypot(big.x - small.x, big.y - small.y)).toBeLessThan(40 + 25);
+  });
+
+  it('splits bubbles at exactly the same spot the same way every time', () => {
+    const items = [
+      { id: 2, x: 300, y: 300, radius: 30 },
+      { id: 9, x: 300, y: 300, radius: 30 },
+    ];
+    const first = relaxTopicPositions(items);
+    expect(hiddenPairs(items, first)).toEqual([]);
+    expect(relaxTopicPositions(items)).toEqual(first);
+  });
+
+  it('leaves no bubble hidden in a crowded layout', () => {
+    let seed = 7;
+    const random = () => {
+      seed = (seed * 16807) % 2147483647;
+      return seed / 2147483647;
+    };
+    const items = Array.from({ length: 200 }, (_, id) => ({
+      id,
+      x: 400 + random() * 200,
+      y: 200 + random() * 150,
+      radius: 10 + 40 * Math.sqrt(random()),
+    }));
+
+    expect(hiddenPairs(items, relaxTopicPositions(items))).toEqual([]);
   });
 });

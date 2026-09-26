@@ -185,6 +185,97 @@ export function normalizeTopicPositions(
   );
 }
 
+/** The smaller bubble's centre stays this share of its radius outside the larger one. */
+const OVERLAP_CENTRE_MARGIN = 0.35;
+/** Two topic labels never sit closer than this, in graph pixels. */
+const MIN_LABEL_DISTANCE = 26;
+const RELAX_ITERATIONS = 240;
+/** Upper bound on separation-only passes after the anchored rounds. */
+const RELAX_MAX_FINAL_PASSES = 3000;
+/**
+ * Each round, bubbles drift this share of the way back to their projected
+ * spot; the pull fades to zero over the rounds so separation can finish.
+ */
+const RELAX_ANCHOR = 0.04;
+const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
+
+interface RelaxItem {
+  id: number;
+  x: number;
+  y: number;
+  radius: number;
+}
+
+/**
+ * Nudges bubbles apart so none is hidden behind another (issue 189). Partial
+ * overlap is allowed, since nearby topics are similar, but for every pair the
+ * smaller bubble's centre, where its label is, stays outside the larger one:
+ * distance ≥ max(r_large + 0.35 r_small, 26 px). The smaller bubble moves more,
+ * a weak pull keeps bubbles near their projected positions, and the result is
+ * deterministic. Called by: buildTopicBubbleModels.
+ */
+export function relaxTopicPositions(items: readonly RelaxItem[]): Map<number, TopicGraphPoint> {
+  const bubbles = items.map((item) => ({ ...item, originX: item.x, originY: item.y }));
+  /** One pass over every pair; returns the largest remaining shortfall. */
+  const separate = (): number => {
+    let worst = 0;
+    bubbles.forEach((a, i) => {
+      for (const b of bubbles.slice(i + 1)) {
+        const large = Math.max(a.radius, b.radius);
+        const small = Math.min(a.radius, b.radius);
+        const required = Math.max(large + OVERLAP_CENTRE_MARGIN * small, MIN_LABEL_DISTANCE);
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance >= required) continue;
+        worst = Math.max(worst, required - distance);
+        if (distance < 1e-6) {
+          // Same spot: split in a fixed direction so the layout is repeatable.
+          const angle = GOLDEN_ANGLE * (a.id * 31 + b.id);
+          dx = Math.cos(angle);
+          dy = Math.sin(angle);
+        } else {
+          dx /= distance;
+          dy /= distance;
+        }
+        const deficit = required - distance;
+        // Area weights: the smaller bubble takes most of the move.
+        const shareA = (b.radius * b.radius) / (a.radius * a.radius + b.radius * b.radius);
+        const shareB = 1 - shareA;
+        a.x -= dx * deficit * shareA;
+        a.y -= dy * deficit * shareA;
+        b.x += dx * deficit * shareB;
+        b.y += dy * deficit * shareB;
+      }
+    });
+    return worst;
+  };
+  for (let round = 0; round < RELAX_ITERATIONS; round += 1) {
+    separate();
+    const pull = RELAX_ANCHOR * (1 - round / RELAX_ITERATIONS);
+    for (const bubble of bubbles) {
+      bubble.x += (bubble.originX - bubble.x) * pull;
+      bubble.y += (bubble.originY - bubble.y) * pull;
+    }
+  }
+  for (let pass = 0; pass < RELAX_MAX_FINAL_PASSES; pass += 1) {
+    if (separate() < 0.1) break;
+  }
+  return new Map(bubbles.map((bubble) => [bubble.id, { x: bubble.x, y: bubble.y }]));
+}
+
+// Hover and selection rebuild the bubble models; the layout only depends on
+// positions and sizes, so keep the last relaxed layout.
+let relaxCache: { key: string; positions: Map<number, TopicGraphPoint> } | null = null;
+
+const relaxedPositionsFor = (items: RelaxItem[]): Map<number, TopicGraphPoint> => {
+  const key = items
+    .map((item) => `${String(item.id)}:${String(item.x)}:${String(item.y)}:${String(item.radius)}`)
+    .join('|');
+  if (relaxCache?.key !== key) relaxCache = { key, positions: relaxTopicPositions(items) };
+  return relaxCache.positions;
+};
+
 /** Builds the shared graph/export presentation model for projected Topics with rows. */
 export function buildTopicBubbleModels({
   topics,
@@ -200,8 +291,18 @@ export function buildTopicBubbleModels({
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
-  const positions = normalizeTopicPositions(visibleTopics);
+  const projected = normalizeTopicPositions(visibleTopics);
   const maxSize = Math.max(1, ...visibleTopics.map((topic) => topic.total_size));
+  const radiusFor = (topic: TopicModelingTopic) => 10 + 40 * Math.sqrt(topic.total_size / maxSize);
+  const positions = relaxedPositionsFor(
+    visibleTopics.map((topic) => {
+      const point = projected.get(topic.id) ?? {
+        x: TOPIC_GRAPH_WIDTH / 2,
+        y: TOPIC_GRAPH_HEIGHT / 2,
+      };
+      return { id: topic.id, x: point.x, y: point.y, radius: radiusFor(topic) };
+    }),
+  );
   const fallbackPrimaryColor = defaultPalette[0] ?? '#2563eb';
   const fallbackSecondaryColor = defaultPalette[1] ?? '#dc2626';
   const colorA = resolveTopicCorpusColor(
@@ -220,7 +321,11 @@ export function buildTopicBubbleModels({
   );
   const hasSearchFilter = topicSearchQuery.trim().length > 0;
 
-  return visibleTopics.map((topic) => {
+  // Larger bubbles first, so smaller ones are drawn on top (issue 189).
+  const drawOrder = [...visibleTopics].sort(
+    (left, right) => right.total_size - left.total_size || left.id - right.id,
+  );
+  return drawOrder.map((topic) => {
     const corpusSizeA = corpusSizes[0] ?? 0;
     const corpusSizeB = corpusSizes[1] ?? 0;
     const shareA = corpusSizeA > 0 ? (topic.size[0] ?? 0) / corpusSizeA : 0;
@@ -234,7 +339,7 @@ export function buildTopicBubbleModels({
         x: TOPIC_GRAPH_WIDTH / 2,
         y: TOPIC_GRAPH_HEIGHT / 2,
       },
-      radius: 10 + 40 * Math.sqrt(topic.total_size / maxSize),
+      radius: radiusFor(topic),
       fill:
         corpusCount <= 1
           ? colorScheme
