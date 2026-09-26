@@ -682,6 +682,10 @@ export function buildSequentialChartModel({
           axisLabel: {
             formatter: (value) => String(categoryLabelFor(value)),
             rotate: 45,
+            // Overlap hiding may drop any label, including the first or last
+            // period; always show both so the range is clear (issue 185).
+            showMinLabel: true,
+            showMaxLabel: true,
           },
         };
   const visibleGroups = groups.filter((group) => !group.hidden);

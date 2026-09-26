@@ -184,6 +184,8 @@ describe('buildSequentialChartModel', () => {
     expect(new Set(categoryValues).size).toBe(2);
     const formatter = model.xAxis.axisLabel?.formatter;
     expect(typeof formatter).toBe('function');
+    // The first and last periods always keep their labels (issue 185).
+    expect(model.xAxis.axisLabel).toMatchObject({ showMinLabel: true, showMaxLabel: true });
     expect(
       categoryValues.map((value) =>
         typeof formatter === 'function' ? formatter(value as never, 0) : value,
