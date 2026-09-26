@@ -77,7 +77,8 @@ export interface PreviewPagination {
 
 export type PreviewRow = Record<string, unknown>;
 
-export type JoinType = 'inner' | 'left' | 'right' | 'full' | 'semi' | 'anti' | 'cross';
+// Cross was removed from the Join tool (issue 186); saved cross joins still load.
+export type JoinType = 'left' | 'inner' | 'right' | 'full' | 'semi' | 'anti';
 
 export interface JoinPreviewRequestPayload {
   workspaceId: string;
@@ -125,15 +126,15 @@ export const MAX_JOIN_NODES = 2;
 /** Join types with plain-language explanations shown beside the selector (issue 179). */
 export const JOIN_TYPE_OPTIONS: { value: JoinType; label: string; description: string }[] = [
   {
-    value: 'inner',
-    label: 'Inner',
-    description: 'Keeps only rows that match in both data blocks.',
-  },
-  {
     value: 'left',
     label: 'Left',
     description:
       'Keeps every row of the left data block and adds matching values from the right; rows without a match get empty cells.',
+  },
+  {
+    value: 'inner',
+    label: 'Inner',
+    description: 'Keeps only rows that match in both data blocks.',
   },
   {
     value: 'right',
@@ -149,19 +150,13 @@ export const JOIN_TYPE_OPTIONS: { value: JoinType; label: string; description: s
   },
   {
     value: 'semi',
-    label: 'Semi',
+    label: 'Keep matches',
     description:
       'Keeps the left rows that have a match in the right, without adding any right columns.',
   },
   {
     value: 'anti',
-    label: 'Anti',
+    label: 'Keep non-matches',
     description: 'Keeps the left rows that have no match in the right.',
-  },
-  {
-    value: 'cross',
-    label: 'Cross',
-    description:
-      'Pairs every left row with every right row, ignoring the join columns; the result can be very large.',
   },
 ];

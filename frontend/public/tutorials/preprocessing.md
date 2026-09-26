@@ -144,13 +144,12 @@ Join type controls how unmatched rows are handled. The first data block you add 
 
 | Type | Keeps |
 |---|---|
+| Left (default) | Every row of the left block, with matching values from the right; rows without a match get empty cells |
 | Inner | Only rows that match in both blocks |
-| Left | Every row of the left block, with matching values from the right; rows without a match get empty cells |
 | Right | Every row of the right block, with matching values from the left; rows without a match get empty cells |
 | Full | Every row of both blocks, matched where possible; missing values are left empty |
-| Semi | Left rows that have a match in the right, without adding any right columns |
-| Anti | Left rows with no match in the right |
-| Cross | Every left row paired with every right row, ignoring the join columns (can be very large) |
+| Keep matches | Left rows that have a match in the right, without adding any right columns (for example, speeches whose speaker is in a list) |
+| Keep non-matches | Left rows with no match in the right (for example, dropping documents listed in another block) |
 
 <h3 id="help-preprocessing-join-node-name">Join output name</h3>
 

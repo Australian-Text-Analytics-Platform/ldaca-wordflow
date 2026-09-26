@@ -81,7 +81,6 @@ interface JoinApplyState {
 
 export interface UseJoinSubTabResult {
   selectionPanel: JoinSelectionPanelConfig;
-  needsColumns: boolean;
   joinType: JoinType;
   setJoinType: (value: JoinType) => void;
   joinNewNodeName: string;
@@ -187,8 +186,6 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     return colors;
   })();
 
-  const needsColumns = joinType !== 'cross';
-
   const leftColumns = joinLeftNodeId ? getNodeColumnsForJoin(joinLeftNodeId) : [];
   const rightColumns = joinRightNodeId ? getNodeColumnsForJoin(joinRightNodeId) : [];
 
@@ -248,12 +245,18 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
   const preferredRightColumn = rightColumns.includes(selectedNodeColumns[joinRightNodeId] ?? '')
     ? selectedNodeColumns[joinRightNodeId]
     : preferredJoinColumn;
-  const joinLeftColumn = needsColumns
-    ? resolveJoinColumn(joinLeftNodeId, leftColumns, joinLeftColumnDraft, preferredLeftColumn)
-    : '';
-  const joinRightColumn = needsColumns
-    ? resolveJoinColumn(joinRightNodeId, rightColumns, joinRightColumnDraft, preferredRightColumn)
-    : '';
+  const joinLeftColumn = resolveJoinColumn(
+    joinLeftNodeId,
+    leftColumns,
+    joinLeftColumnDraft,
+    preferredLeftColumn,
+  );
+  const joinRightColumn = resolveJoinColumn(
+    joinRightNodeId,
+    rightColumns,
+    joinRightColumnDraft,
+    preferredRightColumn,
+  );
 
   const joinNodeSelections: NodeColumnSelection[] = (() => {
     const selections: NodeColumnSelection[] = [];
@@ -270,7 +273,8 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     joinLeftNodeId &&
       joinRightNodeId &&
       joinLeftNodeId !== joinRightNodeId &&
-      (!needsColumns || (joinLeftColumn && joinRightColumn)),
+      joinLeftColumn &&
+      joinRightColumn,
   );
 
   const joinConfigIssues = (() => {
@@ -280,10 +284,10 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     if (joinLeftNodeId === joinRightNodeId) {
       return 'Select two different data blocks to join. Joining a data block to itself is not supported yet.';
     }
-    if (needsColumns && (!joinLeftColumn || !joinRightColumn)) {
+    if (!joinLeftColumn || !joinRightColumn) {
       return 'Choose the columns that should match between the two data blocks.';
     }
-    if (needsColumns && sharedColumns.length === 0) {
+    if (sharedColumns.length === 0) {
       return 'No matching column names detected. Select compatible columns manually or rename them to match.';
     }
     return '';
@@ -293,10 +297,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     if (joinConfigReady) {
       const leftNode = workspaceNodeMap.get(joinLeftNodeId);
       const rightNode = workspaceNodeMap.get(joinRightNodeId);
-      if (needsColumns) {
-        return `Ready to join ${leftNode?.name ?? ''} and ${rightNode?.name ?? ''} on ${joinLeftColumn} = ${joinRightColumn}.`;
-      }
-      return `Ready to run a ${joinType} join between ${leftNode?.name ?? ''} and ${rightNode?.name ?? ''}.`;
+      return `Ready to join ${leftNode?.name ?? ''} and ${rightNode?.name ?? ''} on ${joinLeftColumn} = ${joinRightColumn}.`;
     }
     return joinConfigIssues || 'Configure the join to preview results.';
   })();
@@ -308,7 +309,9 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     const leftName = leftNode?.name ?? '';
     const rightName = rightNode?.name ?? '';
     if (!leftName || !rightName) return '';
-    return `${leftName}_${joinType}_join_${rightName}`.replace(/\s+/g, '_');
+    const how =
+      joinType === 'semi' ? 'matching' : joinType === 'anti' ? 'not_matching' : `${joinType}_join`;
+    return `${leftName}_${how}_${rightName}`.replace(/\s+/g, '_');
   })();
 
   const joinPreviewRequest: JoinPreviewRequestPayload | null = (() => {
@@ -317,8 +320,8 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
       workspaceId: currentWorkspaceId,
       leftNodeId: joinLeftNodeId,
       rightNodeId: joinRightNodeId,
-      leftOn: needsColumns ? joinLeftColumn : undefined,
-      rightOn: needsColumns ? joinRightColumn : undefined,
+      leftOn: joinLeftColumn,
+      rightOn: joinRightColumn,
       joinType,
     };
   })();
@@ -433,8 +436,8 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
       onAlert('Please select two different data blocks and matching columns to join.');
       return;
     }
-    const leftColumns = needsColumns ? [joinLeftColumn] : [];
-    const rightColumns = needsColumns ? [joinRightColumn] : [];
+    const leftColumns = [joinLeftColumn];
+    const rightColumns = [joinRightColumn];
     const requestedName = joinNewNodeName.trim() || autoJoinName || undefined;
     try {
       setIsJoining(true);
@@ -512,7 +515,6 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
 
   return {
     selectionPanel,
-    needsColumns,
     joinType,
     setJoinType: handleSetJoinType,
     joinNewNodeName,

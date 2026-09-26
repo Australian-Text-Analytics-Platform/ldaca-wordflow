@@ -80,7 +80,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
             >
               <SelectTrigger
                 id="join-type"
-                className="w-32 shrink-0"
+                className="w-44 shrink-0"
                 aria-describedby="join-type-description"
               >
                 <SelectValue placeholder="Select join type" />
@@ -153,13 +153,6 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
       </Card>
 
       <div className="space-y-3">
-        {joinType === 'cross' && preview.ready && (
-          <div className="rounded-md border border-warning/50 bg-warning-background/60 p-3 text-label-secondary text-warning">
-            Cross joins can create very large outputs. The preview only displays {preview.pageSize}{' '}
-            rows at a time.
-          </div>
-        )}
-
         <PreviewTable
           title={
             <span className="flex items-center gap-2">
