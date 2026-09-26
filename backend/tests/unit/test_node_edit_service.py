@@ -168,6 +168,7 @@ def test_clone_inherits_document_but_not_tokenizer_preference() -> None:
 
     assert clone.document == "text"
     assert clone.tokenizer_model is None
+    assert clone.name == "source_clone"  # issue 182
 
 
 @pytest.mark.anyio
