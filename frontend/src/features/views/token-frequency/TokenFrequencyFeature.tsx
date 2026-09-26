@@ -264,7 +264,6 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     () => buildNodeIdDisplayNameMap(panelSelectedNodes),
     [panelSelectedNodes],
   );
-  const resultNodeColumnSelections = lastCompareNodeIds.map((nodeId) => ({ nodeId }));
 
   const { handleAnalyze, handleTokenClick, handleTokenRightClick } = useTokenFrequencyTaskFlow({
     state: {
@@ -321,7 +320,9 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
   } = useTokenFrequencyResultModel({
     results,
     lastCompareNodeIds,
-    nodeColumnSelections: resultNodeColumnSelections,
+    // Result sections follow the parameter-card order; the comparison order
+    // is [Reference, Study], so passing it here reversed the word clouds.
+    nodeColumnSelections,
     lockedNodeNameMap,
     nodeIdToName,
     appliedStopSet: effectiveAppliedStopSet,
