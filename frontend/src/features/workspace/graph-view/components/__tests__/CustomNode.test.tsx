@@ -157,6 +157,8 @@ describe('CustomNode', () => {
     } satisfies React.ComponentProps<typeof CustomNode>;
 
     render(<CustomNode {...props} />);
+    // Plain size wording instead of "Shape: 480 × 8" (issue 180).
+    expect(screen.getByText('480 rows × 8 columns')).toBeInTheDocument();
 
     await user.hover(screen.getByTitle('sample_data/ADO/qldelection2020_candidate_tweets'));
     fireEvent.click(getLatestNodeSettingsButton());
@@ -344,7 +346,7 @@ describe('CustomNode', () => {
     );
 
     await user.hover(screen.getByTitle('sample_data/ADO/qldelection2020_candidate_tweets'));
-    expect(screen.queryByText(/Shape:/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/rows × /)).not.toBeInTheDocument();
     expect(getLatestNodeSettingsButton()).toBeInTheDocument();
 
     const compactCard = screen.getByTestId('custom-node-compact-card');

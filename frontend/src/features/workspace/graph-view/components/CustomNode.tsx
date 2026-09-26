@@ -309,7 +309,10 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
   const formatShapePart = (value: number | null | undefined) =>
     typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString() : '?';
 
-  const shapeLabel = `${formatShapePart(nodeShape[0])} × ${formatShapePart(nodeShape[1])}`;
+  // "1,234 rows × 5 columns": "Shape: 1,234 × 5" was unclear (issue 180).
+  const plural = (value: number | null | undefined, one: string, many: string) =>
+    `${formatShapePart(value)} ${value === 1 ? one : many}`;
+  const shapeLabel = `${plural(nodeShape[0], 'row', 'rows')} × ${plural(nodeShape[1], 'column', 'columns')}`;
 
   /** Stops React Flow from treating side-control pointer events as node clicks/drags. */
   const stopGraphControlEvent = (e: React.SyntheticEvent) => {
@@ -570,10 +573,10 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
       {/* Node Body */}
       <div className="space-y-1 rounded-b-md bg-surface p-3">
         {shapeLabel ? (
-          <div className="font-mono text-label-secondary text-foreground">Shape: {shapeLabel}</div>
+          <div className="text-label-secondary text-foreground tabular-nums">{shapeLabel}</div>
         ) : (
           <div className="font-mono text-label-secondary text-description italic">
-            Shape unavailable
+            Size unavailable
           </div>
         )}
       </div>
