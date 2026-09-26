@@ -7,12 +7,21 @@ import {
   BackgroundVariant,
   ControlButton,
   Controls,
-  MiniMap,
   ReactFlow,
+  SelectionMode,
   useReactFlow,
   useStore,
 } from '@xyflow/react';
-import { CircleOff, Loader2, Map, Minus, Plus, Scan, Trash2 } from 'lucide-react';
+import {
+  CircleOff,
+  Hand,
+  Loader2,
+  Minus,
+  Plus,
+  Scan,
+  SquareDashedMousePointer,
+  Trash2,
+} from 'lucide-react';
 
 import {
   AlertDialog,
@@ -36,6 +45,9 @@ import { useWorkspaceGraph } from '../hooks/useWorkspaceGraph';
 export interface WorkspaceGraphFeatureProps {
   fallback?: ReactNode;
 }
+
+/** What dragging the empty canvas does (issue 194). */
+type GraphDragMode = 'pan' | 'select';
 
 interface WorkspaceGraphControlButtonProps {
   accessibleLabel: string;
@@ -201,22 +213,22 @@ interface WorkspaceGraphControlsProps {
   selected: number;
   total: number;
   canClearSelection: boolean;
-  showOverview: boolean;
+  dragMode: GraphDragMode;
   onClearSelection: () => void;
-  onToggleOverview: () => void;
+  onToggleDragMode: () => void;
 }
 
 /**
- * Upper-left graph rail containing viewport, overview, selection, and destructive actions.
+ * Upper-left graph rail containing viewport, drag-mode, selection, and destructive actions.
  * Flow: call React Flow's viewport APIs through explicit expandable controls so every icon and label shares one layout.
  */
 function WorkspaceGraphControls({
   selected,
   total,
   canClearSelection,
-  showOverview,
+  dragMode,
   onClearSelection,
-  onToggleOverview,
+  onToggleDragMode,
 }: WorkspaceGraphControlsProps) {
   const { zoomIn, zoomOut, fitView } = useReactFlow();
   const minZoomReached = useStore((state) => state.transform[2] <= state.minZoom);
@@ -264,12 +276,20 @@ function WorkspaceGraphControls({
         <Scan aria-hidden="true" />
       </WorkspaceGraphControlButton>
       <WorkspaceGraphControlButton
-        accessibleLabel={showOverview ? 'Hide overview' : 'Show overview'}
-        label="Overview"
-        active={showOverview}
-        onClick={onToggleOverview}
+        accessibleLabel={
+          dragMode === 'pan'
+            ? 'Drag to pan. Switch to drag to select'
+            : 'Drag to select. Switch to drag to pan'
+        }
+        label={dragMode === 'pan' ? 'Drag to pan' : 'Drag to select'}
+        active={dragMode === 'select'}
+        onClick={onToggleDragMode}
       >
-        <Map aria-hidden="true" />
+        {dragMode === 'pan' ? (
+          <Hand aria-hidden="true" />
+        ) : (
+          <SquareDashedMousePointer aria-hidden="true" />
+        )}
       </WorkspaceGraphControlButton>
       <WorkspaceGraphControlButton
         accessibleLabel="Clear selection"
@@ -328,7 +348,7 @@ const GraphEmptyState = () => (
  * Flow: read the graph view model, branch to loading or empty fallback states, then wire nodes, edges, handlers, controls, and optional minimap into React Flow.
  */
 export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) {
-  const [showOverview, setShowOverview] = useState(false);
+  const [dragMode, setDragMode] = useState<GraphDragMode>('pan');
   const graph = useWorkspaceGraph();
 
   if (graph.isGraphLoading) {
@@ -350,15 +370,34 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
         onNodeClick={graph.handleNodeClick}
         onNodeDoubleClick={graph.handleNodeDoubleClick}
         onPaneClick={graph.handlePaneClick}
+        onSelectionStart={graph.handleSelectionStart}
+        onSelectionEnd={graph.handleSelectionEnd}
+        // A right-button drag pans in Select mode; keep the browser menu away.
+        onPaneContextMenu={
+          dragMode === 'select'
+            ? (event) => {
+                event.preventDefault();
+              }
+            : undefined
+        }
         connectionLineType={graph.connectionLineType}
         defaultEdgeOptions={graph.defaultEdgeOptions}
         onInit={graph.handleInit}
         attributionPosition="bottom-left"
-        className="bg-editor text-editor-foreground"
+        // Blocks join the app selection when the box is released, so React
+        // Flow's group-drag rectangle would only block clicks on them.
+        className="bg-editor text-editor-foreground [&_.react-flow\_\_nodesselection]:hidden"
         style={{ width: '100%', height: '100%' }}
         defaultViewport={{ x: 0, y: 0, zoom: 1 }}
         minZoom={0.05}
         maxZoom={4}
+        // Pan mode drags the view (Shift + drag draws a box); Select mode
+        // draws a box and pans with the right or middle button. Scrolling pans
+        // in both, and pinch or Ctrl/Cmd + scroll zooms (issue 194).
+        panOnDrag={dragMode === 'pan' ? true : [1, 2]}
+        selectionOnDrag={dragMode === 'select'}
+        selectionMode={SelectionMode.Partial}
+        panOnScroll
         connectOnClick={false}
         nodesDraggable
         nodesConnectable={false}
@@ -377,19 +416,12 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
           selected={graph.selectedCount}
           total={graph.totalNodes}
           canClearSelection={graph.canClearSelection}
-          showOverview={showOverview}
+          dragMode={dragMode}
           onClearSelection={() => graph.clearSelection?.()}
-          onToggleOverview={() => {
-            setShowOverview((value) => !value);
+          onToggleDragMode={() => {
+            setDragMode((mode) => (mode === 'pan' ? 'select' : 'pan'));
           }}
         />
-        {showOverview && (
-          <MiniMap
-            position="bottom-right"
-            nodeColor="var(--vscode-list-activeSelectionBackground)"
-            maskColor="color-mix(in srgb, var(--vscode-editor-background) 80%, transparent)"
-          />
-        )}
       </ReactFlow>
     </div>
   );

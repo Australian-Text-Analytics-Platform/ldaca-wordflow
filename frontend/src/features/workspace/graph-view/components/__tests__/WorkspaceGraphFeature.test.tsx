@@ -31,6 +31,8 @@ const graphState = {
   handleNodesChange: vi.fn(),
   handleEdgesChange: vi.fn(),
   handlePaneClick: vi.fn(),
+  handleSelectionStart: vi.fn(),
+  handleSelectionEnd: vi.fn(),
   handleConnect: vi.fn(),
   handleConnectStart: vi.fn(),
   handleConnectEnd: vi.fn(),
@@ -90,10 +92,7 @@ vi.mock('@xyflow/react', () => ({
   ControlButton: ({ children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) => (
     <button {...props}>{children}</button>
   ),
-  /**
-   * Stubs the minimap without loading React Flow internals.
-   */
-  MiniMap: () => <div data-testid="graph-minimap" />,
+  SelectionMode: { Full: 'full', Partial: 'partial' },
   /**
    * Captures graph props while rendering children for component tests.
    */
@@ -194,7 +193,7 @@ describe('WorkspaceGraphFeature', () => {
       'Zoom in',
       'Zoom out',
       'Fit view',
-      'Show overview',
+      'Drag to pan. Switch to drag to select',
       'Clear selection',
       'Delete (0)',
     ]);
@@ -215,14 +214,30 @@ describe('WorkspaceGraphFeature', () => {
     expect(fitView).toHaveBeenCalledWith({ padding: 0.2, includeHiddenNodes: false });
   });
 
-  it('keeps the overview and clear-selection actions wired from the relocated rail', () => {
+  it('pans by default and switches dragging to a selection box (issue 194)', () => {
+    render(<WorkspaceGraphFeature />);
+
+    const lastProps = () => reactFlowMock.mock.calls.at(-1)?.[0] as Record<string, unknown>;
+    expect(lastProps()).toMatchObject({
+      panOnDrag: true,
+      selectionOnDrag: false,
+      selectionMode: 'partial',
+      panOnScroll: true,
+      onSelectionStart: graphState.handleSelectionStart,
+      onSelectionEnd: graphState.handleSelectionEnd,
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drag to pan. Switch to drag to select' }));
+    expect(lastProps()).toMatchObject({ panOnDrag: [1, 2], selectionOnDrag: true });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Drag to select. Switch to drag to pan' }));
+    expect(lastProps()).toMatchObject({ panOnDrag: true, selectionOnDrag: false });
+  });
+
+  it('keeps the clear-selection action wired from the relocated rail', () => {
     graphState.selectedCount = 1;
     graphState.canClearSelection = true;
     render(<WorkspaceGraphFeature />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Show overview' }));
-    expect(screen.getByTestId('graph-minimap')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Hide overview' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear selection' }));
     expect(clearSelection).toHaveBeenCalledOnce();

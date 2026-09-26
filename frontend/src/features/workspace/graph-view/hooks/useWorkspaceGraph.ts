@@ -45,6 +45,8 @@ export interface WorkspaceGraphViewModel {
   handleNodesChange: ReturnType<typeof useNodesState<Node>>[2];
   handleEdgesChange: ReturnType<typeof useEdgesState<Edge>>[2];
   handlePaneClick: () => void;
+  handleSelectionStart: () => void;
+  handleSelectionEnd: () => void;
   handleConnect: (connection: Connection) => void;
   handleConnectStart: (
     event: MouseEvent | TouchEvent,
@@ -139,8 +141,16 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
   const { workspaceGraph, currentWorkspaceId } = useWorkspaceData();
   const { selectedNodeIds } = useWorkspaceSelection();
   const { isLoading } = useWorkspaceStatus();
-  const { deleteNode, copyNode, renameNode, undoNode, redoNode, toggleNode, clearSelection } =
-    useWorkspaceActions();
+  const {
+    deleteNode,
+    copyNode,
+    renameNode,
+    undoNode,
+    redoNode,
+    toggleNode,
+    replaceSelectedNodes,
+    clearSelection,
+  } = useWorkspaceActions();
 
   // React Flow owns node-data identity between hook renders, so command
   // adapters stay stable while reading the latest provider actions from this
@@ -395,19 +405,48 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     );
   }, [selectedNodeIds, setNodes]);
 
-  /** Keeps React Flow select changes aligned with the app selection store. */
+  // Blocks inside the box while a selection box is being dragged; null when
+  // no box is active (issue 194).
+  const boxSelectionRef = useRef<Set<string> | null>(null);
+
+  /**
+   * Keeps React Flow select changes aligned with the app selection store.
+   * While a selection box is dragged, blocks inside it are highlighted on top
+   * of the current selection; they join the selection when the box is released.
+   */
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
+      const boxed = boxSelectionRef.current;
       const normalized = changes.map((change: NodeChange) => {
-        if (change.type === 'select') {
-          return { ...change, selected: selectedNodeIds.includes(change.id) };
+        if (change.type !== 'select') return change;
+        if (boxed) {
+          if (change.selected) boxed.add(change.id);
+          else boxed.delete(change.id);
         }
-        return change;
+        return {
+          ...change,
+          selected: selectedNodeIds.includes(change.id) || Boolean(boxed?.has(change.id)),
+        };
       });
       onNodesChange(normalized);
     },
     [onNodesChange, selectedNodeIds],
   );
+
+  /** Starts collecting the blocks a selection box touches. */
+  const handleSelectionStart = useCallback(() => {
+    boxSelectionRef.current = new Set();
+  }, []);
+
+  /** Adds the boxed blocks to the selection, like clicking each of them. */
+  const handleSelectionEnd = useCallback(() => {
+    const boxed = boxSelectionRef.current;
+    boxSelectionRef.current = null;
+    const added = [...(boxed ?? [])].filter((nodeId) => !selectedNodeIds.includes(nodeId));
+    if (added.length === 0) return;
+    replaceSelectedNodes([...selectedNodeIds, ...added], added.at(-1));
+    if (currentWorkspaceId) markInteracted(currentWorkspaceId, added);
+  }, [currentWorkspaceId, markInteracted, replaceSelectedNodes, selectedNodeIds]);
 
   /** Restores visual selection when pane clicks would otherwise clear React Flow state. */
   const handlePaneClick = useCallback(() => {
@@ -500,6 +539,8 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     handleNodesChange,
     handleEdgesChange: onEdgesChange,
     handlePaneClick,
+    handleSelectionStart,
+    handleSelectionEnd,
     handleConnect,
     handleConnectStart,
     handleConnectEnd,

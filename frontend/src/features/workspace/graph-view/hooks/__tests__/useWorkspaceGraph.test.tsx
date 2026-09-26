@@ -7,6 +7,7 @@ const useWorkspaceDataMock = vi.hoisted(() => vi.fn());
 const useWorkspaceSelectionMock = vi.hoisted(() => vi.fn());
 const useWorkspaceStatusMock = vi.hoisted(() => vi.fn());
 const useWorkspaceActionsMock = vi.hoisted(() => vi.fn());
+const replaceSelectedNodes = vi.fn();
 const requestNodeInputAddMock = vi.hoisted(() => vi.fn());
 const undoNode = vi.fn();
 const redoNode = vi.fn();
@@ -107,8 +108,45 @@ describe('useWorkspaceGraph', () => {
       redoNode,
       toggleNode: vi.fn(),
       toggleNodeSelection: vi.fn(),
+      replaceSelectedNodes,
       clearSelection: vi.fn(),
     });
+    replaceSelectedNodes.mockReset();
+  });
+
+  it('adds the blocks a selection box touches to the current selection (issue 194)', () => {
+    useWorkspaceDataMock.mockReturnValue({
+      currentWorkspaceId: 'workspace-a',
+      workspaceGraph: makeIndependentGraph(['node-1', 'node-2', 'node-3']),
+    });
+    useWorkspaceSelectionMock.mockReturnValue({ selectedNodeIds: ['node-1'] });
+    const { result } = renderHook(() => useWorkspaceGraph());
+    const selectedIds = () =>
+      result.current.nodes.filter((node) => node.selected).map((node) => node.id);
+
+    act(() => {
+      result.current.handleSelectionStart();
+      // React Flow deselects blocks outside the box; the current selection stays.
+      result.current.handleNodesChange([
+        { id: 'node-1', type: 'select', selected: false },
+        { id: 'node-2', type: 'select', selected: true },
+        { id: 'node-3', type: 'select', selected: true },
+      ]);
+    });
+    expect(selectedIds()).toEqual(expect.arrayContaining(['node-1', 'node-2', 'node-3']));
+
+    act(() => {
+      // Shrinking the box drops node-3 before the mouse is released.
+      result.current.handleNodesChange([{ id: 'node-3', type: 'select', selected: false }]);
+      result.current.handleSelectionEnd();
+    });
+    expect(replaceSelectedNodes).toHaveBeenCalledWith(['node-1', 'node-2'], 'node-2');
+
+    act(() => {
+      // Outside a box, React Flow select changes still follow the app selection.
+      result.current.handleNodesChange([{ id: 'node-3', type: 'select', selected: true }]);
+    });
+    expect(selectedIds()).not.toContain('node-3');
   });
 
   it('resynchronizes node colour and edge label when topology is unchanged', () => {
