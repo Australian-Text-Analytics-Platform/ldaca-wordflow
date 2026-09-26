@@ -157,7 +157,7 @@ describe('WorkspaceGraphFeature', () => {
     expect(props.maxZoom).toBe(4);
   });
 
-  it('puts selection, graph actions, and delete in an expandable upper-left control rail', () => {
+  it('puts selection, graph actions, and delete in a fixed-width upper-left control rail', () => {
     render(<WorkspaceGraphFeature />);
 
     const controls = screen.getByLabelText('Project graph controls');
@@ -166,10 +166,8 @@ describe('WorkspaceGraphFeature', () => {
     expect(controls).toHaveAttribute('data-show-zoom', 'false');
     expect(controls).toHaveAttribute('data-show-fit-view', 'false');
     expect(controls).toHaveAttribute('data-show-interactive', 'false');
-    expect(controls).toHaveClass('group/workspace-controls');
-    expect(within(controls).getByText('0/2')).toBeVisible();
-    expect(within(controls).getByText('selected')).toHaveClass(
-      'group-hover/workspace-controls:opacity-100',
+    expect(within(controls).getByRole('status', { name: '0 of 2 selected' })).toHaveTextContent(
+      '0/2',
     );
 
     const clearButton = within(controls).getByRole('button', { name: 'Clear selection' });
@@ -183,6 +181,8 @@ describe('WorkspaceGraphFeature', () => {
     const deleteButton = within(controls).getByRole('button', { name: 'Delete (0)' });
     expect(deleteButton).toBeDisabled();
     expect(deleteButton).toHaveClass(
+      // Lets the tooltip wrapper receive hover for a disabled button.
+      'disabled:!pointer-events-none',
       'disabled:!bg-editor',
       'disabled:!text-[var(--vscode-icon-foreground)]',
       'disabled:!opacity-40',
@@ -199,6 +199,8 @@ describe('WorkspaceGraphFeature', () => {
     ]);
     for (const button of buttons) {
       expect(button).not.toHaveAttribute('title');
+      // Issue 195: the rail never widens on hover, so no hover-width classes.
+      expect(button.className).not.toMatch(/group-hover|w-40/);
     }
   });
 

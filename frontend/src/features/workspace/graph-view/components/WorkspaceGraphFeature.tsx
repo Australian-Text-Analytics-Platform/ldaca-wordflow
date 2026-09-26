@@ -35,6 +35,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
@@ -59,9 +60,15 @@ interface WorkspaceGraphControlButtonProps {
   onClick: () => void;
 }
 
+// Names appear only after a deliberate hover, so moving across the rail on
+// the way to a node changes nothing on screen (issue 195).
+const RAIL_TOOLTIP_DELAY_MS = 500;
+
 /**
- * Expandable action used in the Workspace Graph View control rail.
- * Flow: keep the icon visible in the collapsed rail and reveal its text label on rail hover or focus.
+ * Icon-only action in the Project Graph control rail.
+ * Flow: the rail never widens; the label shows in a tooltip beside the button
+ * after a short hover, including for disabled buttons, whose wrapper catches
+ * the pointer.
  */
 function WorkspaceGraphControlButton({
   accessibleLabel,
@@ -73,53 +80,52 @@ function WorkspaceGraphControlButton({
   onClick,
 }: WorkspaceGraphControlButtonProps) {
   return (
-    <ControlButton
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={accessibleLabel}
-      className={cn(
-        '!h-10 !w-10 !min-w-10 !justify-start !gap-3 !overflow-hidden !px-3',
-        'transition-[width,background-color,color] duration-150 ease-out',
-        'group-hover/workspace-controls:!w-40 group-focus-within/workspace-controls:!w-40',
-        'disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
-        active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
-        destructive && !disabled && '!text-error hover:!bg-error/10',
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
-        {children}
-      </span>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none whitespace-nowrap text-label-secondary font-medium opacity-0 transition-opacity duration-100 group-hover/workspace-controls:opacity-100 group-focus-within/workspace-controls:opacity-100"
-      >
-        {label}
-      </span>
-    </ControlButton>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="block">
+          <ControlButton
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={accessibleLabel}
+            className={cn(
+              '!h-10 !w-10 !justify-center !p-0',
+              'disabled:!pointer-events-none disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
+              active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
+              destructive && !disabled && '!text-error hover:!bg-error/10',
+            )}
+          >
+            <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
+              {children}
+            </span>
+          </ControlButton>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
 /**
  * Selection summary at the start of the graph control rail.
- * Flow: always show the compact selected/total value and reveal its descriptive label with the other controls.
+ * Flow: show the compact selected/total value; the full wording is in its
+ * accessible label and hover tooltip.
  */
 const GraphSelectionControl = ({ selected, total }: { selected: number; total: number }) => (
-  <div
-    role="status"
-    aria-label={`${String(selected)} of ${String(total)} selected`}
-    className="flex h-10 w-10 min-w-10 items-center justify-start gap-3 overflow-hidden px-2 text-label-secondary font-semibold text-foreground tabular-nums transition-[width,padding] duration-150 ease-out group-hover/workspace-controls:w-40 group-hover/workspace-controls:px-3 group-focus-within/workspace-controls:w-40 group-focus-within/workspace-controls:px-3"
-  >
-    <span className="shrink-0">
-      {selected}/{total}
-    </span>
-    <span
-      aria-hidden="true"
-      className="pointer-events-none whitespace-nowrap font-medium opacity-0 transition-opacity duration-100 group-hover/workspace-controls:opacity-100 group-focus-within/workspace-controls:opacity-100"
-    >
-      selected
-    </span>
-  </div>
+  <Tooltip>
+    <TooltipTrigger asChild>
+      <div
+        role="status"
+        aria-label={`${String(selected)} of ${String(total)} selected`}
+        className="flex h-10 w-10 items-center justify-center text-label-secondary font-semibold text-foreground tabular-nums"
+      >
+        {selected}/{total}
+      </div>
+    </TooltipTrigger>
+    <TooltipContent side="right">
+      {selected} of {total} data blocks selected
+    </TooltipContent>
+  </Tooltip>
 );
 
 /**
@@ -241,65 +247,71 @@ function WorkspaceGraphControls({
       showZoom={false}
       showFitView={false}
       showInteractive={false}
-      className="group/workspace-controls overflow-hidden rounded-md border border-surface-border bg-editor"
+      className="overflow-hidden rounded-md border border-surface-border bg-editor"
       style={{ zIndex: 20 }}
       aria-label="Project graph controls"
     >
-      <GraphSelectionControl selected={selected} total={total} />
-      <WorkspaceGraphControlButton
-        accessibleLabel="Zoom in"
-        label="Zoom in"
-        disabled={maxZoomReached}
-        onClick={() => {
-          void zoomIn();
-        }}
+      <TooltipProvider
+        delayDuration={RAIL_TOOLTIP_DELAY_MS}
+        skipDelayDuration={300}
+        disableHoverableContent
       >
-        <Plus aria-hidden="true" />
-      </WorkspaceGraphControlButton>
-      <WorkspaceGraphControlButton
-        accessibleLabel="Zoom out"
-        label="Zoom out"
-        disabled={minZoomReached}
-        onClick={() => {
-          void zoomOut();
-        }}
-      >
-        <Minus aria-hidden="true" />
-      </WorkspaceGraphControlButton>
-      <WorkspaceGraphControlButton
-        accessibleLabel="Fit view"
-        label="Fit view"
-        onClick={() => {
-          void fitView({ padding: 0.2, includeHiddenNodes: false });
-        }}
-      >
-        <Scan aria-hidden="true" />
-      </WorkspaceGraphControlButton>
-      <WorkspaceGraphControlButton
-        accessibleLabel={
-          dragMode === 'pan'
-            ? 'Drag to pan. Switch to drag to select'
-            : 'Drag to select. Switch to drag to pan'
-        }
-        label={dragMode === 'pan' ? 'Drag to pan' : 'Drag to select'}
-        active={dragMode === 'select'}
-        onClick={onToggleDragMode}
-      >
-        {dragMode === 'pan' ? (
-          <Hand aria-hidden="true" />
-        ) : (
-          <SquareDashedMousePointer aria-hidden="true" />
-        )}
-      </WorkspaceGraphControlButton>
-      <WorkspaceGraphControlButton
-        accessibleLabel="Clear selection"
-        label="Clear selection"
-        disabled={!canClearSelection}
-        onClick={onClearSelection}
-      >
-        <CircleOff aria-hidden="true" />
-      </WorkspaceGraphControlButton>
-      <WorkspaceGraphDeleteControl />
+        <GraphSelectionControl selected={selected} total={total} />
+        <WorkspaceGraphControlButton
+          accessibleLabel="Zoom in"
+          label="Zoom in"
+          disabled={maxZoomReached}
+          onClick={() => {
+            void zoomIn();
+          }}
+        >
+          <Plus aria-hidden="true" />
+        </WorkspaceGraphControlButton>
+        <WorkspaceGraphControlButton
+          accessibleLabel="Zoom out"
+          label="Zoom out"
+          disabled={minZoomReached}
+          onClick={() => {
+            void zoomOut();
+          }}
+        >
+          <Minus aria-hidden="true" />
+        </WorkspaceGraphControlButton>
+        <WorkspaceGraphControlButton
+          accessibleLabel="Fit view"
+          label="Fit view"
+          onClick={() => {
+            void fitView({ padding: 0.2, includeHiddenNodes: false });
+          }}
+        >
+          <Scan aria-hidden="true" />
+        </WorkspaceGraphControlButton>
+        <WorkspaceGraphControlButton
+          accessibleLabel={
+            dragMode === 'pan'
+              ? 'Drag to pan. Switch to drag to select'
+              : 'Drag to select. Switch to drag to pan'
+          }
+          label={dragMode === 'pan' ? 'Drag to pan' : 'Drag to select'}
+          active={dragMode === 'select'}
+          onClick={onToggleDragMode}
+        >
+          {dragMode === 'pan' ? (
+            <Hand aria-hidden="true" />
+          ) : (
+            <SquareDashedMousePointer aria-hidden="true" />
+          )}
+        </WorkspaceGraphControlButton>
+        <WorkspaceGraphControlButton
+          accessibleLabel="Clear selection"
+          label="Clear selection"
+          disabled={!canClearSelection}
+          onClick={onClearSelection}
+        >
+          <CircleOff aria-hidden="true" />
+        </WorkspaceGraphControlButton>
+        <WorkspaceGraphDeleteControl />
+      </TooltipProvider>
     </Controls>
   );
 }
