@@ -133,7 +133,7 @@ describe('ConcordanceDispersionSummary', () => {
     });
   });
 
-  it('renders selected bins as same-size solid points', () => {
+  it('shows selected bins in the Trends selection style (issue 191)', () => {
     render(
       <ConcordanceDispersionSummary
         rows={baseRows}
@@ -154,9 +154,23 @@ describe('ConcordanceDispersionSummary', () => {
 
     const lineSeries = optionSeries()[0];
     const symbol = lineSeries?.symbol as (value: unknown, params: { dataIndex?: number }) => string;
-    expect(lineSeries).toMatchObject({ showSymbol: true, symbolSize: 6 });
+    const symbolSize = lineSeries?.symbolSize as (
+      value: unknown,
+      params: { dataIndex?: number },
+    ) => number;
+    expect(lineSeries).toMatchObject({
+      showSymbol: true,
+      itemStyle: { borderColor: '#ffffff', borderWidth: 2 },
+    });
     expect(symbol(undefined, { dataIndex: 0 })).toBe('emptyCircle');
     expect(symbol(undefined, { dataIndex: 1 })).toBe('circle');
+    expect(symbolSize(undefined, { dataIndex: 1 })).toBeGreaterThan(
+      2 * symbolSize(undefined, { dataIndex: 0 }),
+    );
+    // Bin 1 of 20 is shaded from 5% to 10%.
+    expect((lineSeries as { markArea?: { data: unknown } }).markArea?.data).toEqual([
+      [{ xAxis: 5 }, { xAxis: 10 }],
+    ]);
   });
 
   it.each([4, 5, 10] as const)(

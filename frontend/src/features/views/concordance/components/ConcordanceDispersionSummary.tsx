@@ -38,6 +38,21 @@ import {
   type ConcordanceDensitySeriesInput,
 } from '../concordanceDispersionDomain';
 
+/** Soft background behind selected bins, shared with Trends (issue 191). */
+const SELECTION_BAND_COLOR = 'rgba(245, 158, 11, 0.16)';
+
+/** Contiguous selected bins as [start, end] positions on the 0-100% axis. */
+const selectedBinRanges = (bins: ReadonlySet<number>, binCount: number): [number, number][] => {
+  const sorted = [...bins].filter((bin) => bin >= 0 && bin < binCount).sort((a, b) => a - b);
+  const runs: [number, number][] = [];
+  for (const bin of sorted) {
+    const last = runs.at(-1);
+    if (last?.[1] === bin) last[1] = bin + 1;
+    else runs.push([bin, bin + 1]);
+  }
+  return runs.map(([first, end]) => [(first * 100) / binCount, (end * 100) / binCount]);
+};
+
 interface Props {
   rows: ConcordanceDispersionRow[];
   textColumn: string;
@@ -277,10 +292,23 @@ export function ConcordanceDispersionSummary({
       ...common,
       ...buildEChartsSeriesStates(
         chartMode === 'density-area'
-          ? { chartType: 'area', areaOpacity, selectedIndices: selection?.selectedIndices }
-          : { chartType: 'line', selectedIndices: selection?.selectedIndices },
+          ? {
+              chartType: 'area',
+              areaOpacity,
+              selectedIndices: selection?.selectedIndices,
+              emphasizeSelection: true,
+            }
+          : {
+              chartType: 'line',
+              selectedIndices: selection?.selectedIndices,
+              emphasizeSelection: true,
+            },
       ),
       type: 'line' as const,
+      // Same selection style as Trends (issue 191): white-ringed selected dots.
+      ...(hasSelection
+        ? { itemStyle: { color: item.color, borderColor: '#ffffff', borderWidth: 2 } }
+        : {}),
       ...(chartMode === 'cumulative' ? { step: 'middle' as const } : { smooth: true }),
       ...(chartMode === 'density-area' ? { stack: 'density' } : {}),
       showSymbol: chartMode === 'density-line' || hasSelection,
@@ -289,6 +317,27 @@ export function ConcordanceDispersionSummary({
         chartMode === 'density-area' ? { color: item.color, opacity: areaOpacity } : undefined,
     };
   });
+  // A soft band over the selected bins, as in Trends (issue 191). Bars keep
+  // their dimming instead.
+  const selectionBand =
+    hasSelection && chartMode !== 'density-bar'
+      ? selectedBinRanges(selection.selectedIndices, binCount)
+      : [];
+  const chartSeries =
+    selectionBand.length > 0
+      ? seriesOptions.map((item, index) =>
+          index === 0
+            ? {
+                ...item,
+                markArea: {
+                  silent: true,
+                  itemStyle: { color: SELECTION_BAND_COLOR },
+                  data: selectionBand.map(([start, end]) => [{ xAxis: start }, { xAxis: end }]),
+                },
+              }
+            : item,
+        )
+      : seriesOptions;
   const chartOption: EChartsCoreOption = {
     dataset: {
       dimensions: [
@@ -350,7 +399,7 @@ export function ConcordanceDispersionSummary({
           },
         }
       : {}),
-    series: seriesOptions,
+    series: chartSeries,
   };
   const getPointSummary = (index: number) => {
     const row = chartData[index];
