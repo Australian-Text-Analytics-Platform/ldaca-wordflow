@@ -89,13 +89,21 @@ export const buildMultiSeriesChartOption = ({
   const hasSelection = !!selection && selection.selectedIndices.size > 0;
   const areaOpacity = hasSelection ? 0.2 : 0.35;
   const usesSelectionVisual = hasSelection && chartType === 'bar';
-  const source = usesSelectionVisual
-    ? data.map((row, index) => ({
-        ...row,
-        [SELECTION_DIMENSION]: selection.selectedIndices.has(index) ? 1 : 0,
-      }))
-    : data;
   const xAxisType = xAxis?.type ?? 'category';
+  const shadeSelection = hasSelection && chartType !== 'bar';
+  const bandOnCategories = shadeSelection && xAxisType !== 'value';
+  const source =
+    usesSelectionVisual || bandOnCategories
+      ? data.map((row, index) => ({
+          ...row,
+          ...(usesSelectionVisual
+            ? { [SELECTION_DIMENSION]: selection.selectedIndices.has(index) ? 1 : 0 }
+            : {}),
+          ...(bandOnCategories
+            ? { [SELECTION_BAND_DIMENSION]: selection.selectedIndices.has(index) ? 1 : null }
+            : {}),
+        }))
+      : data;
   const chartSeries = series.map((item) => {
     const common = {
       id: item.key,
@@ -114,12 +122,19 @@ export const buildMultiSeriesChartOption = ({
       ...common,
       ...buildEChartsSeriesStates(
         chartType === 'area'
-          ? { chartType, areaOpacity, selectedIndices: selection?.selectedIndices }
-          : { chartType, selectedIndices: selection?.selectedIndices },
+          ? {
+              chartType,
+              areaOpacity,
+              selectedIndices: selection?.selectedIndices,
+              emphasizeSelection: true,
+            }
+          : { chartType, selectedIndices: selection?.selectedIndices, emphasizeSelection: true },
       ),
       type: 'line' as const,
       smooth: true,
-      itemStyle: { color: item.color },
+      itemStyle: hasSelection
+        ? { color: item.color, borderColor: '#ffffff', borderWidth: 2 }
+        : { color: item.color },
       lineStyle: { color: item.color, width: 2 },
       ...(chartType === 'area'
         ? {
@@ -130,12 +145,27 @@ export const buildMultiSeriesChartOption = ({
     };
   });
 
+  const builtYAxis = {
+    ...yAxis,
+    type: yAxis?.type ?? 'value',
+    axisLine: {
+      lineStyle: { color: 'var(--vscode-charts-foreground)' },
+      ...yAxis?.axisLine,
+    },
+    axisLabel: { color: 'var(--vscode-charts-foreground)', ...yAxis?.axisLabel },
+    splitLine: {
+      lineStyle: { color: 'var(--vscode-charts-lines)', type: 'dashed' },
+      ...yAxis?.splitLine,
+    },
+  };
+
   return {
     dataset: {
       dimensions: [
         xKey,
         ...series.map((item) => item.key),
         ...(usesSelectionVisual ? [SELECTION_DIMENSION] : []),
+        ...(bandOnCategories ? [SELECTION_BAND_DIMENSION] : []),
       ],
       source,
     },
@@ -185,19 +215,8 @@ export const buildMultiSeriesChartOption = ({
       },
       axisTick: { alignWithLabel: xAxisType === 'category', ...xAxis?.axisTick },
     },
-    yAxis: {
-      ...yAxis,
-      type: yAxis?.type ?? 'value',
-      axisLine: {
-        lineStyle: { color: 'var(--vscode-charts-foreground)' },
-        ...yAxis?.axisLine,
-      },
-      axisLabel: { color: 'var(--vscode-charts-foreground)', ...yAxis?.axisLabel },
-      splitLine: {
-        lineStyle: { color: 'var(--vscode-charts-lines)', type: 'dashed' },
-        ...yAxis?.splitLine,
-      },
-    },
+    // A hidden second axis carries the selection band (issue 190).
+    yAxis: bandOnCategories ? [builtYAxis, SELECTION_BAND_Y_AXIS] : builtYAxis,
     // ECharts maps per-item bar opacity from the internal selection dimension.
     // Line and area modes show selection through their point symbols instead.
     ...(usesSelectionVisual
@@ -214,8 +233,62 @@ export const buildMultiSeriesChartOption = ({
           },
         }
       : {}),
-    series: chartSeries,
+    series: bandOnCategories
+      ? [...chartSeries, categorySelectionBand(xKey)]
+      : shadeSelection
+        ? chartSeries.map((item, index) =>
+            index === 0
+              ? { ...item, markArea: numericSelectionAreas(data, xKey, selection.selectedIndices) }
+              : item,
+          )
+        : chartSeries,
   };
+};
+
+/** Soft background behind selected periods (issue 190). */
+const SELECTION_BAND_COLOR = 'rgba(245, 158, 11, 0.16)';
+const SELECTION_BAND_DIMENSION = '__wordflow_selection_band__';
+const SELECTION_BAND_Y_AXIS = { type: 'value' as const, show: false, min: 0, max: 1 };
+
+/**
+ * Category axis: a translucent full-height bar behind each selected period,
+ * read from the shared dataset so it lines up with the categories; adjacent
+ * selections merge into one band.
+ */
+const categorySelectionBand = (xKey: string) => ({
+  id: SELECTION_BAND_DIMENSION,
+  type: 'bar' as const,
+  encode: { x: xKey, y: SELECTION_BAND_DIMENSION },
+  yAxisIndex: 1,
+  barWidth: '100%',
+  silent: true,
+  tooltip: { show: false },
+  emphasis: { disabled: true },
+  z: 0,
+  animation: false,
+  // No accessibility hatch pattern: the band is a background, not data.
+  itemStyle: { color: SELECTION_BAND_COLOR, decal: { symbol: 'none' } },
+});
+
+/** Numeric axis: shaded areas reaching halfway to the neighbouring points. */
+const numericSelectionAreas = (
+  data: readonly Record<string, unknown>[],
+  xKey: string,
+  selectedIndices: ReadonlySet<number>,
+) => {
+  const xs = data.map((row) => Number(row[xKey]));
+  const areas: [{ xAxis: number }, { xAxis: number }][] = [];
+  xs.forEach((x, index) => {
+    if (!selectedIndices.has(index) || !Number.isFinite(x)) return;
+    const before = xs[index - 1];
+    const after = xs[index + 1];
+    const start = before !== undefined && Number.isFinite(before) ? (before + x) / 2 : x;
+    const end = after !== undefined && Number.isFinite(after) ? (x + after) / 2 : x;
+    const last = areas.at(-1);
+    if (last && selectedIndices.has(index - 1)) last[1] = { xAxis: end };
+    else areas.push([{ xAxis: start }, { xAxis: end }]);
+  });
+  return { silent: true, itemStyle: { color: SELECTION_BAND_COLOR }, data: areas };
 };
 
 /** Shared ECharts renderer for Trends-style multi-series analysis charts. */

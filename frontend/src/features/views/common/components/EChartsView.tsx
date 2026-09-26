@@ -7,6 +7,7 @@ import {
   DataZoomComponent,
   DatasetComponent,
   GridComponent,
+  MarkAreaComponent,
   ToolboxComponent,
   TooltipComponent,
   VisualMapComponent,
@@ -29,6 +30,8 @@ registerEChartsModules([
   DataZoomComponent,
   DatasetComponent,
   GridComponent,
+  // Shades selected periods on numeric Trends axes (issue 190).
+  MarkAreaComponent,
   ToolboxComponent,
   TooltipComponent,
   VisualMapComponent,

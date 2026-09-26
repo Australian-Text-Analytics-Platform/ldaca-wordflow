@@ -152,7 +152,7 @@ Use the chart slider, mouse wheel, or trackpad pinch to zoom along the horizonta
 
 <h3 id="help-sequential-period-selection">Period selection</h3>
 
-Click anywhere inside the plot to select the time period nearest the vertical axis pointer. You do not need to target a line point, bar, or area segment. Selected periods are highlighted; unselected periods are dimmed to 25 % opacity.
+Click anywhere inside the plot to select the time period nearest the vertical axis pointer. You do not need to target a line point, bar, or area segment. Selected periods are shaded with a soft band across the chart, and in line and area charts their points become large solid dots while the other points stay small hollow circles; in bar charts, unselected bars are dimmed to 25 % opacity.
 
 To select a range, click one period then **Shift-click** another — all periods between them are selected.
 

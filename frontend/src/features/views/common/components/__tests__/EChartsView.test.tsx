@@ -34,6 +34,7 @@ vi.mock('echarts/components', () => ({
   DataZoomComponent: {},
   DatasetComponent: {},
   GridComponent: {},
+  MarkAreaComponent: {},
   ToolboxComponent: {},
   TooltipComponent: {},
   VisualMapComponent: {},

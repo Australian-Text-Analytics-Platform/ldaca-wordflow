@@ -104,9 +104,35 @@ describe('buildMultiSeriesChartOption', () => {
     expect(line.visualMap).toBeUndefined();
     const lineSeries = (line.series as Record<string, unknown>[])[0];
     const symbol = lineSeries?.symbol as (value: unknown, params: { dataIndex?: number }) => string;
-    expect(lineSeries).toMatchObject({ symbolSize: 6 });
+    const symbolSize = lineSeries?.symbolSize as (
+      value: unknown,
+      params: { dataIndex?: number },
+    ) => number;
     expect(symbol(undefined, { dataIndex: 0 })).toBe('emptyCircle');
     expect(symbol(undefined, { dataIndex: 1 })).toBe('circle');
+    // Selected points are much larger, with a white ring (issue 190).
+    expect(symbolSize(undefined, { dataIndex: 1 })).toBeGreaterThan(
+      2 * symbolSize(undefined, { dataIndex: 0 }),
+    );
+    expect(lineSeries).toMatchObject({ itemStyle: { borderColor: '#ffffff', borderWidth: 2 } });
+    // A band shades the selected period on a hidden second axis.
+    const band = (line.series as Record<string, unknown>[]).at(-1);
+    expect(band).toMatchObject({ type: 'bar', yAxisIndex: 1, silent: true });
+    const lineDataset = line.dataset as { source: Record<string, unknown>[] };
+    expect(lineDataset.source.map((row) => row.__wordflow_selection_band__)).toEqual([null, 1]);
+    expect(Array.isArray(line.yAxis) && line.yAxis[1]).toMatchObject({ show: false, max: 1 });
+  });
+
+  it('shades selected runs on a numeric axis halfway to the neighbouring points (issue 190)', () => {
+    const numeric = buildMultiSeriesChartOption({
+      data: [{ x: 0 }, { x: 10 }, { x: 20 }, { x: 30 }].map((row) => ({ ...row, a: 1 })),
+      xKey: 'x',
+      series: [{ key: 'a', color: '#2563eb' }],
+      xAxis: { type: 'value' },
+      selection: { selectedIndices: new Set([1, 2]), onSelect: () => undefined },
+    });
+    const first = (numeric.series as { markArea?: { data: unknown } }[])[0];
+    expect(first?.markArea?.data).toEqual([[{ xAxis: 5 }, { xAxis: 25 }]]);
   });
 
   it('accepts native ECharts axis options without compatibility translation', () => {
