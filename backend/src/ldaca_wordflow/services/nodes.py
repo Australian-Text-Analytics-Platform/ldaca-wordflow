@@ -18,6 +18,7 @@ from ..domain.workspace import Node, Workspace
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
     DirectoryTooLargeError,
+    detect_file_type,
     extract_zip_table_member,
     materialize_data_file,
     read_documents,
@@ -177,10 +178,20 @@ class NodeService:
                         "Folder is too large for node ingestion"
                     ) from exc
                 raise InvalidInputError("User file could not be loaded") from exc
-        node_name = (
-            request.name
-            or _node_name_from_path(request.zip_member or request.file_path)
-        ).strip()
+            sheet_name = request.sheet_name
+            if (
+                sheet_name is None
+                and not is_folder
+                and request.zip_member is None
+                and detect_file_type(request.file_path) == "excel"
+            ):
+                sheet_name = await self._run_io(_first_sheet_name, source_path)
+        default_name = _node_name_from_path(request.zip_member or request.file_path)
+        if sheet_name and request.zip_member is None:
+            # Two sheets of one workbook get distinct names (issue 181).
+            safe_sheet = sheet_name.replace("/", "-").replace("\\", "-")
+            default_name = f"{default_name}_{safe_sheet}"
+        node_name = (request.name or default_name).strip()
         valid, reason = validate_display_name(node_name)
         if not valid:
             raise InvalidInputError(f"Invalid node name: {reason}")
@@ -547,6 +558,18 @@ def _load_zip_member_dataframe(
             raise DataFileLoadError("ZIP member could not be loaded") from exc
         data = materialize_data_file(extracted)
     return normalize_dtypes(data)
+
+
+def _first_sheet_name(path: Path) -> str | None:
+    """The sheet an Excel import reads when no sheet is chosen."""
+
+    import fastexcel
+
+    try:
+        names = fastexcel.read_excel(path).sheet_names
+    except (OSError, ValueError, fastexcel.FastExcelError):
+        return None
+    return str(names[0]) if names else None
 
 
 def _node_name_from_path(relative_path: str) -> str:

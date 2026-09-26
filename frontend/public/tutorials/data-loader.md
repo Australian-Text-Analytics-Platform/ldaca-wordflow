@@ -85,7 +85,8 @@ Supported loadable formats:
 - Delimited tables: `.csv`, `.tsv`
 - JSON: `.json`, `.jsonl`, `.ndjson`
 - Columnar tables: `.parquet`, `.avro`, `.arrow`, `.ipc`, `.feather`
-- Spreadsheets: `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods`
+- Spreadsheets: `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods` (a Data Block from a spreadsheet is named after the file and sheet, such as
+  _hansard_Speeches_)
 - UTF-8 text: `.txt`, `.text`, `.md`, `.rst`, `.log`
 - UTF-8 document archives: `.zip`
 - Folders of text documents (use the **+** button on a folder row)
@@ -121,7 +122,8 @@ how to load it:
   its subfolders, or inside the ZIP (CSV, TSV, JSON/JSONL, Parquet, Avro,
   Arrow/IPC, and spreadsheets, which use their first sheet). Tick the files
   you want, or use **Select all** or **Select none**, and select a file name to
-  preview it. Each ticked file becomes its own Data Block named after the file.
+  preview it. Each ticked file becomes its own Data Block named after the file
+  (a spreadsheet in a folder also adds its sheet name).
 
 A ZIP inside a folder, or inside another ZIP, is never opened: it is skipped
 (and listed as skipped in Texts mode). Add the ZIP on its own to load its
