@@ -55,7 +55,7 @@ from ..models.workspace import (
     WorkspaceNodeInfo,
 )
 from .node_operations import (
-    count_non_empty_values,
+    empty_value_expression,
     build_derived_lazyframe,
     build_derived_node,
     build_edited_lazyframe,
@@ -583,18 +583,53 @@ def _load_zip_member_dataframe(
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class EmptiedValuesReport:
-    """How many values a type change turned empty, out of the block's rows."""
+    """Values a type change could not convert and left empty (issue 183).
+
+    ``first_row`` is the 1-based row of the first such value, and
+    ``first_value`` its original text, so users can find and fix it.
+    """
 
     emptied: int
     rows: int
+    first_row: int | None = None
+    first_value: str | None = None
 
 
 def _emptied_values_report(
     before: pl.LazyFrame, after: pl.LazyFrame, column: str
 ) -> EmptiedValuesReport:
-    rows, present_before = count_non_empty_values(before, column)
-    _rows, present_after = count_non_empty_values(after, column)
-    return EmptiedValuesReport(emptied=max(0, present_before - present_after), rows=rows)
+    lost = ~empty_value_expression(
+        pl.col("__before"), before.collect_schema()[column]
+    ) & empty_value_expression(pl.col("__after"), after.collect_schema()[column])
+    stats = (
+        pl.concat(
+            [
+                before.select(pl.col(column).alias("__before")),
+                after.select(pl.col(column).alias("__after")),
+            ],
+            how="horizontal",
+        )
+        .with_row_index("__row", offset=1)
+        .select(
+            pl.len().alias("rows"),
+            lost.sum().alias("emptied"),
+            pl.col("__row").filter(lost).first().alias("first_row"),
+            pl.col("__before")
+            .cast(pl.String, strict=False)
+            .filter(lost)
+            .first()
+            .alias("first_value"),
+        )
+        .collect()
+        .row(0, named=True)
+    )
+    first_row = stats["first_row"]
+    return EmptiedValuesReport(
+        emptied=int(stats["emptied"] or 0),
+        rows=int(stats["rows"]),
+        first_row=int(first_row) if first_row is not None else None,
+        first_value=stats["first_value"],
+    )
 
 
 def _first_sheet_name(path: Path) -> str | None:

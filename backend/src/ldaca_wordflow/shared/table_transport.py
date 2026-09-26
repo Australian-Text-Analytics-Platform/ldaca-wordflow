@@ -15,6 +15,8 @@ HAS_NEXT_HEADER = "X-Wordflow-Has-Next"
 TOTAL_ROWS_HEADER = "X-Wordflow-Total-Rows"
 CHANGED_ROWS_HEADER = "X-Wordflow-Changed-Rows"
 EMPTIED_VALUES_HEADER = "X-Wordflow-Emptied-Values"
+FIRST_EMPTIED_ROW_HEADER = "X-Wordflow-First-Emptied-Row"
+FIRST_EMPTIED_VALUE_HEADER = "X-Wordflow-First-Emptied-Value"
 
 
 @dataclass(frozen=True, slots=True)

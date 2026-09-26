@@ -18,9 +18,6 @@ import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/qu
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
 import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
 
-/** Warn after a type change that empties at least this share of the column (issue 183). */
-const EMPTIED_WARNING_SHARE = 0.1;
-
 export interface WorkspaceDataTableHeaderInfo {
   nodeLabel: string;
   tabPosition: number;
@@ -478,26 +475,48 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     async (column: string, targetType: ColumnCastType, format?: string) => {
       if (!selectedNodeIdForCallbacks) return;
       const nodeId = selectedNodeIdForCallbacks;
-      const { emptied, rows } = await castColumn(nodeId, column, targetType, format);
-      // Casts that cannot convert a value leave it empty; say so when that
-      // hits a large share of the column, and offer Undo (issue 183).
-      if (emptied && rows && emptied / rows >= EMPTIED_WARNING_SHARE) {
-        toast.warning(
-          `Converting "${column}" to ${castTypeLabel(targetType)} left ${emptied.toLocaleString()} of ${rows.toLocaleString()} values empty (${String(Math.round((emptied / rows) * 100))}%).`,
-          {
-            description: 'Those values could not be converted. Undo restores them.',
-            duration: 12_000,
-            action: {
-              label: 'Undo',
-              onClick: () => {
-                void undoNode(nodeId);
-              },
+      const { emptied, rows, firstRow, firstValue } = await castColumn(
+        nodeId,
+        column,
+        targetType,
+        format,
+      );
+      // Values that cannot be converted are left empty rather than refusing
+      // the change; say how many, and where the first one is (issue 183).
+      if (emptied && rows) {
+        const label = castTypeLabel(targetType);
+        const share = Math.max(1, Math.round((emptied / rows) * 100));
+        const title =
+          emptied === 1
+            ? `1 value in "${column}" could not be converted to ${label} and is now empty.`
+            : `${emptied.toLocaleString()} of ${rows.toLocaleString()} values in "${column}" (${String(share)}%) could not be converted to ${label} and are now empty.`;
+        // The page only matches the row while the table is not sorted.
+        const page = nodeTableRequest.sort_by
+          ? ''
+          : ` (page ${Math.ceil((firstRow ?? 1) / nodeTableRequest.page_size).toLocaleString()})`;
+        const where =
+          firstRow !== null
+            ? `The first is row ${firstRow.toLocaleString()}${page}${firstValue !== null ? `: "${firstValue}"` : ''}. `
+            : '';
+        toast.warning(title, {
+          description: `${where}Undo restores ${emptied === 1 ? 'it' : 'them'}.`,
+          duration: 15_000,
+          action: {
+            label: 'Undo',
+            onClick: () => {
+              void undoNode(nodeId);
             },
           },
-        );
+        });
       }
     },
-    [selectedNodeIdForCallbacks, castColumn, undoNode],
+    [
+      selectedNodeIdForCallbacks,
+      castColumn,
+      undoNode,
+      nodeTableRequest.page_size,
+      nodeTableRequest.sort_by,
+    ],
   );
 
   /** Renames a column on the active Data Block. */

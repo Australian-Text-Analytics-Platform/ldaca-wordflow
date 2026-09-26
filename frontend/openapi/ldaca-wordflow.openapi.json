@@ -18883,7 +18883,7 @@
     },
     "/api/workspaces/{workspace_id}/nodes/{node_id}/edits": {
       "post": {
-        "description": "Apply one identity-preserving Data Block Edit.\n\nA type change also reports the values it emptied in X-Wordflow-Emptied-Values\nand the block's rows in X-Wordflow-Total-Rows (issue 183).",
+        "description": "Apply one identity-preserving Data Block Edit.\n\nA type change also reports the values it could not convert and left empty\n(X-Wordflow-Emptied-Values), the block's rows (X-Wordflow-Total-Rows), and the\nfirst such value's 1-based row and URL-encoded original text\n(X-Wordflow-First-Emptied-Row, X-Wordflow-First-Emptied-Value; issue 183).",
         "operationId": "edit_node",
         "parameters": [
           {

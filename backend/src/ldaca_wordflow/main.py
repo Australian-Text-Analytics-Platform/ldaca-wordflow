@@ -386,6 +386,8 @@ def create_app(
             "X-Wordflow-Total-Rows",
             "X-Wordflow-Changed-Rows",
             "X-Wordflow-Emptied-Values",
+            "X-Wordflow-First-Emptied-Row",
+            "X-Wordflow-First-Emptied-Value",
         ],
     )
     app.add_middleware(cast(Any, PrivateApiCacheMiddleware))

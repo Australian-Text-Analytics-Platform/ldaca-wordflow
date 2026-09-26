@@ -1171,8 +1171,10 @@ export const updateNode = <ThrowOnError extends boolean = false>(options: Option
  *
  * Apply one identity-preserving Data Block Edit.
  *
- * A type change also reports the values it emptied in X-Wordflow-Emptied-Values
- * and the block's rows in X-Wordflow-Total-Rows (issue 183).
+ * A type change also reports the values it could not convert and left empty
+ * (X-Wordflow-Emptied-Values), the block's rows (X-Wordflow-Total-Rows), and the
+ * first such value's 1-based row and URL-encoded original text
+ * (X-Wordflow-First-Emptied-Row, X-Wordflow-First-Emptied-Value; issue 183).
  */
 export const editNode = <ThrowOnError extends boolean = false>(options: Options<EditNodeData, ThrowOnError>): RequestResult<EditNodeResponses, EditNodeErrors, ThrowOnError> => (options.client ?? client).post<EditNodeResponses, EditNodeErrors, ThrowOnError>({
     security: [{

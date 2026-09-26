@@ -1352,18 +1352,10 @@ def _temporal_literal(value: datetime, dtype: pl.DataType) -> pl.Expr:
     return pl.lit(value)
 
 
-def count_non_empty_values(lazyframe: pl.LazyFrame, column: str) -> tuple[int, int]:
-    """Rows in the block and values in ``column`` that are not empty.
+def empty_value_expression(column: pl.Expr, dtype: pl.DataType) -> pl.Expr:
+    """Public name for the Filter's "is empty" test, used by type-change reports."""
 
-    Used to tell users when a type change emptied values (issue 183).
-    """
-
-    dtype = lazyframe.collect_schema()[column]
-    counts = lazyframe.select(
-        pl.len().alias("rows"),
-        (~_empty_value_expression(pl.col(column), dtype)).sum().alias("present"),
-    ).collect()
-    return int(counts["rows"][0]), int(counts["present"][0] or 0)
+    return _empty_value_expression(column, dtype)
 
 
 def _propagated_document(parents: list[Node], lazyframe: pl.LazyFrame) -> str | None:
@@ -1373,7 +1365,7 @@ def _propagated_document(parents: list[Node], lazyframe: pl.LazyFrame) -> str | 
 
 
 __all__ = [
-    "count_non_empty_values",
+    "empty_value_expression",
     "build_derived_lazyframe",
     "build_derived_node",
     "build_edited_lazyframe",

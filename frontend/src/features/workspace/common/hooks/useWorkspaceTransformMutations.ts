@@ -128,6 +128,16 @@ export const useWorkspaceTransformMutations = ({
     return Number.isFinite(value) ? value : null;
   };
 
+  const headerText = (response: Response | undefined, name: string): string | null => {
+    const raw = response?.headers.get(name);
+    if (raw == null) return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return raw;
+    }
+  };
+
   const castEditBody = (
     column: string,
     targetType: ColumnCastType,
@@ -197,6 +207,8 @@ export const useWorkspaceTransformMutations = ({
         // How many values the change emptied, out of the block's rows (issue 183).
         emptied: headerCount(response, 'X-Wordflow-Emptied-Values'),
         rows: headerCount(response, 'X-Wordflow-Total-Rows'),
+        firstRow: headerCount(response, 'X-Wordflow-First-Emptied-Row'),
+        firstValue: headerText(response, 'X-Wordflow-First-Emptied-Value'),
       })),
     onSuccess: (_data, variables) => {
       invalidateEditedNode(variables.nodeId);

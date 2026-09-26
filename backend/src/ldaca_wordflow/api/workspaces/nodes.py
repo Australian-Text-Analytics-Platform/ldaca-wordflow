@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from urllib.parse import quote
 
 from fastapi import (
     APIRouter,
@@ -28,6 +29,8 @@ from ..responses import api_errors, route_path, workspace_etag
 from ...shared.table_transport import (
     CHANGED_ROWS_HEADER,
     EMPTIED_VALUES_HEADER,
+    FIRST_EMPTIED_ROW_HEADER,
+    FIRST_EMPTIED_VALUE_HEADER,
     TOTAL_ROWS_HEADER,
 )
 from ..table_responses import (
@@ -263,8 +266,10 @@ async def edit_node(
 ) -> WorkspaceNodeInfo:
     """Apply one identity-preserving Data Block Edit.
 
-    A type change also reports the values it emptied in X-Wordflow-Emptied-Values
-    and the block's rows in X-Wordflow-Total-Rows (issue 183).
+    A type change also reports the values it could not convert and left empty
+    (X-Wordflow-Emptied-Values), the block's rows (X-Wordflow-Total-Rows), and the
+    first such value's 1-based row and URL-encoded original text
+    (X-Wordflow-First-Emptied-Row, X-Wordflow-First-Emptied-Value; issue 183).
     """
 
     node, revision, report = await runtime.node_service.edit_with_report(
@@ -277,6 +282,11 @@ async def edit_node(
     if report is not None:
         response.headers[EMPTIED_VALUES_HEADER] = str(report.emptied)
         response.headers[TOTAL_ROWS_HEADER] = str(report.rows)
+        if report.first_row is not None:
+            response.headers[FIRST_EMPTIED_ROW_HEADER] = str(report.first_row)
+            response.headers[FIRST_EMPTIED_VALUE_HEADER] = quote(
+                (report.first_value or "")[:200], safe=""
+            )
     return node
 
 

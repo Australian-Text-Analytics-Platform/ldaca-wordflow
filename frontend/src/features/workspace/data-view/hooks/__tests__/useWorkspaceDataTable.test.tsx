@@ -214,11 +214,23 @@ describe('useWorkspaceDataTable', () => {
     expect(result.current.table.columnFields.description?.type.toString()).toBe('Utf8');
   });
 
-  it('warns after a type change that empties much of a column and offers Undo (issue 183)', async () => {
+  it('reports values a type change could not convert, with the first one, and offers Undo (issue 183)', async () => {
     const castColumn = vi
       .fn()
-      .mockResolvedValueOnce({ node: {}, emptied: 900, rows: 1_000 })
-      .mockResolvedValueOnce({ node: {}, emptied: 5, rows: 1_000 });
+      .mockResolvedValueOnce({
+        node: {},
+        emptied: 2,
+        rows: 10_000,
+        firstRow: 5_000,
+        firstValue: '5OO',
+      })
+      .mockResolvedValueOnce({
+        node: {},
+        emptied: 0,
+        rows: 10_000,
+        firstRow: null,
+        firstValue: null,
+      });
     const undoNode = vi.fn();
     useWorkspaceActionsMock.mockReturnValue({
       ...useWorkspaceActionsMock(),
@@ -232,17 +244,23 @@ describe('useWorkspaceDataTable', () => {
     });
 
     await act(async () => {
-      await result.current.table.onCast?.('year', 'integer');
+      await result.current.table.onCast?.('count', 'integer');
     });
     expect(toastWarningMock).toHaveBeenCalledTimes(1);
     const [message, options] = toastWarningMock.mock.calls[0]!;
-    expect(message).toBe('Converting "year" to integer left 900 of 1,000 values empty (90%).');
+    // Even a tiny share is reported: a few typos should not go unnoticed.
+    expect(message).toBe(
+      '2 of 10,000 values in "count" (1%) could not be converted to integer and are now empty.',
+    );
+    expect(options.description).toMatch(
+      /^The first is row 5,000 \(page \d+\): "5OO"\. Undo restores them\.$/,
+    );
     options.action.onClick();
     expect(undoNode).toHaveBeenCalledWith('node-b');
 
-    // A small share does not warn.
+    // Nothing emptied: no warning.
     await act(async () => {
-      await result.current.table.onCast?.('year', 'integer');
+      await result.current.table.onCast?.('count', 'integer');
     });
     expect(toastWarningMock).toHaveBeenCalledTimes(1);
   });
