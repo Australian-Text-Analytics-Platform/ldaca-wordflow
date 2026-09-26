@@ -1,14 +1,18 @@
 import { arrowTypeDisplayName, type ArrowColumn, type ArrowField } from '@/lib/arrow/arrowTable';
 
 export const DATA_TYPES = [
-  { value: 'string', label: 'string' },
+  { value: 'string', label: 'text' },
   { value: 'categorical', label: 'categorical' },
   { value: 'integer', label: 'integer' },
-  { value: 'float', label: 'float' },
+  { value: 'float', label: 'decimal' },
   { value: 'datetime', label: 'datetime' },
 ] as const;
 
 export type ColumnCastType = (typeof DATA_TYPES)[number]['value'];
+
+/** The user-facing name of a cast target, e.g. "decimal" for float (issue 178). */
+export const castTypeLabel = (value: ColumnCastType): string =>
+  DATA_TYPES.find((type) => type.value === value)?.label ?? value;
 
 export const isColumnCastType = (value: string): value is ColumnCastType =>
   DATA_TYPES.some((type) => type.value === value);

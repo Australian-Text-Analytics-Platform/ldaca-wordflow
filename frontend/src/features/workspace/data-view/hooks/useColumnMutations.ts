@@ -8,7 +8,7 @@ import {
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
 
-import { extractColumnFields } from '../services/schemaMutations';
+import { castTypeLabel, extractColumnFields } from '../services/schemaMutations';
 import {
   columnMutationReducer,
   createColumnMutationState,
@@ -123,7 +123,9 @@ export const useColumnMutations = ({
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        toast.error(`Failed to convert column "${column}" to ${targetType}: ${message}`);
+        toast.error(
+          `Failed to convert column "${column}" to ${castTypeLabel(targetType)}: ${message}`,
+        );
       } finally {
         dispatch({ type: 'castLoadingChanged', column, active: false });
       }

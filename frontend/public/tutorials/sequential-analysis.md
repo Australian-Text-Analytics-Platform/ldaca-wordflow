@@ -18,10 +18,10 @@ Use the data-block selector to pick the corpus you want to analyse. Only one dat
 
 <h3 id="help-sequential-time-column">Step 2 — Choose a time or numeric column</h3>
 
-The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, integer, or float value. Pick the column that represents the order or time axis you want to plot along.
+The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
 - **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.).
-- **Numeric columns** (integer or float) are bucketed by a fixed interval width you specify.
+- **Numeric columns** (integer or decimal) are bucketed by a fixed interval width you specify.
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
@@ -51,7 +51,7 @@ Select **Customised** to bucket by a fixed duration you define: enter a positive
 
 <h3 id="help-sequential-numeric">Step 3 — Set the numeric interval (numeric columns)</h3>
 
-When an integer or float column is selected, two fields appear:
+When an integer or decimal column is selected, two fields appear:
 
 **Numeric Origin** — the starting point of the first bucket. Leave blank to auto-detect from the minimum value in the data.
 

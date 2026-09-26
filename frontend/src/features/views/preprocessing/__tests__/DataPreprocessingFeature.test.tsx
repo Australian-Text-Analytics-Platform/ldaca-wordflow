@@ -289,7 +289,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     const filterPanel = await waitForFilterSchema();
     await user.click(within(filterPanel).getByRole('combobox', { name: 'Filter column' }));
 
-    expect(screen.getByText('Body (string)')).toBeInTheDocument();
+    expect(screen.getByText('Body (text)')).toBeInTheDocument();
     expect(screen.getByText('Count (integer)')).toBeInTheDocument();
     expect(screen.queryByText('Body (Utf8View)')).not.toBeInTheDocument();
     expect(screen.queryByText('Count (Int64)')).not.toBeInTheDocument();

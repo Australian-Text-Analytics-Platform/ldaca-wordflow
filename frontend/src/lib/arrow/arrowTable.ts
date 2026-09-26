@@ -11,11 +11,13 @@ import { parseApiErrorResponse } from '@/lib/apiError';
 
 const ARROW_STREAM_MEDIA_TYPE = 'application/vnd.apache.arrow.stream';
 const ARROW_EXTENSION_NAME = 'ARROW:extension:name';
+// Plain words for HASS users: "text" and "decimal", not "string" and
+// "float" (issue 178).
 const COMMON_ARROW_TYPE_DISPLAY_NAMES = new Map<string, string>([
-  ['Utf8View', 'string'],
+  ['Utf8View', 'text'],
   ['Dictionary<Uint32, Utf8View>', 'categorical'],
   ['Int64', 'integer'],
-  ['Float64', 'float'],
+  ['Float64', 'decimal'],
   ['Timestamp<MICROSECOND, UTC>', 'datetime'],
 ]);
 

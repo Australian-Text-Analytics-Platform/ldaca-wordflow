@@ -50,10 +50,10 @@ describe('Arrow table transport', () => {
     ];
 
     expect(fields.map((field) => arrowTypeDisplayName(field))).toEqual([
-      'string',
+      'text',
       'categorical',
       'integer',
-      'float',
+      'decimal',
       'datetime',
     ]);
     expect(fields.map((field) => arrowTypeName(field))).toEqual([

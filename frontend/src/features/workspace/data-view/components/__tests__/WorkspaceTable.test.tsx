@@ -66,7 +66,7 @@ describe('WorkspaceTable', () => {
 
     expect(
       screen.getByRole('button', { name: 'Change data type for column text' }),
-    ).toHaveTextContent('string');
+    ).toHaveTextContent('text');
     expect(
       screen.getByRole('button', { name: 'Change data type for column category' }),
     ).toHaveTextContent('categorical');
@@ -75,7 +75,7 @@ describe('WorkspaceTable', () => {
     ).toHaveTextContent('integer');
     expect(
       screen.getByRole('button', { name: 'Change data type for column score' }),
-    ).toHaveTextContent('float');
+    ).toHaveTextContent('decimal');
     expect(
       screen.getByRole('button', { name: 'Change data type for column created_at' }),
     ).toHaveTextContent('datetime');

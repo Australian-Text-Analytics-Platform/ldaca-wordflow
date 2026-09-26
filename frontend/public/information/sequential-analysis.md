@@ -14,13 +14,13 @@ Besides datetime data, the user can also choose to use any numeric data as the X
 - What do I need to know before using this?
 Your textual data should be consistently encoded (UTF8) and should not contain any xml tags. If necessary, you can use the Data Editor (Clean text, Remove HTML tags or Remove XML tags and markup) to remove any content within angle brackets.
 
-You need to make sure that the column that includes the date is correctly classified in the Data Loader (not as string, but as datetime, integer or float). You can auto-convert this in the Data Loader. For additional metadata (e.g. gender, age, political party) it is a good idea to have these metadata converted in the Data Loader as categorical.
+You need to make sure that the column that includes the date is correctly classified in the Data Loader (not as text, but as datetime, integer or decimal). You can auto-convert this in the Data Loader. For additional metadata (e.g. gender, age, political party) it is a good idea to have these metadata converted in the Data Loader as categorical.
 
 For visualising words on the timeline: You first have to create a Concordance,
 open Review in **Table View**, and use **Add to Project** to create a
 **Concordance Match Data Block Creation**. Include the date and any other metadata that
 you need. Then use that Data Block as the source for Trends and Sequence and add
-`CONC_matched_text` (string) as a Group By column. This shows how each exact
+`CONC_matched_text` (text) as a Group By column. This shows how each exact
 matched term occurs over time. A preprocessing step may be required if you want
 to eliminate case differences in the extracted data.
 

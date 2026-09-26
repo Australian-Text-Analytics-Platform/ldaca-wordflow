@@ -54,7 +54,7 @@ describe('SequentialAnalysisParameterPanel', () => {
     await user.click(screen.getByRole('combobox'));
 
     expect(screen.getByRole('option', { name: 'count (integer)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'score (float)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'score (decimal)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'legacy_text (Utf8)' })).toBeInTheDocument();
   });
 });
