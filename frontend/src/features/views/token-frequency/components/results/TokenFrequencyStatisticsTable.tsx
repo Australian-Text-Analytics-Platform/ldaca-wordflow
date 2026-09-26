@@ -72,14 +72,14 @@ const parseStatisticsNumericValue = (value: unknown): number => {
 /** Used by: TokenFrequencyStatisticsTable column cells to format compact statistic values. */
 const formatNumber = (
   value: unknown,
-  options: { decimals?: number; suffix?: string; multiplier?: number; fallback?: string } = {},
+  options: { decimals?: number; suffix?: string; fallback?: string } = {},
 ) => {
-  const { decimals = 2, suffix = '', multiplier = 1, fallback = 'N/A' } = options;
+  const { decimals = 2, suffix = '', fallback = 'N/A' } = options;
   if (value === '+Inf') return `+∞${suffix}`;
   if (value === '-Inf') return `-∞${suffix}`;
   const parsed = parseStatisticsNumericValue(value);
   if (!Number.isFinite(parsed)) return fallback;
-  return `${(parsed * multiplier).toFixed(decimals)}${suffix}`;
+  return `${parsed.toFixed(decimals)}${suffix}`;
 };
 
 /** Used by: TokenFrequencyStatisticsTable signed-LL column cell to show direction markers. */
@@ -239,7 +239,8 @@ const buildColumns = (
       header: '%DIFF',
       /** Used by: TanStack Table %DIFF column to render percent difference as a percentage value. */
       cell: (info) =>
-        formatNumber(info.row.original.percent_diff, { decimals: 2, suffix: '%', multiplier: 100 }),
+        // polars-text returns a percentage already (issue 197).
+        formatNumber(info.row.original.sort_percent_diff, { decimals: 2, suffix: '%' }),
     }),
     columnHelper.accessor('sort_bayes_factor_bic', {
       id: 'bayes_factor_bic',
@@ -322,7 +323,12 @@ const enhanceRows = (statistics: TokenFrequencyStatisticsEntry[]): EnhancedStati
       sort_freq_study: parseStatisticsNumericValue(stat.freq_study),
       sort_percent_study: parseStatisticsNumericValue(stat.percent_study),
       sort_log_likelihood_llv: parseStatisticsNumericValue(stat.log_likelihood_llv),
-      sort_percent_diff: parseStatisticsNumericValue(stat.percent_diff),
+      // No Reference hits leaves %DIFF undefined; polars-text divides by
+      // 1e-18 instead, so show N/A (issue 197).
+      sort_percent_diff:
+        parseStatisticsNumericValue(stat.freq_reference) === 0
+          ? NaN
+          : parseStatisticsNumericValue(stat.percent_diff),
       sort_bayes_factor_bic: parseStatisticsNumericValue(stat.bayes_factor_bic),
       sort_effect_size_ell: parseStatisticsNumericValue(stat.effect_size_ell),
       sort_relative_risk: parseStatisticsNumericValue(stat.relative_risk),

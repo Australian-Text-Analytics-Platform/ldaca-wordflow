@@ -810,6 +810,41 @@ describe('Token frequency result layouts', () => {
     expect(screen.getByRole('tooltip')).toHaveTextContent(explanation);
   });
 
+  it('shows %DIFF as a percentage and N/A without Reference hits (issue 197)', () => {
+    const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
+    const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
+
+    render(
+      <TokenFrequencyUnifiedTokenSection
+        {...baseUnifiedSectionProps}
+        normalizedNodeResults={[nodeA, nodeB]}
+        nodeDisplayResults={[nodeA, nodeB]}
+        lastCompareNodeIds={['node-a', 'node-b']}
+        statistics={[
+          buildStatistic({ token: 'shared-token', percent_diff: -32.399 }),
+          buildStatistic({
+            token: 'study-only-token',
+            freq_reference: 0,
+            percent_reference: 0,
+            percent_diff: 2.8197e16,
+          }),
+        ]}
+        getColorForNode={() => '#2563eb'}
+        view="list"
+      />,
+    );
+
+    const statisticsCard = within(
+      screen.getByRole('region', { name: 'Keyword Analysis statistics' }),
+    );
+    expect(
+      within(statisticsCard.getByRole('row', { name: /shared-token/ })).getByText('-32.40%'),
+    ).toBeInTheDocument();
+    const studyOnly = within(statisticsCard.getByRole('row', { name: /study-only-token/ }));
+    expect(studyOnly.getAllByText('N/A').length).toBeGreaterThan(0);
+    expect(studyOnly.queryByText(/2819/)).not.toBeInTheDocument();
+  });
+
   it('labels frequency direction by relative frequency, not raw counts (issue 168)', () => {
     const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
     const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
