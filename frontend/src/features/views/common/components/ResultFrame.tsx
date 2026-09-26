@@ -5,9 +5,8 @@ import { cn } from '@/lib/utils';
 import { useResultsFill } from './analysisResultsFill';
 
 const STORAGE_PREFIX = 'ldaca.layout.resultHeight.';
-const SAVE_DELAY_MS = 250;
-/** Double-clicks this close to the bottom-right corner reset the size. */
-const CORNER_HIT_PX = 18;
+const KEYBOARD_STEP = 40;
+const MAX_HEIGHT = 2400;
 
 /** Reads a remembered result height; storage failures fall back to filling. */
 const readStoredHeight = (key: string): number | null => {
@@ -69,9 +68,10 @@ export interface ResultFrameProps {
  * One main result (table, list, chart, or word cloud) in an analysis tool
  * (issue 196).
  * Flow: by default the frame fills the results pane's spare height, shared
- * with the tool's other results. The bottom-right grip, like the Stop words
- * box, sets its own size, which is remembered per `storageKey` and takes it
- * out of the sharing; double-clicking the grip returns it to filling.
+ * with the tool's other results. The bottom-right grip (drag, or arrow keys
+ * when focused) sets its own size, which is remembered per `storageKey` and
+ * takes it out of the sharing; double-clicking the grip returns it to
+ * filling. The grip sits above the content so charts cannot cover it.
  */
 export function ResultFrame({
   storageKey,
@@ -87,77 +87,115 @@ export function ResultFrame({
   const [storedHeight, setStoredHeight] = useState<number | null>(() =>
     readStoredHeight(storageKey),
   );
+  const [drag, setDrag] = useState<{
+    pointerId: number;
+    startY: number;
+    startHeight: number;
+    height: number;
+  } | null>(null);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+  const userHeight = drag?.height ?? storedHeight;
   const fillHeight = useResultsFill(frame, {
     min: minHeight,
-    enabled: fill && storedHeight === null,
+    enabled: fill && userHeight === null,
     cap: fitContent && frame ? () => naturalFrameHeight(frame) : undefined,
   });
   const cssHeight =
-    storedHeight !== null
-      ? `${String(storedHeight)}px`
+    userHeight !== null
+      ? `${String(userHeight)}px`
       : fillHeight !== null
         ? `${String(fillHeight)}px`
         : toCssHeight(defaultHeight);
-  const cssHeightRef = useRef(cssHeight);
-  const frameRef = useRef<HTMLDivElement | null>(null);
-  useLayoutEffect(() => {
-    cssHeightRef.current = cssHeight;
-  }, [cssHeight]);
 
   useEffect(() => {
     if (!frame || typeof ResizeObserver === 'undefined') return;
-    let saveTimer: number | undefined;
     const observer = new ResizeObserver(() => {
-      const height = Math.round(frame.getBoundingClientRect().height);
-      setMeasuredHeight(height);
-      // The browser writes a dragged size as an inline height; any value other
-      // than the one React rendered is the user's resize.
-      const inline = frame.style.height;
-      if (inline && inline !== (cssHeightRef.current ?? '')) {
-        window.clearTimeout(saveTimer);
-        saveTimer = window.setTimeout(() => {
-          setStoredHeight(height);
-          writeStoredHeight(storageKey, height);
-        }, SAVE_DELAY_MS);
-      }
+      setMeasuredHeight(Math.round(frame.getBoundingClientRect().height));
     });
     observer.observe(frame);
     return () => {
       observer.disconnect();
-      window.clearTimeout(saveTimer);
     };
-  }, [frame, storageKey]);
+  }, [frame]);
+
+  const clamp = (height: number) => Math.round(Math.min(MAX_HEIGHT, Math.max(minHeight, height)));
+  const commit = (height: number | null) => {
+    setStoredHeight(height);
+    writeStoredHeight(storageKey, height);
+  };
+  const currentHeight = () =>
+    userHeight ?? (frame ? frame.getBoundingClientRect().height : minHeight);
 
   return (
     <div
-      ref={(element) => {
-        frameRef.current = element;
-        setFrame(element);
-      }}
+      ref={setFrame}
       data-testid={testId}
-      data-result-size={storedHeight !== null ? 'user' : fillHeight !== null ? 'fill' : 'default'}
-      title="Drag the bottom-right corner to resize. Double-click it to fit the space again."
-      className={cn('relative w-full resize-y overflow-hidden', className)}
+      data-result-size={userHeight !== null ? 'user' : fillHeight !== null ? 'fill' : 'default'}
+      className={cn('relative w-full overflow-hidden', className)}
       style={{ height: cssHeight, minHeight }}
-      onDoubleClick={(event) => {
-        const frame = frameRef.current;
-        if (!frame || storedHeight === null) return;
-        const rect = frame.getBoundingClientRect();
-        if (
-          rect.right - event.clientX > CORNER_HIT_PX ||
-          rect.bottom - event.clientY > CORNER_HIT_PX
-        )
-          return;
-        setStoredHeight(null);
-        writeStoredHeight(storageKey, null);
-        // Clear the browser's inline size so filling takes over again.
-        frame.style.height = toCssHeight(defaultHeight) ?? '';
-      }}
     >
       {typeof children === 'function'
         ? children(cssHeight !== undefined ? measuredHeight : null)
         : children}
+      {/* Our own grip, drawn above the content: charts and canvases cover
+          the browser's native resize corner and take its pointer events. */}
+      <div
+        role="separator"
+        aria-orientation="horizontal"
+        aria-label="Resize this result"
+        aria-valuenow={userHeight ?? undefined}
+        aria-valuemin={minHeight}
+        tabIndex={0}
+        title="Drag to resize. Double-click to fit the space again."
+        data-testid="result-frame-grip"
+        className="nodrag nopan nowheel absolute right-0 bottom-0 z-30 flex size-4 cursor-ns-resize touch-none items-end justify-end rounded-tl-sm text-description/70 hover:text-foreground focus-visible:outline-1 focus-visible:outline-focus"
+        onPointerDown={(event) => {
+          if (event.button !== 0) return;
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof event.currentTarget.setPointerCapture === 'function') {
+            event.currentTarget.setPointerCapture(event.pointerId);
+          }
+          const startHeight = clamp(currentHeight());
+          setDrag({
+            pointerId: event.pointerId,
+            startY: event.clientY,
+            startHeight,
+            height: startHeight,
+          });
+        }}
+        onPointerMove={(event) => {
+          if (drag?.pointerId !== event.pointerId) return;
+          const next = clamp(drag.startHeight + event.clientY - drag.startY);
+          if (next !== drag.height) setDrag({ ...drag, height: next });
+        }}
+        onPointerUp={(event) => {
+          if (drag?.pointerId !== event.pointerId) return;
+          if (typeof event.currentTarget.releasePointerCapture === 'function') {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+          }
+          if (drag.height !== drag.startHeight) commit(drag.height);
+          setDrag(null);
+        }}
+        onPointerCancel={() => {
+          setDrag(null);
+        }}
+        onDoubleClick={(event) => {
+          event.stopPropagation();
+          commit(null);
+        }}
+        onKeyDown={(event) => {
+          if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+          event.preventDefault();
+          commit(
+            clamp(currentHeight() + (event.key === 'ArrowUp' ? -KEYBOARD_STEP : KEYBOARD_STEP)),
+          );
+        }}
+      >
+        <svg viewBox="0 0 10 10" className="m-0.5 size-2.5" aria-hidden="true">
+          <path d="M9 3 3 9M9 6 6 9" stroke="currentColor" strokeWidth="1.2" fill="none" />
+        </svg>
+      </div>
     </div>
   );
 }

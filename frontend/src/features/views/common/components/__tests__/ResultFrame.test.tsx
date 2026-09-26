@@ -20,7 +20,10 @@ describe('ResultFrame', () => {
     const frame = screen.getByTestId('result-frame');
     expect(frame.style.height).toBe('300px');
     expect(frame).toHaveAttribute('data-result-size', 'default');
-    expect(frame).toHaveClass('resize-y', 'overflow-hidden');
+    expect(screen.getByTestId('result-frame-grip')).toHaveAttribute(
+      'aria-label',
+      'Resize this result',
+    );
   });
 
   it('keeps the natural height without a default and tells the child so', () => {
@@ -51,7 +54,27 @@ describe('ResultFrame', () => {
     expect(frame).toHaveAttribute('data-result-size', 'user');
   });
 
-  it('double-clicking the corner forgets the user size', () => {
+  it('drags the grip to a remembered size and nudges it with the arrow keys', () => {
+    render(
+      <ResultFrame storageKey="test.chart" defaultHeight={300}>
+        <div>chart</div>
+      </ResultFrame>,
+    );
+    const grip = screen.getByTestId('result-frame-grip');
+    // jsdom measures 0, so the drag starts from the 160 px minimum.
+    fireEvent.pointerDown(grip, { button: 0, clientY: 100, pointerId: 1 });
+    fireEvent.pointerMove(grip, { clientY: 250, pointerId: 1 });
+    fireEvent.pointerUp(grip, { clientY: 250, pointerId: 1 });
+    const frame = screen.getByTestId('result-frame');
+    expect(frame.style.height).toBe('310px');
+    expect(frame).toHaveAttribute('data-result-size', 'user');
+    expect(window.localStorage.getItem(KEY)).toBe('310');
+
+    fireEvent.keyDown(grip, { key: 'ArrowUp' });
+    expect(frame.style.height).toBe('270px');
+  });
+
+  it('double-clicking the grip forgets the user size', () => {
     window.localStorage.setItem(KEY, '420');
     render(
       <ResultFrame storageKey="test.chart" defaultHeight={300}>
@@ -59,8 +82,7 @@ describe('ResultFrame', () => {
       </ResultFrame>,
     );
     const frame = screen.getByTestId('result-frame');
-    // jsdom rects are all zero, so any point counts as the corner.
-    fireEvent.doubleClick(frame, { clientX: 0, clientY: 0 });
+    fireEvent.doubleClick(screen.getByTestId('result-frame-grip'));
     expect(frame.style.height).toBe('300px');
     expect(frame).toHaveAttribute('data-result-size', 'default');
     expect(window.localStorage.getItem(KEY)).toBeNull();

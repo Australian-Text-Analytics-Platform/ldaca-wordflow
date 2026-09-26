@@ -36,7 +36,7 @@ describe('AnnotationTableFrame', () => {
   it('offers a corner resize grip instead of the old bottom handle (issue 196)', () => {
     renderFrame();
 
-    expect(screen.getByTestId('result-frame')).toHaveClass('resize-y', 'overflow-hidden');
+    expect(screen.getByTestId('result-frame-grip')).toHaveAttribute('role', 'separator');
     expect(screen.queryByTestId('annotation-table-resize-handle')).not.toBeInTheDocument();
   });
 });
