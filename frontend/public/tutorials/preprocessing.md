@@ -140,17 +140,17 @@ Choose which column to match in each data block. The app pre-populates the most 
 
 <h3 id="help-preprocessing-join-type">Join type</h3>
 
-Join type controls how unmatched rows are handled:
+Join type controls how unmatched rows are handled. The first data block you add is the left block, and the second is the right block. The explanation of the chosen type appears beside the selector.
 
 | Type | Keeps |
 |---|---|
-| Inner | Only rows with a match in both blocks |
-| Left | All rows from the left block; matched rows from the right |
-| Right | All rows from the right block; matched rows from the left |
-| Full | All rows from both blocks; unmatched values become nulls |
-| Semi | Left-block rows that have at least one match in the right |
-| Anti | Left-block rows with no match in the right |
-| Cross | Cartesian product of both blocks (can be very large) |
+| Inner | Only rows that match in both blocks |
+| Left | Every row of the left block, with matching values from the right; rows without a match get empty cells |
+| Right | Every row of the right block, with matching values from the left; rows without a match get empty cells |
+| Full | Every row of both blocks, matched where possible; missing values are left empty |
+| Semi | Left rows that have a match in the right, without adding any right columns |
+| Anti | Left rows with no match in the right |
+| Cross | Every left row paired with every right row, ignoring the join columns (can be very large) |
 
 <h3 id="help-preprocessing-join-node-name">Join output name</h3>
 

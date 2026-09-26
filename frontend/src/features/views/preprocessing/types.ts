@@ -122,24 +122,46 @@ export const PREVIEW_PAGE_SIZE_OPTIONS = [10, 20, 50];
 export const MAX_CONCAT_NODES = 6;
 export const MAX_JOIN_NODES = 2;
 
-export const JOIN_TYPE_OPTIONS: { value: JoinType; description: string }[] = [
-  { value: 'inner', description: 'Only rows with matching keys in both data blocks.' },
+/** Join types with plain-language explanations shown beside the selector (issue 179). */
+export const JOIN_TYPE_OPTIONS: { value: JoinType; label: string; description: string }[] = [
+  {
+    value: 'inner',
+    label: 'Inner',
+    description: 'Keeps only rows that match in both data blocks.',
+  },
   {
     value: 'left',
-    description: 'All rows from the left data block plus matching rows from the right.',
+    label: 'Left',
+    description:
+      'Keeps every row of the left data block and adds matching values from the right; rows without a match get empty cells.',
   },
   {
     value: 'right',
-    description: 'All rows from the right data block plus matching rows from the left.',
+    label: 'Right',
+    description:
+      'Keeps every row of the right data block and adds matching values from the left; rows without a match get empty cells.',
   },
-  { value: 'full', description: 'All rows from both data blocks; missing matches become nulls.' },
+  {
+    value: 'full',
+    label: 'Full',
+    description:
+      'Keeps every row of both data blocks, matched where possible; missing values are left empty.',
+  },
   {
     value: 'semi',
-    description: 'Rows from the left data block that have at least one match in the right.',
+    label: 'Semi',
+    description:
+      'Keeps the left rows that have a match in the right, without adding any right columns.',
   },
   {
     value: 'anti',
-    description: 'Rows from the left data block that do not match anything in the right.',
+    label: 'Anti',
+    description: 'Keeps the left rows that have no match in the right.',
   },
-  { value: 'cross', description: 'Cartesian product of all rows; ignores column selections.' },
+  {
+    value: 'cross',
+    label: 'Cross',
+    description:
+      'Pairs every left row with every right row, ignoring the join columns; the result can be very large.',
+  },
 ];

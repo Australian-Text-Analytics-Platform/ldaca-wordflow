@@ -66,30 +66,39 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
         <CardContent className="space-y-4 pt-0">
           {renderNodeInputsPanel?.()}
 
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor="join-type">Join type</Label>
-                <HelpIcon targetKey="preprocessing.join.join-type" label="Join type selector" />
-              </div>
-              <Select
-                value={joinType}
-                onValueChange={(value) => {
-                  setJoinType(value as JoinType);
-                }}
-              >
-                <SelectTrigger id="join-type">
-                  <SelectValue placeholder="Select join type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {JOIN_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* One row: label, selector, and what the chosen type keeps (issue 179). */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <div className="flex shrink-0 items-center gap-2">
+              <Label htmlFor="join-type">Join type</Label>
+              <HelpIcon targetKey="preprocessing.join.join-type" label="Join type selector" />
             </div>
+            <Select
+              value={joinType}
+              onValueChange={(value) => {
+                setJoinType(value as JoinType);
+              }}
+            >
+              <SelectTrigger
+                id="join-type"
+                className="w-32 shrink-0"
+                aria-describedby="join-type-description"
+              >
+                <SelectValue placeholder="Select join type" />
+              </SelectTrigger>
+              <SelectContent>
+                {JOIN_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p
+              id="join-type-description"
+              className="min-w-48 flex-1 text-label-secondary text-description"
+            >
+              {JOIN_TYPE_OPTIONS.find((option) => option.value === joinType)?.description}
+            </p>
           </div>
         </CardContent>
         <CardFooter className="flex items-center gap-3 border-t pt-4">
