@@ -1,3 +1,4 @@
+import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
 import React from 'react';
 
 import { MultiSeriesChart } from '@/features/views/common/components/MultiSeriesChart';
@@ -72,27 +73,37 @@ export function SequentialChart({
           the filter to show groups.
         </div>
       ) : (
-        <MultiSeriesChart
-          data={model.axisData}
-          xKey={model.xKey}
-          series={model.series}
-          chartType={model.chartType}
-          xAxis={model.xAxis}
-          height={CHART_HEIGHT_PX}
-          tooltip={{
-            labelFormatter: model.tooltip.labelFormatter,
-          }}
-          selection={{
-            selectedIndices: model.selection.selectedIndices,
-            onSelect: onPeriodClick,
-            onSelectRange: onPeriodRangeSelect,
-          }}
-          ariaLabel="Trends and Sequence chart"
-          dataResetKey={`${dataResetKey}:${model.chartData
-            .map((row) => (typeof row.__period_key__ === 'string' ? row.__period_key__ : ''))
-            .join('|')}`}
-          toolbarStart={toolbarStart}
-        />
+        <ResultFrame storageKey="trends.chart" minHeight={240}>
+          {(frameHeight) => (
+            <ResultChartFit frameHeight={frameHeight} fallbackHeight={CHART_HEIGHT_PX}>
+              {(chartHeight) => (
+                <MultiSeriesChart
+                  data={model.axisData}
+                  xKey={model.xKey}
+                  series={model.series}
+                  chartType={model.chartType}
+                  xAxis={model.xAxis}
+                  height={chartHeight}
+                  tooltip={{
+                    labelFormatter: model.tooltip.labelFormatter,
+                  }}
+                  selection={{
+                    selectedIndices: model.selection.selectedIndices,
+                    onSelect: onPeriodClick,
+                    onSelectRange: onPeriodRangeSelect,
+                  }}
+                  ariaLabel="Trends and Sequence chart"
+                  dataResetKey={`${dataResetKey}:${model.chartData
+                    .map((row) =>
+                      typeof row.__period_key__ === 'string' ? row.__period_key__ : '',
+                    )
+                    .join('|')}`}
+                  toolbarStart={toolbarStart}
+                />
+              )}
+            </ResultChartFit>
+          )}
+        </ResultFrame>
       )}
       <div className="mt-4">
         <FilterableSeriesControls

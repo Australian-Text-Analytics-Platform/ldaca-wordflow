@@ -211,6 +211,7 @@ function CombinedConcordanceTable({
           />
           <CardContent className="bg-panel/20 p-3">
             <AnalysisTableFrame
+              resultKey="concordance.table"
               maxHeightClass="max-h-100"
               belowTable={combinedBelowTable}
               viewportRef={viewportRef}
@@ -398,6 +399,7 @@ function PerNodeConcordanceTable({
           />
           <CardContent className="bg-panel/20 p-3">
             <AnalysisTableFrame
+              resultKey="concordance.table"
               maxHeightClass="max-h-100"
               belowTable={belowTable}
               viewportRef={viewportRef}

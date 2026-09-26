@@ -168,10 +168,6 @@ export function useAnnotationTabSettings({
     [commitSettings],
   );
 
-  const setAnnotationTableHeight = (annotationTableHeight: number | null) => {
-    commitSettings({ annotationTableHeight });
-  };
-
   const uniqueRoleColumns = useCallback(
     (nodeId: string, columns: string[]) =>
       Array.from(new Set(columns)).filter((column) => column !== excludedRoleColumns[nodeId]),
@@ -238,6 +234,5 @@ export function useAnnotationTabSettings({
     setAnnotationComparisonColumns,
     setAnnotationReliabilityMetric,
     setAnnotationMetadataColumns,
-    setAnnotationTableHeight,
   };
 }

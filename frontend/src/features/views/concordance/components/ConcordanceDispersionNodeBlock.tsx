@@ -284,6 +284,7 @@ export function ConcordanceDispersionNodeBlock({
             />
             <CardContent className="space-y-4 bg-panel/20 p-3">
               <AnalysisTableFrame
+                resultKey="concordance.dispersion-table"
                 maxHeightClass="max-h-100"
                 belowTable={combinedBelowTable}
                 viewportRef={viewportRef}
@@ -449,6 +450,7 @@ export function ConcordanceDispersionNodeBlock({
           />
           <CardContent className="space-y-4 bg-panel/20 p-3">
             <AnalysisTableFrame
+              resultKey="concordance.dispersion-table"
               maxHeightClass="max-h-100"
               belowTable={belowTable}
               viewportRef={viewportRef}

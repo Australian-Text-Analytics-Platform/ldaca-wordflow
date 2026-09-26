@@ -1,3 +1,4 @@
+import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import React, { useRef, useState } from 'react';
 import type { TopicModelingTopic } from '@/api';
 import JSZip from 'jszip';
@@ -186,10 +187,12 @@ export function TopicModelingBubbleChartSection({
   return (
     <>
       <div ref={chartRef} className="relative w-full" style={{ containerType: 'inline-size' }}>
-        <div
-          className="overflow-hidden rounded-lg border border-surface-border-foreground/30 bg-editor"
-          data-testid="topic-bubble-chart-shell"
-          style={{ height: 'clamp(320px, 55cqw, 520px)' }}
+        <ResultFrame
+          storageKey="topic-modeling.bubbles"
+          defaultHeight="clamp(320px, 55cqw, 520px)"
+          minHeight={240}
+          className="rounded-lg border border-surface-border-foreground/30 bg-editor"
+          testId="topic-bubble-chart-shell"
         >
           <TopicModelingFlowChart
             bubbles={bubbles}
@@ -220,7 +223,7 @@ export function TopicModelingBubbleChartSection({
             onViewReady={onViewReady}
             onToggleTopicSelection={onToggleTopicSelection}
           />
-        </div>
+        </ResultFrame>
       </div>
 
       {activeColorScheme ? <TopicColorLegend scheme={activeColorScheme} /> : null}

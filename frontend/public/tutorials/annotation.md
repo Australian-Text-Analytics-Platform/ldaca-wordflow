@@ -54,10 +54,11 @@ count as differences, never contribute to reliability, and match **Empty**
 rather than **Has value**. Matching is exact after trimming spaces; `Promise`
 is not `promise`. Without a Codebook only the blank rule applies.
 
-Drag the handle under the table to make it taller, up to three quarters of the
-window; double-click the handle to reset. The height is shared by Manual,
-Preview, and Review in the same tab, and the table scrolls inside its frame
-when a page does not fit.
+The table fills the space below the parameters, so dragging the bar between
+the parameters and the results shows more or fewer rows. To set the table's own
+height, drag its bottom-right corner; double-click the corner to let it fill the
+space again. The height is shared by Manual, Preview, and Review, and the table
+scrolls inside its frame when a page does not fit.
 
 **Compare To** and **Show metadata** are exclusive roles: a selected column is
 disabled in the other menu, and **Select all** skips disabled columns. The

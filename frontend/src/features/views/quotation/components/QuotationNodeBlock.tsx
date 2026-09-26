@@ -200,6 +200,7 @@ function QuotationNodeBlockContent({
       </p>
 
       <AnalysisTableFrame
+        resultKey="quotation.table"
         maxHeightClass="max-h-[70vh]"
         contentClassName="min-w-max h-full"
         viewportRef={viewportRef}

@@ -67,8 +67,6 @@ interface AnnotationAiPreviewPanelProps {
     onColumnsChange: (columns: string[]) => void;
   };
   /** Shared per-tab result-table height; null keeps the default. */
-  tableHeight: number | null;
-  onTableHeightChange: (height: number | null) => void;
   correction: {
     nodeId: string;
     column: string | null;
@@ -98,8 +96,6 @@ export function AnnotationAiPreviewPanel({
   sourceColor,
   comparison,
   metadata,
-  tableHeight,
-  onTableHeightChange,
   correction,
 }: AnnotationAiPreviewPanelProps) {
   const { page, predictions, columns } = preview;
@@ -307,8 +303,6 @@ export function AnnotationAiPreviewPanel({
         </div>
       </div>
       <AnnotationTableFrame
-        height={tableHeight}
-        onHeightChange={onTableHeightChange}
         contentClassName="min-w-full"
         belowTable={
           <>

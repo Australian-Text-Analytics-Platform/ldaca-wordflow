@@ -1,3 +1,4 @@
+import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import { Download } from 'lucide-react';
 import { memo, useMemo } from 'react';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -298,17 +299,26 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
                 </TooltipProvider>
 
                 <div className="flex w-full justify-center">
-                  <ResponsiveWordCloud
-                    words={words}
-                    minWidth={UNIFIED_CLOUD_MIN_WIDTH}
+                  <ResultFrame
+                    storageKey="token-frequency.unified-cloud"
+                    fill={false}
                     minHeight={UNIFIED_CLOUD_MIN_HEIGHT}
-                    aspectRatio={UNIFIED_CLOUD_ASPECT_RATIO}
-                    svgRef={(element) => {
-                      registerWordCloudRef('unified', element);
-                    }}
-                    onWordClick={onTokenClick}
-                    onWordContextMenu={onTokenRightClick}
-                  />
+                  >
+                    {(height) => (
+                      <ResponsiveWordCloud
+                        words={words}
+                        minWidth={UNIFIED_CLOUD_MIN_WIDTH}
+                        minHeight={UNIFIED_CLOUD_MIN_HEIGHT}
+                        aspectRatio={UNIFIED_CLOUD_ASPECT_RATIO}
+                        height={height ?? undefined}
+                        svgRef={(element) => {
+                          registerWordCloudRef('unified', element);
+                        }}
+                        onWordClick={onTokenClick}
+                        onWordContextMenu={onTokenRightClick}
+                      />
+                    )}
+                  </ResultFrame>
                 </div>
               </div>
             ) : (

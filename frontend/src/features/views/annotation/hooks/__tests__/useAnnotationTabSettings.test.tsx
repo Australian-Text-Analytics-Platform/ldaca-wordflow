@@ -48,13 +48,11 @@ describe('useAnnotationTabSettings', () => {
           annotationMetadataColumns: {
             'source-node': ['username', 'reviewer_two', 'created_at'],
           },
-          annotationTableHeight: 520.4,
         }),
       }),
     );
 
     expect(result.current.annotationMode).toBe('ai');
-    expect(result.current.annotationTableHeight).toBe(520);
     expect(result.current.aiProviderConfigurationId).toBe('8a342ceb-1ed6-433a-bc3f-75b6fd5dba38');
     expect(result.current.aiProviderType).toBe('openai');
     expect(result.current.aiProviderModels).toEqual({
@@ -116,7 +114,6 @@ describe('useAnnotationTabSettings', () => {
       ]);
       result.current.setAnnotationReliabilityMetric('source-node', 'percent_agreement');
       result.current.setAnnotationMetadataColumns('source-node', ['username', 'created_at']);
-      result.current.setAnnotationTableHeight(600);
     });
 
     expect(
@@ -143,19 +140,25 @@ describe('useAnnotationTabSettings', () => {
       annotationComparisonColumns: { 'source-node': ['reviewer_one', 'reviewer_two'] },
       annotationReliabilityMetrics: { 'source-node': 'percent_agreement' },
       annotationMetadataColumns: { 'source-node': ['username', 'created_at'] },
-      annotationTableHeight: 600,
     });
   });
 
-  it('drops a table height below the shared floor', () => {
+  it('ignores a table height saved by earlier versions (issue 196)', () => {
     const { result } = renderHook(() =>
       useAnnotationTabSettings({
         onTabSettingChange: vi.fn(),
-        tabSettings: storedSettings({ annotationTableHeight: 120 }),
+        tabSettings: {
+          [ANNOTATION_TAB_SETTINGS_KEY]: JSON.stringify({
+            ...DEFAULT_ANNOTATION_TAB_SETTINGS,
+            annotationMode: 'ai',
+            annotationTableHeight: 520,
+          }),
+        },
       }),
     );
 
-    expect(result.current.annotationTableHeight).toBeNull();
+    expect(result.current).not.toHaveProperty('annotationTableHeight');
+    expect(result.current.annotationMode).toBe('ai');
   });
 
   it('gives Compare To precedence when saved settings overlap', () => {

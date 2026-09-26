@@ -1,3 +1,4 @@
+import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
 import { useId, useMemo, useRef, useState } from 'react';
 import { Check, ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { toast } from 'sonner';
@@ -598,18 +599,26 @@ export function ConcordanceDispersionSummary({
             </div>
           </CardHeader>
           <CardContent ref={chartContainerRef} className="pb-2">
-            <EChartsView
-              option={chartOption}
-              height={CHART_HEIGHT}
-              pointCount={chartData.length}
-              dataResetKey={dataResetKey}
-              ariaLabel={`${chartTitle}. ${titleText}`}
-              selectedIndices={selection?.selectedIndices}
-              onSelect={selection?.onSelect}
-              onSelectRange={selection?.onSelectRange}
-              getPointSummary={getPointSummary}
-              testId="concordance-echarts"
-            />
+            <ResultFrame storageKey="concordance.dispersion-chart" minHeight={180}>
+              {(frameHeight) => (
+                <ResultChartFit frameHeight={frameHeight} fallbackHeight={CHART_HEIGHT}>
+                  {(chartHeight) => (
+                    <EChartsView
+                      option={chartOption}
+                      height={chartHeight}
+                      pointCount={chartData.length}
+                      dataResetKey={dataResetKey}
+                      ariaLabel={`${chartTitle}. ${titleText}`}
+                      selectedIndices={selection?.selectedIndices}
+                      onSelect={selection?.onSelect}
+                      onSelectRange={selection?.onSelectRange}
+                      getPointSummary={getPointSummary}
+                      testId="concordance-echarts"
+                    />
+                  )}
+                </ResultChartFit>
+              )}
+            </ResultFrame>
           </CardContent>
           <ChartImageDownloadDialog
             open={downloadDialogOpen}

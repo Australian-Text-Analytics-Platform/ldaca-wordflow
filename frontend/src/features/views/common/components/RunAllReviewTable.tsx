@@ -70,8 +70,6 @@ interface RunAllReviewTableProps {
   metadataColumns: string[];
   onMetadataColumnsChange: (columns: string[]) => void;
   /** Shared per-tab result-table height; null keeps the default. */
-  tableHeight: number | null;
-  onTableHeightChange: (height: number | null) => void;
   correction: {
     column: string | null;
     classOptions: string[];
@@ -107,8 +105,6 @@ export function RunAllReviewTable({
   onReliabilityMetricChange,
   metadataColumns,
   onMetadataColumnsChange,
-  tableHeight,
-  onTableHeightChange,
   correction,
   rowCount,
 }: RunAllReviewTableProps) {
@@ -332,8 +328,6 @@ export function RunAllReviewTable({
         <p className="text-body text-description">Loading Review...</p>
       ) : (
         <AnnotationTableFrame
-          height={tableHeight}
-          onHeightChange={onTableHeightChange}
           belowTable={
             <ServerPaginationFooter
               table={table}

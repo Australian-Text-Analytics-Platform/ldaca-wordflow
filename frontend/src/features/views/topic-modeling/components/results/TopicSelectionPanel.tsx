@@ -1,3 +1,5 @@
+import { cn } from '@/lib/utils';
+import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
 import { Search, X } from 'lucide-react';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
@@ -72,43 +74,52 @@ export function TopicSelectionPanel({
             Click topics in the chart or list to prioritize them in the chart export.
           </p>
         ) : (
-          <div className="max-h-80 space-y-1 overflow-y-auto">
-            {selectedTopics.map((topic) => {
-              const isHovered = hoveredTopicId === topic.id;
-              return (
-                <div
-                  key={topic.id}
-                  className={`flex items-center justify-between rounded-lg border border-surface-border p-2 transition-colors ${isHovered ? 'bg-list-hover' : 'bg-panel/50'}`}
-                  onMouseEnter={() => {
-                    onHoveredTopicChange(topic.id);
-                  }}
-                  onMouseLeave={() => {
-                    onHoveredTopicChange(null);
-                  }}
-                >
-                  <div className="min-w-0 flex-1">
-                    <span className="text-body font-medium text-foreground">Topic {topic.id}</span>
+          <ResultFrame storageKey="topic-modeling.selected-topics" fitContent minHeight={120}>
+            {(height) => (
+              <div
+                data-result-frame-scroll
+                className={cn('space-y-1 overflow-y-auto', height !== null ? 'h-full' : 'max-h-80')}
+              >
+                {selectedTopics.map((topic) => {
+                  const isHovered = hoveredTopicId === topic.id;
+                  return (
                     <div
-                      className="truncate text-label-secondary text-description"
-                      title={topicRepresentativeText(topic)}
+                      key={topic.id}
+                      className={`flex items-center justify-between rounded-lg border border-surface-border p-2 transition-colors ${isHovered ? 'bg-list-hover' : 'bg-panel/50'}`}
+                      onMouseEnter={() => {
+                        onHoveredTopicChange(topic.id);
+                      }}
+                      onMouseLeave={() => {
+                        onHoveredTopicChange(null);
+                      }}
                     >
-                      {topicRepresentativeText(topic)}
+                      <div className="min-w-0 flex-1">
+                        <span className="text-body font-medium text-foreground">
+                          Topic {topic.id}
+                        </span>
+                        <div
+                          className="truncate text-label-secondary text-description"
+                          title={topicRepresentativeText(topic)}
+                        >
+                          {topicRepresentativeText(topic)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="ml-2 shrink-0 rounded-sm p-0.5 text-description hover:bg-error/10 hover:text-error"
+                        onClick={() => {
+                          onToggleTopicSelection(topic.id);
+                        }}
+                        aria-label={`Remove topic ${String(topic.id)}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="ml-2 shrink-0 rounded-sm p-0.5 text-description hover:bg-error/10 hover:text-error"
-                    onClick={() => {
-                      onToggleTopicSelection(topic.id);
-                    }}
-                    aria-label={`Remove topic ${String(topic.id)}`}
-                  >
-                    <X className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            )}
+          </ResultFrame>
         )}
       </div>
 
@@ -133,60 +144,69 @@ export function TopicSelectionPanel({
             className="h-8 w-full rounded-md border border-input-border bg-editor pl-8 pr-3 text-label-secondary placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
           />
         </div>
-        <div className="max-h-70 space-y-1 overflow-y-auto">
-          {filteredTopics.map((topic) => {
-            const isSelected = selectedTopicIds.has(topic.id);
-            const isHovered = hoveredTopicId === topic.id;
-            return (
-              <div
-                key={topic.id}
-                role="button"
-                tabIndex={0}
-                className={`cursor-pointer rounded-lg border p-2 transition-colors ${
-                  isSelected
-                    ? 'border-l-[3px] border-l-green-500 border-[var(--vscode-charts-green)] bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/60'
-                    : 'border-surface-border/60 bg-surface'
-                } ${isHovered ? (isSelected ? 'bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/80' : 'bg-list-hover/70') : ''}`}
-                onClick={() => {
-                  onToggleTopicSelection(topic.id);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    onToggleTopicSelection(topic.id);
-                  }
-                }}
-                onMouseEnter={() => {
-                  onHoveredTopicChange(topic.id);
-                }}
-                onMouseLeave={() => {
-                  onHoveredTopicChange(null);
-                }}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-body font-medium text-foreground">Topic {topic.id}</span>
-                  <TopicSizeComposition
-                    sizes={topic.size}
-                    total={topic.total_size}
-                    topicId={topic.id}
-                    {...corpusPresentation}
-                  />
-                </div>
-                <div
-                  className="mt-0.5 truncate text-label-secondary text-description"
-                  title={topicRepresentativeText(topic)}
-                >
-                  {topicRepresentativeText(topic)}
-                </div>
-              </div>
-            );
-          })}
-          {filteredTopics.length === 0 && (
-            <p className="py-4 text-center text-label-secondary text-description italic">
-              No topics match the current filters.
-            </p>
+        <ResultFrame storageKey="topic-modeling.all-topics" fitContent minHeight={120}>
+          {(height) => (
+            <div
+              data-result-frame-scroll
+              className={cn('space-y-1 overflow-y-auto', height !== null ? 'h-full' : 'max-h-70')}
+            >
+              {filteredTopics.map((topic) => {
+                const isSelected = selectedTopicIds.has(topic.id);
+                const isHovered = hoveredTopicId === topic.id;
+                return (
+                  <div
+                    key={topic.id}
+                    role="button"
+                    tabIndex={0}
+                    className={`cursor-pointer rounded-lg border p-2 transition-colors ${
+                      isSelected
+                        ? 'border-l-[3px] border-l-green-500 border-[var(--vscode-charts-green)] bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/60'
+                        : 'border-surface-border/60 bg-surface'
+                    } ${isHovered ? (isSelected ? 'bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/80' : 'bg-list-hover/70') : ''}`}
+                    onClick={() => {
+                      onToggleTopicSelection(topic.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onToggleTopicSelection(topic.id);
+                      }
+                    }}
+                    onMouseEnter={() => {
+                      onHoveredTopicChange(topic.id);
+                    }}
+                    onMouseLeave={() => {
+                      onHoveredTopicChange(null);
+                    }}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="text-body font-medium text-foreground">
+                        Topic {topic.id}
+                      </span>
+                      <TopicSizeComposition
+                        sizes={topic.size}
+                        total={topic.total_size}
+                        topicId={topic.id}
+                        {...corpusPresentation}
+                      />
+                    </div>
+                    <div
+                      className="mt-0.5 truncate text-label-secondary text-description"
+                      title={topicRepresentativeText(topic)}
+                    >
+                      {topicRepresentativeText(topic)}
+                    </div>
+                  </div>
+                );
+              })}
+              {filteredTopics.length === 0 && (
+                <p className="py-4 text-center text-label-secondary text-description italic">
+                  No topics match the current filters.
+                </p>
+              )}
+            </div>
           )}
-        </div>
+        </ResultFrame>
       </div>
     </div>
   );

@@ -3,6 +3,8 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { cn } from '@/lib/utils';
 
+import { ResultsFillContext, useResultsFillEngine } from './analysisResultsFill';
+
 /** Smallest parameters pane: the card title and first row stay visible. */
 const ANALYSIS_SPLIT_MIN_PARAMETERS_HEIGHT = 96;
 /** Smallest results pane while a drag or nudge sizes the parameters pane. */
@@ -52,6 +54,8 @@ export interface AnalysisSplitLayoutProps {
  * fill the rest; each pane scrolls on its own. Dragging or arrow keys fix the
  * parameters height (remembered per tool); double-click returns to the
  * natural height. The handle appears only once the results pane has content.
+ * Main tables and lists use `useResultsFill` to take the results pane's spare
+ * height, so the handle resizes them too.
  */
 export function AnalysisSplitLayout({
   viewId,
@@ -61,15 +65,17 @@ export function AnalysisSplitLayout({
 }: AnalysisSplitLayoutProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const parametersRef = useRef<HTMLDivElement | null>(null);
+  const resultsPaneRef = useRef<HTMLDivElement | null>(null);
   const resultsRef = useRef<HTMLDivElement | null>(null);
+  const fillRegistry = useResultsFillEngine(resultsPaneRef, resultsRef);
   const [storedHeight, setStoredHeight] = useState<number | null>(() => readStoredHeight(viewId));
   const [drag, setDrag] = useState<{ startY: number; startHeight: number; height: number } | null>(
     null,
   );
   const [hasResults, setHasResults] = useState(false);
 
-  // Results render conditionally inside child components, so watch the pane
-  // itself rather than the children prop.
+  // Results render conditionally inside child components, so watch the
+  // rendered content rather than the children prop.
   useEffect(() => {
     const pane = resultsRef.current;
     if (!pane) return;
@@ -180,12 +186,15 @@ export function AnalysisSplitLayout({
       ) : null}
 
       <div
-        ref={resultsRef}
+        ref={resultsPaneRef}
         data-testid="analysis-split-results"
-        className={cn('min-h-0 flex-1 space-y-4 overflow-auto', showHandle && 'pt-1')}
+        className={cn('min-h-0 flex-1 overflow-auto', showHandle && 'pt-1')}
         style={showHandle ? { minHeight: ANALYSIS_SPLIT_MIN_RESULTS_HEIGHT } : undefined}
       >
-        {children}
+        {/* flow-root keeps child margins inside, so its height is the content height. */}
+        <div ref={resultsRef} className="flow-root space-y-4">
+          <ResultsFillContext value={fillRegistry}>{children}</ResultsFillContext>
+        </div>
       </div>
     </div>
   );

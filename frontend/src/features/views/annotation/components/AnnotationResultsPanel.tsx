@@ -85,8 +85,6 @@ interface AnnotationResultsPanelProps {
   metadataColumns: string[];
   onMetadataColumnsChange: (columns: string[]) => void;
   /** Shared per-tab result-table height; null keeps the default. */
-  tableHeight: number | null;
-  onTableHeightChange: (height: number | null) => void;
   correction: {
     column: string | null;
     onColumnChange: (column: string | null) => void;
@@ -136,8 +134,6 @@ export function AnnotationResultsPanel({
   onReliabilityMetricChange,
   metadataColumns,
   onMetadataColumnsChange,
-  tableHeight,
-  onTableHeightChange,
   correction,
 }: AnnotationResultsPanelProps) {
   const tableViewportRef = useRef<HTMLDivElement>(null);
@@ -378,8 +374,6 @@ export function AnnotationResultsPanel({
         </div>
       ) : (
         <AnnotationTableFrame
-          height={tableHeight}
-          onHeightChange={onTableHeightChange}
           viewportRef={tableViewportRef}
           belowTable={
             <ServerPaginationFooter

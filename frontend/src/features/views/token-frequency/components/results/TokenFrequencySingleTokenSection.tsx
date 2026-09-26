@@ -1,3 +1,4 @@
+import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { NodeResultView } from '../../tokenFrequencyAdapters';
 import { createTokenFilterMatcher, perMillion } from '../../tokenFrequencyAdapters';
 import { useVirtualizer } from '@tanstack/react-virtual';
@@ -72,16 +73,22 @@ const SingleNodeWordCloud = memo(
     onTokenRightClick,
   }: SingleNodeWordCloudProps) => {
     return (
-      <ResponsiveWordCloud
-        words={words}
-        color={color}
-        minWidth={280}
-        svgRef={(element) => {
-          registerWordCloudRef(nodeKey, element);
-        }}
-        onWordClick={onTokenClick}
-        onWordContextMenu={onTokenRightClick}
-      />
+      // Clouds keep their width-based height until resized (issue 196).
+      <ResultFrame storageKey="token-frequency.cloud" fill={false} minHeight={160}>
+        {(height) => (
+          <ResponsiveWordCloud
+            words={words}
+            color={color}
+            minWidth={280}
+            height={height ?? undefined}
+            svgRef={(element) => {
+              registerWordCloudRef(nodeKey, element);
+            }}
+            onWordClick={onTokenClick}
+            onWordContextMenu={onTokenRightClick}
+          />
+        )}
+      </ResultFrame>
     );
   },
 );
@@ -153,80 +160,89 @@ const VirtualizedTokenList = ({
   });
 
   return (
-    <div
-      ref={(element) => {
-        scrollElementRef.current = element;
-        registerScrollElement(element);
-      }}
-      onScroll={onScroll}
-      className="overflow-y-auto pr-1"
-      style={{ maxHeight: `${String(BAR_LIST_MAX_HEIGHT_REM)}rem` }}
-      role="list"
-      aria-label={`${displayName} token frequencies`}
-      data-testid={`token-frequency-list-${nodeKey}`}
-    >
-      <div
-        className="relative w-full"
-        style={{ height: `${String(rowVirtualizer.getTotalSize())}px` }}
-      >
-        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-          const rankedRow = rows[virtualRow.index];
-          if (!rankedRow) return null;
-          const { row, rank } = rankedRow;
-          const frequency = row.frequency || 0;
-          const widthPct = Math.max(3, Math.round((frequency / listMaxFrequency) * 100));
+    <ResultFrame storageKey="token-frequency.list" fitContent minHeight={160}>
+      {(height) => (
+        <div
+          ref={(element) => {
+            scrollElementRef.current = element;
+            registerScrollElement(element);
+          }}
+          onScroll={onScroll}
+          className="overflow-y-auto pr-1"
+          data-result-frame-scroll
+          style={
+            height !== null
+              ? { height: '100%' }
+              : { maxHeight: `${String(BAR_LIST_MAX_HEIGHT_REM)}rem` }
+          }
+          role="list"
+          aria-label={`${displayName} token frequencies`}
+          data-testid={`token-frequency-list-${nodeKey}`}
+        >
+          <div
+            className="relative w-full"
+            style={{ height: `${String(rowVirtualizer.getTotalSize())}px` }}
+          >
+            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+              const rankedRow = rows[virtualRow.index];
+              if (!rankedRow) return null;
+              const { row, rank } = rankedRow;
+              const frequency = row.frequency || 0;
+              const widthPct = Math.max(3, Math.round((frequency / listMaxFrequency) * 100));
 
-          return (
-            <div
-              key={virtualRow.key}
-              ref={rowVirtualizer.measureElement}
-              data-index={virtualRow.index}
-              role="listitem"
-              aria-posinset={virtualRow.index + 1}
-              aria-setsize={rows.length}
-              className="absolute top-0 left-0 grid w-full items-center gap-2 pb-2"
-              style={{
-                gridTemplateColumns: listGridColumns(rankWidthCh),
-                transform: `translateY(${String(virtualRow.start)}px)`,
-              }}
-            >
-              <span className="text-right text-label-secondary tabular-nums text-description">
-                {rank}.
-              </span>
-              <button
-                type="button"
-                className="group relative h-8 overflow-hidden rounded-sm border text-left"
-                onClick={() => {
-                  onTokenClick(row.token);
-                }}
-                onContextMenu={(event) => {
-                  event.preventDefault();
-                  onTokenRightClick(row.token);
-                }}
-                title="Click to inspect in concordance. Right-click to add to stop words."
-              >
-                <span
-                  className="absolute inset-y-0 left-0 rounded-sm bg-button/20 group-hover:bg-button/30"
+              return (
+                <div
+                  key={virtualRow.key}
+                  ref={rowVirtualizer.measureElement}
+                  data-index={virtualRow.index}
+                  role="listitem"
+                  aria-posinset={virtualRow.index + 1}
+                  aria-setsize={rows.length}
+                  className="absolute top-0 left-0 grid w-full items-center gap-2 pb-2"
                   style={{
-                    width: `${String(widthPct)}%`,
-                    backgroundColor: toBgColor(color),
+                    gridTemplateColumns: listGridColumns(rankWidthCh),
+                    transform: `translateY(${String(virtualRow.start)}px)`,
                   }}
-                />
-                <span className="relative z-10 block truncate px-2 text-body font-medium">
-                  {row.token}
-                </span>
-              </button>
-              <span className="text-right text-label-secondary tabular-nums text-description">
-                {countFormat.format(frequency)}
-              </span>
-              <span className="text-right text-label-secondary tabular-nums text-description">
-                {countFormat.format(perMillion(frequency, totalTokens))}
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+                >
+                  <span className="text-right text-label-secondary tabular-nums text-description">
+                    {rank}.
+                  </span>
+                  <button
+                    type="button"
+                    className="group relative h-8 overflow-hidden rounded-sm border text-left"
+                    onClick={() => {
+                      onTokenClick(row.token);
+                    }}
+                    onContextMenu={(event) => {
+                      event.preventDefault();
+                      onTokenRightClick(row.token);
+                    }}
+                    title="Click to inspect in concordance. Right-click to add to stop words."
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 rounded-sm bg-button/20 group-hover:bg-button/30"
+                      style={{
+                        width: `${String(widthPct)}%`,
+                        backgroundColor: toBgColor(color),
+                      }}
+                    />
+                    <span className="relative z-10 block truncate px-2 text-body font-medium">
+                      {row.token}
+                    </span>
+                  </button>
+                  <span className="text-right text-label-secondary tabular-nums text-description">
+                    {countFormat.format(frequency)}
+                  </span>
+                  <span className="text-right text-label-secondary tabular-nums text-description">
+                    {countFormat.format(perMillion(frequency, totalTokens))}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </ResultFrame>
   );
 };
 

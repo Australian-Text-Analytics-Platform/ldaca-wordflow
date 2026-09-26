@@ -21,6 +21,8 @@ interface Props {
   minWidth?: number;
   minHeight?: number;
   aspectRatio?: number;
+  /** Fixed height, for example from a resized ResultFrame; overrides the aspect ratio. */
+  height?: number;
   svgRef?: (element: SVGSVGElement | null) => void;
   onWordClick?: (word: string) => void;
   onWordContextMenu?: (word: string) => void;
@@ -47,6 +49,7 @@ function ResponsiveWordCloudInstance({
   minWidth = 180,
   minHeight = 0,
   aspectRatio = 0.6,
+  height,
   svgRef,
   onWordClick,
   onWordContextMenu,
@@ -60,7 +63,7 @@ function ResponsiveWordCloudInstance({
   const overlayRef = useRef<HTMLDivElement | null>(null);
   const measuredWidth = useElementWidth(containerRef);
   const cloudWidth = Math.max(minWidth, measuredWidth);
-  const cloudHeight = Math.max(minHeight, Math.round(cloudWidth * aspectRatio));
+  const cloudHeight = Math.max(minHeight, height ?? Math.round(cloudWidth * aspectRatio));
   const interactive = Boolean(onWordClick ?? onWordContextMenu);
   const ariaLabel = words.map((word) => `${word.text}: ${String(word.value)}`).join(', ');
   // Parents rebuild the words array on unrelated renders (for example when a
