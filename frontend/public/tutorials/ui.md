@@ -186,13 +186,15 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 - A topic coverage column (`TOPIC_coverage`, added by Topic Modelling's **Add to Project**) holds each row's share of every topic rather than a single value. Its **Sort** and data type buttons are disabled, and among the column tools its settings menu offers only **Duplicate** (you can still rename or delete it).
 - A type change never stops because of messy data: values that cannot be converted (for example a typo such as `5OO` in a column changed to whole number) become empty, and a warning says how many there were and gives the row and value of the first one, so you can find and fix it. **Undo** restores them while the Project is open.
 - Missing values, NaN, and blank text are all shown as empty cells, in the table, previews, and Row Details.
-- When converting text to a date or datetime, the app attempts to guess the date format automatically. This works for many common formats but can fail or produce incorrect results when the format is ambiguous (e.g. `01/02/03` could be read as DD/MM/YY, MM/DD/YY, or YY/MM/DD). If the conversion fails or the dates look wrong, use the **Format** field to specify the format explicitly using [Python strftime/strptime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes). Common examples:
-  - `%Y-%m-%d` → `2025-05-06`
-  - `%d/%m/%Y` → `06/05/2025`
-  - `%m/%d/%Y` → `05/06/2025`
-  - `%Y-%m-%dT%H:%M:%S` → `2025-05-06T14:30:00` (ISO 8601)
-  - `%d %b %Y` → `06 May 2025`
-  - `%B %d, %Y` → `May 06, 2025`
+- When you convert text to a date, or a date and time, Wordflow asks **How are the dates written?** It shows a few values from the column and tries to work out the format from the data (**Detect from the data**). Detection can fail or guess wrong when dates are ambiguous (for example `01/02/03` could be day/month/year, month/day/year, or year/month/day). Then enter the format in **Date format**, or choose one of the examples, which fill it in:
+  - `%d/%m/%Y` → `30/01/2020`
+  - `%Y-%m-%d` → `2020-01-30`
+  - `%d %b %Y` → `30 Jan 2020`
+  - `%B %d, %Y` → `January 30, 2020`
+  - `%d/%m/%Y %H:%M` → `30/01/2020 14:05`
+
+  `%d` is the day, `%m` the month number, `%b` the short month name, `%B` the full month name, `%Y` the year, `%H` the hour and `%M` the minute. The full list is in [Python's date format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
+- Dates and times show year first, for example `2020-01-30 14:05` (seconds appear only when they are not zero). Wordflow stores times in UTC. To type a date, for example in the Data Builder's Filter, use `YYYY-MM-DD`, or `YYYY-MM-DD HH:MM` for a date and time.
 - Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The panel has two sections:
   - **Document** — shows the full text of the data block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the data block, this section is omitted.
   - **Metadata** — shows all remaining columns as a two-column key/value table, making it easy to inspect structured fields such as speaker, date, or source alongside the document text.

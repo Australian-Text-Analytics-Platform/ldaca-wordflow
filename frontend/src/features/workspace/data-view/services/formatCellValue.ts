@@ -1,10 +1,12 @@
+import { displayDateTime } from '@/lib/displayDateTime';
+
 /**
  * Text for one Data Editor cell (issue 205): lists read as "a, b", and structs
  * as "key: value; key: value" instead of "[object Object]".
  */
 export function formatCellValue(value: unknown): string {
   if (value == null) return '';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return displayDateTime(value);
   if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
     return String(value);
   }

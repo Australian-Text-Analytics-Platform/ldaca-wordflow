@@ -19,6 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
+import { displayDateTime } from '@/lib/displayDateTime';
 
 // ---- Public types ----
 
@@ -93,6 +94,7 @@ const formatMetadataValue = (value: unknown): string => {
       (_key, child: unknown) => (typeof child === 'bigint' ? child.toString() : child),
       2,
     );
+  if (typeof value === 'string') return displayDateTime(value);
   // eslint-disable-next-line @typescript-eslint/no-base-to-string -- value is a non-object primitive after the guards above; String() never yields '[object Object]'
   return String(value);
 };

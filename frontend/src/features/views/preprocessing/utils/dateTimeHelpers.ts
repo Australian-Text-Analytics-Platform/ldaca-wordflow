@@ -1,4 +1,5 @@
-export const ISO_PLACEHOLDER = 'YYYY-MM-DDTHH:MM:SS+00:00';
+// Plain entry hint (issue 205); normalizeIsoDraft accepts a date, or a date and time.
+export const ISO_PLACEHOLDER = 'YYYY-MM-DD or YYYY-MM-DD HH:MM';
 
 /**
  * Normalizes partial ISO drafts before datetime filters send values to APIs.
@@ -8,6 +9,8 @@ export const ISO_PLACEHOLDER = 'YYYY-MM-DDTHH:MM:SS+00:00';
 export const normalizeIsoDraft = (txt: string): string => {
   let s = txt.trim();
   if (!s) return s;
+  // "2020-01-30 14:05", as the tables show dates (issue 205).
+  s = s.replace(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/, '$1T$2');
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) s += 'T00:00:00+00:00';
   if (/T\d{2}:\d{2}(\+00:00)?$/.test(s))
     s = s.replace(

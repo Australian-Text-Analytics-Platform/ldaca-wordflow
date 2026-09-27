@@ -53,6 +53,7 @@ import { AnnotationCorrectionColumnControl } from './AnnotationCorrectionColumnC
 import { AnnotationTableFrame } from './AnnotationTableFrame';
 import { CurrentAnnotationValueItem } from './CurrentAnnotationValueItem';
 import { toastError } from '@/lib/toastError';
+import { displayDateTime } from '@/lib/displayDateTime';
 
 const ANNOTATION_RESULT_PAGE_SIZE = 10;
 // Radix `Select` rejects an empty-string item value, so the "clear" option uses
@@ -63,7 +64,7 @@ type AnnotationResultRow = AnnotationNodePageRow;
 /** Coerce an unknown cell value to display text without object stringification. */
 const cellText = (value: unknown): string => {
   if (value == null) return '';
-  if (typeof value === 'string') return value;
+  if (typeof value === 'string') return displayDateTime(value);
   if (typeof value === 'number' || typeof value === 'boolean') return String(value);
   return JSON.stringify(value);
 };

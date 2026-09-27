@@ -32,6 +32,7 @@ import { useRowDetailDialog } from '../../common/components/useRowDetailDialog';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import { formatPreviewValue } from '../utils/typeUtils';
 import { type PreviewRow, type PreviewPagination, PREVIEW_PAGE_SIZE_OPTIONS } from '../types';
+import { displayDateTime } from '@/lib/displayDateTime';
 
 interface PreviewTableProps {
   title: React.ReactNode;
@@ -66,7 +67,7 @@ function buildColumnDefs(columnsToRender: string[]): ServerColumnDef<PreviewRow>
      * Formats backend preview values for shared preprocessing table cells.
      * Invoked by TanStack Table for each preview body cell.
      */
-    cell: ({ getValue }) => formatPreviewValue(getValue()),
+    cell: ({ getValue }) => displayDateTime(formatPreviewValue(getValue())),
   }));
 }
 

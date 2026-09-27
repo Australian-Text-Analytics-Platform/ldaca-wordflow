@@ -6,6 +6,7 @@ import {
   CONCORDANCE_FREQ_COLUMNS,
 } from '../../common/generatedColumns';
 import { flattenConcordanceGroups, toCellText } from '../concordanceTableDomain';
+import { displayDateTime } from '@/lib/displayDateTime';
 
 export type ConcordanceRow = Record<string, unknown>;
 
@@ -33,7 +34,7 @@ function buildConcordanceColumns(displayColumns: string[]): ServerColumnDef<Conc
   return displayColumns.map((columnKey) => ({
     id: columnKey,
     accessorFn: (row) => row[columnKey],
-    cell: ({ getValue }) => toCellText(getValue()),
+    cell: ({ getValue }) => displayDateTime(toCellText(getValue())),
   }));
 }
 

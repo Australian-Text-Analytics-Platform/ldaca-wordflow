@@ -48,9 +48,9 @@ export function DatetimeFormatPanel({ open, onClose, ...contentProps }: Datetime
 }
 
 /**
- * Datetime format form used inside `DatetimeFormatPanel`. It lets users accept
- * an inferred Python `strftime` format or provide one manually before the
- * preprocessing feature submits the conversion.
+ * Date format form used inside `DatetimeFormatPanel` (issue 205). It asks how
+ * the dates are written, offers to detect it from sample values, and lists
+ * common formats to choose from before the conversion is submitted.
  * Rendered by: DatetimeFormatPanel while the conversion dialog is open.
  * Flow: infer the initial format from samples, manage custom and auto-fill state, then render cancel/auto-fill/convert controls.
  */
@@ -59,30 +59,24 @@ function DatetimeFormatPanelContent({
   onConfirm,
   columnName,
   sampleValues = [],
-  targetLabel = 'datetime',
+  targetLabel = 'date and time',
 }: Omit<DatetimeFormatPanelProps, 'open'>) {
   const initialFormat = sampleValues.length ? inferDatetimeFormat(sampleValues) : null;
   const [customFormat, setCustomFormat] = useState(initialFormat ?? '');
-  const [autoFillTried, setAutoFillTried] = useState(sampleValues.length > 0);
-  const [autoFillError, setAutoFillError] = useState<string | null>(
-    sampleValues.length > 0 && !initialFormat ? 'Could not infer format' : null,
-  );
+  const [detectTried, setDetectTried] = useState(sampleValues.length > 0);
+  const [detectFailed, setDetectFailed] = useState(sampleValues.length > 0 && !initialFormat);
 
   /** Called by: DatetimeFormatPanelContent Cancel button. */
   const handleCancel = () => {
     onClose();
   };
 
-  /** Called by: DatetimeFormatPanelContent Auto Fill button. */
-  const handleAutoFill = () => {
-    setAutoFillTried(true);
-    setAutoFillError(null);
+  /** Called by: DatetimeFormatPanelContent "Detect from the data" button. */
+  const handleDetect = () => {
+    setDetectTried(true);
     const inferred = inferDatetimeFormat(sampleValues);
-    if (inferred) {
-      setCustomFormat(inferred);
-    } else {
-      setAutoFillError('Could not infer format');
-    }
+    setDetectFailed(!inferred);
+    if (inferred) setCustomFormat(inferred);
   };
 
   /** Called by: DatetimeFormatPanelContent Convert button. */
@@ -92,15 +86,15 @@ function DatetimeFormatPanelContent({
     onClose();
   };
 
+  const samples = [...new Set(sampleValues.map((value) => value.trim()).filter(Boolean))].slice(0, 3);
+
   return (
     <DialogContent className="w-full max-w-lg border-none bg-transparent p-0 shadow-none">
       <DialogHeader className="sr-only">
         <DialogTitle>
           Convert {columnName || 'column'} to {targetLabel}
         </DialogTitle>
-        <DialogDescription>
-          Provide a strftime format or let Auto Fill guess it from sample values.
-        </DialogDescription>
+        <DialogDescription>How are the dates written?</DialogDescription>
       </DialogHeader>
       <Card>
         <CardHeader>
@@ -109,41 +103,74 @@ function DatetimeFormatPanelContent({
             {targetLabel}
           </CardTitle>
           <CardDescription>
-            Provide a strftime format or let Auto Fill guess it from sample values.
+            How are the dates written? Wordflow can work it out from the data, or you can enter the
+            format.
+            {samples.length > 0 ? (
+              <span className="mt-1 block">
+                In this column: <span className="font-mono">{samples.join(', ')}</span>
+              </span>
+            ) : null}
           </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-4">
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-body font-medium text-foreground">Custom format</span>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <label htmlFor="datetime-format" className="text-body font-medium text-foreground">
+                Date format
+              </label>
               <Button
                 type="button"
-                onClick={handleAutoFill}
+                onClick={handleDetect}
                 variant="outline"
                 size="sm"
                 className="h-7 px-2"
               >
-                Auto Fill
+                Detect from the data
               </Button>
             </div>
             <input
+              id="datetime-format"
               type="text"
-              placeholder="e.g., %Y-%m-%d %H:%M:%S"
+              placeholder="for example %d/%m/%Y"
               value={customFormat}
               onChange={(event) => {
                 setCustomFormat(event.target.value);
               }}
-              className="w-full rounded-md border border-input-border bg-editor px-3 py-2 text-body text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
+              className="w-full rounded-md border border-input-border bg-editor px-3 py-2 font-mono text-body text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
             />
-            <div className="mt-1 text-label-secondary text-description">
-              Use Python strftime codes.
-              {autoFillTried && autoFillError && (
-                <span className="ml-1 text-error">{autoFillError}</span>
-              )}
-              {autoFillTried && !autoFillError && customFormat && (
-                <span className="ml-1 text-[var(--vscode-charts-green)]">Inferred.</span>
-              )}
+            <div className="mt-1 text-label-secondary" aria-live="polite">
+              {detectTried && detectFailed ? (
+                <span className="text-error">
+                  Couldn&apos;t work out the date format. Enter it above, or choose an example
+                  below.
+                </span>
+              ) : detectTried && customFormat ? (
+                <span className="text-[var(--vscode-charts-green)]">Worked out from the data.</span>
+              ) : null}
+            </div>
+          </div>
+          <div>
+            <p className="mb-1 text-label-secondary text-description">
+              Examples (choose one to use it). %d is the day, %m the month number, %b the short
+              month name, %Y the year, %H the hour and %M the minute.
+            </p>
+            <div className="grid gap-0.5 text-label-secondary">
+              {DATE_FORMAT_EXAMPLES.map(([example, format]) => (
+                <button
+                  key={format}
+                  type="button"
+                  aria-label={`Use ${format} for dates like ${example}`}
+                  className="grid grid-cols-[11rem_1fr] rounded-sm px-1 text-left hover:bg-list-hover"
+                  onClick={() => {
+                    setCustomFormat(format);
+                    setDetectFailed(false);
+                  }}
+                >
+                  <span>{example}</span>
+                  <span className="font-mono text-description">{format}</span>
+                </button>
+              ))}
             </div>
           </div>
         </CardContent>
@@ -160,3 +187,13 @@ function DatetimeFormatPanelContent({
     </DialogContent>
   );
 }
+
+/** How dates are often written, with the format that reads them (issue 205). */
+const DATE_FORMAT_EXAMPLES: [string, string][] = [
+  ['30/01/2020', '%d/%m/%Y'],
+  ['2020-01-30', '%Y-%m-%d'],
+  ['30 Jan 2020', '%d %b %Y'],
+  ['January 30, 2020', '%B %d, %Y'],
+  ['30/01/2020 14:05', '%d/%m/%Y %H:%M'],
+  ['2020-01-30 14:05:00', '%Y-%m-%d %H:%M:%S'],
+];
