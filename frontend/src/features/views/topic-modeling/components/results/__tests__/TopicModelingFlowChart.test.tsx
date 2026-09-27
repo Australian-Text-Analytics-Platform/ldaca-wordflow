@@ -208,7 +208,7 @@ describe('TopicModelingFlowChart', () => {
     }
   });
 
-  it('places an expandable vertical control rail in the upper-left corner', () => {
+  it('places a fixed-width vertical control rail in the upper-left corner', () => {
     const onClearLassoFilter = vi.fn();
     render(
       <TopicModelingFlowChart
@@ -235,7 +235,6 @@ describe('TopicModelingFlowChart', () => {
     const controls = screen.getByLabelText('Topic graph controls');
     expect(controls).toHaveAttribute('data-orientation', 'vertical');
     expect(controls).toHaveAttribute('data-position', 'top-left');
-    expect(controls).toHaveClass('group/topic-controls');
     const buttons = within(controls).getAllByRole('button');
     expect(buttons.map((button) => button.getAttribute('aria-label'))).toEqual([
       'Zoom in',
@@ -247,10 +246,10 @@ describe('TopicModelingFlowChart', () => {
     ]);
     for (const button of buttons) {
       expect(button).not.toHaveAttribute('title');
+      // The rail never widens on hover; names are in delayed tooltips.
+      expect(button.className).not.toMatch(/group-hover|w-40/);
     }
-    expect(within(controls).getByText('Select topics')).toHaveClass(
-      'group-hover/topic-controls:opacity-100',
-    );
+    expect(within(controls).queryByText('Select topics')).not.toBeInTheDocument();
     fireEvent.click(within(controls).getByRole('button', { name: 'Clear lasso filter' }));
     expect(onClearLassoFilter).toHaveBeenCalledOnce();
   });

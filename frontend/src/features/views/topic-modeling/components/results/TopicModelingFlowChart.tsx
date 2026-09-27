@@ -16,6 +16,7 @@ import { Download, FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react'
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { NodeTooltip, NodeTooltipContent, NodeTooltipTrigger } from '@/components/node-tooltip';
 import { ResponsiveWordCloud } from '@/features/views/common/components/ResponsiveWordCloud';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { type TopicCorpusPresentation, TopicSizeComposition } from './TopicSizeComposition';
 import {
@@ -77,31 +78,32 @@ function TopicGraphControlButton({
   active,
   onClick,
 }: TopicGraphControlButtonProps) {
+  // The rail stays narrow; names show in a tooltip after a deliberate hover,
+  // like the Project Graph controls (issue 195).
   return (
-    <ControlButton
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={accessibleLabel}
-      aria-pressed={pressed}
-      className={cn(
-        '!h-10 !w-10 !min-w-10 !justify-start !gap-3 !overflow-hidden !px-3',
-        'transition-[width,background-color,color] duration-150 ease-out',
-        'group-hover/topic-controls:!w-40 group-focus-within/topic-controls:!w-40',
-        'disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
-        active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
-        {children}
-      </span>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none whitespace-nowrap text-label-secondary font-medium opacity-0 transition-opacity duration-100 group-hover/topic-controls:opacity-100 group-focus-within/topic-controls:opacity-100"
-      >
-        {label}
-      </span>
-    </ControlButton>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="block">
+          <ControlButton
+            type="button"
+            onClick={onClick}
+            disabled={disabled}
+            aria-label={accessibleLabel}
+            aria-pressed={pressed}
+            className={cn(
+              '!h-10 !w-10 !justify-center !p-0',
+              'disabled:!pointer-events-none disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
+              active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
+            )}
+          >
+            <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
+              {children}
+            </span>
+          </ControlButton>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="right">{label}</TooltipContent>
+    </Tooltip>
   );
 }
 
@@ -551,67 +553,69 @@ function TopicModelingFlowChartInner({
           showZoom={false}
           showFitView={false}
           showInteractive={false}
-          className="group/topic-controls overflow-hidden rounded-md border border-surface-border bg-editor"
+          className="overflow-hidden rounded-md border border-surface-border bg-editor"
           style={{ zIndex: 20 }}
           aria-label="Topic graph controls"
         >
-          <TopicGraphControlButton
-            accessibleLabel="Zoom in"
-            label="Zoom in"
-            onClick={() => {
-              fittedViewportRef.current = false;
-              void zoomIn();
-            }}
-          >
-            <Plus aria-hidden="true" />
-          </TopicGraphControlButton>
-          <TopicGraphControlButton
-            accessibleLabel="Zoom out"
-            label="Zoom out"
-            onClick={() => {
-              fittedViewportRef.current = false;
-              void zoomOut();
-            }}
-          >
-            <Minus aria-hidden="true" />
-          </TopicGraphControlButton>
-          <TopicGraphControlButton
-            accessibleLabel="Fit view"
-            label="Fit view"
-            onClick={() => {
-              fittedViewportRef.current = true;
-              void fitView(FIT_VIEW_OPTIONS).then(() => {
-                setViewport(getViewport());
-              });
-            }}
-          >
-            <Scan aria-hidden="true" />
-          </TopicGraphControlButton>
-          <TopicGraphControlButton
-            accessibleLabel={lassoMode ? 'Disable additive lasso' : 'Enable additive lasso'}
-            label="Select topics"
-            pressed={lassoMode}
-            active={lassoMode}
-            onClick={onToggleLassoMode}
-          >
-            <LassoSelect aria-hidden="true" />
-          </TopicGraphControlButton>
-          <TopicGraphControlButton
-            accessibleLabel="Clear lasso filter"
-            label="Clear filter"
-            disabled={!lassoFilterActive}
-            onClick={onClearLassoFilter}
-          >
-            <FilterX aria-hidden="true" />
-          </TopicGraphControlButton>
-          <TopicGraphControlButton
-            accessibleLabel="Download chart"
-            label="Download chart"
-            disabled={exportDisabled}
-            onClick={onDownload}
-          >
-            <Download aria-hidden="true" />
-          </TopicGraphControlButton>
+          <TooltipProvider delayDuration={500} skipDelayDuration={300} disableHoverableContent>
+            <TopicGraphControlButton
+              accessibleLabel="Zoom in"
+              label="Zoom in"
+              onClick={() => {
+                fittedViewportRef.current = false;
+                void zoomIn();
+              }}
+            >
+              <Plus aria-hidden="true" />
+            </TopicGraphControlButton>
+            <TopicGraphControlButton
+              accessibleLabel="Zoom out"
+              label="Zoom out"
+              onClick={() => {
+                fittedViewportRef.current = false;
+                void zoomOut();
+              }}
+            >
+              <Minus aria-hidden="true" />
+            </TopicGraphControlButton>
+            <TopicGraphControlButton
+              accessibleLabel="Fit view"
+              label="Fit view"
+              onClick={() => {
+                fittedViewportRef.current = true;
+                void fitView(FIT_VIEW_OPTIONS).then(() => {
+                  setViewport(getViewport());
+                });
+              }}
+            >
+              <Scan aria-hidden="true" />
+            </TopicGraphControlButton>
+            <TopicGraphControlButton
+              accessibleLabel={lassoMode ? 'Disable additive lasso' : 'Enable additive lasso'}
+              label="Select topics"
+              pressed={lassoMode}
+              active={lassoMode}
+              onClick={onToggleLassoMode}
+            >
+              <LassoSelect aria-hidden="true" />
+            </TopicGraphControlButton>
+            <TopicGraphControlButton
+              accessibleLabel="Clear lasso filter"
+              label="Clear filter"
+              disabled={!lassoFilterActive}
+              onClick={onClearLassoFilter}
+            >
+              <FilterX aria-hidden="true" />
+            </TopicGraphControlButton>
+            <TopicGraphControlButton
+              accessibleLabel="Download chart"
+              label="Download chart"
+              disabled={exportDisabled}
+              onClick={onDownload}
+            >
+              <Download aria-hidden="true" />
+            </TopicGraphControlButton>
+          </TooltipProvider>
         </Controls>
         <TopicLassoCanvas enabled={lassoMode} bubbles={bubbles} onComplete={onAddLassoTopics} />
       </ReactFlow>
