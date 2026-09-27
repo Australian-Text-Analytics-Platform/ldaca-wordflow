@@ -138,7 +138,7 @@ export function ServerPaginationFooter({
       <div className="@container/pager">
         <div
           className={cn(
-            'flex flex-col gap-1.5 border-t border-surface-border bg-panel/40 px-3 py-1.5 @min-[28rem]/pager:flex-row @min-[28rem]/pager:items-center @min-[28rem]/pager:justify-between',
+            'flex flex-col gap-1.5 border-t border-surface-border bg-panel/40 px-3 py-1.5 @min-[520px]/pager:flex-row @min-[520px]/pager:items-center @min-[520px]/pager:justify-between',
             className,
           )}
         >
@@ -163,7 +163,7 @@ export function ServerPaginationFooter({
             <span />
           )}
 
-          <Pagination className="w-full justify-center @min-[28rem]/pager:w-auto @min-[28rem]/pager:justify-end">
+          <Pagination className="w-full justify-center @min-[520px]/pager:w-auto @min-[520px]/pager:justify-end">
             <PaginationContent>
               <PaginationItem>
                 <PaginationPrevious
