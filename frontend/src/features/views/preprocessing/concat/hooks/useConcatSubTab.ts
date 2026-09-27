@@ -14,6 +14,8 @@ import type {
 } from '../../types';
 import { MAX_CONCAT_NODES } from '../../types';
 import { dedupeNodeIds } from '@/features/workspace/common/utils/selectionUtils';
+import { toast } from 'sonner';
+import { createdBlockName } from '../../builder/createdBlockName';
 
 type ComparableArrowType = DataType<Type, TypeMap>;
 
@@ -50,7 +52,8 @@ export interface ConcatSubTabProps {
   isLoading: {
     operations: boolean;
   };
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
 }
 
 interface ConcatSelectionPanelConfig {
@@ -386,22 +389,24 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
    */
   const handleApplyConcat = async () => {
     if (!concatAnalysis.ready) {
-      onAlert(concatAnalysis.issues || 'Select at least two compatible data blocks to stack.');
+      onAlert(
+        concatAnalysis.issues || 'Choose at least two Data Blocks with matching columns to stack.',
+      );
       return;
     }
     const nodeIds = concatAnalysis.summaries.map((summary) => summary.nodeId);
     if (nodeIds.length < 2) {
-      onAlert('Pick at least two data blocks to stack.');
+      onAlert('Choose at least two Data Blocks to stack.');
       return;
     }
 
     const requestedName = newNodeName.trim() || autoConcatName || undefined;
     try {
       setIsConcatenating(true);
-      await concatNodes(nodeIds, requestedName, deduplicate);
+      const created: unknown = await concatNodes(nodeIds, requestedName, deduplicate);
+      toast.success(`Created ${createdBlockName(created, requestedName)}.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error applying stack';
-      onAlert(`Error applying stack: ${message}`);
+      onAlert("Couldn't create the Data Block.", error);
     } finally {
       setIsConcatenating(false);
     }

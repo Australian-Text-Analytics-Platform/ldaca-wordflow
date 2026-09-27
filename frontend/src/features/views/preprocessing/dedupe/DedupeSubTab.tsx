@@ -22,7 +22,8 @@ export function DedupeSubTab({
   input: BuilderInput | null;
   workspaceId: string | null;
   renderNodeInputsPanel?: () => ReactNode;
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
 }) {
   const { createDerivedNode } = useWorkspaceActions();
   // Columns compared besides the deduplicating column (issue 158).

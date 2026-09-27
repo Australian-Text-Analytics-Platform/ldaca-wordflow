@@ -91,7 +91,9 @@ describe('AnnotationInferenceSettings', () => {
     expect(screen.getByLabelText('Retries if a request fails')).toHaveValue(2);
     expect(screen.getByLabelText('Rows per request')).toHaveValue(20);
     expect(screen.getByRole('radio', { name: 'Annotate all rows again' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Only rows without an annotation' })).not.toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'Only rows without an annotation' }),
+    ).not.toBeChecked();
     expect(screen.getByRole('switch', { name: 'Toggle thinking' })).not.toBeChecked();
     expect(screen.queryByLabelText('Thinking effort')).not.toBeInTheDocument();
   });

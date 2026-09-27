@@ -44,7 +44,8 @@ export interface BuilderToolCardProps {
   summary?: (totalRows: number | null | undefined) => ReactNode;
   previewTitle: string;
   previewDescription: string;
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
   children: ReactNode;
 }
 
@@ -109,7 +110,7 @@ export function BuilderToolCard({
     try {
       toast.success(await onCreate());
     } catch (error) {
-      onAlert(error instanceof Error ? error.message : String(error));
+      onAlert("Couldn't create the Data Block.", error);
     } finally {
       setCreating(false);
     }

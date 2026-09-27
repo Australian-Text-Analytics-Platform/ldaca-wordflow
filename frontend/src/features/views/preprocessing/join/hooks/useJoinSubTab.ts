@@ -14,6 +14,8 @@ import type {
 import { dedupeNodeIds } from '@/features/workspace/common/utils/selectionUtils';
 import { MAX_JOIN_NODES } from '../../types';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
+import { toast } from 'sonner';
+import { createdBlockName } from '../../builder/createdBlockName';
 
 const DEFAULT_JOIN_PALETTE = ['#2563eb', '#dc2626'];
 
@@ -36,7 +38,8 @@ export interface JoinSubTabProps {
     operations: boolean;
   };
   onPreviewSuccess?: () => void;
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
 }
 
 interface JoinSelectionPanelConfig {
@@ -438,7 +441,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
    */
   const handleApplyJoin = async () => {
     if (!joinConfigReady) {
-      onAlert('Please select two different data blocks and matching columns to join.');
+      onAlert('Choose two different Data Blocks and a column in each to join on.');
       return;
     }
     const leftColumns = [joinLeftColumn];
@@ -446,7 +449,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     const requestedName = joinNewNodeName.trim() || autoJoinName || undefined;
     try {
       setIsJoining(true);
-      await joinNodes(
+      const created: unknown = await joinNodes(
         joinLeftNodeId,
         joinRightNodeId,
         joinType,
@@ -454,9 +457,9 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
         rightColumns,
         requestedName,
       );
+      toast.success(`Created ${createdBlockName(created, requestedName)}.`);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error applying join';
-      onAlert(`Error applying join: ${message}`);
+      onAlert("Couldn't create the Data Block.", error);
     } finally {
       setIsJoining(false);
     }

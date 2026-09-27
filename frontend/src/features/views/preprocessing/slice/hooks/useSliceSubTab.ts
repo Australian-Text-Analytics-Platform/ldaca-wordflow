@@ -12,6 +12,7 @@ import {
   type SamplingMode,
   type SliceRequestPayload,
 } from './sliceFormModel';
+import { toast } from 'sonner';
 
 export interface SliceSubTabProps {
   currentWorkspaceId: string | null;
@@ -22,7 +23,8 @@ export interface SliceSubTabProps {
   isLoading: {
     operations: boolean;
   };
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
 }
 
 interface SliceHistory {
@@ -404,8 +406,6 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
     setIsSlicing(true);
     try {
       const response = await sliceNode(selectedNodeId, payload);
-      const operationLabel =
-        mode === 'slice' ? 'Slice' : isFullShuffle ? 'Shuffle' : 'Random sample';
       const responseName =
         response.name.trim() ||
         requestedName ||
@@ -423,14 +423,12 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
           randomSeed: mode === 'random_sample' ? randomSeedValue : undefined,
         },
       });
-      onAlert(
-        `${operationLabel} added to the Project: ${responseName}${resultNodeId ? ` (${resultNodeId})` : ''}.`,
-      );
+      toast.success(`Created ${responseName}.`);
     } catch (error) {
       const operationLabel = mode === 'slice' ? 'Slice' : 'Random sample';
       const message = error instanceof Error ? error.message : `${operationLabel} operation failed`;
       setCurrentInlineError(message);
-      onAlert(`${operationLabel} failed: ${message}`);
+      onAlert("Couldn't create the Data Block.", error);
     } finally {
       setIsSlicing(false);
     }

@@ -2,15 +2,6 @@ import { CopyMinus, Filter, Layers, Merge, Scissors, Shuffle, Sigma, Split } fro
 import { useState } from 'react';
 import InfoIcon from '@/components/help/InfoIcon';
 import { type EditorTabItem, EditorTabs } from '@/components/tabs';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { useGuidance } from '@/features/guidance/GuidanceContext';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
@@ -38,6 +29,8 @@ import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { arrowTypeDisplayName } from '@/lib/arrow/arrowTable';
+import { toast } from 'sonner';
+import { toastError } from '@/lib/toastError';
 
 type DataPrepSubtab =
   | 'filter'
@@ -143,8 +136,6 @@ function DataPreprocessingFeature() {
   const { isLoading } = useWorkspaceStatus();
 
   const [activeSubtab, setActiveSubtab] = useState<DataPrepSubtab>('filter');
-  const [alertOpen, setAlertOpen] = useState(false);
-  const [alertMessage, setAlertMessage] = useState('');
 
   const preprocessingInputKey = preprocessingInputsKey(userId, currentWorkspaceId, activeSubtab);
   const persistedInputs = usePreprocessingInputsStore(
@@ -216,9 +207,11 @@ function DataPreprocessingFeature() {
   /**
    * Passed to preprocessing sub-tabs as the shared alert callback.
    */
-  const handleAlert = (message: string) => {
-    setAlertMessage(message);
-    setAlertOpen(true);
+  const handleAlert = (message: string, cause?: unknown) => {
+    // One pattern for Builder feedback: a toast, with the reason and Details
+    // when something failed (issue 205).
+    if (cause === undefined) toast.error(message);
+    else toastError(cause, 'Try again.', { title: message });
   };
 
   const reachApplyOutcome = () => {
@@ -466,25 +459,6 @@ function DataPreprocessingFeature() {
           />
         </TabsContent>
       </Tabs>
-
-      {/* Shared Alert Dialog for error messages */}
-      <AlertDialog open={alertOpen} onOpenChange={setAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Alert</AlertDialogTitle>
-            <AlertDialogDescription>{alertMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction
-              onClick={() => {
-                setAlertOpen(false);
-              }}
-            >
-              OK
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

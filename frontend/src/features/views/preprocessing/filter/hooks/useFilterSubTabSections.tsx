@@ -29,6 +29,7 @@ import type {
   PreviewPagination,
   PreviewRow,
 } from '../../types';
+import { createdBlockName } from '../../builder/createdBlockName';
 
 export interface FilterSubTabProps {
   selectedNodeId: string | null;
@@ -41,7 +42,8 @@ export interface FilterSubTabProps {
   isLoading: {
     operations: boolean;
   };
-  onAlert: (message: string) => void;
+  /** A toast; pass the error to show its reason and Details (issue 205). */
+  onAlert: (message: string, cause?: unknown) => void;
 }
 
 interface FilterConditionBuilderConfig {
@@ -553,7 +555,7 @@ export const useFilterSubTabSections = (
    */
   const handleApplyFilter = async () => {
     if (!selectedNodeId) {
-      onAlert('Please select a data block first');
+      onAlert('Choose a Data Block first.');
       return;
     }
 
@@ -561,7 +563,7 @@ export const useFilterSubTabSections = (
       conditions.length === 0 ||
       conditions.some((condition) => !isConditionComplete(condition))
     ) {
-      onAlert('Please fill in all filter conditions');
+      onAlert('Fill in every condition first.');
       return;
     }
 
@@ -570,9 +572,10 @@ export const useFilterSubTabSections = (
 
     try {
       setIsFiltering(true);
-      await filterNode(selectedNodeId, request);
+      const created: unknown = await filterNode(selectedNodeId, request);
+      toast.success(`Created ${createdBlockName(created, requestName)}.`);
     } catch (error) {
-      onAlert(`Error applying filter: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      onAlert("Couldn't create the Data Block.", error);
     } finally {
       setIsFiltering(false);
     }
