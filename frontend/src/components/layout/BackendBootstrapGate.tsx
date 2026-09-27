@@ -175,11 +175,11 @@ export function BackendBootstrapGate({
   if (!connection || !resource) {
     return (
       <BlockingScreen
-        title="Backend unavailable"
-        description="Wordflow cannot reach its local or hosted backend control plane."
-        status="Checking backend liveness…"
+        title="Can't connect to Wordflow"
+        description="Wordflow cannot connect to its server. It will keep trying."
+        status="Trying to connect…"
         error={connectionError}
-        hint="Check the backend logs and connection settings. Wordflow will keep retrying."
+        hint="In the desktop app, try closing and opening Wordflow again. On a shared server, ask the person who runs it."
         actions={<SendFeedbackButton variant="default" />}
       />
     );
@@ -189,7 +189,7 @@ export function BackendBootstrapGate({
     return (
       <BlockingScreen
         title="Reloading Wordflow"
-        description="The Data Root changed. Wordflow is reconnecting to the new Runtime."
+        description="The data folder changed. Wordflow is reconnecting."
         status="Reloading…"
       />
     );
@@ -198,9 +198,15 @@ export function BackendBootstrapGate({
   if (resource.state === 'initializing' || resource.state === 'reconfiguring') {
     return (
       <BlockingScreen
-        title={resource.state === 'initializing' ? 'Opening Data Root' : 'Switching Data Root'}
-        description="The backend is preparing the complete Wordflow Runtime."
-        status={resource.state === 'initializing' ? 'Initializing…' : 'Draining and reopening…'}
+        title={
+          resource.state === 'initializing' ? 'Opening your data folder' : 'Switching data folder'
+        }
+        description="Wordflow is getting your Projects and files ready."
+        status={
+          resource.state === 'initializing'
+            ? 'Opening…'
+            : 'Closing the old folder and opening the new one…'
+        }
       />
     );
   }
@@ -208,10 +214,10 @@ export function BackendBootstrapGate({
   if (resource.state === 'stopping') {
     return (
       <BlockingScreen
-        title="Backend shutting down"
-        description="Wordflow is closing its active Data Root runtime."
+        title="Wordflow is shutting down"
+        description="Wordflow is closing your data folder."
         status="Stopping…"
-        hint="Wordflow will reconnect automatically if the backend starts again."
+        hint="Wordflow will reconnect if it starts again."
         actions={<SendFeedbackButton variant="default" />}
       />
     );
@@ -223,12 +229,12 @@ export function BackendBootstrapGate({
         <BlockingScreen
           title={
             resource.state === 'configuration_error'
-              ? 'Choose another Data Root'
+              ? 'Choose another data folder'
               : 'Set up Wordflow'
           }
-          description="Choose the folder where Wordflow will keep projects, imports, and application data."
-          status="Data Root required"
-          hint={resource.error?.message}
+          description="Choose the folder where Wordflow keeps your Projects, imported files, and settings."
+          status="A data folder is needed"
+          error={resource.error?.message ?? null}
           actions={
             <DataRootSetupForm
               currentPath={resource.data_root}
@@ -243,11 +249,11 @@ export function BackendBootstrapGate({
     }
     return (
       <BlockingScreen
-        title="Data Root requires operator attention"
-        description="This deployment does not allow browsers or desktop clients to change its Data Root."
-        status="Runtime unavailable"
+        title="Wordflow can't open its data folder"
+        description="On this server, the data folder is set by the person who runs Wordflow."
+        status="Not available"
         error={resource.error?.message ?? null}
-        hint="Set a valid DATA_ROOT in the backend environment and restart Wordflow."
+        hint="Ask them to check the data folder setting (DATA_ROOT) and restart Wordflow."
         actions={<SendFeedbackButton variant="default" />}
       />
     );

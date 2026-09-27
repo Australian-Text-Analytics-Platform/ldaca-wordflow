@@ -675,7 +675,7 @@ describe('DataLoaderFeature citation UI', () => {
     expect(screen.queryByLabelText('Search by')).not.toBeInTheDocument();
     expect(await screen.findByText('2 of 2 collections')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import metadata only' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Update API token' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Update access token' })).toBeInTheDocument();
     expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1);
 
     await user.type(screen.getByLabelText('Filter collections'), 'cooee');

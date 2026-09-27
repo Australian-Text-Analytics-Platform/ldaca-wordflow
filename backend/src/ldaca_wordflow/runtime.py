@@ -633,7 +633,7 @@ class RuntimeManager:
                 failure=exc,
                 error_code="data_root_initialization_failed",
             )
-            raise DataRootInitializationError("Data Root initialization failed") from exc
+            raise DataRootInitializationError("Wordflow couldn't open the data folder.") from exc
 
         self._runtime = runtime
         try:
@@ -652,7 +652,7 @@ class RuntimeManager:
                 failure=exc,
                 error_code="data_root_persistence_failed",
             )
-            raise InternalServiceError("Data Root persistence failed") from exc
+            raise InternalServiceError("Wordflow couldn't save the data folder setting.") from exc
 
         self._data_root = canonical
         self._source = "config"

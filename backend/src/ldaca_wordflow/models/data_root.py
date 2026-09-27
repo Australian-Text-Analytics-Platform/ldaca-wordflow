@@ -64,7 +64,7 @@ class DataRootUpdateRequest(BaseModel):
     @classmethod
     def require_absolute_path(cls, value: Path) -> Path:
         if not value.is_absolute():
-            raise ValueError("Data Root must be an absolute path")
+            raise ValueError("The data folder must be a full path, not a relative one.")
         return value
 
 

@@ -230,10 +230,9 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <TabsContent value="workspace" className="mt-0 space-y-5">
                 <section className="space-y-3">
                   <div>
-                    <h3 className="text-body font-semibold">Working Directory</h3>
+                    <h3 className="text-body font-semibold">Data folder</h3>
                     <p className="text-body text-description">
-                      The backend validates and owns the Data Root used for all durable application
-                      data.
+                      Where Wordflow keeps your Projects, imported files, and settings.
                     </p>
                   </div>
                   <DataFolderSettingsPanel />

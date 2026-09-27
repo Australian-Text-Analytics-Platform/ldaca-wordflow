@@ -64,7 +64,7 @@ const tutorial = {
   'ui.working-directory': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-working-directory',
-    label: 'Working Directory',
+    label: 'Data folder',
   },
   'ui.help-feedback': {
     file: 'tutorials/ui.md',

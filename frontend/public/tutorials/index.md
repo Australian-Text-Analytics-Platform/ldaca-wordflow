@@ -22,7 +22,7 @@ Wordflow offers an interface that prioritizes ease of use and efficient navigati
 4.	Project Graph: Manage all processible and produced data blocks.
 5.	Data Editor: View and edit the selected data block(s) as a table.
 6.	Tool Interface: The main interface of the selected analytic tool.
-7.	Working Directory: Set the local directory where the data are saved.
+7.	Data folder: where Wordflow keeps your Projects and files.
 8.	Appearance: Switch between the light and dark themes.
 9.	Help and Feedback: When you encounter problems.
 

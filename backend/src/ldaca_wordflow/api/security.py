@@ -151,7 +151,7 @@ class CsrfOriginMiddleware:
                 request_id=str(request_id),
                 status_code=503,
                 code="runtime_unavailable",
-                message="The Data Root runtime is not ready",
+                message="Wordflow is still opening its data folder. Try again in a moment.",
             )(scope, receive, send)
             return
         request = StarletteRequest(scope, receive=receive)

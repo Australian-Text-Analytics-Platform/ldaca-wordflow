@@ -191,7 +191,7 @@ export const useProviderCredentials = () => {
 
   const saveDataPortalCredential = async (value: string) => {
     const credential = value.trim();
-    if (!credential) throw new Error('Enter a Data Portal token');
+    if (!credential) throw new Error('Enter your LDaCA access token');
     if (isMultiUserMode) {
       useProviderCredentialsStore
         .getState()

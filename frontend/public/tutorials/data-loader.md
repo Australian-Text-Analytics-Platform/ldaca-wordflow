@@ -168,7 +168,7 @@ of Australia ([LDaCA Data Portal](https://data.ldaca.edu.au)).
 
 ![Import LDaCA collections dialog](tutorials/assets/data_loader/ldaca_dialog.png)
 
-Some collections are access-controlled. A collection your LDaCA API token
+Some collections are access-controlled. A collection your LDaCA access token
 cannot read is marked **Restricted**, with the licence you need to apply for.
 For these you can:
 
@@ -178,11 +178,11 @@ For these you can:
   every item. A collection that publishes no item metadata (marked
   **Collection description only**) offers **Import collection metadata**
   instead, which gives one row describing the collection.
-- **Update API token**: enter or change your token in place. The list then
+- **Update access token**: enter or change your token in place (you can get one by signing in to the LDaCA Data Portal). The list then
   checks access again, so collections you have been granted access to become
   downloadable.
 
-![A restricted collection, with Import metadata only and Update API token](tutorials/assets/data_loader/ldaca_restricted.png)
+![A restricted collection, with Import metadata only and Update access token](tutorials/assets/data_loader/ldaca_restricted.png)
 
 Imports run in the background and may take from 30 seconds to a few minutes,
 depending on collection size and network speed. The imported collection
@@ -260,7 +260,7 @@ Some folders — particularly those created by the LDaCA importer — display a 
 | File fails to load | Unsupported format or encoding | Check that the file is UTF-8 encoded and uses a supported format |
 | CSV preview shows all data in one column | Wrong delimiter | Re-export with a comma delimiter, or contact the developer team |
 | LDaCA import does not appear | Import still in progress | Wait a moment and click the refresh button |
-| Project not visible in the manager | Working directory changed | Check the working directory under **Settings → Project → Working Directory** |
+| Project not visible in the manager | The data folder changed | Check the data folder under **Settings → Project → Data folder** |
 | Duplicate project names | Project names do not have to be unique | Open each, review its contents, and rename them to distinct names |
 | Some files were not added from a folder or ZIP | They are not UTF-8 text files, or they are tables | Read the skipped-files message; add tables in **Tables as separate Data Blocks** mode |
 
@@ -268,7 +268,7 @@ Some folders — particularly those created by the LDaCA importer — display a 
 
 | Setting | Default | Notes |
 |---|---|---|
-| Working directory | The recommended data folder for your operating system | Opened automatically on first start; change it under **Settings → Project → Working Directory** |
+| Data folder | The usual folder for your operating system | Opened automatically on first start; change it under **Settings → Project → Data folder** |
 | Folder or ZIP mode | Texts as one Data Block | Switch to **Tables as separate Data Blocks** to add each table file |
 
 ## Practice exercise

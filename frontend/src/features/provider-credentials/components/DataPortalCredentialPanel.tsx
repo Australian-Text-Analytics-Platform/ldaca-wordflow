@@ -26,10 +26,10 @@ export function DataPortalCredentialPanel({
     try {
       await credentials.saveDataPortalCredential(draft);
       setDraft('');
-      toast.success('Data Portal credential updated');
+      toast.success('LDaCA access token saved.');
       onChanged?.();
     } catch (error) {
-      toastError(error, 'Could not update credential');
+      toastError(error, "Couldn't save the LDaCA access token.");
     } finally {
       setPending(false);
     }
@@ -39,10 +39,10 @@ export function DataPortalCredentialPanel({
     setPending(true);
     try {
       await credentials.clearDataPortalCredential();
-      toast.success('Data Portal credential cleared');
+      toast.success('LDaCA access token removed.');
       onChanged?.();
     } catch (error) {
-      toastError(error, 'Could not clear credential');
+      toastError(error, "Couldn't remove the LDaCA access token.");
     } finally {
       setPending(false);
     }
@@ -51,22 +51,26 @@ export function DataPortalCredentialPanel({
   return (
     <section className="space-y-3">
       <div className="flex items-center gap-2">
-        <h3 className="text-body font-semibold">LDaCA Data Portal credential</h3>
+        <h3 className="text-body font-semibold">LDaCA access token</h3>
         <Badge variant={configured || deploymentConfigured ? 'outline' : 'secondary'}>
           {configured
             ? credentials.storage === 'browser'
               ? 'Configured in this browser'
               : 'Configured for this user'
             : deploymentConfigured
-              ? 'Deployment default'
+              ? 'Set by the server'
               : 'Not configured'}
         </Badge>
       </div>
       <p className="text-body text-description">
         {credentials.storage === 'browser'
-          ? 'This token stays in this browser for the current account and is sent only with Data Portal requests.'
-          : 'The local backend stores this write-only token for Data Portal search and imports.'}{' '}
-        Enter a new value to replace it.
+          ? 'Your token stays in this browser and is sent only when you browse or import LDaCA collections.'
+          : 'Wordflow keeps your token on this computer and uses it only to browse and import LDaCA collections.'}{' '}
+        You can get one by signing in to the{' '}
+        <a href="https://data.ldaca.edu.au" target="_blank" rel="noreferrer" className="underline">
+          LDaCA Data Portal
+        </a>
+        . Enter a new token to replace the saved one.
       </p>
       <div className="flex gap-2">
         <Input
@@ -74,7 +78,7 @@ export function DataPortalCredentialPanel({
           value={draft}
           placeholder={configured ? 'Enter a replacement token' : 'Enter token'}
           autoComplete="off"
-          aria-label="LDaCA Data Portal token"
+          aria-label="LDaCA access token"
           onChange={(event) => {
             setDraft(event.target.value);
           }}

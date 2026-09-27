@@ -67,15 +67,15 @@ class DataRootConfigStore:
         try:
             payload = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, UnicodeError, json.JSONDecodeError) as exc:
-            raise DataRootConfigError("Data Root configuration is unreadable") from exc
+            raise DataRootConfigError("The saved data folder setting can't be read.") from exc
         if not isinstance(payload, dict) or payload.get("schema_version") != 1:
-            raise DataRootConfigError("Data Root configuration schema is unsupported")
+            raise DataRootConfigError("The saved data folder setting is from a newer or older Wordflow.")
         raw_root = payload.get("data_root")
         if not isinstance(raw_root, str) or not raw_root.strip():
-            raise DataRootConfigError("Data Root configuration has no path")
+            raise DataRootConfigError("The saved data folder setting has no folder.")
         root = Path(raw_root)
         if not root.is_absolute():
-            raise DataRootConfigError("Configured Data Root must be absolute")
+            raise DataRootConfigError("The saved data folder is not a full path.")
         return root.expanduser().resolve(strict=False)
 
     def write(self, data_root: Path) -> None:
@@ -96,11 +96,11 @@ def probe_data_root(candidate: Path) -> Path:
     """Create, canonicalize, and prove read/write/delete access to a directory."""
 
     if not candidate.is_absolute():
-        raise ValueError("Data Root must be an absolute path")
+        raise ValueError("The data folder must be a full path, not a relative one.")
     mkdir_durable(candidate)
     canonical = candidate.resolve(strict=True)
     if not canonical.is_dir():
-        raise ValueError("Data Root must be a directory")
+        raise ValueError("The data folder must be a folder, not a file.")
     descriptor, raw_probe = tempfile.mkstemp(prefix=".wordflow-probe.", dir=canonical)
     probe = Path(raw_probe)
     try:

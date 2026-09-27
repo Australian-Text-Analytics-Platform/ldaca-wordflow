@@ -124,8 +124,8 @@ function LdacaCollectionRow({
           {restricted ? (
             <p className="text-description text-label-secondary">
               {collectionOnly
-                ? 'Your API token cannot read this collection, and it publishes no item metadata. Import the collection description, or update your token if you have been granted access.'
-                : 'Your API token cannot read this collection’s texts. Import its item metadata only, or update your token if you have been granted access.'}
+                ? 'Your LDaCA access token cannot read this collection, and it publishes no item metadata. Import the collection description, or update your token if you have been granted access.'
+                : 'Your LDaCA access token cannot read this collection’s texts. Import its item metadata only, or update your token if you have been granted access.'}
             </p>
           ) : null}
         </div>
@@ -150,7 +150,7 @@ function LdacaCollectionRow({
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={onUpdateToken}>
                 <KeyRound className="mr-2 h-4 w-4" />
-                Update API token
+                Update access token
               </Button>
             </>
           ) : (

@@ -46,7 +46,7 @@ describe('DataRootSetupForm', () => {
     mocks.isTauri.mockReturnValue(false);
     render(<DataRootSetupForm suggestedPath="/srv/recommended" onSubmit={onSubmit} />);
 
-    const input = screen.getByRole('textbox', { name: 'Folder on the server' });
+    const input = screen.getByRole('textbox', { name: 'Data folder' });
     expect(input.tagName).toBe('TEXTAREA');
     expect(input).toHaveValue('');
     expect(input).toHaveAttribute('placeholder', '/srv/recommended');

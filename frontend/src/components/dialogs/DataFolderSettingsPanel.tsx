@@ -11,11 +11,11 @@ export function DataFolderSettingsPanel() {
   if (!resource.mutable) {
     return (
       <div className="space-y-2">
-        <Badge variant="secondary">Managed by operator</Badge>
+        <Badge variant="secondary">Set by the server</Badge>
         <p className="text-body text-description">
           {resource.source === 'environment'
-            ? 'DATA_ROOT controls this deployment and cannot be changed while Wordflow is running.'
-            : 'Multi-user Data Roots can only be changed by the backend operator.'}
+            ? 'This server sets the data folder (DATA_ROOT), so it cannot be changed here.'
+            : 'On a shared server, only the person who runs Wordflow can change the data folder.'}
         </p>
       </div>
     );
@@ -25,10 +25,10 @@ export function DataFolderSettingsPanel() {
     <DataRootSetupForm
       currentPath={resource.data_root}
       suggestedPath={resource.suggested_data_root}
-      submitLabel="Switch Data Root"
+      submitLabel="Switch data folder"
       onSubmit={async (path) => {
         await configureDataRoot(path);
-        toast.success('Data Root updated');
+        toast.success('Data folder changed.');
       }}
     />
   );

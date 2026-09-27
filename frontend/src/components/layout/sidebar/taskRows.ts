@@ -80,9 +80,16 @@ const timestamp = (task: TaskItem): number => {
   return Number.isNaN(value) ? 0 : value;
 };
 
+/** Plain names for import tasks (issue 205): the source is "LDaCA collections". */
+const IMPORT_LABELS: Record<string, string> = {
+  data_portal_import: 'LDaCA collection import',
+  sample_import: 'Sample data import',
+};
+
 const importLabel = (task: TaskItem): string => {
   const typeLabel = task.task_type.replace(/_/g, ' ') || 'task';
-  const label = typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
+  const label =
+    IMPORT_LABELS[task.task_type] ?? typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
   return task.name ? `${label}: ${task.name}` : label;
 };
 

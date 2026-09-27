@@ -35,13 +35,13 @@ describe('DataPortalCredentialPanel', () => {
     render(<DataPortalCredentialPanel />);
 
     expect(screen.queryByRole('button', { name: 'Add Provider' })).not.toBeInTheDocument();
-    await user.type(screen.getByLabelText('LDaCA Data Portal token'), 'portal-token');
+    await user.type(screen.getByLabelText('LDaCA access token'), 'portal-token');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     await waitFor(() =>
       expect(mocks.saveDataPortalCredential).toHaveBeenCalledWith('portal-token'),
     );
-    expect(screen.getByLabelText('LDaCA Data Portal token')).toHaveValue('');
+    expect(screen.getByLabelText('LDaCA access token')).toHaveValue('');
   });
 
   it('clears an explicitly configured Data Portal token', async () => {

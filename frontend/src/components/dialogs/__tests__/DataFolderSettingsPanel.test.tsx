@@ -34,10 +34,10 @@ describe('DataFolderSettingsPanel', () => {
       </DataRootContext.Provider>,
     );
 
-    expect(screen.getByText(/Current Data Root: \/srv\/original/)).toBeInTheDocument();
-    await user.clear(screen.getByLabelText('Folder on the server'));
-    await user.type(screen.getByLabelText('Folder on the server'), '/srv/updated');
-    await user.click(screen.getByRole('button', { name: 'Switch Data Root' }));
+    expect(screen.getByText(/Current data folder: \/srv\/original/)).toBeInTheDocument();
+    await user.clear(screen.getByLabelText('Data folder'));
+    await user.type(screen.getByLabelText('Data folder'), '/srv/updated');
+    await user.click(screen.getByRole('button', { name: 'Switch data folder' }));
 
     await waitFor(() => {
       expect(configureDataRoot).toHaveBeenCalledWith('/srv/updated');
@@ -61,7 +61,7 @@ describe('DataFolderSettingsPanel', () => {
       </DataRootContext.Provider>,
     );
 
-    expect(screen.getByText('Managed by operator')).toBeInTheDocument();
-    expect(screen.getByText(/DATA_ROOT controls this deployment/)).toBeInTheDocument();
+    expect(screen.getByText('Set by the server')).toBeInTheDocument();
+    expect(screen.getByText(/This server sets the data folder/)).toBeInTheDocument();
   });
 });

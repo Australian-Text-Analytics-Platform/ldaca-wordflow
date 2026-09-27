@@ -266,7 +266,7 @@ class _RuntimeLeaseMiddleware:
                 request_id=request_id,
                 status_code=503,
                 code="runtime_unavailable",
-                message="The Data Root runtime is not ready",
+                message="Wordflow is still opening its data folder. Try again in a moment.",
             )(scope, receive, send)
 
 async def _http_error_handler(

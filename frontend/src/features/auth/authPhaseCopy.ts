@@ -39,10 +39,10 @@ export const getBlockingCopy = (
   if (phase.status === 'bootstrapping') {
     return {
       title: 'Signing you in',
-      description: 'The backend is healthy; finishing the authentication handshake.',
-      status: showLaggingHint ? 'Still waiting for auth…' : 'Checking your session…',
+      description: 'Wordflow is running and is finishing signing you in.',
+      status: showLaggingHint ? 'Still waiting…' : 'Checking your session…',
       hint: showLaggingHint
-        ? 'This can happen if backend migrations are still running. You can retry below.'
+        ? 'This can take a little longer after Wordflow has been updated. You can try again below.'
         : 'This usually takes just a moment.',
       error: phase.error,
     };
@@ -53,11 +53,11 @@ export const getBlockingCopy = (
     return {
       title: 'Reconnecting your session',
       description:
-        'Multiple background refresh attempts failed, so we paused the project until the backend responds again.',
+        'Wordflow lost contact with its server, so your Project is paused until it responds again.',
       status: `Retrying (${formatAttemptLabel(phase.attempts)})…`,
       hint: lastFailureLabel
-        ? `Last failure at ${lastFailureLabel}. Check your connection or restart the backend, then retry below.`
-        : 'Check your connection or restart the backend, then retry below.',
+        ? `Last tried at ${lastFailureLabel}. Check your internet connection, then try again below.`
+        : 'Check your internet connection, then try again below.',
       error: phase.error,
     };
   }

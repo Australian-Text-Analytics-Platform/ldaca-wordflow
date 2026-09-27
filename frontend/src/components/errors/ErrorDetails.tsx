@@ -95,9 +95,15 @@ export function DetailsDialogButton(props: DetailsDialogContent) {
 export function ErrorDetails({
   technical,
   variant = 'inline',
+  label = 'Details',
+  feedback = true,
 }: {
   technical: string;
   variant?: 'inline' | 'dialog';
+  /** The toggle's text, for example "Technical details" on startup screens. */
+  label?: string;
+  /** Offer Send feedback; off where the screen already has the button. */
+  feedback?: boolean;
 }) {
   const openFeedback = useUIStore((state) => state.openFeedback);
   const [open, setOpen] = useState(false);
@@ -127,12 +133,12 @@ export function ErrorDetails({
           aria-hidden="true"
           className={cn('size-3 transition-transform', open && 'rotate-90')}
         />
-        Details
+        {label}
       </button>
       {open ? (
         <div>
           <p className="mt-1 text-description">{EXPLANATION}</p>
-          <DetailsBody technical={technical} onFeedback={openFeedback} />
+          <DetailsBody technical={technical} onFeedback={feedback ? openFeedback : null} />
         </div>
       ) : null}
     </div>

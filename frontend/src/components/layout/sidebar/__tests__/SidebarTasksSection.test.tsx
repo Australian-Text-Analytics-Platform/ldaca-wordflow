@@ -271,7 +271,7 @@ describe('SidebarTasksSection', () => {
       { onStopUserFileImport },
     );
 
-    await user.click(screen.getByRole('button', { name: /^Task: Sample import/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: Sample data import/ }));
     await user.click(screen.getByRole('button', { name: /^stop$/i }));
 
     expect(onStopUserFileImport).toHaveBeenCalledWith('import-running');
@@ -293,7 +293,7 @@ describe('SidebarTasksSection', () => {
       { onClearUserFileImport, clearingImportId: 'import-failed' },
     );
 
-    await user.click(screen.getByRole('button', { name: /^Task: Data portal import/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: LDaCA collection import/ }));
 
     expect(screen.getByRole('button', { name: /clearing/i })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /^stop$/i })).not.toBeInTheDocument();

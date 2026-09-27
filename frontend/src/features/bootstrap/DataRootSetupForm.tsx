@@ -36,7 +36,7 @@ export function DataRootSetupForm({
       await onSubmit(nextPath);
       setPath(nextPath);
     } catch (cause) {
-      setError(cause ?? new Error('The Data Root could not be opened'));
+      setError(cause ?? new Error("Couldn't open the data folder."));
     } finally {
       setSubmitting(false);
     }
@@ -46,7 +46,7 @@ export function DataRootSetupForm({
     const { open } = await import('@tauri-apps/plugin-dialog');
     const selected = await open({
       directory: true,
-      title: 'Choose Data Root',
+      title: 'Choose the data folder',
       defaultPath: path.trim() ? path : (suggestedPath ?? undefined),
     });
     if (typeof selected === 'string') await submit(selected);
@@ -56,7 +56,7 @@ export function DataRootSetupForm({
     <div className="w-full space-y-4 text-left">
       {currentPath && (
         <p className="break-all text-body-secondary text-description">
-          Current Data Root: {currentPath}
+          Current data folder: {currentPath}
         </p>
       )}
       {desktopRuntime ? (
@@ -80,7 +80,7 @@ export function DataRootSetupForm({
           }}
         >
           <div className="space-y-2">
-            <Label htmlFor="data-root-path">Folder on the server</Label>
+            <Label htmlFor="data-root-path">Data folder</Label>
             <Textarea
               id="data-root-path"
               value={path}
@@ -126,7 +126,7 @@ export function DataRootSetupForm({
       {error ? (
         // Plain words, with any technical text under Details (issue 205).
         <p className="text-body text-error">
-          {presentError(error, 'The Data Root could not be opened').message}
+          {presentError(error, "Couldn't open the data folder.").message}
         </p>
       ) : null}
       {error && presentError(error, '').technical ? (

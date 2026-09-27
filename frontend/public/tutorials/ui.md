@@ -223,15 +223,15 @@ The centre column is the main working area and shows the interface of whichever 
 
 ![Quick access list of analysis tabs](tutorials/assets/ui/quick_access.png)
 
-<h2 id="help-ui-working-directory">7. Working Directory</h2>
+<h2 id="help-ui-working-directory">7. Data folder</h2>
 
-The Data Root is the filesystem directory where Wordflow stores durable application data.
+The data folder is where Wordflow keeps your Projects, imported files, and settings.
 
-- On first launch without `DATA_ROOT` or saved configuration, Wordflow uses the recommended location for your operating system and remembers it. There is nothing to choose.
-- If that location cannot be used (for example, it is not writable), a setup screen shows the error and lets you choose another folder.
-- The desktop app opens the operating system's native folder picker. In a browser, enter an absolute path on the server that runs Wordflow.
-- Change an existing single-user Data Root under **Settings → Project → Working Directory**. After a successful change, Wordflow reloads automatically and does not copy data from the previous root.
-- Environment-managed and multi-user deployments show operator guidance instead of allowing a client-side change.
+- On first start, Wordflow uses the usual location for your operating system and remembers it. There is nothing to choose.
+- If that folder cannot be used (for example, Wordflow is not allowed to write to it), a setup screen says so and lets you choose another folder.
+- The desktop app opens your computer's folder picker. In a browser, type the full path of a folder on the server that runs Wordflow.
+- To change it later, open **Settings → Project → Data folder**. Wordflow reloads after the change and does not copy anything from the old folder.
+- On a shared server, the data folder is set by the person who runs Wordflow, and Settings says so.
 
 <h2 id="help-ui-appearance">8. Appearance</h2>
 

@@ -245,7 +245,7 @@ class RuntimeUnavailableError(AppError):
     code = "runtime_unavailable"
 
     def __init__(self) -> None:
-        super().__init__("The Data Root runtime is not ready")
+        super().__init__("Wordflow is still opening its data folder. Try again in a moment.")
 
 
 class DataRootInvalidError(AppError):

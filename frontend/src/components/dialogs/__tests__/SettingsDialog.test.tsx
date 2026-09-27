@@ -169,7 +169,7 @@ describe('SettingsDialog', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Project' }));
 
-    expect(screen.getByLabelText('Folder on the server')).toHaveValue('/srv/wordflow');
+    expect(screen.getByLabelText('Data folder')).toHaveValue('/srv/wordflow');
   });
 
   it('renders the AI providers panel in the AI tab', async () => {
@@ -189,8 +189,8 @@ describe('SettingsDialog', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Portal' }));
 
-    expect(await screen.findByText('LDaCA Data Portal credential')).toBeInTheDocument();
-    expect(screen.getByLabelText('LDaCA Data Portal token')).toBeInTheDocument();
+    expect(await screen.findByText('LDaCA access token', { selector: 'h3' })).toBeInTheDocument();
+    expect(screen.getByLabelText('LDaCA access token')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add Provider' })).not.toBeInTheDocument();
   });
 

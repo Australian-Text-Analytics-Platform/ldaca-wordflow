@@ -1,5 +1,6 @@
 import React from 'react';
 import wordflowIcon from '@/wordflow-icon.png';
+import { ErrorDetails } from '@/components/errors/ErrorDetails';
 
 interface BlockingScreenProps {
   title: string;
@@ -48,10 +49,10 @@ function BlockingScreen({
             </p>
           )}
         </div>
+        {/* Technical text stays out of the way until asked for (issue 205). */}
         {error && (
-          <div className="rounded-md border border-error bg-error-background px-3 py-2 text-left">
-            <p className="mb-1 text-body font-semibold text-error">Still waiting…</p>
-            <p className="whitespace-pre-wrap wrap-break-word text-body text-error">{error}</p>
+          <div className="text-left">
+            <ErrorDetails technical={error} label="Technical details" feedback={false} />
           </div>
         )}
         {actions && <div className="flex flex-wrap justify-center gap-3">{actions}</div>}

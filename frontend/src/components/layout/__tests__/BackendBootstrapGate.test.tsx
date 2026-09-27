@@ -87,7 +87,7 @@ describe('BackendBootstrapGate', () => {
     );
 
     expect(await screen.findByText('Set up Wordflow')).toBeInTheDocument();
-    expect(screen.getByLabelText('Folder on the server')).toBeInTheDocument();
+    expect(screen.getByLabelText('Data folder')).toBeInTheDocument();
     expect(screen.queryByText('Application ready')).not.toBeInTheDocument();
   });
 
@@ -177,7 +177,7 @@ describe('BackendBootstrapGate', () => {
         <p>Application ready</p>
       </BackendBootstrapGate>,
     );
-    const input = await screen.findByRole('textbox', { name: 'Folder on the server' });
+    const input = await screen.findByRole('textbox', { name: 'Data folder' });
     await user.type(input, 'relative/path');
     await user.click(screen.getByRole('button', { name: 'Use this folder' }));
 
@@ -309,7 +309,9 @@ describe('BackendBootstrapGate', () => {
       </BackendBootstrapGate>,
     );
 
-    expect(await screen.findByText('Data Root requires operator attention')).toBeInTheDocument();
+    expect(await screen.findByText("Wordflow can't open its data folder")).toBeInTheDocument();
+    // The server's own text is under Technical details (issue 205).
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Technical details' }));
     expect(screen.getByText('Configured root is unavailable')).toBeInTheDocument();
 
     // Issue 207: a user stuck at startup can still report what happened.
@@ -336,7 +338,7 @@ describe('BackendBootstrapGate', () => {
       </BackendBootstrapGate>,
     );
 
-    expect(await screen.findByText('Backend shutting down')).toBeInTheDocument();
+    expect(await screen.findByText('Wordflow is shutting down')).toBeInTheDocument();
     expect(screen.getByText('Stopping…')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Send feedback' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Choose folder' })).not.toBeInTheDocument();
@@ -418,7 +420,7 @@ describe('BackendBootstrapGate', () => {
     });
     expect(screen.getByText('Reloading Wordflow')).toBeInTheDocument();
     expect(
-      screen.getByText('The Data Root changed. Wordflow is reconnecting to the new Runtime.'),
+      screen.getByText('The data folder changed. Wordflow is reconnecting.'),
     ).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Switch root' })).not.toBeInTheDocument();
     expect(onMount).toHaveBeenCalledOnce();
