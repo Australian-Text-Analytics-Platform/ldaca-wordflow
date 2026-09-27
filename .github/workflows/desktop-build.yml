@@ -120,9 +120,9 @@ jobs:
           Set-StrictMode -Version Latest
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           if ($env:TAURI_BUILD_FLAGS) {
-            pnpm exec tauri build $env:TAURI_BUILD_FLAGS -- --locked
+            node node_modules/@tauri-apps/cli/tauri.js build $env:TAURI_BUILD_FLAGS -- --locked
           } else {
-            pnpm exec tauri build -- --locked
+            node node_modules/@tauri-apps/cli/tauri.js build -- --locked
           }
 
       - name: Import Apple code-signing certificate
@@ -147,7 +147,7 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm exec tauri build --bundles app --target aarch64-apple-darwin -- --locked
+        run: node node_modules/@tauri-apps/cli/tauri.js build --bundles app --target aarch64-apple-darwin -- --locked
 
       - name: Sign the native application
         if: inputs.platform == 'macos'
