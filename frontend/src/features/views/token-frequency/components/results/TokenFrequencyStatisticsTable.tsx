@@ -18,11 +18,10 @@ import HelpIcon from '@/components/help/HelpIcon';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { TokenFrequencyStatisticsEntry } from '../../tokenFrequencyAdapters';
 import { createTokenFilterMatcher } from '../../tokenFrequencyAdapters';
+import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 
 export type EnhancedStatisticsRow = TokenFrequencyStatisticsEntry & {
   overuse: boolean;
@@ -413,7 +412,6 @@ export const TokenFrequencyStatisticsTable = ({
     onDownloadFrequencyCsv('token-keyness', downloadRows);
   };
 
-  const pageCount = table.getPageCount() || 1;
   const pageIndex = table.state.pagination.pageIndex;
   const pageSize = table.state.pagination.pageSize;
   const filteredCount = table.getFilteredRowModel().rows.length;
@@ -561,75 +559,15 @@ export const TokenFrequencyStatisticsTable = ({
             {filteredCount === 0 ? (
               <p className="text-body text-description">No tokens match the current filter.</p>
             ) : (
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="flex items-center gap-2 text-body">
-                  <Label
-                    htmlFor="stats-rows-per-page"
-                    className="text-label-secondary text-description"
-                  >
-                    Rows per page
-                  </Label>
-                  <Input
-                    id="stats-rows-per-page"
-                    type="number"
-                    min={5}
-                    max={200}
-                    value={pageSize}
-                    onChange={(event) => {
-                      const next = Number(event.target.value);
-                      if (Number.isFinite(next) && next >= 5 && next <= 200) {
-                        table.setPageSize(next);
-                      }
-                    }}
-                    className="h-8 w-20"
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!table.getCanPreviousPage()}
-                    onClick={() => {
-                      table.setPageIndex(0);
-                    }}
-                  >
-                    First
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!table.getCanPreviousPage()}
-                    onClick={() => {
-                      table.previousPage();
-                    }}
-                  >
-                    Previous
-                  </Button>
-                  <span className="text-label-secondary text-description">
-                    Page {pageIndex + 1} / {pageCount}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!table.getCanNextPage()}
-                    onClick={() => {
-                      table.nextPage();
-                    }}
-                  >
-                    Next
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!table.getCanNextPage()}
-                    onClick={() => {
-                      table.setPageIndex(pageCount - 1);
-                    }}
-                  >
-                    Last
-                  </Button>
-                </div>
-              </div>
+              // The shared footer every table uses, labelled by unit (issue 205).
+              <ServerPaginationFooter
+                table={table}
+                pageIndex={pageIndex}
+                pageSize={pageSize}
+                rowCount={filteredCount}
+                pageSizeOptions={[20, 50, 100, 200]}
+                pageSizeLabel="Words per page"
+              />
             )}
           </>
         ) : (

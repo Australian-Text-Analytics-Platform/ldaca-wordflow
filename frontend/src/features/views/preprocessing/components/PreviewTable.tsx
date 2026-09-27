@@ -11,14 +11,6 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Card,
   CardContent,
@@ -33,6 +25,8 @@ import { type ServerColumnDef, useServerTable } from '@/features/views/common/ho
 import { formatPreviewValue } from '../utils/typeUtils';
 import { type PreviewRow, type PreviewPagination, PREVIEW_PAGE_SIZE_OPTIONS } from '../types';
 import { displayDateTime } from '@/lib/displayDateTime';
+import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 interface PreviewTableProps {
   title: React.ReactNode;
@@ -154,31 +148,6 @@ export function PreviewTable({
             <CardDescription>{description}</CardDescription>
           </div>
           {loadingBadge}
-          {ready && !error && (
-            <div className="flex items-center gap-2 text-body text-description">
-              <label htmlFor="preview-page-size" className="text-body text-description">
-                Rows per page
-              </label>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(value) => {
-                  onPageSizeChange(Number(value));
-                }}
-                disabled={loading}
-              >
-                <SelectTrigger className="w-24">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PREVIEW_PAGE_SIZE_OPTIONS.map((option) => (
-                    <SelectItem key={option} value={String(option)}>
-                      {option}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
@@ -187,9 +156,7 @@ export function PreviewTable({
             {readyMessage}
           </div>
         ) : error ? (
-          <div className="rounded-md border border-error/40 bg-error/10 p-4 text-body text-error">
-            {error}
-          </div>
+          <ErrorNotice error={error} />
         ) : (
           <ScrollArea
             type="always"
@@ -278,33 +245,17 @@ export function PreviewTable({
         )}
       </CardContent>
       {ready && !error && data.length > 0 && (
-        <CardFooter className="flex flex-wrap items-center justify-between gap-3 border-t border-surface-border bg-panel/20 py-4">
-          <div className="text-body text-description">Page {currentPage}</div>
-          <div className="flex items-center gap-2">
-            <Button
-              type="button"
-              onClick={() => {
-                table.setPageIndex(currentPage - 2);
-              }}
-              disabled={currentPage <= 1 || loading}
-              variant="outline"
-              size="sm"
-            >
-              Previous
-            </Button>
-            <span className="text-body text-description">Page {currentPage}</span>
-            <Button
-              type="button"
-              onClick={() => {
-                table.setPageIndex(currentPage);
-              }}
-              disabled={!hasNext || loading}
-              variant="outline"
-              size="sm"
-            >
-              Next
-            </Button>
-          </div>
+        // The shared footer every table uses (issue 205).
+        <CardFooter className="border-t border-surface-border bg-panel/20 py-3">
+          <ServerPaginationFooter
+            table={table}
+            pageIndex={currentPage - 1}
+            pageSize={pageSize}
+            hasNext={hasNext}
+            pageSizeOptions={[...PREVIEW_PAGE_SIZE_OPTIONS]}
+            loading={loading}
+            className="w-full"
+          />
         </CardFooter>
       )}
 

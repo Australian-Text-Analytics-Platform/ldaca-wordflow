@@ -178,7 +178,7 @@ function CombinedConcordanceTable({
           reviewRowUnit === null
             ? 'Documents per page'
             : panelSelectedNodes.length > 1
-              ? 'Matches per source per page'
+              ? 'Matches per page'
               : 'Matches per page'
         }
         pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}
@@ -365,7 +365,7 @@ function PerNodeConcordanceTable({
           reviewRowUnit === null
             ? 'Documents per page'
             : panelSelectedNodes.length > 1
-              ? 'Matches per source per page'
+              ? 'Matches per page'
               : 'Matches per page'
         }
         pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}

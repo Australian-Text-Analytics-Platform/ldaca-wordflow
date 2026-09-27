@@ -201,7 +201,7 @@ export function QuotationResultsPanel({
                   ? 'Documents per page'
                   : reviewRowUnit === 'documents'
                     ? 'Documents per page'
-                    : 'Matches per page'
+                    : 'Quotes per page'
               }
               showPageSummary={reviewRowUnit === null}
             />

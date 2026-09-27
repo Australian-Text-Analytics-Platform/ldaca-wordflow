@@ -227,7 +227,7 @@ export function ConcordanceDispersionNodeBlock({
             reviewRowUnit === null
               ? 'Documents per page'
               : panelSelectedNodes.length > 1
-                ? `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per source per page`
+                ? `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per page`
                 : `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per page`
           }
           pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}
@@ -412,7 +412,7 @@ export function ConcordanceDispersionNodeBlock({
           reviewRowUnit === null
             ? 'Documents per page'
             : panelSelectedNodes.length > 1
-              ? `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per source per page`
+              ? `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per page`
               : `${reviewRowUnit === 'documents' ? 'Documents' : 'Matches'} per page`
         }
         pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}

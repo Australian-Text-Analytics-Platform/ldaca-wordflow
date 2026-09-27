@@ -86,7 +86,8 @@ describe('PreviewTable', () => {
     await waitFor(() => {
       expect(within(dialog).getByText('Page two row.')).toBeInTheDocument();
     });
-    expect(screen.getAllByText('Page 2')).toHaveLength(2);
+    // The shared footer marks the current page once (issue 205).
+    expect(screen.getByRole('link', { current: 'page', hidden: true })).toHaveTextContent('2');
     expect(within(dialog).getByRole('button', { name: 'Previous row' })).toBeEnabled();
   });
 });
