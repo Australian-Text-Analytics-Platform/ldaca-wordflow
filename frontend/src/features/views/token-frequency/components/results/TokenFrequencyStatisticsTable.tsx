@@ -118,31 +118,33 @@ const columnHelper = createColumnHelper<
   EnhancedStatisticsRow
 >();
 
+// Plain explanations for the abbreviated headers (issue 205); each header
+// tooltip ends with "Click to sort."
 const STATISTICS_COLUMN_TOOLTIPS: Record<string, string> = {
-  token: 'The token being compared across the Reference and Study Data Blocks.',
-  freq_reference: 'Observed frequency: the token count in the Reference Data Block.',
-  percent_reference: 'The token count as a percentage of all tokens in the Reference Data Block.',
-  freq_study: 'Observed frequency: the token count in the Study Data Block.',
-  percent_study: 'The token count as a percentage of all tokens in the Study Data Block.',
+  token: 'The word (token) being compared.',
+  freq_reference: 'OR: how many times the token occurs in the Reference corpus.',
+  percent_reference: "%R: the token's share of all tokens in the Reference corpus.",
+  freq_study: 'OS: how many times the token occurs in the Study corpus.',
+  percent_study: "%S: the token's share of all tokens in the Study corpus.",
   log_likelihood_llv:
-    'Log-likelihood score measuring the strength of the frequency difference between the two Data Blocks.',
-  overuse:
-    'Which Data Block uses the token more, relative to its size: Study (overuse) or Reference (underuse).',
+    'LL (log-likelihood): how sure we can be that the difference is real. Above 3.84 is significant (p < 0.05); above 15.13, p < 0.0001.',
+  overuse: 'Overuse: which corpus uses the token more, for its size: Study or Reference.',
   signed_ll:
-    'The log-likelihood score, positive when the token is relatively more frequent in Study and negative when it is relatively more frequent in Reference.',
+    'Signed LL: LL with a sign, positive when the token is more frequent in Study and negative when it is more frequent in Reference.',
   percent_diff:
-    'How much more (or less) frequent the token is in Study than in Reference: (Study − Reference) ÷ Reference relative frequency × 100. 0 means equal.',
+    '%DIFF: how much more (or less) frequent the token is in Study than in Reference, as a percentage. 0 means the same; N/A means the token never occurs in Reference.',
   bayes_factor_bic:
-    'A BIC-adjusted evidence score for the frequency difference; larger values indicate stronger evidence.',
+    'Bayes (Bayes factor, BIC): how strong the evidence for a difference is. Above 2 is positive, above 6 strong, above 10 very strong.',
   effect_size_ell:
-    'ELL effect-size estimate for the frequency difference, adjusted for corpus size and expected frequency.',
+    'ELL (effect size for log-likelihood): how big the difference is, allowing for the corpus sizes. Unlike LL, it does not grow just because the corpora are larger.',
   relative_risk:
-    'Study relative frequency divided by Reference relative frequency; 1 means equal relative frequency.',
+    'RRisk (relative risk): Study relative frequency divided by Reference. 1 means the same; 2 means twice as frequent in Study.',
   log_ratio:
-    'Binary logarithm (log2) of the Study-to-Reference relative-frequency ratio; 0 means equal, 1 means twice as frequent in Study.',
-  odds_ratio: 'Study token odds divided by Reference token odds; 1 means equal odds.',
+    'LogRatio: RRisk on a log2 scale. 0 means the same; 1 twice as frequent in Study; -1 half as frequent.',
+  odds_ratio:
+    'OddsRatio: the odds of the token in Study divided by its odds in Reference. 1 means the same.',
   significance:
-    'Significance level derived from log likelihood: more stars indicate stronger evidence of a difference.',
+    'Significance, from LL: **** p < 0.0001, *** p < 0.001, ** p < 0.01, * p < 0.05, n.s. not significant.',
 };
 
 /**
@@ -504,8 +506,7 @@ export const TokenFrequencyStatisticsTable = ({
                         {headerGroup.headers.map((header) => {
                           const sortDir = header.column.getIsSorted();
                           const tooltip =
-                            STATISTICS_COLUMN_TOOLTIPS[header.id] ??
-                            'Click to sort the statistics table by this column.';
+                            `${STATISTICS_COLUMN_TOOLTIPS[header.id] ?? ''} Click to sort.`.trim();
                           return (
                             <th key={header.id} className="px-2 py-2 whitespace-nowrap">
                               <Tooltip>
@@ -551,6 +552,11 @@ export const TokenFrequencyStatisticsTable = ({
                 </table>
               </div>
             </div>
+            {/* What the stars mean (issue 205). */}
+            <p className="text-label-secondary text-description">
+              Significance, from LL: **** p &lt; 0.0001 (LL above 15.13), *** p &lt; 0.001 (above
+              10.83), ** p &lt; 0.01 (above 6.63), * p &lt; 0.05 (above 3.84), n.s. not significant.
+            </p>
 
             {filteredCount === 0 ? (
               <p className="text-body text-description">No tokens match the current filter.</p>

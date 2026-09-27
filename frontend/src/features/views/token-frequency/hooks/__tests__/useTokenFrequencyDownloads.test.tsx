@@ -132,13 +132,13 @@ describe('useTokenFrequencyDownloads', () => {
       'token-keyness',
       [
         {
-          token: 'alpha',
+          Token: 'alpha',
           'OR_Reference Corpus': 12,
           'OS_Study Corpus': 8,
           '%R_Reference Corpus': 0.6,
           '%S_Study Corpus': 0.4,
-          'E_Reference Corpus': 10,
-          'E_Study Corpus': 10,
+          'Expected_Reference Corpus': 10,
+          'Expected_Study Corpus': 10,
           'Total_Reference Corpus': 100,
           'Total_Study Corpus': 80,
           Overuse: false,

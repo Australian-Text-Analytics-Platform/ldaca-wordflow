@@ -744,48 +744,21 @@ describe('Token frequency result layouts', () => {
   });
 
   it.each([
-    ['Token', 'The token being compared across the Reference and Study Data Blocks.'],
-    ['OR', 'Observed frequency: the token count in the Reference Data Block.'],
-    ['%R', 'The token count as a percentage of all tokens in the Reference Data Block.'],
-    ['OS', 'Observed frequency: the token count in the Study Data Block.'],
-    ['%S', 'The token count as a percentage of all tokens in the Study Data Block.'],
-    [
-      'LL',
-      'Log-likelihood score measuring the strength of the frequency difference between the two Data Blocks.',
-    ],
-    [
-      'Overuse',
-      'Which Data Block uses the token more, relative to its size: Study (overuse) or Reference (underuse).',
-    ],
-    [
-      'Signed LL',
-      'The log-likelihood score, positive when the token is relatively more frequent in Study and negative when it is relatively more frequent in Reference.',
-    ],
-    [
-      '%DIFF',
-      'How much more (or less) frequent the token is in Study than in Reference: (Study − Reference) ÷ Reference relative frequency × 100. 0 means equal.',
-    ],
-    [
-      'Bayes',
-      'A BIC-adjusted evidence score for the frequency difference; larger values indicate stronger evidence.',
-    ],
-    [
-      'ELL',
-      'ELL effect-size estimate for the frequency difference, adjusted for corpus size and expected frequency.',
-    ],
-    [
-      'RRisk',
-      'Study relative frequency divided by Reference relative frequency; 1 means equal relative frequency.',
-    ],
-    [
-      'LogRatio',
-      'Binary logarithm (log2) of the Study-to-Reference relative-frequency ratio; 0 means equal, 1 means twice as frequent in Study.',
-    ],
-    ['OddsRatio', 'Study token odds divided by Reference token odds; 1 means equal odds.'],
-    [
-      'Significance',
-      'Significance level derived from log likelihood: more stars indicate stronger evidence of a difference.',
-    ],
+    ['Token', 'The word (token) being compared.'],
+    ['OR', 'OR: how many times the token occurs in the Reference corpus.'],
+    ['%R', "%R: the token's share of all tokens in the Reference corpus."],
+    ['OS', 'OS: how many times the token occurs in the Study corpus.'],
+    ['%S', "%S: the token's share of all tokens in the Study corpus."],
+    ['LL', 'LL (log-likelihood): how sure we can be that the difference is real.'],
+    ['Overuse', 'Overuse: which corpus uses the token more, for its size: Study or Reference.'],
+    ['Signed LL', 'Signed LL: LL with a sign'],
+    ['%DIFF', '%DIFF: how much more (or less) frequent the token is in Study than in Reference'],
+    ['Bayes', 'Bayes (Bayes factor, BIC): how strong the evidence for a difference is.'],
+    ['ELL', 'ELL (effect size for log-likelihood): how big the difference is'],
+    ['RRisk', 'RRisk (relative risk): Study relative frequency divided by Reference.'],
+    ['LogRatio', 'LogRatio: RRisk on a log2 scale.'],
+    ['OddsRatio', 'OddsRatio: the odds of the token in Study divided by its odds in Reference.'],
+    ['Significance', 'Significance, from LL: **** p < 0.0001'],
   ])('immediately explains the %s statistics header', async (header, explanation) => {
     const user = userEvent.setup();
     const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });

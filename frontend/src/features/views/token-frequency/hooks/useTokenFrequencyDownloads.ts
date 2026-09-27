@@ -82,12 +82,22 @@ export const useTokenFrequencyDownloads = ({
         freq_study: `OS_${studyName}`,
         percent_reference: `%R_${referenceName}`,
         percent_study: `%S_${studyName}`,
-        expected_reference: `E_${referenceName}`,
-        expected_study: `E_${studyName}`,
+        // The screen's column names (issue 205); expected counts are named in full.
+        expected_reference: `Expected_${referenceName}`,
+        expected_study: `Expected_${studyName}`,
         reference_total: `Total_${referenceName}`,
         study_total: `Total_${studyName}`,
+        token: 'Token',
+        log_likelihood_llv: 'LL',
         overuse: 'Overuse',
         signed_ll: 'Signed_LL',
+        percent_diff: '%DIFF',
+        bayes_factor_bic: 'Bayes',
+        effect_size_ell: 'ELL',
+        relative_risk: 'RRisk',
+        log_ratio: 'LogRatio',
+        odds_ratio: 'OddsRatio',
+        significance: 'Significance',
       };
 
       return rows.map((row) => {
@@ -95,6 +105,8 @@ export const useTokenFrequencyDownloads = ({
         const source = row as Record<string, unknown>;
         const renamed: Record<string, unknown> = {};
         for (const [key, value] of Object.entries(source)) {
+          // sort_* fields only order the table on screen.
+          if (key.startsWith('sort_')) continue;
           renamed[keyMap[key] ?? key] = value;
         }
         return renamed;
