@@ -211,25 +211,48 @@ describe('EChartsView', () => {
     expect(screen.getByText('Chart zoom reset')).toBeInTheDocument();
   });
 
-  it('clears the chart before drawing a different set of series (issue 213)', () => {
-    const optionWith = (ids: string[]) => ({ series: ids.map((id) => ({ id, type: 'line' })) });
-    const props = {
-      height: 200,
-      pointCount: 3,
-      dataResetKey: 'result-1',
-      ariaLabel: 'Trends chart',
+  it('re-inserts clip paths after each render so Safari repaints clipped lines (issue 213)', () => {
+    render(
+      <EChartsView
+        height={200}
+        pointCount={3}
+        dataResetKey="result-1"
+        ariaLabel="Trends chart"
+        option={{ series: [{ id: 'a', type: 'line' }] }}
+      />,
+    );
+    const plot = mocks.init.mock.calls[0]?.[0] as unknown as HTMLElement;
+    const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+    const clip = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    const after = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+    defs.append(clip, after);
+    plot.append(defs);
+    const insertBefore = vi.spyOn(defs, 'insertBefore');
+
+    act(() => {
+      mocks.handlers.get('rendered')?.({});
+    });
+
+    expect(insertBefore).toHaveBeenCalledWith(clip, after);
+    expect(defs.contains(clip)).toBe(true);
+  });
+
+  it('does not zoom on the mouse wheel and styles the zoom slider (issue 213)', () => {
+    render(
+      <EChartsView
+        height={200}
+        pointCount={3}
+        dataResetKey="result-1"
+        ariaLabel="Trends chart"
+        option={{ series: [] }}
+      />,
+    );
+    const option = mocks.chart.setOption.mock.calls.at(-1)?.[0] as {
+      dataZoom: { id: string; zoomOnMouseWheel?: boolean; fillerColor?: string }[];
     };
-    const { rerender } = render(<EChartsView {...props} option={optionWith(['a', 'b', 'c'])} />);
-    expect(mocks.chart.clear).not.toHaveBeenCalled();
-
-    rerender(<EChartsView {...props} option={optionWith(['a', 'b', 'c'])} />);
-    expect(mocks.chart.clear).not.toHaveBeenCalled();
-
-    rerender(<EChartsView {...props} option={optionWith(['a', 'c'])} />);
-    expect(mocks.chart.clear).toHaveBeenCalledTimes(1);
-    const clearOrder = mocks.chart.clear.mock.invocationCallOrder[0] ?? 0;
-    const lastSetOrder = mocks.chart.setOption.mock.invocationCallOrder.at(-1) ?? 0;
-    expect(clearOrder).toBeLessThan(lastSetOrder);
-    expect(mocks.init).toHaveBeenCalledTimes(1);
+    const inside = option.dataZoom.find((zoom) => zoom.id === 'wordflow-inside-zoom');
+    const slider = option.dataZoom.find((zoom) => zoom.id === 'wordflow-slider-zoom');
+    expect(inside?.zoomOnMouseWheel).toBe(false);
+    expect(slider?.fillerColor).toContain('--vscode-focusBorder');
   });
 });

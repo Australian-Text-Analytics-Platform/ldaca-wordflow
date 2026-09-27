@@ -80,19 +80,6 @@ interface EChartsViewProps {
   toolbarStart?: ReactNode;
 }
 
-/** The ids (or names) of an option's series, in order. */
-const seriesSignature = (option: EChartsCoreOption): string => {
-  const series = (option as { series?: unknown }).series;
-  if (!Array.isArray(series)) return '';
-  return series
-    .map((item: unknown) => {
-      const entry = item as { id?: unknown; name?: unknown } | null;
-      const key = entry?.id ?? entry?.name;
-      return typeof key === 'string' || typeof key === 'number' ? String(key) : '';
-    })
-    .join('\u0000');
-};
-
 const FULL_ZOOM: EChartsZoomRange = { start: 0, end: 100 };
 const MIN_ZOOM_SPAN = 5;
 
@@ -154,7 +141,6 @@ function EChartsInstance({
   const nearestPointIndexRef = useRef<number | null>(null);
   const suppressBrushEventRef = useRef(false);
   const zoomRangeRef = useRef<EChartsZoomRange>(FULL_ZOOM);
-  const seriesSignatureRef = useRef<string | null>(null);
   const [selectionMode, setSelectionMode] = useState<'point' | 'range'>('point');
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomRange, setZoomRange] = useState<EChartsZoomRange>(FULL_ZOOM);
@@ -225,6 +211,22 @@ function EChartsInstance({
       shiftHeldRef.current = !!event.event?.shiftKey;
     };
 
+    // Safari keeps painting a clipped line or area with a stale clip when the
+    // SVG renderer changes a <clipPath> in place (entry animation, hover,
+    // series added or removed), so lines vanished and only their dots showed
+    // (issue 213). Re-inserting each clipPath after every render makes WebKit
+    // rebuild it from its current shape. The nodes keep their identity, so the
+    // renderer's own bookkeeping is unaffected.
+    const refreshClipPaths = () => {
+      for (const clip of element.querySelectorAll('clipPath')) {
+        const parent = clip.parentNode;
+        if (!parent) continue;
+        const next = clip.nextSibling;
+        parent.removeChild(clip);
+        parent.insertBefore(clip, next);
+      }
+    };
+    chart.on('rendered', refreshClipPaths);
     chart.on('showtip', handleShowTip as never);
     chart.on('brushselected', handleBrushSelected as never);
     chart.on('datazoom', handleDataZoom as never);
@@ -238,6 +240,7 @@ function EChartsInstance({
 
     return () => {
       resizeObserver.disconnect();
+      chart.off('rendered', refreshClipPaths);
       chart.off('showtip', handleShowTip);
       chart.off('brushselected', handleBrushSelected);
       chart.off('datazoom', handleDataZoom);
@@ -252,16 +255,6 @@ function EChartsInstance({
     const chart = chartRef.current;
     if (!chart) return;
     const currentZoom = zoomRangeRef.current;
-    // When the set of series changes, clear the chart before drawing the new
-    // one (issue 213). The SVG renderer numbers its clip paths by position and
-    // reuses the ids, and WebKit keeps painting a line with the old clip
-    // geometry until something repaints it, so lines vanished and only their
-    // dots showed. Clearing keeps the zoom, which is passed in below.
-    const signature = seriesSignature(option);
-    if (seriesSignatureRef.current !== null && seriesSignatureRef.current !== signature) {
-      chart.clear();
-    }
-    seriesSignatureRef.current = signature;
     chart.setOption(
       {
         ...option,
@@ -278,7 +271,9 @@ function EChartsInstance({
             start: currentZoom.start,
             end: currentZoom.end,
             filterMode: 'none',
-            zoomOnMouseWheel: true,
+            // Scrolling the page must not zoom the chart (issue 213); the
+            // slider below and the zoom buttons do the same job.
+            zoomOnMouseWheel: false,
             moveOnMouseMove: false,
             moveOnMouseWheel: false,
           },
@@ -290,9 +285,30 @@ function EChartsInstance({
             end: currentZoom.end,
             filterMode: 'none',
             bottom: 4,
-            height: 18,
+            height: 20,
             showDetail: false,
             brushSelect: false,
+            // Theme tokens so the slider stands out in light and dark (issue 213).
+            borderColor: 'var(--vscode-charts-lines)',
+            fillerColor: 'color-mix(in srgb, var(--vscode-focusBorder) 22%, transparent)',
+            handleStyle: {
+              color: 'var(--vscode-editor-background)',
+              borderColor: 'var(--vscode-focusBorder)',
+              borderWidth: 1.5,
+            },
+            moveHandleStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.55 },
+            dataBackground: {
+              lineStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.45 },
+              areaStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.12 },
+            },
+            selectedDataBackground: {
+              lineStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.8 },
+              areaStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.25 },
+            },
+            emphasis: {
+              handleStyle: { borderColor: 'var(--vscode-focusBorder)', borderWidth: 2 },
+              moveHandleStyle: { color: 'var(--vscode-focusBorder)', opacity: 0.8 },
+            },
           },
         ],
         toolbox: { show: false },
