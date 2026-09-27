@@ -52,7 +52,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Merge className="h-5 w-5" />
-                Configure Join
+                Join two Data Blocks
                 <HelpIcon
                   targetKey="preprocessing.join.tab"
                   label="Join sub-tab overview"
@@ -138,12 +138,12 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
               {apply.isBusy ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Joining…
+                  Adding…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

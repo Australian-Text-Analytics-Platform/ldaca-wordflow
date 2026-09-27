@@ -102,8 +102,8 @@ Expand AI settings (the arrow at the right of the provider and model row) and ch
 credentials stay in Settings and are attached only when the request is sent.
 Create or edit connections under **Settings → AI**. API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,
-Preview, or Run All until you add one. Custom endpoints may be keyless. Editing
-a key updates future requests; a Run All already queued or running keeps the key
+Preview, or Run until you add one. Custom endpoints may be keyless. Editing
+a key updates future requests; a Run already queued or running keeps the key
 captured when it was submitted.
 An **Example Data Block** is optional; if used, choose both its text column and
 an existing annotation column containing reviewed labels. Set **Max examples
@@ -118,7 +118,7 @@ panel contains Claude thinking controls and has no temperature field; current
 Claude models use adaptive thinking while older Claude models use a fixed
 budget. Google has its own temperature and thinking panel. OpenAI, OpenRouter,
 and Custom each have separate sampling and reasoning panels, whose support still
-depends on the selected model. Wordflow-owned Run All processing, batch, and
+depends on the selected model. Wordflow-owned Run processing, batch, and
 retry controls appear separately below the provider panel. Defaults are a good
 starting point. Change one setting deliberately, because provider capability,
 cost, latency, and repeatability vary by model.
@@ -132,11 +132,11 @@ Codebook, examples, model, or settings when the errors show a pattern.
 Preview waits for the bounded provider attempt instead of imposing a shorter
 browser deadline; use cancellation when you no longer want to wait.
 The label remains **Preview**, and it becomes available after an
-execution-request change. **Run All** compares against its own submitted request.
+execution-request change. **Run** compares against its own submitted request.
 
-<h3 id="help-annotation-run-all">Run All and review</h3>
+<h3 id="help-annotation-run-all">Run and review</h3>
 
-Choose **Run All** only after Preview is satisfactory. Run All executes from the
+Choose **Run** only after Preview is satisfactory. Run executes from the
 saved Preview snapshot and writes labels to the selected annotation column. The
 Review table reflects the current Data Block and supports the same hidden-first
 comparisons, row filters, reliability, metadata, resizable frame, and correction
@@ -151,17 +151,17 @@ batches. Failed rows keep their existing values in **Reprocess all** and remain
 blank in **Fill missing**; a successful explicit empty prediction may still
 clear a value.
 
-<h2 id="help-annotation-results">Results, Clear Results, and Undo</h2>
+<h2 id="help-annotation-results">Results, Clear, and Undo</h2>
 
-**Clear Results** removes the tab's Preview and Run All Analyses and clears its
+**Clear** removes the tab's Preview and Run Analyses and clears its
 result state; it does not undo labels already written to the Data Block. Use the
 Data Block's session **Undo** action to reverse the latest manual edit, AI write,
 or column creation. Undo history lasts only for the current backend Project
 session.
 
-Preview or Run All locks the parameter panel only while submission or execution
+Preview or Run locks the parameter panel only while submission or execution
 is active. A failed or cancelled root unlocks parameters but disables both
-execution actions until Clear Results. Existing tables remain tied to the
+execution actions until you choose **Clear**. Existing tables remain tied to the
 request or Manual Start snapshot that produced them while you edit the next
 draft.
 

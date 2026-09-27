@@ -69,9 +69,9 @@ function TokenizerOptionText({ option }: { option: TokenizerModelInfo }) {
           </span>
         ) : null}
       </span>
-      <span className="truncate font-mono text-label-secondary text-description">
-        {option.model}
-      </span>
+      {/* The internal id stays visible for reproducibility but reads after the
+      human-readable name and language (issue 205). */}
+      <span className="truncate text-badge text-description">{option.model}</span>
     </span>
   );
 }
@@ -170,7 +170,7 @@ function TokenizerModelSelector({
   return (
     <div className={cn('space-y-1', className)}>
       <span className="block text-label-secondary font-medium text-description">
-        Tokenizer Model
+        Tokeniser model
       </span>
       <div className="flex items-center gap-1.5">
         <DisabledReasonTooltip reason={isDisabled ? reason : undefined} className="min-w-0 flex-1">
@@ -188,7 +188,7 @@ function TokenizerModelSelector({
             }}
             disabled={isDisabled}
           >
-            <SelectTrigger className="w-full text-body" aria-label="Tokenizer model">
+            <SelectTrigger className="w-full text-body" aria-label="Tokeniser model">
               <SelectValue placeholder="None">{triggerText}</SelectValue>
             </SelectTrigger>
             <SelectContent>

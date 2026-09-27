@@ -103,7 +103,7 @@ export function ConcordanceParameterPanel({
   const effectiveNodeColumnSelections: NodeColumnSelection[] = nodeInputs.nodeColumnSelections;
   const runDisabledReason = (() => {
     if (isSearching) return 'Preview is already running';
-    if (parametersLocked) return 'Wait for Run All to finish';
+    if (parametersLocked) return 'Wait for Run to finish';
     if (actionState.runDisabledReason) return actionState.runDisabledReason;
     if (!searchWord.trim()) return 'Enter a search word first';
     if (effectiveNodeColumnSelections.some((sel) => !sel.column))
@@ -113,7 +113,7 @@ export function ConcordanceParameterPanel({
   const runAllActionDisabled = runAllDisabled || isRunningAll;
   const runAllDisabledReason = runAllActionDisabled
     ? isRunningAll
-      ? 'Run All is already running'
+      ? 'Run is already running'
       : isSearching
         ? 'Wait for Preview to finish'
         : !searchWord.trim()
@@ -291,8 +291,9 @@ export function ConcordanceParameterPanel({
                       <span className="text-body text-foreground">Use regular expression</span>
                     </label>
                     <HelpIcon
-                      targetKey="analysis.concordance.regex-toggle"
-                      label="Regex mode toggle"
+                      targetKey="ui.regular-expressions"
+                      label="About regular expressions"
+                      tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
                     />
                   </div>
                   <label className="flex items-center gap-2">
@@ -365,7 +366,7 @@ export function ConcordanceParameterPanel({
               }}
             >
               {isRunningAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Run All
+              Run
             </Button>
           </DisabledReasonTooltip>
 
@@ -377,9 +378,10 @@ export function ConcordanceParameterPanel({
                 }}
                 variant="destructive"
                 disabled={actionState.clearDisabled}
+                aria-label="Clear results"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
-                Clear Results
+                Clear
               </Button>
             </DisabledReasonTooltip>
             <HelpIcon targetKey="analysis.concordance.clear-results" label="Clear results" />

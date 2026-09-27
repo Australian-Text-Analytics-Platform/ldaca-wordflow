@@ -48,7 +48,7 @@ coverage is never repeated.
 - Inspect representative words, topic sizes, similarity, and outliers.
 - Pan and zoom the fitted Topic graph, or cumulatively lasso Topics to filter
   the All Topics list.
-- Publish selected topic data and meanings as Derived Data Blocks.
+- Add selected topic data and meanings to the Project as new Data Blocks.
 
 <h3 id="info-topic-modeling-interpretation">Interpret with care</h3>
 

@@ -107,9 +107,7 @@ describe('buildSequentialChartModel', () => {
       expect.objectContaining({ time_period: 'Zero bucket', __x_numeric__: 0 }),
     );
     expect(model.tooltip.labelFormatter(0)).toBe('0');
-    expect(model.series[0]).toEqual(
-      expect.objectContaining({ key: 'group:0', label: 'Sequential Count' }),
-    );
+    expect(model.series[0]).toEqual(expect.objectContaining({ key: 'group:0', label: 'Count' }));
   });
 
   it('sorts numeric buckets by raw time_period and backfills sparse group cells', () => {
@@ -464,7 +462,7 @@ describe('buildSequentialChartModel', () => {
 
     expect(exact.groups).toEqual([]);
     expect(uncased.groups.map((group) => group.label)).toEqual(['jobs/Jobs']);
-    expect(ungrouped.groups.map((group) => group.label)).toEqual(['Sequential Count']);
+    expect(ungrouped.groups.map((group) => group.label)).toEqual(['Count']);
     expect(ungrouped.excludedGroupIndices).toEqual([]);
   });
 

@@ -11,7 +11,7 @@ export interface StopWordListSource {
 
 const STOP_WORD_TOOL_LABELS = {
   token_frequency: 'Frequency',
-  topic_modeling: 'Topic Modeling',
+  topic_modeling: 'Topic Modelling',
 } as const;
 
 /**

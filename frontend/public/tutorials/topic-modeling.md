@@ -114,7 +114,7 @@ submitting, queued, or running, then unlock after success. Changing an
 execution parameter enables Run again; reverting exactly to the submitted
 request disables it. Words per topic, stop words, search, selection, and chart
 controls are presentation-only and do not enable Run. After failure or
-cancellation, Run stays disabled until **Clear Results** removes the Analysis;
+cancellation, Run stays disabled until **Clear** removes the Analysis;
 your segmentation method, token cap, and Min topic size stay selected.
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
@@ -224,7 +224,7 @@ list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
 the stopword filter to apply the Tab's saved list. You can choose a language or
 edit that list while filtering is off; the switch controls filtering only.
 The dropdown's **From other tabs** group lists stop words saved in your other
-Frequency or Topic Modeling tabs; **Wordflow classic lists** offers the built-in
+Frequency or Topic Modelling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers
 default lists from the open-source `stopword` package: it shows the language
 detected from the first selected Data Block, marked **(Detected)**, and **Show
@@ -262,13 +262,13 @@ several Topic centres. Lasso mode remains active and later strokes add to the
 filter shown in **All Topics**; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
 Search further narrows the filtered list. Click a topic in the chart or in **All
-Topics** to add it to **Selected Topics**; the **×** removes it and **Clear all**
+Topics** to add it to **Selected Topics**; the **×** removes it and **Clear**
 removes them all.
 
 ![Topic 12 selected, shown in Selected Topics and highlighted in All Topics](tutorials/assets/topic_modelling/topic_lists.png)
 
 Choose **Add to Project** to publish
-manually selected topic data and linked topic meanings as Derived Data Blocks.
+manually selected topic data and linked topic meanings as new Data Blocks.
 For a two-source result, **Sync columns** applies exact, case-sensitive shared
 source-column selections to both checked Data Blocks. Enabling it combines the
 currently selected shared names; individual choices and **Select all** or
@@ -313,7 +313,7 @@ result and its current counts.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
-**Clear Results** removes the retained Analysis and Result. The selected
+**Clear** removes the retained Analysis and Result. The selected
 **Segments** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 

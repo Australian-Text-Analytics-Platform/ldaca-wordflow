@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, Network, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -115,16 +116,23 @@ function RegexOption({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label htmlFor={id} className="flex items-center gap-2 text-body">
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={(value) => {
-          onChange(value === true);
-        }}
+    <div className="flex items-center gap-2">
+      <label htmlFor={id} className="flex items-center gap-2 text-body">
+        <Checkbox
+          id={id}
+          checked={checked}
+          onCheckedChange={(value) => {
+            onChange(value === true);
+          }}
+        />
+        Use regular expression
+      </label>
+      <HelpIcon
+        targetKey="ui.regular-expressions"
+        label="About regular expressions"
+        tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
       />
-      Use regular expression
-    </label>
+    </div>
   );
 }
 

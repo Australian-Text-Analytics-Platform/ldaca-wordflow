@@ -46,7 +46,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Filter className="h-5 w-5" />
-                Filter Data
+                Filter a Data Block
                 <HelpIcon
                   targetKey="preprocessing.filter.tab"
                   label="Filter sub-tab overview"
@@ -136,12 +136,12 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
               {isFiltering ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Data Block…
+                  Adding…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

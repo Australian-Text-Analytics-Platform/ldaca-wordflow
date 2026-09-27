@@ -95,7 +95,7 @@ export function SplitByGroupSubTab({
 
   return (
     <BuilderToolCard
-      title="Group into Data Blocks"
+      title="Groups in a Data Block"
       subtitle="One Data Block per value, date period, or number range of a column."
       icon={<Split className="h-5 w-5 rotate-90" />}
       helpKey="preprocessing.split-group.tab"
@@ -118,7 +118,9 @@ export function SplitByGroupSubTab({
       name={name}
       namePlaceholder={input?.name ?? ''}
       onNameChange={setName}
-      createLabel={`Create ${String(ticked.length)} Data Block${ticked.length === 1 ? '' : 's'}`}
+      createLabel={
+        ticked.length <= 1 ? 'Add to Project' : `Add ${String(ticked.length)} to Project`
+      }
       canCreate={ticked.length > 0}
       onCreate={async () => {
         if (!input) throw new Error('Select a data block first.');
@@ -131,10 +133,10 @@ export function SplitByGroupSubTab({
             name: groupBlockName(prefix, group.label),
           });
         }
-        return `Created ${String(ticked.length)} Data Block${ticked.length === 1 ? '' : 's'}.`;
+        return `Added ${String(ticked.length)} Data Block${ticked.length === 1 ? '' : 's'} to the Project.`;
       }}
       previewTitle={ticked[0] ? `Preview: ${groupBlockName(prefix, ticked[0].label)}` : 'Preview'}
-      previewDescription="The first ticked group. Each group becomes a Filter-derived Data Block."
+      previewDescription="The first ticked group. Each ticked group becomes its own new Data Block."
       onAlert={onAlert}
     >
       <div className="space-y-1">

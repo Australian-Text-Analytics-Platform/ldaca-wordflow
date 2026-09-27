@@ -72,9 +72,10 @@ export function TopicSelectionPanel({
                 <button
                   type="button"
                   onClick={onClearSelection}
+                  aria-label="Clear selected topics"
                   className="text-label-secondary text-description hover:text-foreground"
                 >
-                  Clear all
+                  Clear
                 </button>
               )}
             </div>

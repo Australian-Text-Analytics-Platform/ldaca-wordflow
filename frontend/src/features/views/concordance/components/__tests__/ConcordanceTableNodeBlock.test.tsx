@@ -181,7 +181,7 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(handleSort).toHaveBeenCalledWith('speaker', 'node-1', 'node-1');
 
     await user.hover(screen.getByText('CONC_matched_text'));
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Run All to enable sorting');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Run to enable sorting');
   });
 
   it('sorts generated scalar columns in separated Review but not full contexts', () => {

@@ -25,7 +25,7 @@ export function AnnotationRunAllSettings({
     <section aria-labelledby="annotation-run-all-settings" className="space-y-4">
       <div className="space-y-0.5">
         <h3 id="annotation-run-all-settings" className="text-body font-medium">
-          Run All controls
+          Run controls
         </h3>
         <p className="text-label-secondary text-description">
           These controls belong to Wordflow and apply to every provider.
@@ -33,7 +33,7 @@ export function AnnotationRunAllSettings({
       </div>
 
       <fieldset className="space-y-1.5">
-        <legend className="text-body font-medium">Run All processing</legend>
+        <legend className="text-body font-medium">Run processing</legend>
         <div className="flex flex-wrap gap-x-6 gap-y-2">
           <Label className="flex cursor-pointer items-center gap-2 font-normal">
             <input
@@ -88,7 +88,7 @@ export function AnnotationRunAllSettings({
           }}
         />
         <p className="text-label-secondary text-description">
-          Rows sent in each Run All LLM request (default 20, max 100).
+          Rows sent in each Run LLM request (default 20, max 100).
         </p>
       </div>
 

@@ -221,7 +221,7 @@ function Sidebar() {
    */
   const renderViewsBody = () => (
     <SidebarMenu>
-      {visibleNavItems.map(({ id, label, icon: Icon }) => {
+      {visibleNavItems.map(({ id, label, shortLabel, icon: Icon }) => {
         const isDisabled = !isWorkspaceLoaded && isWorkspaceRequired(id);
         return (
           <SidebarMenuItem key={id}>
@@ -236,7 +236,7 @@ function Sidebar() {
               tooltip={isDisabled ? 'Open a project to use this view' : undefined}
             >
               <Icon />
-              <span>{label}</span>
+              <span>{shortLabel ?? label}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
         );

@@ -1,6 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { queryWorkspaceSqlTable, sqlIdentifier, sqlTable } from '@/api';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import {
@@ -390,8 +391,13 @@ export const useFilterSubTabSections = (
                 }}
                 disabled={rowDisabled}
               />
-              <span>regex</span>
+              <span>regular expression</span>
             </label>
+            <HelpIcon
+              targetKey="ui.regular-expressions"
+              label="About regular expressions"
+              tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
+            />
             <label className="flex items-center gap-1.5">
               <Checkbox
                 id={`case-sensitive-${condition.id}`}

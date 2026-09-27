@@ -74,7 +74,7 @@ export const getRerunActionState = ({
     if (!hasWorkspace) return 'Open a project first';
     if (!isRunnable) return 'Add a data block and select a column to run';
     if (isActiveAnalysis) return 'The analysis is already queued or running';
-    if (requiresClear || isClearRequiredState) return 'Clear Results before running again';
+    if (requiresClear || isClearRequiredState) return 'Choose Clear before running again';
     if (attachedStateUnavailable) return 'Clear the current analysis before running again';
     if (hasAttachedAnalysis && !hasChanges) {
       return 'Change a parameter or the selection to run again';

@@ -428,9 +428,7 @@ function PerNodeConcordanceTable({
                     <ConcordancePlainHeader
                       key={header.id}
                       header={header}
-                      hint={
-                        mode === 'preview-review-hint' ? 'Run All to enable sorting' : undefined
-                      }
+                      hint={mode === 'preview-review-hint' ? 'Run to enable sorting' : undefined}
                     />
                   );
                 }}

@@ -68,10 +68,10 @@ export function SequentialAnalysisResultsPanel({
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <CardTitle data-guidance="trends-results" className="flex items-center gap-2">
-            Trends and Sequence Results
+            Trends Results
             <HelpIcon
               targetKey="analysis.sequential-analysis.results"
-              label="Sequential analysis results"
+              label="Trends results"
               tooltip={`${resultsSummary}. Review the chart, summaries, and adjust chart type.`}
             />
           </CardTitle>

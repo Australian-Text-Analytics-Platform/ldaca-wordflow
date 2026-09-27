@@ -167,10 +167,10 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         : queryKeys.inactiveAnalysisResult({ analysisId: analysis.id }),
       enabled: Boolean(currentWorkspaceId) && concordanceRunAll?.state === 'succeeded',
       queryFn: async (): Promise<ConcordanceRunAllResult> => {
-        if (!currentWorkspaceId) throw new Error('Run All Result is unavailable');
+        if (!currentWorkspaceId) throw new Error('The Run Result is unavailable');
         const result = await getAnalysisOutputResource(currentWorkspaceId, analysis.id);
         if (result.kind !== 'concordance_run_all' || result.result.variant !== 'source') {
-          throw new Error('Concordance Run All child Result is invalid');
+          throw new Error('A Concordance Run Result is invalid');
         }
         return result;
       },
@@ -189,7 +189,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     concordanceRunAll?.state === 'succeeded'
       ? (runAllResultQueries.find((query) => query.error)?.error ??
         (concordanceRunAllChildren.length < runAllSourceIds.length
-          ? new Error('Run All source Analyses are incomplete')
+          ? new Error('The Run source Analyses are incomplete')
           : null))
       : null;
   const addToWorkspaceSources = concordanceReviewSources.map((review) => review.source);
@@ -663,7 +663,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       submit: () => runConcordanceAll(host.tabId, { source }, tabTaskId ? [tabTaskId] : []),
       onError: (error) => {
         toast.error(
-          error instanceof Error ? error.message : 'Could not start Concordance Run All.',
+          error instanceof Error ? error.message : 'Could not start the Concordance Run.',
         );
       },
     });
@@ -773,7 +773,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
               column={column}
               value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
               disabled={searchMode !== 'tokens'}
-              disabledReason="Tokenizer models apply only in Tokens mode."
+              disabledReason="Tokeniser models apply only in Tokens mode."
               onChange={(model, detectedLanguage) => {
                 handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
               }}
@@ -819,7 +819,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         analysis && (analysis.state === 'queued' || analysis.state === 'running') ? (
           <AnalysisTaskBanner
             key={analysis.id}
-            analysisName={`Concordance Run All${sourceId ? ` — ${sourceId}` : ''}`}
+            analysisName={`Concordance Run${sourceId ? ` — ${sourceId}` : ''}`}
             status={analysis.state}
             taskId={analysis.id}
             message={analysis.progress.message ?? undefined}
@@ -833,13 +833,15 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         </p>
       ) : null}
       {reviewError ? (
-        <p className="mt-4 text-body text-error">Could not load Review: {reviewError.message}</p>
+        <p className="mt-4 text-body text-error">
+          Could not load the Concordance Results: {reviewError.message}
+        </p>
       ) : null}
 
       {/* Results */}
       {results ? (
         <ConcordanceResultsPanel
-          title={isReview ? 'Review' : 'Concordance Results'}
+          title="Concordance Results"
           guidanceTarget={isReview ? 'concordance-run-all-results' : 'concordance-preview-results'}
           isReview={isReview}
           headerAction={

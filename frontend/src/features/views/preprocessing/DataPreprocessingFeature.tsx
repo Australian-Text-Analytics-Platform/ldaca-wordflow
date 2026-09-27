@@ -296,7 +296,6 @@ function DataPreprocessingFeature() {
         onColumnChange={nodeInputs.setColumn}
         showColumnPicker={showInputColumnPicker}
         columnLabel={showInputColumnPicker ? preprocessingColumnLabel : undefined}
-        title="Data Builder Inputs"
       />
     </div>
   );

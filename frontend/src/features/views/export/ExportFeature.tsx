@@ -146,7 +146,7 @@ function ExportFeature() {
             showColumnPicker={false}
             title="Data Blocks"
             disabled={exportingDataBlocks}
-            emptyMessage="No Data Blocks selected. Add individual Data Blocks or use Add all."
+            emptyMessage="No data blocks added yet. Use Add data block, or Add All to add every Data Block."
           />
 
           <div

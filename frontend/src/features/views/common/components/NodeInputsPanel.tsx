@@ -110,7 +110,7 @@ export function NodeInputsPanel({
   onNodeColorChange,
   showColumnPicker = true,
   columnLabel = 'Text Column:',
-  title = 'Selected Data Blocks',
+  title = 'Data Blocks',
   guidanceTarget,
   emptyMessage,
   renderExtraNodeContent,
@@ -277,9 +277,10 @@ export function NodeInputsPanel({
               className="h-7 px-2 text-label-secondary text-description"
               onClick={onClear}
               disabled={disabled}
+              aria-label="Remove all data blocks"
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-              Clear all
+              Clear
             </Button>
           )}
 
@@ -371,7 +372,7 @@ export function NodeInputsPanel({
         <div className="mx-3 rounded-md border border-dashed border-surface-border-foreground/40 bg-panel/40 p-3 text-body italic text-description">
           {emptyMessage ?? (
             <>
-              No data blocks selected. Use{' '}
+              No data blocks added yet. Use{' '}
               <span className="font-medium not-italic">Add data block</span>, or carry one here from
               a Data Block&apos;s <span className="not-italic">+</span> button.
             </>
@@ -391,7 +392,7 @@ export function NodeInputsPanel({
       {maxNodes != null && count > maxNodes && (
         <div className="mt-1 flex items-center gap-1 px-3 text-body text-warning">
           Maximum {maxNodes} data block{maxNodes === 1 ? '' : 's'} allowed here. Currently {count}{' '}
-          selected.
+          added.
         </div>
       )}
       {showInputRequestTarget ? (

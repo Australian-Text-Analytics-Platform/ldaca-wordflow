@@ -55,7 +55,7 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 1. **Create or open a project** so your work is saved together.
 2. **Upload files** or import sample data to explore quickly.
 3. **Clean, reshape, and join** your data if needed, with the Data Editor and the Data Builder.
-4. **Run analyses** like token frequency, concordance, or topic modelling.
+4. **Run analyses** like frequency, concordance, or topic modelling.
 5. **Export** results for sharing or downstream work.
 
 ## Help sections
@@ -63,10 +63,10 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 - [User Interface Overview](./ui.md) — learn what each section of the main screen does.
 - [Data loader](./data-loader.md) — create projects and upload data.
 - [Data Builder](./preprocessing.md): make new Data Blocks by filtering, grouping, joining, segmenting, aggregating, sampling, deduplicating, and stacking.
-- [Token frequency](./token-frequency.md) — count and explore common terms.
+- [Frequency](./token-frequency.md) — count and explore common terms.
 - [Concordance](./concordance.md) — inspect terms in context.
 - [Topic modelling](./topic-modeling.md) — discover themes with native semantic clustering.
-- [Sequential analysis](./sequential-analysis.md) — analyze sequences over time.
+- [Trends](./sequential-analysis.md): count documents over time or along an ordered number.
 - [Quotation extraction](./quotation.md) — capture quoted segments with context.
 - [Annotation](./annotation.md) — label text manually or with a configured AI provider.
 - [Export](./export.md) — download tables or reports.

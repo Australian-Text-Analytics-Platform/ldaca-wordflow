@@ -133,7 +133,7 @@ describe('AnnotationInferenceSettings', () => {
     expect(screen.getByText('Provider parameters')).toBeInTheDocument();
     expect(screen.queryByLabelText('Temperature')).not.toBeInTheDocument();
     expect(screen.queryByRole('switch')).not.toBeInTheDocument();
-    expect(screen.getByText('Run All controls')).toBeInTheDocument();
+    expect(screen.getByText('Run controls')).toBeInTheDocument();
   });
 
   it('shows the reasoning-effort select only after OpenAI reasoning is enabled', async () => {

@@ -301,7 +301,7 @@ function buildGroupIdentity(
     return {
       id: `group:${String(groupIndex)}`,
       index: Number(groupIndex),
-      label: 'Sequential Count',
+      label: 'Count',
       values: {},
     };
   }

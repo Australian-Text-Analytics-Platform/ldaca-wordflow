@@ -46,7 +46,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
                 />
               </CardTitle>
             </div>
-            <SubTabActivityTag active={showActivityTag} verb="Concatenating" />
+            <SubTabActivityTag active={showActivityTag} verb="Stacking" />
           </div>
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
@@ -54,7 +54,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
 
           {mismatches.length > 0 && (
             <div className="space-y-2 rounded-md border border-error/40 bg-error/10 p-3 text-body text-error">
-              <div className="font-semibold">Schema mismatches detected:</div>
+              <div className="font-semibold">These columns don't match:</div>
               <ul className="space-y-2">
                 {mismatches.map((mismatch) => (
                   <li key={`concat-mismatch-${mismatch.nodeId}`} className="space-y-1">
@@ -75,8 +75,8 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
 
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <Label>Schema status</Label>
-              <HelpIcon targetKey="preprocessing.concat.schema-status" label="Schema status" />
+              <Label>Column check</Label>
+              <HelpIcon targetKey="preprocessing.concat.schema-status" label="Column check" />
             </div>
             <div className="rounded-md border border-surface-border-foreground/40 bg-panel/40 px-3 py-2 text-body text-description">
               {statusMessage}
@@ -129,12 +129,12 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
               {apply.isBusy ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Concatenating…
+                  Adding…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>
@@ -146,7 +146,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
       <PreviewTable
         title={
           <span className="flex items-center gap-2">
-            Preview concat output
+            Preview stacked output
             <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
           </span>
         }

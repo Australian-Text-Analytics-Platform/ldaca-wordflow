@@ -75,7 +75,7 @@ export function GroupSummarySubTab({
 
   return (
     <BuilderToolCard
-      title="Aggregate"
+      title="Aggregate segments to one row"
       subtitle="One row per group, such as one document per speaker, with each column summarised."
       icon={<Sigma className="h-5 w-5" />}
       helpKey="preprocessing.summarise.tab"
@@ -90,12 +90,12 @@ export function GroupSummarySubTab({
       name={name}
       namePlaceholder={input && groupBy.length ? `${input.name}_by_${groupBy.join('_')}` : ''}
       onNameChange={setName}
-      createLabel="Create Data Block"
+      createLabel="Add to Project"
       canCreate={body !== null}
       onCreate={async () => {
         if (!body) throw new Error('Choose at least one column to group by.');
         const created = await createDerivedNode(body);
-        return `Created ${created.name}.`;
+        return `Added ${created.name} to the Project.`;
       }}
       summary={(total) =>
         total === null || total === undefined

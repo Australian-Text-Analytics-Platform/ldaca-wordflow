@@ -19,13 +19,13 @@ working with another genre or English variety.
   operator; it does not accept an arbitrary service URL. Ask the operator for a
   valid ID and confirm that the service's data-handling policy is suitable.
 
-- What do Preview, Run All, and Review do?
+- What do Preview and Run do?
   **Preview** creates a Preview Analysis and computes requested pages from its
-  retained input snapshot. **Run All** may be started directly and creates an
-  independent Run All Analysis with a complete immutable table Result.
-  **Review** reads that Result directly and pages by quotation match, one
+  retained input snapshot. **Run** may be started directly and creates an
+  independent Run Analysis with a complete immutable table Result.
+  **Quotation Results** then reads that Result directly and pages by quotation match, one
   extract per row; click a row to open Row Details scrolled to the quote. **Add to Project** publishes selected
-  columns as a Derived Data Block only when you request it.
+  columns as a new Data Block only when you request it.
 
 - How does sorting work?
   The `QUOTE_extraction` header sorts by the selected source text column, and

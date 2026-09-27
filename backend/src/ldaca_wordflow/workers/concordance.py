@@ -587,7 +587,7 @@ def run_concordance_run_all(
                 "document_count": result.height,
                 "match_count": match_count,
             },
-            "message": "Concordance Run All completed successfully",
+            "message": "Concordance Run completed successfully",
         }
     except Exception:
         logger.exception("Concordance Run All failed")

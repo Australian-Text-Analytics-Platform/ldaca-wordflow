@@ -842,10 +842,10 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         return data;
       },
       onSuccess: () => {
-        toast.success('Annotation Run All started.');
+        toast.success('Annotation Run started.');
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : 'Could not start Annotation Run All.');
+        toast.error(error instanceof Error ? error.message : 'Could not start the Annotation Run.');
       },
     });
   };
@@ -898,7 +898,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       if (!currentWorkspaceId || !annotationRunAll) return null;
       const result = await getAnalysisOutputResource(currentWorkspaceId, annotationRunAll.id);
       if (result.kind !== 'annotation_run_all') {
-        throw new Error('Annotation Run All returned the wrong Result kind');
+        throw new Error('Annotation Run returned the wrong Result kind');
       }
       return result;
     },
@@ -1029,7 +1029,6 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                         Annotation Data Block
                       </h3>
                       <NodeInputsPanel
-                        title="Selected Data Blocks"
                         resolvedNodes={sourceNodeInputs.resolvedNodes}
                         availableNodes={sourceNodeInputs.availableNodes}
                         canAddMore={sourceNodeInputs.canAddMore}
@@ -1278,7 +1277,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         annotationRunAll &&
         (annotationRunAll.state === 'queued' || annotationRunAll.state === 'running') ? (
           <AnalysisTaskBanner
-            analysisName="Annotation Run All"
+            analysisName="Annotation Run"
             status={annotationRunAll.state}
             taskId={annotationRunAll.id}
             message={annotationRunAll.progress.message ?? undefined}
@@ -1289,7 +1288,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             role="alert"
             className="mt-4 rounded-md border border-error/40 bg-error/5 px-4 py-3 text-body text-error"
           >
-            {annotationRunAll.error?.message ?? 'Annotation Run All failed.'}
+            {annotationRunAll.error?.message ?? 'Annotation Run failed.'}
           </div>
         ) : null}
         {annotationMode === 'manual' && manualReviewSnapshot ? (

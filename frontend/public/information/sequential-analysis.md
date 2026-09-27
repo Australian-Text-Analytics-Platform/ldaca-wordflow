@@ -1,10 +1,10 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-sequential-analysis-overview">About Trends and Sequence</h2>
+<h2 id="info-sequential-analysis-overview">About Trends Analysis</h2>
 
 - What is this?
 
-If your text collection includes dates as metadata, this tool allows you to see how many texts were created on each date, creating a timeline visualisation. You can also do a sequential analysis for texts produced by a particular group of speakers/authors if you have additional metadata – for example showing how the texts of younger vs older speakers are distributed over time. You can include up to 3 different metadata categories in this timeline visualisation. Please note the total number of groups is the product of all selected categories, therefore this can get overwhelmingly large for the visualisation.
+If your text collection includes dates as metadata, this tool allows you to see how many texts were created on each date, creating a timeline visualisation. You can also do a Trends analysis for texts produced by a particular group of speakers/authors if you have additional metadata – for example showing how the texts of younger vs older speakers are distributed over time. You can include up to 3 different metadata categories in this timeline visualisation. Please note the total number of groups is the product of all selected categories, therefore this can get overwhelmingly large for the visualisation.
 
 You can also use this tool to identify how one or more particular words occur across time, as long as the words are extracted as a metadata column (e.g. using the Concordance tab).
 
@@ -19,7 +19,7 @@ You need to make sure that the column that includes the date is correctly classi
 For visualising words on the timeline: You first have to create a Concordance,
 open Review in **Table View**, and use **Add to Project** to create a
 **Concordance Match Data Block Creation**. Include the date and any other metadata that
-you need. Then use that Data Block as the source for Trends and Sequence and add
+you need. Then use that Data Block as the source for Trends and add
 `CONC_matched_text` (text) as a Group By column. This shows how each exact
 matched term occurs over time. To count case variants such as *Jobs* and *jobs*
 together, tick **Uncased** beside the result legend.

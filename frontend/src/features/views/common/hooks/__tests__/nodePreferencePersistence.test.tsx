@@ -117,7 +117,7 @@ describe('node preference persistence', () => {
         ?.nodes[0]?.tokenizer_model,
     ).toBeNull();
     expect(mocks.toastError).toHaveBeenCalledWith(
-      'Could not save the tokenizer for this data block.',
+      'Could not save the tokeniser for this data block.',
     );
   });
 });

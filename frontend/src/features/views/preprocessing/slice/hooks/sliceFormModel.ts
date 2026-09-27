@@ -198,7 +198,7 @@ export const deriveSliceFormModel = ({
     }
     if (mode === 'slice') {
       if (!offsetValid) {
-        return 'Offset must be a non-negative integer (zero-based row index).';
+        return 'Start row must be 0 or a positive whole number (0 means the first row).';
       }
       if (!lengthValid) {
         return 'Length is required – enter the number of rows to include in the slice.';
@@ -244,7 +244,7 @@ export const deriveSliceFormModel = ({
   const previewReadyMessage = !hasSelection
     ? 'Select a data block to preview output rows.'
     : mode === 'slice'
-      ? 'Showing original data. Enter offset and length to preview sliced rows.'
+      ? 'Showing original data. Enter a start row and length to preview sliced rows.'
       : 'Showing original data. Enter a fraction or row count and optional seed to preview sampled rows.';
 
   const applyDisabled = !hasSelection || !hasOperation || isSlicing || isOperationsLoading;

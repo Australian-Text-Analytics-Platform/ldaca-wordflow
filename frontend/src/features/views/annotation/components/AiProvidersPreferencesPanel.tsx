@@ -199,7 +199,7 @@ export function AiProvidersPreferencesPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete provider?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete {deleteTarget?.name ?? 'this provider configuration'}? Completed Run All output
+              Delete {deleteTarget?.name ?? 'this provider configuration'}? Completed Run output
               remains readable. Preview pages and future requests that use this provider will no
               longer work.
             </AlertDialogDescription>
@@ -224,8 +224,8 @@ export function AiProvidersPreferencesPanel() {
           <AlertDialogHeader>
             <AlertDialogTitle>Clear all providers?</AlertDialogTitle>
             <AlertDialogDescription>
-              Delete every configured Annotation provider. Completed Run All output remains
-              readable, but Preview pages and future provider requests will no longer work.
+              Delete every configured Annotation provider. Completed Run output remains readable,
+              but Preview pages and future provider requests will no longer work.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

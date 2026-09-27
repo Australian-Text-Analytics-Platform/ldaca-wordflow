@@ -39,7 +39,7 @@ describe('buildStopWordListSources', () => {
 
     expect(sources).toEqual([
       { tabId: 'freq-2', label: 'Frequency · 2', words: ['the'] },
-      { tabId: 'topics-1', label: 'Topic Modeling · 1', words: ['staff', 'university'] },
+      { tabId: 'topics-1', label: 'Topic Modelling · 1', words: ['staff', 'university'] },
     ]);
   });
 

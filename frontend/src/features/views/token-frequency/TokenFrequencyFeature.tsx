@@ -412,7 +412,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     ...baseActionState,
     runDisabled: baseActionState.runDisabled || !hasTokenizerModel,
     runDisabledReason: !hasTokenizerModel
-      ? 'Select a tokenizer model for each data block'
+      ? 'Select a tokeniser model for each data block'
       : baseActionState.runDisabledReason,
   };
 

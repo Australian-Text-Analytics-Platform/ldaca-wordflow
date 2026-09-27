@@ -150,7 +150,7 @@ describe('NodeInputsPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Selected Data Blocks (1/2)')).toBeInTheDocument();
+    expect(screen.getByText('Data Blocks (1/2)')).toBeInTheDocument();
     const card = screen.getByRole('group', { name: 'Archived Corpus unavailable' });
     expect(within(card).getByText('Archived Corpus')).toBeInTheDocument();
     expect(

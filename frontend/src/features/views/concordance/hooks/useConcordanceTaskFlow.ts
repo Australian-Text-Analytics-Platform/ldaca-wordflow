@@ -125,7 +125,7 @@ export function useConcordanceTaskFlow({
       searchMode === 'tokens' &&
       Object.keys(nodeTokenizerModels).length !== requestNodeIds.length
     ) {
-      toast.error('Select a tokenizer model for each selected data block.');
+      toast.error('Select a tokeniser model for each selected data block.');
       return;
     }
 

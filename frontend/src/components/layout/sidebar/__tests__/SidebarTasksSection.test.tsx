@@ -106,7 +106,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['Conc - 2 · Run All', 'Topic - JP vs AUS · Run', 'Freq - 1']);
+    expect(rowLabels()).toEqual(['Conc - 2 · Run', 'Topic - JP vs AUS · Run', 'Freq - 1']);
   });
 
   it("combines a tab's successful tasks into one row that lists each step", async () => {
@@ -142,7 +142,7 @@ describe('SidebarTasksSection', () => {
     const steps = within(screen.getByRole('list', { name: 'Conc - 2 steps' }));
     expect(steps.getAllByRole('listitem').map((item) => item.firstChild?.textContent)).toEqual([
       'Add to Project',
-      'Run All',
+      'Run',
       'Preview',
     ]);
     expect(steps.getAllByText(/qldelection2020/)).toHaveLength(2);
@@ -348,9 +348,9 @@ describe('SidebarTasksSection Run All grouping (issue 199)', () => {
       />,
     );
 
-    expect(rowLabels()).toEqual(['Conc - 2 · Run All']);
-    await user.click(screen.getByRole('button', { name: /^Task: Conc - 2 · Run All/ }));
-    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run All data blocks' }));
+    expect(rowLabels()).toEqual(['Conc - 2 · Run']);
+    await user.click(screen.getByRole('button', { name: /^Task: Conc - 2 · Run/ }));
+    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run data blocks' }));
     expect(blocks.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       'Q1 JP: cannot cast',
       'Q1 UK',

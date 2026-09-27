@@ -2,11 +2,11 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-sequential-section">Trends and Sequence tutorial</h1>
+<h1 id="help-sequential-section">Trends tutorial</h1>
 
-![Trends and Sequence screenshot](tutorials/assets/sequential_analysis.png)
+![Trends screenshot](tutorials/assets/sequential_analysis.png)
 
-The Trends and Sequence tool counts documents over time — or over any ordered numeric axis — and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
+The Trends tool counts documents over time — or over any ordered numeric axis — and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
 
 You can break a single trend into multiple lines by grouping on one or more categorical columns, then zoom into and select specific periods for closer inspection.
 
@@ -16,16 +16,16 @@ You can break a single trend into multiple lines by grouping on one or more cate
 
 Use the data-block selector to pick the corpus you want to analyse. Only one data block can be selected at a time.
 
-<h3 id="help-sequential-time-column">Step 2 — Choose a time or numeric column</h3>
+<h3 id="help-sequential-time-column">Step 2 — Choose a time or number column</h3>
 
-The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, date, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
+The **Time or number column** dropdown lists every column in the selected data block that holds a datetime, date, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
 - **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
-- **Numeric columns** (integer or decimal) are bucketed by a fixed interval width you specify.
+- **Number columns** (integer or decimal) are grouped by a fixed width you specify (the **Step**).
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
-![Selected data block with its Time/Numeric Column, and the Frequency setting](tutorials/assets/sequential_analysis/parameters.png)
+![Selected data block with its Time or number column, and the Frequency setting](tutorials/assets/sequential_analysis/parameters.png)
 
 <h3 id="help-sequential-frequency">Step 3 — Set the frequency (datetime columns)</h3>
 
@@ -55,13 +55,13 @@ Select **Customised** to bucket by a fixed duration you define: enter a positive
 - Smaller intervals show more detail but may produce many sparse buckets.
 - Larger intervals smooth the trend and reduce noise.
 
-<h3 id="help-sequential-numeric">Step 3 — Set the numeric interval (numeric columns)</h3>
+<h3 id="help-sequential-numeric">Step 3 — Set the start and step (number columns)</h3>
 
 When an integer or decimal column is selected, two fields appear:
 
-**Numeric Origin** — the starting point of the first bucket. Leave blank to auto-detect from the minimum value in the data.
+**Start**: where the first group begins. Leave blank to start at the smallest value in the data.
 
-**Numeric Interval** — the width of each bucket (required). For example, an interval of 10 groups values 0–9, 10–19, 20–29, and so on.
+**Step**: the width of each group (required). For example, a step of 10 gives 0–9, 10–19, 20–29, and so on.
 
 <h3 id="help-sequential-group-by">Step 4 — Group By Columns (optional)</h3>
 
@@ -88,7 +88,7 @@ or filtering.
 
 <h2 id="help-sequential-results">Result panel</h2>
 
-![Trends and Sequence results](tutorials/assets/sequential_analysis/trends_results.png)
+![Trends results](tutorials/assets/sequential_analysis/trends_results.png)
 
 The result panel follows the Concordance dispersion layout: result actions in
 the header, chart presentation controls directly above the plot, then the chart
@@ -198,10 +198,10 @@ source rows and selected periods will be added.
 
 <h3 id="help-sequential-clear-results">Clear results</h3>
 
-The tab keeps its current Trends and Sequence Analysis in the backend so it can
-reload its lifecycle and Result. **Clear Results** removes that Analysis and
+The tab keeps its current Trends Analysis in the backend so it can
+reload its lifecycle and Result. **Clear** removes that Analysis and
 resets the tab. After a failure or cancellation, parameters remain editable but
-Run stays disabled until you choose Clear Results. Clearing or replacing the
+Run stays disabled until you choose **Clear**. Clearing or replacing the
 result restores Minimum group count to **10** and clears manual legend
 visibility.
 
@@ -212,7 +212,7 @@ visibility.
 | Chart shows only one bar / point | Frequency too coarse for the date range | Try a finer frequency (e.g. daily instead of yearly) |
 | Too many series, chart is unreadable | Too many distinct values in group-by column(s) | Remove a group-by column, or filter the data block first |
 | No groups meet the minimum group count | Every grouped total is below the filter | Lower Minimum group count, or enter 0 to show all groups |
-| "No sequential analysis data available" | Column type or interval is incompatible with the data | Check the column contains valid dates or numbers; check the interval is > 0 |
+| "No Trends data available" | Column type or interval is incompatible with the data | Check the column contains valid dates or numbers; check the interval is > 0 |
 
 <h2 id="help-sequential-defaults">Quick-reference defaults</h2>
 
@@ -220,8 +220,8 @@ visibility.
 |---|---|---|
 | Frequency (datetime) | Monthly | Any standard or custom interval works |
 | Custom interval | 1 day | Enter a positive number and choose a unit |
-| Numeric Origin | Auto-detect | Leave blank unless you need a specific start |
-| Numeric Interval | 1 | Required; must be > 0 |
+| Start | Smallest value | Leave blank unless you need a specific start |
+| Step | 1 | Required; must be > 0 |
 | Group By | None | Up to 3 columns |
 | Uncased | Off | Beside the legend of a grouped result; merges case variants of a group |
 | Minimum group count | 10 | Grouped results only; enter 0 to show all groups |

@@ -54,7 +54,7 @@ export function SequentialChart({
       <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-surface-border-foreground/30 text-body text-description">
         {model.status === 'malformed'
           ? 'The sequential analysis result is malformed and has no chartable rows.'
-          : 'No sequential analysis data available. Adjust your configuration and try again.'}
+          : 'No Trends data available. Adjust your configuration and try again.'}
       </div>
     );
   }
@@ -92,7 +92,7 @@ export function SequentialChart({
                     onSelect: onPeriodClick,
                     onSelectRange: onPeriodRangeSelect,
                   }}
-                  ariaLabel="Trends and Sequence chart"
+                  ariaLabel="Trends chart"
                   dataResetKey={`${dataResetKey}:${model.chartData
                     .map((row) =>
                       typeof row.__period_key__ === 'string' ? row.__period_key__ : '',

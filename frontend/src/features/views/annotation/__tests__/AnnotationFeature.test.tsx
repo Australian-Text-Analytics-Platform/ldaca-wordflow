@@ -152,13 +152,13 @@ vi.mock('@/features/views/common/nodeInputs', async (importOriginal) => ({
 
 vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
   NodeInputsPanel: ({
-    title,
+    title = 'Data Blocks',
     resolvedNodes,
     renderColumnAddon,
     onColumnChange,
     onNodeColorChange,
   }: {
-    title: string;
+    title?: string;
     resolvedNodes: {
       id: string;
       name: string;
@@ -225,10 +225,10 @@ vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
             Preview
           </button>
           <button type="button" onClick={() => void actions.onRunAll()}>
-            Run All
+            Run
           </button>
           <button type="button" onClick={() => void actions.onClear()}>
-            Clear Results
+            Clear
           </button>
         </>
       ) : null}
@@ -427,7 +427,7 @@ describe('AnnotationFeature', () => {
       example_random_seed: 42,
     });
 
-    await user.click(screen.getByRole('button', { name: 'Run All' }));
+    await user.click(screen.getByRole('button', { name: 'Run' }));
     await waitFor(() => expect(mocks.submitRunAll).toHaveBeenCalledOnce());
     expect(mocks.submitRunAll.mock.calls[0]?.[0].source).toEqual(previewRequest);
   });
@@ -456,9 +456,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(
-      screen.getByRole('button', { name: 'Change Selected Data Blocks text column' }),
-    );
+    await user.click(screen.getByRole('button', { name: 'Change Data Blocks text column' }));
     expect(screen.getAllByText('Example Data Block')[0]).toBeVisible();
     await user.click(screen.getByRole('button', { name: 'Change Example Data Block text column' }));
 
@@ -675,7 +673,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Change Selected Data Blocks color' }));
+    await user.click(screen.getByRole('button', { name: 'Change Data Blocks color' }));
     expect(mocks.setNodeColor).toHaveBeenCalledWith('source-1', '#dc2626');
     await user.click(screen.getByRole('button', { name: 'Start' }));
     await waitFor(() => expect(mocks.ensureNodeColors).toHaveBeenCalledTimes(1));
@@ -796,7 +794,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Clear Results' }));
+    await user.click(screen.getByRole('button', { name: 'Clear' }));
 
     await waitFor(() => {
       expect(mocks.clearResults).toHaveBeenCalledTimes(1);

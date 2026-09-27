@@ -147,17 +147,17 @@ export const TokenFrequencyResultsPanel = ({
 
   const runningMessage =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty progress_message/message should fall back to the next source, not render blank
-    runningTask?.progress_message || runningTask?.message || 'Running token frequency analysis…';
+    runningTask?.progress_message || runningTask?.message || 'Running Frequency analysis…';
   const runningTaskId = runningTask?.task_id;
   const runningProgress = typeof runningTask?.progress === 'number' ? runningTask.progress : null;
   return (
     <AnalysisCardLayout
-      title="Token Frequency Results"
+      title="Frequency Results"
       titleGuidanceTarget="token-frequency-results"
       help={{
         targetKey: 'analysis.token-frequency.results',
-        label: 'Token frequency results',
-        tooltip: 'Shows running progress, failures, and final token frequency outputs.',
+        label: 'Frequency results',
+        tooltip: 'Shows running progress, failures, and final Frequency outputs.',
       }}
     >
       {isRunningState ? (

@@ -88,7 +88,7 @@ describe('getRerunActionState', () => {
       ).toMatchObject({
         runDisabled: true,
         clearDisabled: false,
-        runDisabledReason: 'Clear Results before running again',
+        runDisabledReason: 'Choose Clear before running again',
       });
     },
   );
@@ -117,7 +117,7 @@ describe('getRerunActionState', () => {
     ).toMatchObject({
       runDisabled: true,
       clearDisabled: false,
-      runDisabledReason: 'Clear Results before running again',
+      runDisabledReason: 'Choose Clear before running again',
     });
   });
 });

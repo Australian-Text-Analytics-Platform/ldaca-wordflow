@@ -224,10 +224,10 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
         : queryKeys.inactiveAnalysisResult(),
     enabled: Boolean(currentWorkspaceId) && quotationRunAll?.state === 'succeeded',
     queryFn: async (): Promise<QuotationRunAllResult> => {
-      if (!currentWorkspaceId || !quotationRunAll) throw new Error('Run All Result is unavailable');
+      if (!currentWorkspaceId || !quotationRunAll) throw new Error('The Run Result is unavailable');
       const value = await getAnalysisOutputResource(currentWorkspaceId, quotationRunAll.id);
       if (value.kind !== 'quotation_run_all') {
-        throw new Error('Quotation Run All Result is invalid');
+        throw new Error('The Quotation Run Result is invalid');
       }
       return value;
     },
@@ -446,7 +446,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       submit: () => runQuotationAll(host.tabId, { source }, tabTaskId ? [tabTaskId] : []),
       onError: (error) => {
         showErrorDialog(
-          error instanceof Error ? error.message : 'Could not start Quotation Run All.',
+          error instanceof Error ? error.message : 'Could not start the Quotation Run.',
         );
       },
     });
@@ -622,7 +622,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
         {quotationRunAll &&
         (quotationRunAll.state === 'queued' || quotationRunAll.state === 'running') ? (
           <AnalysisTaskBanner
-            analysisName="Quotation Run All"
+            analysisName="Quotation Run"
             status={quotationRunAll.state}
             taskId={quotationRunAll.id}
             message={quotationRunAll.progress.message ?? undefined}
@@ -631,7 +631,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
         {runAllSource || showPreviewTable ? (
           <QuotationResultsPanel
-            title={runAllSource ? 'Review' : 'Quotation Results'}
+            title="Quotation Results"
             guidanceTarget={
               runAllSource ? 'quotation-run-all-results' : 'quotation-preview-results'
             }

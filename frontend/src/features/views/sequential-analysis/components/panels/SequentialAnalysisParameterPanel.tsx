@@ -146,7 +146,7 @@ export function SequentialAnalysisParameterPanel({
         onRemoveNode={nodeInputs.removeNode}
         onClear={nodeInputs.clear}
         onColumnChange={onColumnChange}
-        columnLabel="Time/Numeric Column *"
+        columnLabel="Time or number column *"
       />
 
       <div className="space-y-4">
@@ -228,26 +228,22 @@ export function SequentialAnalysisParameterPanel({
           ) : (
             <>
               <div>
-                <label className="mb-1 block text-body font-medium text-foreground">
-                  Numeric Origin
-                </label>
+                <label className="mb-1 block text-body font-medium text-foreground">Start</label>
                 <Input
                   type="number"
                   value={numericOriginInput}
                   onChange={(event) => {
                     onNumericOriginChange(event.target.value);
                   }}
-                  placeholder="Auto-detect"
+                  placeholder="Smallest value"
                   disabled={inputsDisabled}
                 />
                 <p className="mt-1 text-label-secondary text-description">
-                  Optional. Leave blank to auto-detect from the minimum value.
+                  Leave blank to start at the smallest value.
                 </p>
               </div>
               <div>
-                <label className="mb-1 block text-body font-medium text-foreground">
-                  Numeric Interval *
-                </label>
+                <label className="mb-1 block text-body font-medium text-foreground">Step *</label>
                 <Input
                   type="number"
                   min="0"
@@ -260,7 +256,7 @@ export function SequentialAnalysisParameterPanel({
                   disabled={inputsDisabled}
                 />
                 <p className="mt-1 text-label-secondary text-description">
-                  Required. Values are bucketed using this interval width.
+                  The width of each group, for example 10 gives 0–9, 10–19, and so on.
                 </p>
               </div>
             </>

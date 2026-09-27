@@ -14,7 +14,7 @@ const ANALYSIS_NAVIGATION: readonly AnalysisNavigationDefinition[] = [
   {
     kind: 'token_frequency',
     view: 'token-frequency',
-    label: 'Token Frequency',
+    label: 'Frequency',
     shortLabel: 'Freq',
   },
   { kind: 'concordance', view: 'concordance', label: 'Concordance', shortLabel: 'Conc' },

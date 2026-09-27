@@ -431,15 +431,15 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       viewId="sequential-analysis"
       parameters={
         <AnalysisCardLayout
-          title="Trends and Sequence"
+          title="Trends Analysis"
           info={{
             targetKey: 'sequential-analysis.overview',
-            label: 'About Sequential Analysis',
+            label: 'About Trends Analysis',
             tooltip: 'Learn what sequential analysis is and how it can help you.',
           }}
           help={{
             targetKey: 'analysis.sequential-analysis.parameters',
-            label: 'Sequential analysis parameters',
+            label: 'Trends parameters',
             tooltip: 'Select a time column, choose frequency, and configure group-by options.',
           }}
           actions={{
@@ -514,7 +514,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     >
       {sequentialWaitingBanner && (
         <AnalysisTaskBanner
-          analysisName="Trends and Sequence"
+          analysisName="Trends"
           status={sequentialWaitingBanner.status}
           taskId={sequentialWaitingBanner.taskId}
           message={sequentialWaitingBanner.message}

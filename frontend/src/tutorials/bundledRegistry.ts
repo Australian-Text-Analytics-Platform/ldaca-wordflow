@@ -86,6 +86,11 @@ const tutorial = {
     anchor: 'help-ui-analysis-layout',
     label: 'Parameters and results layout',
   },
+  'ui.regular-expressions': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-regular-expressions',
+    label: 'Regular expressions',
+  },
   'data-loader.active-workspace.section': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-active-workspace',
@@ -214,7 +219,7 @@ const tutorial = {
   'preprocessing.slice.offset': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-slice-offset',
-    label: 'Slice offset',
+    label: 'Slice start row',
   },
   'preprocessing.slice.length': {
     file: 'tutorials/preprocessing.md',
@@ -264,22 +269,22 @@ const tutorial = {
   'preprocessing.concat.schema-status': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-concat-schema-status',
-    label: 'Schema status',
+    label: 'Column check',
   },
   'analysis.token-frequency.tab': {
     file: 'tutorials/token-frequency.md',
     anchor: 'help-token-frequency-section',
-    label: 'Token frequency overview',
+    label: 'Frequency overview',
   },
   'analysis.token-frequency.parameters': {
     file: 'tutorials/token-frequency.md',
     anchor: 'help-token-frequency-parameters',
-    label: 'Token frequency parameters',
+    label: 'Frequency parameters',
   },
   'analysis.token-frequency.results': {
     file: 'tutorials/token-frequency.md',
     anchor: 'help-token-frequency-results',
-    label: 'Token frequency results',
+    label: 'Frequency results',
   },
   'analysis.token-frequency.clear-results': {
     file: 'tutorials/token-frequency.md',
@@ -324,7 +329,7 @@ const tutorial = {
   'analysis.token-frequency.run': {
     file: 'tutorials/token-frequency.md',
     anchor: 'help-token-frequency-run',
-    label: 'Run token frequency',
+    label: 'Run Frequency',
   },
   'analysis.concordance.tab': {
     file: 'tutorials/concordance.md',
@@ -424,17 +429,17 @@ const tutorial = {
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-section',
-    label: 'Sequential analysis overview',
+    label: 'Trends overview',
   },
   'analysis.sequential-analysis.parameters': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-parameters',
-    label: 'Sequential analysis parameters',
+    label: 'Trends parameters',
   },
   'analysis.sequential-analysis.results': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-results',
-    label: 'Sequential analysis results',
+    label: 'Trends results',
   },
   'analysis.sequential-analysis.clear-results': {
     file: 'tutorials/sequential-analysis.md',
@@ -444,7 +449,7 @@ const tutorial = {
   'analysis.sequential-analysis.time-column': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-time-column',
-    label: 'Time column selector',
+    label: 'Time or number column',
   },
   'analysis.sequential-analysis.frequency': {
     file: 'tutorials/sequential-analysis.md',
@@ -552,12 +557,12 @@ const info = {
   'sequential-analysis.overview': {
     file: 'information/sequential-analysis.md',
     anchor: 'info-sequential-analysis-overview',
-    label: 'About Sequential Analysis',
+    label: 'About Trends Analysis',
   },
   'token-frequency.overview': {
     file: 'information/token-frequency.md',
     anchor: 'info-token-frequency-overview',
-    label: 'About Token Frequency Analysis',
+    label: 'About Frequency Analysis',
   },
   'topic-modeling.overview': {
     file: 'information/topic-modeling.md',

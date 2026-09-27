@@ -539,7 +539,7 @@ describe('ConcordanceFeature', () => {
     const ignorePunctuation = screen.getByRole('checkbox', { name: 'Ignore punctuation' });
     expect(ignorePunctuation).toBeChecked();
 
-    const tokenizerSelectors = screen.getAllByRole('combobox', { name: 'Tokenizer model' });
+    const tokenizerSelectors = screen.getAllByRole('combobox', { name: 'Tokeniser model' });
     expect(tokenizerSelectors.length).toBeGreaterThan(0);
     tokenizerSelectors.forEach((selector) => {
       expect(selector).toBeDisabled();
@@ -547,7 +547,7 @@ describe('ConcordanceFeature', () => {
 
     fireEvent.click(screen.getAllByRole('tab', { name: 'Tokens' })[0]!);
 
-    screen.getAllByRole('combobox', { name: 'Tokenizer model' }).forEach((selector) => {
+    screen.getAllByRole('combobox', { name: 'Tokeniser model' }).forEach((selector) => {
       expect(selector).toBeEnabled();
     });
     expect(screen.queryByRole('checkbox', { name: 'Ignore punctuation' })).not.toBeInTheDocument();
@@ -647,14 +647,14 @@ describe('ConcordanceFeature', () => {
     const { unmount } = renderConcordanceFeature('analysis-1');
 
     expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Run All' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: 'Clear Results' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Clear results' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
     expect(screen.queryByRole('button', { name: 'Running...' })).not.toBeInTheDocument();
 
     const previewButton = screen.getByRole('button', { name: 'Preview' });
     await user.hover(previewButton);
-    expect(await screen.findByRole('tooltip')).toHaveTextContent('Wait for Run All to finish');
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Wait for Run to finish');
 
     unmount();
   });
@@ -722,10 +722,8 @@ describe('ConcordanceFeature', () => {
 
     const { unmount } = renderConcordanceFeature('analysis-1');
 
-    await waitFor(() => {
-      expect(screen.getByText('Review')).toBeInTheDocument();
-    });
-    expect(screen.getByText('Queensland')).toBeInTheDocument();
+    expect(await screen.findByText('Queensland')).toBeInTheDocument();
+    expect(screen.getByText('Concordance Results')).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Table View' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Dispersion View' })).toBeInTheDocument();
     expect(screen.getByLabelText('Concordance result summary')).toHaveTextContent(
@@ -846,7 +844,7 @@ describe('ConcordanceFeature', () => {
 
     const { unmount } = renderConcordanceFeature('analysis-1');
 
-    await screen.findByText('Review');
+    await screen.findByText('Concordance Results');
     fireEvent.click(screen.getByRole('tab', { name: 'Dispersion View' }));
 
     await waitFor(() => {

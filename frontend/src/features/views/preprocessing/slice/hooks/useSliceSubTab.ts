@@ -295,10 +295,10 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
     }
     const lastOffset = lastResult.offset ?? 0;
     if (lastResult.length === undefined) {
-      return `Last slice “${lastResult.nodeName}” (offset ${String(lastOffset)} → end).`;
+      return `Last slice “${lastResult.nodeName}” (start row ${String(lastOffset)} → end).`;
     }
     if (lastResult.length === 0) {
-      return `Last slice “${lastResult.nodeName}” (offset ${String(lastOffset)}, zero rows).`;
+      return `Last slice “${lastResult.nodeName}” (start row ${String(lastOffset)}, zero rows).`;
     }
     const endRow = lastOffset + lastResult.length - 1;
     return `Last slice “${lastResult.nodeName}” (rows ${String(lastOffset)}–${String(endRow)}).`;
@@ -369,7 +369,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
     }
     if (mode === 'slice') {
       if (!offsetValid) {
-        setCurrentInlineError('Offset must be a non-negative integer.');
+        setCurrentInlineError('Start row must be 0 or a positive whole number.');
         return;
       }
       if (!lengthValid) {
@@ -424,7 +424,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
         },
       });
       onAlert(
-        `${operationLabel} created: ${responseName}${resultNodeId ? ` (${resultNodeId})` : ''}.`,
+        `${operationLabel} added to the Project: ${responseName}${resultNodeId ? ` (${resultNodeId})` : ''}.`,
       );
     } catch (error) {
       const operationLabel = mode === 'slice' ? 'Slice' : 'Random sample';

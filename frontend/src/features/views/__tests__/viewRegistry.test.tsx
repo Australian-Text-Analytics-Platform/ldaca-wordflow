@@ -17,6 +17,17 @@ describe('view registry', () => {
       'Annotation',
       'Export',
     ]);
+    expect(VIEW_DEFINITIONS.map((view) => view.shortLabel ?? view.label)).toEqual([
+      'Loader',
+      'Builder',
+      'Frequency',
+      'Concordance',
+      'Trends',
+      'Topics',
+      'Quotation',
+      'Annotation',
+      'Export',
+    ]);
   });
 
   it('marks only Data Loader as available before a project loads', () => {

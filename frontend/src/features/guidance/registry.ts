@@ -164,7 +164,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.sample,
     '[data-guidance="preprocessing-operation-sample"]',
     'Test ideas on a smaller dataset',
-    'Choose a contiguous Slice or a reproducible Random sample; Sample always creates a Derived Data Block. Set the sample, then choose Preview.',
+    'Choose a contiguous Slice or a reproducible Random sample; Sample always creates a new Data Block. Set the sample, then choose Preview.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.join,
@@ -176,7 +176,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.stack,
     '[data-guidance="preprocessing-operation-stack"]',
     'Combine compatible rows',
-    'Stack Data Blocks with the same schema, optionally removing exact duplicates. Resolve any schema mismatch, then choose Preview.',
+    'Stack Data Blocks with the same columns, optionally removing exact duplicates. Fix any column differences, then choose Preview.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.preview,
@@ -187,21 +187,21 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.createOutcome,
     '[data-guidance="data-blocks"]',
-    'Your Derived Data Block is ready',
-    'Create added a new Data Block with creation lineage back to its inputs. Select it in the sidebar or graph to inspect and continue.',
+    'Your new Data Block is ready',
+    'Add to Project added a new Data Block, linked back to its inputs. Select it in the sidebar or graph to inspect and continue.',
   ),
 
   hint(
     CONTEXTUAL_HINT_IDS.tokenFrequency.inputs,
     '[data-guidance="token-frequency-inputs"]',
     'Choose the text to count',
-    'Add the Data Block or Data Blocks to analyse, then choose each text column and tokenizer model. Complete the source selection to continue.',
+    'Add the Data Block or Data Blocks to analyse, then choose each text column and tokeniser model. Complete the source selection to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.tokenFrequency.run,
     '[data-guidance="token-frequency-actions"]',
     'Count consistent tokens',
-    'The tokenizer defines what counts as a token, while stop words remove terms you do not want counted. Check the settings, then choose Run.',
+    'The tokeniser defines what counts as a token, while stop words remove terms you do not want counted. Check the settings, then choose Run.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.tokenFrequency.results,
@@ -214,13 +214,13 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.inputs,
     '[data-guidance="concordance-inputs"]',
     'Choose where to search',
-    'Add the Data Block or Data Blocks to search, then choose each text column and tokenizer model. Complete the source selection to continue.',
+    'Add the Data Block or Data Blocks to search, then choose each text column and tokeniser model. Complete the source selection to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.search,
     '[data-guidance="concordance-actions"]',
     'Define the match and context',
-    'Enter a search term, choose Text or Tokens mode, and set the surrounding context. Choose Preview for a page or Run All for the complete search.',
+    'Enter a search term, choose Text or Tokens mode, and set the surrounding context. Choose Preview for a page or Run for the complete search.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.previewResults,
@@ -232,26 +232,26 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.concordance.runAllResults,
     '[data-guidance="concordance-run-all-results"]',
     'Review the complete search',
-    'Run All stores an immutable Result for the whole search. Page through matches and documents, then choose the columns you want to keep.',
+    'Run stores an immutable Result for the whole search. Page through matches and documents, then choose the columns you want to keep.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.concordance.addToWorkspace,
     '[data-guidance="concordance-add-to-workspace"]',
     'Keep only what you need',
-    'Add to Project creates Derived Data Blocks from selected Result columns without changing the Result. Name the outputs, then add them to the Project.',
+    'Add to Project creates new Data Blocks from selected Result columns without changing the Result. Name the outputs, then add them to the Project.',
   ),
 
   hint(
     CONTEXTUAL_HINT_IDS.trends.inputs,
     '[data-guidance="trends-inputs"]',
     'Choose an ordered Data Block',
-    'Add one Data Block, then select a datetime or numeric column for the horizontal axis. Choose the sequence column to continue.',
+    'Add one Data Block, then select a time or number column for the horizontal axis. Choose that column to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.trends.run,
     '[data-guidance="trends-actions"]',
     'Shape the trend',
-    'Set a calendar frequency or numeric interval and optionally group by up to three columns. Check the settings, then choose Run.',
+    'Set a calendar frequency or a Step for numbers and optionally group by up to three columns. Check the settings, then choose Run.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.trends.results,
@@ -282,7 +282,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.topicModeling.addToWorkspace,
     '[data-guidance="topic-modeling-add-to-workspace"]',
     'Add topic data for reuse',
-    'Add to Project creates Derived Data Blocks from selected topic columns and names without changing the Result. Select what to keep, then add it to the Project.',
+    'Add to Project creates new Data Blocks from selected topic columns and names without changing the Result. Select what to keep, then add it to the Project.',
   ),
 
   hint(
@@ -295,7 +295,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.quotation.engine,
     '[data-guidance="quotation-actions"]',
     'Choose how quotations are found',
-    'Built-in runs locally, while Remote uses a configured service; display context changes only what you review. Choose Preview for a sample or Run All for the complete extraction.',
+    'Built-in runs locally, while Remote uses a configured service; display context changes only what you review. Choose Preview for a sample or Run for the complete extraction.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.quotation.previewResults,
@@ -307,13 +307,13 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.quotation.runAllResults,
     '[data-guidance="quotation-run-all-results"]',
     'Review every extracted quotation',
-    'Run All stores an immutable Result for the complete source. Page through documents and matches, then choose the columns you want to keep.',
+    'Run stores an immutable Result for the complete source. Page through documents and matches, then choose the columns you want to keep.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.quotation.addToWorkspace,
     '[data-guidance="quotation-add-to-workspace"]',
     'Keep reviewed quotations',
-    'Add to Project creates Derived Data Blocks from selected Result columns without changing the Result. Name the output, then add it to the Project.',
+    'Add to Project creates new Data Blocks from selected Result columns without changing the Result. Name the output, then add it to the Project.',
   ),
 
   hint(
@@ -350,7 +350,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.annotation.aiSetup,
     resolveAnnotationAiSetupTarget,
     'Configure an AI annotation run',
-    'Expand AI settings to choose a provider and model; an Example Data Block is optional. Check the setup, then choose Preview before Run All.',
+    'Expand AI settings to choose a provider and model; an Example Data Block is optional. Check the setup, then choose Preview before Run.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.annotation.aiAdvanced,
@@ -368,7 +368,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.annotation.aiRunAllResults,
     '[data-guidance="annotation-ai-run-all-results"]',
     'Review labels written by AI',
-    'Run All writes labels to the annotation column, and the review table reflects the current Data Block. Check differences and corrections before continuing with the labelled data.',
+    'Run writes labels to the annotation column, and the review table reflects the current Data Block. Check differences and corrections before continuing with the labelled data.',
   ),
 
   hint(

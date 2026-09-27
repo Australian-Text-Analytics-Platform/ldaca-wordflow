@@ -17,7 +17,7 @@ packaged by the backend into one ZIP containing one file per Data Block.
 Use **Add data block** to choose individual Data Blocks (or a Data Block's
 **+** button in the graph or the Data Blocks list), or **Add All** to select
 every remaining Data Block. There is
-no selector maximum. Remove a card with its **×**, or use **Clear all**, to change the selection.
+no selector maximum. Remove a card with its **×**, or use **Clear**, to change the selection.
 
 ![Export Data Blocks with two Data Blocks added and CSV chosen](tutorials/assets/export/export_data_blocks.png)
 

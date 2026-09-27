@@ -1,6 +1,6 @@
 import {
+  Blocks,
   FileText,
-  Filter,
   FolderOpen,
   Hash,
   Puzzle,
@@ -15,6 +15,8 @@ import { ALL_VIEWS, type ViewType } from '@/features/views/viewIds';
 export interface ViewDefinition {
   id: ViewType;
   label: string;
+  /** Shorter name for the sidebar views list; the full `label` is used elsewhere (issue 205). */
+  shortLabel?: string;
   icon: LucideIcon;
   requiresWorkspace: boolean;
   ownsMainCard: boolean;
@@ -32,6 +34,7 @@ export const VIEW_DEFINITIONS: ViewDefinition[] = [
   {
     id: 'data-loader',
     label: 'Data Loader',
+    shortLabel: 'Loader',
     icon: FolderOpen,
     requiresWorkspace: false,
     ownsMainCard: false,
@@ -39,7 +42,8 @@ export const VIEW_DEFINITIONS: ViewDefinition[] = [
   {
     id: 'filter',
     label: 'Data Builder',
-    icon: Filter,
+    shortLabel: 'Builder',
+    icon: Blocks,
     requiresWorkspace: true,
     ownsMainCard: false,
   },
@@ -67,6 +71,7 @@ export const VIEW_DEFINITIONS: ViewDefinition[] = [
   {
     id: 'topic-modeling',
     label: 'Topic Modelling',
+    shortLabel: 'Topics',
     icon: Puzzle,
     requiresWorkspace: true,
     ownsMainCard: true,

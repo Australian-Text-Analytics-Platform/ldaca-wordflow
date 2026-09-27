@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import { Scissors } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
@@ -48,7 +49,7 @@ export function SegmentSubTab({
 
   return (
     <BuilderToolCard
-      title="Segment"
+      title="Cut texts into segments"
       subtitle="One row per sentence, paragraph, line, or pattern-led segment."
       icon={<Scissors className="h-5 w-5" />}
       helpKey="preprocessing.segment.tab"
@@ -69,12 +70,12 @@ export function SegmentSubTab({
       name={name}
       namePlaceholder={input ? `${input.name}_${unit}s` : ''}
       onNameChange={setName}
-      createLabel="Create Data Block"
+      createLabel="Add to Project"
       canCreate={body !== null}
       onCreate={async () => {
         if (!body) throw new Error('Complete the settings first.');
         const created = await createDerivedNode(body);
-        return `Created ${created.name}.`;
+        return `Added ${created.name} to the Project.`;
       }}
       summary={(total) =>
         total === null || total === undefined
@@ -107,7 +108,14 @@ export function SegmentSubTab({
       {unit === 'pattern' ? (
         <div className="space-y-3 rounded-md border border-surface-border p-3">
           <div className="space-y-1">
-            <Label htmlFor="segment-pattern">Each segment starts with</Label>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="segment-pattern">Each segment starts with</Label>
+              <HelpIcon
+                targetKey="ui.regular-expressions"
+                label="About regular expressions"
+                tooltip="A pattern, not exact text. Examples and a cheat sheet in Help."
+              />
+            </div>
             <Input
               id="segment-pattern"
               value={pattern}

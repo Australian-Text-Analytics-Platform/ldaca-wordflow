@@ -100,7 +100,7 @@ export function useSequentialAnalysisTaskFlow({
 
     if (derivedColumnType === 'numeric') {
       if (numericIntervalValue === null || numericIntervalValue <= 0) {
-        toast.error('Please enter a numeric interval greater than 0.');
+        toast.error('Please enter a Step greater than 0.');
         return;
       }
       if (numericOriginInput.trim().length > 0 && numericOriginValue === null) {

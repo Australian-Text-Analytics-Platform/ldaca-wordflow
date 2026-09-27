@@ -68,9 +68,7 @@ describe('SequentialChart', () => {
       />,
     );
 
-    expect(
-      screen.getByRole('button', { name: 'Sequential Count (1/3 · 100.0%)' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Count (1/3 · 100.0%)' })).toBeInTheDocument();
     expect(containerRef.current).toBeInstanceOf(HTMLDivElement);
     expect(
       within(screen.getByTestId('filterable-series-controls')).getByRole('button', {

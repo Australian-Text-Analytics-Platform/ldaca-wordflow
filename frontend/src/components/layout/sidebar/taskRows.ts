@@ -10,7 +10,7 @@ import type { TaskItem } from '@/features/workspace/task-stream/taskProjection';
  * Flow: file imports stay one row each. Analysis tasks are named after their
  * tool and tab ("Freq - 1"); a tab's successful tasks share one row whose
  * details list each step, while failed, cancelled, queued, and running tasks
- * keep their own row labelled with their step ("Conc - 2 · Run All"). Rows
+ * keep their own row labelled with their step ("Conc - 2 · Run"). Rows
  * sort with problems first, then work in progress, then finished work, newest
  * first within each group.
  */
@@ -26,7 +26,7 @@ export type TaskRowTarget =
 
 interface TaskRowStep {
   task: TaskItem;
-  /** "Preview", "Run", "Run All", or "Add to Project". */
+  /** "Preview", "Run", or "Add to Project" (a `_run_all` request also reads "Run"). */
   label: string;
   /** Names of the Data Blocks the step read. */
   blocks: string[];
@@ -62,7 +62,7 @@ const kindFromRequest = (requestKind: string | null | undefined): AnalysisKind |
 /** Plain-language step for an analysis request kind. */
 const taskStepLabel = (requestKind: string | null | undefined): string => {
   if (!requestKind) return 'Unavailable';
-  if (requestKind.endsWith('_run_all')) return 'Run All';
+  if (requestKind.endsWith('_run_all')) return 'Run';
   if (requestKind.endsWith('_data_block_creation')) return 'Add to Project';
   if (requestKind === 'concordance' || requestKind === 'quotation' || requestKind === 'annotation')
     return 'Preview';

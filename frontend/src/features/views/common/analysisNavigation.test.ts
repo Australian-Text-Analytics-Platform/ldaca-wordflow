@@ -23,14 +23,12 @@ describe('analysis navigation metadata', () => {
     expect(analysisNavigationForKind('token_frequency')).toEqual({
       kind: 'token_frequency',
       view: 'token-frequency',
-      label: 'Token Frequency',
+      label: 'Frequency',
       shortLabel: 'Freq',
     });
     expect(analysisNavigationForView('analysis')?.kind).toBe('sequential');
     expect(analysisNavigationForView('data-loader')).toBeNull();
-    expect(analysisTabQuickAccessLabel(tab('token_frequency', 'Analysis 1'))).toBe(
-      'Token Frequency: 1',
-    );
+    expect(analysisTabQuickAccessLabel(tab('token_frequency', 'Analysis 1'))).toBe('Frequency: 1');
   });
 
   it('names tabs with plain numbers and shows legacy "Analysis N" as N (issue 199)', () => {
@@ -49,7 +47,7 @@ describe('analysis navigation metadata', () => {
       tab('concordance', 'Keyword review'),
     ];
 
-    expect(filterAnalysisTabs(tabs, 'TOKEN')).toEqual([tabs[0]]);
+    expect(filterAnalysisTabs(tabs, 'FREQ')).toEqual([tabs[0]]);
     expect(filterAnalysisTabs(tabs, 'timeline')).toEqual([tabs[1]]);
     expect(filterAnalysisTabs(tabs, '  review ')).toEqual([tabs[2]]);
     expect(filterAnalysisTabs(tabs, '')).toEqual(tabs);

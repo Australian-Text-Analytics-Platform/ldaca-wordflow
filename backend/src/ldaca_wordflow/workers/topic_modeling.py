@@ -103,8 +103,9 @@ def run_topic_modeling_data_block_creation(
             )
         except ValueError as exc:
             raise ValueError(
-                "Per-topic detach needs a Topic Modeling run made with this version "
-                "of Wordflow. Re-run the analysis, then detach again."
+                "Adding one row per topic needs a Topic Modelling run made with this "
+                "version of Wordflow. Re-run the analysis, then choose Add to Project "
+                "again."
             ) from exc
     meaning_values = {
         int(topic["id"]): [

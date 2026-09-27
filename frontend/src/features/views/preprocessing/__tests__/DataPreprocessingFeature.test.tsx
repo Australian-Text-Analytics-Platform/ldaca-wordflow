@@ -258,8 +258,8 @@ describe('DataPreprocessingFeature replace tab', () => {
   it('shows one preprocessing input panel and uses input node metadata for filter schema', async () => {
     renderPreprocessingFeature();
 
-    expect(screen.getAllByText('Data Builder Inputs (1/1)')).toHaveLength(1);
-    expect(screen.queryByText(/Selected Data Blocks/)).not.toBeInTheDocument();
+    expect(screen.getAllByText('Data Blocks (1/1)')).toHaveLength(1);
+    expect(screen.queryByText(/Selected Data Blocks|Data Builder Inputs/)).not.toBeInTheDocument();
 
     const filterPanel = screen.getByRole('tabpanel', { name: 'Filter' });
     await waitFor(() => {
@@ -301,7 +301,7 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Join' }));
     expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Data Builder Inputs (1/2)')).toBeInTheDocument();
+    expect(await screen.findByText('Data Blocks (1/2)')).toBeInTheDocument();
     expect(
       screen.queryByText('All rows from the left data block plus matching rows from the right.'),
     ).not.toBeInTheDocument();
@@ -309,8 +309,8 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Stack' }));
     expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Data Builder Inputs (1/6)')).toBeInTheDocument();
-    expect(screen.queryByText(/Data Builder Inputs \(1\/12\)/)).not.toBeInTheDocument();
+    expect(await screen.findByText('Data Blocks (1/6)')).toBeInTheDocument();
+    expect(screen.queryByText(/Data Blocks \(1\/12\)/)).not.toBeInTheDocument();
   });
 
   it('shows the Sample tab and submits a random sample request', async () => {
@@ -327,11 +327,11 @@ describe('DataPreprocessingFeature replace tab', () => {
     });
 
     expect(screen.getByRole('tab', { name: 'Slice' })).toBeInTheDocument();
-    expect(screen.getByLabelText('Offset')).toBeInTheDocument();
+    expect(screen.getByLabelText('Start row')).toBeInTheDocument();
 
     await user.click(screen.getByRole('tab', { name: 'Random Sample' }));
 
-    expect(screen.queryByLabelText('Offset')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Start row')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Fraction / Count')).toBeInTheDocument();
     expect(screen.getByLabelText('Random seed')).toBeInTheDocument();
     expect(screen.getByLabelText('Random seed')).toHaveValue(0);
@@ -343,7 +343,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     expect(sampleNameInput).toHaveValue('');
     expect(sampleNameInput).toHaveAttribute('placeholder', 'Corpus_sampled_fr_0_4_rs_7');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Create Data Block' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     await waitFor(() => {
       const [nodeId, payload] = mockSliceNode.mock.calls[0] ?? [];
@@ -420,7 +420,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     const sampleNameInput = await screen.findByPlaceholderText<HTMLInputElement>(
       'Corpus_sampled_fr_0_4_rs_7',
     );
-    const addButton = within(samplePanel).getByRole('button', { name: 'Create Data Block' });
+    const addButton = within(samplePanel).getByRole('button', { name: 'Add to Project' });
 
     sampleNameInput.focus();
     expect(sampleNameInput).toHaveFocus();
@@ -464,10 +464,10 @@ describe('DataPreprocessingFeature replace tab', () => {
     // transitions undefined↔defined, so a once-grabbed DOM ref goes
     // stale (still references a detached DOM node with disabled="").
     await waitFor(() => {
-      expect(within(filterPanel).getByRole('button', { name: 'Create Data Block' })).toBeEnabled();
+      expect(within(filterPanel).getByRole('button', { name: 'Add to Project' })).toBeEnabled();
     });
 
-    const addButton = within(filterPanel).getByRole('button', { name: 'Create Data Block' });
+    const addButton = within(filterPanel).getByRole('button', { name: 'Add to Project' });
     fireEvent.click(addButton);
 
     await waitFor(() => {
@@ -549,7 +549,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     expect(mockToastWarning).not.toHaveBeenCalled();
   });
 
-  it('keeps Create Data Block disabled until conditions are valid and preview rows exist', async () => {
+  it('keeps Add to Project disabled until conditions are valid and preview rows exist', async () => {
     const user = userEvent.setup();
 
     mockFilterPreview.mockResolvedValueOnce({
@@ -570,7 +570,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     // DOM ref goes stale.
     const getAddButton = () =>
       within(screen.getByRole('tabpanel', { name: 'Filter' })).getByRole('button', {
-        name: 'Create Data Block',
+        name: 'Add to Project',
       });
 
     const filterPanel = await waitForFilterSchema();
@@ -615,7 +615,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     expect(applyBar).toHaveTextContent('New data block name');
     expect(applyBar).not.toHaveTextContent('Result:');
     expect(within(applyBar).queryByRole('combobox')).not.toBeInTheDocument();
-    expect(within(applyBar).getByRole('button', { name: 'Create Data Block' })).toBeInTheDocument();
+    expect(within(applyBar).getByRole('button', { name: 'Add to Project' })).toBeInTheDocument();
 
     // Find and Create moved to the Data Editor (issue 143).
     expect(screen.queryByRole('tab', { name: 'Find' })).not.toBeInTheDocument();

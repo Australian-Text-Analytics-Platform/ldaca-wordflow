@@ -210,7 +210,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
       details.push(`Extra columns: ${extra.sort().join(', ')}`);
     }
     if (typeMismatches.length) {
-      details.push(`Type mismatches: ${typeMismatches.sort().join(', ')}`);
+      details.push(`Different column types: ${typeMismatches.sort().join(', ')}`);
     }
 
     if (details.length) {
@@ -226,7 +226,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
     result.ready = true;
     result.issues = `Ready to stack ${String(summaries.length)} data blocks (${String(result.baseColumnCount)} columns).`;
   } else {
-    result.issues = 'Resolve schema mismatches before stacking.';
+    result.issues = 'Fix the column differences before stacking.';
   }
 
   return result;

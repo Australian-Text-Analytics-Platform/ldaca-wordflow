@@ -1,6 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { useDataEditorToolStore } from '../../dataEditorToolStore';
 import { DataEditorToolPanel } from '../DataEditorToolPanel';
 
@@ -36,7 +37,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('previews a pre-filled duplicate without marking it unfinished, then applies it', async () => {
     const user = userEvent.setup();
     open('duplicate', 'text');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     await waitFor(() => {
       expect(useDataEditorToolStore.getState().request).toEqual({
@@ -64,7 +65,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('marks the tool unfinished once the user edits it and waits for a complete form', async () => {
     const user = userEvent.setup();
     open('find_replace', 'text');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     expect(screen.getByRole('status')).toHaveTextContent('Complete the settings');
     expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
@@ -91,7 +92,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('builds a Combine template with brace suggestions and the Insert column picker', async () => {
     const user = userEvent.setup();
     open('combine', 'party');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     const template = screen.getByLabelText('Template');
     expect(template).toHaveValue('{party}');
@@ -136,7 +137,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('flags template columns that are not on the Data Block', async () => {
     const user = userEvent.setup();
     open('combine');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     await user.type(screen.getByLabelText('Template'), '{{nope}');
     expect(screen.getByText(/Not a column on this Data Block: nope/)).toBeInTheDocument();
@@ -145,14 +146,14 @@ describe('DataEditorToolPanel (issue 143)', () => {
 
   it("starts in the tool's first field", () => {
     open('combine');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
     expect(screen.getByLabelText('Template')).toHaveFocus();
   });
 
   it('fills the suggested Count column name on Tab so it can be edited (issue 156)', async () => {
     const user = userEvent.setup();
     open('count', 'text');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     const name = screen.getByLabelText('New column name');
     expect(name).toHaveValue('');
@@ -168,7 +169,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('adds split delimiters as chips on Enter, without duplicates (issue 163)', async () => {
     const user = userEvent.setup();
     open('split', 'text');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     expect(screen.getByLabelText('Number of columns')).toHaveValue(2);
     const input = screen.getByLabelText('Delimiters');
@@ -198,7 +199,7 @@ describe('DataEditorToolPanel (issue 143)', () => {
   it('previews a new column under a default name, which Tab accepts for editing (issue 164)', async () => {
     const user = userEvent.setup();
     open('find_replace', 'text');
-    render(<DataEditorToolPanel />);
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
 
     await user.type(screen.getByLabelText('Find'), '_');
     await user.click(screen.getByLabelText('A new column, right of it'));

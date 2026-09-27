@@ -54,7 +54,7 @@ extraction-engine parameter, so changing it never needs a new Preview.
 Click **Preview** to create a durable Quotation Preview Analysis. The label
 always remains **Preview**. If the Data Block, text column, or engine changes,
 Preview becomes available again; reverting exactly to the submitted request
-disables it. Preview and **Run All** keep independent request baselines.
+disables it. Preview and **Run** keep independent request baselines.
 
 The successful Preview Analysis keeps its retained input snapshot. Each page and
 sort request recomputes a fresh projection from that snapshot, not the current
@@ -89,19 +89,19 @@ headers are display-only because they are produced after source paging.
 Changing the page, **Documents per page**, or sort order recomputes another
 projection of the same Preview Analysis. It does not mutate that Analysis.
 
-<h3 id="help-quotation-run-all">Run All and Review</h3>
+<h3 id="help-quotation-run-all">Run and Quotation Results</h3>
 
-Click **Run All** at any time to submit an independent Run All Analysis that
+Click **Run** at any time to submit an independent Run Analysis that
 retains a complete table Result from its own immutable snapshot. Later source
-edits do not alter that Analysis's meaning, and Run All does not add a Data
-Block to the Project. After success, **Review** reads the immutable Result.
-Review pages by match: each row is one extract with its scalar `QUOTE_*`
+edits do not alter that Analysis's meaning, and Run does not add a Data
+Block to the Project. After success, **Quotation Results** shows the immutable
+Result and pages by match: each row is one extract with its scalar `QUOTE_*`
 fields, so a page never grows unexpectedly long. Click a row to open **Row
 Details**, where the document scrolls to the quotation and the metadata below
-it shows which document the extract comes from. Review does not show the
-Preview page summary.
+it shows which document the extract comes from. After Run, the results do not
+show the Preview page summary.
 
-Use **Add to Project** to publish selected Result columns as a Derived Data
+Use **Add to Project** to publish selected Result columns as a new Data
 Block. The document column is required, metadata columns start unselected, and
 analysis columns start selected.
 
@@ -133,10 +133,10 @@ in other software.
 <h3 id="help-quotation-clear-results">Clear results</h3>
 
 The Tab retains its Analysis forest across navigation and Project reopen.
-**Clear Results** removes the complete forest. Preview or Run All locks every
+**Clear** removes the complete forest. Preview or Run locks every
 parameter only while submission or execution is active; Stop becomes available
 once the task exists. If either root fails or is cancelled, parameters unlock
-but both execution actions stay disabled until Clear Results.
+but both execution actions stay disabled until you choose **Clear**.
 
 <h2 id="help-quotation-troubleshooting">Troubleshooting</h2>
 
@@ -162,7 +162,7 @@ but both execution actions stay disabled until Clear Results.
 2. Inspect highlighted speaker, quote, and verb spans in several rows.
 3. Change the display context length.
 4. Sort by the virtual document header and a source metadata column.
-5. Run All, inspect Review, and use **Add to Project** if you need a Derived
+5. Run, inspect **Quotation Results**, and use **Add to Project** if you need a new
    Data Block.
 
 [← Back to tutorial index](./index.md)

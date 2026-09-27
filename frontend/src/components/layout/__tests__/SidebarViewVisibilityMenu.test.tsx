@@ -279,7 +279,7 @@ describe('Sidebar view visibility menu', () => {
     const view = renderSidebar();
 
     expect(screen.getByRole('button', { name: 'Export' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Data Loader' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Loader' })).toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: /edit visible views/i })[0]!);
 
@@ -310,7 +310,7 @@ describe('Sidebar view visibility menu', () => {
     expect(screen.queryByRole('menuitemcheckbox', { name: 'Data Loader' })).not.toBeInTheDocument();
     expect(screen.getByRole('menuitemcheckbox', { name: 'Data Builder' })).toBeInTheDocument();
     await user.keyboard('{Escape}');
-    expect(screen.getAllByRole('button', { name: 'Data Loader' }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: 'Loader' }).length).toBeGreaterThan(0);
   });
 
   it('opens Settings from the shared header control and resets Contextual Hint history there', async () => {

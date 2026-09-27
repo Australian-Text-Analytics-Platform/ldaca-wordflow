@@ -6,7 +6,7 @@
 
 ![Data Builder screenshot](tutorials/assets/preprocessing.png)
 
-The Data Builder makes new Data Blocks from existing ones. Its tools change which rows are present: every sub-tab creates a new Derived Data Block, and the source is never altered.
+The Data Builder makes new Data Blocks from existing ones. Its tools change which rows are present: every sub-tab creates a new child Data Block (made from another), and the source is never altered.
 
 Tools that add or change columns (Combine columns, Count, Duplicate column, Extract text, Split column, Find & replace, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
@@ -25,10 +25,10 @@ There are currently eight sub-tabs:
 
 The general workflow for any sub-tab is:
 
-1. Add one or more data blocks under **Data Builder Inputs**.
+1. Add one or more data blocks under **Data Blocks**.
 2. Configure the transformation.
 3. Review the **Preview** table to check the expected output.
-4. Click **Create Data Block** (Group shows **Create N Data Blocks**, one per ticked group).
+4. Click **Add to Project** (Group shows **Add N to Project** when N groups are ticked, one new Data Block per group; Deduplicate shows **Add 2 to Project**).
 
 <h2 id="help-preprocessing-common-section">Common controls</h2>
 
@@ -36,15 +36,15 @@ These controls appear across multiple sub-tabs and work the same way throughout.
 
 <h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
 
-Add data blocks under **Data Builder Inputs** with **Add data block**, or with a data block's **+** button in the Data Blocks list or the Project Graph. Each sub-tab requires a specific number of data blocks: exactly two for Join, two to six for Stack, and one for the other tools. The heading shows how many are added out of the maximum (for example **1/1**), and **Add data block** is greyed out once the maximum is reached. Remove a block with its **×**, or all of them with **Clear all**. Segment, Aggregate, and Deduplicate also use the column chosen beside the data block (the **Text column**, or the **Deduplicating column** for Deduplicate).
+Add data blocks under **Data Blocks** with **Add data block**, or with a data block's **+** button in the Data Blocks list or the Project Graph. Each sub-tab requires a specific number of data blocks: exactly two for Join, two to six for Stack, and one for the other tools. The heading shows how many are added out of the maximum (for example **1/1**), and **Add data block** is greyed out once the maximum is reached. Remove a block with its **×**, or all of them with **Clear**. Segment, Aggregate, and Deduplicate also use the column chosen beside the data block (the **Text column**, or the **Deduplicating column** for Deduplicate).
 
-![Data Builder Inputs with one data block and its text column](tutorials/assets/preprocessing/inputs_panel.png)
+![The Data Blocks panel with one data block and its text column](tutorials/assets/preprocessing/inputs_panel.png)
 
 A topic coverage column (`TOPIC_coverage`, made by Topic Modelling) is not listed in the column choices of Group, Join, Segment, Aggregate, or Deduplicate, because these tools cannot read it yet. Filter, Group, Join, Sample, Stack, and Deduplicate still carry it into their results unchanged, and Filter can also keep rows by a topic threshold on it.
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
-The preview pane shows the result of the current configuration in a paginated format with an estimated row count. Check the preview before applying to confirm the output looks as expected. No data block is created until you click the action button.
+The preview pane shows the result of the current configuration in a paginated format with an estimated row count. Check the preview before applying to confirm the output looks as expected. No data block is created until you click **Add to Project**.
 
 <h3 id="help-preprocessing-common-apply-button">Result destination</h3>
 
@@ -67,6 +67,7 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 - Click **Add Condition** to add more conditions.
 - Select **AND** or **OR** to control how conditions are combined.
 - Check **Negate** on any individual condition to invert it.
+- For a text column with the *contains* operator, tick **regular expression** to match a pattern instead of the exact text (see [Regular expressions](./ui.md#help-ui-regular-expressions)), and **case sensitive** to keep letter case distinct.
 - When a selected column contains missing values, a warning reports how many.
   Ordinary filter conditions do not match those rows; choose **is empty** to
   target them explicitly. **is empty** matches missing values, NaN, and text
@@ -96,15 +97,15 @@ Give the filtered output a descriptive name so it is easy to find in the project
 
 The Sample sub-tab extracts either a contiguous range or a randomly selected set of rows. A small representative subset makes exploring and debugging quicker than working with the full dataset.
 
-<h3 id="help-preprocessing-slice-offset">Slice — Offset and length</h3>
+<h3 id="help-preprocessing-slice-offset">Slice — Start row and length</h3>
 
 ![Slice screenshot](tutorials/assets/preprocessing/sample_slice.png)
 
-The slice option extracts a contiguous chunk of rows. **Offset** sets the starting row (0-indexed) and **Length** sets how many rows to include. Leave Length blank to slice to the end of the data block. For example, to extract rows 101–200 set Offset = 100 and Length = 100.
+The slice option extracts a contiguous chunk of rows. **Start row** sets the first row to include (0 means the first row) and **Length** sets how many rows to include. Leave Length blank to slice to the end of the data block. For example, to extract rows 101–200 set Start row = 100 and Length = 100.
 
 <h3 id="help-preprocessing-slice-length">Length</h3>
 
-The number of rows to include in the slice. Leave blank to slice from the offset to the end of the data block.
+The number of rows to be sliced from the start row. Leave blank to slice from the start row to the end of the data block.
 
 <h3 id="help-preprocessing-sample-fraction">Random sample — Fraction or count</h3>
 
@@ -120,7 +121,7 @@ The random sample option extracts a randomly selected set of rows.
 The random seed controls reproducibility. Using the same seed on the same data always produces the same rows.
 
 - Use any non-negative integer (e.g. 0).
-- Check **No Random Seed** to draw a truly random sample — note that this makes the sample irreproducible and the randomness propagates to all derived child data blocks.
+- Check **No Random Seed** to draw a truly random sample — note that this makes the sample irreproducible and the randomness propagates to all child data blocks made from it.
 
 <h3 id="help-preprocessing-slice-new-node-name">New data block name</h3>
 
@@ -129,7 +130,7 @@ The pre-populated name includes the sampling parameters. Edit it if you need a m
 **Practice exercise**
 
 1. Select a dataset with at least 200 rows.
-2. Try Slice with Offset 50 and Length 25, then try Random Sample with Fraction 0.2 and a fixed seed.
+2. Try Slice with Start row 50 and Length 25, then try Random Sample with Fraction 0.2 and a fixed seed.
 3. Add each result as a new data block and compare the row counts.
 
 <h2 id="help-preprocessing-join-section">Join</h2>
@@ -177,15 +178,15 @@ Give the joined output a clear name. Leave it blank to use the auto-generated su
 
 The Stack sub-tab puts two or more data blocks one below the other. Use it when you want to merge data blocks with identical column structures into one longer block.
 
-<h3 id="help-preprocessing-concat-schema-status">Schema status</h3>
+<h3 id="help-preprocessing-concat-schema-status">Column check</h3>
 
-![Schema status screenshot](tutorials/assets/preprocessing/concat_schema_status.png)
+![Column check screenshot](tutorials/assets/preprocessing/concat_schema_status.png)
 
-The schema status panel tells you whether all selected data blocks share the same column structure and highlights any mismatches. Resolve mismatches (e.g. by renaming or removing columns) before stacking.
+The **Column check** panel tells you whether all the data blocks share the same columns. If they don't, **These columns don't match** lists, for each data block, the columns it is missing, the extra columns it has, and any column whose type is different. Fix the column differences (e.g. by renaming or removing columns) before stacking.
 
 <h3 id="help-preprocessing-concat-deduplicate">Deduplicate</h3>
 
-Tick **Deduplicate**, beside **Create Data Block**, to keep one copy of rows that are the same in every column of the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset). To compare only some columns, or to keep a record of the duplicates, use [Deduplicate](#help-preprocessing-dedupe-section) on the stacked result instead.
+Tick **Deduplicate**, beside **Add to Project**, to keep one copy of rows that are the same in every column of the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset). To compare only some columns, or to keep a record of the duplicates, use [Deduplicate](#help-preprocessing-dedupe-section) on the stacked result instead.
 
 <h3 id="help-preprocessing-concat-new-node-name">New data block name</h3>
 
@@ -194,7 +195,7 @@ Provide a label for the stacked output. Leave it blank to use the auto-generated
 **Practice exercise**
 
 1. Select two datasets with the same column structure.
-2. Review the schema status to confirm no mismatches.
+2. Check the **Column check** panel to confirm the columns match.
 3. Add the stacked result and confirm the row count equals the sum of both sources.
 
 <h2 id="help-preprocessing-segment-section">Segment</h2>
@@ -204,7 +205,7 @@ Segment makes a new data block with one row per segment of the text column chose
 - **Sentences** end at `.`, `!`, `?`, or `…` followed by a space. A sentence keeps its own punctuation. This is a simple rule, so abbreviations such as "Dr. Smith" also end a sentence, and it can differ slightly from Topic Modelling's sentence option.
 - **Paragraphs** are separated by a blank line.
 - **Lines** split at every line break.
-- **A pattern** is a regular expression marking where each segment starts; `^` means the start of a line. For a transcript written as `JOHN SMITH: Hello`, the pattern `^[\w\s]+:` starts a segment at each speaker. Choose whether the matched text **goes into its own column** (for example *speaker*, with the trailing colon removed) or **is dropped, like a delimiter**. Text before the first match becomes segment 1.
+- **A pattern** is a [regular expression](./ui.md#help-ui-regular-expressions) marking where each segment starts; `^` means the start of a line. For a transcript written as `JOHN SMITH: Hello`, the pattern `^[\w\s]+:` starts a segment at each speaker. Choose whether the matched text **goes into its own column** (for example *speaker*, with the trailing colon removed) or **is dropped, like a delimiter**. Text before the first match becomes segment 1.
 
 The count below the choices (for example **5,885 segment rows**) shows how many rows the new data block will have.
 

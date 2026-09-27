@@ -5,7 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { AnalysisCardLayout } from '../AnalysisCardLayout';
 
 describe('AnalysisCardLayout', () => {
-  it('shows a Stop action for running analyses while preserving Clear Results', () => {
+  it('shows a Stop action for running analyses while preserving Clear', () => {
     render(
       <AnalysisCardLayout
         title="Example Analysis"
@@ -57,7 +57,7 @@ describe('AnalysisCardLayout', () => {
     );
 
     expect(screen.queryByRole('button', { name: /preview/i })).not.toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /run all/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Run' })).toBeInTheDocument();
   });
 
   it('explains every disabled analysis action on hover', async () => {
@@ -83,8 +83,8 @@ describe('AnalysisCardLayout', () => {
 
     const cases = [
       ['Preview', 'Preview is already running'],
-      ['Run All', 'Wait for Preview to finish'],
-      ['Clear Results', 'Stop the running analysis before clearing results'],
+      ['Run', 'Wait for Preview to finish'],
+      ['Clear results', 'Stop the running analysis before clearing results'],
       ['Stop', 'A stop request is already in progress'],
     ] as const;
 

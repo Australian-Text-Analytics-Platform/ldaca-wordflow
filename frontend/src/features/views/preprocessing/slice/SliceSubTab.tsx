@@ -59,7 +59,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Shuffle className="h-5 w-5" />
-                Sample Rows
+                Sample or slice a Data Block
                 <HelpIcon
                   targetKey="preprocessing.slice.tab"
                   label="Sample sub-tab overview"
@@ -92,8 +92,8 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="slice-offset">Offset</Label>
-                    <HelpIcon targetKey="preprocessing.slice.offset" label="Slice offset" />
+                    <Label htmlFor="slice-offset">Start row</Label>
+                    <HelpIcon targetKey="preprocessing.slice.offset" label="Slice start row" />
                   </div>
                   <Input
                     id="slice-offset"
@@ -105,9 +105,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                     }}
                     disabled={!hasSelection}
                   />
-                  <p className="text-label-secondary text-description">
-                    Zero-based index of the first row to include.
-                  </p>
+                  <p className="text-label-secondary text-description">0 means the first row.</p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -127,7 +125,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                     placeholder="Number of rows to include"
                   />
                   <p className="text-label-secondary text-description">
-                    Number of rows to include from the offset.
+                    Number of rows to be sliced from the start row.
                   </p>
                 </div>
               </div>
@@ -240,12 +238,12 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               {isBusy ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding to project…
+                  Adding…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

@@ -151,15 +151,15 @@ export const TokenFrequencyParameterPanel = ({
 
   return (
     <AnalysisCardLayout
-      title="Token Frequency Analysis"
+      title="Frequency Analysis"
       info={{
         targetKey: 'token-frequency.overview',
-        label: 'About Token Frequency Analysis',
-        tooltip: 'Learn what token frequency analysis is and how it can help you.',
+        label: 'About Frequency Analysis',
+        tooltip: 'Learn what Frequency analysis is and how it can help you.',
       }}
       help={{
         targetKey: 'analysis.token-frequency.parameters',
-        label: 'Token frequency parameters',
+        label: 'Frequency parameters',
         tooltip:
           'Choose up to two data blocks and the text columns to analyze. After the run, use the results panel to adjust stop words and displayed token limits.',
       }}
@@ -176,7 +176,7 @@ export const TokenFrequencyParameterPanel = ({
         isRunningAll: isAnalyzing,
         isStopping,
         runAllLabel: 'Run',
-        runAllHelp: { targetKey: 'analysis.token-frequency.run', label: 'Run token frequency' },
+        runAllHelp: { targetKey: 'analysis.token-frequency.run', label: 'Run Frequency' },
         clearHelp: { targetKey: 'analysis.token-frequency.clear-results', label: 'Clear results' },
       }}
       actionsGuidanceTarget="token-frequency-actions"

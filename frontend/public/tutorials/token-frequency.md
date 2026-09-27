@@ -2,11 +2,11 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-token-frequency-section">Token Frequency tutorial</h1>
+<h1 id="help-token-frequency-section">Frequency tutorial</h1>
 
-![Token frequency screenshot](tutorials/assets/token_frequency.png)
+![Frequency screenshot](tutorials/assets/token_frequency.png)
 
-Token Frequency counts how often each word appears in your text data. It is one of the quickest ways to spot themes and jargon in a corpus. The tool offers two views: **Cloud view** for a visual impression of the most frequent terms, and **List view** for a ranked frequency list with precise counts. When two data blocks are selected, the tool also produces a comparative keyword analysis — the **Juxtorpus** cloud — and a statistical measures table that highlight the terms most distinctive to each side.
+Frequency counts how often each word appears in your text data. It is one of the quickest ways to spot themes and jargon in a corpus. The tool offers two views: **Cloud view** for a visual impression of the most frequent terms, and **List view** for a ranked frequency list with precise counts. When two data blocks are selected, the tool also produces a comparative keyword analysis — the **Juxtorpus** cloud — and a statistical measures table that highlight the terms most distinctive to each side.
 
 <h2 id="help-token-frequency-parameters">Parameter panel</h2>
 
@@ -16,15 +16,15 @@ Use the data-block selector to choose which corpus (or corpora) to analyse. The 
 
 When two are selected, the tool runs in comparison mode and produces the Juxtorpus cloud and statistical measures in addition to the per-block results.
 
-For each selected block, choose the **text column** that contains the documents you want to count and a **tokenizer model** that defines the tokens. Only columns that hold plain text are available. Each choice is saved independently on that data block and initializes the corresponding control the next time you add it to a fresh Token Frequency or Concordance selector. If a block has no saved tokenizer preference, Token Frequency detects the selected column's language and automatically saves the first recommended tokenizer; Jieba is the first recommendation for Chinese text. Clearing one preference does not clear the other. Each tokenizer in the list shows the language it is for, the ones recommended for the detected language are listed first under **Recommended**, and the link icon beside the selected tokenizer opens its project page in a new tab.
+For each selected block, choose the **text column** that contains the documents you want to count and a **tokeniser model** that defines the tokens. Only columns that hold plain text are available. Each choice is saved independently on that data block and initializes the corresponding control the next time you add it to a fresh Frequency or Concordance selector. If a block has no saved tokeniser preference, Frequency detects the selected column's language and automatically saves the first recommended tokeniser; Jieba is the first recommendation for Chinese text. Clearing one preference does not clear the other. Each tokeniser in the list shows the language it is for, the ones recommended for the detected language are listed first under **Recommended**, and the link icon beside the selected tokeniser opens its project page in a new tab.
 
-![Two data block cards, each with a text column, tokenizer model, colour, and Use as Study Corpus switch](tutorials/assets/token_frequency/data_block_cards.png)
+![Two data block cards, each with a text column, tokeniser model, colour, and Use as Study Corpus switch](tutorials/assets/token_frequency/data_block_cards.png)
 
-![The tokenizer list, with the recommended English tokenizers first](tutorials/assets/token_frequency/tokenizer_menu.png)
+![The tokeniser list, with the recommended English tokenisers first](tutorials/assets/token_frequency/tokenizer_menu.png)
 
 The **Color** square on each card sets the colour of that data block in the clouds, lists, and Keyword Analysis labels.
 
-Every Token Frequency run requires a tokenizer model for every selected data block. The Analysis stores the exact model mapping it used, so reopening a historical result does not substitute a tokenizer preference that was changed later.
+Every Frequency run requires a tokeniser model for every selected data block. The Analysis stores the exact model mapping it used, so reopening a historical result does not substitute a tokeniser preference that was changed later.
 
 <h3 id="help-token-frequency-reference">Step 2 — Study and reference corpora (comparison mode)</h3>
 
@@ -39,11 +39,11 @@ The study corpus is the collection whose key words you want to find. The referen
 Stop words are terms you want to exclude from the frequency count — commonly words like _the_, _and_, or domain-specific filler that would otherwise dominate the results.
 
 - Turn on **Enable stop words**, then type words separated by commas or newlines. Matching is case-insensitive. Disabling the filter keeps the saved list read-only.
-- Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modeling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
+- Pick a list from the dropdown below the switch (**Select language**, shown as **Saved list (N words)** once the tab has a list) to append its words to your list (duplicates are skipped, so you can combine lists). The dropdown has three groups: **From other tabs** (lists saved in your other Frequency and Topic Modelling tabs), **Wordflow classic lists** (the built-in lists earlier Wordflow versions used, including the revised English list), and **Languages (stopword library)** (default lists for about 60 languages from the open-source `stopword` package). The library group shows only the language detected from the first selected Data Block, marked **(Detected)**; choose **Show all languages** to see the rest. Choose **Clear stop words** to start again from an empty list. Picking a language switches the filter on if it was off.
 
 ![The stop words dropdown, with lists from other tabs, the classic lists, and the detected language](tutorials/assets/token_frequency/stop_words_menu.png)
 
-- Lists picked under **From other tabs** (for example _Topic Modeling · 1_) are copied into this tab's list; later edits in either tab do not affect the other.
+- Lists picked under **From other tabs** (for example _Topic Modelling · 1_) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
@@ -160,9 +160,9 @@ The full table can be downloaded as a CSV file; when the shared token filter is 
 <h3 id="help-token-frequency-clear-results">Clear results</h3>
 
 The tab keeps its current Analysis in the backend so it can reload its lifecycle
-and Result. **Clear Results** removes that Analysis and resets the tab. After a
+and Result. **Clear** removes that Analysis and resets the tab. After a
 failure or cancellation, the parameters stay editable but Run remains disabled
-until you choose Clear Results.
+until you choose **Clear**.
 
 <h2 id="help-token-frequency-troubleshooting">Troubleshooting</h2>
 
@@ -172,16 +172,16 @@ until you choose Clear Results.
 | Word cloud dominated by common words                  | No stop words applied                                          | Pick your corpus language from the stop words **Select language** dropdown                |
 | Juxtorpus or Keyword Analysis table are missing       | Only one data block selected                                   | Select a second data block to enable comparison mode                                      |
 | Keyword Analysis table shows no significant words     | Corpora are very similar or one is very small                  | Try a larger or more distinct pair of data blocks                                         |
-| A project block I selected isn't showing in the panel | Token Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
+| A project block I selected isn't showing in the panel | Frequency caps the panel to the 2 most-recent selections | Deselect a newer block to make room, or run the comparison on the visible pair            |
 | Right-clicked stop word is hard to find               | List was already long when the word was added                  | New words are inserted at the top — scroll to the start, or click **Sort** to alphabetise |
-| Run button is disabled                                | No data block, text column, or tokenizer model selected        | Select a data block, text column, and tokenizer model                                     |
+| Run button is disabled                                | No data block, text column, or tokeniser model selected        | Select a data block, text column, and tokeniser model                                     |
 
 <h2 id="help-token-frequency-defaults">Quick-reference defaults</h2>
 
 | Setting              | Default                              | Notes                                                                                                                                         |
 | -------------------- | ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
 | Data blocks          | None                                 | Up to 2; comparison mode activates when 2 are selected. If more than 2 are selected project-wide, only the 2 most recent show in the panel.   |
-| Tokenizer model      | Saved Data Block preference or none  | Required for each selected block; the submitted Analysis freezes the exact mapping                                                            |
+| Tokeniser model      | Saved Data Block preference or none  | Required for each selected block; the submitted Analysis freezes the exact mapping                                                            |
 | Corpus role switches | First selected block is Study Corpus | Swaps which block is OS/%S and which is OR/%R in the statistics table                                                                         |
 | Stop words           | Empty                                | Pick a language from the **Select language** dropdown for default stop words                                                                  |
 | Token filter         | Empty                                | Applies to every Cloud/List result and download; `*` matches any sequence of characters                                                       |

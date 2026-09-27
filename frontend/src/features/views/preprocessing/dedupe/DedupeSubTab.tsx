@@ -53,7 +53,7 @@ export function DedupeSubTab({
 
   return (
     <BuilderToolCard
-      title="Deduplicate"
+      title="Deduplicate a Data Block"
       subtitle="Keep the first of each duplicate, and save the duplicate groups separately."
       icon={<CopyMinus className="h-5 w-5" />}
       helpKey="preprocessing.dedupe.tab"
@@ -70,13 +70,13 @@ export function DedupeSubTab({
       name={name}
       namePlaceholder={input?.name ?? ''}
       onNameChange={setName}
-      createLabel="Create 2 Data Blocks"
+      createLabel="Add 2 to Project"
       canCreate={bodies !== null}
       onCreate={async () => {
         if (!bodies) throw new Error('Choose the deduplicating column in the inputs panel.');
         await createDerivedNode(bodies.kept);
         await createDerivedNode(bodies.duplicates);
-        return `Created ${base}_deduplicated and ${base}_duplicates.`;
+        return `Added ${base}_deduplicated and ${base}_duplicates to the Project.`;
       }}
       summary={(total) => {
         if (total === null || total === undefined) return null;

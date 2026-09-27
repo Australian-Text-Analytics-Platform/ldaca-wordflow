@@ -22,6 +22,8 @@ The left sidebar lists the available tool modules. Click a tool name to switch t
 - [**Annotation**](./annotation.md) — label text manually or with a configured AI provider.
 - [**Export**](./export.md) — download selected Data Blocks or a Project archive.
 
+To save space, the sidebar shows three of these with shorter names: **Loader** (Data Loader), **Builder** (Data Builder), and **Topics** (Topic Modelling). The tools themselves, and Help, use the full names.
+
 ![The Views list in the left sidebar](tutorials/assets/ui/views_list.png)
 
 The pencil icon next to the heading (**Edit visible views**) opens a list of the tools with a tick beside each one. Untick a tool to hide it from the sidebar, and tick it again to bring it back. The Data Loader is always shown.
@@ -56,10 +58,10 @@ from the active Project together with your retained User File Imports.
   **Freq - 1** or **Topic - JP vs AUS**, and follows the tab when you rename
   it. New tabs are numbered 1, 2, 3, and so on.
 - The finished steps of one tab share a row: click the row to see each step
-  (**Preview**, **Run**, **Run All**, or **Add to Project**), the data blocks it
+  (**Preview**, **Run**, or **Add to Project**), the data blocks it
   used, and when it finished. A step that failed or is still running has its
-  own row, for example **Conc - 2 · Run All**.
-- A **Run All** with two data blocks runs each block separately but shows as
+  own row, for example **Conc - 2 · Run**.
+- A **Run** with two data blocks runs each block separately but shows as
   one task: open it to see how each data block went, including the reason if
   one of them failed.
 
@@ -90,7 +92,7 @@ from the active Project together with your retained User File Imports.
 
 **Note:** The entire right column (Project Graph and Data Editor) can be collapsed to save screen space. Click the top-right arrow button to hide or show the right pane.
 
-The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a Derived Data Block draws an edge from parent to child. Updating an existing Data Block does not change the graph.
+The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a child Data Block (made from another) draws an edge from parent to child. Updating an existing Data Block does not change the graph.
 
 <span id="help-ui-change-project"></span>
 To switch projects without going to the Data Loader, use **Change Project** at the right end of the Project Graph title bar and choose another project. Wordflow asks you to confirm, then closes the current project (it is saved automatically as you work) and opens the one you chose. While a task is still running in the current project, the projects in the list are disabled and a note says so: wait for the task to finish, or stop it in its tab, and then switch.
@@ -137,7 +139,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - **Add column**: **Combine columns** (write a template such as `{title}: {body}`: type `{` to pick a column from a filtered list, or use **Insert column**; any other text, such as separators or labels, is kept as written, and columns of any type are joined as text; choose whether a missing value counts as blank text or leaves the combined value empty), **Count** (words, characters with or without spaces, or matches of a text or pattern, in a new column right of the source; words are runs of text between spaces or line breaks), **Duplicate column** (the copy is placed right of the original and named like a copied file, for example `text copy`, then `text copy 2`), **Extract text** (copy the matches of a text or pattern into a new column), and **Split column** (choose the number of columns, then type each delimiter and press Enter to add it: punctuation, a space, or several characters; tick **Also split at each new line** for line breaks; split from the left so the last column keeps the rest, or from the right so the first column keeps the rest).
   - **Find & replace**: replace a text, in the same column or a new one.
   - When a tool can write to **A new column, right of it**, the new column gets a suggested name (for example `text replaced`, `text cleaned`, or `text matches`) so the preview appears straight away. Press Tab to accept the grey suggestion and edit it, or type your own name.
-  - Find & replace, Extract text, and Count match plain text as written. Tick **Use regular expression** to match a pattern instead; for example, a plain `.` finds only dots, while the regular expression `.` matches any character.
+  - Find & replace, Extract text, and Count match plain text as written. Tick **Use regular expression** to match a pattern instead; for example, a plain `.` finds only dots, while the regular expression `.` matches any character. See [Regular expressions](#help-ui-regular-expressions) for what a pattern is, with examples.
   - **Clean text**: trim spaces, collapse repeated spaces, change case (lowercase, UPPERCASE, Title Case), or remove punctuation, digits, web links, HTML tags, or XML tags and markup (declarations, comments, and CDATA wrappers too, with `&amp;`-style entities decoded), in the same column or a new one.
   - The same tools are in each column's settings menu, with that column already chosen.
   - Column names are used exactly as written, including any spaces at the start or end (for example, a CSV header `ID, text` names the second column ` text`).
@@ -198,7 +200,7 @@ The centre column is the main working area and shows the interface of whichever 
 - In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused; double-click the bar to go back to the default. Each tool remembers its own setting.
 - The main results (tables, lists, and charts) fill the space below the bar, sharing it when there are several, so the bar makes them taller or shorter. To size one result on its own, drag its bottom-right corner, as with the Stop words box; the others share the space that is left. Double-click the corner to let it fill the space again. For example, in Topic Modelling make the bubble chart shorter to give the topic lists more room. Word clouds keep their width-based height until you resize them.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
-- The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open project, for example **Token Frequency: 1**: type to filter them, and choose one to open it.
+- The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open project, for example **Frequency: 1**: type to filter them, and choose one to open it.
 
 ![Quick access list of analysis tabs](tutorials/assets/ui/quick_access.png)
 
@@ -247,5 +249,22 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   versions to appear again on this device.
 - A replayable **Guided Tour** is shown in Help only when one is available. A
   tour is started deliberately and is unaffected by the Contextual Hint switch.
+
+<h2 id="help-ui-regular-expressions">Regular expressions</h2>
+
+A regular expression is a short pattern that describes the text you are looking for, rather than the exact text itself. For example, one pattern can find both *colour* and *color*, every year written as four digits, or every tweet that starts with a retweet marker. Wordflow uses them wherever you see **Use regular expression** (Concordance's Text mode, and Find & replace, Extract text, and Count in the Data Editor), in the Data Builder's Filter when **regular expression** is ticked on a *contains* condition, and in Segment's **A pattern** option. When the box is not ticked, the text is matched exactly as written.
+
+| Pattern | What it matches |
+|---|---|
+| `colou?r` | *colour* or *color* (`?` makes the letter before it optional) |
+| `labou?r(er)?s?` | *labour*, *labor*, *labourer*, *labourers*, *labours*, and so on |
+| `^RT @` | Texts that start with *RT @*, such as retweets (`^` means the very start; in Segment it means the start of each line) |
+| `[0-9]{4}` | Any four digits in a row, such as a year like *1901* |
+| `\bjob(s)?\b` | The whole word *job* or *jobs*, but not *jobless* (`\b` marks the edge of a word) |
+| `tax\|budget\|welfare` | Any one of the three words (`\|` means "or") |
+
+Some characters have a special meaning: `. ? * + ( ) [ ] { } ^ $ | \`. To match one of them as an ordinary character, put a backslash before it, for example `\.` for a full stop or `\?` for a question mark.
+
+Wordflow's patterns follow the [Rust regular expression syntax](https://docs.rs/regex/latest/regex/#syntax). It covers everyday patterns, but it does not support look-ahead or look-behind (such as `(?=...)` or `(?<=...)`). For a quick overview of the symbols, see the [MDN regular expressions cheat sheet](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions/Cheatsheet). To try a pattern on your own text before using it, paste both into [regex101.com](https://regex101.com/) and choose the **Rust** flavour.
 
 [← Back to tutorial index](./index.md)

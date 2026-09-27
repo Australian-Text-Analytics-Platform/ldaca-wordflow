@@ -233,7 +233,7 @@ def run_quotation_run_all(
                 "document_count": int(quote_df.height),
                 "match_count": match_count,
             },
-            "message": "Quotation Run All completed successfully",
+            "message": "Quotation Run completed successfully",
         }
     except Exception:
         logger.exception("Quotation Run All failed")

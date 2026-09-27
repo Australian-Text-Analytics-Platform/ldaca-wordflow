@@ -104,7 +104,7 @@ describe('TokenizerModelSelector', () => {
 
     expect(listTokenizerModels).not.toHaveBeenCalled();
 
-    await user.click(screen.getByRole('combobox', { name: /tokenizer model/i }));
+    await user.click(screen.getByRole('combobox', { name: /tokeniser model/i }));
 
     await waitFor(() => {
       expect(listTokenizerModels).toHaveBeenCalledTimes(1);
@@ -132,7 +132,7 @@ describe('TokenizerModelSelector', () => {
       autoSelectRecommended: true,
     });
 
-    await user.click(screen.getByRole('combobox', { name: /tokenizer model/i }));
+    await user.click(screen.getByRole('combobox', { name: /tokeniser model/i }));
     await user.click(await screen.findByText('None'));
 
     expect(onChange).toHaveBeenCalledWith('', 'en');
@@ -143,7 +143,7 @@ describe('TokenizerModelSelector', () => {
     const user = userEvent.setup();
     renderSelector({ value: 'lindera:ja-ipadic', autoSelectRecommended: true });
 
-    const trigger = screen.getByRole('combobox', { name: /tokenizer model/i });
+    const trigger = screen.getByRole('combobox', { name: /tokeniser model/i });
     await waitFor(() => {
       expect(trigger).toHaveTextContent('IPADIC · Japanese');
     });

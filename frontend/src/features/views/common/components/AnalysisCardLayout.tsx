@@ -67,17 +67,17 @@ export function AnalysisCardLayout({
   cardRef,
 }: AnalysisCardLayoutProps) {
   const cardToneClassName = cn('w-full min-w-0', tone === 'error' && 'border-error/50');
-  const runAllLabel = actions?.runAllLabel ?? 'Run All';
+  const runAllLabel = actions?.runAllLabel ?? 'Run';
   const previewDisabledReason = actions?.previewDisabled
     ? actions.isPreviewing
       ? 'Preview is already running'
       : actions.isRunningAll
-        ? 'Wait for Run All to finish'
+        ? `Wait for ${runAllLabel} to finish`
         : (actions.previewDisabledReason ?? 'Complete the required parameters before previewing')
     : undefined;
   const runAllDisabledReason = actions?.runAllDisabled
     ? actions.isRunningAll
-      ? 'Run All is already running'
+      ? `${runAllLabel} is already running`
       : actions.isPreviewing
         ? 'Wait for Preview to finish'
         : (actions.runAllDisabledReason ?? 'Complete the required parameters before running')
@@ -174,13 +174,14 @@ export function AnalysisCardLayout({
                 }}
                 variant="destructive"
                 disabled={actions.clearDisabled}
+                aria-label="Clear results"
               >
                 {actions.isClearing ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
                   <Trash2 className="mr-2 h-4 w-4" />
                 )}
-                Clear Results
+                Clear
               </Button>
             </DisabledReasonTooltip>
             {actions.clearHelp ? (
