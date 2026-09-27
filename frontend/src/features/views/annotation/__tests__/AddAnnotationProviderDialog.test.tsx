@@ -71,7 +71,7 @@ describe('AddAnnotationProviderDialog', () => {
     render(<AddAnnotationProviderDialog open onOpenChange={vi.fn()} onCreated={vi.fn()} />);
 
     await user.type(screen.getByLabelText('Name'), 'OpenRouter key later');
-    expect(screen.getByText(/an API key is required before use/i)).toBeInTheDocument();
+    expect(screen.getByText(/add the key later in Settings/i)).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Add Provider' }));
 
     await waitFor(() =>

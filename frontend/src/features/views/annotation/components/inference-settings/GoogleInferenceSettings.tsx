@@ -32,7 +32,7 @@ export function GoogleInferenceSettings({
       <TemperatureField
         temperature={temperature}
         onTemperatureCommit={onTemperatureCommit}
-        description="Lower values are more consistent; higher values add randomness. Model support varies."
+        description="Lower values give more consistent answers; higher values more varied ones. Not every model uses it."
         disabled={disabled}
       />
       <ReasoningField
@@ -43,7 +43,7 @@ export function GoogleInferenceSettings({
         label="Thinking"
         toggleLabel="Toggle thinking"
         effortLabel="Thinking effort"
-        description="Add a Gemini thinking budget before the answer."
+        description="Let the model think step by step before it answers. Slower, but often more accurate."
         disabled={disabled}
       />
     </section>

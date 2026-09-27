@@ -551,7 +551,11 @@ export function AnnotationAiPreviewPanel({
                           ) : isComparison ? (
                             <span
                               className={invalid ? 'italic text-description' : undefined}
-                              title={invalid ? 'Not a Codebook class; treated as empty' : undefined}
+                              title={
+                                invalid
+                                  ? 'Not a code in the Codebook, so treated as empty'
+                                  : undefined
+                              }
                             >
                               {cellText(row[column]) || '—'}
                             </span>

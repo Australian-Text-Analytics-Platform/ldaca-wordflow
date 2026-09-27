@@ -32,7 +32,7 @@ export function OpenRouterInferenceSettings({
       <TemperatureField
         temperature={temperature}
         onTemperatureCommit={onTemperatureCommit}
-        description="Lower values are more consistent; model and upstream-provider support varies."
+        description="Lower values give more consistent answers; higher values more varied ones. Not every model uses it."
         disabled={disabled}
       />
       <ReasoningField
@@ -40,10 +40,10 @@ export function OpenRouterInferenceSettings({
         onReasoningEnabledChange={onReasoningEnabledChange}
         reasoningEffort={reasoningEffort}
         onReasoningEffortChange={onReasoningEffortChange}
-        label="Reasoning"
-        toggleLabel="Toggle reasoning"
-        effortLabel="Reasoning effort"
-        description="Request the routed model's reasoning effort when OpenRouter supports it."
+        label="Thinking"
+        toggleLabel="Toggle thinking"
+        effortLabel="Thinking effort"
+        description="Let the model think step by step before it answers, where the model supports it. Slower, but often more accurate."
         disabled={disabled}
       />
     </section>

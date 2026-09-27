@@ -22,7 +22,7 @@ export function CurrentAnnotationValueItem({
     <SelectItem
       value={raw}
       className={invalid ? 'italic text-description' : undefined}
-      title={invalid ? 'Not a Codebook class; treated as empty' : undefined}
+      title={invalid ? 'Not a code in the Codebook, so treated as empty' : undefined}
     >
       {raw}
     </SelectItem>

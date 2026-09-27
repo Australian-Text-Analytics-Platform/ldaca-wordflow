@@ -31,14 +31,14 @@ either directly or with predictions from a configured AI provider.
 <h2 id="help-annotation-manual">Manual workflow</h2>
 
 Choose **Start** to open the annotation table. Select a Codebook value for each
-row from its **Select class** list; each change is written directly to the annotation column as a Data Block
+row from its **Select code** list; each change is written directly to the annotation column as a Data Block
 Edit. Start captures the source, annotation column, Codebook mapping, and table
 inputs. You can edit the setup as the draft for the next table without changing
 the open table. Choose **Close** even if that draft is incomplete; the next
 Start captures the new setup. Switching modes hides but does not rewrite the
 open Manual snapshot.
 
-![Manual annotation table with the class list open for one row](tutorials/assets/annotation/manual_table.png)
+![Manual annotation table with the code list open for one row](tutorials/assets/annotation/manual_table.png)
 
 Use **Compare To** to add another coder or model. Each comparison starts masked
 as `•••` so you can code without seeing how individual rows were coded. Its
@@ -66,7 +66,7 @@ because its rows are chosen by the AI request.
 ![Row filter menu of the annotation column](tutorials/assets/annotation/row_filter_menu.png)
 
 A cell counts as **empty** when it is blank or holds a value that is not a
-Codebook class (for example `P` instead of `promise`, or a date pasted by
+code in the Codebook (for example `P` instead of `promise`, or a date pasted by
 accident). Such values are still displayed, in muted italics, but they never
 count as differences, never contribute to reliability, and match **Empty**
 rather than **Has value**. Matching is exact after trimming spaces; `Promise`
@@ -98,7 +98,7 @@ hidden until you reveal that column, and the viewer is read-only; use
 
 ![AI mode: optional Example Data Block, example sampling, and the provider and model row](tutorials/assets/annotation/ai_settings.png)
 
-Expand AI settings (the arrow at the right of the provider and model row) and choose a named provider configuration and model. Provider
+Choose a **Provider** (a connection you set up) and a **Model**; both are always shown above **Advanced settings**. Provider
 credentials stay in Settings and are attached only when the request is sent.
 Create or edit connections under **Settings → AI**. API keys are optional when
 saving, but a built-in provider marked **Needs API key** cannot list models,
@@ -107,19 +107,19 @@ a key updates future requests; a Run already queued or running keeps the key
 captured when it was submitted.
 An **Example Data Block** is optional; if used, choose both its text column and
 an existing annotation column containing reviewed labels. Set **Max examples
-per class**, then choose **Random**, **First N**, or **Last N**. Random sampling
+per code**, then choose **Random**, **First N**, or **Last N**. Random sampling
 also accepts a nonnegative seed and defaults to 0. The same Data Block snapshot,
-maximum, method, and seed produce the same per-class subset throughout one
+maximum, method, and seed produce the same per-code subset throughout one
 Analysis; groups with fewer examples contribute every usable row.
 
-Advanced settings include the instruction prompt, processing mode, batch size,
-retry count, and a distinct native panel for the selected provider. Anthropic's
-panel contains Claude thinking controls and has no temperature field; current
-Claude models use adaptive thinking while older Claude models use a fixed
-budget. Google has its own temperature and thinking panel. OpenAI, OpenRouter,
-and Custom each have separate sampling and reasoning panels, whose support still
-depends on the selected model. Wordflow-owned Run processing, batch, and
-retry controls appear separately below the provider panel. Defaults are a good
+**Advanced settings** include the instruction prompt, the settings for the
+selected provider, and the Run settings. Each provider's settings offer
+**Thinking** (the model thinks step by step before it answers: slower, but
+often more accurate) and, where the model uses it, **Temperature** (lower gives
+more consistent answers). Anthropic has no temperature setting. Below them,
+the Run settings apply to every provider: **Which rows to annotate** (**Annotate
+all rows again**, or **Only rows without an annotation**), **Rows per request**
+(how many rows go to the model at once), and **Retries if a request fails**. Defaults are a good
 starting point. Change one setting deliberately, because provider capability,
 cost, latency, and repeatability vary by model.
 
@@ -147,8 +147,8 @@ later run.
 A provider-wide failure is shown in Annotation and Tasks and writes no labels.
 When only individual rows cannot fit the provider context or produce a valid
 response, successful rows are published and a warning reports failed rows and
-batches. Failed rows keep their existing values in **Reprocess all** and remain
-blank in **Fill missing**; a successful explicit empty prediction may still
+batches. Failed rows keep their existing values in **Annotate all rows again** and
+remain blank in **Only rows without an annotation**; a successful explicit empty prediction may still
 clear a value.
 
 <h2 id="help-annotation-results">Results, Clear, and Undo</h2>

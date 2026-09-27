@@ -38,7 +38,7 @@ export function AnnotationExampleSamplingControls({
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,10rem),1fr))] gap-3">
       <div className="space-y-1.5">
-        <Label htmlFor="annotation-ai-max-examples-per-class">Max examples per class</Label>
+        <Label htmlFor="annotation-ai-max-examples-per-class">Max examples per code</Label>
         <Input
           key={`annotation-ai-max-examples-per-class-${String(maxExamplesPerClass)}`}
           id="annotation-ai-max-examples-per-class"

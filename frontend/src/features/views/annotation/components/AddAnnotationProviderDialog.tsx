@@ -137,7 +137,7 @@ export function AddAnnotationProviderDialog({
                 }}
               />
               <p className="text-label-secondary text-description">
-                Must implement OpenAI&apos;s Chat Completions API.
+                The server must accept OpenAI-style chat requests (the Chat Completions API).
               </p>
             </div>
           ) : null}
@@ -160,8 +160,8 @@ export function AddAnnotationProviderDialog({
             />
             <p className="text-label-secondary text-description">
               {definition.requiresApiKey
-                ? 'You can save this provider now, but an API key is required before use.'
-                : 'Leave blank when the Custom endpoint does not require authentication.'}
+                ? 'You can save the provider now and add the key later in Settings; it is needed before you can list models or run Annotation.'
+                : 'Leave blank if your server does not need one.'}
             </p>
           </div>
 

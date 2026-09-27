@@ -622,7 +622,7 @@ export function AnnotationResultsPanel({
                               : ''
                           }`}
                         >
-                          <SelectValue placeholder="Select class" />
+                          <SelectValue placeholder="Select code" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value={NO_CLASS_VALUE} className="text-description">
@@ -740,7 +740,11 @@ export function AnnotationResultsPanel({
                           ) : isComparison ? (
                             <span
                               className={invalid ? 'italic text-description' : undefined}
-                              title={invalid ? 'Not a Codebook class; treated as empty' : undefined}
+                              title={
+                                invalid
+                                  ? 'Not a code in the Codebook, so treated as empty'
+                                  : undefined
+                              }
                             >
                               {cellText(comparisonValue(column)) || '—'}
                             </span>

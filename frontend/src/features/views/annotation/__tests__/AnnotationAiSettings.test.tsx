@@ -83,14 +83,7 @@ describe('AnnotationAiSettings', () => {
   it('renders configured instances only and keeps Add Provider at the bottom', async () => {
     const user = userEvent.setup();
     renderSettings();
-    const advancedSummary = screen.getByRole('button', { name: 'Advanced settings' });
-    expect(within(advancedSummary).getByText('OpenRouter personal')).toHaveClass('font-medium');
-    expect(within(advancedSummary).getByText('OpenRouter')).toHaveClass(
-      'text-label-secondary',
-      'text-description',
-    );
 
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
     await user.click(screen.getByRole('button', { name: 'Provider' }));
     const rows = screen.getAllByRole('button');
     expect(screen.getByText('OpenRouter org')).toBeInTheDocument();
@@ -103,7 +96,6 @@ describe('AnnotationAiSettings', () => {
     const user = userEvent.setup();
     const onProviderChange = vi.fn();
     renderSettings(onProviderChange);
-    await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
     await user.click(screen.getByRole('button', { name: 'Provider' }));
     await user.click(screen.getByRole('button', { name: /OpenRouter org/ }));
     expect(onProviderChange).toHaveBeenCalledWith(configurations[1], 'model-2');
@@ -113,28 +105,25 @@ describe('AnnotationAiSettings', () => {
     expect(screen.getByRole('dialog')).toHaveTextContent('Add provider form');
   });
 
-  it('summarizes provider and model on one line while Advanced is collapsed', async () => {
+  it('keeps Provider and Model in view while Advanced settings is collapsed (issue 205)', async () => {
     const user = userEvent.setup();
     renderSettings(vi.fn(), <div>Example, prompt, and inference settings</div>);
 
-    const advancedSummary = screen.getByRole('button', { name: 'Advanced settings' });
-    expect(within(advancedSummary).getByText('OpenRouter personal')).toHaveClass('font-medium');
-    expect(within(advancedSummary).getByText('OpenRouter')).toHaveClass(
-      'text-label-secondary',
-      'text-description',
-    );
-    expect(screen.getByText('model-1')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Provider' })).not.toBeInTheDocument();
-    await user.click(advancedSummary);
-
-    const expandedTrigger = screen.getByRole('button', { name: 'Advanced settings' });
-    expect(expandedTrigger).toHaveAttribute('aria-expanded', 'true');
-    expect(within(expandedTrigger).queryByText('OpenRouter personal')).not.toBeInTheDocument();
-    expect(screen.getByText('Example, prompt, and inference settings')).toBeInTheDocument();
+    const provider = screen.getByRole('button', { name: 'Provider' });
+    expect(within(provider).getByText('OpenRouter personal')).toHaveClass('font-medium');
     expect(screen.getByTestId('annotation-ai-provider-model-controls')).toHaveClass('grid-cols-2');
+    const advanced = screen.getByRole('button', { name: 'Advanced settings' });
+    expect(advanced).toHaveAttribute('aria-expanded', 'false');
+
+    await user.click(advanced);
+    expect(screen.getByRole('button', { name: 'Advanced settings' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByText('Example, prompt, and inference settings')).toBeInTheDocument();
   });
 
-  it('returns to the compact summary from the expanded collapse control', async () => {
+  it('collapses Advanced settings again from its control', async () => {
     const user = userEvent.setup();
     renderSettings();
 
@@ -145,7 +134,8 @@ describe('AnnotationAiSettings', () => {
       'aria-expanded',
       'false',
     );
-    expect(screen.queryByRole('button', { name: 'Provider' })).not.toBeInTheDocument();
+    // Provider stays in view either way (issue 205).
+    expect(screen.getByRole('button', { name: 'Provider' })).toBeInTheDocument();
   });
 
   it('reports only actual Advanced expansion state changes', async () => {

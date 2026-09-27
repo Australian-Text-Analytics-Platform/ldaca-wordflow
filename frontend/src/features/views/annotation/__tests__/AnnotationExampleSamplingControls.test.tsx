@@ -34,7 +34,7 @@ describe('AnnotationExampleSamplingControls', () => {
     const user = userEvent.setup();
     render(<Harness />);
 
-    const maximum = screen.getByLabelText('Max examples per class');
+    const maximum = screen.getByLabelText('Max examples per code');
     const method = screen.getByLabelText('Sampling method');
     const seed = screen.getByLabelText('Random seed');
     expect(maximum).toHaveValue(10);
@@ -52,11 +52,11 @@ describe('AnnotationExampleSamplingControls', () => {
     const user = userEvent.setup();
     const { unmount } = render(<Harness />);
 
-    const maximum = screen.getByLabelText('Max examples per class');
+    const maximum = screen.getByLabelText('Max examples per code');
     await user.clear(maximum);
     await user.type(maximum, '-3.8');
     await user.tab();
-    expect(screen.getByLabelText('Max examples per class')).toHaveValue(1);
+    expect(screen.getByLabelText('Max examples per code')).toHaveValue(1);
 
     const seed = screen.getByLabelText('Random seed');
     await user.clear(seed);
@@ -66,7 +66,7 @@ describe('AnnotationExampleSamplingControls', () => {
 
     unmount();
     render(<Harness disabled />);
-    expect(screen.getByLabelText('Max examples per class')).toBeDisabled();
+    expect(screen.getByLabelText('Max examples per code')).toBeDisabled();
     expect(screen.getByLabelText('Sampling method')).toBeDisabled();
     expect(screen.getByLabelText('Random seed')).toBeDisabled();
   });

@@ -32,7 +32,7 @@ export function CustomInferenceSettings({
       <TemperatureField
         temperature={temperature}
         onTemperatureCommit={onTemperatureCommit}
-        description="Use when the selected endpoint and model support temperature."
+        description="Lower values give more consistent answers; higher values more varied ones. Use only if your model supports it."
         disabled={disabled}
       />
       <ReasoningField
@@ -40,10 +40,10 @@ export function CustomInferenceSettings({
         onReasoningEnabledChange={onReasoningEnabledChange}
         reasoningEffort={reasoningEffort}
         onReasoningEffortChange={onReasoningEffortChange}
-        label="Reasoning"
-        toggleLabel="Toggle reasoning"
-        effortLabel="Reasoning effort"
-        description="Request a reasoning effort only when the endpoint implements that extension."
+        label="Thinking"
+        toggleLabel="Toggle thinking"
+        effortLabel="Thinking effort"
+        description="Let the model think step by step before it answers. Use only if your model supports it."
         disabled={disabled}
       />
     </section>

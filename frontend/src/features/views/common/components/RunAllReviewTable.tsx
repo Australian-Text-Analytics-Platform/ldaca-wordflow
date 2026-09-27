@@ -512,7 +512,7 @@ export function RunAllReviewTable({
                           {invalid ? (
                             <span
                               className="italic text-description"
-                              title="Not a Codebook class; treated as empty"
+                              title="Not a code in the Codebook, so treated as empty"
                             >
                               {displayCell(row[column])}
                             </span>
@@ -620,7 +620,11 @@ export function RunAllReviewTable({
                           ) : isComparison ? (
                             <span
                               className={invalid ? 'italic text-description' : undefined}
-                              title={invalid ? 'Not a Codebook class; treated as empty' : undefined}
+                              title={
+                                invalid
+                                  ? 'Not a code in the Codebook, so treated as empty'
+                                  : undefined
+                              }
                             >
                               {displayCell(comparisonValue(column))}
                             </span>

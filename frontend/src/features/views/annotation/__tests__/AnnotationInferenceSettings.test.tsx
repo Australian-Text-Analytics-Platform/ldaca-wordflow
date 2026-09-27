@@ -88,12 +88,12 @@ describe('AnnotationInferenceSettings', () => {
 
     expect(screen.getByText('OpenAI parameters')).toBeInTheDocument();
     expect(screen.getByLabelText('Temperature')).toHaveValue(0.5);
-    expect(screen.getByLabelText('Max retries per batch')).toHaveValue(2);
-    expect(screen.getByLabelText('Batch size')).toHaveValue(20);
-    expect(screen.getByRole('radio', { name: 'Reprocess all rows' })).toBeChecked();
-    expect(screen.getByRole('radio', { name: 'Fill missing only' })).not.toBeChecked();
-    expect(screen.getByRole('switch', { name: 'Toggle reasoning' })).not.toBeChecked();
-    expect(screen.queryByLabelText('Reasoning effort')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Retries if a request fails')).toHaveValue(2);
+    expect(screen.getByLabelText('Rows per request')).toHaveValue(20);
+    expect(screen.getByRole('radio', { name: 'Annotate all rows again' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Only rows without an annotation' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Toggle thinking' })).not.toBeChecked();
+    expect(screen.queryByLabelText('Thinking effort')).not.toBeInTheDocument();
   });
 
   it('renders native Anthropic thinking controls without temperature', () => {
@@ -101,7 +101,7 @@ describe('AnnotationInferenceSettings', () => {
 
     expect(screen.getByText('Anthropic parameters')).toBeInTheDocument();
     expect(screen.queryByLabelText('Temperature')).not.toBeInTheDocument();
-    expect(screen.getByText(/adaptive thinking on current Claude models/i)).toBeInTheDocument();
+    expect(screen.getByText(/think step by step before it answers/i)).toBeInTheDocument();
     expect(screen.getByText('Thinking')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Toggle thinking' })).not.toBeChecked();
   });
@@ -111,7 +111,7 @@ describe('AnnotationInferenceSettings', () => {
 
     expect(screen.getByText('Google parameters')).toBeInTheDocument();
     expect(screen.getByLabelText('Temperature')).toHaveValue(0.5);
-    expect(screen.getByText(/Gemini thinking budget/i)).toBeInTheDocument();
+    expect(screen.getByText(/think step by step before it answers/i)).toBeInTheDocument();
     expect(screen.getByText('Thinking')).toBeInTheDocument();
     expect(screen.getByRole('switch', { name: 'Toggle thinking' })).not.toBeChecked();
   });
@@ -124,7 +124,7 @@ describe('AnnotationInferenceSettings', () => {
 
     expect(screen.getByText(heading)).toBeInTheDocument();
     expect(screen.getByLabelText('Temperature')).toBeInTheDocument();
-    expect(screen.getByRole('switch', { name: 'Toggle reasoning' })).toBeInTheDocument();
+    expect(screen.getByRole('switch', { name: 'Toggle thinking' })).toBeInTheDocument();
   });
 
   it('shows no native controls before a provider is selected', () => {
@@ -140,11 +140,11 @@ describe('AnnotationInferenceSettings', () => {
     const user = userEvent.setup();
     render(<Harness />);
 
-    expect(screen.queryByLabelText('Reasoning effort')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Thinking effort')).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('switch', { name: 'Toggle reasoning' }));
+    await user.click(screen.getByRole('switch', { name: 'Toggle thinking' }));
 
-    const effort = screen.getByLabelText('Reasoning effort');
+    const effort = screen.getByLabelText('Thinking effort');
     expect(effort).toBeInTheDocument();
     expect(effort).toHaveTextContent('medium');
   });
@@ -168,7 +168,7 @@ describe('AnnotationInferenceSettings', () => {
     const onMaxRetriesPerBatchCommit = vi.fn();
     render(<Harness onMaxRetriesPerBatchCommit={onMaxRetriesPerBatchCommit} />);
 
-    const input = screen.getByLabelText('Max retries per batch');
+    const input = screen.getByLabelText('Retries if a request fails');
     await user.clear(input);
     await user.type(input, '12.8');
     await user.tab();
@@ -181,7 +181,7 @@ describe('AnnotationInferenceSettings', () => {
     const onBatchSizeCommit = vi.fn();
     render(<Harness onBatchSizeCommit={onBatchSizeCommit} />);
 
-    const input = screen.getByLabelText('Batch size');
+    const input = screen.getByLabelText('Rows per request');
     await user.clear(input);
     await user.type(input, '150.8');
     await user.tab();
@@ -204,21 +204,21 @@ describe('AnnotationInferenceSettings', () => {
     const onProcessingModeChange = vi.fn();
     render(<Harness onProcessingModeChange={onProcessingModeChange} />);
 
-    await user.click(screen.getByRole('radio', { name: 'Fill missing only' }));
+    await user.click(screen.getByRole('radio', { name: 'Only rows without an annotation' }));
 
     expect(onProcessingModeChange).toHaveBeenCalledWith('fill_missing');
-    expect(screen.getByRole('radio', { name: 'Fill missing only' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Only rows without an annotation' })).toBeChecked();
   });
 
   it('renders every control read-only when the Advanced section is locked', () => {
     render(<Harness initialTemperature={0.5} initialReasoning disabled />);
 
     expect(screen.getByLabelText('Temperature')).toBeDisabled();
-    expect(screen.getByLabelText('Max retries per batch')).toBeDisabled();
-    expect(screen.getByLabelText('Batch size')).toBeDisabled();
-    expect(screen.getByRole('radio', { name: 'Reprocess all rows' })).toBeDisabled();
-    expect(screen.getByRole('radio', { name: 'Fill missing only' })).toBeDisabled();
-    expect(screen.getByRole('switch', { name: 'Toggle reasoning' })).toBeDisabled();
-    expect(screen.getByLabelText('Reasoning effort')).toBeDisabled();
+    expect(screen.getByLabelText('Retries if a request fails')).toBeDisabled();
+    expect(screen.getByLabelText('Rows per request')).toBeDisabled();
+    expect(screen.getByRole('radio', { name: 'Annotate all rows again' })).toBeDisabled();
+    expect(screen.getByRole('radio', { name: 'Only rows without an annotation' })).toBeDisabled();
+    expect(screen.getByRole('switch', { name: 'Toggle thinking' })).toBeDisabled();
+    expect(screen.getByLabelText('Thinking effort')).toBeDisabled();
   });
 });

@@ -34,7 +34,7 @@ export function AnthropicInferenceSettings({
         label="Thinking"
         toggleLabel="Toggle thinking"
         effortLabel="Thinking effort"
-        description="Use adaptive thinking on current Claude models and fixed-budget thinking on older models."
+        description="Let the model think step by step before it answers. Slower, but often more accurate."
         disabled={disabled}
       />
     </section>

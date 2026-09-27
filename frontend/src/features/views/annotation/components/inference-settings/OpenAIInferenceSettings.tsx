@@ -32,7 +32,7 @@ export function OpenAIInferenceSettings({
       <TemperatureField
         temperature={temperature}
         onTemperatureCommit={onTemperatureCommit}
-        description="Used by sampling models and omitted whenever reasoning is enabled."
+        description="Lower values give more consistent answers; higher values more varied ones. Not used while Thinking is on."
         disabled={disabled}
       />
       <ReasoningField
@@ -40,10 +40,10 @@ export function OpenAIInferenceSettings({
         onReasoningEnabledChange={onReasoningEnabledChange}
         reasoningEffort={reasoningEffort}
         onReasoningEffortChange={onReasoningEffortChange}
-        label="Reasoning"
-        toggleLabel="Toggle reasoning"
-        effortLabel="Reasoning effort"
-        description="Send the selected model its native reasoning effort when supported."
+        label="Thinking"
+        toggleLabel="Toggle thinking"
+        effortLabel="Thinking effort"
+        description="Let the model think step by step before it answers, where the model supports it. Slower, but often more accurate."
         disabled={disabled}
       />
     </section>
