@@ -567,6 +567,9 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     loading: nodeDataQuery.isLoading,
     fetching: nodeDataQuery.isFetching,
     pageError: nodeDataQuery.error,
+    onRetryPage: () => {
+      void nodeDataQuery.refetch();
+    },
     workspaceId: currentWorkspaceId ?? undefined,
     nodeId: selectedNode?.id,
     documentColumn: selectedNode?.document ?? undefined,

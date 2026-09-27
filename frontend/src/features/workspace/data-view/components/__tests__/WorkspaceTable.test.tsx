@@ -380,4 +380,23 @@ describe('WorkspaceTable', () => {
       header,
     );
   });
+
+  it('shows a failed page with Retry instead of "No rows to display" (issue 205)', async () => {
+    const user = userEvent.setup();
+    const onRetryPage = vi.fn();
+    render(
+      <WorkspaceTable
+        columns={['speaker']}
+        columnFields={{ speaker: new Field('speaker', new Utf8()) }}
+        data={[]}
+        pageError={new Error('ComputeError: page failed')}
+        onRetryPage={onRetryPage}
+      />,
+    );
+
+    expect(screen.queryByText('No rows to display')).not.toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong in Wordflow');
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetryPage).toHaveBeenCalledOnce();
+  });
 });

@@ -49,6 +49,9 @@ import {
   type WorkspaceTableColumn,
   type WorkspaceTableColumnDef,
 } from './workspaceTableFeatures';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { Button } from '@/components/ui/button';
+import { formatCellValue } from '../services/formatCellValue';
 
 // --- Constants ---
 const WIDE_COLUMN_THRESHOLD = 120;
@@ -64,8 +67,10 @@ export interface WorkspaceTableProps {
   loading?: boolean;
   /** Background fetch state that must not replace the current table shell. */
   fetching?: boolean;
-  /** Page-query failure used by transparent Row Details navigation. */
+  /** Page-query failure, shown in place of the rows and used by Row Details navigation. */
   pageError?: unknown;
+  /** Loads the current page again after a failure. */
+  onRetryPage?: () => void;
   workspaceId?: string;
   nodeId?: string;
   documentColumn?: string;
@@ -111,6 +116,7 @@ export function WorkspaceTable({
   loading = false,
   fetching = false,
   pageError,
+  onRetryPage,
   workspaceId,
   nodeId,
   documentColumn,
@@ -402,9 +408,7 @@ export function WorkspaceTable({
         if (isTopicCoverageField(currentField)) {
           return <TopicCoverageBar value={cellValue} />;
         }
-        // Cell values may be structs/objects; default stringification preserves prior display text.
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        const displayValue = cellValue == null ? '' : String(cellValue);
+        const displayValue = formatCellValue(cellValue);
         return (
           <span className="block truncate" title={displayValue}>
             {displayValue}
@@ -652,7 +656,19 @@ export function WorkspaceTable({
                       colSpan={visibleColumnCount}
                       className="px-4 py-6 text-center text-body text-description"
                     >
-                      No rows to display
+                      {/* A failed page says so, with Retry (issue 205). */}
+                      {pageError ? (
+                        <div className="mx-auto flex max-w-xl flex-col items-center gap-2 text-left">
+                          <ErrorNotice error={pageError} fallback="Couldn't load this page." />
+                          {onRetryPage ? (
+                            <Button type="button" variant="outline" size="sm" onClick={onRetryPage}>
+                              Retry
+                            </Button>
+                          ) : null}
+                        </div>
+                      ) : (
+                        'No rows to display'
+                      )}
                     </TableCell>
                   </TableRow>
                 )}

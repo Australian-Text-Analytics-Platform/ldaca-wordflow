@@ -12,6 +12,7 @@ import {
   type WordCloudFormat,
 } from '../tokenFrequencyExport';
 import type { DownloadDialogMode } from '../components/TokenFrequencyDownloadDialog';
+import { toastError } from '@/lib/toastError';
 
 interface PendingDownloadContext {
   mode: DownloadDialogMode;
@@ -129,7 +130,11 @@ export const useTokenFrequencyDownloads = ({
       try {
         if (ctx.mode === 'wordcloud' && ctx.nodeKey) {
           const svg = wordCloudRefs.current[ctx.nodeKey];
-          if (svg) {
+          if (!svg) {
+            toastError(null, 'Show the word cloud, then download it again.', {
+              title: "Couldn't find the word cloud to download.",
+            });
+          } else {
             if (shouldBundleStopWords) {
               const displayName = firstNonEmptyLabel([ctx.displayName, ctx.nodeKey], ctx.nodeKey);
               const primaryFile = await buildWordCloudExportFile(svg, {
@@ -150,7 +155,7 @@ export const useTokenFrequencyDownloads = ({
               ]);
             } else {
               const displayName = firstNonEmptyLabel([ctx.displayName, ctx.nodeKey], ctx.nodeKey);
-              downloadWordCloudAs(svg, {
+              await downloadWordCloudAs(svg, {
                 displayName,
                 fallbackKey: ctx.nodeKey,
                 format: format as WordCloudFormat,
@@ -180,6 +185,9 @@ export const useTokenFrequencyDownloads = ({
         } else if (shouldBundleStopWords) {
           downloadStopWordsAsTxt(stopWords, archiveLabel);
         }
+      } catch (error) {
+        // A failed download says so instead of doing nothing (issue 205).
+        toastError(error, 'Try again.', { title: "Couldn't download the file." });
       } finally {
         pendingDownloadRef.current = null;
         setDownloadDialogOpen(false);

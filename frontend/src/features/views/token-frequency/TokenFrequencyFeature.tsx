@@ -47,6 +47,7 @@ import {
   reconcileHydratedTokenFrequencyInputs,
   TOKEN_FREQUENCY_CARD_ORDER_SETTING,
 } from './tokenFrequencyUtils';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 const MAX_TOKEN_LIMIT_INPUT = 100;
 const EMPTY_STOP_SET = new Set<string>();
@@ -164,6 +165,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     clearResults,
     stopTask,
     result: results,
+    analysisFailure,
   } = useAnalysisFeature<TokenFrequencyResponse, AnalysisRequestOfKind<'token_frequency'>>({
     taskType: ANALYSIS_TASK_TYPES.tokenFrequencies,
     workspaceId: currentWorkspaceId,
@@ -498,6 +500,10 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
         />
       }
     >
+      {/* A failed run says why (issue 205). */}
+      {analysisFailure && !isRunning && !taskStatus.runningTask ? (
+        <ErrorNotice className="mt-4" error={analysisFailure} />
+      ) : null}
       <TokenFrequencyResultsPanel
         results={results}
         isRunning={isRunning || Boolean(taskStatus.runningTask)}

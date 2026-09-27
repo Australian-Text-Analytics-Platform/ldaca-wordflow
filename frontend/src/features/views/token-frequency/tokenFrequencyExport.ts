@@ -441,10 +441,10 @@ const serializeSvg = (svg: SVGSVGElement): { svgString: string; width: number; h
  * Used by: useTokenFrequencyDownloads and tokenFrequencyExport.test.ts because token-frequency downloads need consistent filename, serialization, and Blob-building behavior across direct and zip exports.
  * Flow: no-op outside browsers, download serialized SVG directly for SVG format, otherwise render a bitmap export and trigger the file download.
  */
-export const downloadWordCloudAs = (
+export const downloadWordCloudAs = async (
   svg: SVGSVGElement,
   options: { displayName: string; fallbackKey: string; format: WordCloudFormat; scale?: number },
-) => {
+): Promise<void> => {
   if (typeof window === 'undefined') return;
   if (options.format === 'svg') {
     const { svgString } = serializeSvg(svg);
@@ -459,16 +459,16 @@ export const downloadWordCloudAs = (
     return;
   }
 
-  void buildWordCloudExportFile(svg, options).then((file) => {
-    downloadExportedFile(
-      file,
-      toRawStandaloneFilename(
-        options.displayName || options.fallbackKey,
-        'wordcloud',
-        options.format,
-      ),
-    );
-  });
+  // Awaited so a failed image export reaches the caller (issue 205).
+  const file = await buildWordCloudExportFile(svg, options);
+  downloadExportedFile(
+    file,
+    toRawStandaloneFilename(
+      options.displayName || options.fallbackKey,
+      'wordcloud',
+      options.format,
+    ),
+  );
 };
 
 /** Downloads frequency rows using the user-selected text export format. */

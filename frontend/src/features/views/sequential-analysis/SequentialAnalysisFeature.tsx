@@ -49,6 +49,7 @@ import { DEFAULT_TAB_INPUT_SET_ID } from '@/features/views/common/tabs/tabStateO
 import type { AnalysisTabFeatureProps } from '@/features/views/common/tabs/AnalysisTabsHost';
 import type { SequentialAnalysisResponse } from '@/api';
 import { toastError } from '@/lib/toastError';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 const isTimeCompatibleField = (field: ArrowField): boolean =>
   isArrowTemporalField(field) || isArrowIntegerField(field) || isArrowFloatField(field);
@@ -153,6 +154,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     clearResults,
     stopTask,
     result: results,
+    analysisFailure,
   } = useAnalysisFeature<SequentialAnalysisResponse, AnalysisRequestOfKind<'sequential'>>({
     taskType: ANALYSIS_TASK_TYPES.sequential,
     workspaceId: currentWorkspaceId,
@@ -520,6 +522,11 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           className="mt-4"
         />
       )}
+
+      {/* A failed run says why (issue 205). */}
+      {analysisFailure && !isAnalyzing ? (
+        <ErrorNotice className="mt-4" error={analysisFailure} />
+      ) : null}
 
       {results && (
         <SequentialAnalysisResultsPanel
