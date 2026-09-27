@@ -17,7 +17,7 @@ permissions:
 jobs:
   workflows:
     name: Workflow syntax and shell checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       - name: Install checksum-verified actionlint and validate workflows
@@ -60,8 +60,6 @@ jobs:
         with:
           targets: ${{ matrix.target }}
           components: rustfmt, clippy
-      - if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1.13.0
       - name: Reuse the tested production frontend
         uses: actions/download-artifact@v8.0.1
         with:
@@ -80,7 +78,7 @@ jobs:
 
   native-preview:
     name: Chromium with Rust preview (not Tauri)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
         with:
@@ -181,7 +179,7 @@ jobs:
 
   frontend:
     name: Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Check out repository with source dependencies
         uses: actions/checkout@v7.0.1

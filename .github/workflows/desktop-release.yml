@@ -30,7 +30,7 @@ jobs:
     name: Resolve release identity
     outputs:
       sha: ${{ steps.source.outputs.sha }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7.0.1
@@ -94,7 +94,7 @@ jobs:
     name: Publish Desktop and Server Assets
     if: ${{ inputs.publish_release }}
     needs: [build-desktop, build-server]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       GH_TOKEN: ${{ github.token }}
     steps:

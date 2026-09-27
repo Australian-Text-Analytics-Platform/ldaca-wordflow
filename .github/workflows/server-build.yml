@@ -32,8 +32,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1.13.0
       - run: corepack enable && pnpm install --frozen-lockfile
       - run: pnpm -C frontend build
       - run: cargo build -p wordflow-server --bin wordflow-server --release --locked --target ${{ matrix.target }}
