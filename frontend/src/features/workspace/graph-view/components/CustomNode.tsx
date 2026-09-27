@@ -42,7 +42,7 @@ interface CustomNodeData extends Record<string, unknown> {
    * in useFreshNodesStore on first click / selection. */
   isFresh: boolean;
   onDelete: (nodeId: string) => void;
-  onRename: (nodeId: string, newName: string) => void;
+  onRename: (nodeId: string, newName: string) => unknown;
   onCopy: (nodeId: string) => void;
   onUndo: (nodeId: string) => void;
   onRedo: (nodeId: string) => void;
@@ -454,9 +454,7 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
       onValueChange={(value) => {
         dispatchUi({ type: 'set-rename-value', value });
       }}
-      onRename={(name) => {
-        onRename(node.id, name);
-      }}
+      onRename={(name) => onRename(node.id, name)}
     />
   );
 

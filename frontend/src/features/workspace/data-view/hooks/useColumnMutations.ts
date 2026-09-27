@@ -54,7 +54,7 @@ export interface ColumnMutationsApi {
   handleTypeChange: (column: string, newType: ColumnCastType) => void;
   startRename: (column: string) => void;
   cancelRename: () => void;
-  submitRename: (column: string, value: string) => Promise<void>;
+  submitRename: (column: string, value: string) => Promise<boolean>;
 }
 
 /**
@@ -183,25 +183,29 @@ export const useColumnMutations = ({
     dispatch({ type: 'renameClosed' });
   }, []);
 
-  /** Validates and applies a column rename through the selected Data Block edit. */
+  /**
+   * Validates and applies a column rename through the selected Data Block edit.
+   * Resolves false when the rename failed (a toast has been shown), so the
+   * shared rename box stays open (issue 210).
+   */
   const submitRename = useCallback(
-    async (column: string, value: string) => {
+    async (column: string, value: string): Promise<boolean> => {
       const nextName = value.trim();
       if (!onRenameColumn) {
         dispatch({ type: 'renameClosed' });
-        return;
+        return true;
       }
       if (!nextName) {
         toast.error('Column name cannot be empty.');
-        return;
+        return false;
       }
       if (nextName === column) {
         dispatch({ type: 'renameClosed' });
-        return;
+        return true;
       }
       if (columns.some((candidate) => candidate !== column && candidate === nextName)) {
         toast.error(`A column named "${nextName}" already exists.`);
-        return;
+        return false;
       }
 
       setColumnBusy(column, true);
@@ -211,8 +215,10 @@ export const useColumnMutations = ({
           applySchema(await onRefreshSchema());
         }
         dispatch({ type: 'renameClosed' });
+        return true;
       } catch (error) {
         toastError(error, 'Try again.', { title: `Couldn't rename column "${column}".` });
+        return false;
       } finally {
         setColumnBusy(column, false);
       }

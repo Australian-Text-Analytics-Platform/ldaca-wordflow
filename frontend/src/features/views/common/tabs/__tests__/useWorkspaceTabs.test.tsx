@@ -194,7 +194,9 @@ describe('useWorkspaceTabs', () => {
         }),
       ),
     );
-    act(() => result.current.renameTab('tab-1', 'Renamed'));
+    await act(async () => {
+      await result.current.renameTab('tab-1', 'Renamed');
+    });
     await waitFor(() =>
       expect(mocks.updateTab).toHaveBeenCalledWith(
         expect.objectContaining({

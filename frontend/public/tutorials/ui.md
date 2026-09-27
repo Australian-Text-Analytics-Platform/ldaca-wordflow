@@ -128,6 +128,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 
 - Each selected Data Block has a tab in the Data Editor title bar. Click a tab to show that Data Block; the **×** on a tab deselects it, and you can drag tabs to reorder them. When the tabs do not fit, scroll the strip or use the arrow buttons at its ends.
 - To rename a Data Block, click its tab to make it the current one, then double-click the tab name, type the new name, and press Enter (Esc cancels). Analysis tool tabs are renamed the same way.
+- Every rename box (tabs, columns, the Project name, Data Blocks) works the same way. Enter saves and Esc cancels. Clicking elsewhere saves an edited name. If a rename fails, for example because the name is already used, a message explains why and the box stays open with the name selected so you can fix it. Press Enter to try again, or click elsewhere without changing it to keep the original name.
 - With many tabs, click the arrow at the right end of the title bar for a list of every tab in alphabetical order, and choose one to switch to it. A very long name shows its start and end, with the middle faded.
 
 ![Data Editor header with two selected Data Blocks as tabs](tutorials/assets/ui/data_editor_header.png)

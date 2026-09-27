@@ -31,7 +31,7 @@ export interface NodeActionsToolbarProps {
   isPinned: boolean;
   onTogglePin: (nodeId: string) => void;
   onAddToSelection: (nodeId: string, pointer?: NodeInputPointerPosition) => void;
-  onRename: (nodeId: string, newName: string) => void;
+  onRename: (nodeId: string, newName: string) => unknown;
   onClone: (nodeId: string) => void;
   onDelete: (nodeId: string) => void;
 }
@@ -167,9 +167,7 @@ export function NodeActionsToolbar({
         currentName={node.name}
         value={renameValue}
         onValueChange={setRenameValue}
-        onRename={(name) => {
-          onRename(node.id, name);
-        }}
+        onRename={(name) => onRename(node.id, name)}
       />
 
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>

@@ -51,24 +51,15 @@ describe('editorTabsInteractionReducer', () => {
     ).toBe(initial);
   });
 
-  it('keeps inline rename id and draft together', () => {
+  it('tracks which tab has its rename box open', () => {
     const renaming = editorTabsInteractionReducer(createEditorTabsInteractionState(), {
       type: 'renameStarted',
       tabId: 'tab-1',
-      title: 'Analysis 1',
     });
 
-    expect(renaming.rename).toEqual({ id: 'tab-1', draftTitle: 'Analysis 1' });
-
-    const edited = editorTabsInteractionReducer(renaming, {
-      type: 'renameDraftChanged',
-      title: 'Renamed analysis',
-    });
-
-    expect(edited.rename).toEqual({ id: 'tab-1', draftTitle: 'Renamed analysis' });
-    expect(editorTabsInteractionReducer(edited, { type: 'renameCancelled' }).rename).toEqual({
+    expect(renaming.rename).toEqual({ id: 'tab-1' });
+    expect(editorTabsInteractionReducer(renaming, { type: 'renameCancelled' }).rename).toEqual({
       id: null,
-      draftTitle: '',
     });
   });
 });

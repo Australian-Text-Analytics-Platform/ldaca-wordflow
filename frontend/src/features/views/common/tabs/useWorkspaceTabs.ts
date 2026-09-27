@@ -38,7 +38,7 @@ export interface UseWorkspaceTabsResult {
   isLoading: boolean;
   createTab: (title?: string) => Promise<Tab | null>;
   closeTab: (tabId: string) => void;
-  renameTab: (tabId: string, title: string) => void;
+  renameTab: (tabId: string, title: string) => Promise<void>;
   setActiveTab: (tabId: string) => void;
   reorderTabs: (orderedTabIds: string[]) => void;
   setTabInputSet: (tabId: string, selectorId: string, inputs: AnalysisTabInput[]) => void;
@@ -323,11 +323,11 @@ export function useWorkspaceTabs(
     },
     onSuccess: invalidate,
   });
-  const { mutate: renameServerTab } = renameMutation;
+  const { mutateAsync: renameServerTab } = renameMutation;
 
   const renameTab = useCallback(
-    (tabId: string, title: string) => {
-      if (workspaceId) renameServerTab({ tabId, title });
+    async (tabId: string, title: string) => {
+      if (workspaceId) await renameServerTab({ tabId, title });
     },
     [renameServerTab, workspaceId],
   );

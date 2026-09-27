@@ -1,45 +1,26 @@
-import { useEffect, useRef, useState } from 'react';
-
 import { Input } from '@/components/ui/input';
+import { useInlineRename } from '@/lib/rename/useInlineRename';
 
 interface RenameInputProps {
   column: string;
-  disabled: boolean;
-  onSubmit: (column: string, value: string) => void;
+  onSubmit: (column: string, value: string) => Promise<boolean>;
   onCancel: () => void;
 }
 
 /**
- * Provides the inline editor opened from a column's settings menu.
+ * Inline column-name editor opened by double-clicking a header or from its
+ * menu. Follows the shared rename rule (issue 210).
  */
-export function RenameInput({ column, disabled, onSubmit, onCancel }: RenameInputProps) {
-  const [draft, setDraft] = useState(column);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
+export function RenameInput({ column, onSubmit, onCancel }: RenameInputProps) {
+  const { inputProps } = useInlineRename({
+    original: column,
+    onSubmit: (name) => onSubmit(column, name),
+    onClose: onCancel,
+  });
 
   return (
     <Input
-      ref={inputRef}
-      value={draft}
-      disabled={disabled}
-      onChange={(event) => {
-        setDraft(event.target.value);
-      }}
-      onBlur={() => {
-        if (!disabled) onSubmit(column, draft);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          if (!disabled) onSubmit(column, draft);
-        } else if (event.key === 'Escape') {
-          onCancel();
-        }
-      }}
+      {...inputProps}
       className="h-7 w-40 truncate text-label-secondary"
       aria-label={`Rename column ${column}`}
     />

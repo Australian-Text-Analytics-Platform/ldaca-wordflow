@@ -456,9 +456,7 @@ function Sidebar() {
                                     isPinned={pinnedIdSet.has(node.id)}
                                     onTogglePin={togglePinnedNode}
                                     onAddToSelection={handleAddToSelection}
-                                    onRename={(id, newName) => {
-                                      void renameNode(id, newName);
-                                    }}
+                                    onRename={(id, newName) => renameNode(id, newName)}
                                     onClone={(id) => {
                                       void copyNode(id);
                                     }}

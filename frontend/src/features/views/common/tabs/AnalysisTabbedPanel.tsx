@@ -22,7 +22,7 @@ export interface AnalysisTabbedPanelProps {
   onSelect: (tabId: string) => void;
   onClose: (tabId: string) => void;
   onCreate: () => void;
-  onRename: (tabId: string, title: string) => void;
+  onRename: (tabId: string, title: string) => unknown;
   /** Persists the final tab order (full list of ids) after a drag-and-drop. */
   onReorder: (orderedTabIds: string[]) => void;
   /** Whether the user preference should expose create/select/close/rename tab controls. */

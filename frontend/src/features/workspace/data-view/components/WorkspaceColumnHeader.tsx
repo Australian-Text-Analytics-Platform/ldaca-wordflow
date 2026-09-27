@@ -78,7 +78,7 @@ export interface WorkspaceColumnHeaderProps {
   onSort: () => void;
 
   onStartRename: () => void;
-  onSubmitRename: (column: string, value: string) => Promise<void>;
+  onSubmitRename: (column: string, value: string) => Promise<boolean>;
   onCancelRename: () => void;
   onTypeChange: (newType: ColumnCastType) => void;
   onRequestDelete: () => void;
@@ -176,14 +176,7 @@ export function WorkspaceColumnHeader({
       </button>
 
       {isRenaming ? (
-        <RenameInput
-          column={column}
-          disabled={isColumnBusy}
-          onSubmit={(currentColumn, value) => {
-            void onSubmitRename(currentColumn, value);
-          }}
-          onCancel={onCancelRename}
-        />
+        <RenameInput column={column} onSubmit={onSubmitRename} onCancel={onCancelRename} />
       ) : (
         <div className="min-w-0">
           {/* Double-click the name to rename the column, like a tab (issue 208). */}

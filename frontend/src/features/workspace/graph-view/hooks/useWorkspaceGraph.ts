@@ -170,11 +170,11 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
   }, []);
 
   /** Renames a graph node through workspace actions. */
-  const handleRename = useCallback((nodeId: string, newName: string) => {
+  const handleRename = useCallback(async (nodeId: string, newName: string) => {
     if (!nodeId || !newName.trim()) {
       return;
     }
-    void graphCommandsRef.current.renameNode(nodeId, newName.trim());
+    await graphCommandsRef.current.renameNode(nodeId, newName.trim());
   }, []);
 
   /** Clones a graph node through workspace actions. */

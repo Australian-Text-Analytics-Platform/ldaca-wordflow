@@ -65,7 +65,7 @@ export interface WorkspaceSelectionTabsState {
   onTabClose: (nodeId: string) => void;
   onTabReorder: (orderedNodeIds: string[]) => void;
   /** Renames the Data Block behind a tab (double-click the active tab, issue 206). */
-  onTabRename?: (nodeId: string, name: string) => void;
+  onTabRename?: (nodeId: string, name: string) => Promise<unknown>;
 }
 
 export interface WorkspaceDataTableViewModel {
@@ -448,7 +448,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     onTabChange: handleTabChange,
     onTabClose: handleTabClose,
     onTabReorder: handleTabReorder,
-    onTabRename: (nodeId: string, name: string) => void renameNode(nodeId, name),
+    onTabRename: (nodeId: string, name: string) => renameNode(nodeId, name),
   };
 
   const sorting: SortingState = nodeTableRequest.sort_by

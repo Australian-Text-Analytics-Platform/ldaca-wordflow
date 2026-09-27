@@ -2,16 +2,9 @@ import { useState } from 'react';
 import { PanelRightClose, Pencil } from 'lucide-react';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../ui/alert-dialog';
+import { toast } from 'sonner';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
+import { useInlineRename } from '@/lib/rename/useInlineRename';
 import HelpIcon from '@/components/help/HelpIcon';
 import { ChangeProjectMenu } from './ChangeProjectMenu';
 
@@ -29,41 +22,17 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
   const { currentWorkspace } = useWorkspaceData();
   const { renameWorkspace } = useWorkspaceActions();
 
-  const [renameDraft, setRenameDraft] = useState<{ baseName: string; value: string }>();
-  const [nameAlertOpen, setNameAlertOpen] = useState(false);
-  const [nameAlertMessage, setNameAlertMessage] = useState('');
+  // The name the open rename box started from; a changed Project closes it.
+  const [renamingName, setRenamingName] = useState<string>();
   const currentWorkspaceName = currentWorkspace?.name ?? '';
-  const isEditing = renameDraft?.baseName === currentWorkspaceName;
-
-  /** Called by: WorkspaceControls inline rename input blur and keyboard handlers. */
-  const handleRenameCommit = async () => {
-    if (!isEditing) {
-      return;
-    }
-    const trimmed = renameDraft.value.trim();
-    if (!trimmed || trimmed === currentWorkspaceName) {
-      setRenameDraft(undefined);
-      return;
-    }
-    try {
-      await renameWorkspace(trimmed);
-    } catch (error) {
-      const message = getInvalidWorkspaceNameMessage(error);
-      if (message) {
-        setNameAlertMessage(message);
-        setNameAlertOpen(true);
-      }
-    } finally {
-      setRenameDraft(undefined);
-    }
-  };
+  const isEditing = renamingName !== undefined && renamingName === currentWorkspaceName;
 
   /** Called by: the WorkspaceControls Rename button onClick prop. */
   const startRename = () => {
     if (!currentWorkspaceName) {
       return;
     }
-    setRenameDraft({ baseName: currentWorkspaceName, value: currentWorkspaceName });
+    setRenamingName(currentWorkspaceName);
   };
 
   return (
@@ -88,21 +57,12 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
       <span className="text-description">|</span>
 
       {isEditing ? (
-        <input
-          className="px-2 py-1 border rounded-sm text-body"
-          value={renameDraft.value}
-          onChange={(e) => {
-            setRenameDraft({ baseName: currentWorkspaceName, value: e.target.value });
+        <ProjectNameInput
+          name={currentWorkspaceName}
+          onSubmit={renameWorkspace}
+          onClose={() => {
+            setRenamingName(undefined);
           }}
-          onBlur={() => {
-            void handleRenameCommit();
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') void handleRenameCommit();
-            if (e.key === 'Escape') setRenameDraft(undefined);
-          }}
-          autoFocus
-          aria-label="Project name"
         />
       ) : (
         <span className="text-body font-semibold text-foreground">
@@ -125,24 +85,41 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
 
       {/* Switch projects without going to the Data Loader (issue 192). */}
       <ChangeProjectMenu />
-
-      <AlertDialog open={nameAlertOpen} onOpenChange={setNameAlertOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Invalid Project name</AlertDialogTitle>
-            <AlertDialogDescription>{nameAlertMessage}</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction
-              onClick={() => {
-                setNameAlertOpen(false);
-              }}
-            >
-              Got it
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
+  );
+}
+
+/** The Project name rename box, following the shared rename rule (issue 210). */
+function ProjectNameInput({
+  name,
+  onSubmit,
+  onClose,
+}: {
+  name: string;
+  onSubmit: (name: string) => Promise<unknown>;
+  onClose: () => void;
+}) {
+  const { inputProps } = useInlineRename({
+    original: name,
+    onSubmit: async (next) => {
+      try {
+        await onSubmit(next);
+        return true;
+      } catch (error) {
+        const message = getInvalidWorkspaceNameMessage(error);
+        if (!message) throw error;
+        toast.error(message);
+        return false;
+      }
+    },
+    onClose,
+    failureTitle: "Couldn't rename the Project.",
+  });
+  return (
+    <input
+      {...inputProps}
+      className="px-2 py-1 border rounded-sm text-body"
+      aria-label="Project name"
+    />
   );
 }

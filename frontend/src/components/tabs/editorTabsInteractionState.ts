@@ -6,8 +6,8 @@ interface EditorTabsDragRenderState {
 }
 
 interface EditorTabsRenameState {
+  /** The tab whose rename box is open; its draft lives in useInlineRename. */
   id: string | null;
-  draftTitle: string;
 }
 
 export interface EditorTabsInteractionState {
@@ -19,8 +19,7 @@ export type EditorTabsInteractionAction =
   | { type: 'dragStarted'; tabId: string; order: string[]; homeLeft: number }
   | { type: 'dragMoved'; deltaX: number; order: string[] }
   | { type: 'dragCleared' }
-  | { type: 'renameStarted'; tabId: string; title: string }
-  | { type: 'renameDraftChanged'; title: string }
+  | { type: 'renameStarted'; tabId: string }
   | { type: 'renameCancelled' };
 
 const idleDragState: EditorTabsDragRenderState = {
@@ -32,7 +31,6 @@ const idleDragState: EditorTabsDragRenderState = {
 
 const idleRenameState: EditorTabsRenameState = {
   id: null,
-  draftTitle: '',
 };
 
 /** Creates the reducer-owned drag and rename state for ``EditorTabs``. */
@@ -66,12 +64,8 @@ export const editorTabsInteractionReducer = (
     case 'renameStarted':
       return {
         ...state,
-        rename: { id: action.tabId, draftTitle: action.title },
+        rename: { id: action.tabId },
       };
-    case 'renameDraftChanged':
-      return state.rename.id
-        ? { ...state, rename: { ...state.rename, draftTitle: action.title } }
-        : state;
     case 'renameCancelled':
       return state.rename.id ? { ...state, rename: idleRenameState } : state;
     default:

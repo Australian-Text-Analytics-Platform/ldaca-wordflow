@@ -18,6 +18,7 @@ import {
   useState,
 } from 'react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useInlineRename } from '@/lib/rename/useInlineRename';
 import { cn } from '@/lib/utils';
 import {
   createEditorTabsInteractionState,
@@ -49,9 +50,36 @@ export interface EditorTabsProps {
   onReorder?: (orderedIds: string[]) => void;
   onClose?: (id: string) => void;
   onCreate?: () => void;
-  onRename?: (id: string, title: string) => void;
+  /**
+   * Applies a new tab name. Reject (or resolve false) to keep the rename box
+   * open with the text selected (issue 210).
+   */
+  onRename?: (id: string, title: string) => unknown;
   className?: string;
   'aria-label'?: string;
+}
+
+/** The tab's inline rename box, following the shared rename rule (issue 210). */
+function TabRenameInput({
+  title,
+  onSubmit,
+  onClose,
+}: {
+  title: string;
+  onSubmit: (title: string) => unknown;
+  onClose: () => void;
+}) {
+  const { inputProps } = useInlineRename({ original: title, onSubmit, onClose });
+  return (
+    <input
+      {...inputProps}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+      }}
+      className="relative z-10 mx-[8px] h-[24px] w-full min-w-0 bg-transparent text-[13px] outline-none"
+      aria-label="Rename tab"
+    />
+  );
 }
 
 const TAB_HEIGHT = 32;
@@ -138,10 +166,9 @@ export function EditorTabs({
   );
   const {
     drag: { order: dragOrder, tabId: dragTabId, deltaX: dragDeltaX, homeLeft: dragHomeLeft },
-    rename: { id: renamingId, draftTitle },
+    rename: { id: renamingId },
   } = interactionState;
   const dragRef = useRef<DragState | null>(null);
-  const renameInputRef = useRef<HTMLInputElement | null>(null);
   const tabRefs = useRef(new Map<string, HTMLDivElement>());
   const titleMeasureRefs = useRef(new Map<string, HTMLSpanElement>());
   const [naturalWidths, setNaturalWidths] = useState<Map<string, number>>(() => new Map());
@@ -163,13 +190,6 @@ export function EditorTabs({
       window.removeEventListener('resize', update);
     };
   }, []);
-
-  useEffect(() => {
-    if (renamingId && renameInputRef.current) {
-      renameInputRef.current.focus();
-      renameInputRef.current.select();
-    }
-  }, [renamingId]);
 
   const tabsById = new Map(tabs.map((tab) => [tab.id, tab]));
   const orderIds = (() => {
@@ -217,16 +237,8 @@ export function EditorTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by layout signature; maps update functionally
   }, [titlesKey, widthsKey, containerWidth]);
 
-  const finishRename = () => {
-    if (renamingId) {
-      const trimmed = draftTitle.trim();
-      if (trimmed) onRename?.(renamingId, trimmed);
-    }
-    dispatchInteraction({ type: 'renameCancelled' });
-  };
-
   const beginRename = (tab: EditorTabItem) => {
-    dispatchInteraction({ type: 'renameStarted', tabId: tab.id, title: tab.title });
+    dispatchInteraction({ type: 'renameStarted', tabId: tab.id });
   };
 
   const clearDrag = () => {
@@ -294,11 +306,6 @@ export function EditorTabs({
     // A click activates; renaming takes a double-click on the active tab
     // (issue 206), so a stray click on the current tab never starts it.
     if (tab.id !== activeTabId) onActivate(tab.id);
-  };
-
-  const handleRenameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') finishRename();
-    else if (event.key === 'Escape') dispatchInteraction({ type: 'renameCancelled' });
   };
 
   const handleTabKeyDown = (tab: EditorTabItem, event: KeyboardEvent<HTMLDivElement>) => {
@@ -423,22 +430,12 @@ export function EditorTabs({
                       ) : null}
 
                       {isRenaming ? (
-                        <input
-                          ref={renameInputRef}
-                          value={draftTitle}
-                          onChange={(event) => {
-                            dispatchInteraction({
-                              type: 'renameDraftChanged',
-                              title: event.target.value,
-                            });
+                        <TabRenameInput
+                          title={tab.title}
+                          onSubmit={(title) => onRename?.(id, title)}
+                          onClose={() => {
+                            dispatchInteraction({ type: 'renameCancelled' });
                           }}
-                          onBlur={finishRename}
-                          onKeyDown={handleRenameKeyDown}
-                          onPointerDown={(event) => {
-                            event.stopPropagation();
-                          }}
-                          className="relative z-10 mx-[8px] h-[24px] w-full min-w-0 bg-transparent text-[13px] outline-none"
-                          aria-label="Rename tab"
                         />
                       ) : (
                         <span
