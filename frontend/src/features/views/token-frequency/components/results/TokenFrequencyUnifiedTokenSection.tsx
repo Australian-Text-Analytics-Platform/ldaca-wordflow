@@ -237,7 +237,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
               aria-label="Download word cloud"
               title="Download word cloud"
               onClick={() => {
-                onDownloadWordCloud('unified', 'Unified Word Cloud');
+                onDownloadWordCloud('unified', 'Unified word cloud');
               }}
             >
               <Download className="h-4 w-4" />

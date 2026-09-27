@@ -157,7 +157,7 @@ export function AiProvidersPreferencesPanel() {
           }}
           disabled={pending}
         >
-          Add Provider
+          Add provider
         </Button>
         <Button
           type="button"

@@ -423,7 +423,7 @@ const TokenFrequencySingleTokenSectionInner = ({
                     <span className="text-right">Count</span>
                     <span
                       className="text-right"
-                      title={`Occurrences per million tokens (${result.totalTokens.toLocaleString('en')} tokens in this block)`}
+                      title={`Occurrences per million tokens (${result.totalTokens.toLocaleString('en')} tokens in this Data Block)`}
                     >
                       Per million
                     </span>

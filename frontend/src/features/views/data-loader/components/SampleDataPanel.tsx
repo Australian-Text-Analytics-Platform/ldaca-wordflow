@@ -243,7 +243,7 @@ export function SampleDataPanel() {
           <DialogHeader>
             <DialogTitle>Import sample content</DialogTitle>
             <DialogDescription>
-              Download sample corpora from the Wordflow sample-data repository.
+              Import sample corpora from the Wordflow sample-data repository.
             </DialogDescription>
           </DialogHeader>
 

@@ -92,7 +92,7 @@ export function AddAnnotationProviderDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Provider</DialogTitle>
+          <DialogTitle>Add provider</DialogTitle>
           <DialogDescription>
             Add a named provider configuration for Annotation. Saved credentials are write-only.
           </DialogDescription>
@@ -211,7 +211,7 @@ export function AddAnnotationProviderDialog({
               void addProvider();
             }}
           >
-            {pending ? 'Adding…' : 'Add Provider'}
+            {pending ? 'Adding…' : 'Add provider'}
           </Button>
         </DialogFooter>
       </DialogContent>

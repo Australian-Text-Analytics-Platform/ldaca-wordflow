@@ -34,7 +34,7 @@ describe('DataPortalCredentialPanel', () => {
     const user = userEvent.setup();
     render(<DataPortalCredentialPanel />);
 
-    expect(screen.queryByRole('button', { name: 'Add Provider' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add provider' })).not.toBeInTheDocument();
     await user.type(screen.getByLabelText('LDaCA access token'), 'portal-token');
     await user.click(screen.getByRole('button', { name: 'Save' }));
 

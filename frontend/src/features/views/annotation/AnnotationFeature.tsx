@@ -359,7 +359,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     const value = descriptionColumns[nodeId] ?? fallback;
     return (
       <AnnotationColumnPicker
-        label="Description Column"
+        label="Description column"
         value={value}
         placeholder="Select description column"
         disabled={controlsLocked}
@@ -1037,7 +1037,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                         onRemoveNode={sourceNodeInputs.removeNode}
                         onClear={sourceNodeInputs.clear}
                         onColumnChange={handleSourceTextColumnChange}
-                        columnLabel="Text Column"
+                        columnLabel="Text column"
                         defaultPalette={defaultPalette}
                         nodeColors={nodeColors}
                         onNodeColorChange={setNodeColor}
@@ -1078,7 +1078,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           onRemoveNode={classNodeInputs.removeNode}
                           onClear={classNodeInputs.clear}
                           onColumnChange={classNodeInputs.setColumn}
-                          columnLabel="Code Column"
+                          columnLabel="Code column"
                           disabled={controlsLocked}
                           renderColumnAddon={renderDescriptionColumnPicker}
                         />
@@ -1205,7 +1205,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             onRemoveNode={exampleNodeInputs.removeNode}
                             onClear={exampleNodeInputs.clear}
                             onColumnChange={handleExampleTextColumnChange}
-                            columnLabel="Text Column"
+                            columnLabel="Text column"
                             renderColumnAddon={renderExampleAnnotationColumnPicker}
                             disabled={controlsLocked}
                           />

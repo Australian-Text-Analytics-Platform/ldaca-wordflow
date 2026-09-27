@@ -421,7 +421,7 @@ export function TopicModelingParameterPanel({
             </ParameterLabel>
             <Input
               id="random-seed"
-              aria-label="Random Seed"
+              aria-label="Random seed"
               type="number"
               min={0}
               step={1}

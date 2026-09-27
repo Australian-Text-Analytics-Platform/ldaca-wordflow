@@ -42,7 +42,7 @@ export function DesktopUpdateSettings() {
   return (
     <section className="space-y-3 border-t border-surface-border/60 pt-4">
       <div>
-        <h3 className="text-body font-semibold">Desktop Updates</h3>
+        <h3 className="text-body font-semibold">Desktop updates</h3>
         <p className="text-body text-description">
           Check for a signed Wordflow update at most once per day.
         </p>

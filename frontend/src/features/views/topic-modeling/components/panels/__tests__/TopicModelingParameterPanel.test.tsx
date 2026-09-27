@@ -129,7 +129,7 @@ describe('TopicModelingParameterPanel', () => {
   it('renders run parameters without result-only words per topic', () => {
     render(<TopicModelingParameterPanel {...baseProps} />);
 
-    expect(screen.getByLabelText('Random Seed')).toBeInTheDocument();
+    expect(screen.getByLabelText('Random seed')).toBeInTheDocument();
     expect(screen.queryByLabelText('Words per topic')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Segmentation method')).toBeInTheDocument();
     expect(screen.getByLabelText('Maximum tokens per segment')).toHaveValue(256);

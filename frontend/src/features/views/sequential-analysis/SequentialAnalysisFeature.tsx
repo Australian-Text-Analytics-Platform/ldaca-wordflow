@@ -567,7 +567,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       <ChartImageDownloadDialog
         open={downloadDialogOpen}
         onOpenChange={setDownloadDialogOpen}
-        title="Download Trends Chart"
+        title="Download Trends chart"
         onConfirm={(format) => {
           void handleDownloadChart(format);
         }}

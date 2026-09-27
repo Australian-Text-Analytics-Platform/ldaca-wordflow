@@ -244,7 +244,7 @@ export function RowDetailPanel({
                   <TableHeader className="bg-panel">
                     <TableRow>
                       <TableHead className="px-3 py-2 text-left text-label-secondary font-medium uppercase tracking-wider text-description">
-                        Field
+                        Column
                       </TableHead>
                       <TableHead className="px-3 py-2 text-left text-label-secondary font-medium uppercase tracking-wider text-description">
                         Value

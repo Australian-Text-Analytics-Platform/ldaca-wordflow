@@ -95,7 +95,7 @@ describe('buildSequentialChartExportMetadata', () => {
 
     expect(metadata.header).toEqual([
       { label: 'Data Block', value: 'Interviews' },
-      { label: 'Time Column', value: 'date' },
+      { label: 'Time column', value: 'date' },
       { label: 'Frequency', value: 'monthly' },
       { label: 'Total', value: '2/5' },
       { label: 'Shown', value: '0/0' },

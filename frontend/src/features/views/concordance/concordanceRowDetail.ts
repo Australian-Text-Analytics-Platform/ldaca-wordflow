@@ -45,7 +45,7 @@ export function buildConcordanceRowDetailCustomization(
   return {
     label: 'Concordance',
     summaryFields: [
-      { label: 'Search Word', value: searchWord, highlight: true },
+      { label: 'Search word', value: searchWord, highlight: true },
       { label: 'Matches', value: String(concordanceHits.length) },
       { label: 'L1 Word', value: toCellText(record[CONCORDANCE_COLUMN_KEYS.leftToken]) },
       ...(record[CONCORDANCE_COLUMN_KEYS.leftTokenFreq] != null

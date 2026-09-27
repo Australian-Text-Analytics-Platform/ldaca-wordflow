@@ -87,7 +87,7 @@ describe('AnnotationAiSettings', () => {
     await user.click(screen.getByRole('button', { name: 'Provider' }));
     const rows = screen.getAllByRole('button');
     expect(screen.getByText('OpenRouter org')).toBeInTheDocument();
-    expect(rows.at(-1)).toHaveTextContent('Add Provider');
+    expect(rows.at(-1)).toHaveTextContent('Add provider');
     expect(screen.queryByText('OpenAI')).not.toBeInTheDocument();
     expect(screen.queryByText('Anthropic')).not.toBeInTheDocument();
   });
@@ -101,7 +101,7 @@ describe('AnnotationAiSettings', () => {
     expect(onProviderChange).toHaveBeenCalledWith(configurations[1], 'model-2');
 
     await user.click(screen.getByRole('button', { name: 'Provider' }));
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Add provider form');
   });
 
@@ -183,7 +183,7 @@ describe('AnnotationAiSettings', () => {
 
     await user.click(screen.getByRole('button', { name: 'Advanced settings' }));
     await user.click(screen.getByRole('button', { name: 'Provider' }));
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
     await user.click(screen.getByRole('button', { name: 'Finish keyless provider' }));
 
     expect(onProviderChange).not.toHaveBeenCalled();

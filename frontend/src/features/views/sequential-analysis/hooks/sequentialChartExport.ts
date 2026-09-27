@@ -27,7 +27,7 @@ export function buildSequentialChartExportMetadata({
   const { summary, counts } = model;
   const header: ChartExportHeaderItem[] = [
     { label: 'Data Block', value: nodeName },
-    { label: 'Time Column', value: summary.timeColumn || '—' },
+    { label: 'Time column', value: summary.timeColumn || '—' },
     { label: 'Frequency', value: summary.frequencyDisplay },
     {
       label: 'Total',

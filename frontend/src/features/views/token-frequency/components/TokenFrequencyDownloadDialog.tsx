@@ -56,7 +56,7 @@ const TokenFrequencyDownloadDialogContent = ({
   const [includeStopWords, setIncludeStopWords] = useState(true);
 
   const formats = mode === 'wordcloud' ? WORD_CLOUD_FORMATS : FREQUENCY_FORMATS;
-  const title = mode === 'wordcloud' ? 'Download Word Cloud' : 'Download Frequencies';
+  const title = mode === 'wordcloud' ? 'Download word cloud' : 'Download frequencies';
   const description =
     mode === 'wordcloud'
       ? 'Choose image format for the word cloud export.'

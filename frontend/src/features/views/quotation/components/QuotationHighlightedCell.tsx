@@ -43,7 +43,7 @@ export function QuotationHighlightedCell({
 
   return (
     <span>
-      {clipped.prefixEllipsis ? <span className="mr-1 text-description">...</span> : null}
+      {clipped.prefixEllipsis ? <span className="mr-1 text-description">…</span> : null}
       {segments.map((segment) => {
         const primaryType = segment.primaryType;
         if (segment.types.length === 0 || primaryType === null) {
@@ -108,7 +108,7 @@ export function QuotationHighlightedCell({
           </span>
         );
       })}
-      {clipped.suffixEllipsis ? <span className="ml-1 text-description">...</span> : null}
+      {clipped.suffixEllipsis ? <span className="ml-1 text-description">…</span> : null}
       {row.quoteType ? (
         <span className="ml-1 rounded-sm border border-surface-border bg-panel px-1 py-0.5 align-baseline text-badge text-description">
           {row.quoteType}

@@ -115,7 +115,7 @@ export function SplitByGroupSubTab({
             : 'Tick at least one group.'
       }
       nameLabel="New Data Block names"
-      nameHint={`Each block is named after this and its group, for example ${groupBlockName(prefix, ticked[0]?.label ?? 'group')}.`}
+      nameHint={`Each Data Block is named after this and its group, for example ${groupBlockName(prefix, ticked[0]?.label ?? 'group')}.`}
       name={name}
       namePlaceholder={input?.name ?? ''}
       onNameChange={setName}

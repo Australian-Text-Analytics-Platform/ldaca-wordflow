@@ -348,7 +348,9 @@ export function ConcordanceDispersionSummary({
       ],
       source,
     },
-    grid: { containLabel: true, top: 10, right: 12, bottom: 32, left: 12 },
+    // containLabel covers tick labels, not axis names: leave room for the
+    // rotated y name on the left and the x name above the zoom slider.
+    grid: { containLabel: true, top: 10, right: 12, bottom: 52, left: 30 },
     tooltip: {
       trigger: 'axis',
       renderMode: 'richText',

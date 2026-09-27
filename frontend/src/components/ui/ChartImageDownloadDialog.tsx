@@ -34,7 +34,7 @@ interface Props {
  * Flow: initialize selected format and extra checkboxes, render AlertDialog form sections, then confirm with format/extras and close.
  */
 const ChartImageDownloadDialogContent = ({
-  title = 'Download Chart',
+  title = 'Download chart',
   onConfirm,
   onOpenChange,
   extraOptions = [],

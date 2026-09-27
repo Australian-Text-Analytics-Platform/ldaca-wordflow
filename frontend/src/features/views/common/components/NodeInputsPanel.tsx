@@ -109,7 +109,7 @@ export function NodeInputsPanel({
   nodeColors,
   onNodeColorChange,
   showColumnPicker = true,
-  columnLabel = 'Text Column:',
+  columnLabel = 'Text column',
   title = 'Data Blocks',
   guidanceTarget,
   emptyMessage,

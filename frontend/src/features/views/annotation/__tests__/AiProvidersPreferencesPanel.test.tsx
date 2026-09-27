@@ -73,7 +73,7 @@ describe('AiProvidersPreferencesPanel', () => {
     expect(screen.getByText('OpenRouter personal')).toBeInTheDocument();
     expect(screen.getByText('OpenRouter org')).toBeInTheDocument();
     expect(screen.getAllByText('Key saved')).toHaveLength(2);
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
     expect(screen.getByRole('dialog')).toHaveTextContent('Add provider form');
   });
 

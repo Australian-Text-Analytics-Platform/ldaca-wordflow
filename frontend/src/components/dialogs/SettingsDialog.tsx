@@ -192,7 +192,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 </section>
                 <section className="space-y-3">
                   <div>
-                    <h3 className="text-body font-semibold">Preference Sync</h3>
+                    <h3 className="text-body font-semibold">Preference sync</h3>
                     <p className="text-body text-description">
                       These preferences follow your account. Provider credentials use dedicated
                       mode-specific storage and are not User Preferences.
@@ -279,7 +279,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
 
               <TabsContent value="views" className="mt-0 space-y-3">
                 <div>
-                  <h3 className="text-body font-semibold">Visible Views</h3>
+                  <h3 className="text-body font-semibold">Visible views</h3>
                   <p className="text-body text-description">
                     Data Loader stays visible so Projects remain reachable.
                   </p>

@@ -180,7 +180,7 @@ describe('SettingsDialog', () => {
 
     expect(await screen.findByText('Annotation providers')).toBeInTheDocument();
     expect(screen.getByText('No Annotation providers configured.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Add Provider' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Add provider' })).toBeInTheDocument();
   });
 
   it('keeps Data Portal credentials in their own Portal tab', async () => {
@@ -191,7 +191,7 @@ describe('SettingsDialog', () => {
 
     expect(await screen.findByText('LDaCA access token', { selector: 'h3' })).toBeInTheDocument();
     expect(screen.getByLabelText('LDaCA access token')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Add Provider' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Add provider' })).not.toBeInTheDocument();
   });
 
   it('renders update preferences only in the desktop runtime', async () => {

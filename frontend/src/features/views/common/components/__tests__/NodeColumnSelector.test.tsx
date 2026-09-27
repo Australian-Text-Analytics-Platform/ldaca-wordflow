@@ -11,20 +11,20 @@ describe('NodeColumnSelector', () => {
     render(
       <NodeColumnSelector
         columns={[]}
-        label="Text Column"
+        label="Text column"
         noColumnsMessage="No text columns available"
         onChange={vi.fn()}
       />,
     );
 
-    expect(screen.getByText('Text Column')).toBeInTheDocument();
+    expect(screen.getByText('Text column')).toBeInTheDocument();
     expect(screen.getByRole('combobox')).toBeDisabled();
     expect(screen.getByRole('combobox')).toHaveTextContent('No text columns available');
   });
 
   it('filters the options by substring as the user types', async () => {
     const user = userEvent.setup();
-    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={vi.fn()} />);
+    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={vi.fn()} />);
 
     await user.click(screen.getByRole('combobox'));
     expect(screen.getAllByRole('option')).toHaveLength(WIDE_COLUMNS.length);
@@ -39,7 +39,7 @@ describe('NodeColumnSelector', () => {
 
   it('filters by anchored wildcard patterns', async () => {
     const user = userEvent.setup();
-    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={vi.fn()} />);
+    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={vi.fn()} />);
 
     await user.click(screen.getByRole('combobox'));
     await user.type(screen.getByRole('searchbox'), 'utterance*');
@@ -52,7 +52,7 @@ describe('NodeColumnSelector', () => {
 
   it('reports the match count and an empty state for a query that matches nothing', async () => {
     const user = userEvent.setup();
-    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={vi.fn()} />);
+    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={vi.fn()} />);
 
     await user.click(screen.getByRole('combobox'));
     await user.type(screen.getByRole('searchbox'), 'zzz');
@@ -65,7 +65,7 @@ describe('NodeColumnSelector', () => {
   it('commits the highlighted match on Enter', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={onChange} />);
+    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={onChange} />);
 
     await user.click(screen.getByRole('combobox'));
     await user.type(screen.getByRole('searchbox'), 'utterance_');
@@ -77,7 +77,7 @@ describe('NodeColumnSelector', () => {
   it('commits a clicked option', async () => {
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={onChange} />);
+    render(<NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={onChange} />);
 
     await user.click(screen.getByRole('combobox'));
     await user.click(screen.getByRole('option', { name: 'notes' }));
@@ -90,7 +90,7 @@ describe('NodeColumnSelector', () => {
     render(
       <NodeColumnSelector
         columns={WIDE_COLUMNS}
-        label="Text Column"
+        label="Text column"
         clearOptionValue="__clear__"
         onChange={vi.fn()}
       />,
@@ -107,7 +107,7 @@ describe('NodeColumnSelector', () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     const wideSheet = Array.from({ length: 596 }, (_, index) => `q${String(index)}_response`);
-    render(<NodeColumnSelector columns={wideSheet} label="Text Column" onChange={onChange} />);
+    render(<NodeColumnSelector columns={wideSheet} label="Text column" onChange={onChange} />);
 
     await user.click(screen.getByRole('combobox'));
     expect(screen.getAllByRole('option')).toHaveLength(596);
@@ -134,7 +134,7 @@ describe('NodeColumnSelector', () => {
         columns={WIDE_COLUMNS}
         value="removed_column"
         preserveValue="removed_column"
-        label="Text Column"
+        label="Text column"
         onChange={vi.fn()}
       />,
     );
@@ -152,7 +152,7 @@ describe('NodeColumnSelector', () => {
     const user = userEvent.setup();
     render(
       <>
-        <NodeColumnSelector columns={WIDE_COLUMNS} label="Text Column" onChange={vi.fn()} />
+        <NodeColumnSelector columns={WIDE_COLUMNS} label="Text column" onChange={vi.fn()} />
         <button type="button">After selector</button>
       </>,
     );

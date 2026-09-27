@@ -84,7 +84,7 @@ export function EditAnnotationProviderDialog({
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Provider</DialogTitle>
+          <DialogTitle>Edit provider</DialogTitle>
           <DialogDescription>
             Update the display name or saved credential. Provider identity and endpoint stay fixed.
           </DialogDescription>

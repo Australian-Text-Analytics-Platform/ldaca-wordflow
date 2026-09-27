@@ -148,7 +148,7 @@ export function TopicModelingBubbleChartSection({
       // One name for the topic count (issue 205).
       { label: 'Number of topics', value: clusterCount != null ? String(clusterCount) : '—' },
       { label: 'Top topics per document', value: topNTopics != null ? String(topNTopics) : '—' },
-      { label: 'Random Seed', value: randomSeed != null ? String(randomSeed) : '—' },
+      { label: 'Random seed', value: randomSeed != null ? String(randomSeed) : '—' },
       { label: 'Topics in the chart', value: String(topics.length) },
       ...(activeColorScheme ? [{ label: 'Colour by', value: activeColorScheme.column }] : []),
     ];
@@ -248,7 +248,7 @@ export function TopicModelingBubbleChartSection({
       <ChartImageDownloadDialog
         open={downloadDialogOpen}
         onOpenChange={setDownloadDialogOpen}
-        title="Download Topic Model Chart"
+        title="Download topic model chart"
         extraOptions={[TM_CSV_OPTION]}
         onConfirm={(format, extras) => {
           void handleDownloadChart(format, extras);

@@ -45,7 +45,7 @@ describe('AddAnnotationProviderDialog', () => {
     expect(name).toHaveFocus();
 
     await user.type(screen.getByLabelText(/API Key/), 'personal-key');
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
 
     await waitFor(() =>
       expect(mocks.addAnnotationProvider).toHaveBeenCalledWith({
@@ -72,7 +72,7 @@ describe('AddAnnotationProviderDialog', () => {
 
     await user.type(screen.getByLabelText('Name'), 'OpenRouter key later');
     expect(screen.getByText(/add the key later in Settings/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
 
     await waitFor(() =>
       expect(mocks.addAnnotationProvider).toHaveBeenCalledWith({
@@ -93,7 +93,7 @@ describe('AddAnnotationProviderDialog', () => {
     await user.click(screen.getByRole('option', { name: 'Custom' }));
     await user.type(screen.getByLabelText('Custom Base URL'), 'http://localhost:8080/v1/');
     await user.type(screen.getByLabelText('Name'), 'Local model');
-    await user.click(screen.getByRole('button', { name: 'Add Provider' }));
+    await user.click(screen.getByRole('button', { name: 'Add provider' }));
 
     expect(await screen.findByText('Could not save provider')).toBeInTheDocument();
     expect(screen.getByLabelText('Custom Base URL')).toHaveValue('http://localhost:8080/v1/');

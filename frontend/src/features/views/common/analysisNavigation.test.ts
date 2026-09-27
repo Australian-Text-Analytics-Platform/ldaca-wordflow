@@ -29,7 +29,9 @@ describe('analysis navigation metadata', () => {
     });
     expect(analysisNavigationForView('analysis')?.kind).toBe('sequential');
     expect(analysisNavigationForView('data-loader')).toBeNull();
-    expect(analysisTabQuickAccessLabel(tab('token_frequency', 'Analysis 1'))).toBe('Frequency: F-1');
+    expect(analysisTabQuickAccessLabel(tab('token_frequency', 'Analysis 1'))).toBe(
+      'Frequency: F-1',
+    );
   });
 
   it('names tabs with the tool prefix and shows older default names with it (issue 211)', () => {

@@ -116,7 +116,7 @@ export function AnnotationAiSettings({
                     }}
                   >
                     <Plus className="size-4" aria-hidden="true" />
-                    Add Provider
+                    Add provider
                   </button>
                 </div>
               </div>

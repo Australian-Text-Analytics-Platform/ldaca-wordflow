@@ -44,7 +44,7 @@ describe('concordanceRowDetail', () => {
 
     const fields = customization.summaryFields ?? [];
     expect(fields.map((field) => [field.label, field.value])).toEqual([
-      ['Search Word', 'alpha'],
+      ['Search word', 'alpha'],
       ['Matches', '2'],
       ['L1 Word', 'before'],
       ['L1 Freq', '3'],
