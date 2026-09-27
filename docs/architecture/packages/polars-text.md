@@ -26,7 +26,8 @@ preserves source-character offsets and reuses a core extractor per adapter threa
 
 The adapter retains Polars allocation, list/struct builders, lazy execution, and
 binary licence notices. No Python list materialization is required for token
-frequency counting. Retired serialized Polars-plan rewriting is preserved under `archive/polars-source-utils/` and is not used by the native project format.
+frequency counting. Retired serialized Polars-plan rewriting remains available
+in repository history and is not used by the native project format.
 
 See the [API reference](../../reference/polars-text-api.md) for output contracts
 and [development runbook](../../runbooks/polars-text-development.md) for checks.

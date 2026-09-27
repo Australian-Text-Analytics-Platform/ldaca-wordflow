@@ -8,7 +8,7 @@ supported compatibility distribution.
 | Location | Preserved material |
 | --- | --- |
 | `backend/` | FastAPI application, analyses, workspace persistence, tests and packaging |
-| `polars-source-utils/` | Independent Git submodule for serialized Polars-plan source paths |
+| `polars-source-utils/` | Retired serialized Polars-plan source paths, available in repository history; its upstream no longer serves the pinned commit |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Former root Python environment definition |
 | `scripts/`, `tests/` | Python distribution/runtime checks and old development/staging helpers |
 | `frontend/` | FastAPI shell, authentication, Data Root, project catalogue, task streams, inactive analysis controllers, generated contracts, exclusive tests/utilities, old tutorials and browser/build tooling |

@@ -254,3 +254,6 @@ frontend/src-tauri/resources/icu/manifest.json
 
 # Local visual review output
 .impeccable/
+
+# Retired local checkout; its pinned upstream commit is no longer fetchable.
+/archive/polars-source-utils/

@@ -11,7 +11,7 @@ changing that package.
 - `backend/`: shared native Axum runtime, DuckDB project API, and standalone Rust server
 - `frontend/`: React 19, Vite, TypeScript, and the Tauri desktop shell
 - `polars-text/`: Polars expression plugins for text analysis
-- `archive/polars-source-utils/`: retired serialized Polars-plan utilities
+- Retired serialized Polars-plan utilities are available in repository history.
 - `ldaca-rs/`: ONI data access and Arrow-based RO-Crate conversion
 - `ldaca-analytics-sample-data/`: canonical remote sample-data repository
 - `docs/`: current engineering knowledge and operational procedures
