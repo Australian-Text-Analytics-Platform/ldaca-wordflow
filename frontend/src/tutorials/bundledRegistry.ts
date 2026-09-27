@@ -39,17 +39,17 @@ const tutorial = {
   'ui.tool-choice': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-tool-choice',
-    label: 'Tool Choice',
+    label: 'Views',
   },
   'ui.data-selection': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-data-selection',
-    label: 'Data Selection',
+    label: 'Data Blocks',
   },
   'ui.task-centre': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-task-centre',
-    label: 'Task Centre',
+    label: 'Tasks',
   },
   'ui.workspace-graph-view': {
     file: 'tutorials/ui.md',
@@ -85,6 +85,11 @@ const tutorial = {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-analysis-layout',
     label: 'Parameters and results layout',
+  },
+  'ui.preview-run-clear': {
+    file: 'tutorials/ui.md',
+    anchor: 'help-ui-preview-run-clear',
+    label: 'How Preview, Run and Clear work',
   },
   'ui.regular-expressions': {
     file: 'tutorials/ui.md',

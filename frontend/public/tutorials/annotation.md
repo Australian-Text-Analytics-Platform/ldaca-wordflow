@@ -125,19 +125,18 @@ cost, latency, and repeatability vary by model.
 
 <h3 id="help-annotation-preview">Preview</h3>
 
-Choose **Preview** to create an immutable Analysis snapshot and inspect predicted
-labels without writing to the annotation column. Page through the predictions,
+Choose **Preview** to see predicted labels for a sample of rows without writing
+to the annotation column. Page through the predictions,
 compare them with existing labels, add corrections if useful, then revise the
 Codebook, examples, model, or settings when the errors show a pattern.
-Preview waits for the bounded provider attempt instead of imposing a shorter
-browser deadline; use cancellation when you no longer want to wait.
-The label remains **Preview**, and it becomes available after an
-execution-request change. **Run** compares against its own submitted request.
+Preview waits as long as the provider allows; choose **Stop** when you no longer
+want to wait. After a Preview, the button turns on again when you change a
+setting. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h3 id="help-annotation-run-all">Run and review</h3>
 
-Choose **Run** only after Preview is satisfactory. Run executes from the
-saved Preview snapshot and writes labels to the selected annotation column. The
+Choose **Run** only after Preview is satisfactory. Run uses the same data and
+settings as that Preview and writes labels to the selected annotation column. The
 Review table reflects the current Data Block and supports the same hidden-first
 comparisons, row filters, reliability, metadata, resizable frame, and correction
 controls. A reviewed
@@ -153,17 +152,15 @@ clear a value.
 
 <h2 id="help-annotation-results">Results, Clear, and Undo</h2>
 
-**Clear** removes the tab's Preview and Run Analyses and clears its
-result state; it does not undo labels already written to the Data Block. Use the
-Data Block's session **Undo** action to reverse the latest manual edit, AI write,
-or column creation. Undo history lasts only for the current backend Project
-session.
+**Clear** removes the tab's Preview and Run results; it does not undo labels
+already written to the Data Block. Use **Undo** in the Data Editor to reverse
+the latest manual edit, AI write, or column creation. Undo history lasts only
+until the Project is closed.
 
-Preview or Run locks the parameter panel only while submission or execution
-is active. A failed or cancelled root unlocks parameters but disables both
-execution actions until you choose **Clear**. Existing tables remain tied to the
-request or Manual Start snapshot that produced them while you edit the next
-draft.
+Settings are locked while Preview or Run is working. After a failure or a stop,
+you can edit the settings again, but Preview and Run stay off until you choose
+**Clear**. Tables on screen keep the settings of the Preview, Run or Start that
+made them while you edit the next setup. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 Before using labels downstream, sample every code, inspect uncertain or costly
 errors, and record who or what produced the labels. Treat AI predictions and

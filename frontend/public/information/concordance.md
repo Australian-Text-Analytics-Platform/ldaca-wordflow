@@ -8,9 +8,8 @@ analysis without loading a whole-corpus result into the browser.
 
 - What do I select?
   Add one or two Data Blocks and choose a source text column for each. Document
-  Column and Tokeniser Preferences initialize fresh selectors independently;
-  reopening an Analysis restores the exact values stored in its immutable
-  request.
+  column and tokeniser preferences fill in new selectors; reopening a result
+  shows the exact values it was made with.
 
 - Which search mode should I use?
   **Text** supports whole-word, regular-expression, and case-sensitive search
@@ -29,9 +28,9 @@ analysis without loading a whole-corpus result into the browser.
 - How are Results paged?
   **Documents per page** controls how many source documents are evaluated for
   the current page. Documents without a match are omitted, while one document
-  can produce several rows. Page, page-size, and source-metadata sort changes
-  are projections of the same completed Analysis and retained input snapshot;
-  they do not re-run against a mutable Data Block.
+  can produce several rows. Changing the page, page size or a metadata sort
+  reuses the same result and the data as it was when the result was made; it
+  does not read later edits to the Data Block.
 
 - What can I sort?
   In separated Preview tables, selected source metadata is sortable and
@@ -52,17 +51,15 @@ analysis without loading a whole-corpus result into the browser.
   direct L1/R1 cells remain plain.
 
 - What do Preview and Run do?
-  **Preview** creates a Preview Analysis and computes only the page you request.
-  **Run** may be started directly and creates one Run group with one
-  Supporting Analysis and immutable table Result per source. **Concordance
-  Results** then reads those Results directly. Table View pages matches. Dispersion View pages
-  qualifying source rows and charts one series per exact, case-sensitive term
-  over the complete Result. After Run, hidden terms and selected bins filter
-  documents, markers, counts, and Data Block Creation before sorting and
-  paging. **Add to Project** starts Concordance Match Data Block Creation
-  from Table View or Concordance Document Data Block Creation with required
-  `CONC_extraction` from Dispersion View. With two sources, you can include
-  either or both in one atomic request.
+  **Preview** works out only the page you open. **Run** can be started
+  directly and finds every match in each selected Data Block. **Concordance
+  Results** then shows the complete result. Table View pages matches.
+  Dispersion View pages the documents that contain matches and charts one
+  series per exact, case-sensitive term. After Run, hidden terms and selected
+  bins also decide which documents, markers and counts are shown, and what
+  **Add to Project** saves. From Table View it saves one row per match; from
+  Dispersion View it saves one row per document, with the matches in
+  `CONC_extraction`. With two Data Blocks, you can include either or both.
 
 - Where can I get help?
   See the full Concordance tutorial in Help, or use the Feedback button in the

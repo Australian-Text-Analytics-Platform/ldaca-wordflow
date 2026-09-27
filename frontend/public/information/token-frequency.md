@@ -2,8 +2,6 @@
 
 <h2 id="info-token-frequency-overview">About Frequency Analysis</h2>
 
-Frequency
-
 - What is this?
   This tool retrieves each token (~word) in your text / text collection. It creates a word cloud visualisation as well as a frequency list (= a list of each word and the raw/absolute frequency with which it occurs). You can download both to your Downloads folder.
 
@@ -12,9 +10,9 @@ Frequency
 
 The word cloud currently displays the top 50 tokens by default. Because of known limitations of such visualisations and critiques of how they represent frequency, it is recommended to use the frequency list for analysis rather than relying on the word cloud visualisation.
 
-The output differs depending on how a ‘token’ is defined. For example, whether punctuation counts as a token, whether a word like high-school is treated as one or two tokens or whether contractions like you’re, don’t, isn’t are treated as one or two tokens. Choose a tokeniser model for every selected data block before running the analysis. The choice is saved as that data block's tokeniser preference for fresh selectors, but each submitted Analysis keeps the exact model mapping it used. There is no account-wide default, and changing a data block preference does not rewrite historical results.
+The output differs depending on how a ‘token’ is defined. For example, whether punctuation counts as a token, whether a word like high-school is treated as one or two tokens or whether contractions like you’re, don’t, isn’t are treated as one or two tokens. Choose a tokeniser model for every selected Data Block before running the analysis. The choice is saved as that Data Block's tokeniser preference for fresh selectors, but each submitted Analysis keeps the exact model mapping it used. There is no account-wide default, and changing a Data Block preference does not rewrite historical results.
 
-The frequency list shows, and its download includes, both the raw (absolute) frequency of each token (word) and its normalised frequency per million tokens. Use the per-million figures when comparing text collections of different sizes. They are calculated from every token in the data block, so hiding stop words does not change them. Alternatively, if you select two data blocks (two text collections) within the Frequency tool, you can use the tool to identify the key words in a text collection by using in-built statistical measures (this is commonly called keywords analysis in corpus linguistics). Key words are words that are (statistically speaking) unusual in their frequency in the _study_ text collection, through comparison to the _reference_ text collection. You can only create a list of key words when you compare two text collections.
+The frequency list shows, and its download includes, both the raw (absolute) frequency of each token (word) and its normalised frequency per million tokens. Use the per-million figures when comparing text collections of different sizes. They are calculated from every token in the Data Block, so hiding stop words does not change them. Alternatively, if you select two Data Blocks (two text collections) within the Frequency tool, you can use the tool to identify the key words in a text collection by using in-built statistical measures (this is commonly called keywords analysis in corpus linguistics). Key words are words that are (statistically speaking) unusual in their frequency in the _study_ text collection, through comparison to the _reference_ text collection. You can only create a list of key words when you compare two text collections.
 
 **Q&A**
 
@@ -22,11 +20,10 @@ The frequency list shows, and its download includes, both the raw (absolute) fre
   Yes. You can change the word cloud so that it displays more or fewer than the top 50 tokens (from 10 up to 100 tokens).
   You can also adjust the frequency list by using stop words – words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by picking a list from the stop words dropdown: a default list for the language detected in the selected column, a Wordflow classic list, or the list from another Frequency or Topic Modelling tab.
   Use the result-level token filter to narrow every cloud, frequency list, and two-block Keyword Analysis result with wildcard patterns. The same filter is applied to result downloads.
-  When doing a keywords analysis, you can change the order in which keywords appear by sorting them differently. [anything else you can change?]
+  When doing a keywords analysis, you can change the order in which keywords appear by sorting on any column, including **Significance**.
 
 - Where can I read more about this method?
-  Token frequency: link to LDACA site? https://www.atap.edu.au/text-analysis/methods/
-  Keywords: link to LDACA site? https://www.atap.edu.au/text-analysis/methods/
+  Token frequency and keywords: see the ATAP text analysis methods page, https://www.atap.edu.au/text-analysis/methods/
 
 - Is there a notebook version?
   Yes, there is a legacy notebook for keywords analysis. You can access this here: https://github.com/Australian-Text-Analytics-Platform/keywords-analysis

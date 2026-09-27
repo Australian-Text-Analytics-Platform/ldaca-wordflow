@@ -40,10 +40,8 @@ to enable the tokeniser selectors, then choose or confirm a model for each
 source. As in Frequency, each tokeniser in the list shows the language it is
 for, and the link icon beside the selected tokeniser opens its project page.
 
-Preview records the exact source columns, tokeniser mapping, and search mode in
-the immutable Analysis request. Reopening an existing Preview Analysis uses
-those saved values even if the current Data Block preferences have since
-changed.
+Preview and Run keep the source columns, tokenisers, and search mode they were
+started with, even if you later change a Data Block's tokeniser preference.
 
 <h5 id="help-concordance-regex-toggle">Regular expressions</h5>
 
@@ -57,7 +55,7 @@ In Text mode, tick **Use regular expression** to search for a pattern instead of
 | `\w{2}-\d{4,6}` | IDs such as *SA-3988* or *id-4589* |
 
 Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test unfamiliar patterns. **Whole
-Word** excludes partial-word matches, and **Case Sensitive** keeps letter case
+word** excludes partial-word matches, and **Case sensitive** keeps letter case
 distinct.
 
 <h3 id="help-concordance-context">Step 3 — Set the context window</h3>
@@ -83,20 +81,13 @@ empty.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 
-<h2 id="help-concordance-run">Step 5 — Preview</h2>
+<h2 id="help-concordance-run">Step 5: Preview</h2>
 
-Click **Preview** to create a durable Preview Analysis. The label always remains
-**Preview**. After success, changing an execution parameter enables Preview
-again; reverting exactly to its submitted request disables it. Preview and
-**Run** keep independent submitted-request baselines.
-Each page navigation or sort request recomputes that page from the retained
-input snapshot. Preview pages are not retained or reused.
+Choose **Preview** to see the first pages of matches. Each page is worked out
+when you open it, from the data as it was when you chose Preview. See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-results">Result panel</h2>
-
-Preview pages, page sizes, and source-metadata sorts are fresh projections over
-the retained snapshot. They never read the current mutable Data Block, so
-editing a source cannot silently change that Preview Analysis.
 
 In separated Preview tables, selected source metadata headers are sortable.
 Generated scalar headers such as matched text, L1/R1, frequencies, and offsets
@@ -121,7 +112,7 @@ the left context and the first R1 occurrence in the right context use a softer
 source-colour tint. Empty or unmatched anchors remain plain. Turn off
 **Highlight L1/R1 in context** to hide only those inline tints for the current
 tab session. The direct L1/R1 cells remain plain and available for sorting,
-frequencies, export, and Data Block Creation.
+frequencies, export, and **Add to Project**.
 
 <h4 id="help-concordance-dispersion-view">Dispersion view</h4>
 
@@ -179,8 +170,8 @@ Trends: in Line and Area charts their points become large solid dots while the
 other points stay small hollow circles, and in Bar charts the unselected bars
 are dimmed. **Clear Selection** removes the bin filter. Click a legend term to
 hide or show it. Visible terms intersected with selected bins control the
-displayed documents, match markers, legend counts, and Concordance Document
-Data Block Creation.
+displayed documents, match markers, legend counts, and the documents that
+**Add to Project** saves.
 Each document row shades the selected range, so its match markers line up with
 the selection (positions count characters, so emoji and other symbols count once).
 Documents without a surviving match disappear. Preview has a static legend and
@@ -215,7 +206,7 @@ and do not become source-metadata sort keys.
 With two Data Blocks, **Separated** gives each source its own Result block and
 sort state. **Combined** interleaves the current pages and colours rows by
 source. Combined headers are display-only because one sort order cannot be
-applied independently to both source snapshots.
+applied to two Data Blocks at once.
 
 <h4 id="help-concordance-sources-mode">Combined filters</h4>
 
@@ -226,13 +217,11 @@ remain the chart series.
 
 <h3 id="help-concordance-run-all">Run and Concordance Results</h3>
 
-**Run** can be started before or after Preview. It submits one thin Run
-group with one independent Supporting Analysis per selected source. Each child
-uses the Run request's immutable snapshot and tokeniser mapping and retains
-one complete table Result. Run does not add Data Blocks to the Project.
+**Run** can be started before or after Preview. It finds every match in each
+selected Data Block and keeps the complete result for each. Run does not add
+Data Blocks to the Project.
 
-After success, **Concordance Results** reads each immutable Result through explicit match and
-document projections. Table View always shows **Matches per page**. Dispersion
+After Run, **Concordance Results** shows the complete result. Table View always shows **Matches per page**. Dispersion
 View always shows qualifying **Documents per page**; filtering occurs before
 sorting, counting, and paging, and the selected page size applies independently
 to each source. After Run, there is no page-local Found summary.
@@ -244,15 +233,14 @@ their frequencies, and start/end offsets across the complete Result. Sorting is 
 values have no guaranteed secondary order. The document and full context
 headers remain plain, and the combined table remains unsorted.
 
-After Run, the density chart always summarizes the complete immutable Result, not
-the visible page. `CONC_dispersion` remains a frontend presentation field and
-is never stored or queried as a physical Result column.
+After Run, the density chart always summarises the complete result, not only
+the visible page.
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-Result. Table View creates a **Concordance Match Data Block Creation**, with one row per
-match and the current flat selected-column behavior. Dispersion View creates a
-**Concordance Document Data Block Creation**, with one row per qualifying original
-source row. It contains the required original document, required
+result. From Table View, **Add Concordance Matches to Project** creates a Data
+Block with one row per match and the columns you select. From Dispersion View,
+**Add Concordance Documents to Project** creates a Data Block with one row per
+qualifying original row. It contains the required original document, required
 `CONC_extraction` (surviving KWIC extractions joined with plain newlines), and
 optional metadata. The document and extraction columns are locked on and
 metadata starts off. Every source is checked by default; unchecking a source
@@ -271,11 +259,9 @@ qualifying rows and therefore creates a schema-only Data Block.
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
-The Tab keeps its complete Analysis forest. **Clear** removes that
-forest. Preview or Run locks every parameter only while submission or
-execution is active; Stop becomes available once the task exists. If either
-root fails or is cancelled, parameters unlock but both execution actions stay
-disabled until you choose **Clear**.
+**Clear** removes this tab's Preview and Run results. Settings are locked while
+Preview or Run is working, and **Stop** cancels it. After a failure or a stop,
+Preview and Run stay off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-concordance-troubleshooting">Troubleshooting</h2>
 
@@ -283,11 +269,11 @@ disabled until you choose **Clear**.
 |---|---|---|
 | No results on one page | The current source-document batch has no match | Continue to the next page |
 | Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
-| Too many partial matches | Whole Word is off in Text mode | Enable **Whole Word** |
+| Too many partial matches | Whole word is off in Text mode | Tick **Whole word** |
 | A regular expression fails | Invalid pattern syntax | Test the pattern on regex101.com with the Rust flavour |
 | A generated Preview header does not sort | Sorting generated columns needs every match, which only Run processes | Run, then sort the separated table |
 | Run is disabled | Inputs are incomplete or another Run is active | Complete the inputs or wait for the active Analysis |
-| Preview differs from the edited Data Block | You reopened a historical Preview Analysis | Change an execution input and choose **Preview** to capture a new snapshot |
+| Preview does not show a later edit to the Data Block | Preview keeps the data as it was when you chose it | Choose **Preview** again after changing a setting |
 
 <h2 id="help-concordance-defaults">Quick-reference defaults</h2>
 
@@ -295,9 +281,9 @@ disabled until you choose **Clear**.
 |---|---|---|
 | Search mode | Text | Select Tokens explicitly to enable tokeniser selection |
 | Left / Right context | 10 tokens each | Range 0–50 |
-| Whole Word | Off | Text mode only |
+| Whole word | Off | Text mode only |
 | Regular expression | Off | Text mode only |
-| Case Sensitive | Off | Text mode only |
+| Case sensitive | Off | Text mode only |
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table View |
@@ -308,13 +294,13 @@ disabled until you choose **Clear**.
 
 ## Practice exercise
 
-1. Select a Data Block and Preview a Text-mode Whole Word search.
+1. Select a Data Block and Preview a Text-mode search with **Whole word** ticked.
 2. Compare two source-metadata sort orders.
 3. Switch to Preview Dispersion and compare the per-term series.
 4. Run, open Dispersion View, hide a term, and select a bin range.
-5. Compare Concordance Match Data Block Creation from Table View with
-   Concordance Document Data Block Creation from Dispersion View.
-6. Change an execution input, then choose **Preview** to compare the new request
-   deliberately while the earlier Result remains bound to its snapshot.
+5. Compare **Add to Project** from Table View (one row per match) with
+   Dispersion View (one row per document).
+6. Change a setting, then choose **Preview** again and compare the new matches
+   with the earlier ones.
 
 [← Back to tutorial index](./index.md)

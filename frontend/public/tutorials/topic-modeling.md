@@ -109,13 +109,12 @@ clustering observation. When assignments are rolled back to documents, each
 segment is weighted by the Unicode-character length of its owned source span.
 Outlier coverage remains part of normalized Topic Coverage and can be dominant.
 
-The **Run** label never changes. Parameters lock while the Analysis is
-submitting, queued, or running, then unlock after success. Changing an
-execution parameter enables Run again; reverting exactly to the submitted
-request disables it. Words per topic, stop words, search, selection, and chart
-controls are presentation-only and do not enable Run. After failure or
-cancellation, Run stays disabled until **Clear** removes the Analysis;
-your segmentation method, token cap, and Min topic size stay selected.
+Settings are locked while **Run** works. After it finishes, Run turns on again
+only when you change a setting that affects the topics. Words per topic, stop
+words, search, selection, and chart controls only change what is shown, so they
+do not turn Run on. After a failure or a stop, Run stays off until you choose
+**Clear**; your segmentation method, token cap, and Min topic size stay
+selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
@@ -139,19 +138,18 @@ show a fixed disabled control.
 
 The lower bound appears to the left of the slider. Change the topic count with
 either the slider or the number field on its right; both stay synchronized.
-Wordflow requests one projection after you commit either control. The current
+Wordflow updates the topics once you finish changing either control. The current
 chart remains visible with
 **Updating topics…** until the new representative words, coordinates, sizes,
 and document assignments arrive. A failed request restores the previous value.
 Changing the count clears Topic selection and chart hover or zoom state. Search,
 stop words, and Words per topic remain in place.
 
-A successfully applied non-default projection is remembered for the same
-Analysis. If a lower cluster count cannot support the current Top topics per
+A changed topic count is remembered with the result. If a lower cluster count cannot support the current Top topics per
 row, Wordflow sends one update with that value clamped to the new count.
-Rerunning creates a new Analysis at its natural count and Top 2. Export and Add
-to Project use the displayed successful projection and are unavailable while
-an update is pending.
+Running again starts from the natural count and Top 2. Export and Add to
+Project use the topics on screen and are unavailable while an update is
+pending.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Per document (top topics per document)</h3>
 
@@ -307,12 +305,11 @@ for older results, re-run the analysis first.
 
 The download control exports the current panned and zoomed graph viewport. Its
 header records Data Block, cluster count, Top topics per document, random seed, and
-Topic count. CSV output continues to contain the complete projected Topic
-result and its current counts.
+Topic count. CSV output still contains every topic and its current counts.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
-**Clear** removes the retained Analysis and Result. The selected
+**Clear** removes this tab's result. The selected
 **Segments** method, **Max tokens** value, and **Topic size** range remain
 available for the next run.
 

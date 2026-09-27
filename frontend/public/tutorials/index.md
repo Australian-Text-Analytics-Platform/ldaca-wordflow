@@ -12,13 +12,13 @@ the sidebar or jump directly to a section with a **?** icon.
 
 ## Overview
 
-Wordflow offers an interface that prioritizes ease of use and efficient navigation. The main user interface includes the following main sections, systematically presented in three primary columns.
+Wordflow offers an interface that prioritises ease of use and efficient navigation. The main user interface includes the following main sections, systematically presented in three primary columns.
 
 ![Wordflow main view](tutorials/assets/ldaca_main.png)
 
-1.	Tool Choice: Choose and customise which tool module to use.
-2.	Data Selection: Select the data block to be analysed.
-3.	Task Centre: Show progress of time-consuming tasks.
+1.	Views: Choose and customise which tool to use.
+2.	Data Blocks: Select the Data Block to analyse.
+3.	Tasks: Show the progress of longer tasks.
 4.	Project Graph: Manage all processible and produced data blocks.
 5.	Data Editor: View and edit the selected data block(s) as a table.
 6.	Tool Interface: The main interface of the selected analytic tool.

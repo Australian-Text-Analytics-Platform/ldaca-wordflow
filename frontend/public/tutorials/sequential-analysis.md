@@ -77,14 +77,13 @@ Trends retains exact group values in its result. After the analysis finishes,
 use **Ignore capitals** beside the result legend when values that differ only in
 capitalisation should be displayed and filtered as one group.
 
-<h2 id="help-sequential-run">Step 5 — Run the analysis</h2>
+<h2 id="help-sequential-run">Step 5: Run the analysis</h2>
 
-Click **Run** to start the analysis. The label always remains **Run**. Parameters
-lock only while the Analysis is submitting, queued, or running. After success,
-change an execution input to enable Run again; reverting to the submitted values
-disables it. Minimum group count, chart type, axis, selection, visibility, and
-Ignore capitals controls do not enable Run because they only change result presentation
-or filtering.
+Choose **Run** to start. Settings are locked while it works. After it finishes,
+Run turns on again only when you change a setting that affects the counts.
+Minimum group count, Chart, Spacing, selection, visibility, and Ignore capitals
+only change what is shown, so they do not turn Run on. See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-sequential-results">Result panel</h2>
 
@@ -132,7 +131,7 @@ The **Spacing** list next to **Chart** sets how periods are placed along the hor
 
 In To scale mode with a date and time column, axis labels show dates (for example *Apr 2018*). The tool aims for about ten labels across the visible range, dropping labels automatically if the chart is too narrow.
 
-**Empty periods count as zero.** When a group has no rows in a period, the line stays connected and dips to zero rather than breaking, because "no occurrences" is genuinely zero, not unknown. This is most visible in To scale mode, where gaps are proportional to time.
+**Empty periods.** A period with no rows at all is hidden in Even spacing and leaves a gap on the axis in To scale spacing. Within a period that is shown, a group with no rows counts as zero, so its line dips to zero rather than breaking: "no occurrences" is genuinely zero, not unknown.
 
 The vertical axis shows counts of rows and has no title. When nothing is grouped, the single series is named after the Data Block.
 
@@ -201,10 +200,10 @@ source rows and selected periods will be added.
 
 <h3 id="help-sequential-clear-results">Clear results</h3>
 
-The tab keeps its current Trends Analysis in the backend so it can
-reload its lifecycle and Result. **Clear** removes that Analysis and
-resets the tab. After a failure or cancellation, parameters remain editable but
-Run stays disabled until you choose **Clear**. Clearing or replacing the
+The tab keeps its result when you move to another tool or reopen the Project.
+**Clear** removes it and resets the tab. After a failure or a stop, the settings
+stay editable but Run stays off until you choose **Clear**. See
+[How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear). Clearing or replacing the
 result restores Minimum group count to **10** and clears manual legend
 visibility.
 

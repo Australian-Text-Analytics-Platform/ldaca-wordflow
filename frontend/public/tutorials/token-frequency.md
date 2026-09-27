@@ -48,13 +48,12 @@ Stop words are terms you want to exclude from the frequency count — commonly w
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens — they are excluded as a post-processing step.
 - Right-click any word in the word cloud or frequency list to add it directly to the stop-word list. Words added this way are **inserted at the start of the list** so they are easy to find and remove. The list is not re-sorted until you click **Sort**.
 
-<h2 id="help-token-frequency-run">Step 4 — Run the analysis</h2>
+<h2 id="help-token-frequency-run">Step 4: Run the analysis</h2>
 
-Click **Run** to start. The label always remains **Run**. While the Analysis is
-submitting, queued, or running, its parameters are locked. After success they
-unlock, and Run becomes available only when an execution input changes; return
-every input to its submitted value and Run disables again. Stop words and the
-Cloud/List display limits change only the presentation and do not enable Run.
+Choose **Run** to start. Settings are locked while it works. After it finishes,
+Run turns on again only when you change a setting that affects the counts.
+Stop words and the Cloud and List display limits only change what is shown, so
+they do not turn Run on. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-results">Result panel</h2>
 
@@ -153,16 +152,15 @@ For a token, O<sub>S</sub> and O<sub>R</sub> are its counts in the study and ref
 
 Results created before Wordflow 0.7.8 measured the reference block against the study block, so their %DIFF, RRisk, LogRatio, and OddsRatio are reversed. Run the analysis again to get the current direction.
 
-Use the **Head / Tail Rows (N)** control to show the first and last N rows of the sorted table. Sorting always applies to the full dataset before trimming.
+The table is paged: use **Words per page** and the page controls below it. Sorting always applies to the whole table before paging.
 
 The full table can be downloaded as a CSV file; when the shared token filter is active, the download contains all matching rows. The CSV uses the same column names as the table, with each corpus's name added (for example `OR_speeches`), plus `Expected_…`, the count the token would have in that corpus if both corpora used it equally, and `Total_…`, the corpus's total number of tokens. For further reading on keyword analysis methodology, see the [Lancaster corpus linguistics resource](https://www.lancaster.ac.uk/fss/courses/ling/corpus/blue/l03_2.htm) and Paul Rayson's [log-likelihood and effect size calculator](https://ucrel.lancs.ac.uk/llwizard.html), which these formulas follow.
 
 <h3 id="help-token-frequency-clear-results">Clear results</h3>
 
-The tab keeps its current Analysis in the backend so it can reload its lifecycle
-and Result. **Clear** removes that Analysis and resets the tab. After a
-failure or cancellation, the parameters stay editable but Run remains disabled
-until you choose **Clear**.
+The tab keeps its result when you move to another tool or reopen the Project.
+**Clear** removes it and resets the tab. After a failure or a stop, the settings
+stay editable but Run stays off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-token-frequency-troubleshooting">Troubleshooting</h2>
 

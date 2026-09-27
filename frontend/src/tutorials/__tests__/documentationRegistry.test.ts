@@ -22,7 +22,7 @@ describe('getDocumentTarget', () => {
       key: 'ui.tool-choice',
       file: 'tutorials/ui.md',
       anchor: 'help-ui-tool-choice',
-      label: 'Tool Choice',
+      label: 'Views',
     });
   });
 

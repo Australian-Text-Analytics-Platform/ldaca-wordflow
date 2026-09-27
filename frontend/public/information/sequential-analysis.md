@@ -17,12 +17,12 @@ Your textual data should be consistently encoded (UTF8) and should not contain a
 You need to make sure that the column that includes the date is correctly classified (not as text, but as datetime, date, integer or decimal). You can convert it with the data-type menu in its column header in the Data Editor. For additional metadata (e.g. gender, age, political party) it is a good idea to convert these columns to categorical in the same way.
 
 For visualising words on the timeline: You first have to create a Concordance,
-open Review in **Table View**, and use **Add to Project** to create a
-**Concordance Match Data Block Creation**. Include the date and any other metadata that
+open Review in **Table View**, and use **Add to Project** to save the matches as a new
+Data Block. Include the date and any other metadata that
 you need. Then use that Data Block as the source for Trends and add
 `CONC_matched_text` (text) as a Group By column. This shows how each exact
 matched term occurs over time. To count case variants such as *Jobs* and *jobs*
-together, tick **Uncased** beside the result legend.
+together, tick **Ignore capitals** beside the result legend.
 
 - Can I change any of the settings/parameters?
 You can change the frequency (e.g. daily vs monthly), you can change the chart type for the visualisation, and you can add parameters (based on metadata) for the comparison (Add Group). You can change which parameters are visible and which are not visible in the timeline. When numerical data is selected, you can decide the interval where the origin to start for the X-axis (not necessarily starting from Zero).

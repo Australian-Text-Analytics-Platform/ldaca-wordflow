@@ -8,7 +8,7 @@ The LDaCA app interface is organised into three columns. This page describes its
 
 ![LDaCA main app](tutorials/assets/ldaca_main.png)
 
-<h2 id="help-ui-tool-choice">1. Tool Choice</h2>
+<h2 id="help-ui-tool-choice">1. Views</h2>
 
 The left sidebar lists the available tool modules. Click a tool name to switch the main area (section 6) to that tool's interface. The available tools include:
 
@@ -30,7 +30,7 @@ The pencil icon next to the heading (**Edit visible views**) opens a list of the
 
 ![The Edit visible views list](tutorials/assets/ui/edit_visible_views.png)
 
-<h2 id="help-ui-data-selection">2. Data Selection</h2>
+<h2 id="help-ui-data-selection">2. Data Blocks</h2>
 
 Below the tool list, the **Data Blocks** panel shows every data block in the active project. It is both a quick selector and a live indicator of what is selected in the [Project Graph](#help-ui-workspace-graph-view) (section 4) — selecting a block here is equivalent to clicking the corresponding node in the graph, and the two panels always stay in sync. It is especially useful when the right column is hidden.
 
@@ -49,7 +49,7 @@ Below the tool list, the **Data Blocks** panel shows every data block in the act
 
 - Most tools can only process a limited number of data blocks at a time, shown in their inputs panel.
 
-<h2 id="help-ui-task-centre">3. Task Centre</h2>
+<h2 id="help-ui-task-centre">3. Tasks</h2>
 
 The **Tasks** panel sits below data selection and projects background Analyses
 from the active Project together with your retained User File Imports.
@@ -222,6 +222,38 @@ The centre column is the main working area and shows the interface of whichever 
 - The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open project, for example **Frequency: 1**: type to filter them, and choose one to open it.
 
 ![Quick access list of analysis tabs](tutorials/assets/ui/quick_access.png)
+
+<h3 id="help-ui-preview-run-clear">How Preview, Run and Clear work</h3>
+
+The analysis tools share three buttons.
+
+- **Preview** works out a first few pages of results so you can check your
+  settings quickly. Where a tool offers it, use Preview before a long Run.
+- **Run** works through all of your data. Use it for the final result, for
+  sorting on every column, for charts of the whole result, and before
+  **Add to Project**.
+- **Clear** removes this tab's Preview and Run results so you can start again.
+  It does not remove Data Blocks you have already added to the Project, and it
+  does not undo changes written to a Data Block (use **Undo** in the Data Editor
+  for that).
+
+What to expect:
+
+- **Results keep the data they were made from.** Preview and Run each take a
+  copy of the settings and the data at the moment you choose them. If you later
+  edit the Data Block or change a setting, the results on screen do not change.
+  To see the effect, choose Preview or Run again.
+- **The buttons turn on when something changes.** After a successful Preview or
+  Run, its button stays off until you change a setting that affects it. Changing
+  the setting back turns it off again, because the result on screen already
+  matches.
+- **Settings are locked while a task runs.** Use **Stop** to cancel it. The
+  running task also appears in **Tasks**.
+- **After a failure or a stop**, you can edit the settings again, but Preview
+  and Run stay off until you choose **Clear**. The message explains what went
+  wrong; **Details** has the technical text for a feedback report.
+- **Results stay with the tab.** They are still there when you move to another
+  tool, or close and reopen the Project.
 
 <h2 id="help-ui-working-directory">7. Data folder</h2>
 
