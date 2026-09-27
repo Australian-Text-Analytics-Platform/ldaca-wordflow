@@ -265,4 +265,39 @@ describe('WorkspaceGraphFeature', () => {
     expect(deleteNode).toHaveBeenNthCalledWith(1, 'a');
     expect(deleteNode).toHaveBeenNthCalledWith(2, 'b');
   });
+
+  it('lets the user untick blocks in the confirmation to keep them (issue 204)', async () => {
+    selectionState.selectedNodeIds = ['b', 'a'];
+    graphState.selectedCount = 2;
+    graphState.canClearSelection = true;
+    render(<WorkspaceGraphFeature />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete (2)' }));
+    const dialog = screen.getByRole('alertdialog');
+    const beta = within(dialog).getByRole('checkbox', { name: 'Beta' });
+    expect(beta).toBeChecked();
+    fireEvent.click(beta);
+
+    expect(within(dialog).getByText('Delete 1 data block?')).toBeInTheDocument();
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Delete 1' }));
+
+    await waitFor(() => {
+      expect(deleteNode).toHaveBeenCalledOnce();
+    });
+    expect(deleteNode).toHaveBeenCalledWith('a');
+    // The unticked block stays selected in the graph.
+    expect(clearSelection).not.toHaveBeenCalled();
+  });
+
+  it('disables Delete when every block is unticked', () => {
+    selectionState.selectedNodeIds = ['a'];
+    graphState.selectedCount = 1;
+    render(<WorkspaceGraphFeature />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Delete (1)' }));
+    const dialog = screen.getByRole('alertdialog');
+    fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Alpha' }));
+
+    expect(within(dialog).getByRole('button', { name: 'Delete 0' })).toBeDisabled();
+  });
 });

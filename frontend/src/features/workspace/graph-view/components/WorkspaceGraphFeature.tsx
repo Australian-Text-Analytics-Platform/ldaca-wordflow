@@ -34,6 +34,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
@@ -138,6 +139,8 @@ function WorkspaceGraphDeleteControl() {
   const { selectedNodeIds } = useWorkspaceSelection();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  // Blocks unticked in the confirmation keep their selection (issue 204).
+  const [keptIds, setKeptIds] = useState<ReadonlySet<string>>(() => new Set());
   const selectedCount = selectedNodeIds.length;
   const canDelete = selectedCount > 0;
 
@@ -152,13 +155,16 @@ function WorkspaceGraphDeleteControl() {
       }))
       .sort((left, right) => left.name.localeCompare(right.name));
   })();
+  const toDelete = selectedForDelete.filter((item) => !keptIds.has(item.id));
 
   const handleDelete = async () => {
-    if (!canDelete || isDeleting) return;
+    if (toDelete.length === 0 || isDeleting) return;
     setIsDeleting(true);
     try {
-      await Promise.allSettled(selectedForDelete.map((item) => deleteNode(item.id)));
-      clearSelection();
+      await Promise.allSettled(toDelete.map((item) => deleteNode(item.id)));
+      // Deleted blocks leave the selection as they go; blocks the user
+      // unticked stay selected.
+      if (keptIds.size === 0) clearSelection();
       setConfirmOpen(false);
     } finally {
       setIsDeleting(false);
@@ -173,6 +179,7 @@ function WorkspaceGraphDeleteControl() {
         disabled={!canDelete || isDeleting}
         destructive
         onClick={() => {
+          setKeptIds(new Set());
           setConfirmOpen(true);
         }}
       >
@@ -183,29 +190,60 @@ function WorkspaceGraphDeleteControl() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {selectedForDelete.length} data block
-              {selectedForDelete.length === 1 ? '' : 's'}?
+              Delete {toDelete.length} data block
+              {toDelete.length === 1 ? '' : 's'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. The following data blocks will be removed:
+              This cannot be undone. The ticked data blocks will be removed. Untick any you want to
+              keep; they stay selected.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <ul className="max-h-60 overflow-y-auto rounded-sm border bg-panel/40 p-2 text-body">
-            {selectedForDelete.map((item) => (
-              <li key={item.id}>{item.name}</li>
-            ))}
+          <ul
+            aria-label="Data blocks to delete"
+            className="max-h-60 space-y-1 overflow-y-auto rounded-sm border bg-panel/40 p-2 text-body"
+          >
+            {selectedForDelete.map((item) => {
+              const checkboxId = `delete-data-block-${item.id}`;
+              return (
+                <li key={item.id}>
+                  <label htmlFor={checkboxId} className="flex items-center gap-2">
+                    <Checkbox
+                      id={checkboxId}
+                      checked={!keptIds.has(item.id)}
+                      disabled={isDeleting}
+                      onCheckedChange={(value) => {
+                        setKeptIds((current) => {
+                          const next = new Set(current);
+                          if (value === true) next.delete(item.id);
+                          else next.add(item.id);
+                          return next;
+                        });
+                      }}
+                    />
+                    <span
+                      className={cn(
+                        'min-w-0 break-all',
+                        keptIds.has(item.id) && 'text-description',
+                      )}
+                    >
+                      {item.name}
+                    </span>
+                  </label>
+                </li>
+              );
+            })}
           </ul>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <Button asChild variant="destructive" disabled={isDeleting || !canDelete}>
+            <Button asChild variant="destructive" disabled={isDeleting || toDelete.length === 0}>
               <AlertDialogAction
                 onClick={(event) => {
                   event.preventDefault();
                   void handleDelete();
                 }}
-                disabled={isDeleting || !canDelete}
+                disabled={isDeleting || toDelete.length === 0}
               >
-                {isDeleting ? 'Deleting…' : `Delete ${String(selectedForDelete.length)}`}
+                {isDeleting ? 'Deleting…' : `Delete ${String(toDelete.length)}`}
               </AlertDialogAction>
             </Button>
           </AlertDialogFooter>
