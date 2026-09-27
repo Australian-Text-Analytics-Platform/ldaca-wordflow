@@ -177,7 +177,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     /** Fetches the latest task result so polling and hydration share one retrieval path. */
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       return getAnalysisResultResource<TokenFrequencyResponse>(currentWorkspaceId, taskId);
     },
     /**
@@ -414,7 +414,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     ...baseActionState,
     runDisabled: baseActionState.runDisabled || !hasTokenizerModel,
     runDisabledReason: !hasTokenizerModel
-      ? 'Select a tokeniser model for each data block'
+      ? 'Select a tokeniser model for each Data Block'
       : baseActionState.runDisabledReason,
   };
 

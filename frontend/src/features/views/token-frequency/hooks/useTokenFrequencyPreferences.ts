@@ -153,10 +153,10 @@ export const useTokenFrequencyPreferences = ({
       applyTokenLimitState(targetLimit);
       onTokenLimitChange?.(targetLimit);
     } catch (error) {
-      console.error('Failed to update token limit', error);
+      console.error("Couldn't update token limit", error);
       dispatchPreference({
         type: 'tokenLimitErrorChanged',
-        error: 'Failed to update token limit. Please try again.',
+        error: "Couldn't update token limit. Try again.",
       });
     } finally {
       dispatchPreference({ type: 'tokenLimitApplyingChanged', active: false });

@@ -42,7 +42,7 @@ const WorkspaceDescription = ({ description }: { description?: string | null }) 
           size="icon"
           variant="ghost"
           className="h-6 w-6"
-          aria-label="View project description"
+          aria-label="View Project description"
         >
           <MoreHorizontal className="h-4 w-4" />
         </Button>
@@ -76,7 +76,7 @@ export function WorkspaceManagerItem({
     const isSelectionTarget =
       selectionOperation?.action === 'load' && selectionOperation.workspaceId === workspaceId;
     const trimmedWorkspaceName = workspace.name?.trim();
-    let workspaceName = 'Unnamed project';
+    let workspaceName = 'Unnamed Project';
     if (trimmedWorkspaceName) workspaceName = trimmedWorkspaceName;
     return (
       <div
@@ -106,7 +106,7 @@ export function WorkspaceManagerItem({
             >
               <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span>
-                <span className="font-medium">Failed to open:</span> {loadFailure}
+                <span className="font-medium">Couldn't open:</span> {loadFailure}
               </span>
             </div>
           ) : null}
@@ -115,9 +115,9 @@ export function WorkspaceManagerItem({
           <DisabledReasonTooltip
             reason={
               hasActiveTask
-                ? 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching projects.'
+                ? 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching Projects.'
                 : selectionOperation
-                  ? 'Another project is being opened or closed.'
+                  ? 'Another Project is being opened or closed.'
                   : undefined
             }
           >
@@ -190,7 +190,7 @@ export function WorkspaceManagerItem({
             size="icon"
             variant="ghost"
             className="h-6 w-6 shrink-0"
-            aria-label={favorite ? 'Remove from favorites' : 'Add to favorites'}
+            aria-label={favorite ? 'Remove from favourites' : 'Add to favourites'}
             onClick={onToggleFavorite}
           >
             <Star
@@ -205,7 +205,7 @@ export function WorkspaceManagerItem({
           <WorkspaceDescription description={workspace.description} />
         </div>
         <div className="text-label-secondary text-description">
-          Updated {formatTimestamp(workspace.modified_at)} | {workspace.total_nodes} data block
+          Updated {formatTimestamp(workspace.modified_at)} | {workspace.total_nodes} Data Block
           {workspace.total_nodes === 1 ? '' : 's'}
         </div>
         {loadFailure ? (
@@ -215,7 +215,7 @@ export function WorkspaceManagerItem({
           >
             <CircleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span>
-              <span className="font-medium">Failed to open:</span> {loadFailure}
+              <span className="font-medium">Couldn't open:</span> {loadFailure}
             </span>
           </div>
         ) : null}
@@ -226,9 +226,9 @@ export function WorkspaceManagerItem({
             hasActiveTask
               ? isActive
                 ? 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before closing the Project.'
-                : 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching projects.'
+                : 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching Projects.'
               : selectionOperation
-                ? 'Another project is being opened or closed.'
+                ? 'Another Project is being opened or closed.'
                 : undefined
           }
         >

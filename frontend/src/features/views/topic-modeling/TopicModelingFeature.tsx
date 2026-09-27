@@ -174,7 +174,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     resultRequestKey,
     resultCacheMode: 'no-store',
     fetchResult: async (taskId, query, signal) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       return getAnalysisResultResource<TopicModelingResponse>(
         currentWorkspaceId,
         taskId,
@@ -352,7 +352,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Topic Modelling results to the Project.');
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: 'Failed to add Topic Modelling results.' });
+      toastError(cause, 'Try again.', { title: "Couldn't add Topic Modelling results." });
     } finally {
       setIsAddingToWorkspace(false);
     }

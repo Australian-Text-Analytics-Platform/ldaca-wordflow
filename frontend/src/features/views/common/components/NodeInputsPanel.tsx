@@ -279,7 +279,7 @@ export function NodeInputsPanel({
               className="h-7 px-2 text-label-secondary text-description"
               onClick={onClear}
               disabled={disabled}
-              aria-label="Remove all data blocks"
+              aria-label="Remove all Data Blocks"
             >
               <Trash2 className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
               Clear
@@ -298,11 +298,11 @@ export function NodeInputsPanel({
               }}
             >
               <ListPlus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-              Add All
+              Add all
             </Button>
           )}
 
-          {/* Add data block: searchable list of addable workspace nodes. */}
+          {/* Add Data Block: searchable list of addable workspace nodes. */}
           <Popover
             open={blockOpen}
             onOpenChange={(open) => {
@@ -319,7 +319,7 @@ export function NodeInputsPanel({
                 disabled={disabled || !canAddMore || availableNodes.length === 0}
               >
                 <Plus className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
-                Add data block
+                Add Data Block
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72 p-0">
@@ -335,7 +335,7 @@ export function NodeInputsPanel({
                     onChange={(e) => {
                       setBlockSearch(e.target.value);
                     }}
-                    placeholder="Search data blocks…"
+                    placeholder="Search Data Blocks…"
                     className="h-8 pl-7 text-body"
                   />
                 </div>
@@ -343,7 +343,7 @@ export function NodeInputsPanel({
               <div className="max-h-64 overflow-y-auto py-1">
                 {filteredAvailableNodes.length === 0 ? (
                   <div className="px-3 py-3 text-center text-label-secondary text-description">
-                    No matching data blocks
+                    No matching Data Blocks
                   </div>
                 ) : (
                   filteredAvailableNodes.map((node) => {
@@ -374,8 +374,8 @@ export function NodeInputsPanel({
         <div className="mx-3 rounded-md border border-dashed border-surface-border-foreground/40 bg-panel/40 p-3 text-body italic text-description">
           {emptyMessage ?? (
             <>
-              No data blocks added yet. Use{' '}
-              <span className="font-medium not-italic">Add data block</span>, or carry one here from
+              No Data Blocks added yet. Use{' '}
+              <span className="font-medium not-italic">Add Data Block</span>, or carry one here from
               a Data Block&apos;s <span className="not-italic">+</span> button.
             </>
           )}
@@ -393,7 +393,7 @@ export function NodeInputsPanel({
       )}
       {maxNodes != null && count > maxNodes && (
         <div className="mt-1 flex items-center gap-1 px-3 text-body text-warning">
-          Maximum {maxNodes} data block{maxNodes === 1 ? '' : 's'} allowed here. Currently {count}{' '}
+          Maximum {maxNodes} Data Block{maxNodes === 1 ? '' : 's'} allowed here. Currently {count}{' '}
           added.
         </div>
       )}

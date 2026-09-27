@@ -256,7 +256,7 @@ describe('ColumnComparison', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
 
     const reliabilityOptions = screen.getAllByRole('menuitemradio');
     expect(reliabilityOptions.map((option) => option.textContent)).toEqual([
@@ -284,7 +284,7 @@ describe('ColumnComparison', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.getByRole('menuitemcheckbox', { name: 'username' })).toHaveAttribute(
       'aria-disabled',
       'true',

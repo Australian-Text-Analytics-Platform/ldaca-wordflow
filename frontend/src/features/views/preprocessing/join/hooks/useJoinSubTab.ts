@@ -287,13 +287,13 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
 
   const joinConfigIssues = (() => {
     if (!joinLeftNodeId || !joinRightNodeId) {
-      return 'Pick two data blocks to configure a join.';
+      return 'Pick two Data Blocks to configure a join.';
     }
     if (joinLeftNodeId === joinRightNodeId) {
-      return 'Select two different data blocks to join. Joining a data block to itself is not supported yet.';
+      return 'Select two different Data Blocks to join. Joining a Data Block to itself is not supported yet.';
     }
     if (!joinLeftColumn || !joinRightColumn) {
-      return 'Choose the columns that should match between the two data blocks.';
+      return 'Choose the columns that should match between the two Data Blocks.';
     }
     if (sharedColumns.length === 0) {
       return 'No matching column names detected. Select compatible columns manually or rename them to match.';
@@ -412,7 +412,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
   };
 
   const readyMessage =
-    joinConfigIssues || 'Select two data blocks and configure the join to view a preview.';
+    joinConfigIssues || 'Select two Data Blocks and configure the join to view a preview.';
 
   /**
    * Persists the user's left/right join column override for the active schema.
@@ -507,7 +507,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     if (isJoining || isLoading.operations) return undefined;
     if (!joinConfigReady) return joinConfigIssues || 'Configure the join first';
     if (joinPreviewError)
-      return 'Fix the error shown in Preview join output before adding to project';
+      return 'Fix the error shown in Preview join output before adding to Project';
     if (previewIsEmpty)
       return 'The current join produces no matching rows — adjust the join type or key columns';
     return undefined;
@@ -527,7 +527,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
     setJoinType: handleSetJoinType,
     joinNewNodeName,
     setJoinNewNodeName,
-    joinNamePlaceholder: autoJoinName || 'Joined dataset',
+    joinNamePlaceholder: autoJoinName || 'Joined Data Block',
     joinStatusMessage,
     joinConfigReady,
     joinConfigIssues,

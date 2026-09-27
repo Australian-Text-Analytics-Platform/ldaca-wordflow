@@ -186,7 +186,7 @@ export const usePreprocessingPreview = <RequestPayload, Row = PreviewRow>(
       ready && queryError
         ? queryError instanceof Error
           ? queryError.message
-          : 'Failed to load preview data'
+          : "Couldn't load preview data"
         : null,
     ready,
     page,

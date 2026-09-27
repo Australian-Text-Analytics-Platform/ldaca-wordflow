@@ -38,7 +38,7 @@ export interface NodeSelectionListProps {
 }
 
 /**
- * Displays the selected analysis data blocks as horizontally scrollable cards,
+ * Displays the selected analysis Data Blocks as horizontally scrollable cards,
  * with feature-provided per-node content slots. Each card is assigned a stable
  * palette colour by position so chart legends and metadata slots stay
  * consistent; callers can use the render slots to place matching controls in
@@ -59,7 +59,7 @@ export function NodeSelectionList({
   cardClassName,
 }: NodeSelectionListProps) {
   // Auto-scroll to the right end when the selection changes so the
-  // most recently selected data blocks are always visible.
+  // most recently selected Data Blocks are always visible.
   const scrollRef = useRef<HTMLDivElement>(null);
   const nodeIdsKey = items.map((item) => item.id).join('|');
   useEffect(() => {

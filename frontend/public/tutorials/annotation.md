@@ -10,14 +10,14 @@ either directly or with predictions from a configured AI provider.
 
 1. Under **Annotation Data Block**, add one Data Block and choose the text
    column.
-2. Under **Annotation Column**, select an existing text column, or choose
+2. Under **Annotation column**, select an existing text column, or choose
    **Start new annotation** and name a new, empty column. This is an immediate
    Data Block Edit.
 
    ![Create annotation column dialog](tutorials/assets/annotation/create_annotation_column.png)
 
 3. Under **Codebook**, add a Data Block and map its code and description
-   columns. Use **Create New** when you need an empty Codebook, then click
+   columns. Use **Create new** when you need an empty Codebook, then click
    **Edit** beside **Codes** to add, rename, or remove codes and their
    descriptions before labelling.
 
@@ -26,7 +26,7 @@ either directly or with predictions from a configured AI provider.
 4. Use the **Manual / AI** switch to choose a mode. The source and Codebook are
    shared between both modes.
 
-![Annotation setup: source data block, annotation column, Codebook, and the Manual / AI switch](tutorials/assets/annotation/setup.png)
+![Annotation setup: source Data Block, annotation column, Codebook, and the Manual / AI switch](tutorials/assets/annotation/setup.png)
 
 <h2 id="help-annotation-manual">Manual workflow</h2>
 
@@ -40,17 +40,17 @@ open Manual snapshot.
 
 ![Manual annotation table with the code list open for one row](tutorials/assets/annotation/manual_table.png)
 
-Use **Compare To** to add another coder or model. Each comparison starts masked
+Use **Compare to** to add another coder or model. Each comparison starts masked
 as `•••` so you can code without seeing how individual rows were coded. Its
 header always shows the reliability score (hover or focus it for the confusion
 matrix) and the row-filter menu; reveal the column from the eye button to show
 its values and difference colours. Removing the filtered column clears the
-filter; hiding it does not. Reliability statistics summarize agreement but do
+filter; hiding it does not. Reliability statistics summarise agreement but do
 not explain why labels differ. Choose the statistic at the top of the **Compare
-To** list: **Percent Agreement**, **Cohen's Kappa** (the default), or
+to** list: **Percent Agreement**, **Cohen's Kappa** (the default), or
 **Krippendorff's Alpha**.
 
-![Compare To list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
+![Compare to list with the reliability statistic and the columns to compare](tutorials/assets/annotation/compare_to_menu.png)
 
 The funnel button in the annotation column header and in each comparison header
 opens a filter menu with two independent conditions: **Differs** and a value
@@ -78,7 +78,7 @@ height, drag its bottom-right corner; double-click the corner to let it fill the
 space again. The height is shared by Manual, Preview, and Review, and the table
 scrolls inside its frame when a page does not fit.
 
-**Compare To** and **Show metadata** are exclusive roles: a selected column is
+**Compare to** and **Show metadata** are exclusive roles: a selected column is
 disabled in the other menu, and **Select all** skips disabled columns. The
 active correction column appears in neither menu. Add a correction column when
 you want reviewed decisions kept separately, and use metadata columns to retain
@@ -89,7 +89,7 @@ Long metadata values wrap within their column. To read a whole row, select the
 **View row** button (the expand icon, **View the whole row**) at the start of
 the row in the Manual, Preview, and Review tables. It opens Row Details with
 the full text and every visible column in table order: the annotation (or the
-predicted label beside the existing annotation), any correction, Compare To
+predicted label beside the existing annotation), any correction, Compare to
 columns, and metadata. Comparison values stay
 hidden until you reveal that column, and the viewer is read-only; use
 **Previous** and **Next** to move between rows.

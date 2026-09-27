@@ -27,7 +27,7 @@ describe('getRerunActionState', () => {
       }),
     ).toMatchObject({
       clearDisabled: true,
-      clearDisabledReason: 'Open a project first',
+      clearDisabledReason: 'Open a Project first',
     });
   });
 

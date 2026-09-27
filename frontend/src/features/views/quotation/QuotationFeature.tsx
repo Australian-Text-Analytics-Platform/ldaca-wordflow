@@ -188,7 +188,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       analysis.state === 'succeeded' ? analysis.supersedes_analysis_ids : [],
     ),
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       return getAnalysisResultResource<QuotationResult>(currentWorkspaceId, taskId);
     },
     // Restores saved request settings after reload.
@@ -447,7 +447,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       submit: () => runQuotationAll(host.tabId, { source }, tabTaskId ? [tabTaskId] : []),
       onError: (error) => {
         showErrorDialog(
-          error instanceof Error ? error.message : 'Could not start the Quotation Run.',
+          error instanceof Error ? error.message : "Couldn't start the Quotation Run.",
         );
       },
     });
@@ -535,7 +535,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
               targetKey: 'analysis.quotation.parameters',
               label: 'Quotation parameters',
               tooltip:
-                'Select a data block, choose a text column, and configure quotation settings.',
+                'Select a Data Block, choose a text column, and configure quotation settings.',
             }}
             actions={{
               // Routes the Run button through live quotation execution.
@@ -563,7 +563,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
               previewDisabledReason: (() => {
                 if (isLoadingQuotations) return undefined;
                 if (actionState.runDisabledReason) return actionState.runDisabledReason;
-                if (hasIncompleteSelections) return 'Select a column for each data block';
+                if (hasIncompleteSelections) return 'Select a column for each Data Block';
                 if (!engineReady) return 'Configure the remote engine before running';
                 return undefined;
               })(),

@@ -39,10 +39,10 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     expect(notify).toHaveBeenNthCalledWith(
       1,
       'success',
-      'reddit added to project.',
+      'reddit added to Project.',
       '4 files skipped while loading: parquet - 4',
     );
-    expect(notify).toHaveBeenNthCalledWith(2, 'success', 'notes.txt added to project.', undefined);
+    expect(notify).toHaveBeenNthCalledWith(2, 'success', 'notes.txt added to Project.', undefined);
   });
 
   it('adds several table files with one summary and lists failures', async () => {
@@ -66,7 +66,7 @@ describe('useDataLoaderWorkspaceActions add file', () => {
       await result.current.handleAddFilesToWorkspace(['a.csv', 'b.csv', 'c.parquet']);
     });
 
-    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to project.');
+    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
     expect(notify).toHaveBeenCalledWith('error', '1 file could not be added.', 'b.csv');
   });
 
@@ -89,6 +89,6 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     });
 
     expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', undefined, 'tables/a.csv');
-    expect(notify).toHaveBeenCalledWith('success', '1 Data Block added to project.');
+    expect(notify).toHaveBeenCalledWith('success', '1 Data Block added to Project.');
   });
 });

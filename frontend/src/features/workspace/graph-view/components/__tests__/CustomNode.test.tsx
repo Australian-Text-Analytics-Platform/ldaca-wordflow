@@ -62,7 +62,7 @@ vi.mock('@xyflow/react', () => ({
  * Returns the visible settings button when portal/menu render duplicates occur.
  */
 const getLatestNodeSettingsButton = () => {
-  const buttons = screen.getAllByRole('button', { name: /data block actions/i });
+  const buttons = screen.getAllByRole('button', { name: /Data Block actions/i });
   return buttons[buttons.length - 1] as HTMLButtonElement;
 };
 
@@ -461,7 +461,7 @@ describe('CustomNode', () => {
     expect(getLatestNodeSettingsButton()).toBeInTheDocument();
 
     await user.unhover(nodeLabel);
-    expect(screen.queryAllByRole('button', { name: /data block actions/i })).toHaveLength(0);
+    expect(screen.queryAllByRole('button', { name: /Data Block actions/i })).toHaveLength(0);
   });
 
   it('counter-scales the fresh "new" dot so it stays a constant size when zoomed out', () => {
@@ -489,7 +489,7 @@ describe('CustomNode', () => {
       />,
     );
 
-    const dot = screen.getByTitle('New data block');
+    const dot = screen.getByTitle('New Data Block');
     expect(dot.style.transform).toContain('scale(5)');
     expect(dot.style.transform).toContain('translate(20px, -20px)');
   });

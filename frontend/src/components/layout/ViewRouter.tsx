@@ -12,7 +12,7 @@ const Fallback = () => (
   <div className="flex items-center justify-center py-12">
     <div className="text-center">
       <div className="mx-auto mb-3 size-8 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
-      <p className="text-description text-body">Loading...</p>
+      <p className="text-description text-body">Loading…</p>
     </div>
   </div>
 );

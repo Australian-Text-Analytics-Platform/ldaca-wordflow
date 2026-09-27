@@ -124,7 +124,7 @@ const GraphSelectionControl = ({ selected, total }: { selected: number; total: n
       </div>
     </TooltipTrigger>
     <TooltipContent side="right">
-      {selected} of {total} data blocks selected
+      {selected} of {total} Data Blocks selected
     </TooltipContent>
   </Tooltip>
 );
@@ -190,16 +190,16 @@ function WorkspaceGraphDeleteControl() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              Delete {toDelete.length} data block
+              Delete {toDelete.length} Data Block
               {toDelete.length === 1 ? '' : 's'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. The ticked data blocks will be removed. Untick any you want to
+              This cannot be undone. The ticked Data Blocks will be removed. Untick any you want to
               keep; they stay selected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul
-            aria-label="Data blocks to delete"
+            aria-label="Data Blocks to delete"
             className="max-h-60 space-y-1 overflow-y-auto rounded-sm border bg-panel/40 p-2 text-body"
           >
             {selectedForDelete.map((item) => {
@@ -370,7 +370,7 @@ const GraphLoadingState = () => (
       </div>
       <div className="flex items-center gap-2 text-body text-description">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span>Loading project graph…</span>
+        <span>Loading Project graph…</span>
       </div>
     </div>
   </div>
@@ -384,9 +384,9 @@ const GraphLoadingState = () => (
 const GraphEmptyState = () => (
   <div className="flex h-full items-center justify-center p-6 text-center">
     <div>
-      <h3 className="text-body font-semibold text-foreground">No project open</h3>
+      <h3 className="text-body font-semibold text-foreground">No Project open</h3>
       <p className="mt-1 text-label-secondary text-description">
-        Open or create a project in Data Loader to see the graph.
+        Open or create a Project in Data Loader to see the graph.
       </p>
     </div>
   </div>

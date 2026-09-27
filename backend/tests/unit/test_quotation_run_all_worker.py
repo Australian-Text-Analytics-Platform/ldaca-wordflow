@@ -109,8 +109,8 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
     ]
     assert restored.collect().get_column("quotation").list.len().to_list() == [1]
     assert "__quotation_source__" not in restored.collect_schema().names()
-    assert progress_updates[0][1].startswith("Loading quotation")
+    assert progress_updates[0][1].startswith("Loading the quotation")
     assert any(
-        "Extracting quotations" in message for _progress, message in progress_updates
+        "Finding quotations" in message for _progress, message in progress_updates
     )
-    assert progress_updates[-1] == (0.95, "Saving quotation Result...")
+    assert progress_updates[-1] == (0.95, "Saving the results…")

@@ -90,7 +90,7 @@ export function useConcordanceMetadataColumns({
       perBlock[0]?.columns.filter((c) => perBlock.every((b) => b.columns.includes(c))) ?? [];
     if (isCombinedView && common.length === 0 && perBlock.some((b) => b.columns.length > 0)) {
       disabledReason =
-        'The selected data blocks share no metadata columns; nothing to display in Combined view.';
+        'The selected Data Blocks share no metadata columns; nothing to display in Combined view.';
     }
     if (common.length > 0) sections.push({ columns: common });
     for (const block of perBlock) {

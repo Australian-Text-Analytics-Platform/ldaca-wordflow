@@ -234,7 +234,7 @@ class UserFileStore:
                     f"Folder {clean_name} already exists"
                 ) from exc
             except OSError as exc:
-                raise InternalServiceError("Failed to create folder") from exc
+                raise InternalServiceError("Couldn't create the folder.") from exc
             return await self._run_sync(_file_resource, resolver.root, destination)
 
     async def move(
@@ -290,7 +290,7 @@ class UserFileStore:
                     f"{destination.name} already exists in destination"
                 ) from exc
             except OSError as exc:
-                raise InternalServiceError("Failed to move file") from exc
+                raise InternalServiceError("Couldn't move the file.") from exc
             return await self._run_sync(_file_resource, resolver.root, destination)
 
     async def upload(
@@ -395,7 +395,7 @@ class UserFileStore:
             try:
                 await self._run_sync(_delete_checked, resolver, target)
             except OSError as exc:
-                raise InternalServiceError("Failed to delete file") from exc
+                raise InternalServiceError("Couldn't delete the file.") from exc
 
     async def delete_many(self, user_id: str, relative_paths: list[str]) -> int:
         """Delete several files or folders under one gate; return the count.
@@ -425,7 +425,7 @@ class UserFileStore:
                     await self._run_sync(_delete_checked, resolver, target)
                 except OSError as exc:
                     raise InternalServiceError(
-                        f"Failed to delete {relative_path} after {deleted} deletions"
+                        f"Couldn't delete {relative_path} after {deleted} deletions"
                     ) from exc
                 deleted += 1
         return deleted

@@ -269,7 +269,7 @@ export function TopicModelingParameterPanel({
         runAllDisabled:
           parametersLocked || actionState.runDisabled || isRunning || hasMissingColumns,
         runAllDisabledReason: hasMissingColumns
-          ? 'Select a column for each data block'
+          ? 'Select a column for each Data Block'
           : actionState.runDisabledReason,
         clearDisabled: actionState.clearDisabled || isClearing,
         clearDisabledReason: actionState.clearDisabledReason,

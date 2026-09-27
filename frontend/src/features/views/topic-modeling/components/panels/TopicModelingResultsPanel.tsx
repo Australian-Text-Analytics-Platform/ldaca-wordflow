@@ -494,9 +494,7 @@ export function TopicModelingResultsPanel({
   const isRunningState = Boolean(topicWaitingBanner);
   const runningMessage =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty message should fall back to the next source, not render blank
-    runningTask?.message || topicWaitingBanner?.message || 'Task running';
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty task id should fall back to the banner's id, so falsy '' must fall through
-  const runningTaskId = runningTask?.task_id || topicWaitingBanner?.taskId;
+    runningTask?.message || topicWaitingBanner?.message || 'Running';
   const runningProgress = typeof runningTask?.progress === 'number' ? runningTask.progress : null;
   const isErrorState = Boolean(error) && !isRunningState;
   const isSuccessfulState = Boolean(result) && !isRunningState && !isErrorState;
@@ -520,7 +518,6 @@ export function TopicModelingResultsPanel({
         {isRunningState ? (
           <AnalysisRunningStateCard
             message={runningMessage}
-            taskId={runningTaskId}
             progress={runningProgress}
             startedAt={runningTask?.started_at}
           />
@@ -581,7 +578,7 @@ export function TopicModelingResultsPanel({
                           <DisabledReasonTooltip
                             reason={
                               isAddingToWorkspace
-                                ? 'A Data Block is being added to the project'
+                                ? 'A Data Block is being added to the Project'
                                 : (clustering?.cluster_count ?? 0) === 0
                                   ? 'No Topics were discovered'
                                   : undefined

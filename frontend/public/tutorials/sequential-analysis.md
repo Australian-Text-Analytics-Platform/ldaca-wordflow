@@ -6,19 +6,19 @@
 
 ![Trends screenshot](tutorials/assets/sequential_analysis.png)
 
-The Trends tool counts documents over time — or over any ordered numeric axis — and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
+The Trends tool counts documents over time (or over any ordered numeric axis) and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
 
 You can break a single trend into multiple lines by grouping on one or more category or text columns, then zoom into and select specific periods for closer inspection.
 
 <h2 id="help-sequential-parameters">Parameter panel</h2>
 
-<h3 id="help-sequential-data-block">Step 1 — Select your data</h3>
+<h3 id="help-sequential-data-block">Step 1: Select your data</h3>
 
-Use the data-block selector to pick the corpus you want to analyse. Only one data block can be selected at a time.
+Use the Data Block selector to pick the corpus you want to analyse. Only one Data Block can be selected at a time.
 
-<h3 id="help-sequential-time-column">Step 2 — Choose a time or number column</h3>
+<h3 id="help-sequential-time-column">Step 2: Choose a time or number column</h3>
 
-The **Time or number column** dropdown lists every column in the selected data block that holds a date and time, date, whole number, or decimal value. Pick the column that represents the order or time axis you want to plot along.
+The **Time or number column** dropdown lists every column in the selected Data Block that holds a date and time, date, whole number, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
 - **Date and time columns** are grouped by a calendar period (hourly, daily, weekly, and so on). A **date** column (no time of day) offers daily and longer periods only.
 - **Number columns** (whole number or decimal) are grouped by a fixed width you specify (the **Step**).
@@ -55,7 +55,7 @@ Select **Customised** to bucket by a fixed duration you define: enter a positive
 - Smaller intervals show more detail but may produce many sparse buckets.
 - Larger intervals smooth the trend and reduce noise.
 
-<h3 id="help-sequential-numeric">Step 3 — Set the start and step (number columns)</h3>
+<h3 id="help-sequential-numeric">Step 3: Set the start and step (number columns)</h3>
 
 When a whole number or decimal column is selected, two fields appear:
 
@@ -63,11 +63,11 @@ When a whole number or decimal column is selected, two fields appear:
 
 **Step**: the width of each group (required). For example, a step of 10 gives 0–9, 10–19, 20–29, and so on.
 
-<h3 id="help-sequential-group-by">Step 4 — Group By Columns (optional)</h3>
+<h3 id="help-sequential-group-by">Step 4: Group By Columns (optional)</h3>
 
-To split the trend into multiple lines — one per category — add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
+To split the trend into multiple lines (one per category), add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
 
-Click **Add Group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
+Click **Add group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
 
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
@@ -112,7 +112,7 @@ out. Selected periods do not change which groups meet the threshold. With
 **Ignore capitals** enabled, case variants are merged before their total is compared
 with the threshold.
 
-![Legend card with Ignore capitals, Minimum group count, and Clear Selection](tutorials/assets/sequential_analysis/legend.png)
+![Legend card with Ignore capitals, Minimum group count, and Clear selection](tutorials/assets/sequential_analysis/legend.png)
 
 <h3 id="help-sequential-chart-type">Chart type</h3>
 
@@ -137,7 +137,7 @@ The vertical axis shows counts of rows and has no title. When nothing is grouped
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the data block name, time column, period, and row counts, plus a legend.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the Data Block name, time column, period, and row counts, plus a legend.
 
 <h3 id="help-sequential-legend">Legend and group visibility</h3>
 
@@ -168,13 +168,13 @@ Use the chart slider, mouse wheel, or trackpad pinch to zoom along the horizonta
 
 Click anywhere inside the plot to select the time period nearest the vertical axis pointer. You do not need to target a line point, bar, or area segment. Selected periods are shaded with a soft band across the chart, and in line and area charts their points become large solid dots while the other points stay small hollow circles; in bar charts, unselected bars are dimmed to 25 % opacity.
 
-To select a range, click one period then **Shift-click** another — all periods between them are selected.
+To select a range, click one period then **Shift-click** another: all periods between them are selected.
 
 For drag selection, turn on **Select range** and drag across the periods you want. A new drag replaces the current selection; **Shift-drag** adds the brushed range. Turn the mode off, or press **Escape** while the chart is focused, to return to point selection.
 
 With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**, and **End** to inspect points. Press **Enter** or **Space** to select the focused point; hold **Shift** to extend the existing selection semantics.
 
-Use **Clear Selection** to deselect all periods without losing any other settings.
+Use **Clear selection** to deselect all periods without losing any other settings.
 
 ![Three selected periods shaded, with selected / total counts in the legend](tutorials/assets/sequential_analysis/period_selection.png)
 
@@ -212,7 +212,7 @@ visibility.
 | Symptom | Likely cause | What to try |
 |---|---|---|
 | Chart shows only one bar or point | Period too coarse for the date range | Try a finer period (for example Daily instead of Yearly) |
-| Too many series, chart is unreadable | Too many distinct values in group-by column(s) | Remove a group-by column, or filter the data block first |
+| Too many series, chart is unreadable | Too many distinct values in group-by column(s) | Remove a group-by column, or filter the Data Block first |
 | No groups meet the minimum group count | Every grouped total is below the filter | Lower Minimum group count, or enter 0 to show all groups |
 | "No Trends data available" | Column type or interval is incompatible with the data | Check the column contains valid dates or numbers; check the interval is > 0 |
 
@@ -234,7 +234,7 @@ visibility.
 
 ## Practice exercise
 
-1. Select a data block that has a date and time column.
+1. Select a Data Block that has a date and time column.
 2. Run the analysis with the **Monthly** period to see the overall trend.
 3. Switch to **Weekly** and compare the granularity.
 4. Add a category or text column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.

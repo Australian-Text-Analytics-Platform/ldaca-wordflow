@@ -57,7 +57,7 @@ export function DataBlockExportDialog({
       toast.success('Data Block exported');
       onOpenChange(false);
     } catch (error) {
-      toastError(error, 'Could not export Data Block');
+      toastError(error, "Couldn't export Data Block");
     } finally {
       setExporting(false);
     }

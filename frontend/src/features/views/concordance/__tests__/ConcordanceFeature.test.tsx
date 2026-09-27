@@ -630,7 +630,7 @@ describe('ConcordanceFeature', () => {
     const { unmount } = renderConcordanceFeature('analysis-1');
 
     expect(screen.getByRole('button', { name: 'Preview' })).toBeDisabled();
-    expect(screen.queryByRole('button', { name: 'Running...' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Running…' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
 
     unmount();
@@ -650,7 +650,7 @@ describe('ConcordanceFeature', () => {
     expect(screen.getByRole('button', { name: 'Run' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Clear results' })).toBeDisabled();
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
-    expect(screen.queryByRole('button', { name: 'Running...' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Running…' })).not.toBeInTheDocument();
 
     const previewButton = screen.getByRole('button', { name: 'Preview' });
     await user.hover(previewButton);
@@ -724,20 +724,20 @@ describe('ConcordanceFeature', () => {
 
     expect(await screen.findByText('Queensland')).toBeInTheDocument();
     expect(screen.getByText('Concordance Results')).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Table View' })).toBeInTheDocument();
-    expect(screen.getByRole('tab', { name: 'Dispersion View' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Table view' })).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Dispersion view' })).toBeInTheDocument();
     expect(screen.getByLabelText('Concordance result summary')).toHaveTextContent(
       'Found 25 matches in 1 document out of 80 documents.',
     );
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Dispersion View' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Dispersion view' }));
     await waitFor(() => {
       expect(screen.getByLabelText('Concordance result summary')).toHaveTextContent(
         'Found 25 matches in 1 document out of 80 documents.',
       );
     });
 
-    fireEvent.click(screen.getByRole('tab', { name: 'Table View' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Table view' }));
     const highlightToggle = screen.getByRole('checkbox', {
       name: 'Highlight L1/R1 in context',
     });
@@ -845,7 +845,7 @@ describe('ConcordanceFeature', () => {
     const { unmount } = renderConcordanceFeature('analysis-1');
 
     await screen.findByText('Concordance Results');
-    fireEvent.click(screen.getByRole('tab', { name: 'Dispersion View' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Dispersion view' }));
 
     await waitFor(() => {
       expect(screen.getAllByRole('button', { name: /^jobs \(/ })).toHaveLength(2);

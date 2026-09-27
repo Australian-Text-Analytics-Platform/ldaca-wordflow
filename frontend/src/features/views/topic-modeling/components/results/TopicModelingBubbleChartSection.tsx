@@ -180,7 +180,7 @@ export function TopicModelingBubbleChartSection({
         await saveBlob(blob, filename);
       }
     } catch (error) {
-      toastError(error, 'Try again.', { title: 'Failed to export chart.' });
+      toastError(error, 'Try again.', { title: "Couldn't export chart." });
     }
   };
 

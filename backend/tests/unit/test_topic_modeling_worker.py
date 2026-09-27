@@ -594,8 +594,8 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
     assert seen_run_kwargs["max_segment_tokens"] == 64
     assert result["segment_count"] == 7
     assert any("engine=rust backend=ort" in message for message in messages)
-    assert progress[0][1].startswith("Loading topic modelling")
-    assert progress[-1] == (0.9, "Writing topic-modelling results...")
+    assert progress[0][1].startswith("Loading the topic model")
+    assert progress[-1] == (0.9, "Saving the topics…")
     assert all(0.0 <= fraction < 1.0 for fraction, _message in progress)
 
 

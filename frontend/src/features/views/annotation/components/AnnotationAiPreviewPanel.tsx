@@ -234,7 +234,7 @@ export function AnnotationAiPreviewPanel({
           else Reflect.deleteProperty(nextSelections, selectionKey);
           return nextSelections;
         });
-        toastError(error, 'Could not save the annotation correction.');
+        toastError(error, "Couldn't save the annotation correction.");
       })
       .finally(() => {
         setSavingRows((current) => {

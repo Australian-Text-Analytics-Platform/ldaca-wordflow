@@ -257,7 +257,7 @@ function CombinedConcordanceTable({
 }
 
 /**
- * Rendered by: ConcordanceTableNodeBlock for a single data block's results.
+ * Rendered by: ConcordanceTableNodeBlock for a single Data Block's results.
  *
  * Preview pagination walks source documents while Review table pagination
  * walks matches. `total_source_rows` already carries the projection's unit.

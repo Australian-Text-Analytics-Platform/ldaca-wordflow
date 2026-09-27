@@ -40,7 +40,7 @@ export function NodeColumnSelector({
   placeholder = 'Select column',
   clearOptionValue,
   clearOptionLabel = 'Select column…',
-  noColumnsMessage = 'No columns available for this data block',
+  noColumnsMessage = 'No columns available for this Data Block',
   preserveValue,
   className,
   triggerClassName,

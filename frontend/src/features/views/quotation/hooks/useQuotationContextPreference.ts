@@ -31,7 +31,7 @@ export interface UseQuotationContextPreferenceResult extends QuotationContextPre
 }
 
 const INVALID_CONTEXT_LENGTH_MESSAGE = 'Enter a non-negative number.';
-const PERSIST_CONTEXT_LENGTH_ERROR = 'Failed to save preference. Please try again.';
+const PERSIST_CONTEXT_LENGTH_ERROR = "Couldn't save preference. Try again.";
 
 const initialState: QuotationContextPreferenceState = {
   contextLength: DEFAULT_CONTEXT_LENGTH,
@@ -142,7 +142,7 @@ export function useQuotationContextPreference({
       await persistPreference(normalized);
       dispatch({ type: 'saving', isSaving: false });
     } catch (error) {
-      console.error('Failed to save context length preference', error);
+      console.error("Couldn't save context length preference", error);
       dispatch({ type: 'persist-error', message: PERSIST_CONTEXT_LENGTH_ERROR });
     }
   };

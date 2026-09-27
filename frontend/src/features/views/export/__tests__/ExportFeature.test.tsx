@@ -84,7 +84,7 @@ describe('ExportFeature', () => {
     const user = userEvent.setup();
     render(<ExportFeature />);
 
-    await user.click(screen.getByRole('button', { name: 'Add data block' }));
+    await user.click(screen.getByRole('button', { name: 'Add Data Block' }));
     await user.click(screen.getByRole('button', { name: 'Corpus One' }));
     await user.click(screen.getByRole('combobox', { name: 'Export format' }));
     await user.click(screen.getByRole('option', { name: 'Parquet (.parquet)' }));
@@ -112,7 +112,7 @@ describe('ExportFeature', () => {
     const user = userEvent.setup();
     render(<ExportFeature />);
 
-    await user.click(screen.getByRole('button', { name: 'Add All' }));
+    await user.click(screen.getByRole('button', { name: 'Add all' }));
     expect(screen.getByText('Corpus One')).toBeInTheDocument();
     expect(screen.getByText('Corpus Two')).toBeInTheDocument();
     mocks.exportDataBlocks.mockResolvedValueOnce({
@@ -134,12 +134,12 @@ describe('ExportFeature', () => {
       filename: 'Main_Project_data_blocks.zip',
       loadBrowserDownload: expect.any(Function),
     });
-    expect(screen.getByRole('button', { name: 'Add All' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Add all' })).toBeDisabled();
   });
 
   it('keeps complete Project archive export as a separate action', async () => {
     render(<ExportFeature />);
-    fireEvent.click(screen.getByRole('button', { name: 'Export project archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export Project archive' }));
 
     await waitFor(() =>
       expect(mocks.saveBackendDownload).toHaveBeenCalledWith(
@@ -156,7 +156,7 @@ describe('ExportFeature', () => {
     mocks.saveDataBlockDownload.mockResolvedValueOnce(false);
     render(<ExportFeature />);
 
-    await user.click(screen.getByRole('button', { name: 'Add data block' }));
+    await user.click(screen.getByRole('button', { name: 'Add Data Block' }));
     await user.click(screen.getByRole('button', { name: 'Corpus One' }));
     await user.click(screen.getByRole('button', { name: 'Export 1 Data Block' }));
 
@@ -169,7 +169,7 @@ describe('ExportFeature', () => {
     mocks.saveBackendDownload.mockResolvedValueOnce(null);
     render(<ExportFeature />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Export project archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Export Project archive' }));
 
     await waitFor(() => expect(mocks.saveBackendDownload).toHaveBeenCalledTimes(1));
     expect(mocks.reachContextualHint).not.toHaveBeenCalled();

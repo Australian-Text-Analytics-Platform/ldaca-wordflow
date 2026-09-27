@@ -283,7 +283,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
 
   const lastResultSummary = (() => {
     if (!lastResult) {
-      return 'Adjust parameters and add to project to create a sampled data block.';
+      return 'Adjust parameters and add to Project to create a sampled Data Block.';
     }
     if (lastResult.mode === 'random_sample') {
       const sizeLabel =
@@ -366,7 +366,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
    */
   const applySlice = async () => {
     if (!selectedNodeId) {
-      setCurrentInlineError('Select a data block to sample.');
+      setCurrentInlineError('Select a Data Block to sample.');
       return;
     }
     if (mode === 'slice') {

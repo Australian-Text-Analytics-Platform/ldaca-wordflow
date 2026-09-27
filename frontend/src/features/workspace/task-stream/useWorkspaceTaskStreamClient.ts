@@ -144,7 +144,7 @@ export const useWorkspaceTaskStreamClient = (
         setState((previous) => ({ ...previous, lastEventTimestamp: eventTimestamp(payload) }));
         onEventRef.current?.(payload);
       } catch (error) {
-        console.warn('Failed to parse backend event', event.data, error);
+        console.warn("Couldn't parse backend event", event.data, error);
       }
     };
 

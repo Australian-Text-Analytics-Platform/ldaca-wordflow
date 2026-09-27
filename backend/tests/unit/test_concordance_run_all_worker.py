@@ -74,11 +74,11 @@ def test_concordance_run_all_writes_complete_analysis_table_artifact(
     matches = restored_df.get_column("concordance").to_list()[0]
     assert len(matches) == 2
     assert [match["CONC_start_idx"] for match in matches] == [0, 11]
-    assert progress_updates[0][1].startswith("Loading concordance")
+    assert progress_updates[0][1] == "Getting ready…"
     assert any(
-        "Preparing text data" in message for _progress, message in progress_updates
+        "Preparing the text" in message for _progress, message in progress_updates
     )
-    assert progress_updates[-1] == (0.95, "Saving concordance Result...")
+    assert progress_updates[-1] == (0.95, "Saving the results…")
 
 
 def test_concordance_run_all_retains_extraction_in_canonical_result(

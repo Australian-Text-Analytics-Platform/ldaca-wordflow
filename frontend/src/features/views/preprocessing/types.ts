@@ -129,24 +129,24 @@ export const JOIN_TYPE_OPTIONS: { value: JoinType; label: string; description: s
     value: 'left',
     label: 'Left',
     description:
-      'Keeps every row of the left data block and adds matching values from the right; rows without a match get empty cells.',
+      'Keeps every row of the left Data Block and adds matching values from the right; rows without a match get empty cells.',
   },
   {
     value: 'inner',
     label: 'Inner',
-    description: 'Keeps only rows that match in both data blocks.',
+    description: 'Keeps only rows that match in both Data Blocks.',
   },
   {
     value: 'right',
     label: 'Right',
     description:
-      'Keeps every row of the right data block and adds matching values from the left; rows without a match get empty cells.',
+      'Keeps every row of the right Data Block and adds matching values from the left; rows without a match get empty cells.',
   },
   {
     value: 'full',
     label: 'Full',
     description:
-      'Keeps every row of both data blocks, matched where possible; missing values are left empty.',
+      'Keeps every row of both Data Blocks, matched where possible; missing values are left empty.',
   },
   {
     value: 'semi',

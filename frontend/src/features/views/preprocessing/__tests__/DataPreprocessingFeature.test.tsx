@@ -265,7 +265,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     await waitFor(() => {
       expect(
         within(filterPanel).queryByText(
-          'No schema information is available for this data block yet.',
+          'No schema information is available for this Data Block yet.',
         ),
       ).not.toBeInTheDocument();
     });
@@ -303,7 +303,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     expect(screen.queryByRole('group', { name: 'Apply result as' })).not.toBeInTheDocument();
     expect(await screen.findByText('Data Blocks (1/2)')).toBeInTheDocument();
     expect(
-      screen.queryByText('All rows from the left data block plus matching rows from the right.'),
+      screen.queryByText('All rows from the left Data Block plus matching rows from the right.'),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Found \d+ shared columns?/)).not.toBeInTheDocument();
 
@@ -329,7 +329,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     expect(screen.getByRole('tab', { name: 'Slice' })).toBeInTheDocument();
     expect(screen.getByLabelText('Start row')).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: 'Random Sample' }));
+    await user.click(screen.getByRole('tab', { name: 'Random sample' }));
 
     expect(screen.queryByLabelText('Start row')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Fraction / Count')).toBeInTheDocument();
@@ -339,7 +339,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     fireEvent.change(screen.getByLabelText('Fraction / Count'), { target: { value: '0.4' } });
     fireEvent.change(screen.getByLabelText('Random seed'), { target: { value: '7' } });
 
-    const sampleNameInput = screen.getByLabelText('New data block name');
+    const sampleNameInput = screen.getByLabelText('New Data Block name');
     expect(sampleNameInput).toHaveValue('');
     expect(sampleNameInput).toHaveAttribute('placeholder', 'Corpus_sampled_fr_0_4_rs_7');
 
@@ -373,7 +373,7 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     const samplePanel = screen.getByRole('tabpanel', { name: 'Sample' });
 
-    await user.click(within(samplePanel).getByRole('tab', { name: 'Random Sample' }));
+    await user.click(within(samplePanel).getByRole('tab', { name: 'Random sample' }));
 
     fireEvent.change(
       within(samplePanel).getByPlaceholderText('e.g. 0.4 for 40% or 100 for 100 rows'),
@@ -409,7 +409,7 @@ describe('DataPreprocessingFeature replace tab', () => {
 
     const samplePanel = screen.getByRole('tabpanel', { name: 'Sample' });
 
-    await user.click(within(samplePanel).getByRole('tab', { name: 'Random Sample' }));
+    await user.click(within(samplePanel).getByRole('tab', { name: 'Random sample' }));
 
     fireEvent.change(
       within(samplePanel).getByPlaceholderText('e.g. 0.4 for 40% or 100 for 100 rows'),
@@ -450,7 +450,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     const valueInput = await screen.findByPlaceholderText('Enter value');
     fireEvent.change(valueInput, { target: { value: 'candidate' } });
 
-    const nameInput = within(filterPanel).getByLabelText('New data block name');
+    const nameInput = within(filterPanel).getByLabelText('New Data Block name');
     expect(nameInput).toHaveValue('');
     expect(nameInput).toHaveAttribute('placeholder', 'Corpus_filtered_by_Body_contains_candidate');
 
@@ -612,7 +612,7 @@ describe('DataPreprocessingFeature replace tab', () => {
     renderPreprocessingFeature();
 
     const applyBar = screen.getByRole('group', { name: 'Apply result' });
-    expect(applyBar).toHaveTextContent('New data block name');
+    expect(applyBar).toHaveTextContent('New Data Block name');
     expect(applyBar).not.toHaveTextContent('Result:');
     expect(within(applyBar).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(applyBar).getByRole('button', { name: 'Add to Project' })).toBeInTheDocument();

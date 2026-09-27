@@ -82,7 +82,7 @@ export function AddAnnotationProviderDialog({
       onCreated?.(configuration);
       handleOpenChange(false);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Could not add provider');
+      setError(caught instanceof Error ? caught.message : "Couldn't add provider");
     } finally {
       setPending(false);
     }

@@ -145,7 +145,7 @@ describe('AnnotationAiPreviewPanel', () => {
 
     expect(screen.getByRole('columnheader', { name: 'annotation (preview)' })).toBeInTheDocument();
     expect(screen.queryByText('AI prediction')).not.toBeInTheDocument();
-    expect(screen.queryByText('Annotating...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Annotating…')).not.toBeInTheDocument();
     expect(screen.getAllByRole('status', { name: 'Predicting annotation' })).toHaveLength(2);
   });
 
@@ -161,7 +161,7 @@ describe('AnnotationAiPreviewPanel', () => {
     expect(screen.getByRole('columnheader', { name: 'text' })).toBeInTheDocument();
     expect(screen.getByRole('columnheader', { name: 'annotation (preview)' })).toBeInTheDocument();
     expect(screen.getByRole('status', { name: 'Processing preview page' })).toBeInTheDocument();
-    expect(screen.queryByText('Loading texts...')).not.toBeInTheDocument();
+    expect(screen.queryByText('Loading texts…')).not.toBeInTheDocument();
   });
 
   it('uses the shared analysis table frame', () => {
@@ -194,7 +194,7 @@ describe('AnnotationAiPreviewPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'review' }));
     await user.keyboard('{Escape}');
 
@@ -258,7 +258,7 @@ describe('AnnotationAiPreviewPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'tweet_id' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('menuitemradio', { name: 'Krippendorff’s Alpha' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'review' }));
@@ -281,7 +281,7 @@ describe('AnnotationAiPreviewPanel', () => {
       />,
     );
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'correction' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'review' }));
     await user.keyboard('{Escape}');

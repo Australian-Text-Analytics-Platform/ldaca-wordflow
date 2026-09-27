@@ -90,7 +90,7 @@ export const useFiles = ({ enabled = true }: UseFilesProps = {}) => {
       if (selectedFile === filename) setSelectedFile(null);
       return true;
     } catch (error) {
-      console.error('Failed to delete file:', error);
+      console.error("Couldn't delete file:", error);
       return false;
     }
   };
@@ -114,7 +114,7 @@ export const useFiles = ({ enabled = true }: UseFilesProps = {}) => {
       );
       return omissions !== null;
     } catch (error) {
-      console.error('Failed to download file:', error);
+      console.error("Couldn't download file:", error);
       return false;
     }
   };

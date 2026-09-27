@@ -23,7 +23,7 @@ assignments into source-character Topic Coverage for the source document.
    by the Unicode-character length owned by each segment.
 
 For keyword extraction, c-TF-IDF combines all Topic Segments assigned to a
-topic into one class-level text. The configured vectorizer tokenises that text
+topic into one class-level text. The configured vectoriser tokenises that text
 and removes applicable stopwords. A term receives a high score when it occurs
 often within that topic but is less common across the other topics. The highest
 scoring terms become the representative words. They describe distinctive

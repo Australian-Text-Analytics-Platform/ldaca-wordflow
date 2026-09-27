@@ -40,7 +40,7 @@ export interface TaskRow {
   primary: TaskItem;
   /** Steps of a combined row (successful tasks of one tab); one entry otherwise. */
   steps: TaskRowStep[];
-  /** A Run All's per-block results, folded under it (one entry per data block). */
+  /** A Run All's per-block results, folded under it (one entry per Data Block). */
   blockResults: TaskRowStep[];
   target: TaskRowTarget | null;
 }
@@ -101,7 +101,7 @@ export function buildTaskRows(
   const rows: TaskRow[] = [];
   const successfulByTab = new Map<string, TaskItem[]>();
   // A Run All stores one parent analysis plus one supporting analysis per
-  // data block; show them as one task (issue 199).
+  // Data Block; show them as one task (issue 199).
   const taskIds = new Set(tasks.map((task) => task.task_id));
   const childrenByParent = new Map<string, TaskItem[]>();
   for (const task of tasks) {

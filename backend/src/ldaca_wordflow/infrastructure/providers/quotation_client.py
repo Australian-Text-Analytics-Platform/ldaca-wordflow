@@ -54,7 +54,7 @@ class QuotationProviderClient:
             )
         except httpx.RequestError as exc:
             logger.error("Quotation service unreachable at %s: %s", engine.url, exc)
-            raise QuotationServiceError("Failed to reach quotation service") from exc
+            raise QuotationServiceError("Couldn't reach the quotation service. Try again later.") from exc
 
         if response.status_code >= 400:
             logger.error(

@@ -83,7 +83,7 @@ export function FilterConditionValueInput({
         // eslint-disable-next-line @typescript-eslint/no-base-to-string
         value={condition.operator === 'between' ? '' : String(condition.value ?? '')}
         disabled
-        placeholder={hasSelection ? 'Select a column' : 'Select a data block to configure filters'}
+        placeholder={hasSelection ? 'Select a column' : 'Select a Data Block to configure filters'}
         className="flex-1 rounded-md border border-surface-border/70 bg-panel px-2 py-1 text-body text-description"
       />
     );
@@ -117,7 +117,7 @@ export function FilterConditionValueInput({
           disabled={topicIds.length === 0}
         >
           <SelectTrigger className="w-32" aria-label="Topic">
-            <SelectValue placeholder={optionState.loading ? 'Loading...' : 'Topic'} />
+            <SelectValue placeholder={optionState.loading ? 'Loading…' : 'Topic'} />
           </SelectTrigger>
           <SelectContent>
             {topicIds.map((topicId) => (

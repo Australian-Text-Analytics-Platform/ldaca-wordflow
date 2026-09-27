@@ -29,7 +29,7 @@ export function usePersistNodeTokenizerModel({
       );
       return data;
     } catch {
-      toast.error('Could not save the tokeniser for this data block.');
+      toast.error("Couldn't save the tokeniser for this Data Block.");
       return null;
     }
   };

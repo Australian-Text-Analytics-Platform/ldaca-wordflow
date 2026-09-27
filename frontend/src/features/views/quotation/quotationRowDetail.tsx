@@ -13,7 +13,7 @@ export const buildQuotationRowDetailCustomization = (
   label: 'Quotation',
   summaryFields: [
     {
-      label: 'Quote Type',
+      label: 'Quote type',
       value: <QuoteTypeValue code={row.cellText(QUOTATION_COLUMN_KEYS.quoteType)} />,
     },
     { label: 'Speaker', value: row.cellText(QUOTATION_COLUMN_KEYS.speaker) },

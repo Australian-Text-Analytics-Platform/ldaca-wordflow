@@ -67,17 +67,17 @@ export function ActiveWorkspaceCard({
     >
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          {currentWorkspace ? 'Active project' : 'Create project'}
+          {currentWorkspace ? 'Active Project' : 'Create Project'}
           {currentWorkspace ? (
             <HelpIcon
               targetKey="data-loader.active-workspace.section"
-              label="Active project overview"
-              tooltip="Rename the open project or update its description. New data blocks are added here, and your work is saved automatically."
+              label="Active Project overview"
+              tooltip="Rename the open Project or update its description. New Data Blocks are added here, and your work is saved automatically."
             />
           ) : (
             <HelpIcon
               targetKey="data-loader.create-workspace.name"
-              label="Create project overview"
+              label="Create Project overview"
               tooltip="Create a Project to hold your Data Blocks and analyses. You can upload files before or after. Add an optional description to record its purpose."
             />
           )}
@@ -129,7 +129,7 @@ function ActiveWorkspaceControls({
         <div className="flex flex-wrap items-center gap-2 text-body font-semibold text-foreground">
           {currentWorkspace.name}
           <Badge>
-            {nodeCount} data block{nodeCount === 1 ? '' : 's'}
+            {nodeCount} Data Block{nodeCount === 1 ? '' : 's'}
           </Badge>
         </div>
         <div className="mt-1 text-label-secondary text-description">
@@ -140,8 +140,8 @@ function ActiveWorkspaceControls({
 
       <div className="space-y-2">
         <div className="flex items-center gap-2">
-          <Label htmlFor="rename-workspace">Rename project</Label>
-          <HelpIcon targetKey="data-loader.rename-workspace.input" label="Rename project input" />
+          <Label htmlFor="rename-workspace">Rename Project</Label>
+          <HelpIcon targetKey="data-loader.rename-workspace.input" label="Rename Project input" />
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
@@ -171,7 +171,7 @@ function ActiveWorkspaceControls({
             onChange={(event) => {
               setDescriptionValue(event.target.value);
             }}
-            placeholder="Enter project description"
+            placeholder="Enter Project description"
             disabled={busy}
           />
           <Button
@@ -230,13 +230,13 @@ function CreateWorkspaceForm({ onCreate }: CreateWorkspaceFormProps) {
       />
       <div className="flex items-center gap-2">
         <DisabledReasonTooltip
-          reason={!newWorkspaceName.trim() ? 'Enter a project name first' : undefined}
+          reason={!newWorkspaceName.trim() ? 'Enter a Project name first' : undefined}
         >
           <Button onClick={() => void handleCreate()} disabled={!newWorkspaceName.trim()}>
-            <Plus className="mr-2 h-4 w-4" /> Create project
+            <Plus className="mr-2 h-4 w-4" /> Create Project
           </Button>
         </DisabledReasonTooltip>
-        <HelpIcon targetKey="data-loader.create-workspace.button" label="Create project" />
+        <HelpIcon targetKey="data-loader.create-workspace.button" label="Create Project" />
       </div>
     </div>
   );

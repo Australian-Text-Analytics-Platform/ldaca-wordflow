@@ -148,7 +148,7 @@ export function useQuotationTaskFlow({
         return data;
       },
       onError: (error) => {
-        console.error('Failed to fetch quotations', error);
+        console.error("Couldn't fetch quotations", error);
         showErrorDialog(getErrorMessage(error));
       },
     });

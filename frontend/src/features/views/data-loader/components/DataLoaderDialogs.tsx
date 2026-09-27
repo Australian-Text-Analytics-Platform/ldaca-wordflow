@@ -91,7 +91,7 @@ export function DataLoaderDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Invalid project name</AlertDialogTitle>
+            <AlertDialogTitle>Invalid Project name</AlertDialogTitle>
             <AlertDialogDescription>{workspaceNameAlert.message}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -108,13 +108,13 @@ export function DataLoaderDialogs({
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogTitle>Delete Project?</AlertDialogTitle>
             <AlertDialogDescription>
               {deleteWorkspace.target
                 ? // an empty project name should fall through to the id
                   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
                   `This will permanently delete "${deleteWorkspace.target.name || deleteWorkspace.target.id}" and its data. This action cannot be undone.`
-                : 'This will permanently delete the project and its data. This action cannot be undone.'}
+                : 'This will permanently delete the Project and its data. This action cannot be undone.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -129,7 +129,7 @@ export function DataLoaderDialogs({
               className="bg-error text-button-foreground hover:bg-error/90"
               disabled={deleteWorkspace.deleting}
             >
-              {deleteWorkspace.deleting ? 'Deleting…' : 'Delete project'}
+              {deleteWorkspace.deleting ? 'Deleting…' : 'Delete Project'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -188,21 +188,21 @@ export function DataLoaderDialogs({
       >
         <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Citation</DialogTitle>
+            <DialogTitle>README</DialogTitle>
             <DialogDescription>
-              {citation.path ? `Source: ${citation.path}` : 'Citation metadata'}
+              {citation.path ? `Source: ${citation.path}` : 'README'}
             </DialogDescription>
           </DialogHeader>
           {citation.loading ? (
             <div className="text-description flex items-center gap-2 text-body">
-              <Loader2 className="h-4 w-4 animate-spin" /> Loading citation…
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading README…
             </div>
           ) : citation.content ? (
             <div className="prose prose-sm max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{citation.content}</ReactMarkdown>
             </div>
           ) : (
-            <p className="text-description text-body">No citation available for this folder.</p>
+            <p className="text-description text-body">No README available for this folder.</p>
           )}
         </DialogContent>
       </Dialog>

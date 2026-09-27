@@ -269,12 +269,12 @@ export function DesktopNavigationHeaderView({
                 <p className="px-2 py-4 text-center text-body text-description">Loading Tabs…</p>
               ) : isError ? (
                 <div className="flex items-center justify-between gap-3 px-2 py-3">
-                  <p className="text-body text-error">Could not load Project Tabs.</p>
+                  <p className="text-body text-error">Couldn't load Project Tabs.</p>
                   <Button type="button" variant="secondary" size="sm" onClick={onRetry}>
                     Retry
                   </Button>
                 </div>
-              ) : workspaceName === 'No project' ? (
+              ) : workspaceName === 'No Project' ? (
                 <p className="px-2 py-4 text-center text-body text-description">
                   Open a Project to access analysis Tabs.
                 </p>
@@ -405,7 +405,7 @@ function DesktopNavigationHeaderController() {
 
   return (
     <DesktopNavigationHeaderView
-      workspaceName={currentWorkspace?.name ?? 'No project'}
+      workspaceName={currentWorkspace?.name ?? 'No Project'}
       tabs={tabs}
       unavailableTabWarnings={unavailableTabWarnings}
       currentTabId={currentTabId}

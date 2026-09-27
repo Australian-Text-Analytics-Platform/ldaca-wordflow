@@ -59,7 +59,7 @@ export function NodeColorPicker({
 
   return (
     <div className="space-y-1">
-      <span className="block text-label-secondary font-medium text-description">Color</span>
+      <span className="block text-label-secondary font-medium text-description">Colour</span>
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
@@ -77,7 +77,7 @@ export function NodeColorPicker({
             variant="outline"
             disabled={disabled}
             className="size-9 rounded-md p-1"
-            aria-label={`Change color for ${nodeName}`}
+            aria-label={`Change colour for ${nodeName}`}
           >
             <span
               aria-hidden="true"
@@ -88,7 +88,7 @@ export function NodeColorPicker({
         </PopoverTrigger>
         <PopoverContent align="start" className="w-64 p-3">
           <PopoverHeader className="gap-0.5">
-            <PopoverTitle>Color</PopoverTitle>
+            <PopoverTitle>Colour</PopoverTitle>
           </PopoverHeader>
           <div className="mt-3 grid grid-cols-6 gap-1.5">
             {presets.map((preset) => {
@@ -133,7 +133,7 @@ export function NodeColorPicker({
                 <input
                   type="color"
                   value={normalizedColor}
-                  aria-label={`Custom color for ${nodeName}`}
+                  aria-label={`Custom colour for ${nodeName}`}
                   className="h-8 w-10 rounded-md border border-input-border bg-editor p-1"
                   onChange={(event) => {
                     setCustomText(event.target.value);
@@ -142,7 +142,7 @@ export function NodeColorPicker({
                 />
                 <Input
                   value={customText}
-                  aria-label={`Hex color for ${nodeName}`}
+                  aria-label={`Hex colour for ${nodeName}`}
                   className="h-8 font-mono text-label-secondary"
                   onChange={(event) => {
                     setCustomText(event.target.value);

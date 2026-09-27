@@ -75,7 +75,7 @@ export function useDataLoaderWorkspaceActions({
       await workspaceActions.setCurrentWorkspace(workspaceId);
       return true;
     } catch (error) {
-      const message = (error as Error).message || 'Failed to update active project.';
+      const message = (error as Error).message || "Couldn't update active Project.";
       if (workspaceId) {
         setWorkspaceLoadFailures((current) => ({ ...current, [workspaceId]: message }));
       }
@@ -115,7 +115,7 @@ export function useDataLoaderWorkspaceActions({
         setWorkspaceNameAlert(message);
         return false;
       }
-      notify('error', 'Failed to create project.', undefined, error);
+      notify('error', "Couldn't create Project.", undefined, error);
       return false;
     }
   };
@@ -135,7 +135,7 @@ export function useDataLoaderWorkspaceActions({
         setWorkspaceNameAlert(message);
         return;
       }
-      notify('error', 'Failed to rename project.', undefined, error);
+      notify('error', "Couldn't rename Project.", undefined, error);
     }
   };
 
@@ -148,7 +148,7 @@ export function useDataLoaderWorkspaceActions({
       await workspaceActions.updateWorkspaceDescription(value);
       notify('success', 'Project description updated.');
     } catch (error) {
-      notify('error', 'Failed to update project description.', undefined, error);
+      notify('error', "Couldn't update Project description.", undefined, error);
     }
   };
 
@@ -181,7 +181,7 @@ export function useDataLoaderWorkspaceActions({
       });
       notify('success', 'Project deleted.');
     } catch (error) {
-      notify('error', 'Failed to delete project.', undefined, error);
+      notify('error', "Couldn't delete Project.", undefined, error);
     } finally {
       setDeletingWorkspace(false);
       setWorkspaceToDelete(null);
@@ -202,7 +202,7 @@ export function useDataLoaderWorkspaceActions({
       });
       notify('success', 'Project list refreshed.');
     } catch (error) {
-      notify('error', 'Failed to refresh project list.', undefined, error);
+      notify('error', "Couldn't refresh Project list.", undefined, error);
     } finally {
       setRefreshingWorkspaces(false);
     }
@@ -242,7 +242,7 @@ export function useDataLoaderWorkspaceActions({
         notify('success', `Project "${file.name}" imported.`);
       }
     } catch (error) {
-      notify('error', 'Failed to import project.', undefined, error);
+      notify('error', "Couldn't import Project.", undefined, error);
     } finally {
       setUploadingWorkspaceZip(false);
     }
@@ -258,7 +258,7 @@ export function useDataLoaderWorkspaceActions({
     const skipped = node.skipped_files;
     notify(
       'success',
-      `${filename} added to project.`,
+      `${filename} added to Project.`,
       skipped && skipped.length > 0 ? describeSkippedFiles(skipped) : undefined,
     );
   };
@@ -280,7 +280,7 @@ export function useDataLoaderWorkspaceActions({
     }
     const added = paths.length - failed.length;
     if (added > 0) {
-      notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to project.`);
+      notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`);
     }
     if (failed.length > 0) {
       notify(

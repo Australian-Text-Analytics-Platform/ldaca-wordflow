@@ -16,7 +16,7 @@ export function DesktopUpdateSettings() {
         setEnabled(preferences.automaticChecks);
       })
       .catch(() => {
-        setError('Could not load desktop update preferences.');
+        setError("Couldn't load desktop update preferences.");
       })
       .finally(() => {
         setLoading(false);
@@ -33,7 +33,7 @@ export function DesktopUpdateSettings() {
       setEnabled(saved.automaticChecks);
     } catch {
       setEnabled(previous);
-      setError('Could not save desktop update preferences.');
+      setError("Couldn't save desktop update preferences.");
     } finally {
       setSaving(false);
     }

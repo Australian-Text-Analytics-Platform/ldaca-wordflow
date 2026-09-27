@@ -268,7 +268,7 @@ describe('AnnotationResultsPanel', () => {
     await user.keyboard('{Escape}');
     expect(annotationFilter).toHaveAttribute('aria-pressed', 'true');
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'reviewer' }));
     await user.keyboard('{Escape}');
 
@@ -314,7 +314,7 @@ describe('AnnotationResultsPanel', () => {
       'correction',
     );
     expect(screen.queryByRole('button', { name: 'Use as example' })).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'correction' })).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('button', { name: 'Show metadata' }));
@@ -419,7 +419,7 @@ describe('AnnotationResultsPanel', () => {
     expect(annotationFilter).toHaveAttribute('aria-pressed', 'true');
     expect(reviewerFilter).toHaveAttribute('aria-pressed', 'false');
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'reviewer' }));
     await user.keyboard('{Escape}');
     expect(screen.getByRole('button', { name: 'Filter rows by annotation' })).toHaveAttribute(
@@ -445,7 +445,7 @@ describe('AnnotationResultsPanel', () => {
 
     expect(screen.getByRole('columnheader', { name: 'username' })).toBeInTheDocument();
     expect(screen.getByText('alice')).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.getByRole('menuitemcheckbox', { name: 'username' })).toHaveAttribute(
       'aria-disabled',
       'true',
@@ -463,7 +463,7 @@ describe('AnnotationResultsPanel', () => {
 
     renderPanel();
 
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'record_id' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('menuitemradio', { name: 'Percent Agreement' }));
     await user.keyboard('{Escape}');

@@ -271,7 +271,7 @@ describe('ConcordanceDispersionSummary', () => {
     expect(optionSeries()).toHaveLength(1);
     fireEvent.click(hidden);
     expect(onToggle).toHaveBeenCalledWith(['alpha']);
-    fireEvent.click(within(controls).getByRole('button', { name: 'Clear Selection' }));
+    fireEvent.click(within(controls).getByRole('button', { name: 'Clear selection' }));
     expect(onClear).toHaveBeenCalledOnce();
   });
 

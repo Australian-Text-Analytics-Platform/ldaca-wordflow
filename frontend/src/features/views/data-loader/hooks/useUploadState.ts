@@ -235,7 +235,7 @@ export function useUploadState({
     try {
       await runUploadSelection(await collect());
     } catch (error) {
-      notify('error', `Could not prepare the upload: ${errorMessage(error)}`);
+      notify('error', `Couldn't prepare the upload: ${errorMessage(error)}`);
     } finally {
       setActivity({ phase: 'idle' });
       busyRef.current = false;

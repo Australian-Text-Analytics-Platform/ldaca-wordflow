@@ -287,7 +287,7 @@ const renderWordCloudBitmap = (
         canvas.toBlob(
           (output) => {
             if (!output) {
-              reject(new Error(`Failed to create ${options.format} export blob`));
+              reject(new Error(`Couldn't create ${options.format} export blob`));
               return;
             }
             resolve(output);
@@ -296,7 +296,7 @@ const renderWordCloudBitmap = (
           options.format === 'jpeg' ? 0.92 : undefined,
         );
       } catch (error) {
-        reject(error instanceof Error ? error : new Error('Failed to render word cloud export'));
+        reject(error instanceof Error ? error : new Error("Couldn't render word cloud export"));
       } finally {
         URL.revokeObjectURL(url);
       }
@@ -304,7 +304,7 @@ const renderWordCloudBitmap = (
 
     image.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Failed to load serialized SVG for export'));
+      reject(new Error("Couldn't load the SVG for export"));
     };
 
     image.src = url;

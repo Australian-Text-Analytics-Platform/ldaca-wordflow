@@ -93,7 +93,7 @@ export function WorkspaceManagerCard({
             <HelpIcon
               targetKey="data-loader.workspace-manager.section"
               label="Project manager overview"
-              tooltip="Switch between saved projects or remove ones you no longer need."
+              tooltip="Switch between saved Projects or remove ones you no longer need."
             />
           </CardTitle>
           <div className="flex w-full flex-wrap items-center gap-1 @min-[288px]/workspace-manager:w-auto @min-[288px]/workspace-manager:justify-end">
@@ -104,12 +104,12 @@ export function WorkspaceManagerCard({
               disabled={uploadingZip || busy}
             >
               <Upload className="mr-1.5 h-4 w-4" />
-              {uploadingZip ? 'Importing…' : 'Import project'}
+              {uploadingZip ? 'Importing…' : 'Import Project'}
             </Button>
             <input
               ref={zipInputRef}
               type="file"
-              aria-label="Import project archive"
+              aria-label="Import Project archive"
               accept=".zip,application/zip"
               className="hidden"
               onChange={(e) => {
@@ -119,8 +119,8 @@ export function WorkspaceManagerCard({
             <Button
               size="icon"
               variant="ghost"
-              aria-label="Refresh project list"
-              title="Refresh project list"
+              aria-label="Refresh Project list"
+              title="Refresh Project list"
               onClick={onRefresh}
               disabled={refreshing || busy}
             >
@@ -136,7 +136,7 @@ export function WorkspaceManagerCard({
           </div>
         ) : workspaces.length === 0 ? (
           <div className="rounded-md border border-dashed border-surface-border-foreground/60 px-4 py-3 text-center text-body text-description">
-            No projects yet. Create one to get started.
+            No Projects yet. Create one to get started.
           </div>
         ) : (
           <div className="space-y-3 overflow-y-auto pr-2">

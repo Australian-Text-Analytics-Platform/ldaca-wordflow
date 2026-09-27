@@ -131,7 +131,7 @@ export function collectPickerSelection(files: File[]): UploadSelectionInput {
 function readFileEntry(entry: DroppedEntry) {
   return new Promise<File>((resolve, reject) => {
     if (!entry.file) {
-      reject(new Error(`Unable to read dropped file ${entry.name}.`));
+      reject(new Error(`Couldn't read dropped file ${entry.name}.`));
       return;
     }
     entry.file(resolve, reject);
@@ -140,7 +140,7 @@ function readFileEntry(entry: DroppedEntry) {
 
 async function readAllDirectoryEntries(entry: DroppedEntry) {
   if (!entry.createReader) {
-    throw new Error(`Unable to read dropped folder ${entry.name}.`);
+    throw new Error(`Couldn't read dropped folder ${entry.name}.`);
   }
   const reader = entry.createReader();
   const entries: DroppedEntry[] = [];

@@ -212,7 +212,7 @@ def run_result_data_block_creation(
             )
 
         if progress_callback:
-            progress_callback(0.95, "Saving Data Block Creation...")
+            progress_callback(0.95, "Saving the new Data Block…")
         return {
             "state": "successful",
             "outputs": outputs,

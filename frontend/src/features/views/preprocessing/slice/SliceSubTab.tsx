@@ -20,7 +20,7 @@ type SliceSubTabComponentProps = SliceSubTabProps & {
 
 /**
  * Re-keys the Sample Rows tab when the selected node changes. This lets the
- * inner form reset naturally for each source data block.
+ * inner form reset naturally for each source Data Block.
  * Rendered by `DataPreprocessingFeature`; it composes the slice form and `PreviewTable`.
  */
 export function SliceSubTab(props: SliceSubTabComponentProps) {
@@ -63,7 +63,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                 <HelpIcon
                   targetKey="preprocessing.slice.tab"
                   label="Sample sub-tab overview"
-                  tooltip="Create either a contiguous slice or a random sample from the selected data block."
+                  tooltip="Create either a contiguous slice or a random sample from the selected Data Block."
                 />
               </CardTitle>
             </div>
@@ -84,7 +84,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                 Slice
               </TabsTrigger>
               <TabsTrigger value="random_sample" disabled={!hasSelection}>
-                Random Sample
+                Random sample
               </TabsTrigger>
             </TabsList>
 
@@ -184,7 +184,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                       htmlFor="no-random-seed"
                       className="text-body font-normal text-description whitespace-nowrap"
                     >
-                      No Random Seed
+                      No random seed
                     </Label>
                   </div>
                   <p className="text-label-secondary text-description">
@@ -198,7 +198,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
         <CardFooter className="flex items-center gap-3 border-t border-surface-border bg-panel/20 py-4">
           <div className="flex flex-1 items-center gap-2">
             <Label htmlFor="slice-new-node-name" className="shrink-0">
-              New data block name
+              New Data Block name
             </Label>
             <HelpIcon targetKey="preprocessing.slice.new-node-name" label="Sample output name" />
             <Input
@@ -259,7 +259,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
           </span>
         }
-        description="Review rows returned by the current slice or random sample configuration before adding to the project."
+        description="Review rows returned by the current slice or random sample configuration before adding to the Project."
         columns={preview.columns}
         data={preview.data}
         pagination={preview.pagination}

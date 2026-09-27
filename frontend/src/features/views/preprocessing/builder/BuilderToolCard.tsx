@@ -66,7 +66,7 @@ export function BuilderToolCard({
   operation,
   previewBody,
   incompleteMessage,
-  nameLabel = 'New data block name',
+  nameLabel = 'New Data Block name',
   nameHint,
   name,
   namePlaceholder,
@@ -100,7 +100,7 @@ export function BuilderToolCard({
   });
 
   const disabledReason = !sourceNodeId
-    ? 'Select a data block first'
+    ? 'Select a Data Block first'
     : !canCreate
       ? incompleteMessage
       : undefined;

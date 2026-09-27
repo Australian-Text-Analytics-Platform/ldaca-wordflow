@@ -76,7 +76,7 @@ function ExportFeature() {
           : `${String(selectedIds.length)} Data Blocks exported`,
       );
     } catch (error) {
-      toastError(error, 'Could not export Data Blocks');
+      toastError(error, "Couldn't export Data Blocks");
     } finally {
       setExportingDataBlocks(false);
     }
@@ -103,7 +103,7 @@ function ExportFeature() {
       reachContextualHint(CONTEXTUAL_HINT_IDS.export.workspaceSuccess);
       toast.success('Project archive exported');
     } catch (error) {
-      toastError(error, 'Could not export project archive');
+      toastError(error, "Couldn't export Project archive");
     } finally {
       setExportingWorkspace(false);
     }
@@ -147,7 +147,7 @@ function ExportFeature() {
             showColumnPicker={false}
             title="Data Blocks"
             disabled={exportingDataBlocks}
-            emptyMessage="No data blocks added yet. Use Add data block, or Add All to add every Data Block."
+            emptyMessage="No Data Blocks added yet. Use Add Data Block, or Add all to add every Data Block."
           />
 
           <div
@@ -217,8 +217,8 @@ function ExportFeature() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-body text-description">
-            Export the complete project as a self-contained ZIP archive. Import the archive later to
-            relocate the project.
+            Export the complete Project as a self-contained ZIP archive. Import the archive later to
+            relocate the Project.
           </p>
           <Button
             data-guidance="export-workspace"
@@ -229,7 +229,7 @@ function ExportFeature() {
             className="gap-2"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
-            {exportingWorkspace ? 'Exporting…' : 'Export project archive'}
+            {exportingWorkspace ? 'Exporting…' : 'Export Project archive'}
           </Button>
         </CardContent>
       </Card>

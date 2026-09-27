@@ -72,7 +72,7 @@ describe('SequentialChart', () => {
     expect(containerRef.current).toBeInstanceOf(HTMLDivElement);
     expect(
       within(screen.getByTestId('filterable-series-controls')).getByRole('button', {
-        name: 'Clear Selection',
+        name: 'Clear selection',
       }),
     ).toBeEnabled();
     expect(screen.queryByText(/data points but only/)).not.toBeInTheDocument();

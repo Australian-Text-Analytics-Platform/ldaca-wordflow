@@ -144,7 +144,7 @@ export function useFolderCreation({ notify }: UseFolderCreationParams) {
       const message =
         typeof errorMessage === 'string' && errorMessage.length > 0
           ? errorMessage
-          : 'Failed to create folder.';
+          : "Couldn't create folder.";
       if (message.toLowerCase().includes('invalid folder name')) {
         dispatch({ type: 'invalid-name', message });
         return;

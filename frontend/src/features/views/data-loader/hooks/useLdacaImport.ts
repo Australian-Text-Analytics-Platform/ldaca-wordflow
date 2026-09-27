@@ -32,7 +32,7 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
       const { data } = await listDataPortalCollectionsWithProviderCredential();
       dispatch({ type: 'collectionsSucceeded', collections: data.items });
     } catch (error) {
-      const message = (error as Error).message || 'Failed to load LDaCA collections.';
+      const message = (error as Error).message || "Couldn't load LDaCA collections.";
       dispatch({ type: 'collectionsFailed', message });
       notify('error', message);
     }
@@ -74,7 +74,7 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
       );
       dispatch({ type: 'importSucceeded' });
     } catch (error) {
-      notify('error', 'Failed to start LDaCA import.', undefined, error);
+      notify('error', "Couldn't start LDaCA import.", undefined, error);
     } finally {
       dispatch({ type: 'importFinished' });
     }

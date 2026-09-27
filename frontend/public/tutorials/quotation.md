@@ -15,13 +15,13 @@ Review a representative sample before drawing conclusions from the output.
 
 <h2 id="help-quotation-parameters">Parameter panel</h2>
 
-<h3 id="help-quotation-data-block">Step 1 — Select your data</h3>
+<h3 id="help-quotation-data-block">Step 1: Select your data</h3>
 
 Add one Data Block and choose the source text column. A fresh selector uses the
 Data Block's saved Document Column Preference when available. The Analysis
 records the exact Data Block and column used for the run.
 
-<h3 id="help-quotation-engine">Step 2 — Choose the engine</h3>
+<h3 id="help-quotation-engine">Step 2: Choose the engine</h3>
 
 The engine is an Analysis parameter in the Quotation panel:
 
@@ -102,12 +102,12 @@ analysis columns start selected.
 
 <h3 id="help-quotation-quote-types">Quote types</h3>
 
-Each extract has a **Quote Type** (`QUOTE_quote_type`), which Row Details also
+Each extract has a **Quote type** (`QUOTE_quote_type`), which Row Details also
 explains in words. Most types are letter codes that list the parts of the quote
 in the order they appear in the sentence: **Q** a quotation mark, **C** the
 quoted content, **V** the speech verb, and **S** the speaker.
 
-| Quote Type | Example | Meaning |
+| Quote type | Example | Meaning |
 |---|---|---|
 | QCQVS | "We will act," said the minister. | Quote in quotation marks, then verb, then speaker |
 | QCQSV | "We will act," the minister said. | Quote in quotation marks, then speaker, then verb |

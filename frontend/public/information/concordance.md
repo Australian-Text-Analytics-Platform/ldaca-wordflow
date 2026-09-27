@@ -43,7 +43,7 @@ analysis without loading a whole-corpus result into the browser.
 - What are L1 and R1?
   **L1** is the token immediately left of a match; **R1** is the token immediately
   right. Their frequency columns count those values across the complete Run
-  Result. Table View gives matched text strong source-colour emphasis, then
+  Result. Table view gives matched text strong source-colour emphasis, then
   highlights the last exact L1 occurrence in the left context and first exact
   R1 occurrence in the right context with a softer tint. Empty, missing, or
   case-mismatched anchors remain plain. **Highlight L1/R1 in context** is on by
@@ -53,12 +53,12 @@ analysis without loading a whole-corpus result into the browser.
 - What do Preview and Run do?
   **Preview** works out only the page you open. **Run** can be started
   directly and finds every match in each selected Data Block. **Concordance
-  Results** then shows the complete result. Table View pages matches.
-  Dispersion View pages the documents that contain matches and charts one
+  Results** then shows the complete result. Table view pages matches.
+  Dispersion view pages the documents that contain matches and charts one
   series per exact, case-sensitive term. After Run, hidden terms and selected
   bins also decide which documents, markers and counts are shown, and what
-  **Add to Project** saves. From Table View it saves one row per match; from
-  Dispersion View it saves one row per document, with the matches in
+  **Add to Project** saves. From Table view it saves one row per match; from
+  Dispersion view it saves one row per document, with the matches in
   `CONC_extraction`. With two Data Blocks, you can include either or both.
 
 - Where can I get help?

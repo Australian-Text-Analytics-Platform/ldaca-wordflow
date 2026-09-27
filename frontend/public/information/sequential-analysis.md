@@ -4,7 +4,7 @@
 
 - What is this?
 
-If your text collection includes dates as metadata, this tool allows you to see how many texts were created on each date, creating a timeline visualisation. You can also do a Trends analysis for texts produced by a particular group of speakers/authors if you have additional metadata – for example showing how the texts of younger vs older speakers are distributed over time. You can include up to 3 different metadata categories in this timeline visualisation. Please note the total number of groups is the product of all selected categories, therefore this can get overwhelmingly large for the visualisation.
+If your text collection includes dates as metadata, this tool allows you to see how many texts were created on each date, creating a timeline visualisation. You can also do a Trends analysis for texts produced by a particular group of speakers/authors if you have additional metadata, for example showing how the texts of younger vs older speakers are distributed over time. You can include up to 3 different metadata categories in this timeline visualisation. Please note the total number of groups is the product of all selected categories, therefore this can get overwhelmingly large for the visualisation.
 
 You can also use this tool to identify how one or more particular words occur across time, as long as the words are extracted as a metadata column (e.g. using the Concordance tab).
 
@@ -17,7 +17,7 @@ Your textual data should be consistently encoded (UTF8) and should not contain a
 You need to make sure that the column that includes the date is correctly classified (not as text, but as datetime, date, integer or decimal). You can convert it with the data-type menu in its column header in the Data Editor. For additional metadata (e.g. gender, age, political party) it is a good idea to convert these columns to categorical in the same way.
 
 For visualising words on the timeline: You first have to create a Concordance,
-open Review in **Table View**, and use **Add to Project** to save the matches as a new
+open Review in **Table view**, and use **Add to Project** to save the matches as a new
 Data Block. Include the date and any other metadata that
 you need. Then use that Data Block as the source for Trends and add
 `CONC_matched_text` (text) as a Group By column. This shows how each exact

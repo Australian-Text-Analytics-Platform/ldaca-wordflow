@@ -18,8 +18,8 @@ The frequency list shows, and its download includes, both the raw (absolute) fre
 
 - Can I change any of the settings/parameters?
   Yes. You can change the word cloud so that it displays more or fewer than the top 50 tokens (from 10 up to 100 tokens).
-  You can also adjust the frequency list by using stop words – words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by picking a list from the stop words dropdown: a default list for the language detected in the selected column, a Wordflow classic list, or the list from another Frequency or Topic Modelling tab.
-  Use the result-level token filter to narrow every cloud, frequency list, and two-block Keyword Analysis result with wildcard patterns. The same filter is applied to result downloads.
+  You can also adjust the frequency list by using stop words: words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by picking a list from the stop words dropdown: a default list for the language detected in the selected column, a Wordflow classic list, or the list from another Frequency or Topic Modelling tab.
+  Use the result-level token filter to narrow every cloud, frequency list, and the Keyword Analysis result for two Data Blocks with wildcard patterns. The same filter is applied to result downloads.
   When doing a keywords analysis, you can change the order in which keywords appear by sorting on any column, including **Significance**.
 
 - Where can I read more about this method?

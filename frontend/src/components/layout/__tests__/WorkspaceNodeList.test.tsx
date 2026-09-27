@@ -56,7 +56,7 @@ describe('WorkspaceNodeList', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'This Data Block is unavailable because its stored data is invalid.',
     );
-    expect(screen.getByText('No data blocks')).toBeInTheDocument();
+    expect(screen.getByText('No Data Blocks')).toBeInTheDocument();
   });
 
   it('uses a non-button row wrapper and supports click and keyboard toggling', async () => {
@@ -271,7 +271,7 @@ describe('WorkspaceNodeList', () => {
         selectedNodeIds={[]}
         onToggleNodeSelection={vi.fn()}
         renderRowActions={() => (
-          <button type="button" aria-label="Inspect data block">
+          <button type="button" aria-label="Inspect Data Block">
             Inspect
           </button>
         )}

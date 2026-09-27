@@ -298,7 +298,7 @@ def run_topic_modeling_data_block_creation(
         if progress_callback:
             progress_callback(
                 0.95 * (index + 1) / total,
-                "Publishing Topic Modelling results...",
+                "Saving the topics…",
             )
     return {
         "state": "successful",
@@ -496,7 +496,7 @@ def _prepare_payload(
         )
 
     if progress_callback:
-        progress_callback(0.05, "Preparing topic modelling payload...")
+        progress_callback(0.05, "Preparing the text…")
 
     return _PreparedTopicPayload(
         artifact_root=artifact_root,
@@ -554,7 +554,7 @@ def _compute_topic_payload(
         min_cluster_size,
     )
     if progress_callback:
-        progress_callback(0.1, "Embedding and clustering Topic Segments...")
+        progress_callback(0.1, "Grouping the text into topics…")
 
     rust_result = _run_rust_topic_modeling(
         all_docs=sampled.all_docs,
@@ -569,7 +569,7 @@ def _compute_topic_payload(
     )
 
     if progress_callback:
-        progress_callback(0.85, "Assembling topic results...")
+        progress_callback(0.85, "Putting the topics together…")
 
     basis = build_topic_projection_basis(
         rust_result=rust_result,
@@ -651,7 +651,7 @@ def _compute_topic_modeling(
         if progress_callback:
             progress_callback(
                 0.01,
-                "Loading topic modelling resources. First runs may download model files...",
+                "Loading the topic model. The first run may download model files…",
             )
 
         logger.info("[Worker %d] Starting topic-modeling Analysis", os.getpid())
@@ -664,7 +664,7 @@ def _compute_topic_modeling(
         )
 
         if progress_callback:
-            progress_callback(0.07, "Loading embedding model...")
+            progress_callback(0.07, "Loading the embedding model…")
 
         topic_payload = _compute_topic_payload(
             embedding_cache_path=embedding_cache_path,
@@ -682,7 +682,7 @@ def _compute_topic_modeling(
         )
 
         if progress_callback:
-            progress_callback(0.9, "Writing topic-modelling results...")
+            progress_callback(0.9, "Saving the topics…")
 
         result = {
             "topics": topic_payload["topics"],

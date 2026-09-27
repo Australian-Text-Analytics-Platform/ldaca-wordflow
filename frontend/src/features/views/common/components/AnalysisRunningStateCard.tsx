@@ -5,7 +5,6 @@ import { Progress } from '@/components/ui/progress';
 interface AnalysisRunningStateCardProps {
   title?: string;
   message: string;
-  taskId?: string | null;
   progress?: number | null;
   startedAt?: string | number | null;
 }
@@ -59,9 +58,8 @@ function formatElapsed(seconds: number): string {
  * Used by: token-frequency and topic-modeling result panels.
  */
 export function AnalysisRunningStateCard({
-  title = 'Task running',
+  title = 'Running',
   message,
-  taskId,
   progress,
   startedAt,
 }: AnalysisRunningStateCardProps) {
@@ -84,9 +82,6 @@ export function AnalysisRunningStateCard({
             )}
           </div>
           <p className="text-warning/90">{message}</p>
-          {taskId ? (
-            <p className="text-label-secondary text-warning/80">Task ID: {taskId}</p>
-          ) : null}
         </div>
       </div>
 

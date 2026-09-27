@@ -235,7 +235,7 @@ function FileTreeContent({
       try {
         localStorage.setItem(collapsedStorageKey, JSON.stringify(Array.from(next)));
       } catch (e) {
-        console.error('Failed to persist collapsed folders:', e);
+        console.error("Couldn't persist collapsed folders:", e);
       }
       return next;
     });
@@ -576,7 +576,7 @@ function FileTreeContent({
             title={
               hasWorkspaceSelected
                 ? 'Add this file as a Data Block'
-                : 'Open a project to add this file as a Data Block'
+                : 'Open a Project to add this file as a Data Block'
             }
             onClick={() => {
               onAddFile(file.path);
@@ -688,8 +688,8 @@ function FileTreeContent({
                 size="icon"
                 variant="ghost"
                 className="h-7 w-7 shrink-0 text-description hover:text-foreground"
-                aria-label={`View citation for ${node.name}`}
-                title="View citation"
+                aria-label={`View README for ${node.name}`}
+                title="View README"
                 onClick={() => {
                   onOpenCitation(node, citationFile.path);
                 }}
@@ -707,7 +707,7 @@ function FileTreeContent({
             title={
               hasWorkspaceSelected
                 ? 'Add the text files in this folder as one Data Block'
-                : 'Open a project to add this folder as a Data Block'
+                : 'Open a Project to add this folder as a Data Block'
             }
             onClick={() => {
               onAddFile(node.path, true);

@@ -59,7 +59,7 @@ interface Props {
   textColumn: string;
   binCount: DispersionDisplayBinCount;
   splitBySource: boolean;
-  /** Human-readable label for the data block (used in title and download filename). */
+  /** Human-readable label for the Data Block (used in title and download filename). */
   dataBlockLabel: string;
   searchWord: string;
   /** Dispersion figure mode. Density shares per-bin counts across three renderers; cumulative is the running total. */

@@ -280,7 +280,7 @@ describe('useRowDetailDialog', () => {
     });
     rerender();
     await waitFor(() => {
-      expect(result.current.navigation.error).toBe('Could not load the next row.');
+      expect(result.current.navigation.error).toBe("Couldn't load the next row.");
       expect(result.current.navigation.canNext).toBe(true);
     });
     expect(result.current.detailOpen).toBe(true);

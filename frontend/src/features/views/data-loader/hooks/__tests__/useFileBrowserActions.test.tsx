@@ -79,7 +79,7 @@ describe('useFileBrowserActions cache policy', () => {
     });
 
     expect(notify).toHaveBeenCalledWith('success', 'Moved 1 item.');
-    expect(notify).toHaveBeenCalledWith('error', 'Could not move 1 item: b.csv');
+    expect(notify).toHaveBeenCalledWith('error', "Couldn't move 1 item: b.csv");
     expect(mocks.deleteFiles).toHaveBeenCalledWith({
       body: { paths: ['a', 'b', 'c'] },
       throwOnError: true,

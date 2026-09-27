@@ -39,7 +39,7 @@ def run_sequential_analysis(
 
     try:
         if progress_callback:
-            progress_callback(0.05, "Loading sequential analysis input...")
+            progress_callback(0.05, "Loading the data…")
 
         from ..infrastructure.storage.input_snapshots import load_snapshot_node
         from ..analysis.sequential_core import (
@@ -59,7 +59,7 @@ def run_sequential_analysis(
             {"node_id": node_id, **request_payload}
         )
         if progress_callback:
-            progress_callback(0.25, "Running sequential analysis...")
+            progress_callback(0.25, "Counting rows per period…")
 
         result_df, publication_df = _build_sequential_result_frames(
             snapshot_node.data,

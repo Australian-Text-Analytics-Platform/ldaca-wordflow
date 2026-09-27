@@ -137,7 +137,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
     },
     onError: (error) => {
-      toastError(error, 'Could not stop the file import.');
+      toastError(error, "Couldn't stop the file import.");
     },
   });
 
@@ -154,7 +154,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
     },
     onError: (error) => {
-      toastError(error, 'Could not clear the file import.');
+      toastError(error, "Couldn't clear the file import.");
     },
   });
 
@@ -171,7 +171,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaceTabs(workspaceId) });
     },
     onError: (error) => {
-      toastError(error, 'Could not clear the analysis.');
+      toastError(error, "Couldn't clear the analysis.");
     },
   });
 
@@ -207,7 +207,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
             }
           }
         } catch (error) {
-          console.warn('Could not refresh analysis activity', error);
+          console.warn("Couldn't refresh analysis activity", error);
         }
         return;
       }
@@ -228,7 +228,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
             });
           }
         } catch (error) {
-          console.warn('Could not refresh user-file import activity', error);
+          console.warn("Couldn't refresh user-file import activity", error);
         }
       }
     },

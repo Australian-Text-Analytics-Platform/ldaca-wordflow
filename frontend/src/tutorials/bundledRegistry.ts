@@ -99,7 +99,7 @@ const tutorial = {
   'data-loader.active-workspace.section': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-active-workspace',
-    label: 'Active project overview',
+    label: 'Active Project overview',
   },
   'data-loader.tab': {
     file: 'tutorials/data-loader.md',
@@ -119,17 +119,17 @@ const tutorial = {
   'data-loader.create-workspace.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-create-workspace-button',
-    label: 'Create project button',
+    label: 'Create Project button',
   },
   'data-loader.rename-workspace.input': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-rename-workspace-input',
-    label: 'Rename project input',
+    label: 'Rename Project input',
   },
   'data-loader.unload.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-unload-button',
-    label: 'Close project',
+    label: 'Close Project',
   },
   'data-loader.files.section': {
     file: 'tutorials/data-loader.md',
@@ -154,7 +154,7 @@ const tutorial = {
   'data-loader.add.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-add-button',
-    label: 'Add file to project',
+    label: 'Add file to Project',
   },
   'data-loader.add-folder': {
     file: 'tutorials/data-loader.md',
@@ -189,7 +189,7 @@ const tutorial = {
   'preprocessing.common.node-selection': {
     file: 'tutorials/preprocessing.md',
     anchor: 'help-preprocessing-common-node-selection',
-    label: 'Data block selection',
+    label: 'Data Block selection',
   },
   'preprocessing.common.apply-button': {
     file: 'tutorials/preprocessing.md',

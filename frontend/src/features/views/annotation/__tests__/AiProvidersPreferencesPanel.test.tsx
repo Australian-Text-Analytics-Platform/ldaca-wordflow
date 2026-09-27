@@ -113,7 +113,7 @@ describe('AiProvidersPreferencesPanel', () => {
     mocks.error = new Error('offline');
     const user = userEvent.setup();
     renderPanel();
-    expect(screen.getByRole('alert')).toHaveTextContent('Could not load Annotation providers');
+    expect(screen.getByRole('alert')).toHaveTextContent("Couldn't load Annotation providers");
     await user.click(screen.getByRole('button', { name: 'Retry' }));
     expect(mocks.retry).toHaveBeenCalled();
   });

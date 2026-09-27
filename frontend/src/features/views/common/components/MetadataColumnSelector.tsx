@@ -17,7 +17,7 @@ interface MetadataColumnSection {
   /**
    * Optional foreground colour applied to the items in this section. When
    * provided, the dropdown skips section headers and relies on colour alone
-   * to differentiate which data block each column came from — the same
+   * to differentiate which Data Block each column came from — the same
    * colour is used for that block in the input panel above.
    */
   color?: string;
@@ -45,7 +45,7 @@ interface MetadataColumnSelectorProps {
   sections?: MetadataColumnSection[];
   /**
    * When provided, disables the dropdown trigger and surfaces the reason via
-   * a tooltip. Used to express "the selected data blocks have no shared
+   * a tooltip. Used to express "the selected Data Blocks have no shared
    * metadata, so showing metadata isn't meaningful here" — currently only
    * triggered by Combined view in Concordance when two blocks have no
    * intersecting metadata columns.

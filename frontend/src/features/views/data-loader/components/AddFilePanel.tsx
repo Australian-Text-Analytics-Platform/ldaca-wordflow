@@ -103,7 +103,7 @@ function AddFilePanelBody({
         setSelectedSheet,
       }}
       title={`Add File: ${filename}`}
-      description="Files are added as data blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the project."
+      description="Files are added as Data Blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the Project."
       footer={footer}
     />
   );

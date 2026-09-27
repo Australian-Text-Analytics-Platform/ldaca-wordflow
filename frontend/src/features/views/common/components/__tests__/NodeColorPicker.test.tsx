@@ -30,21 +30,21 @@ describe('NodeColorPicker', () => {
       />,
     );
 
-    expect(screen.queryByLabelText(/hex color for corpus a/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/hex colour for corpus a/i)).not.toBeInTheDocument();
 
-    await user.click(screen.getByRole('button', { name: /change color for corpus a/i }));
+    await user.click(screen.getByRole('button', { name: /change colour for corpus a/i }));
 
-    expect(screen.getAllByText(/^Color$/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^Colour$/).length).toBeGreaterThan(0);
     expect(screen.queryByText('Corpus A')).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /use #dc2626 for corpus a/i }));
 
     expect(onChange).toHaveBeenCalledWith('#dc2626');
-    expect(screen.queryByLabelText(/hex color for corpus a/i)).not.toBeInTheDocument();
+    expect(screen.queryByLabelText(/hex colour for corpus a/i)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^custom$/i }));
 
-    expect(screen.getByLabelText(/custom color for corpus a/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/hex color for corpus a/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/custom colour for corpus a/i)).toBeInTheDocument();
+    expect(screen.getByLabelText(/hex colour for corpus a/i)).toBeInTheDocument();
   });
 });

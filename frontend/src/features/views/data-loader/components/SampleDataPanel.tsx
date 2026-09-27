@@ -109,7 +109,7 @@ function ReadmeViewer({ path, collectionName, onClose }: ReadmeViewerProps) {
       <DialogContent className="max-w-3xl max-h-[80vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{collectionName}</DialogTitle>
-          <DialogDescription>Dataset README</DialogDescription>
+          <DialogDescription>README</DialogDescription>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto pr-1 min-h-0">
@@ -122,7 +122,7 @@ function ReadmeViewer({ path, collectionName, onClose }: ReadmeViewerProps) {
               <Skeleton className="h-4 w-2/3" />
             </div>
           )}
-          {isError && <p className="text-body text-error py-2">Could not load README.</p>}
+          {isError && <p className="text-body text-error py-2">Couldn't load README.</p>}
           {!isLoading && !isError && content && (
             <div className="prose prose-sm prose-slate max-w-none">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
@@ -218,7 +218,7 @@ export function SampleDataPanel() {
       setOpen(false);
     } catch (err) {
       toast.dismiss(loadingToastId);
-      toastError(err, 'Failed to import sample data.');
+      toastError(err, "Couldn't import sample data.");
     } finally {
       setImporting(false);
     }
@@ -312,7 +312,7 @@ export function SampleDataPanel() {
             )}
 
             {!isLoading && isError && (
-              <p className="text-body text-error">Could not load the sample catalogue.</p>
+              <p className="text-body text-error">Couldn't load the sample catalogue.</p>
             )}
 
             <div className="flex justify-end">

@@ -80,7 +80,7 @@ export const useTokenFrequencyTaskFlow = ({
     }
     const incompleteSelections = effectiveNodeColumnSelections.filter((sel) => !sel.column);
     if (incompleteSelections.length > 0) {
-      toast.error('Please select a text column for all selected data blocks.');
+      toast.error('Please select a text column for all selected Data Blocks.');
       return;
     }
 
@@ -90,7 +90,7 @@ export const useTokenFrequencyTaskFlow = ({
       return !model;
     });
     if (missingTokenizerModels.length > 0) {
-      toast.error('Select a tokeniser model for each selected data block.');
+      toast.error('Select a tokeniser model for each selected Data Block.');
       return;
     }
 
@@ -220,10 +220,10 @@ export const useTokenFrequencyTaskFlow = ({
                 throwOnError: true,
               });
             } catch (cleanupError) {
-              console.warn('Failed to remove empty Concordance tab:', cleanupError);
+              console.warn("Couldn't remove empty Concordance tab:", cleanupError);
             }
           }
-          toastError(error, 'Failed to open Concordance.');
+          toastError(error, "Couldn't open Concordance.");
         }
       })();
     },

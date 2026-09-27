@@ -332,7 +332,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     const selectedColumnOption = value && !columns.includes(value) ? [{ value, label: value }] : [];
     return (
       <AnnotationColumnPicker
-        label="Annotation Column"
+        label="Annotation column"
         value={value}
         placeholder="Select annotation column"
         disabled={controlsLocked}
@@ -378,7 +378,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     const value = exampleAnnotationColumns[nodeId] ?? '';
     return (
       <AnnotationColumnPicker
-        label="Annotation Column"
+        label="Annotation column"
         value={value}
         placeholder="Select annotation column"
         disabled={controlsLocked}
@@ -510,8 +510,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       setNewColumnName('');
     } catch (error) {
       const role = createColumnDialog.kind;
-      console.warn(`[annotation] Failed to create ${role} column:`, error);
-      toastError(error, `Could not create the ${role} column.`);
+      console.warn(`[annotation] Couldn't create ${role} column:`, error);
+      toastError(error, `Couldn't create the ${role} column.`);
     } finally {
       setIsCreatingColumn(false);
     }
@@ -519,7 +519,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
 
   const setLiveCorrectionColumn = (nodeId: string, column: string | null) => {
     void host.setCorrectionColumn(nodeId, column).catch((error: unknown) => {
-      toastError(error, 'Could not save the correction column.');
+      toastError(error, "Couldn't save the correction column.");
     });
   };
 
@@ -566,7 +566,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       setDescriptionColumns((current) => ({ ...current, [created.id]: 'description' }));
       toast.success('Created an empty Codebook Data Block.');
     } catch (error) {
-      toastError(error, 'Could not create the Codebook Data Block.');
+      toastError(error, "Couldn't create the Codebook Data Block.");
     } finally {
       setIsCreatingClassTable(false);
     }
@@ -657,7 +657,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     controlAnalysisId: activeAnalysis?.id ?? null,
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     fetchResult: async (analysisId) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       const result = await getAnalysisOutputResource(currentWorkspaceId, analysisId);
       if (result.kind !== 'annotation') {
         throw new Error('Annotation Analysis returned the wrong Result kind');
@@ -811,7 +811,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         return data;
       },
       onError: (error) => {
-        toastError(error, 'Could not run Annotation Analysis.');
+        toastError(error, "Couldn't run Annotation Analysis.");
       },
     });
   };
@@ -845,7 +845,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         toast.success('Annotation Run started.');
       },
       onError: (error) => {
-        toastError(error, 'Could not start the Annotation Run.');
+        toastError(error, "Couldn't start the Annotation Run.");
       },
     });
   };
@@ -872,7 +872,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         correctionColumn: aiCorrectionColumn,
       });
     } catch (error) {
-      toastError(error, 'Could not save the Data Block color.');
+      toastError(error, "Couldn't save the Data Block colour.");
     } finally {
       setIsStartingManualReview(false);
     }
@@ -1064,7 +1064,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             void handleCreateClassTable();
                           }}
                         >
-                          {isCreatingClassTable ? 'Creating...' : 'Create New'}
+                          {isCreatingClassTable ? 'Creating…' : 'Create new'}
                         </Button>
                       </div>
                       <div>

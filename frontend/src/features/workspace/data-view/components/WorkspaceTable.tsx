@@ -547,7 +547,7 @@ export function WorkspaceTable({
       <div className="flex items-center justify-center py-12">
         <div className="flex items-center space-x-3">
           <Loader2 className="h-6 w-6 animate-spin text-link" />
-          <span className="text-body font-medium text-description">Loading data...</span>
+          <span className="text-body font-medium text-description">Loading data…</span>
         </div>
       </div>
     );

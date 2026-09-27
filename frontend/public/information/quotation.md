@@ -28,7 +28,7 @@ working with another genre or English variety.
 
 - How does sorting work?
   The `QUOTE_extraction` header sorts by the selected source text column, and
-  source metadata columns remain sortable. Generated quotation fields are
+  source metadata columns remain sortable. Generated quotation columns are
   display-only.
 
 - Where can I read more?

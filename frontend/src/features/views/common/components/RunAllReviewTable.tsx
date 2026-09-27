@@ -334,9 +334,9 @@ export function RunAllReviewTable({
         ) : null}
       </div>
       {query.isError || countQuery.isError ? (
-        <p className="text-body text-error">Could not load Review.</p>
+        <p className="text-body text-error">Couldn't load Review.</p>
       ) : query.isLoading || countQuery.isLoading || !data ? (
-        <p className="text-body text-description">Loading Review...</p>
+        <p className="text-body text-description">Loading Review…</p>
       ) : (
         <AnnotationTableFrame
           belowTable={
@@ -377,7 +377,7 @@ export function RunAllReviewTable({
                           }}
                           differsLabel="Differs from any comparison column"
                           differsDisabled={activeComparisonColumns.length === 0}
-                          differsDisabledReason="Select a Compare To column first"
+                          differsDisabledReason="Select a Compare to column first"
                         />
                       </span>
                     ) : activeComparisonColumns.includes(column) ? (
@@ -556,7 +556,7 @@ export function RunAllReviewTable({
                                     }
                                     return nextSelections;
                                   });
-                                  toastError(error, 'Could not save the annotation correction.');
+                                  toastError(error, "Couldn't save the annotation correction.");
                                 })
                                 .finally(() => {
                                   setSavingCorrectionRows((current) => {

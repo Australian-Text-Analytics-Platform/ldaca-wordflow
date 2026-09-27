@@ -192,7 +192,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
         {Array.isArray(statistics) && statistics.length > 0
           ? (() => {
               // lastCompareNodeIds is ordered [reference, study]; the
-              // task-flow request builder puts the study data block last
+              // task-flow request builder puts the study Data Block last
               // (the user picks it via the radio in the parameter panel)
               // and the non-selected block becomes the reference at [0].
               const referenceId = lastCompareNodeIds[0] ?? null;
@@ -228,7 +228,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
               <HelpIcon
                 targetKey="analysis.token-frequency.unified-word-cloud"
                 label="Unified word cloud"
-                tooltip="Shows a combined comparative word cloud for the selected data block pair."
+                tooltip="Shows a combined comparative word cloud for the selected Data Block pair."
               />
             </div>
             <Button
@@ -252,7 +252,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
                 <TooltipProvider delayDuration={0} skipDelayDuration={0}>
                   <div
                     className="flex items-center gap-1.5 text-body"
-                    aria-label="Reference to Study color scale"
+                    aria-label="Reference to Study colour scale"
                   >
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -325,7 +325,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
               <p className="text-body text-description">
                 {tokenFilter.trim() && tokenFilteredStatistics.length === 0
                   ? 'No tokens match the active filter.'
-                  : 'Unified cloud appears when two data block results and comparative statistics are available.'}
+                  : 'Unified cloud appears when two Data Block results and comparative statistics are available.'}
               </p>
             )}
           </div>

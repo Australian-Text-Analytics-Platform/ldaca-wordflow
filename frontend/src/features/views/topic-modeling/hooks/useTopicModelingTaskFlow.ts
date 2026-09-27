@@ -50,7 +50,7 @@ export function useTopicModelingTaskFlow({
   const handleRun = async () => {
     if (!currentWorkspaceId || panelNodeIds.length === 0) return;
     if (panelHasMissingColumns) {
-      toast.error('Select a text column for all selected data blocks');
+      toast.error('Select a text column for all selected Data Blocks');
       return;
     }
 
@@ -92,7 +92,7 @@ export function useTopicModelingTaskFlow({
       },
       onSuccess: (analysis) => {
         if (analysis.state === 'failed') {
-          setError(analysis.error?.message ?? 'Topic modeling failed');
+          setError(analysis.error?.message ?? "Couldn't finish Topic Modelling. Try again.");
         }
       },
       onError: (error) => {

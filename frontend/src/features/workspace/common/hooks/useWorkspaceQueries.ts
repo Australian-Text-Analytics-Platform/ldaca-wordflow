@@ -67,7 +67,7 @@ export const useWorkspaceQueries = ({
      * Why: graph consumers need one cache entry gated by authenticated workspace identity.
      */
     queryFn: async () => {
-      if (!currentWorkspaceId) throw new Error('Missing project ID');
+      if (!currentWorkspaceId) throw new Error('Missing Project ID');
       const { data } = await listNodes({
         path: { workspace_id: currentWorkspaceId },
         throwOnError: true,

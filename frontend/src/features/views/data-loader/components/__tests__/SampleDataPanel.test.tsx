@@ -112,7 +112,7 @@ describe('SampleDataPanel cache policy', () => {
 
     await user.click(screen.getByRole('button', { name: 'Import sample data' }));
     expect(
-      await screen.findByText('Could not load the sample catalogue.', {}, { timeout: 3_000 }),
+      await screen.findByText("Couldn't load the sample catalogue.", {}, { timeout: 3_000 }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import selected' })).toBeDisabled();
     expect(mocks.importRequest).not.toHaveBeenCalled();

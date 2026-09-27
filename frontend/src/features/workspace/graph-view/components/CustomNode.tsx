@@ -154,7 +154,7 @@ function customNodeUiReducer(
 /**
  * React Flow node renderer for a workspace node. Shows a compact card when zoomed
  * out, and a full card with metadata + action menu when zoomed in.
- * Rendered within `CustomNode` because React Flow needs this custom node type for workspace data blocks.
+ * Rendered within `CustomNode` because React Flow needs this custom node type for workspace Data Blocks.
  * Flow: React Flow passes node data, zoom and selection choose compact or full rendering, and actions invoke workspace mutations.
  */
 function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeData>>) {
@@ -482,8 +482,8 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
         transform: `translate(${String(newDotPokeOutPx)}px, ${String(-newDotPokeOutPx)}px) scale(${String(newDotInverseScale)})`,
         transformOrigin: 'top right',
       }}
-      title="New data block"
-      aria-label="New data block"
+      title="New Data Block"
+      aria-label="New Data Block"
     />
   ) : null;
 

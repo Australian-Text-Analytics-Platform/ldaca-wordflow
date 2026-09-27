@@ -40,7 +40,7 @@ export const migrateAnalysisTabsPresentationV3 = (storage: Storage): void => {
     );
     storage.removeItem(LEGACY_ANALYSIS_TABS_PRESENTATION_STORAGE_KEY);
   } catch (error) {
-    console.warn('[analysis-tabs] Could not migrate v3 presentation settings:', error);
+    console.warn("[analysis-tabs] Couldn't migrate v3 presentation settings:", error);
   }
 };
 

@@ -194,7 +194,7 @@ export const deriveSliceFormModel = ({
 
   const rangeSummary = (() => {
     if (!hasSelection) {
-      return 'Select a data block to configure sampling.';
+      return 'Select a Data Block to configure sampling.';
     }
     if (mode === 'slice') {
       if (!offsetValid) {
@@ -242,7 +242,7 @@ export const deriveSliceFormModel = ({
     : null;
 
   const previewReadyMessage = !hasSelection
-    ? 'Select a data block to preview output rows.'
+    ? 'Select a Data Block to preview output rows.'
     : mode === 'slice'
       ? 'Showing original data. Enter a start row and length to preview sliced rows.'
       : 'Showing original data. Enter a fraction or row count and optional seed to preview sampled rows.';
@@ -251,7 +251,7 @@ export const deriveSliceFormModel = ({
 
   const applyDisabledReason: string | undefined = (() => {
     if (isSlicing || isOperationsLoading) return undefined;
-    if (!hasSelection) return 'Select a data block first';
+    if (!hasSelection) return 'Select a Data Block first';
     if (mode === 'slice') {
       if (!lengthValid) {
         return trimmedLength.length === 0

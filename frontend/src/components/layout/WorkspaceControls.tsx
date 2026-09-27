@@ -73,7 +73,7 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           type="button"
           onClick={onToggleCollapse}
           className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-surface-border bg-surface text-foreground hover:bg-panel"
-          aria-label="Collapse project panel"
+          aria-label="Collapse Project panel"
           title="Collapse"
         >
           <PanelRightClose className="h-4 w-4" />
@@ -116,7 +116,7 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           className="inline-flex items-center gap-1 text-label-secondary text-description hover:text-foreground px-2 py-1 border rounded-sm"
           onClick={startRename}
           title="Rename"
-          aria-label="Rename project"
+          aria-label="Rename Project"
         >
           <Pencil className="h-3 w-3" />
           Rename
@@ -129,7 +129,7 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
       <AlertDialog open={nameAlertOpen} onOpenChange={setNameAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Invalid project name</AlertDialogTitle>
+            <AlertDialogTitle>Invalid Project name</AlertDialogTitle>
             <AlertDialogDescription>{nameAlertMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

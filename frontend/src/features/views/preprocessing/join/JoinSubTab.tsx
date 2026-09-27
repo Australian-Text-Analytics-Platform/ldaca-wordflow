@@ -56,7 +56,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
                 <HelpIcon
                   targetKey="preprocessing.join.tab"
                   label="Join sub-tab overview"
-                  tooltip="Combine up to two data blocks using matching columns."
+                  tooltip="Combine up to two Data Blocks using matching columns."
                 />
               </CardTitle>
             </div>
@@ -104,7 +104,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
         <CardFooter className="flex items-center gap-3 border-t pt-4">
           <div className="flex flex-1 items-center gap-2">
             <Label htmlFor="join-new-node-name" className="shrink-0">
-              New data block name
+              New Data Block name
             </Label>
             <HelpIcon targetKey="preprocessing.join.new-node-name" label="Join output name" />
             <Input
@@ -160,7 +160,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
               <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
             </span>
           }
-          description="Inspect a sample of the joined rows before creating the data block."
+          description="Inspect a sample of the joined rows before creating the Data Block."
           columns={preview.columns}
           data={preview.data}
           pagination={preview.pagination}

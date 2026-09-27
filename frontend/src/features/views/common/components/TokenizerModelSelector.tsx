@@ -195,7 +195,7 @@ function TokenizerModelSelector({
               <SelectItem value={TOKENIZER_MODEL_CLEAR_VALUE}>None</SelectItem>
               {modelQuery.isFetching && !modelQuery.data ? (
                 <SelectItem value={TOKENIZER_MODELS_LOADING_VALUE} disabled>
-                  Loading models...
+                  Loading models…
                 </SelectItem>
               ) : null}
               {modelQuery.isError ? (

@@ -12,23 +12,23 @@ segments, and rolls their topic assignments back up to each source document.
 
 <h2 id="help-topic-modeling-parameters">Parameter panel</h2>
 
-<h3 id="help-topic-modeling-data-block">Step 1 — Select your data</h3>
+<h3 id="help-topic-modeling-data-block">Step 1: Select your data</h3>
 
-Choose one or two Data Blocks and select the text column for each. A two-block
-run fits one shared model and shows how each topic is distributed between the
+Choose one or two Data Blocks and select the text column for each. A run on two
+Data Blocks fits one shared model and shows how each topic is distributed between the
 two corpora.
 
-<h3 id="help-topic-modeling-sampling">Step 2 — Choose a sample</h3>
+<h3 id="help-topic-modeling-sampling">Step 2: Choose a sample</h3>
 
 Each Data Block has an independent sampling percentage. The default is 100%.
 Lower sampling makes exploratory runs faster but can hide rare themes or make
 small topics less stable. The label reports the effective document count, for
-example **Sampling (1,380 documents)**. The **Color** square sets the data
-block's colour in the bubble chart and topic lists.
+example **Sampling (1,380 documents)**. The **Colour** square sets the Data
+Block's colour in the bubble chart and topic lists.
 
-![Two data block cards with sampling, and the model settings below them](tutorials/assets/topic_modelling/parameters.png)
+![Two Data Block cards with sampling, and the model settings below them](tutorials/assets/topic_modelling/parameters.png)
 
-<h3 id="help-topic-modeling-options">Step 3 — Configure the model</h3>
+<h3 id="help-topic-modeling-options">Step 3: Configure the model</h3>
 
 <h4 id="help-topic-modeling-segmentation-method">Segments (segmentation method)</h4>
 
@@ -96,7 +96,7 @@ Controls stochastic dimensionality reduction. The default is 0. Keep the same
 seed to reproduce a configuration, or compare several seeds to assess topic
 stability.
 
-<h2 id="help-topic-modeling-run">Step 4 — Run the analysis</h2>
+<h2 id="help-topic-modeling-run">Step 4: Run the analysis</h2>
 
 Choose **Run**. The native pipeline constructs Topic Segments, embeds
 them with the configured sentence-transformer model, reduces the embeddings
@@ -107,7 +107,7 @@ are loaded or downloaded.
 Every mode uses this same downstream pipeline. Each Topic Segment is one equal
 clustering observation. When assignments are rolled back to documents, each
 segment is weighted by the Unicode-character length of its owned source span.
-Outlier coverage remains part of normalized Topic Coverage and can be dominant.
+Outlier coverage remains part of normalised Topic Coverage and can be dominant.
 
 Settings are locked while **Run** works. After it finishes, Run turns on again
 only when you change a setting that affects the topics. Words per topic, stop
@@ -137,7 +137,7 @@ do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
 
 The lower bound appears to the left of the slider. Change the topic count with
-either the slider or the number field on its right; both stay synchronized.
+either the slider or the number field on its right; both stay synchronised.
 Wordflow updates the topics once you finish changing either control. The current
 chart remains visible with
 **Updating topics…** until the new representative words, coordinates, sizes,
@@ -157,7 +157,7 @@ pending.
 positive real-topic shares contribute to bubble counts. The default is 2. Topic
 −1 and zero shares never count. If several Topics tie at the cutoff, all tied
 Topics count, so one row may contribute to more than this number and to several
-bubbles. The question-mark tooltip beside the control summarizes this counting
+bubbles. The question-mark tooltip beside the control summarises this counting
 behaviour.
 
 Enter a value and press Enter or leave the input to request one update. Partial
@@ -237,8 +237,8 @@ Result.
 
 Each bubble is a discovered topic. Bubble size reflects source rows whose
 positive share for that Topic is within the displayed Top topics per document; in a
-two-corpus run, colour composition compares the Topic's share of each analyzed
-corpus, then normalizes those two shares for the colour blend. This prevents a
+two-corpus run, colour composition compares the Topic's share of each analysed
+corpus, then normalises those two shares for the colour blend. This prevents a
 larger corpus from dominating the colour solely because it has more rows. A row
 may count in multiple bubbles, so bubble totals need not equal the source-row
 count. Nearby bubbles have more similar topic representations. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. Segments with **No topic** have no bubble. Topics with a total
@@ -271,7 +271,7 @@ source-column selections to both checked Data Blocks. Enabling it combines the
 currently selected shared names; individual choices and **Select all** or
 **Select none** then update both sources. Source-only columns are disabled while
 sync is active, and an unchecked source keeps its independent selection.
-`TOPIC_top1` remains required and is not synchronized. If fewer than two sources
+`TOPIC_top1` remains required and is not synchronised. If fewer than two sources
 remain checked, Sync columns turns off automatically.
 
 ![Add Topic Modelling results to Project, with the Rows choice at the top](tutorials/assets/topic_modelling/add_to_project.png)

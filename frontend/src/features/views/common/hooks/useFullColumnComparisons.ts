@@ -73,7 +73,7 @@ export function useFullColumnComparisons({
         canonicalClassOptions,
       ),
       queryFn: async ({ signal }: { signal: AbortSignal }) => {
-        if (!workspaceId) throw new Error('Missing project ID');
+        if (!workspaceId) throw new Error('Missing Project ID');
         const aggregateSql = fullColumnComparisonSql(
           sql,
           referenceColumn,

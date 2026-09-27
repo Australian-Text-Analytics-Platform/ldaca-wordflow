@@ -101,7 +101,7 @@ export function StopWordsLanguageSelect({
       try {
         loaded = await load();
       } catch (cause) {
-        toastError(cause, 'Try again.', { title: 'Failed to load stop words.' });
+        toastError(cause, 'Try again.', { title: "Couldn't load stop words." });
         return;
       }
       await commit(mergeStopWordsText(formatStopWords(words), loaded));

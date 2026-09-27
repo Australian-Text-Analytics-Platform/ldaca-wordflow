@@ -119,7 +119,7 @@ def _compute_token_frequencies(
     """
     try:
         if progress_callback:
-            progress_callback(0.02, "Loading token frequency resources...")
+            progress_callback(0.02, "Getting ready…")
 
         import polars as pl
         import polars_text as pt
@@ -130,10 +130,10 @@ def _compute_token_frequencies(
         artifact_root.mkdir(parents=True, exist_ok=True)
 
         if progress_callback:
-            progress_callback(0.1, "Validating payload...")
+            progress_callback(0.1, "Checking the settings…")
 
         if progress_callback:
-            progress_callback(0.2, "Preparing text data...")
+            progress_callback(0.2, "Preparing the text…")
 
         if token_limit < 1:
             raise ValueError("token_limit must be positive")
@@ -181,7 +181,7 @@ def _compute_token_frequencies(
                 )
 
         if progress_callback:
-            progress_callback(0.6, "Computing token frequencies...")
+            progress_callback(0.6, "Counting words…")
 
         frequency_results: dict[uuid.UUID, dict[str, int]] = {}
         stats_df = None
@@ -236,7 +236,7 @@ def _compute_token_frequencies(
             )
 
         if progress_callback:
-            progress_callback(0.85, "Writing token-frequency results...")
+            progress_callback(0.85, "Saving the results…")
 
         node_artifacts: list[dict[str, Any]] = []
         for frame_key, freq_dict in frequency_results.items():
@@ -281,7 +281,10 @@ def _compute_token_frequencies(
 
         result_payload: dict[str, Any] = {
             "state": "successful",
-            "message": f"Successfully calculated token frequencies for {len(prepared_node_ids)} node(s)",
+            "message": (
+                f"Counted words in {len(prepared_node_ids)} Data Block"
+                + ("" if len(prepared_node_ids) == 1 else "s")
+            ),
             "tables": {
                 "version": 1,
                 "nodes": node_artifacts,

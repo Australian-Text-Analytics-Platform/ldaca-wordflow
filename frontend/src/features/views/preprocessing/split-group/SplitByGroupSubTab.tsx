@@ -114,7 +114,7 @@ export function SplitByGroupSubTab({
             ? `More than ${String(MAX_GROUPS)} groups: narrow the data first, for example with Filter.`
             : 'Tick at least one group.'
       }
-      nameLabel="New data block names"
+      nameLabel="New Data Block names"
       nameHint={`Each block is named after this and its group, for example ${groupBlockName(prefix, ticked[0]?.label ?? 'group')}.`}
       name={name}
       namePlaceholder={input?.name ?? ''}
@@ -124,7 +124,7 @@ export function SplitByGroupSubTab({
       }
       canCreate={ticked.length > 0}
       onCreate={async () => {
-        if (!input) throw new Error('Select a data block first.');
+        if (!input) throw new Error('Select a Data Block first.');
         for (const group of ticked) {
           await createDerivedNode({
             kind: 'filter',
@@ -252,7 +252,7 @@ export function SplitByGroupSubTab({
             </Label>
             <div className="flex gap-2 text-label-secondary">
               <button type="button" className="underline" onClick={resetTicks}>
-                Tick all
+                Select all
               </button>
               <button
                 type="button"
@@ -261,7 +261,7 @@ export function SplitByGroupSubTab({
                   setUnticked(new Set(groups.map((group) => group.key)));
                 }}
               >
-                Untick all
+                Select none
               </button>
             </div>
           </div>

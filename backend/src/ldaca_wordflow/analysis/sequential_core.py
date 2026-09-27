@@ -146,7 +146,7 @@ def _build_sequential_result_frames(
             numeric_origin_value = origin_series[0] if len(origin_series) else None
         if numeric_origin_value is None:
             raise ValueError(
-                "Unable to determine numeric_origin from the provided data"
+                "Couldn't work out a start value from the data. Enter a Start value."
             )
 
         df = df.with_columns(

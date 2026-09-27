@@ -90,7 +90,7 @@ export function FilterableSeriesControls({
                 disabled={clearSelectionDisabled}
                 onClick={onClearSelection}
               >
-                Clear Selection
+                Clear selection
               </Button>
             ) : null}
           </div>

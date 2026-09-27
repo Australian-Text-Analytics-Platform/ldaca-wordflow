@@ -40,7 +40,7 @@ describe('DataLoaderDialogs ownership', () => {
       />,
     );
 
-    expect(screen.queryByText('No project selected')).not.toBeInTheDocument();
+    expect(screen.queryByText('No Project selected')).not.toBeInTheDocument();
   });
 
   it('renders the specific project validation message supplied by the backend', () => {

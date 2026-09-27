@@ -87,7 +87,7 @@ export function CreateStringColumnDialog({
               Cancel
             </Button>
             <Button type="submit" disabled={pending}>
-              {pending ? 'Creating...' : 'Create'}
+              {pending ? 'Creating…' : 'Create'}
             </Button>
           </DialogFooter>
         </form>

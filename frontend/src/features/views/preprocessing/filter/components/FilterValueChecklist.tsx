@@ -79,11 +79,12 @@ export function FilterValueChecklist({
           variant="secondary"
           size="sm"
           disabled={disabled || loading || filteredOptions.length === 0}
+          title="Select every value listed"
           onClick={() => {
             onSelectAll(filteredOptions);
           }}
         >
-          Select loaded
+          Select all
         </Button>
         <Button
           type="button"
@@ -92,7 +93,7 @@ export function FilterValueChecklist({
           disabled={disabled || (selectedKeys.size === 0 && !loading)}
           onClick={onClearAll}
         >
-          Clear
+          Select none
         </Button>
         {error && onRetry && (
           <Button type="button" variant="outline" size="sm" onClick={onRetry} disabled={disabled}>

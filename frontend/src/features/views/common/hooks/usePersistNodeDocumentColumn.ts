@@ -36,7 +36,7 @@ export function usePersistNodeDocumentColumn({
         );
         return data;
       } catch {
-        toast.error('Could not save the document column for this data block.');
+        toast.error("Couldn't save the document column for this Data Block.");
         return null;
       }
     },

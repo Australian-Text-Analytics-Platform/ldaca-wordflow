@@ -34,7 +34,7 @@ describe('WorkspaceControls', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Rename project' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: 'Rename Project' })).toBeEnabled();
     expect(screen.getByRole('button', { name: /Switch Project/ })).toBeEnabled();
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   });

@@ -364,16 +364,14 @@ describe('DataLoaderFeature citation UI', () => {
     expect(screen.getByRole('button', { name: 'figures' })).toBeInTheDocument();
     expect(within(screen.getByTestId('folder-row-figures')).getByText('0')).toBeInTheDocument();
     expect(screen.getByText('Total files: 0')).toBeInTheDocument();
-    expect(
-      screen.queryByText('No files found. Upload a dataset to begin.'),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByText('No files found. Upload a file to begin.')).not.toBeInTheDocument();
   });
 
   it('shows folder citation icons only for directories with readme and opens citation dialog', async () => {
     const user = userEvent.setup();
     renderWithProviders(<DataLoaderFeature />);
 
-    const citationButtons = screen.getAllByLabelText(/view citation/i);
+    const citationButtons = screen.getAllByLabelText(/view README/i);
     expect(citationButtons).toHaveLength(1);
     expect(screen.queryByText('README.md')).not.toBeInTheDocument();
 
@@ -386,7 +384,7 @@ describe('DataLoaderFeature citation UI', () => {
         throwOnError: true,
       });
     });
-    expect(screen.getByRole('heading', { name: 'Citation' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'README' })).toBeInTheDocument();
     expect(screen.getByText('ADO Citation')).toBeInTheDocument();
     expect(screen.getByText('Reference text.')).toBeInTheDocument();
   });
@@ -549,7 +547,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     expect(screen.getAllByRole('button', { name: /import project/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('button', { name: /download/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('0 data blocks').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0 Data Blocks').length).toBeGreaterThan(0);
     expect(screen.queryByRole('button', { name: /save as/i })).not.toBeInTheDocument();
   });
 
@@ -564,7 +562,7 @@ describe('DataLoaderFeature citation UI', () => {
       }),
     });
     renderWithProviders(<DataLoaderFeature />);
-    const input = screen.getByLabelText('Import project archive');
+    const input = screen.getByLabelText('Import Project archive');
 
     fireEvent.change(input, {
       target: { files: [new File(['zip'], 'future.zip', { type: 'application/zip' })] },
@@ -615,9 +613,9 @@ describe('DataLoaderFeature citation UI', () => {
     expect(unavailable.getByRole('button', { name: 'Open' })).toBeEnabled();
     expect(unavailable.getByRole('button', { name: 'Download archive' })).toBeEnabled();
     expect(unavailable.getByRole('button', { name: 'Delete' })).toBeEnabled();
-    expect(unavailable.queryByLabelText(/favorites/i)).not.toBeInTheDocument();
+    expect(unavailable.queryByLabelText(/favourites/i)).not.toBeInTheDocument();
     const descriptionButton = unavailable.getByRole('button', {
-      name: 'View project description',
+      name: 'View Project description',
     });
     fireEvent.pointerDown(descriptionButton, { button: 0 });
     expect(screen.getByText('Project from the winter workshop.')).toBeInTheDocument();
@@ -625,11 +623,11 @@ describe('DataLoaderFeature citation UI', () => {
     await user.click(unavailable.getByRole('button', { name: 'Open' }));
     expect(mockSetCurrentWorkspace).toHaveBeenCalledWith(unavailableId);
     expect(await unavailable.findByRole('alert')).toHaveTextContent(
-      'Failed to open: Stored data could not be loaded.',
+      "Couldn't open: Stored data could not be loaded.",
     );
 
     await user.click(unavailable.getByRole('button', { name: 'Delete' }));
-    const confirmation = screen.getByRole('alertdialog', { name: 'Delete project?' });
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete Project?' });
     expect(confirmation).toHaveTextContent(unavailableId);
     await user.click(within(confirmation).getByRole('button', { name: 'Cancel' }));
     expect(mockDeleteWorkspace).not.toHaveBeenCalled();
@@ -676,7 +674,7 @@ describe('DataLoaderFeature citation UI', () => {
     expect(await screen.findByText('2 of 2 collections')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import metadata only' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update access token' })).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: 'Import' })).toHaveLength(1);
 
     await user.type(screen.getByLabelText('Filter collections'), 'cooee');
     expect(screen.getByText('1 of 2 collections')).toBeInTheDocument();
@@ -696,8 +694,8 @@ describe('DataLoaderFeature citation UI', () => {
     renderWithProviders(<DataLoaderFeature />);
 
     const activeWorkspaceCard = getVisibleMatch(screen.getAllByTestId('active-workspace-card'));
-    expect(within(activeWorkspaceCard).getByText('Active project')).toBeInTheDocument();
-    expect(within(activeWorkspaceCard).queryByText('Create project')).not.toBeInTheDocument();
+    expect(within(activeWorkspaceCard).getByText('Active Project')).toBeInTheDocument();
+    expect(within(activeWorkspaceCard).queryByText('Create Project')).not.toBeInTheDocument();
     expect(
       within(activeWorkspaceCard).queryByPlaceholderText('Project name'),
     ).not.toBeInTheDocument();
@@ -747,7 +745,7 @@ describe('DataLoaderFeature citation UI', () => {
     };
     mockSetCurrentWorkspace
       .mockRejectedValueOnce(new Error('Project snapshot is corrupt.'))
-      .mockRejectedValueOnce(new Error('Unable to reach the backend.'))
+      .mockRejectedValueOnce(new Error("Couldn't reach the backend."))
       .mockResolvedValueOnce(undefined);
 
     renderWithProviders(<DataLoaderFeature />);
@@ -761,12 +759,12 @@ describe('DataLoaderFeature citation UI', () => {
 
     await user.click(within(corruptWorkspace).getByRole('button', { name: 'Open' }));
     expect(await within(corruptWorkspace).findByRole('alert')).toHaveTextContent(
-      'Failed to open: Project snapshot is corrupt.',
+      "Couldn't open: Project snapshot is corrupt.",
     );
 
     await user.click(within(offlineWorkspace).getByRole('button', { name: 'Open' }));
     expect(await within(offlineWorkspace).findByRole('alert')).toHaveTextContent(
-      'Failed to open: Unable to reach the backend.',
+      "Couldn't open: Couldn't reach the backend.",
     );
     expect(within(corruptWorkspace).getByRole('alert')).toBeInTheDocument();
 
@@ -889,8 +887,8 @@ describe('DataLoaderFeature citation UI', () => {
     const createWorkspaceButton = within(createWorkspaceCard).getByRole('button', {
       name: /create project/i,
     });
-    expect(within(createWorkspaceCard).queryByText('Active project')).not.toBeInTheDocument();
-    expect(within(createWorkspaceCard).getAllByText('Create project')).toHaveLength(2);
+    expect(within(createWorkspaceCard).queryByText('Active Project')).not.toBeInTheDocument();
+    expect(within(createWorkspaceCard).getAllByText('Create Project')).toHaveLength(2);
     expect(within(createWorkspaceCard).getByPlaceholderText('Project name')).toBeInTheDocument();
     expect(
       within(createWorkspaceCard).getByPlaceholderText('Optional description'),
@@ -952,7 +950,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     const createdCard = await screen.findByTestId('workspace-manager-item-ws-new');
     expect(await within(createdCard).findByRole('alert')).toHaveTextContent(
-      'Failed to open: Snapshot failed validation.',
+      "Couldn't open: Snapshot failed validation.",
     );
   });
 
@@ -967,7 +965,7 @@ describe('DataLoaderFeature citation UI', () => {
     expect(await within(workspace).findByRole('alert')).toBeInTheDocument();
 
     await user.click(within(workspace).getByRole('button', { name: 'Delete' }));
-    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+    await user.click(screen.getByRole('button', { name: 'Delete Project' }));
 
     await waitFor(() => {
       expect(within(workspace).queryByRole('alert')).not.toBeInTheDocument();

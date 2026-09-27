@@ -145,7 +145,7 @@ export function useRowDetailDialog<T>({
         setPending(null);
         if (pending.failure) {
           setNavigationError(
-            `Could not load the ${pending.direction === 'next' ? 'next' : 'previous'} row.`,
+            `Couldn't load the ${pending.direction === 'next' ? 'next' : 'previous'} row.`,
           );
         } else {
           setExhausted((current) => ({ ...current, [pending.direction]: true }));
@@ -158,7 +158,7 @@ export function useRowDetailDialog<T>({
           requestedPageRef.current = null;
           setPending(null);
           setNavigationError(
-            `Could not load the ${pending.direction === 'next' ? 'next' : 'previous'} row.`,
+            `Couldn't load the ${pending.direction === 'next' ? 'next' : 'previous'} row.`,
           );
           return;
         }

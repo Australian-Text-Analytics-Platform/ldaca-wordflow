@@ -159,7 +159,7 @@ describe('NodeInputsPanel', () => {
       ),
     ).toBeInTheDocument();
     expect(within(card).getByText('body')).toBeInTheDocument();
-    expect(screen.queryByText('No data blocks selected.')).not.toBeInTheDocument();
+    expect(screen.queryByText('No Data Blocks selected.')).not.toBeInTheDocument();
 
     await user.click(within(card).getByRole('button', { name: 'Remove Archived Corpus' }));
     expect(onRemoveNode).toHaveBeenCalledWith('deleted-node');

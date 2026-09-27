@@ -138,7 +138,7 @@ const baseProps = {
 };
 
 describe('TokenFrequencyParameterPanel', () => {
-  it('renders linked "Use as Study Corpus" toggles with the first corpus on by default', () => {
+  it('renders linked "Use as Study corpus" toggles with the first corpus on by default', () => {
     const onStudyNodeChange = vi.fn();
     render(<TokenFrequencyParameterPanel {...baseProps} onStudyNodeChange={onStudyNodeChange} />);
 
@@ -147,8 +147,8 @@ describe('TokenFrequencyParameterPanel', () => {
 
     const cardA = within(screen.getByTestId('node-card-node-a'));
     const cardB = within(screen.getByTestId('node-card-node-b'));
-    expect(cardA.getByText('Use as Study Corpus')).toBeInTheDocument();
-    expect(cardB.getByText('Use as Study Corpus')).toBeInTheDocument();
+    expect(cardA.getByText('Use as Study corpus')).toBeInTheDocument();
+    expect(cardB.getByText('Use as Study corpus')).toBeInTheDocument();
     expect(screen.queryByText('Reference Corpus')).not.toBeInTheDocument();
 
     const corpusASwitch = cardA.getByRole('switch', { name: 'Use Corpus A as Study Corpus' });
@@ -163,7 +163,7 @@ describe('TokenFrequencyParameterPanel', () => {
     fireEvent.click(corpusASwitch);
     expect(onStudyNodeChange).toHaveBeenLastCalledWith('node-b');
 
-    fireEvent.click(cardB.getByText('Use as Study Corpus'));
+    fireEvent.click(cardB.getByText('Use as Study corpus'));
     expect(onStudyNodeChange).toHaveBeenLastCalledWith('node-b');
   });
 

@@ -29,7 +29,7 @@ describe('FilterValueChecklist', () => {
       />,
     );
 
-    const button = screen.getByRole('button', { name: 'Select loaded' });
+    const button = screen.getByRole('button', { name: 'Select all' });
     fireEvent.click(button);
 
     expect(onSelectAll).toHaveBeenCalledTimes(1);

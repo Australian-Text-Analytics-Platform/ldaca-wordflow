@@ -245,7 +245,7 @@ describe('WorkspaceGraphFeature', () => {
     expect(clearSelection).toHaveBeenCalledOnce();
   });
 
-  it('deletes the selected data blocks from the graph toolbar after confirmation', async () => {
+  it('deletes the selected Data Blocks from the graph toolbar after confirmation', async () => {
     selectionState.selectedNodeIds = ['b', 'a'];
     graphState.selectedCount = 2;
     graphState.canClearSelection = true;
@@ -278,7 +278,7 @@ describe('WorkspaceGraphFeature', () => {
     expect(beta).toBeChecked();
     fireEvent.click(beta);
 
-    expect(within(dialog).getByText('Delete 1 data block?')).toBeInTheDocument();
+    expect(within(dialog).getByText('Delete 1 Data Block?')).toBeInTheDocument();
     fireEvent.click(within(dialog).getByRole('button', { name: 'Delete 1' }));
 
     await waitFor(() => {

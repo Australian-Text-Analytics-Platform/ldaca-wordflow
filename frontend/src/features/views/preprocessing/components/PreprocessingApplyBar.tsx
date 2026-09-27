@@ -17,7 +17,7 @@ export function PreprocessingApplyBar({ mode, children }: PreprocessingApplyBarP
       aria-label="Apply result"
       className="gap-x-3 gap-y-2 border-t border-surface-border bg-panel/20 py-4"
     >
-      {/* A new block is already named by the "New data block name" field
+      {/* A new block is already named by the "New Data Block name" field
           (issue 201); only an in-place update needs saying. */}
       {mode === 'create' ? null : (
         <p className="shrink-0 text-body font-medium text-description">

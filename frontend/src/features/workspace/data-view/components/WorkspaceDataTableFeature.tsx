@@ -26,7 +26,7 @@ const LoadingState = () => (
   <div className="space-y-4 p-6">
     <div className="flex items-center gap-2 text-body text-description">
       <Loader2 className="h-4 w-4 animate-spin" />
-      <span>Loading data block…</span>
+      <span>Loading Data Block…</span>
     </div>
     <div className="space-y-4">
       <div className="flex items-center gap-4">
@@ -51,14 +51,14 @@ const LoadingState = () => (
 /**
  * Empty placeholder shown until a workspace graph node is selected.
  * Rendered within `WorkspaceDataTableFeature` because the feature needs an idle state before node selection.
- * Flow: render the heading and prompt directly on the data surface when the workspace has no active data block selection.
+ * Flow: render the heading and prompt directly on the data surface when the workspace has no active Data Block selection.
  */
 const EmptyState = () => (
   <div className="flex h-full items-center justify-center p-6 text-center">
     <div>
       <h3 className="text-body font-semibold text-foreground">No Data Block Selected</h3>
       <p className="mt-1 text-label-secondary text-description">
-        Select a data block from the graph to view its data.
+        Select a Data Block from the graph to view its data.
       </p>
     </div>
   </div>

@@ -166,7 +166,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     tabAnalysisIds: analyses.map((analysis) => analysis.id),
     // Loads the latest sequential-analysis result for polling and task resumption.
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       return getAnalysisResultResource<SequentialAnalysisResponse>(currentWorkspaceId, taskId);
     },
     // Restores sequential request parameters, selection lock, and schema after reload.
@@ -423,7 +423,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         legend,
       });
     } catch (err) {
-      toast.error('Failed to export chart.');
+      toast.error("Couldn't export chart.");
       console.error(err);
     }
   };

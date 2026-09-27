@@ -581,7 +581,7 @@ export const useFilterSubTabSections = (
     }
   };
   const previewReadyMessage = !hasSelection
-    ? 'Select a data block to preview filtered results.'
+    ? 'Select a Data Block to preview filtered results.'
     : 'Showing original data. Configure conditions to preview filtered results.';
 
   const hasApplicablePreviewRows =
@@ -592,7 +592,7 @@ export const useFilterSubTabSections = (
 
   const applyButtonDisabledReason: string | undefined = (() => {
     if (isFiltering || isLoading.operations) return undefined;
-    if (!hasSelection) return 'Select a data block first';
+    if (!hasSelection) return 'Select a Data Block first';
     if (!conditionsComplete) return 'Set at least one complete filtering condition';
     if (!hasApplicablePreviewRows)
       return 'Adjust your conditions until at least one result appears in Preview filtered results';

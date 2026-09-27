@@ -296,7 +296,7 @@ export function useAnalysisFeature<
       cfg.onCleared(clearedIds);
       return true;
     } catch (error) {
-      toastError(error, 'Could not clear the analysis.');
+      toastError(error, "Couldn't clear the analysis.");
       return false;
     }
   };
@@ -313,7 +313,7 @@ export function useAnalysisFeature<
       });
       queryClient.setQueryData(queryKeys.analysis(cfg.workspaceId, controlledAnalysisId), data);
     } catch (error) {
-      toastError(error, 'Could not stop the analysis.');
+      toastError(error, "Couldn't stop the analysis.");
     } finally {
       setIsStopping(false);
     }

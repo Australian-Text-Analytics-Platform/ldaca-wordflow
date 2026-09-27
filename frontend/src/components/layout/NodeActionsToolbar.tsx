@@ -63,7 +63,7 @@ export function NodePinButton({ node, isPinned, onTogglePin }: NodePinButtonProp
         iconButtonClass,
         isPinned && 'border-button/70 bg-button/10 text-link hover:bg-button/15 hover:text-link',
       )}
-      title={isPinned ? 'Unpin data block' : 'Pin data block'}
+      title={isPinned ? 'Unpin Data Block' : 'Pin Data Block'}
       aria-label={`${isPinned ? 'Unpin' : 'Pin'} ${node.name}`}
       data-pin-action
       data-pinned={isPinned ? 'true' : 'false'}
@@ -177,7 +177,7 @@ export function NodeActionsToolbar({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete &ldquo;{node.name}&rdquo;?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete this data block and its data. This action cannot be
+              This will permanently delete this Data Block and its data. This action cannot be
               undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

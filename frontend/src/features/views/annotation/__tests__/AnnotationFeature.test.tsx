@@ -412,7 +412,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(screen.getAllByLabelText('Annotation Column')[1]);
+    await user.click(screen.getAllByLabelText('Annotation column')[1]);
     await user.click(screen.getByRole('option', { name: 'class' }));
     await user.click(screen.getByRole('button', { name: 'Preview' }));
 
@@ -498,7 +498,7 @@ describe('AnnotationFeature', () => {
       'mb-3',
     );
     expect(screen.getByRole('heading', { name: 'Codebook', level: 3 })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Create New' }));
+    await user.click(screen.getByRole('button', { name: 'Create new' }));
 
     expect(mocks.createSqlDataBlock).toHaveBeenCalledWith(
       ['source-1'],
@@ -533,7 +533,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(screen.getByRole('combobox', { name: 'Annotation Column' }));
+    await user.click(screen.getByRole('combobox', { name: 'Annotation column' }));
     await user.click(screen.getByRole('option', { name: 'Start new annotation' }));
 
     expect(screen.getByRole('heading', { name: 'Create annotation column' })).toBeInTheDocument();
@@ -567,7 +567,7 @@ describe('AnnotationFeature', () => {
       'update',
     );
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.getByRole('combobox', { name: 'Annotation Column' })).toHaveTextContent(
+    expect(screen.getByRole('combobox', { name: 'Annotation column' })).toHaveTextContent(
       'annotation',
     );
     expect(screen.queryByLabelText('New Column Name')).not.toBeInTheDocument();
@@ -635,7 +635,7 @@ describe('AnnotationFeature', () => {
       'source-1:text:annotation:none',
     );
 
-    await user.click(screen.getByRole('combobox', { name: 'Annotation Column' }));
+    await user.click(screen.getByRole('combobox', { name: 'Annotation column' }));
     await user.click(screen.getByRole('option', { name: 'text' }));
     expect(screen.getByTestId('manual-review-snapshot')).toHaveTextContent(
       'source-1:text:annotation:none',
@@ -703,7 +703,7 @@ describe('AnnotationFeature', () => {
       />,
     );
 
-    await user.click(screen.getByRole('combobox', { name: 'Annotation Column' }));
+    await user.click(screen.getByRole('combobox', { name: 'Annotation column' }));
     await user.click(screen.getByRole('option', { name: 'Start new annotation' }));
     await user.type(screen.getByRole('textbox', { name: 'Column name' }), 'text');
     await user.click(screen.getByRole('button', { name: 'Create' }));

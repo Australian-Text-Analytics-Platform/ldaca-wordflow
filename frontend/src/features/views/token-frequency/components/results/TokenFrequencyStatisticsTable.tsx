@@ -434,7 +434,7 @@ export const TokenFrequencyStatisticsTable = ({
               <HelpIcon
                 targetKey="analysis.token-frequency.statistical-measures"
                 label="Keyword Analysis"
-                tooltip="Comparative token-level keyness statistics for the two selected data blocks."
+                tooltip="Comparative token-level keyness statistics for the two selected Data Blocks."
               />
             </div>
             {hasCorpusLegend ? (

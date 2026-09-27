@@ -13,7 +13,7 @@
  *   Every BG tint keeps black-text contrast well
  *   above WCAG AAA (>=15:1), so dark text is always legible on it.
  *
- * ``GREY`` is the default colour for new / un-analysed data blocks and is
+ * ``GREY`` is the default colour for new / un-analysed Data Blocks and is
  * excluded from random allocation (`RANDOMIZABLE_FG`); a user may still pick it
  * manually, in which case it persists like any other choice.
  *

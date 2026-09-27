@@ -91,7 +91,7 @@ export function useNodeColorControls({
             prev[nodeId] === color ? withoutNodeColor(prev, nodeId) : prev,
           );
           if (reportFailure) {
-            toast.error('Could not save the Data Block color.');
+            toast.error("Couldn't save the Data Block colour.");
           }
         }
         throw error;

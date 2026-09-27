@@ -42,7 +42,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
                 <HelpIcon
                   targetKey="preprocessing.concat.tab"
                   label="About Stack"
-                  tooltip="Stack compatible data blocks vertically into a single data block."
+                  tooltip="Stack compatible Data Blocks vertically into a single Data Block."
                 />
               </CardTitle>
             </div>
@@ -86,7 +86,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
         <CardFooter className="flex items-center gap-3 border-t pt-4">
           <div className="flex flex-1 items-center gap-2">
             <Label htmlFor="concat-new-node-name" className="shrink-0">
-              New data block name
+              New Data Block name
             </Label>
             <HelpIcon targetKey="preprocessing.concat.new-node-name" label="Concat output name" />
             <Input
@@ -150,7 +150,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
             <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
           </span>
         }
-        description="Inspect a sample of the stacked rows before creating the data block."
+        description="Inspect a sample of the stacked rows before creating the Data Block."
         columns={preview.columns}
         data={preview.data}
         pagination={preview.pagination}

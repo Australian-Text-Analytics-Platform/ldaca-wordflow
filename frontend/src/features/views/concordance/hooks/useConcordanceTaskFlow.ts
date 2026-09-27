@@ -95,7 +95,7 @@ export function useConcordanceTaskFlow({
 
     const incompleteSelections = effectiveSelections.filter((sel) => !sel.column);
     if (incompleteSelections.length > 0) {
-      toast.error('Please select a text column for all selected data blocks.');
+      toast.error('Please select a text column for all selected Data Blocks.');
       return;
     }
 
@@ -125,7 +125,7 @@ export function useConcordanceTaskFlow({
       searchMode === 'tokens' &&
       Object.keys(nodeTokenizerModels).length !== requestNodeIds.length
     ) {
-      toast.error('Select a tokeniser model for each selected data block.');
+      toast.error('Select a tokeniser model for each selected Data Block.');
       return;
     }
 

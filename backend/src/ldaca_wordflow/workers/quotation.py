@@ -109,7 +109,7 @@ def run_quotation_run_all(
 ) -> dict[str, Any]:
     """Compute one complete immutable Quotation Result table."""
     try:
-        progress_callback(0.02, "Loading quotation extractor...")
+        progress_callback(0.02, "Loading the quotation extractor…")
 
         import asyncio
         import os
@@ -127,14 +127,14 @@ def run_quotation_run_all(
         logger.info("[Worker %d] Starting quotation Run All", os.getpid())
         source_snapshot = load_snapshot_node(input_snapshot_dir, parent_node_id)
 
-        progress_callback(0.2, "Preparing text data...")
+        progress_callback(0.2, "Preparing the text…")
         node_corpus, extra_columns_data, extra_columns_dtypes, source_row_ids = (
             _collect_quotation_source_from_snapshot(
                 snapshot_node=source_snapshot,
                 document_column=document_column,
             )
         )
-        progress_callback(0.6, "Extracting quotations...")
+        progress_callback(0.6, "Finding quotations…")
 
         input_data: dict[str, list] = {
             SOURCE_ROW_ID_COLUMN: source_row_ids,
@@ -190,13 +190,13 @@ def run_quotation_run_all(
         match_count = int(match_count_value or 0)
         output_columns = list(quote_df.columns)
 
-        progress_callback(0.82, "Serializing quotation Result...")
+        progress_callback(0.82, "Saving the results…")
 
         result_path = Path(artifact_dir) / "quotation-run-all.parquet"
         result_path.parent.mkdir(parents=True, exist_ok=True)
         quote_df.write_parquet(result_path)
 
-        progress_callback(0.95, "Saving quotation Result...")
+        progress_callback(0.95, "Saving the results…")
 
         logger.info("[Worker %d] Quotation Run All completed successfully", os.getpid())
 

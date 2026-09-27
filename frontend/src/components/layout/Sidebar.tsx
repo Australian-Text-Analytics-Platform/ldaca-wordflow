@@ -83,7 +83,7 @@ const MIN_SECTION_HEIGHT = 120;
 const TASKS_SECTION_DEFAULT_RATIO = 0.18;
 /** Task section minimum sized for one compact task row plus its section header. */
 const TASKS_SECTION_MIN_HEIGHT = 76;
-/** Initial section ratios keep Tasks compact while preserving space for navigation and data blocks. */
+/** Initial section ratios keep Tasks compact while preserving space for navigation and Data Blocks. */
 const INITIAL_SECTION_RATIOS: Record<SectionKey, number> = {
   views: (1 - TASKS_SECTION_DEFAULT_RATIO) / 2,
   nodes: (1 - TASKS_SECTION_DEFAULT_RATIO) / 2,
@@ -233,7 +233,7 @@ function Sidebar() {
               }}
               disabled={isDisabled}
               aria-disabled={isDisabled}
-              tooltip={isDisabled ? 'Open a project to use this view' : undefined}
+              tooltip={isDisabled ? 'Open a Project to use this view' : undefined}
             >
               <Icon />
               <span>{shortLabel ?? label}</span>

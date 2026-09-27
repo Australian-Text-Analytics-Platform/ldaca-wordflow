@@ -50,7 +50,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
                 <HelpIcon
                   targetKey="preprocessing.filter.tab"
                   label="Filter sub-tab overview"
-                  tooltip="Apply column-based filters to a new or selected data block."
+                  tooltip="Apply column-based filters to a new or selected Data Block."
                 />
               </CardTitle>
             </div>
@@ -63,7 +63,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
 
           {hasSelection && !hasSchema && (
             <div className="rounded-md border border-dashed border-warning bg-warning-background/70 p-4 text-body text-warning">
-              No schema information is available for this data block yet.
+              No schema information is available for this Data Block yet.
             </div>
           )}
 
@@ -77,7 +77,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
                 />
               </span>
             }
-            description="Apply column-based filters to a new or selected data block."
+            description="Apply column-based filters to a new or selected Data Block."
             conditions={conditionBuilder.conditions}
             availableColumns={conditionBuilder.availableColumns}
             logic={conditionBuilder.logic}
@@ -87,8 +87,8 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
             onConditionChange={conditionBuilder.onConditionChange}
             disabled={schemaState.isConfigDisabled}
             hasSelection={hasSelection}
-            noSelectionMessage="Configure conditions once a data block is selected."
-            noSchemaMessage="No schema information is available for this data block yet."
+            noSelectionMessage="Configure conditions once a Data Block is selected."
+            noSchemaMessage="No schema information is available for this Data Block yet."
             renderValueInput={conditionBuilder.renderValueInput}
             renderConditionMetadata={conditionBuilder.renderConditionMetadata}
             shouldHideOperatorSelect={conditionBuilder.shouldHideOperatorSelect}
@@ -102,7 +102,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
               className="shrink-0 text-body font-medium text-description"
               htmlFor="filter-new-node-name"
             >
-              New data block name
+              New Data Block name
             </label>
             <HelpIcon targetKey="preprocessing.filter.new-node-name" label="Filter output name" />
             <input

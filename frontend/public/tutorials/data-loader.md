@@ -4,66 +4,66 @@
 
 <h1 id="help-data-loader-section">Data Loader tutorial</h1>
 
-The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active project panel, the project manager, and the files and uploads section.
+The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active Project panel, the Project manager, and the files and uploads section.
 
-![Data loader screenshot](tutorials/assets/data_loader.png)
+![Data Loader screenshot](tutorials/assets/data_loader.png)
 
-<h2 id="help-data-loader-active-workspace">Active project overview</h2>
+<h2 id="help-data-loader-active-workspace">Active Project overview</h2>
 
-![Active project screenshot](tutorials/assets/data_loader/active_workspace.png)
+![Active Project screenshot](tutorials/assets/data_loader/active_workspace.png)
 
-The active project panel displays the currently open project along with its associated data blocks. From here you can rename the project or update its description; to close it, use **Close** in the project manager. When no project is open, this panel shows the option to create a new, empty project. Your work is saved automatically.
+The active Project panel displays the currently open Project along with its associated Data Blocks. From here you can rename the Project or update its description; to close it, use **Close** in the Project manager. When no Project is open, this panel shows the option to create a new, empty Project. Your work is saved automatically.
 
-- Verify the correct project is open before starting any analysis.
-- Create or rename a project as needed.
+- Verify the correct Project is open before starting any analysis.
+- Create or rename a Project as needed.
 
 <h2 id="help-data-loader-create-workspace-name">Project name input</h2>
 
-![Create project screenshot](tutorials/assets/data_loader/create_workspace.png)
+![Create Project screenshot](tutorials/assets/data_loader/create_workspace.png)
 
-This field is visible only when no project is currently active. Use it to specify a name for a new empty project. Choose a descriptive name that reflects the project or dataset (e.g. the project title or dataset identifier). An optional description can also be provided at this stage.
+This field is visible only when no Project is currently active. Use it to specify a name for a new empty Project. Choose a descriptive name that reflects the project or dataset (e.g. the project title or dataset identifier). An optional description can also be provided at this stage.
 
-Project names are not unique identifiers — the application allows multiple projects to share the same name, each stored in a separate directory. Using identical names for different projects is strongly discouraged, as it can cause confusion when managing or revisiting projects.
+Project names are not unique identifiers: the application allows multiple Projects to share the same name, each stored in a separate directory. Using identical names for different Projects is strongly discouraged, as it can cause confusion when managing or revisiting Projects.
 
-<h2 id="help-data-loader-create-workspace-button">Create project button</h2>
+<h2 id="help-data-loader-create-workspace-button">Create Project button</h2>
 
-Clicking this button creates a new project with the specified name and optional description.
+Clicking this button creates a new Project with the specified name and optional description.
 
-- The newly created project becomes the active project immediately.
-- **An active project is required before files can be loaded and analysed.**
+- The newly created Project becomes the active Project immediately.
+- **An active Project is required before files can be loaded and analysed.**
 
-<h2 id="help-data-loader-rename-workspace-input">Rename project input</h2>
+<h2 id="help-data-loader-rename-workspace-input">Rename Project input</h2>
 
-Use this field to rename the currently active project. Renaming is useful when the project scope evolves or when you want a more organised project list. The project description can also be updated from this field.
+Use this field to rename the currently active Project. Renaming is useful when the project scope evolves or when you want a more organised Project list. The Project description can also be updated from this field.
 
-<h2 id="help-data-loader-unload-button">Close project</h2>
+<h2 id="help-data-loader-unload-button">Close Project</h2>
 
-Click **Close** beside the open project in the project manager (the open project is always listed first). Closing does not delete anything.
+Click **Close** beside the open Project in the Project manager (the open Project is always listed first). Closing does not delete anything.
 
-- Use this to switch between projects, or open another project directly with its **Open** button.
-- A closed project stays in the project manager; click **Open** to continue working on it.
+- Use this to switch between Projects, or open another Project directly with its **Open** button.
+- A closed Project stays in the Project manager; click **Open** to continue working on it.
 
 <h2 id="help-data-loader-workspace-manager">Project manager overview</h2>
 
 ![Project manager screenshot](tutorials/assets/data_loader/workspace_manager.png)
 
-The project manager lists all saved projects, enabling you to switch between projects and maintain an organised inventory.
+The Project manager lists all saved Projects, enabling you to switch between Projects and maintain an organised inventory.
 
-- Click **Open** to make a project the active project. The open project is listed first and highlighted, with a **Close** button.
-- Click the star beside a project's name to mark it as a favourite. Favourites are listed after the open project, then the others by most recent change.
-- Review the last-modified timestamp and data-block count to confirm you are opening the intended project.
-- Click **Import project** to add a project from a ZIP archive, such as one downloaded from another Wordflow.
-- Click **Download** to export the entire project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or import. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can import the ZIP (**Import project**) into another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
-- Click **Delete** to permanently remove a project that is no longer needed.
-- Click the **…** beside a project's name to read its description.
+- Click **Open** to make a Project the active Project. The open Project is listed first and highlighted, with a **Close** button.
+- Click the star beside a Project's name to mark it as a favourite. Favourites are listed after the open Project, then the others by most recent change.
+- Review the last-modified timestamp and Data Block count to confirm you are opening the intended Project.
+- Click **Import Project** to add a Project from a ZIP archive, such as one downloaded from another Wordflow.
+- Click **Download** to export the entire Project as a ZIP archive. The archive contains Project metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Project contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Project but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or import. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format (a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV). Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can import the ZIP (**Import Project**) into another instance of the application to resume your work there, for example when sharing a Project with a collaborator or moving between a local installation and a hosted server.
+- Click **Delete** to permanently remove a Project that is no longer needed.
+- Click the **…** beside a Project's name to read its description.
 
-![A project's description, opened from the … beside its name](tutorials/assets/data_loader/project_description.png)
+![A Project's description, opened from the … beside its name](tutorials/assets/data_loader/project_description.png)
 
 <h2 id="help-data-loader-files-section">Files and uploads section</h2>
 
 ![Files section screenshot](tutorials/assets/data_loader/files_section.png)
 
-This panel is used to bring data into the application. It supports file and folder uploads, sample data imports, LDaCA imports, and adding files to the active project as Data Blocks. You can also create subfolder structures, reorganise files via drag-and-drop, and remove files that are no longer needed.
+This panel is used to bring data into the application. It supports file and folder uploads, sample data imports, LDaCA imports, and adding files to the active Project as Data Blocks. You can also create subfolder structures, reorganise files via drag-and-drop, and remove files that are no longer needed.
 
 <h2 id="help-data-loader-upload-button">Upload files and folders</h2>
 
@@ -99,7 +99,7 @@ The application stores other uploaded files, but the Data Loader hides them
 because they cannot become Data Blocks. Folders remain visible even when they
 contain no supported files.
 
-Supported file types can be previewed before being added to the project as a
+Supported file types can be previewed before being added to the Project as a
 Data Block.
 
 <span id="help-data-loader-add-folder"></span>
@@ -147,7 +147,7 @@ on `base_name`.
 
 <h2 id="help-data-loader-import-sample-button">Import sample data</h2>
 
-Use this option to download curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities.
+Use this option to import curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities.
 
 Tick one or more datasets and click **Import selected**. Each dataset shows its size and the tools it suits, a quote icon for its citation, and **✓ Imported** once it is in your files. Imported datasets appear under the **sample_data** folder.
 
@@ -164,7 +164,7 @@ of Australia ([LDaCA Data Portal](https://data.ldaca.edu.au)).
    collection on the portal, with its number of items and its licence. Each
    title links to its portal page.
 2. Type in **Filter collections** to narrow the list by name or description.
-3. Click **Download** on a collection to import its texts.
+3. Click **Import** on a collection to bring in its texts.
 
 ![Import LDaCA collections dialog](tutorials/assets/data_loader/ldaca_dialog.png)
 
@@ -180,7 +180,7 @@ For these you can:
   instead, which gives one row describing the collection.
 - **Update access token**: enter or change your token in place (you can get one by signing in to the LDaCA Data Portal). The list then
   checks access again, so collections you have been granted access to become
-  downloadable.
+  available to import.
 
 ![A restricted collection, with Import metadata only and Update access token](tutorials/assets/data_loader/ldaca_restricted.png)
 
@@ -190,16 +190,16 @@ appears in the files list under the **LDaCA** folder as a Parquet file (with
 "(metadata)" in its name for a metadata-only import). If files do not appear,
 click the refresh button in the top-right corner of the panel.
 
-<h2 id="help-data-loader-add-button">Add file to project</h2>
+<h2 id="help-data-loader-add-button">Add file to Project</h2>
 
 ![Files operations](tutorials/assets/data_loader/file_operations.png)
 
-Once a file is uploaded, imported, or downloaded, its row offers the following actions:
+Once a file is uploaded or imported, its row offers the following actions:
 
-- **Preview** the file contents before adding it to the project.
+- **Preview** the file contents before adding it to the Project.
 - **Add** opens the add panel, where you can check the preview (and choose a
   sheet for a spreadsheet) and click **Add to Project** to load the file as a
-  data block in the active project. A project must be open first.
+  Data Block in the active Project. A Project must be open first.
 
   ![Add File dialog with a preview of the first rows](tutorials/assets/data_loader/add_file_dialog.png)
 
@@ -211,7 +211,7 @@ A folder row has its own **+** button to add the folder's files as Data Blocks
 
 <h2 id="help-data-loader-file-organisation">Organising files</h2>
 
-The files panel supports folder management and drag-and-drop reorganisation so you can keep uploads tidy across projects.
+The files panel supports folder management and drag-and-drop reorganisation so you can keep uploads tidy across Projects.
 
 **Creating folders**
 
@@ -243,9 +243,9 @@ Press Delete or Backspace to open the delete confirmation for the current select
 
 <h2 id="help-data-loader-citation-notice">Citation and licensing notices</h2>
 
-Some folders — particularly those created by the LDaCA importer — display a small quote icon (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:text-bottom"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/></svg>) next to the folder name. This icon indicates that the folder contains a `README.md` file with citation, licensing, or copyright information provided by the dataset's author.
+Some folders (particularly those created by the LDaCA importer) display a small quote icon (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:text-bottom"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/></svg>) next to the folder name. This icon indicates that the folder contains a `README.md` file with citation, licensing, or copyright information provided by the dataset's author.
 
-**Click the icon to open the notice.** The contents are rendered as formatted text and may include:
+**Click the icon (View README) to open the folder's README.** The contents are rendered as formatted text and may include:
 
 - A required citation or acknowledgement for the dataset.
 - Licence terms (e.g. Creative Commons, restricted use).
@@ -261,7 +261,7 @@ Some folders — particularly those created by the LDaCA importer — display a 
 | CSV preview shows all data in one column | Wrong delimiter | Re-export with a comma delimiter, or contact the developer team |
 | LDaCA import does not appear | Import still in progress | Wait a moment and click the refresh button |
 | Project not visible in the manager | The data folder changed | Check the data folder under **Settings → Project → Data folder** |
-| Duplicate project names | Project names do not have to be unique | Open each, review its contents, and rename them to distinct names |
+| Duplicate Project names | Project names do not have to be unique | Open each, review its contents, and rename them to distinct names |
 | Some files were not added from a folder or ZIP | They are not UTF-8 text files, or they are tables | Read the skipped-files message; add tables in **Tables as separate Data Blocks** mode |
 
 <h2 id="help-data-loader-defaults">Quick-reference defaults</h2>
@@ -273,10 +273,10 @@ Some folders — particularly those created by the LDaCA importer — display a 
 
 ## Practice exercise
 
-1. Create a project named **Practice Corpus**.
+1. Create a Project named **Practice Corpus**.
 2. Upload a CSV file and preview its contents.
-3. Add the file to the project as a data block.
-4. Rename the project to **Practice Corpus v1**.
-5. Close the project and open it again from the project manager.
+3. Add the file to the Project as a Data Block.
+4. Rename the Project to **Practice Corpus v1**.
+5. Close the Project and open it again from the Project manager.
 
 [← Back to tutorial index](./index.md)

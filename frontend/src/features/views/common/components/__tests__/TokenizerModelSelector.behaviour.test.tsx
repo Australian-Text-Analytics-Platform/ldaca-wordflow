@@ -89,7 +89,7 @@ describe('TokenizerModelSelector', () => {
     vi.mocked(detectLanguageIso6391).mockResolvedValue('en');
   });
 
-  it('automatically selects the first recommended tokenizer for an unset data block', async () => {
+  it('automatically selects the first recommended tokenizer for an unset Data Block', async () => {
     const { onChange } = renderSelector({ autoSelectRecommended: true });
 
     await waitFor(() => {

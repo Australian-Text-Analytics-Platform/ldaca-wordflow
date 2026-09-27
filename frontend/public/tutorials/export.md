@@ -12,16 +12,16 @@ packaged by the backend into one ZIP containing one file per Data Block.
 
 <h2 id="help-export-parameters">Parameter panel</h2>
 
-<h3 id="help-export-data-blocks">Step 1 — Select your data</h3>
+<h3 id="help-export-data-blocks">Step 1: Select your data</h3>
 
-Use **Add data block** to choose individual Data Blocks (or a Data Block's
-**+** button in the graph or the Data Blocks list), or **Add All** to select
+Use **Add Data Block** to choose individual Data Blocks (or a Data Block's
+**+** button in the graph or the Data Blocks list), or **Add all** to select
 every remaining Data Block. There is
 no selector maximum. Remove a card with its **×**, or use **Clear**, to change the selection.
 
 ![Export Data Blocks with two Data Blocks added and CSV chosen](tutorials/assets/export/export_data_blocks.png)
 
-<h3 id="help-export-format">Step 2 — Choose a format</h3>
+<h3 id="help-export-format">Step 2: Choose a format</h3>
 
 Use the **Format** dropdown to choose the output file format:
 
@@ -35,7 +35,7 @@ Use the **Format** dropdown to choose the output file format:
 | JSON | .json | Hierarchical or nested data; web and API workflows |
 | Parquet | .parquet | Efficient columnar storage; best for large datasets or re-importing into the app |
 
-The same format applies to all blocks in a bundle export.
+The same format applies to all Data Blocks in a bundle export.
 
 CSV files are saved as UTF-8 with a byte-order mark (a hidden marker at the start of the file), so Excel shows curly quotes and non-English text correctly when you double-click the file. Columns that hold lists or structured values (such as tokens) are written as JSON text in CSV and Excel files.
 
@@ -43,14 +43,14 @@ Excel has no time zones, so date-times are written in UTC in Excel files; CSV, J
 
 An Excel worksheet holds at most 1,048,576 rows, and each cell at most 32,767 characters. If a Data Block is larger, or has longer texts, Excel export stops with a message; export it as CSV or Parquet instead to keep every row and the full text.
 
-<h2 id="help-export-results">Step 3 — Download</h2>
+<h2 id="help-export-results">Step 3: Download</h2>
 
 <h3 id="help-export-run">Export selected Data Blocks</h3>
 
 Click **Export 1 Data Block** to download one file directly in the selected
 format.
 
-For a shortcut anywhere in the Project graph, open a Data Block's node menu,
+For a shortcut anywhere in the Project Graph, open a Data Block's node menu,
 choose **Export**, select the format in the dialog, and click **Export**. This
 shortcut always exports that one Data Block directly.
 
@@ -64,10 +64,10 @@ download will be one file or one ZIP.
 
 <h3 id="help-export-bundle">Complete Project archive</h3>
 
-**Export project archive**, in the **Export Project** card, remains a separate
+**Export Project archive**, in the **Export Project** card, remains a separate
 action. It exports the complete portable Project, including its graph, Tabs, Analyses, and Data Blocks, for
 later import into Wordflow. It is the same archive as **Download** in the Data
-Loader's project manager.
+Loader's Project manager.
 
 ![Export Project card](tutorials/assets/export/export_project.png)
 
@@ -95,6 +95,6 @@ text in CSV and Excel files; Parquet keeps them as they are.
 1. Add one Data Block, choose **CSV**, and export it as a direct download.
 2. Add a second Data Block and export again; confirm the download is a ZIP.
 3. Open the ZIP and confirm that it contains one CSV per selected Data Block.
-4. Choose **Parquet**, use **Add All**, and export every Data Block together.
+4. Choose **Parquet**, use **Add all**, and export every Data Block together.
 
 [← Back to tutorial index](./index.md)

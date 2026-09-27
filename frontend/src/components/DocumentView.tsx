@@ -149,7 +149,7 @@ function DocumentView({
 
         let text: string | null = null;
         let sourceRoot = '';
-        let lastError: Error = new Error('Failed to load document');
+        let lastError: Error = new Error("Couldn't load document");
         for (const source of sources) {
           try {
             const resp = await fetch(source.url, { cache: 'no-store' });
@@ -162,7 +162,7 @@ function DocumentView({
             break;
           } catch (sourceError: unknown) {
             lastError =
-              sourceError instanceof Error ? sourceError : new Error('Failed to load document');
+              sourceError instanceof Error ? sourceError : new Error("Couldn't load document");
           }
         }
         if (text === null) throw lastError;
@@ -181,7 +181,7 @@ function DocumentView({
       } catch (err: unknown) {
         if (!cancelled) {
           const message =
-            err instanceof Error && err.message ? err.message : 'Failed to load document';
+            err instanceof Error && err.message ? err.message : "Couldn't load document";
           setError(message);
         }
       } finally {

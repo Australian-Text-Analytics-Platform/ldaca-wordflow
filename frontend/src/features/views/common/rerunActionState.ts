@@ -62,7 +62,7 @@ export const getRerunActionState = ({
 
   const clearDisabled = !hasWorkspace || !hasAnyAnalysis || isBusy || isActiveAnalysis;
   const clearDisabledReason = !hasWorkspace
-    ? 'Open a project first'
+    ? 'Open a Project first'
     : !hasAnyAnalysis
       ? 'There are no results to clear'
       : isBusy || isActiveAnalysis
@@ -71,8 +71,8 @@ export const getRerunActionState = ({
 
   const runDisabledReason: string | undefined = (() => {
     if (isBusy) return undefined;
-    if (!hasWorkspace) return 'Open a project first';
-    if (!isRunnable) return 'Add a data block and select a column to run';
+    if (!hasWorkspace) return 'Open a Project first';
+    if (!isRunnable) return 'Add a Data Block and select a column to run';
     if (isActiveAnalysis) return 'The analysis is already queued or running';
     if (requiresClear || isClearRequiredState) return 'Choose Clear before running again';
     if (attachedStateUnavailable) return 'Clear the current analysis before running again';

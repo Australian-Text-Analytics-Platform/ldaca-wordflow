@@ -167,12 +167,12 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
   };
 
   if (summaries.length === 0) {
-    result.issues = 'Select data blocks in the project to enable stacking.';
+    result.issues = 'Select Data Blocks in the Project to enable stacking.';
     return result;
   }
 
   if (summaries.length < 2) {
-    result.issues = 'Pick at least two data blocks to stack.';
+    result.issues = 'Pick at least two Data Blocks to stack.';
     return result;
   }
 
@@ -227,7 +227,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
 
   if (result.mismatches.length === 0) {
     result.ready = true;
-    result.issues = `Ready to stack ${String(summaries.length)} data blocks (${String(result.baseColumnCount)} columns).`;
+    result.issues = `Ready to stack ${String(summaries.length)} Data Blocks (${String(result.baseColumnCount)} columns).`;
   } else {
     result.issues = 'Fix the column differences before stacking.';
   }
@@ -367,7 +367,7 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
 
   const readyMessage =
     concatAnalysis.summaries.length < 2
-      ? 'Select at least two data blocks to generate a stack preview.'
+      ? 'Select at least two Data Blocks to generate a stack preview.'
       : concatAnalysis.issues;
 
   const applyDisabled =
@@ -376,7 +376,7 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
   const applyDisabledReason: string | undefined = (() => {
     if (isConcatenating || isLoading.operations) return undefined;
     if (!concatAnalysis.ready)
-      return concatAnalysis.issues || 'Select at least two compatible data blocks to stack';
+      return concatAnalysis.issues || 'Select at least two compatible Data Blocks to stack';
     return undefined;
   })();
 
@@ -435,7 +435,7 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
     form: {
       value: newNodeName,
       setValue: setNewNodeName,
-      placeholder: autoConcatName || 'Concatenated dataset',
+      placeholder: autoConcatName || 'Stacked Data Block',
       deduplicate,
       setDeduplicate,
     },

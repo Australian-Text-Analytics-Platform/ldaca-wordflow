@@ -67,11 +67,11 @@ def test_token_frequency_worker_emits_early_progress_updates(tmp_path, monkeypat
 
     assert result["state"] == "successful"
     assert requested_models == ["lindera:jieba", "lindera:jieba"]
-    assert progress_updates[0][1].startswith("Loading token frequency")
+    assert progress_updates[0][1] == "Getting ready…"
     assert any(
-        "Preparing text data" in message for _progress, message in progress_updates
+        "Preparing the text" in message for _progress, message in progress_updates
     )
-    assert progress_updates[-1] == (0.85, "Writing token-frequency results...")
+    assert progress_updates[-1] == (0.85, "Saving the results…")
     assert all(0.0 <= fraction < 1.0 for fraction, _message in progress_updates)
 
     statistics_artifact = result["tables"]["statistics"]["artifact"]

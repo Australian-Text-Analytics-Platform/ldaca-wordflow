@@ -61,7 +61,7 @@ export function useUpdateUserPreferences() {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
-      toastError(error, 'Could not save preferences');
+      toastError(error, "Couldn't save preferences");
     },
     onSuccess: (preferences) => {
       queryClient.setQueryData(queryKey, preferences);

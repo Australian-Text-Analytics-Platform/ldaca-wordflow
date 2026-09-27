@@ -39,7 +39,7 @@ export function UniqueValueCount({ workspaceId, nodeId, columnName }: UniqueValu
   });
 
   if (isLoading) {
-    return <span className="text-label-secondary text-description px-2">Loading...</span>;
+    return <span className="text-label-secondary text-description px-2">Loading…</span>;
   }
 
   // Pill is a nice-to-have hint, not load-bearing. Render nothing on

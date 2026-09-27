@@ -339,8 +339,8 @@ export function ConcordanceResultsPanel({
               }}
             >
               <TabsList>
-                <TabsTrigger value="table">Table View</TabsTrigger>
-                <TabsTrigger value="dispersion">Dispersion View</TabsTrigger>
+                <TabsTrigger value="table">Table view</TabsTrigger>
+                <TabsTrigger value="dispersion">Dispersion view</TabsTrigger>
               </TabsList>
             </Tabs>
             <div className="flex flex-wrap items-center gap-4">

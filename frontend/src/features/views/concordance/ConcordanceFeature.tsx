@@ -317,7 +317,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     ),
     /** Fetches a completed concordance task result for polling and hydration. */
     fetchResult: async (taskId) => {
-      if (!currentWorkspaceId) throw new Error('No project selected');
+      if (!currentWorkspaceId) throw new Error('No Project selected');
       return getAnalysisResultResource<ConcordanceAnalysisResponse>(currentWorkspaceId, taskId);
     },
     /** Restores concordance form controls from a saved request. */
@@ -665,7 +665,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       action: 'run_all',
       submit: () => runConcordanceAll(host.tabId, { source }, tabTaskId ? [tabTaskId] : []),
       onError: (error) => {
-        toastError(error, 'Could not start the Concordance Run.');
+        toastError(error, "Couldn't start the Concordance Run.");
       },
     });
   };
@@ -710,7 +710,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Concordance Results to the Project.');
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: 'Could not add Concordance Results.' });
+      toastError(cause, 'Try again.', { title: "Couldn't add Concordance Results." });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -973,7 +973,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {isLoading.graph && (
         <div className="text-center py-12">
           <div className="inline-block size-8 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
-          <p className="text-description mt-2">Loading project...</p>
+          <p className="text-description mt-2">Loading Project…</p>
         </div>
       )}
     </AnalysisSplitLayout>

@@ -325,7 +325,7 @@ function DataLoaderFeature() {
     try {
       await handleAddFileToWorkspace(addFileName, selectedSheet);
     } catch (error) {
-      notify('error', 'Failed to add file to project.', undefined, error);
+      notify('error', "Couldn't add file to Project.", undefined, error);
     } finally {
       setAddFileName(null);
     }
@@ -348,7 +348,7 @@ function DataLoaderFeature() {
     try {
       await handleAddFileToWorkspace(addBatchSource.path);
     } catch (error) {
-      notify('error', 'Failed to add to project.', undefined, error);
+      notify('error', "Couldn't add to Project.", undefined, error);
     }
   };
   const handleAddBatchTables = async (ids: string[]) => {
@@ -394,7 +394,7 @@ function DataLoaderFeature() {
           <HelpIcon
             targetKey="data-loader.tab"
             label="Data loader overview"
-            tooltip="Manage projects, upload text data, and add files to the active project. Use this tab before running downstream analyses."
+            tooltip="Manage Projects, upload text data, and add files to the active Project. Use this tab before running downstream analyses."
           />
         </div>
       </div>
@@ -462,7 +462,7 @@ function DataLoaderFeature() {
                   <HelpIcon
                     targetKey="data-loader.files.section"
                     label="Files and uploads section"
-                    tooltip="Load delimited, JSON, Parquet, Avro, Arrow IPC, spreadsheet, UTF-8 text, or ZIP document files into the active project."
+                    tooltip="Load delimited, JSON, Parquet, Avro, Arrow IPC, spreadsheet, UTF-8 text, or ZIP document files into the active Project."
                   />
                 </CardTitle>
                 <Button
@@ -580,7 +580,7 @@ function DataLoaderFeature() {
                     <div className="flex flex-1 items-start px-4 py-3 text-body">
                       {isFileDropActive
                         ? 'Drop files or folders here to upload them.'
-                        : 'No files found. Upload a dataset to begin.'}
+                        : 'No files found. Upload a file to begin.'}
                     </div>
                   </FileListShell>
                 ) : (

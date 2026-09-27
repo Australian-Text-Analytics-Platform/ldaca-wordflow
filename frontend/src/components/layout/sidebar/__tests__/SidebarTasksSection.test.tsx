@@ -350,7 +350,7 @@ describe('SidebarTasksSection Run All grouping (issue 199)', () => {
 
     expect(rowLabels()).toEqual(['Conc - 2 · Run']);
     await user.click(screen.getByRole('button', { name: /^Task: Conc - 2 · Run/ }));
-    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run data blocks' }));
+    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run Data Blocks' }));
     expect(blocks.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       'Q1 JP: cannot cast',
       'Q1 UK',

@@ -437,7 +437,7 @@ def run_concordance_run_all(
     """Compute one complete immutable Concordance Result table."""
     try:
         if progress_callback:
-            progress_callback(0.02, "Loading concordance libraries...")
+            progress_callback(0.02, "Getting ready…")
 
         import os
 
@@ -449,7 +449,7 @@ def run_concordance_run_all(
         snapshot_node = load_snapshot_node(input_snapshot_dir, parent_node_id)
 
         if progress_callback:
-            progress_callback(0.2, "Preparing text data...")
+            progress_callback(0.2, "Preparing the text…")
 
         (
             node_corpus,
@@ -469,7 +469,7 @@ def run_concordance_run_all(
         )
 
         if progress_callback:
-            progress_callback(0.55, "Generating concordance matches...")
+            progress_callback(0.55, "Finding matches…")
 
         if search_mode == "tokens":
             if node_tokens is None:
@@ -544,14 +544,14 @@ def run_concordance_run_all(
         )
 
         if progress_callback:
-            progress_callback(0.82, "Serializing concordance Result...")
+            progress_callback(0.82, "Saving the results…")
 
         result_path = Path(artifact_dir) / "concordance-run-all.parquet"
         result_path.parent.mkdir(parents=True, exist_ok=True)
         result.write_parquet(result_path)
 
         if progress_callback:
-            progress_callback(0.95, "Saving concordance Result...")
+            progress_callback(0.95, "Saving the results…")
 
         logger.info(
             "[Worker %d] Concordance Run All completed successfully", os.getpid()

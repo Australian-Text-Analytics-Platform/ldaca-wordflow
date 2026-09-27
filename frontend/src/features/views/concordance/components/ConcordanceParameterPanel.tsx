@@ -107,7 +107,7 @@ export function ConcordanceParameterPanel({
     if (actionState.runDisabledReason) return actionState.runDisabledReason;
     if (!searchWord.trim()) return 'Enter a search word first';
     if (effectiveNodeColumnSelections.some((sel) => !sel.column))
-      return 'Select a column for each data block';
+      return 'Select a column for each Data Block';
     return undefined;
   })();
   const runAllActionDisabled = runAllDisabled || isRunningAll;
@@ -119,7 +119,7 @@ export function ConcordanceParameterPanel({
         : !searchWord.trim()
           ? 'Enter a search word first'
           : effectiveNodeColumnSelections.some((selection) => !selection.column)
-            ? 'Select a column for each data block'
+            ? 'Select a column for each Data Block'
             : (runAllStateDisabledReason ?? 'Wait for the current analysis to finish')
     : undefined;
   const clearDisabledReason = actionState.clearDisabled
@@ -137,7 +137,7 @@ export function ConcordanceParameterPanel({
         infoTooltip="Learn what concordance search is and how it can help you."
         helpKey="analysis.concordance.parameters"
         helpLabel="Concordance parameters"
-        helpTooltip="Select data blocks, choose the search term, and set context options before running."
+        helpTooltip="Select Data Blocks, choose the search term, and set context options before running."
       />
       <fieldset disabled={parametersLocked} className="contents">
         <CardContent className="space-y-4 pt-0">
@@ -239,7 +239,7 @@ export function ConcordanceParameterPanel({
                       reason={
                         tokensModeAvailable
                           ? 'Each alternative is an exact-token match. Example: 猫|犬|魚 or cat dog fish finds every hit of any of them.'
-                          : 'Select a source text column for every data block first.'
+                          : 'Select a source text column for every Data Block first.'
                       }
                     >
                       <TabsTrigger

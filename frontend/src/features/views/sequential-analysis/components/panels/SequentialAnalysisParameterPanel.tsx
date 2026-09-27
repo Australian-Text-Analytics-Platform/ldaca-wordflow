@@ -275,7 +275,7 @@ export function SequentialAnalysisParameterPanel({
               className="gap-1"
             >
               <Plus className="h-4 w-4" />
-              Add Group
+              Add group
             </Button>
           </div>
 

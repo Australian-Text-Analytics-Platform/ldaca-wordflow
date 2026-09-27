@@ -10,13 +10,13 @@ appear within documents.
 
 <h2 id="help-concordance-parameters">Parameter panel</h2>
 
-<h3 id="help-concordance-data-block">Step 1 — Select your data</h3>
+<h3 id="help-concordance-data-block">Step 1: Select your data</h3>
 
 Add up to two Data Blocks and choose the source text column for each one. A
-fresh selector initializes that choice from the Data Block's saved Document
+fresh selector initialises that choice from the Data Block's saved Document
 Column Preference when it has one.
 
-<h3 id="help-concordance-search-term">Step 2 — Enter a search term</h3>
+<h3 id="help-concordance-search-term">Step 2: Enter a search term</h3>
 
 Enter the word, phrase, or token alternatives to find. Each result includes the
 left context, matched text, right context, and any source metadata columns you
@@ -58,7 +58,7 @@ Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test 
 word** excludes partial-word matches, and **Case sensitive** keeps letter case
 distinct.
 
-<h3 id="help-concordance-context">Step 3 — Set the context window</h3>
+<h3 id="help-concordance-context">Step 3: Set the context window</h3>
 
 **Left context** and **Right context** control how many tokens appear around a
 match. Both default to 10 and accept values from 0 to 50. In Text mode,
@@ -68,7 +68,7 @@ whitespace remain visible in each context. This option does not change which
 text or regular-expression matches are found. Tokens mode already applies its
 tokeniser's punctuation filtering and does not show this option.
 
-<h3 id="help-concordance-batch-size">Step 4 — Choose documents per page</h3>
+<h3 id="help-concordance-batch-size">Step 4: Choose documents per page</h3>
 
 Concordance Preview is document-paged. **Documents per page** controls how many
 source documents the current page evaluates: 10, 20, 50, 100, 200, 400, or
@@ -102,7 +102,7 @@ Table view shows one row per match. Click a row to inspect the full source
 document and its metadata. Use the metadata selector to add source columns to
 the table.
 
-![Table View after Run: the matched text is strongly highlighted, and L1 and R1 softly](tutorials/assets/concordance/table_view.png)
+![Table view after Run: the matched text is strongly highlighted, and L1 and R1 softly](tutorials/assets/concordance/table_view.png)
 
 **L1** (`CONC_l1`) is the token immediately left of the match and **R1**
 (`CONC_r1`) is the token immediately right. Their frequency columns count each
@@ -121,7 +121,7 @@ the relative position of each match within the document. **Bar length
 proportional to text length** scales bars by document length; with it off, all
 bars use the same width for easier positional comparison.
 
-![Dispersion View: one bar per document, with a mark at each match](tutorials/assets/concordance/dispersion_view.png)
+![Dispersion view: one bar per document, with a mark at each match](tutorials/assets/concordance/dispersion_view.png)
 
 Match markers and dispersion series use the colour assigned to their exact,
 case-sensitive matched text. Colours come from the sorted union of term labels
@@ -168,7 +168,7 @@ the range. As in Trends, you can also turn on **Select range** and drag across
 the bins, and use the zoom buttons beside it. Selected bins are shaded with a soft band across the chart, as in
 Trends: in Line and Area charts their points become large solid dots while the
 other points stay small hollow circles, and in Bar charts the unselected bars
-are dimmed. **Clear Selection** removes the bin filter. Click a legend term to
+are dimmed. **Clear selection** removes the bin filter. Click a legend term to
 hide or show it. Visible terms intersected with selected bins control the
 displayed documents, match markers, legend counts, and the documents that
 **Add to Project** saves.
@@ -178,7 +178,7 @@ Documents without a surviving match disappear. Preview has a static legend and
 does not apply these filters. Select **Ignore capitals** beside a chart legend to merge
 case variants into one series, colour, and summed legend count; for example,
 `jobs (35)` and `Jobs (2)` become `jobs/Jobs (37)`. This checkbox is shared by
-all separated charts and Combined View. Changing it restores all hidden legend
+all separated charts and Combined view. Changing it restores all hidden legend
 terms while preserving selected bins.
 
 ![Two bins selected: the legend shows selected / total matches for each term](tutorials/assets/concordance/dispersion_summary.png)
@@ -196,7 +196,7 @@ bin and term-filter summary.
 Open **Show metadata** and tick the source columns to display beside matches; the
 number in brackets shows how many are shown.
 With two Data Blocks, common columns and source-specific columns are grouped
-and colour-coded. Generated Concordance fields are already part of the Result
+and colour-coded. Generated Concordance columns are already part of the Result
 and do not become source-metadata sort keys.
 
 ![Show metadata list with party and gender ticked](tutorials/assets/concordance/show_metadata.png)
@@ -221,14 +221,14 @@ remain the chart series.
 selected Data Block and keeps the complete result for each. Run does not add
 Data Blocks to the Project.
 
-After Run, **Concordance Results** shows the complete result. Table View always shows **Matches per page**. Dispersion
-View always shows qualifying **Documents per page**; filtering occurs before
+After Run, **Concordance Results** shows the complete result. Table view always shows **Matches per page**. Dispersion
+view always shows qualifying **Documents per page**; filtering occurs before
 sorting, counting, and paging, and the selected page size applies independently
 to each source. After Run, there is no page-local Found summary.
 
 ![Concordance Results footer after Run: Matches per page and the whole-Result summary](tutorials/assets/concordance/review_footer.png)
 
-After Run, separated Table View can sort selected metadata, matched text, L1/R1,
+After Run, separated Table view can sort selected metadata, matched text, L1/R1,
 their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
 values have no guaranteed secondary order. The document and full context
 headers remain plain, and the combined table remains unsorted.
@@ -237,8 +237,8 @@ After Run, the density chart always summarises the complete result, not only
 the visible page.
 
 Use **Add to Project** to create new Data Blocks after reviewing the
-result. From Table View, **Add Concordance Matches to Project** creates a Data
-Block with one row per match and the columns you select. From Dispersion View,
+result. From Table view, **Add Concordance Matches to Project** creates a Data
+Block with one row per match and the columns you select. From Dispersion view,
 **Add Concordance Documents to Project** creates a Data Block with one row per
 qualifying original row. It contains the required original document, required
 `CONC_extraction` (surviving KWIC extractions joined with plain newlines), and
@@ -250,12 +250,12 @@ case-sensitive column names shared by every checked source. Existing shared
 selections are combined when Sync columns is enabled, and individual changes or
 **Select all** and **Select none** then apply to every checked source. Unchecked
 sources keep their independent selections. Required document and extraction
-columns remain locked on and are not synchronized. If fewer than two sources
+columns remain locked on and are not synchronised. If fewer than two sources
 remain checked, Sync columns turns off automatically.
 Submitting the checked sources is atomic, including when a source has no
 qualifying rows and therefore creates a schema-only Data Block.
 
-![Add Concordance Documents to Project, from Dispersion View](tutorials/assets/concordance/add_to_project.png)
+![Add Concordance Documents to Project, from Dispersion view](tutorials/assets/concordance/add_to_project.png)
 
 <h3 id="help-concordance-clear-results">Clear results</h3>
 
@@ -286,8 +286,8 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 | Case sensitive | Off | Text mode only |
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
-| View | Table | Returning to Concordance starts in Table View |
-| Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasized when off |
+| View | Table | Returning to Concordance starts in Table view |
+| Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasised when off |
 | Sections | 20 | 4, 5, 10, 20, 25, 50, or 100 |
 | Chart | Line | Line, Bars, Area, or Running total |
 | Term visibility after Run | All terms | Exact, case-sensitive labels |
@@ -297,9 +297,9 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 1. Select a Data Block and Preview a Text-mode search with **Whole word** ticked.
 2. Compare two source-metadata sort orders.
 3. Switch to Preview Dispersion and compare the per-term series.
-4. Run, open Dispersion View, hide a term, and select a bin range.
-5. Compare **Add to Project** from Table View (one row per match) with
-   Dispersion View (one row per document).
+4. Run, open Dispersion view, hide a term, and select a bin range.
+5. Compare **Add to Project** from Table view (one row per match) with
+   Dispersion view (one row per document).
 6. Change a setting, then choose **Preview** again and compare the new matches
    with the earlier ones.
 

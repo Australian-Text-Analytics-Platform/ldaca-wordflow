@@ -66,7 +66,7 @@ export function DedupeSubTab({
       operation="deduplicate"
       previewBody={bodies?.kept ?? null}
       incompleteMessage="Choose the deduplicating column in the inputs panel."
-      nameLabel="New data block names"
+      nameLabel="New Data Block names"
       nameHint={`Creates ${base}_deduplicated and ${base}_duplicates.`}
       name={name}
       namePlaceholder={input?.name ?? ''}

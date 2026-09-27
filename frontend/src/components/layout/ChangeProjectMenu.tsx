@@ -56,11 +56,11 @@ export function ChangeProjectMenu() {
       ).length
     : 0;
   const otherProjects = workspaces.filter((workspace) => workspace.id !== currentWorkspaceId);
-  const currentName = currentWorkspace?.name ?? 'this project';
+  const currentName = currentWorkspace?.name ?? 'this Project';
   const busyNote =
     activeTaskCount === 1
-      ? `A task is still running in “${currentName}”. Wait for it to finish, or stop it in its tab, before switching projects.`
-      : `${String(activeTaskCount)} tasks are still running in “${currentName}”. Wait for them to finish, or stop them in their tabs, before switching projects.`;
+      ? `A task is still running in “${currentName}”. Wait for it to finish, or stop it in its tab, before switching Projects.`
+      : `${String(activeTaskCount)} tasks are still running in “${currentName}”. Wait for them to finish, or stop them in their tabs, before switching Projects.`;
 
   const confirmSwitch = async () => {
     if (!target) return;
@@ -75,7 +75,7 @@ export function ChangeProjectMenu() {
       await setCurrentWorkspace(target.id);
       toast.success(`Switched to “${target.name}”.`);
     } catch (error) {
-      toastError(error, `Could not open “${target.name}”.`);
+      toastError(error, `Couldn't open “${target.name}”.`);
     } finally {
       setSwitching(false);
       setTarget(null);
@@ -111,7 +111,7 @@ export function ChangeProjectMenu() {
             </>
           ) : null}
           {otherProjects.length === 0 ? (
-            <DropdownMenuItem disabled>No other projects</DropdownMenuItem>
+            <DropdownMenuItem disabled>No other Projects</DropdownMenuItem>
           ) : (
             otherProjects.map((workspace) => (
               <DropdownMenuItem
@@ -129,8 +129,8 @@ export function ChangeProjectMenu() {
       </DropdownMenu>
       <HelpIcon
         targetKey="ui.change-project"
-        label="About switching projects"
-        tooltip="Close this project and open another one without going to the Data Loader."
+        label="About switching Projects"
+        tooltip="Close this Project and open another one without going to the Data Loader."
         className="h-5 w-5 shrink-0 text-description"
       />
 
@@ -146,7 +146,7 @@ export function ChangeProjectMenu() {
             <AlertDialogDescription>
               {currentWorkspace
                 ? `“${currentWorkspace.name}” is saved automatically and will be closed.`
-                : 'The project will open in the Project Graph.'}
+                : 'The Project will open in the Project Graph.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

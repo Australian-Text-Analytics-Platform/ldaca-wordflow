@@ -132,7 +132,7 @@ function SidebarTasksSection({
   const connectionLabel = connectionError
     ? connectionError
     : isConnecting
-      ? 'Connecting...'
+      ? 'Connecting…'
       : isConnected
         ? ''
         : 'Idle';
@@ -311,7 +311,7 @@ function SidebarTasksSection({
                           <p className="text-[11px] text-description">{task.progress_message}</p>
                         )}
                       {row.blockResults.length > 0 ? (
-                        <ul aria-label={`${label} data blocks`} className="space-y-1">
+                        <ul aria-label={`${label} Data Blocks`} className="space-y-1">
                           {row.blockResults.map((result) => {
                             const resultMeta = statusMeta(result.task.state);
                             const ResultIcon = resultMeta.icon;
@@ -368,7 +368,7 @@ function SidebarTasksSection({
                                 onStopUserFileImport(task.task_id);
                               }}
                             >
-                              {isStopping ? 'Stopping...' : 'Stop'}
+                              {isStopping ? 'Stopping…' : 'Stop'}
                             </Button>
                           ) : null}
                           {canClear ? (
@@ -387,7 +387,7 @@ function SidebarTasksSection({
                               }}
                             >
                               {isClearing
-                                ? 'Clearing...'
+                                ? 'Clearing…'
                                 : canClearAnalysis
                                   ? 'Clear results'
                                   : 'Clear'}

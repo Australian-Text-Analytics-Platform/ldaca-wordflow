@@ -71,7 +71,7 @@ export function EditAnnotationProviderDialog({
       await onSave(configuration.id, input);
       onOpenChange(false);
     } catch (error) {
-      updateDraft({ error: error instanceof Error ? error.message : 'Could not update provider' });
+      updateDraft({ error: error instanceof Error ? error.message : "Couldn't update provider" });
     }
   };
 

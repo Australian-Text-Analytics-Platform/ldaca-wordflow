@@ -485,7 +485,7 @@ describe('Token frequency result layouts', () => {
     expect(screen.getByText('Juxtorpus')).toBeInTheDocument();
     expect(screen.queryByText('Reference Data Block')).not.toBeInTheDocument();
     expect(screen.queryByText('Study Data Block')).not.toBeInTheDocument();
-    const colorScale = within(screen.getByLabelText('Reference to Study color scale'));
+    const colorScale = within(screen.getByLabelText('Reference to Study colour scale'));
     expect(colorScale.getByText('Reference')).toBeInTheDocument();
     expect(colorScale.getByText('Study')).toBeInTheDocument();
 
@@ -541,7 +541,7 @@ describe('Token frequency result layouts', () => {
       />,
     );
 
-    const colorScale = within(screen.getByLabelText('Reference to Study color scale'));
+    const colorScale = within(screen.getByLabelText('Reference to Study colour scale'));
     const studyTrigger = colorScale.getByLabelText('Study: Study Data Block');
 
     expect(studyTrigger).toHaveTextContent('Study');
@@ -566,7 +566,7 @@ describe('Token frequency result layouts', () => {
       />,
     );
 
-    const colorScale = within(screen.getByLabelText('Reference to Study color scale'));
+    const colorScale = within(screen.getByLabelText('Reference to Study colour scale'));
     expect(colorScale.getByLabelText('Reference: Reference Data Block')).toBeInTheDocument();
     expect(colorScale.getByLabelText('Study: Study Data Block')).toBeInTheDocument();
   });

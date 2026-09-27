@@ -378,7 +378,7 @@ export function AnnotationResultsPanel({
       </div>
       {resultsQuery.isLoading || countQuery.isLoading ? (
         <div className="rounded-md border border-surface-border px-4 py-3 text-body text-description">
-          Loading annotations...
+          Loading annotations…
         </div>
       ) : resultsQuery.isError || countQuery.isError ? (
         <div className="rounded-md border border-error/30 bg-error/5 px-4 py-3 text-body text-error">
@@ -421,7 +421,7 @@ export function AnnotationResultsPanel({
                       }}
                       differsLabel="Differs from any comparison column"
                       differsDisabled={activeComparisonColumns.length === 0}
-                      differsDisabledReason="Select a Compare To column first"
+                      differsDisabledReason="Select a Compare to column first"
                     />
                   </span>
                 </TableHead>
@@ -602,7 +602,7 @@ export function AnnotationResultsPanel({
                                   });
                                 }
                               });
-                              toastError(error, 'Could not save the annotation.');
+                              toastError(error, "Couldn't save the annotation.");
                             })
                             .finally(() => {
                               setSavingRows((current) => {
@@ -674,7 +674,7 @@ export function AnnotationResultsPanel({
                                     }
                                     return nextSelections;
                                   });
-                                  toastError(error, 'Could not save the annotation correction.');
+                                  toastError(error, "Couldn't save the annotation correction.");
                                 })
                                 .finally(() => {
                                   setSavingCorrectionRows((current) => {

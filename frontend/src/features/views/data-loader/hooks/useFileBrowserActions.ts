@@ -48,7 +48,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
       await refreshFiles();
       notify('success', 'File list refreshed.');
     } catch (error) {
-      notify('error', 'Failed to refresh file list.', undefined, error);
+      notify('error', "Couldn't refresh file list.", undefined, error);
     } finally {
       setRefreshingFiles(false);
     }
@@ -68,7 +68,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
       await refreshMovedFileQueries(queryClient, sourcePath, targetDirectoryPath);
       notify('success', `Moved ${String(sourcePath.split('/').at(-1))}.`);
     } catch (error) {
-      notify('error', 'Failed to move file.', undefined, error);
+      notify('error', "Couldn't move file.", undefined, error);
     }
   };
 
@@ -94,7 +94,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
     if (failed.length > 0) {
       notify(
         'error',
-        `Could not move ${String(failed.length)} item${failed.length === 1 ? '' : 's'}: ${failed.join(', ')}`,
+        `Couldn't move ${String(failed.length)} item${failed.length === 1 ? '' : 's'}: ${failed.join(', ')}`,
       );
     }
   };
@@ -126,7 +126,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
         },
       );
     } catch (error) {
-      notify('error', 'Failed to download the selection.', undefined, error);
+      notify('error', "Couldn't download the selection.", undefined, error);
     }
   };
 
@@ -137,7 +137,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
       await Promise.all(paths.map((path) => refreshFilePathQuery(queryClient, path)));
       notify('success', `Deleted ${String(data.deleted)} item${data.deleted === 1 ? '' : 's'}.`);
     } catch (error) {
-      notify('error', 'Failed to delete the selection.', undefined, error);
+      notify('error', "Couldn't delete the selection.", undefined, error);
     }
   };
 
@@ -165,7 +165,7 @@ export function useFileBrowserActions({ refreshFiles, notify }: UseFileBrowserAc
       dispatchCitation({ type: 'loaded', content: rawContent });
     } catch (error) {
       dispatchCitation({ type: 'failed' });
-      notify('error', 'Failed to load citation.', undefined, error);
+      notify('error', "Couldn't load the README.", undefined, error);
     }
   };
 

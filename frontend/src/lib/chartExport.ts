@@ -139,7 +139,7 @@ const drawSvgOnCanvas = (
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error('Failed to load SVG for canvas rendering'));
+      reject(new Error("Couldn't load SVG for canvas rendering"));
     };
     img.src = url;
   });
@@ -267,7 +267,7 @@ const renderCompositeBitmap = async (
     canvas.toBlob(
       (b) => {
         if (b) resolve(b);
-        else reject(new Error('Failed to encode canvas to blob'));
+        else reject(new Error("Couldn't encode canvas to blob"));
       },
       options.format === 'jpeg' ? 'image/jpeg' : 'image/png',
       options.format === 'jpeg' ? 0.92 : undefined,

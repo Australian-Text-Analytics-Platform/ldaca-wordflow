@@ -104,9 +104,9 @@ export function ColumnComparisonHeader({
           </TooltipTrigger>
           <TooltipContent side="top" className="max-w-none p-3">
             {isLoading ? (
-              <p>Loading comparison...</p>
+              <p>Loading comparison…</p>
             ) : isError || !rows ? (
-              <p>Could not load comparison.</p>
+              <p>Couldn't load comparison.</p>
             ) : labels.length === 0 ? (
               <p>No rows contain values in both columns.</p>
             ) : (
@@ -261,9 +261,9 @@ export function ColumnComparisonSelector({
           variant="outline"
           size="sm"
           disabled={disabled || normalizedAvailableColumns.length === 0}
-          aria-label="Compare To"
+          aria-label="Compare to"
         >
-          Compare To ({normalizedSelectedColumns.length})
+          Compare to ({normalizedSelectedColumns.length})
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>

@@ -163,7 +163,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.sample,
     '[data-guidance="preprocessing-operation-sample"]',
-    'Test ideas on a smaller dataset',
+    'Test ideas on a smaller Data Block',
     'Choose a contiguous Slice or a reproducible Random sample; Sample always creates a new Data Block. Set the sample, then choose Preview.',
   ),
   hint(
@@ -301,7 +301,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.quotation.previewResults,
     '[data-guidance="quotation-preview-results"]',
     'Validate the extracted speech',
-    'Preview retains the current source-document page with quotation, speaker, verb, and context fields. Check the rows, then refine the settings or run the complete extraction.',
+    'Preview retains the current source-document page with quotation, speaker, verb, and context columns. Check the rows, then refine the settings or run the complete extraction.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.quotation.runAllResults,
@@ -375,7 +375,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.export.inputs,
     '[data-guidance="export-inputs"]',
     'Choose Data Blocks to take with you',
-    'Add individual Data Blocks or use Add All to build the export selection. Choose the tables you need to continue.',
+    'Add individual Data Blocks or use Add all to build the export selection. Choose the tables you need to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.export.format,

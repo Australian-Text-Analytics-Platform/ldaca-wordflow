@@ -178,7 +178,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                   {preferencesError && (
                     <div className="flex items-center justify-between gap-3 text-label-secondary text-error">
-                      <span>Could not load the account theme preference.</span>
+                      <span>Couldn't load the account theme preference.</span>
                       <Button
                         type="button"
                         variant="outline"
@@ -238,7 +238,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   <DataFolderSettingsPanel />
                 </section>
                 <section className="space-y-3 border-t border-surface-border/60 pt-4">
-                  <h3 className="text-body font-semibold">Favorite Projects</h3>
+                  <h3 className="text-body font-semibold">Favourite Projects</h3>
                   {favoriteWorkspaces.length ? (
                     <div className="space-y-2">
                       {favoriteWorkspaces.map((workspaceId) => (
@@ -272,7 +272,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-body text-description">No favorite projects saved.</p>
+                    <p className="text-body text-description">No favourite Projects saved.</p>
                   )}
                 </section>
               </TabsContent>
@@ -281,7 +281,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 <div>
                   <h3 className="text-body font-semibold">Visible Views</h3>
                   <p className="text-body text-description">
-                    Data Loader stays visible so projects remain reachable.
+                    Data Loader stays visible so Projects remain reachable.
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">

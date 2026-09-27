@@ -288,7 +288,7 @@ describe('RunAllReviewTable', () => {
       await screen.findByRole('columnheader', { name: 'Correction: correction' }),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Use as example' })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Compare To' }));
+    await user.click(screen.getByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'correction' })).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     await user.click(screen.getByRole('combobox', { name: 'Correction for row 1' }));
@@ -438,7 +438,7 @@ describe('RunAllReviewTable', () => {
       </QueryClientProvider>,
     );
 
-    await user.click(await screen.findByRole('button', { name: 'Compare To' }));
+    await user.click(await screen.findByRole('button', { name: 'Compare to' }));
     expect(screen.queryByRole('menuitemcheckbox', { name: 'record_id' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'reviewer_one' }));
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'reviewer_two' }));

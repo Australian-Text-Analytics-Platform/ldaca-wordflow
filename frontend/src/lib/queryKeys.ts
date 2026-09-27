@@ -169,7 +169,7 @@ export const queryKeys = {
       },
     ] as const,
 
-  /** Authoritative Arrow schema for one data block. */
+  /** Authoritative Arrow schema for one Data Block. */
   nodeSchema: (workspaceId: string, nodeId: string) =>
     ['workspaces', workspaceId, 'nodes', nodeId, 'schema'] as const,
 

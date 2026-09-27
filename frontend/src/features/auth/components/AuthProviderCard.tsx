@@ -23,7 +23,7 @@ export function AuthProviderCard({ isLoading, error, children }: AuthProviderCar
       {isLoading && (
         <div className="flex items-center justify-center">
           <div className="mr-2 size-4 animate-spin rounded-full border-2 border-surface-border border-t-primary" />
-          <span className="text-body text-description">Signing in...</span>
+          <span className="text-body text-description">Signing in…</span>
         </div>
       )}
     </div>

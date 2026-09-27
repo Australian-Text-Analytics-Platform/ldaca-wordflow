@@ -40,7 +40,7 @@ export function AiProvidersPreferencesPanel() {
       setDeleteTarget(null);
       toast.success('Provider deleted');
     } catch (error) {
-      toastError(error, 'Could not delete provider');
+      toastError(error, "Couldn't delete provider");
     } finally {
       setPending(false);
     }
@@ -53,7 +53,7 @@ export function AiProvidersPreferencesPanel() {
       setClearOpen(false);
       toast.success('Annotation providers cleared');
     } catch (error) {
-      toastError(error, 'Could not clear providers');
+      toastError(error, "Couldn't clear providers");
     } finally {
       setPending(false);
     }
@@ -87,7 +87,7 @@ export function AiProvidersPreferencesPanel() {
             role="alert"
             className="space-y-3 rounded-md border border-error/40 px-3 py-4 text-body"
           >
-            <p>Could not load Annotation providers.</p>
+            <p>Couldn't load Annotation providers.</p>
             <Button
               type="button"
               size="sm"

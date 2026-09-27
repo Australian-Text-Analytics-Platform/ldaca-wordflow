@@ -65,7 +65,7 @@ describe('ChangeProjectMenu (issue 192)', () => {
     await user.click(screen.getByRole('button', { name: /Switch Project/ }));
 
     expect(screen.getByRole('note')).toHaveTextContent(
-      'A task is still running in “Main Project”. Wait for it to finish, or stop it in its tab, before switching projects.',
+      'A task is still running in “Main Project”. Wait for it to finish, or stop it in its tab, before switching Projects.',
     );
     expect(screen.getByRole('menuitem', { name: 'Hansard' })).toHaveAttribute(
       'aria-disabled',

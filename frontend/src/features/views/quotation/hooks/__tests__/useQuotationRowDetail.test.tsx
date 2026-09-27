@@ -37,7 +37,7 @@ describe('quotationRowDetail', () => {
 
     const fields = customization.summaryFields ?? [];
     expect(fields.map((field) => [field.label, field.value])).toEqual([
-      ['Quote Type', <QuoteTypeValue code="direct" />],
+      ['Quote type', <QuoteTypeValue code="direct" />],
       ['Speaker', 'Alice'],
       ['Verb', 'said'],
       ['Quote', 'hello'],

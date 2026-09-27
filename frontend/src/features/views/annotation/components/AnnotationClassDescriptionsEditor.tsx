@@ -123,7 +123,7 @@ export function AnnotationClassDescriptionsEditor({
       setDraftRows(null);
       toast.success('Codebook saved.');
     } catch (error) {
-      toastError(error, 'Could not save the codebook.');
+      toastError(error, "Couldn't save the codebook.");
     } finally {
       setIsSaving(false);
     }
@@ -257,7 +257,7 @@ export function AnnotationClassDescriptionsEditor({
 
       {classDescriptions.query.isLoading ? (
         <div className="rounded-md border border-surface-border px-4 py-3 text-body text-description">
-          Loading codebook...
+          Loading codebook…
         </div>
       ) : classChips.length === 0 ? (
         <div className="rounded-md border border-dashed border-surface-border px-4 py-3 text-body text-description">

@@ -44,8 +44,8 @@ export interface ConditionBuilderProps<Condition extends ConditionBuilderItem> {
 }
 
 const defaultMessages = {
-  noSelection: 'Select a data block to configure conditions.',
-  noSchema: 'No schema information is available yet for this data block.',
+  noSelection: 'Select a Data Block to configure conditions.',
+  noSchema: 'No schema information is available yet for this Data Block.',
 };
 
 /**
@@ -108,8 +108,8 @@ export function ConditionBuilder<Condition extends ConditionBuilderItem>(
             reason={
               disabled
                 ? !hasSelection
-                  ? 'Select a data block first'
-                  : 'Column information is unavailable for this data block'
+                  ? 'Select a Data Block first'
+                  : 'Column information is unavailable for this Data Block'
                 : undefined
             }
           >

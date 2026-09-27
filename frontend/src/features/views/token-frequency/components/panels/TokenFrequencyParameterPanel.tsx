@@ -53,7 +53,7 @@ function CorpusRoleSwitch({
           isStudy ? 'text-foreground' : 'text-description',
         )}
       >
-        Use as Study Corpus
+        Use as Study corpus
       </label>
     </div>
   );
@@ -161,7 +161,7 @@ export const TokenFrequencyParameterPanel = ({
         targetKey: 'analysis.token-frequency.parameters',
         label: 'Frequency parameters',
         tooltip:
-          'Choose up to two data blocks and the text columns to analyze. After the run, use the results panel to adjust stop words and displayed token limits.',
+          'Choose up to two Data Blocks and the text columns to analyse. After the run, use the results panel to adjust stop words and displayed token limits.',
       }}
       actions={{
         onRunAll: onAnalyze,
@@ -169,7 +169,7 @@ export const TokenFrequencyParameterPanel = ({
         onClear: onClearResults,
         runAllDisabled: parametersLocked || actionState.runDisabled || hasIncompleteSelections,
         runAllDisabledReason: hasIncompleteSelections
-          ? 'Select a column for each data block'
+          ? 'Select a column for each Data Block'
           : actionState.runDisabledReason,
         clearDisabled: actionState.clearDisabled,
         clearDisabledReason: actionState.clearDisabledReason,

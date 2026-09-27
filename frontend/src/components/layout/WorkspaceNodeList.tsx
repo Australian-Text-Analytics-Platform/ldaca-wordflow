@@ -92,7 +92,7 @@ function WorkspaceNodeList({
           {nodes.length ? (
             <div className="space-y-1.5 pr-1">
               {orderedNodes.map((node) => {
-                const displayName = node.name || 'Untitled data block';
+                const displayName = node.name || 'Untitled Data Block';
                 const checked = selectedNodeIds.includes(node.id);
                 const isFresh = freshIds.has(node.id);
                 const isPinned = pinnedIdSet.has(node.id);
@@ -165,8 +165,8 @@ function WorkspaceNodeList({
                           {isFresh && (
                             <span
                               className="pointer-events-none h-2 w-2 shrink-0 rounded-full bg-error transition-opacity duration-150 group-hover/row:opacity-0 group-focus-within/row:opacity-0"
-                              title="New data block"
-                              aria-label="New data block"
+                              title="New Data Block"
+                              aria-label="New Data Block"
                             />
                           )}
                           {rowActions && (
@@ -206,7 +206,7 @@ function WorkspaceNodeList({
             </div>
           ) : (
             <div className="rounded-md bg-list-hover/40 px-2 py-2 text-label-secondary text-description">
-              No data blocks
+              No Data Blocks
             </div>
           )}
         </div>

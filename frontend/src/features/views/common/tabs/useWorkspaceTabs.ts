@@ -455,7 +455,7 @@ export function useWorkspaceTabs(
     onError: (cause, variables, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
       toastError(cause, 'Try again.', {
-        title: 'Failed to save Tab settings.',
+        title: "Couldn't save Tab settings.",
         action: {
           label: 'Retry',
           onClick: () => {
