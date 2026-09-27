@@ -1,5 +1,5 @@
 /* eslint-disable testing-library/no-container, testing-library/no-node-access -- Radix exposes the imperative viewport only as an internal DOM slot. */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -68,7 +68,7 @@ describe('QuotationNodeBlock', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('keeps headers mounted and hides stale rows while a new page is processing', () => {
+  it('keeps headers and the current rows, dimmed and busy, while a new page or sort is processing (issue 209)', () => {
     const row = normalizeQuotationRow(
       {
         text: 'Alice said hello.',
@@ -111,8 +111,15 @@ describe('QuotationNodeBlock', () => {
     expect(
       screen.getByRole('columnheader', { name: QUOTATION_DOCUMENT_COLUMN }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('status', { name: 'Processing preview page' })).toBeInTheDocument();
-    expect(screen.queryByText('Alice said hello.')).not.toBeInTheDocument();
+    // Swapping the rows for a processing row shrank the table and scrolled it
+    // back to the top; the rows stay, dimmed and unclickable, instead.
+    const body = screen.getByRole('rowgroup', { busy: true });
+    expect(body).toHaveClass('pointer-events-none', 'opacity-60');
+    expect(within(body).getAllByRole('row')).toHaveLength(1);
+    expect(
+      screen.queryByRole('status', { name: 'Processing preview page' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading page' })).toBeInTheDocument();
   });
 
   it('resets only the table row axis when paging', () => {

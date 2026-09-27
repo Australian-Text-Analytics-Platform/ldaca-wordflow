@@ -318,7 +318,11 @@ export function ServerPaginationFooter({
 
           {loading && (
             <PaginationItem>
-              <div className="ml-1 h-4 w-4 animate-spin rounded-full border-2 border-surface-border-foreground border-t-transparent" />
+              <div
+                role="status"
+                aria-label="Loading page"
+                className="ml-1 h-4 w-4 animate-spin rounded-full border-2 border-surface-border-foreground border-t-transparent"
+              />
             </PaginationItem>
           )}
         </PaginationContent>

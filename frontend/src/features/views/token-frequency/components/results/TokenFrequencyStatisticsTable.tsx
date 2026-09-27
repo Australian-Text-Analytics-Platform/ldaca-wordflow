@@ -5,7 +5,6 @@ import {
   createPaginatedRowModel,
   createSortedRowModel,
   createColumnHelper,
-  flexRender,
   rowPaginationFeature,
   rowSortingFeature,
   tableFeatures,
@@ -16,6 +15,7 @@ import {
 import { ArrowDown, ArrowUp, ArrowUpDown, Download } from 'lucide-react';
 import { startTransition, useMemo, useState } from 'react';
 import HelpIcon from '@/components/help/HelpIcon';
+import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -512,7 +512,10 @@ export const TokenFrequencyStatisticsTable = ({
                                   className="h-auto px-0"
                                   onClick={header.column.getToggleSortingHandler()}
                                 >
-                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                  {renderColumnPart(
+                                    header.column.columnDef.header,
+                                    header.getContext(),
+                                  )}
                                   {sortDir === 'asc' ? (
                                     <ArrowUp className="ml-1 h-3.5 w-3.5" />
                                   ) : sortDir === 'desc' ? (
@@ -535,7 +538,7 @@ export const TokenFrequencyStatisticsTable = ({
                     <tr key={row.id} className="border-b last:border-b-0">
                       {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-2 py-1 whitespace-nowrap tabular-nums">
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
                         </td>
                       ))}
                     </tr>

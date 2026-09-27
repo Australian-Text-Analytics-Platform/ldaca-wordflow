@@ -1,4 +1,4 @@
-import { flexRender } from '@tanstack/react-table';
+import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import type { CSSProperties, ReactNode } from 'react';
 import {
   Table,
@@ -9,6 +9,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
+import { busyTableBodyProps } from '@/features/views/common/components/paginatedTableBusy';
 import { GREY, toBgColor } from '@/features/views/common/vizPalette';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { alignmentClassForColumn, type ConcordanceRow } from './concordanceTableModel';
@@ -141,8 +142,8 @@ export function ConcordanceRowsTable({
           </TableRow>
         ))}
       </TableHeader>
-      <TableBody>
-        {loading ? (
+      <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
+        {loading && rows.length === 0 ? (
           <PaginatedTableProcessingRow columnCount={tableColumns.length} />
         ) : rows.length === 0 ? (
           <TableRow>
@@ -169,7 +170,10 @@ export function ConcordanceRowsTable({
                 {tableRow.getVisibleCells().map((cell) => {
                   const sourceColor = getSourceColor?.(row);
                   const presentation = concordanceCellPresentation(cell.column.id, sourceColor);
-                  const renderedCell = flexRender(cell.column.columnDef.cell, cell.getContext());
+                  const renderedCell = renderColumnPart(
+                    cell.column.columnDef.cell,
+                    cell.getContext(),
+                  );
                   return (
                     <TableCell
                       key={cell.id}

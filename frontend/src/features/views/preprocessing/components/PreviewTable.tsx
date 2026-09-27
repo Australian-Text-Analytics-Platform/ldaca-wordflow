@@ -1,6 +1,6 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
-import { flexRender } from '@tanstack/react-table';
+import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import {
   Table,
   TableBody,
@@ -204,7 +204,7 @@ export function PreviewTable({
                         >
                           {header.isPlaceholder
                             ? null
-                            : flexRender(header.column.columnDef.header, header.getContext())}
+                            : renderColumnPart(header.column.columnDef.header, header.getContext())}
                         </TableHead>
                       ))}
                     </TableRow>
@@ -256,7 +256,7 @@ export function PreviewTable({
                             className="max-w-xs truncate px-3 py-2 font-mono text-label-secondary text-foreground"
                             title={(cellValue ?? '') as string}
                           >
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
                           </TableCell>
                         );
                       })}

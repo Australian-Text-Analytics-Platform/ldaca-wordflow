@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { flexRender } from '@tanstack/react-table';
 import { ArrowUpDown } from 'lucide-react';
 import type { SourceRowPagination } from '@/api';
 import {
@@ -10,8 +9,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import { AnalysisTableFrame } from '@/features/views/common/components/AnalysisTableScrollArea';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
+import { busyTableBodyProps } from '@/features/views/common/components/paginatedTableBusy';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
 import { type ServerColumnDef, useServerTable } from '@/features/views/common/hooks/useServerTable';
 import { QUOTATION_DOCUMENT_COLUMN } from '../../common/generatedColumns';
@@ -76,7 +77,7 @@ export interface QuotationNodeBlockProps {
  * a child component with its own table instance.
  * Flow: build column defs that wrap the highlighted cell, bridge TanStack
  * pagination back to the feature's page handlers, then render headers via
- * flexRender, body cells via `renderCell` (so cells keep their identity), and
+ * `renderColumnPart`, body cells via `renderCell` (so cells keep their identity), and
  * the shared pagination footer.
  */
 export function QuotationNodeBlock({ ...props }: QuotationNodeBlockProps) {
@@ -231,14 +232,14 @@ function QuotationNodeBlockContent({
                   >
                     {header.isPlaceholder
                       ? null
-                      : flexRender(header.column.columnDef.header, header.getContext())}
+                      : renderColumnPart(header.column.columnDef.header, header.getContext())}
                   </TableHead>
                 ))}
               </TableRow>
             ))}
           </TableHeader>
-          <TableBody>
-            {loading ? (
+          <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
+            {loading && rows.length === 0 ? (
               <PaginatedTableProcessingRow columnCount={cols.length} />
             ) : rows.length === 0 ? (
               <TableRow>

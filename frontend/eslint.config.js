@@ -80,11 +80,25 @@ export default tseslint.config([
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/require-await': 'error',
 
-      // React Refresh — warn-only; constant exports are fine (e.g. queryKeys)
-      'react-refresh/only-export-components': [
-        'warn',
-        { allowConstantExport: true },
+      // flexRender mounts each column renderer as a component, so rebuilt
+      // column definitions remount every cell and reset the table's scroll
+      // position (issues 208 and 209). Use renderColumnPart instead.
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@tanstack/react-table',
+              importNames: ['flexRender'],
+              message:
+                'Use renderColumnPart from @/lib/table/renderColumnPart: flexRender remounts cells and resets table scrolling.',
+            },
+          ],
+        },
       ],
+
+      // React Refresh — warn-only; constant exports are fine (e.g. queryKeys)
+      'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
 
