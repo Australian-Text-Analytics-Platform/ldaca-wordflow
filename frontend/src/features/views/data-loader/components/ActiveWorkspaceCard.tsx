@@ -78,7 +78,7 @@ export function ActiveWorkspaceCard({
             <HelpIcon
               targetKey="data-loader.create-workspace.name"
               label="Create project overview"
-              tooltip="Create a new project before uploading files or adding data blocks. Add an optional description if you want to capture its purpose."
+              tooltip="Create a Project to hold your Data Blocks and analyses. You can upload files before or after. Add an optional description to record its purpose."
             />
           )}
         </CardTitle>

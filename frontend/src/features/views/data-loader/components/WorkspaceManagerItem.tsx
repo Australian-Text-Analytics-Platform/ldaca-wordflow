@@ -115,7 +115,7 @@ export function WorkspaceManagerItem({
           <DisabledReasonTooltip
             reason={
               hasActiveTask
-                ? 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
+                ? 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching projects.'
                 : selectionOperation
                   ? 'Another project is being opened or closed.'
                   : undefined
@@ -225,8 +225,8 @@ export function WorkspaceManagerItem({
           reason={
             hasActiveTask
               ? isActive
-                ? 'A task is still running on this project. Wait for it to finish, or cancel it from the task list, before closing it.'
-                : 'A task is still running on the current project. Wait for it to finish, or cancel it from the task list, before switching projects.'
+                ? 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before closing the Project.'
+                : 'An analysis is still running in this Project. Wait for it to finish, or stop it in its tab, before switching projects.'
               : selectionOperation
                 ? 'Another project is being opened or closed.'
                 : undefined
