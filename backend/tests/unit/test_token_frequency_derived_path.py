@@ -146,7 +146,7 @@ def test_worker_plain_request_uses_raw_text_even_if_node_preference_differs(
 def test_worker_raw_text_path_requires_tokenizer_model(tmp_path, monkeypatch):
     _stub_polars_text(monkeypatch)
 
-    with pytest.raises(ValueError, match="node_tokenizer_models must include"):
+    with pytest.raises(ValueError, match="Choose a tokeniser model for each Data Block"):
         _compute_token_frequencies(
             node_corpora={_id("node-1"): ["alpha beta"]},
             node_display_names={_id("node-1"): "EN Corpus"},

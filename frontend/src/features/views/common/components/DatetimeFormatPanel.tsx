@@ -86,7 +86,10 @@ function DatetimeFormatPanelContent({
     onClose();
   };
 
-  const samples = [...new Set(sampleValues.map((value) => value.trim()).filter(Boolean))].slice(0, 3);
+  const samples = [...new Set(sampleValues.map((value) => value.trim()).filter(Boolean))].slice(
+    0,
+    3,
+  );
 
   return (
     <DialogContent className="w-full max-w-lg border-none bg-transparent p-0 shadow-none">

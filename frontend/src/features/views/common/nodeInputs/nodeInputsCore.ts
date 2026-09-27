@@ -140,12 +140,12 @@ export function validateAdd(
   constraints: NodeInputConstraints,
 ): string | null {
   const node = nodeMap.get(nodeId);
-  if (!node) return 'Node is no longer in the project';
+  if (!node) return 'This Data Block is no longer in the Project';
   if (current.some((i) => i.node_id === nodeId)) return 'Already added';
   if (constraints.maxNodes != null && current.length >= constraints.maxNodes) {
     return constraints.maxNodes === 1
-      ? 'This view accepts a single node — remove the current one first'
-      : `This view accepts at most ${String(constraints.maxNodes)} nodes`;
+      ? 'This tool takes one Data Block. Remove the current one first.'
+      : `This tool takes at most ${String(constraints.maxNodes)} Data Blocks.`;
   }
   // Note: we intentionally do NOT reject nodes that lack a backend-declared
   // document column even when ``docTypeOnly`` is set. Any node may be added;

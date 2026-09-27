@@ -423,5 +423,5 @@ class NodeUpdateRequest(_StrictRequest):
         if not self.model_fields_set:
             raise ValueError("Node patch must contain at least one field")
         if "name" in self.model_fields_set and self.name is None:
-            raise ValueError("Node name cannot be null")
+            raise ValueError("A Data Block name is required")
         return self

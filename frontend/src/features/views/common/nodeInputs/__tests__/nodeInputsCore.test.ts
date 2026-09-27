@@ -63,7 +63,7 @@ describe('validateAdd', () => {
 
   it('enforces maxNodes', () => {
     const current: NodeInput[] = [{ node_id: 'n1' }];
-    expect(validateAdd('n2', current, map, { maxNodes: 1 })).toMatch(/single node/i);
+    expect(validateAdd('n2', current, map, { maxNodes: 1 })).toMatch(/takes one Data Block/);
   });
 
   it('allows nodes without matching columns so the picker can stay empty', () => {

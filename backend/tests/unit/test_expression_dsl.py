@@ -82,5 +82,5 @@ def test_expression_columns_must_exist_in_the_source_schema() -> None:
         }
     )
 
-    with pytest.raises(InvalidInputError, match="not present"):
+    with pytest.raises(InvalidInputError, match="not in this Data Block"):
         _apply_expression(pl.DataFrame({"value": [1]}).lazy(), request)

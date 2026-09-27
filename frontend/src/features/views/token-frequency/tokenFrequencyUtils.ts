@@ -157,7 +157,7 @@ export const resolveTokenFrequencyDisplayName = ({
   if (responseOrSelectionNames[nodeId]) return responseOrSelectionNames[nodeId];
   if (nodeIdToName[nodeId]) return nodeIdToName[nodeId];
   // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty fallbackKey/nodeId should fall back to the next display source, not render blank
-  return fallbackKey || nodeId || 'Unknown node';
+  return fallbackKey || nodeId || 'Unknown Data Block';
 };
 
 /** Reads the backend's persisted token display limit from all supported response locations. */

@@ -47,7 +47,7 @@ describe('useNodeInputs', () => {
         rejections = result.current.addNodes([rejectedId]);
       });
       expect(rejections).toEqual([
-        { nodeId: rejectedId, reason: `This view accepts at most ${String(maxNodes)} nodes` },
+        { nodeId: rejectedId, reason: `This tool takes at most ${String(maxNodes)} Data Blocks.` },
       ]);
 
       act(() => {

@@ -167,7 +167,7 @@ def _compute_token_frequencies(
         ]
         if missing_tokenizer_model_node_ids:
             raise ValueError(
-                "node_tokenizer_models must include a tokenizer model for raw-text nodes: "
+                "Choose a tokeniser model for each Data Block of raw text: "
                 + ", ".join(map(str, missing_tokenizer_model_node_ids))
             )
 
@@ -316,9 +316,9 @@ def run_token_frequency_analysis(
     """Run the canonical snapshot-only token-frequency process contract."""
 
     if set(node_tokenizer_models) != set(node_ids):
-        raise ValueError("Tokenizer models must exactly match token-frequency nodes")
+        raise ValueError("Tokeniser models must exactly match the Frequency Data Blocks")
     if set(node_columns) != set(node_ids):
-        raise ValueError("Columns must exactly match token-frequency nodes")
+        raise ValueError("Columns must exactly match the Frequency Data Blocks")
     corpora, display_names, token_streams = _prepare_snapshot_inputs(
         input_snapshot_dir=input_snapshot_dir,
         scratch_dir=scratch_dir,

@@ -98,7 +98,7 @@ def build_derived_node(
     name = (request.name or default_name).strip()
     valid, reason = validate_display_name(name)
     if not valid:
-        raise InvalidInputError(f"Invalid node name: {reason}")
+        raise InvalidInputError(f"Invalid Data Block name: {reason}")
 
     # Schema resolution catches invalid columns, join keys, expressions, and
     # most dtype errors before the graph is changed or persisted.
@@ -106,7 +106,7 @@ def build_derived_node(
         lazyframe.collect_schema()
     except Exception as exc:
         raise InvalidInputError(
-            "The node operation does not produce a valid schema"
+            "This change does not produce a valid Data Block"
         ) from exc
 
     node = Node(
@@ -179,7 +179,7 @@ def build_derived_lazyframe(
     if isinstance(request, ConcatNodeCreateRequest):
         parents = [_node(workspace, node_id) for node_id in request.source_node_ids]
         if len({node.id for node in parents}) != len(parents):
-            raise InvalidInputError("Concatenation source nodes must be distinct")
+            raise InvalidInputError("Choose different Data Blocks to stack")
         frames = _aligned_concat_frames(parents)
         result = pl.concat(frames, how="vertical")
         if request.deduplicate:
@@ -191,7 +191,7 @@ def build_derived_lazyframe(
         left = _node(workspace, request.left_node_id)
         right = _node(workspace, request.right_node_id)
         if left.id == right.id:
-            raise InvalidInputError("Join source nodes must be distinct")
+            raise InvalidInputError("Choose two different Data Blocks to join")
         if request.how == "cross":
             result = left.data.join(right.data, how="cross")
         else:
@@ -239,7 +239,7 @@ def build_derived_lazyframe(
             [source],
         )
 
-    raise InvalidInputError("Unsupported node operation")
+    raise InvalidInputError("Wordflow can't make this kind of Data Block")
 
 
 def build_edited_lazyframe(
@@ -539,7 +539,7 @@ def _cast_is_no_op(
 def _node(workspace: Workspace, node_id: uuid.UUID) -> Node:
     node = workspace.nodes.get(node_id)
     if node is None:
-        raise NodeNotFoundError("Node not found")
+        raise NodeNotFoundError("Data Block not found")
     return node
 
 
@@ -688,7 +688,7 @@ def _condition_expression(
     schema: dict[str, pl.DataType],
 ) -> pl.Expr:
     if condition.column not in schema:
-        raise InvalidInputError("Filter column is not present on the node")
+        raise InvalidInputError("The filter column is not in this Data Block")
     column = pl.col(condition.column)
     dtype = schema[condition.column]
     value = condition.value
@@ -1168,7 +1168,7 @@ def _replace_expression(
 ) -> tuple[str, pl.Expr]:
     schema = source.data.collect_schema()
     if request.source_column not in schema:
-        raise InvalidInputError("Replace source column is not present on the node")
+        raise InvalidInputError("The column to search is not in this Data Block")
     require_supported_columns(schema, [request.source_column], use="as text")
     output = re.sub(r"\s+", " ", request.output_column or request.source_column).strip()
     if not output:
@@ -1206,7 +1206,7 @@ def _compile_expression(
 
     if isinstance(specification, ColumnExpression):
         if specification.name not in columns:
-            raise InvalidInputError("Expression column is not present on the node")
+            raise InvalidInputError("The column is not in this Data Block")
         return pl.col(specification.name)
     if isinstance(specification, LiteralExpression):
         return pl.lit(specification.value)

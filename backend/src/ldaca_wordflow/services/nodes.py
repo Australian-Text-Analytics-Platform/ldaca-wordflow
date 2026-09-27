@@ -159,7 +159,7 @@ class NodeService:
                 and request.zip_member is None
                 and metadata.st_size > self._max_source_bytes
             ):
-                raise ResourceTooLargeError("File is too large for node ingestion")
+                raise ResourceTooLargeError("The file is too large to add as a Data Block")
             try:
                 if request.zip_member is not None:
                     dataframe, dtype_changes = await self._run_io(
@@ -179,7 +179,7 @@ class NodeService:
             except DataFileLoadError as exc:
                 if isinstance(exc.__cause__, DirectoryTooLargeError):
                     raise ResourceTooLargeError(
-                        "Folder is too large for node ingestion"
+                        "The folder is too large to add as a Data Block"
                     ) from exc
                 # Say why and what to do; the library text goes under Details
                 # (issue 205).
@@ -204,7 +204,7 @@ class NodeService:
         node_name = (request.name or default_name).strip()
         valid, reason = validate_display_name(node_name)
         if not valid:
-            raise InvalidInputError(f"Invalid node name: {reason}")
+            raise InvalidInputError(f"Invalid Data Block name: {reason}")
 
         staged_path: Path | None = None
         node_id = uuid.uuid4()
@@ -346,7 +346,7 @@ class NodeService:
                         ),
                         lease.revision,
                     )
-                raise NodeNotFoundError("Node not found")
+                raise NodeNotFoundError("Data Block not found")
             info = await self._run_io(canonical_node_info, node)
             return WorkspaceNodeInfo.model_validate(info), lease.revision
 
@@ -363,7 +363,7 @@ class NodeService:
         ) as lease:
             node = lease.workspace.nodes.get(node_id)
             if node is None:
-                raise NodeNotFoundError("Node not found")
+                raise NodeNotFoundError("Data Block not found")
             if node_id in lease.workspace.reserved_node_ids():
                 raise DataBlockInUseError("Data Block is reserved by an Analysis")
             changed = False
@@ -372,7 +372,7 @@ class NodeService:
                 normalized_name = request.name.strip()
                 valid, reason = validate_display_name(normalized_name)
                 if not valid:
-                    raise InvalidInputError(f"Invalid node name: {reason}")
+                    raise InvalidInputError(f"Invalid Data Block name: {reason}")
                 if node.name != normalized_name:
                     node.name = normalized_name
                     changed = True
@@ -382,7 +382,7 @@ class NodeService:
                     columns = set(await self._run_io(_schema_names, node.data))
                 if normalized_document and normalized_document not in columns:
                     raise InvalidInputError(
-                        "Document column is not present on the node"
+                        "The document column is not in this Data Block"
                     )
                 if node.document != normalized_document:
                     node.document = normalized_document
@@ -513,11 +513,11 @@ class NodeService:
         ) as lease:
             affected = lease.workspace.node_removal_affected_ids(node_id)
             if not affected:
-                raise NodeNotFoundError("Node not found")
+                raise NodeNotFoundError("Data Block not found")
             if affected & lease.workspace.reserved_node_ids():
                 raise DataBlockInUseError("Data Block is reserved by an Analysis")
             if not lease.workspace.remove_node(node_id):
-                raise NodeNotFoundError("Node not found")
+                raise NodeNotFoundError("Data Block not found")
         return lease.revision
 
     async def schema(
@@ -531,7 +531,7 @@ class NodeService:
         async with self._workspaces.read_context(user_id, workspace_id) as lease:
             node = lease.workspace.nodes.get(node_id)
             if node is None:
-                raise NodeNotFoundError("Node not found")
+                raise NodeNotFoundError("Data Block not found")
             content = await self._run_io(
                 encode_schema_stream,
                 node.data.collect_schema(),
@@ -582,7 +582,7 @@ def _load_zip_member_dataframe(
                 zip_path, member, Path(scratch), max_bytes=max_source_bytes
             )
         except DirectoryTooLargeError as exc:
-            raise ResourceTooLargeError("ZIP member is too large for node ingestion") from exc
+            raise ResourceTooLargeError("That file in the ZIP is too large to add as a Data Block") from exc
         except ValueError as exc:
             raise DataFileLoadError("ZIP member could not be loaded") from exc
         data = materialize_data_file(extracted)
@@ -814,7 +814,7 @@ def _schema_names(lazyframe: pl.LazyFrame) -> list[str]:
 def _editable_node(workspace: Workspace, node_id: uuid.UUID) -> Node:
     node = workspace.nodes.get(node_id)
     if node is None:
-        raise NodeNotFoundError("Node not found")
+        raise NodeNotFoundError("Data Block not found")
     if node_id in workspace.reserved_node_ids():
         raise DataBlockInUseError("Data Block is reserved by an Analysis")
     return node

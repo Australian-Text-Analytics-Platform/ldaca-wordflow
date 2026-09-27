@@ -105,7 +105,7 @@ def _resolve_inputs(
     for node_id in node_ids:
         node = workspace.nodes.get(node_id)
         if node is None:
-            raise NodeNotFoundError("Node not found")
+            raise NodeNotFoundError("Data Block not found")
         inputs.append(node)
     return inputs
 
@@ -132,7 +132,7 @@ def _create_sql_node(
     normalized_name = name.strip()
     valid, reason = validate_display_name(normalized_name)
     if not valid:
-        raise InvalidInputError(f"Invalid node name: {reason}")
+        raise InvalidInputError(f"Invalid Data Block name: {reason}")
 
     lazyframe = _execute_sql(inputs, sql)
     try:

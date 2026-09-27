@@ -120,7 +120,8 @@ export const useWorkspaceGraphMutations = ({
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
       }).then(({ data }) => {
-        if (data !== undefined) throw new Error('Node deletion returned a body');
+        if (data !== undefined)
+          throw new Error('Deleting the Data Block returned an unexpected reply');
         return undefined;
       }),
     onSuccess: (_, { nodeId }) => {

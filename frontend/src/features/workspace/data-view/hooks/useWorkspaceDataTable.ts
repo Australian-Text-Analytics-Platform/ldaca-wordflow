@@ -272,7 +272,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
      */
     queryFn: async () => {
       if (!currentWorkspaceId || !activeNodeId) {
-        throw new Error('Missing project or node ID');
+        throw new Error('Missing Project or Data Block');
       }
       return await queryWorkspaceSqlTable({
         path: { workspace_id: currentWorkspaceId },
@@ -322,7 +322,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     placeholderData: (previousData) => previousData,
     queryFn: async () => {
       if (!currentWorkspaceId || !activeNodeId || !previewRequest) {
-        throw new Error('Missing project, node, or edit to preview');
+        throw new Error('Missing Project, Data Block, or edit to preview');
       }
       return await previewNodeEditTable({
         path: { workspace_id: currentWorkspaceId, node_id: activeNodeId },
@@ -402,7 +402,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       : null;
 
   const header: WorkspaceDataTableHeaderInfo = {
-    nodeLabel: resolveNodeDisplayLabel(selectedNode) ?? 'Unknown node',
+    nodeLabel: resolveNodeDisplayLabel(selectedNode) ?? 'Unknown Data Block',
     tabPosition,
     totalTabs: selectedNodeIds.length,
     isEmptyTable: nodeData.rows.length === 0,

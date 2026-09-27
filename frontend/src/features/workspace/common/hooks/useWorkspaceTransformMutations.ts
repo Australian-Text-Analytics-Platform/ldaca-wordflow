@@ -64,7 +64,7 @@ export const useWorkspaceTransformMutations = ({
   queryClient,
 }: WorkspaceTransformMutationsParams) => {
   const requireNode = <T>(value: T | undefined): T => {
-    if (value === undefined) throw new Error('Node operation returned no resource');
+    if (value === undefined) throw new Error('Wordflow returned no Data Block for this change');
     return value;
   };
   const ensureWorkspaceSelected = () => {

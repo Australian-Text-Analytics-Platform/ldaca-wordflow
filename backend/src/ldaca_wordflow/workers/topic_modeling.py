@@ -450,7 +450,7 @@ def _load_corpora_from_snapshot(
     resolved_infos: list[TopicNodeInfo] = []
     for node_info in node_payloads:
         if not node_info.text_column:
-            raise ValueError("Topic modeling requires a text column for each node")
+            raise ValueError("Choose a text column for each Data Block")
         snapshot_node = load_snapshot_node(input_snapshot_dir, node_info.node_id)
         resolved_infos.append(
             TopicNodeInfo(

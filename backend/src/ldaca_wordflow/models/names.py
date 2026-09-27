@@ -9,11 +9,11 @@ def _validate_node_name(value: str) -> str:
     """Apply the one invariant used by HTTP, Analysis, and archive Node state."""
 
     if ".." in value:
-        raise ValueError("Node name cannot contain '..'")
+        raise ValueError("A Data Block name cannot contain '..'")
     if "/" in value or "\\" in value:
-        raise ValueError("Node name cannot contain path separators")
+        raise ValueError("A Data Block name cannot contain / or \\")
     if any(ord(character) < 32 or ord(character) == 127 for character in value):
-        raise ValueError("Node name cannot contain control characters")
+        raise ValueError("A Data Block name cannot contain control characters")
     return value
 
 
