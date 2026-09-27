@@ -17,7 +17,7 @@ window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
 
 describe('SequentialAnalysisParameterPanel', () => {
-  it('shows friendly canonical Arrow types and unchanged alternate types in group-by options', async () => {
+  it('shows plain type names for every column in group-by options (issue 205)', async () => {
     const user = userEvent.setup();
 
     render(
@@ -55,6 +55,6 @@ describe('SequentialAnalysisParameterPanel', () => {
 
     expect(screen.getByRole('option', { name: 'count (whole number)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'score (decimal)' })).toBeInTheDocument();
-    expect(screen.getByRole('option', { name: 'legacy_text (Utf8)' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'legacy_text (text)' })).toBeInTheDocument();
   });
 });

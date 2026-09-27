@@ -2,7 +2,8 @@ import { arrowTypeDisplayName, type ArrowColumn, type ArrowField } from '@/lib/a
 
 export const DATA_TYPES = [
   { value: 'string', label: 'text' },
-  { value: 'categorical', label: 'categorical' },
+  // "Category", not the statistics term (issue 205).
+  { value: 'categorical', label: 'category' },
   // Plain words rather than "integer" and "datetime" (issue 206).
   { value: 'integer', label: 'whole number' },
   { value: 'float', label: 'decimal' },

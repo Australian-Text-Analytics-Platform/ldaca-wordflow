@@ -37,6 +37,7 @@ import { JoinSubTab } from './join/JoinSubTab';
 import { SliceSubTab } from './slice/SliceSubTab';
 import { MAX_CONCAT_NODES, MAX_JOIN_NODES } from './types';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
+import { arrowTypeDisplayName } from '@/lib/arrow/arrowTable';
 
 type DataPrepSubtab =
   | 'filter'
@@ -196,6 +197,7 @@ function DataPreprocessingFeature() {
         columns: resolvedInput.columnOptions.map((option) => ({
           name: option.name,
           kind: columnKind(option.field),
+          typeLabel: arrowTypeDisplayName(option.field),
         })),
       }
     : null;

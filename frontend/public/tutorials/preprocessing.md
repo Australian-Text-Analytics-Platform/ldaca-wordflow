@@ -73,7 +73,7 @@ Define one or more column-based filter conditions. The behaviour of each conditi
   target them explicitly. **is empty** matches missing values, NaN, and text
   that is empty or only spaces; tick **Negate** for "is not empty".
 - The preview shows how many rows the current condition set would keep. An empty result is possible if no rows satisfy the conditions or if conditions conflict.
-- Categorical values load in ordered pages. Scroll to load more, use search to
+- Category values load in ordered pages. Scroll to load more, use search to
   filter on the server, and use **Select loaded** to select only the values
   currently available. Existing selections remain selected across searches.
 - In a value list, missing values are listed as **(empty)** and text that is
@@ -223,7 +223,7 @@ Group makes one data block per group of a column (not to be confused with Aggreg
 
 Choose the column under **Split by**; the choices below it depend on the column's type.
 
-- For **text** and other categorical columns, each value is a group. Values are listed with their row counts, most frequent first.
+- For **text** and **category** columns, each value is a group. Values are listed with their row counts, most frequent first.
 - For **dates**, group by year, year and month, or day.
 - For **numbers**, use ranges of a fixed size from a start value, or split the full range into a number of equal ranges.
 

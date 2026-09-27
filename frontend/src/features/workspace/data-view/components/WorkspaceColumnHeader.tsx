@@ -52,6 +52,8 @@ export interface WorkspaceColumnHeaderProps {
   /** The column's decoded field, which picks the type button's symbol. */
   field?: ArrowField;
   displayLabel: string;
+  /** The plain type name plus any exact spelling, for the tooltip. */
+  typeTooltip?: string;
   availableTypes: DataTypeOption[];
   isColumnBusy: boolean;
   isRenaming: boolean;
@@ -110,6 +112,7 @@ export function WorkspaceColumnHeader({
   currentType,
   field,
   displayLabel,
+  typeTooltip,
   availableTypes,
   isColumnBusy,
   isRenaming,
@@ -234,7 +237,7 @@ export function WorkspaceColumnHeader({
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>{typeButton}</DropdownMenuTrigger>
               </TooltipTrigger>
-              <TooltipContent>{typeName(displayLabel)}</TooltipContent>
+              <TooltipContent>{typeTooltip ?? typeName(displayLabel)}</TooltipContent>
             </Tooltip>
           </TooltipProvider>
         )}

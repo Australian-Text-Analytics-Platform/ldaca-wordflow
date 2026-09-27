@@ -157,18 +157,18 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 ![Delete columns dialog with three columns ticked](tutorials/assets/ui/delete_columns.png)
 
 - **Undo** and **Redo**, at the right end of the tools row, revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
-- Each column header shows the column name and a symbol for its data type, which keeps columns narrow. Point to the symbol to see the type's name:
+- Each column header shows the column name and a symbol for its data type, which keeps columns narrow. Point to the symbol to see the type's name (and, for an unusual type, how it is stored):
 
   | Symbol | Data type |
   |---|---|
   | `Aa` | Text |
-  | tag | Categorical |
+  | tag | Category |
   | `123` | Whole number |
   | `1.2` | Decimal |
   | calendar | Date (a calendar date with no time of day, useful for publication or sitting dates) |
   | clock | Date and time |
   | tick box | True / false |
-  | list | List |
+  | list | List (of text, or of other values) |
   | pie chart | Topic coverage |
 
   Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column, and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.

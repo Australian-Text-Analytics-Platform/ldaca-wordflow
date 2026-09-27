@@ -35,7 +35,7 @@ import { WorkspaceColumnHeader } from './WorkspaceColumnHeader';
 import type { DataEditorTool } from '../dataEditorToolStore';
 import { TopicCoverageBar } from './TopicCoverageBar';
 import type { DataRow, NodeTablePagination } from '../types';
-import { arrowTypeName, type ArrowField } from '@/lib/arrow/arrowTable';
+import { arrowTypeName, arrowTypeTooltip, type ArrowField } from '@/lib/arrow/arrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
 import {
   castTypeLabel,
@@ -363,6 +363,7 @@ export function WorkspaceTable({
           currentType={currentType}
           field={currentField}
           displayLabel={displayLabel}
+          typeTooltip={currentField ? arrowTypeTooltip(currentField) : undefined}
           availableTypes={availableTypes}
           isColumnBusy={isColumnBusy}
           isRenaming={renamingColumn === column}

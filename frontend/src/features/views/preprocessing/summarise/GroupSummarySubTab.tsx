@@ -165,7 +165,7 @@ export function GroupSummarySubTab({
                   <span className="min-w-0 flex-1 truncate text-body" title={column.name}>
                     {column.name}
                     <span className="ml-2 text-label-secondary text-description">
-                      {column.kind}
+                      {column.typeLabel ?? column.kind}
                     </span>
                   </span>
                   <Select

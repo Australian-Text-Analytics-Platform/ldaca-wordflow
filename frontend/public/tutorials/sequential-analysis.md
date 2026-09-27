@@ -8,7 +8,7 @@
 
 The Trends tool counts documents over time — or over any ordered numeric axis — and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
 
-You can break a single trend into multiple lines by grouping on one or more categorical columns, then zoom into and select specific periods for closer inspection.
+You can break a single trend into multiple lines by grouping on one or more category or text columns, then zoom into and select specific periods for closer inspection.
 
 <h2 id="help-sequential-parameters">Parameter panel</h2>
 
@@ -235,7 +235,7 @@ visibility.
 1. Select a data block that has a date and time column.
 2. Run the analysis with **Monthly** frequency to see the overall trend.
 3. Switch to **Weekly** and compare the granularity.
-4. Add a categorical column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.
+4. Add a category or text column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.
 5. Zoom into a period of high activity, turn on **Select range**, and drag across several periods.
 6. Download the chart in the format you need and compare it with the monthly view.
 

@@ -397,10 +397,11 @@ def test_derivation_preview_reports_safe_operation_errors(tmp_path: Path) -> Non
         assert preview.headers["access-control-allow-origin"] == "http://testserver"
         assert preview.headers["x-request-id"] == preview.json()["request_id"]
         assert preview.json()["code"] == "invalid_input"
+        # The Data Editor's type names, and what to do (issue 205).
         assert preview.json()["message"] == (
-            'Join columns have incompatible data types: "tweet_id" is integer (Int64), '
-            'but "party" is string. Choose columns with the same data type or cast one '
-            "column first."
+            '"tweet_id" is a whole number column in the first Data Block and "party" '
+            "is a text column in the second. Choose columns of the same type, or "
+            "change one column's type in the Data Editor first."
         )
 
         other_polars_error = client.post(

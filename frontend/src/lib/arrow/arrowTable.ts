@@ -11,17 +11,10 @@ import { parseApiErrorResponse } from '@/lib/apiError';
 
 const ARROW_STREAM_MEDIA_TYPE = 'application/vnd.apache.arrow.stream';
 const ARROW_EXTENSION_NAME = 'ARROW:extension:name';
-// Plain words for HASS users: "text" and "decimal", not "string" and
-// "float" (issue 178).
-const COMMON_ARROW_TYPE_DISPLAY_NAMES = new Map<string, string>([
-  ['Utf8View', 'text'],
-  ['Dictionary<Uint32, Utf8View>', 'categorical'],
-  // Plain words rather than "integer" and "datetime" (issue 206).
-  ['Int64', 'whole number'],
-  ['Float64', 'decimal'],
-  ['Timestamp<MICROSECOND, UTC>', 'date and time'],
-  ['Date32<DAY>', 'date'],
-  ['Bool', 'true / false'],
+// Plain words for HASS users (issues 178, 206 and 205): one vocabulary with no
+// raw Arrow spellings. Those appear only in tooltips (arrowTypeTooltip).
+const EXTENSION_DISPLAY_NAMES = new Map<string, string>([
+  ['org.ldaca.wordflow.topic_coverage.v1', 'topic coverage'],
 ]);
 
 /** Every concrete Arrow type supplies its native schema spelling via `toString`. */
@@ -69,17 +62,58 @@ export const arrowExtensionName = (field: ArrowField): string | null =>
 export const arrowTypeName = (field: ArrowField): string =>
   arrowExtensionName(field) ?? field.type.toString();
 
+/** The plain name of one Arrow type, in Wordflow's user vocabulary. */
+const plainTypeName = (type: ArrowDataType): string => {
+  if (DataType.isDictionary(type)) return 'category';
+  if (isArrowStringType(type)) return 'text';
+  if (DataType.isInt(type)) return 'whole number';
+  if (DataType.isFloat(type) || DataType.isDecimal(type)) return 'decimal';
+  if (DataType.isTimestamp(type)) return 'date and time';
+  if (DataType.isDate(type)) return 'date';
+  if (DataType.isTime(type)) return 'time of day';
+  if (DataType.isDuration(type) || DataType.isInterval(type)) return 'length of time';
+  if (DataType.isBool(type)) return 'true / false';
+  const child = arrowListChild(type);
+  if (child) return isArrowStringType(child.type) ? 'list of text' : 'list';
+  return 'other';
+};
+
 /**
- * Provides friendly labels for Wordflow's canonical physical Arrow types.
- * Extension identities and unrecognized native spellings remain exact so the
- * UI never hides a distinct type that may need explicit normalization.
+ * Names a field in Wordflow's user vocabulary (issue 205): text, category,
+ * whole number, decimal, date, date and time, true / false, list of text,
+ * list, topic coverage, or other. The exact spelling is in arrowTypeTooltip.
  */
 export const arrowTypeDisplayName = (field: ArrowField): string => {
   const extensionName = arrowExtensionName(field);
-  if (extensionName !== null) return extensionName;
-  const nativeTypeName = field.type.toString();
-  return COMMON_ARROW_TYPE_DISPLAY_NAMES.get(nativeTypeName) ?? nativeTypeName;
+  if (extensionName !== null) return EXTENSION_DISPLAY_NAMES.get(extensionName) ?? 'other';
+  return plainTypeName(field.type);
 };
+
+/**
+ * The plain name, plus the exact type where it adds something, for tooltips:
+ * "Whole number (Int32)". Wordflow's standard types show the plain name only.
+ */
+export const arrowTypeTooltip = (field: ArrowField): string => {
+  const plain = arrowTypeDisplayName(field);
+  const label = plain.charAt(0).toUpperCase() + plain.slice(1);
+  const extension = arrowExtensionName(field);
+  if (extension !== null) {
+    return EXTENSION_DISPLAY_NAMES.has(extension) ? label : `${label} (${extension})`;
+  }
+  const exact = field.type.toString();
+  return STANDARD_TYPE_SPELLINGS.has(exact) ? label : `${label} (${exact})`;
+};
+
+/** The spellings Wordflow stores its standard types in. */
+const STANDARD_TYPE_SPELLINGS = new Set([
+  'Utf8View',
+  'Dictionary<Uint32, Utf8View>',
+  'Int64',
+  'Float64',
+  'Timestamp<MICROSECOND, UTC>',
+  'Date32<DAY>',
+  'Bool',
+]);
 
 /** Native Arrow predicates used by feature-specific behavior at its call site. */
 export const isArrowStringField = (field: ArrowField): boolean => isArrowStringType(field.type);

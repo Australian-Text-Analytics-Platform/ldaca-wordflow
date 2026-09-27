@@ -35,7 +35,7 @@ const topicCoverageField = (name: string) =>
   );
 
 describe('WorkspaceTable', () => {
-  it('shows the native IPC type name instead of a frontend list alias', () => {
+  it('names list columns in plain words, not a frontend alias', () => {
     render(
       <WorkspaceTable
         columns={['representative_words']}
@@ -51,7 +51,7 @@ describe('WorkspaceTable', () => {
 
     expect(
       screen.getByRole('button', { name: 'Change data type for column representative_words' }),
-    ).toHaveAttribute('aria-description', 'LargeList<Utf8View>');
+    ).toHaveAttribute('aria-description', 'List of text');
     expect(screen.queryByText('string-list')).not.toBeInTheDocument();
   });
 
@@ -86,7 +86,7 @@ describe('WorkspaceTable', () => {
     ).toHaveAttribute('aria-description', 'Text');
     expect(
       screen.getByRole('button', { name: 'Change data type for column category' }),
-    ).toHaveAttribute('aria-description', 'Categorical');
+    ).toHaveAttribute('aria-description', 'Category');
     expect(
       screen.getByRole('button', { name: 'Change data type for column count' }),
     ).toHaveAttribute('aria-description', 'Whole number');
@@ -107,7 +107,7 @@ describe('WorkspaceTable', () => {
     await user.click(screen.getByRole('button', { name: 'Change data type for column category' }));
 
     expect(
-      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'Categorical' }),
+      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'Category' }),
     ).toHaveLength(1);
   });
 

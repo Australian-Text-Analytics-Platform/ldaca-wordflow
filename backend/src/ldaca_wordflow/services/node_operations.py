@@ -554,37 +554,62 @@ def _validate_join_keys(
     left_schema = left.data.collect_schema()
     right_schema = right.data.collect_schema()
     if left_on not in left_schema:
-        raise InvalidInputError(f'Join left column "{left_on}" was not found')
+        raise InvalidInputError(f'The first Data Block has no column "{left_on}".')
     if right_on not in right_schema:
-        raise InvalidInputError(f'Join right column "{right_on}" was not found')
+        raise InvalidInputError(f'The second Data Block has no column "{right_on}".')
 
     require_supported_columns(left_schema, [left_on], use="as a join key")
     require_supported_columns(right_schema, [right_on], use="as a join key")
     left_dtype = left_schema[left_on]
     right_dtype = right_schema[right_on]
     if left_dtype != right_dtype:
+        # The Data Editor's type names (issue 205).
+        left_label = _join_dtype_label(left_dtype)
+        right_label = _join_dtype_label(right_dtype)
+        if left_label == right_label:
+            detail = (
+                f'"{left_on}" and "{right_on}" are both {left_label} columns, '
+                "but they are stored differently."
+            )
+        else:
+            detail = (
+                f'"{left_on}" is {_with_article(left_label)} in the first Data Block and '
+                f'"{right_on}" is {_with_article(right_label)} in the second.'
+            )
         raise InvalidInputError(
-            "Join columns have incompatible data types: "
-            f'"{left_on}" is {_join_dtype_label(left_dtype)}, '
-            f'but "{right_on}" is {_join_dtype_label(right_dtype)}. '
-            "Choose columns with the same data type or cast one column first."
+            f"{detail} Choose columns of the same type, or change one column's "
+            "type in the Data Editor first."
         )
 
 
 def _join_dtype_label(dtype: pl.DataType) -> str:
-    """Format one join-key dtype in concise user-facing language."""
+    """One join-key type in the Data Editor's plain words (issue 205)."""
 
     if dtype == pl.String:
-        return "string"
+        return "text"
+    if dtype == pl.Categorical or isinstance(dtype, pl.Categorical | pl.Enum):
+        return "category"
     if dtype.is_integer():
-        return f"integer ({dtype})"
-    if dtype.is_float():
-        return f"floating-point number ({dtype})"
+        return "whole number"
+    if dtype.is_float() or dtype.is_decimal():
+        return "decimal"
     if dtype == pl.Boolean:
-        return "boolean"
+        return "true / false"
+    if dtype == pl.Date:
+        return "date"
+    if isinstance(dtype, pl.Datetime):
+        return "date and time"
     if dtype.is_temporal():
-        return f"date/time ({dtype})"
-    return str(dtype)
+        return "time"
+    if isinstance(dtype, pl.List | pl.Array):
+        return "list"
+    return "other"
+
+
+def _with_article(label: str) -> str:
+    """ "a whole number column", "a text column" for one type name."""
+
+    return "a column of another type" if label == "other" else f"a {label} column"
 
 
 def _slice(

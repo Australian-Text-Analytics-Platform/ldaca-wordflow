@@ -24,6 +24,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   arrowExtensionName,
   arrowTypeDisplayName,
+  arrowTypeTooltip,
   arrowTypeName,
   decodeArrowPage,
   decodeArrowTable,
@@ -45,7 +46,7 @@ afterEach(() => {
 });
 
 describe('Arrow table transport', () => {
-  it('uses friendly labels only for the five canonical physical types', () => {
+  it('names the standard types in plain words', () => {
     const fields = [
       new Field('text', new Utf8View()),
       new Field('category', new Dictionary(new Utf8View(), new Uint32())),
@@ -56,7 +57,7 @@ describe('Arrow table transport', () => {
 
     expect(fields.map((field) => arrowTypeDisplayName(field))).toEqual([
       'text',
-      'categorical',
+      'category',
       'whole number',
       'decimal',
       'date and time',
@@ -70,7 +71,7 @@ describe('Arrow table transport', () => {
     ]);
   });
 
-  it('keeps alternate, nested, and extension type names unchanged', () => {
+  it('names every other type in the same vocabulary, keeping the exact spelling for tooltips (issue 205)', () => {
     const fields = [
       new Field('alternate_text', new Utf8()),
       new Field('alternate_category', new Dictionary(new Utf8View(), new Int32())),
@@ -80,11 +81,18 @@ describe('Arrow table transport', () => {
     ];
 
     expect(fields.map((field) => arrowTypeDisplayName(field))).toEqual([
-      'Utf8',
-      'Dictionary<Int32, Utf8View>',
-      'Timestamp<NANOSECOND, UTC>',
-      'LargeList<Utf8View>',
-      'Int64',
+      'text',
+      'category',
+      'date and time',
+      'list of text',
+      'other',
+    ]);
+    expect(fields.map((field) => arrowTypeTooltip(field))).toEqual([
+      'Text (Utf8)',
+      'Category (Dictionary<Int32, Utf8View>)',
+      'Date and time (Timestamp<NANOSECOND, UTC>)',
+      'List of text (LargeList<Utf8View>)',
+      'Other (Int64)',
     ]);
   });
 
