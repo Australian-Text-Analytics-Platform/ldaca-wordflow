@@ -1,3 +1,4 @@
+import { formatChartDate, parsePeriodLabel, type ChartDateUnit } from '@/lib/chartDates';
 import type { SequentialAnalysisRequest, SequentialAnalysisResponse } from '@/api';
 import type { MultiSeriesChartSeries } from '@/features/views/common/components/MultiSeriesChart';
 import type { ChartExportLegendItem } from '@/lib/chartExport';
@@ -36,27 +37,47 @@ const getSequentialPaletteColor = (index: number) => {
   );
 };
 
-/** Formats datetime axis values while preserving non-date category labels. */
-const formatSequentialTimeLabel = (value?: string | number) => {
-  if (value === undefined || value === '') return '—';
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short' };
-    if (
-      !(parsed.getUTCDate() === 1 && parsed.getUTCHours() === 0 && parsed.getUTCMinutes() === 0)
-    ) {
-      options.day = 'numeric';
-    }
-    return parsed.toLocaleString(undefined, options);
+/**
+ * The date precision of a result's periods, for chart labels (issue 213):
+ * sub-day periods show the time, weeks and days the date, and so on.
+ */
+const chartDateUnitFor = (
+  frequency: SequentialFrequency,
+  customUnit: SequentialCustomIntervalUnit | null,
+): ChartDateUnit => {
+  switch (frequency) {
+    case 'second':
+      return 'second';
+    case 'minute':
+    case 'hourly':
+      return 'minute';
+    case 'daily':
+    case 'weekly':
+      return 'day';
+    case 'monthly':
+      return 'month';
+    case 'quarterly':
+      return 'quarter';
+    case 'yearly':
+      return 'year';
+    case 'custom':
+      return customUnit === 'seconds'
+        ? 'second'
+        : customUnit === 'minutes' || customUnit === 'hours'
+          ? 'minute'
+          : 'day';
   }
-  return String(value);
 };
 
 /** Formats a linear-axis coordinate according to the result's declared domain. */
-function formatSequentialAxisTick(value: unknown, columnType: 'datetime' | 'numeric'): string {
+function formatSequentialAxisTick(
+  value: unknown,
+  columnType: 'datetime' | 'numeric',
+  formatInstant: (ms: number) => string,
+): string {
   const numeric = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numeric)) return '';
-  return columnType === 'datetime' ? formatSequentialTimeLabel(numeric) : String(numeric);
+  return columnType === 'datetime' ? formatInstant(numeric) : String(numeric);
 }
 
 export interface SequentialResultSummaryFallbacks {
@@ -590,14 +611,32 @@ export function buildSequentialChartModel({
       if (row[group.id] === undefined) row[group.id] = 0;
     });
   });
+  // Dates read the same in both spacings and in the tooltip, whatever the
+  // browser's locale (issue 213). Period labels come from the backend in the
+  // time column's own zone; the offset between a label and its instant lets
+  // "To scale" ticks, which are instants, show the same wall-clock dates.
+  const dateUnit = chartDateUnitFor(summary.rawFrequency, summary.customIntervalUnit);
+  let zoneOffsetMs = 0;
   const categoryLabelsByKey = new Map<string, string | number>();
   chartData.forEach((row) => {
     const key = row[CATEGORY_X_KEY];
     const label = row.time_period;
-    if (typeof key === 'string' && isPeriodBoundary(label)) {
-      categoryLabelsByKey.set(key, label);
+    if (typeof key !== 'string' || !isPeriodBoundary(label)) return;
+    if (summary.columnType === 'datetime' && typeof label === 'string') {
+      const wallClock = parsePeriodLabel(label);
+      if (wallClock !== null) {
+        const axisValue = row.__axis_value__;
+        if (categoryLabelsByKey.size === 0 && isPeriodBoundary(axisValue)) {
+          const instant = periodCoordinate(axisValue, 'datetime');
+          if (Number.isFinite(instant)) zoneOffsetMs = wallClock - instant;
+        }
+        categoryLabelsByKey.set(key, formatChartDate(wallClock, dateUnit));
+        return;
+      }
     }
+    categoryLabelsByKey.set(key, label);
   });
+  const formatInstant = (ms: number) => formatChartDate(ms + zoneOffsetMs, dateUnit);
   const categoryLabelFor = (value: unknown): string | number => {
     if (typeof value === 'string') {
       const label = categoryLabelsByKey.get(value);
@@ -676,7 +715,8 @@ export function buildSequentialChartModel({
           max: 'dataMax',
           splitNumber: 10,
           axisLabel: {
-            formatter: (value) => formatSequentialAxisTick(value, summary.columnType),
+            formatter: (value) =>
+              formatSequentialAxisTick(value, summary.columnType, formatInstant),
             rotate: 45,
           },
         }
@@ -731,13 +771,8 @@ export function buildSequentialChartModel({
     tooltip: {
       labelFormatter:
         xAxisType === 'number'
-          ? (value) => formatSequentialAxisTick(value, summary.columnType)
-          : (value) => {
-              const label = categoryLabelFor(value);
-              return summary.columnType === 'datetime'
-                ? formatSequentialTimeLabel(label)
-                : String(label);
-            },
+          ? (value) => formatSequentialAxisTick(value, summary.columnType, formatInstant)
+          : (value) => String(categoryLabelFor(value)),
     },
     groups,
     groupFilter: {

@@ -198,7 +198,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - `%d/%m/%Y %H:%M` → `30/01/2020 14:05`
 
   `%d` is the day, `%m` the month number, `%b` the short month name, `%B` the full month name, `%Y` the year, `%H` the hour and `%M` the minute. The full list is in [Python's date format codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes).
-- Dates and times show year first, for example `2020-01-30 14:05` (seconds appear only when they are not zero). Wordflow stores times in UTC. To type a date, for example in the Data Builder's Filter, use `YYYY-MM-DD`, or `YYYY-MM-DD HH:MM` for a date and time.
+- Dates and times show year first, for example `2020-01-30 14:05` (seconds appear only when they are not zero). Wordflow stores times in UTC. To type a date, for example in the Data Builder's Filter, use `YYYY-MM-DD`, or `YYYY-MM-DD HH:MM` for a date and time. Charts write dates for reading instead, for example *18 Oct 2020* or *Oct 2020*, the same for every user.
 - Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The panel has two sections:
   - **Document**: shows the full text of the Data Block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the Data Block, this section is omitted.
   - **Metadata**: shows all remaining columns as a two-column key/value table, making it easy to inspect metadata columns such as speaker, date, or source alongside the document text.

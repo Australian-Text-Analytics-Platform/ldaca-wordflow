@@ -925,4 +925,40 @@ describe('buildSequentialChartModel', () => {
     expect(model.counts.totalDocumentCount).toBe(3);
     expect(model.diagnostics.filter((item) => item.code === 'invalid-count')).toHaveLength(0);
   });
+
+  it("labels dates the same way in both spacings, in the time column's zone (issue 213)", () => {
+    // Brisbane is UTC+10: the 18 October bucket starts at 14:00 UTC on the 17th.
+    const rows = [
+      {
+        time_period: '2020-10-17T14:00:00.000Z',
+        time_period_formatted: '2020-10-18',
+        period_start: '2020-10-17T15:00:00.000Z',
+        period_end: '2020-10-18T12:00:00.000Z',
+        sequential_count: 3,
+      },
+      {
+        time_period: '2020-10-18T14:00:00.000Z',
+        time_period_formatted: '2020-10-19',
+        period_start: '2020-10-18T15:00:00.000Z',
+        period_end: '2020-10-19T12:00:00.000Z',
+        sequential_count: 5,
+      },
+    ];
+    const params = { column_type: 'datetime' as const, frequency: 'daily' as const };
+    const even = build({ data: rows, analysis_params: params });
+    const evenFormatter = even.xAxis.axisLabel?.formatter;
+    const evenLabels = even.axisData.map((row) =>
+      typeof evenFormatter === 'function' ? evenFormatter(row[even.xKey] as never, 0) : '',
+    );
+    expect(evenLabels).toEqual(['18 Oct 2020', '19 Oct 2020']);
+    expect(even.tooltip.labelFormatter(even.axisData[0]?.[even.xKey] as string)).toBe(
+      '18 Oct 2020',
+    );
+
+    const toScale = build({ data: rows, analysis_params: params }, { xAxisType: 'number' });
+    const tick = toScale.xAxis.axisLabel?.formatter;
+    const firstX = toScale.axisData[0]?.[toScale.xKey] as number;
+    expect(typeof tick === 'function' ? tick(firstX as never, 0) : '').toBe('18 Oct 2020');
+    expect(toScale.tooltip.labelFormatter(firstX)).toBe('18 Oct 2020');
+  });
 });

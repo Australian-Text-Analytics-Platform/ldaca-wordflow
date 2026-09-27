@@ -129,7 +129,7 @@ The **Spacing** list next to **Chart** sets how periods are placed along the hor
 - **Even (hide empty periods)** *(default)*: every period with data gets the same width, whatever the real time between periods. Periods with no data are left out. Best when periods are dense and you want a clean view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
 - **To scale (show gaps)**: periods are placed by their real time or value, so empty periods show as gaps. Useful for spotting uneven events or comparing rates of change across long spans.
 
-In To scale mode with a date and time column, axis labels show dates (for example *Apr 2018*). The tool aims for about ten labels across the visible range, dropping labels automatically if the chart is too narrow.
+Dates on the chart and in its tooltip read the same in both spacings, in the time column's own time zone: *18 Oct 2020* for days (a week shows its Monday), *18 Oct 2020 14:05* for hours and minutes, *Oct 2020* for months, *2020 Q4* for quarters and *2020* for years. Tables and downloads keep the year-first form, for example 2020-10-18. In To scale mode the tool aims for about ten labels across the visible range, dropping labels automatically if the chart is too narrow.
 
 **Empty periods.** A period with no rows at all is hidden in Even spacing and leaves a gap on the axis in To scale spacing. Within a period that is shown, a group with no rows counts as zero, so its line dips to zero rather than breaking: "no occurrences" is genuinely zero, not unknown.
 
@@ -162,7 +162,7 @@ selected periods, zoom, chart type, and axis mode.
 
 <h3 id="help-sequential-zoom">Zoom and navigation</h3>
 
-Use the chart slider, mouse wheel, or trackpad pinch to zoom along the horizontal axis. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
+Drag the ends of the slider under the chart to zoom along the horizontal axis, or drag its middle to move the zoomed range. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. Scrolling with the mouse wheel or trackpad does not zoom, so scrolling the page never changes the chart. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
 
 <h3 id="help-sequential-period-selection">Period selection</h3>
 
