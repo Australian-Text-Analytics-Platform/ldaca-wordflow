@@ -12,6 +12,7 @@ import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
 from ..infrastructure.storage.data_loading import (
+    describe_load_failure,
     DataFileLoadError,
     DirectoryTooLargeError,
     detect_file_type,
@@ -25,7 +26,11 @@ from ..models.files import (
     ZipTableMember,
     ZipTableMembersResource,
 )
-from ..shared.errors import InvalidInputError, ResourceTooLargeError
+from ..shared.errors import (
+    InvalidInputError,
+    ResourceTooLargeError,
+    format_exception_diagnostic,
+)
 from ..shared.table_transport import (
     IpcTablePage,
     encode_schema_stream,
@@ -156,6 +161,15 @@ class FileReadService:
         )
 
 
+
+def _preview_failure(path: Path, exc: BaseException) -> InvalidInputError:
+    """Why a preview failed, in plain words, with the parser text for Details (issue 205)."""
+
+    return InvalidInputError(
+        f"Couldn't preview {path.name}. {describe_load_failure(exc, path.name)}",
+        details={"diagnostic": format_exception_diagnostic(exc)},
+    )
+
 def _file_lazyframe(
     path: Path, sheet_name: str | None, max_directory_bytes: int | None = None
 ) -> pl.LazyFrame:
@@ -182,7 +196,7 @@ def _file_lazyframe(
     except DataFileLoadError as exc:
         if isinstance(exc.__cause__, DirectoryTooLargeError):
             raise ResourceTooLargeError("Folder is too large to preview") from exc
-        raise InvalidInputError("File preview could not be generated") from exc
+        raise _preview_failure(path, exc) from exc
 
 
 def _materialize_file_page(
@@ -202,7 +216,7 @@ def _materialize_file_page(
     except (InvalidInputError, ResourceTooLargeError):
         raise
     except (DataFileLoadError, pl.exceptions.PolarsError) as exc:
-        raise InvalidInputError("File preview could not be generated") from exc
+        raise _preview_failure(path, exc) from exc
 
 
 def _materialize_zip_member_page(
@@ -235,7 +249,7 @@ def _file_schema(
     except (InvalidInputError, ResourceTooLargeError):
         raise
     except (DataFileLoadError, pl.exceptions.PolarsError) as exc:
-        raise InvalidInputError("File preview could not be generated") from exc
+        raise _preview_failure(path, exc) from exc
 
 
 def _excel_worksheets(path: Path) -> list[str]:

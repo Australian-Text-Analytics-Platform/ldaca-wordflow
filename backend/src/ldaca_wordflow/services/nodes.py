@@ -18,6 +18,7 @@ from ..domain.workspace import Node, Workspace
 from ..infrastructure.storage.data_loading import (
     DataFileLoadError,
     DirectoryTooLargeError,
+    describe_load_failure,
     detect_file_type,
     extract_zip_table_member,
     materialize_data_file,
@@ -27,6 +28,7 @@ from ..infrastructure.storage.data_loading import (
 from ..shared.errors import (
     DataBlockInUseError,
     InvalidInputError,
+    format_exception_diagnostic,
     NodeNotFoundError,
     ResourceConflictError,
     ResourceTooLargeError,
@@ -179,7 +181,13 @@ class NodeService:
                     raise ResourceTooLargeError(
                         "Folder is too large for node ingestion"
                     ) from exc
-                raise InvalidInputError("User file could not be loaded") from exc
+                # Say why and what to do; the library text goes under Details
+                # (issue 205).
+                filename = Path(request.zip_member or request.file_path).name
+                raise InvalidInputError(
+                    f"Couldn't load {filename}. {describe_load_failure(exc, filename)}",
+                    details={"diagnostic": format_exception_diagnostic(exc)},
+                ) from exc
             sheet_name = request.sheet_name
             if (
                 sheet_name is None

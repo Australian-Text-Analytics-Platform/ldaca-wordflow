@@ -12,7 +12,12 @@ import {
   type UploadSelectionInput,
 } from '../utils/uploadSelection';
 
-type Notify = (type: 'success' | 'error' | 'info', message: string) => void;
+type Notify = (
+  type: 'success' | 'error' | 'info',
+  message: string,
+  description?: string,
+  cause?: unknown,
+) => void;
 
 export type UploadActivity =
   | { phase: 'idle' }

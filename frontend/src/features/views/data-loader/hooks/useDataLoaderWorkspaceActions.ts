@@ -7,7 +7,12 @@ import { describeSkippedFiles } from '@/features/workspace/common/skippedFiles';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
 import { queryKeys } from '@/lib/queryKeys';
 
-type Notify = (type: 'success' | 'error' | 'info', message: string, description?: string) => void;
+type Notify = (
+  type: 'success' | 'error' | 'info',
+  message: string,
+  description?: string,
+  cause?: unknown,
+) => void;
 
 interface DeleteWorkspaceTarget {
   id: string;
@@ -110,7 +115,7 @@ export function useDataLoaderWorkspaceActions({
         setWorkspaceNameAlert(message);
         return false;
       }
-      notify('error', (error as Error).message || 'Failed to create project.');
+      notify('error', 'Failed to create project.', undefined, error);
       return false;
     }
   };
@@ -130,7 +135,7 @@ export function useDataLoaderWorkspaceActions({
         setWorkspaceNameAlert(message);
         return;
       }
-      notify('error', (error as Error).message || 'Failed to rename project.');
+      notify('error', 'Failed to rename project.', undefined, error);
     }
   };
 
@@ -143,7 +148,7 @@ export function useDataLoaderWorkspaceActions({
       await workspaceActions.updateWorkspaceDescription(value);
       notify('success', 'Project description updated.');
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to update project description.');
+      notify('error', 'Failed to update project description.', undefined, error);
     }
   };
 
@@ -176,7 +181,7 @@ export function useDataLoaderWorkspaceActions({
       });
       notify('success', 'Project deleted.');
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to delete project.');
+      notify('error', 'Failed to delete project.', undefined, error);
     } finally {
       setDeletingWorkspace(false);
       setWorkspaceToDelete(null);
@@ -197,7 +202,7 @@ export function useDataLoaderWorkspaceActions({
       });
       notify('success', 'Project list refreshed.');
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to refresh project list.');
+      notify('error', 'Failed to refresh project list.', undefined, error);
     } finally {
       setRefreshingWorkspaces(false);
     }
@@ -237,7 +242,7 @@ export function useDataLoaderWorkspaceActions({
         notify('success', `Project "${file.name}" imported.`);
       }
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to import project.');
+      notify('error', 'Failed to import project.', undefined, error);
     } finally {
       setUploadingWorkspaceZip(false);
     }

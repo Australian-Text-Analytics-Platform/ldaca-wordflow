@@ -14,12 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 interface FilePreviewData {
   previewData: Record<string, unknown>[];
   columns: string[];
   loading: boolean;
-  error: string | null;
+  /** The preview failure, shown in plain words with Details (issue 205). */
+  error: unknown;
   fileType: string | null;
   sheetNames: string[] | null;
   selectedSheet: string | null;
@@ -135,7 +137,9 @@ export function FilePreviewContent({
                 {loading ? (
                   <div className="p-4 text-body text-description">Loading…</div>
                 ) : error ? (
-                  <div className="p-4 text-body text-error">{error}</div>
+                  <div className="p-4">
+                    <ErrorNotice error={error} fallback="Couldn't load the preview." />
+                  </div>
                 ) : previewData.length === 0 ? (
                   <div className="p-4 text-body text-description">No preview</div>
                 ) : (

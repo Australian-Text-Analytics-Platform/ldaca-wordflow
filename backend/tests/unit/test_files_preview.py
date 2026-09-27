@@ -143,7 +143,15 @@ def test_preview_parser_failures_return_safe_invalid_input(
 
         assert page.status_code == 400, page.text
         assert page.json()["code"] == "invalid_input"
-        assert page.json()["message"] == "File preview could not be generated"
+        # Why the preview failed and what to do, with the parser text under
+        # Details (issue 205).
+        expected = (
+            "The file isn't saved as UTF-8 text."
+            if filename == "invalid.csv"
+            else "The JSON file isn't valid."
+        )
+        assert page.json()["message"].startswith(f"Couldn't preview {filename}. {expected}")
+        assert "diagnostic" in page.json()["details"]
         if filename.endswith((".json", ".jsonl", ".ndjson")):
             assert schema.status_code == 400, schema.text
             assert schema.json()["code"] == "invalid_input"

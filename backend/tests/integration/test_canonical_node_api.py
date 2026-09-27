@@ -207,6 +207,23 @@ def test_source_creation_returns_invalid_input_for_parser_failures(
         "malformed.ndjson": b'{"value": 1}\n{"value":\n',
     }
 
+    rows = (
+        "Wordflow couldn't read the rows of this file. Check that every row "
+        "has the same number of columns and that text containing commas is in quotes."
+    )
+    json_reason = (
+        "The JSON file isn't valid. Check it with a JSON validator, then upload it again."
+    )
+    reasons = {
+        "invalid-utf8.csv": (
+            "The file isn't saved as UTF-8 text. Save it again as UTF-8 "
+            "(in Excel: CSV UTF-8) and upload it again."
+        ),
+        "malformed.csv": rows,
+        "malformed.json": json_reason,
+        "malformed.jsonl": json_reason,
+        "malformed.ndjson": json_reason,
+    }
     for filename, content in malformed.items():
         uploaded = files_test_client.post(
             "/api/user-files/uploads",
@@ -223,7 +240,9 @@ def test_source_creation_returns_invalid_input_for_parser_failures(
 
         assert created.status_code == 400, created.text
         assert created.json()["code"] == "invalid_input"
-        assert created.json()["message"] == "User file could not be loaded"
+        # Why, and what to do; the parser's text is under Details (issue 205).
+        assert created.json()["message"] == f"Couldn't load {filename}. {reasons[filename]}"
+        assert created.json()["details"]["diagnostic"].startswith("ComputeError: ")
 
 
 def test_derived_nodes_share_one_creation_contract_and_preview_is_read_only(

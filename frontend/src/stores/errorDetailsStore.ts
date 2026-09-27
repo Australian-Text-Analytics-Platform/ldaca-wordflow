@@ -1,22 +1,30 @@
 import { create } from 'zustand';
 
+export interface DetailsDialogContent {
+  /** The text on show, which the dialog lets people copy. */
+  text: string;
+  title: string;
+  explanation: string;
+  /** Offer Send feedback, for errors. */
+  feedback: boolean;
+}
+
 interface ErrorDetailsState {
-  /** The technical text on show, or null when the dialog is closed. */
-  technical: string | null;
-  show: (technical: string) => void;
+  details: DetailsDialogContent | null;
+  show: (details: DetailsDialogContent) => void;
   close: () => void;
 }
 
 /**
- * The one Error details dialog (issue 205). Toasts open it here rather than
- * owning it, so it stays open when the toast that opened it times out.
+ * The one Details dialog (issue 205). Toasts open it here rather than owning
+ * it, so it stays open when the toast that opened it times out.
  */
 export const useErrorDetailsStore = create<ErrorDetailsState>((set) => ({
-  technical: null,
-  show: (technical) => {
-    set({ technical });
+  details: null,
+  show: (details) => {
+    set({ details });
   },
   close: () => {
-    set({ technical: null });
+    set({ details: null });
   },
 }));

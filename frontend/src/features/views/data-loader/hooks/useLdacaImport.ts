@@ -5,7 +5,12 @@ import {
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { initialLdacaImportState, ldacaImportReducer } from './ldacaImportState';
 
-type Notify = (type: 'success' | 'error' | 'info', message: string) => void;
+type Notify = (
+  type: 'success' | 'error' | 'info',
+  message: string,
+  description?: string,
+  cause?: unknown,
+) => void;
 
 interface UseLdacaImportParams {
   notify: Notify;
@@ -69,7 +74,7 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
       );
       dispatch({ type: 'importSucceeded' });
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to start LDaCA import.');
+      notify('error', 'Failed to start LDaCA import.', undefined, error);
     } finally {
       dispatch({ type: 'importFinished' });
     }

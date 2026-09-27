@@ -3,7 +3,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { createFolder } from '@/api';
 import { invalidateFileListQuery } from './fileCache';
 
-type Notify = (type: 'success' | 'error' | 'info', message: string) => void;
+type Notify = (
+  type: 'success' | 'error' | 'info',
+  message: string,
+  description?: string,
+  cause?: unknown,
+) => void;
 
 interface UseFolderCreationParams {
   notify: Notify;

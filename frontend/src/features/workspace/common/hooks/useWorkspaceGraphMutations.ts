@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { type QueryClient, useMutation } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import {
   createNode,
   deleteNode,
@@ -15,6 +14,7 @@ import type {
 } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
+import { notifyTypeAdjustments } from '../notifyTypeAdjustments';
 import {
   invalidateNodeWorkspaceQueries,
   invalidateWorkspaceGraphQuery,
@@ -159,20 +159,7 @@ export const useWorkspaceGraphMutations = ({
       markCreatedNode(response);
       invalidateWorkspaceGraphQuery(queryClient, currentWorkspaceId);
       invalidateWorkspaceSummaries(queryClient);
-      const changes = response.dtype_normalization;
-      if (changes && changes.length > 0) {
-        const lines = changes.map(
-          (c) => `${c.column}: ${c.from_dtype} → ${c.to_dtype} (${c.reason})`,
-        );
-        const heading =
-          changes.length === 1
-            ? '1 column was normalized to the standard dtype'
-            : `${String(changes.length)} columns were normalized to standard dtypes`;
-        void toast.info(heading, {
-          description: lines.join('\n'),
-          duration: 10000,
-        });
-      }
+      notifyTypeAdjustments(response.dtype_normalization ?? []);
     },
   });
 

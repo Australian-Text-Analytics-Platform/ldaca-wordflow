@@ -81,7 +81,8 @@ export const useFilePreview = (
     pageSize,
     setPageSize,
     loading: isLoading,
-    error: isError ? (error instanceof Error ? error.message : 'Failed to load preview') : null,
+    // The error itself, so the reason and its Details can show (issue 205).
+    error: isError ? error : null,
     reset,
   };
 };

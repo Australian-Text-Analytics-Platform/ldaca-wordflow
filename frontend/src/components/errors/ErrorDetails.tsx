@@ -9,7 +9,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { useErrorDetailsStore } from '@/stores/errorDetailsStore';
+import { type DetailsDialogContent, useErrorDetailsStore } from '@/stores/errorDetailsStore';
 import { useUIStore } from '@/stores/uiStore';
 
 const EXPLANATION =
@@ -18,7 +18,13 @@ const EXPLANATION =
 const ACTION_BUTTON = 'rounded-sm border border-surface-border px-2 py-0.5 hover:bg-list-hover';
 
 /** The technical text with Copy and Send feedback, shared by both layouts. */
-function DetailsBody({ technical, onFeedback }: { technical: string; onFeedback: () => void }) {
+function DetailsBody({
+  technical,
+  onFeedback,
+}: {
+  technical: string;
+  onFeedback: (() => void) | null;
+}) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
     try {
@@ -43,11 +49,37 @@ function DetailsBody({ technical, onFeedback }: { technical: string; onFeedback:
         >
           {copied ? 'Copied' : 'Copy details'}
         </button>
-        <button type="button" className={ACTION_BUTTON} onClick={onFeedback}>
-          Send feedback
-        </button>
+        {onFeedback ? (
+          <button type="button" className={ACTION_BUTTON} onClick={onFeedback}>
+            Send feedback
+          </button>
+        ) : null}
       </div>
     </>
+  );
+}
+
+/**
+ * A "Details" link for a toast that opens the shared Details dialog.
+ * Toasts measure their height once and capture the pointer for
+ * swipe-to-dismiss, so they cannot hold an expanding panel, and they may time
+ * out while the details are being read.
+ */
+export function DetailsDialogButton(props: DetailsDialogContent) {
+  const show = useErrorDetailsStore((state) => state.show);
+  return (
+    <button
+      type="button"
+      className="mt-1 flex items-center gap-1 text-label-secondary text-description underline underline-offset-2 hover:text-foreground"
+      onPointerDown={(event) => {
+        event.stopPropagation();
+      }}
+      onClick={() => {
+        show(props);
+      }}
+    >
+      Details
+    </button>
   );
 }
 
@@ -70,22 +102,14 @@ export function ErrorDetails({
   const openFeedback = useUIStore((state) => state.openFeedback);
   const [open, setOpen] = useState(false);
 
-  const showDialog = useErrorDetailsStore((state) => state.show);
-
   if (variant === 'dialog') {
     return (
-      <button
-        type="button"
-        className="mt-1 flex items-center gap-1 text-label-secondary text-description underline underline-offset-2 hover:text-foreground"
-        onPointerDown={(event) => {
-          event.stopPropagation();
-        }}
-        onClick={() => {
-          showDialog(technical);
-        }}
-      >
-        Details
-      </button>
+      <DetailsDialogButton
+        text={technical}
+        title="Error details"
+        explanation={EXPLANATION}
+        feedback
+      />
     );
   }
 
@@ -116,32 +140,36 @@ export function ErrorDetails({
 }
 
 /**
- * Hosts the Error details dialog that toasts open (issue 205).
+ * Hosts the Details dialog that toasts open (issue 205).
  * Rendered once by GlobalHosts.
  */
 export function ErrorDetailsHost() {
-  const technical = useErrorDetailsStore((state) => state.technical);
+  const details = useErrorDetailsStore((state) => state.details);
   const close = useErrorDetailsStore((state) => state.close);
   const openFeedback = useUIStore((state) => state.openFeedback);
   return (
     <Dialog
-      open={technical !== null}
+      open={details !== null}
       onOpenChange={(open) => {
         if (!open) close();
       }}
     >
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Error details</DialogTitle>
-          <DialogDescription>{EXPLANATION}</DialogDescription>
+          <DialogTitle>{details?.title ?? 'Details'}</DialogTitle>
+          <DialogDescription>{details?.explanation ?? ''}</DialogDescription>
         </DialogHeader>
-        {technical !== null ? (
+        {details ? (
           <DetailsBody
-            technical={technical}
-            onFeedback={() => {
-              close();
-              openFeedback();
-            }}
+            technical={details.text}
+            onFeedback={
+              details.feedback
+                ? () => {
+                    close();
+                    openFeedback();
+                  }
+                : null
+            }
           />
         ) : null}
       </DialogContent>

@@ -163,15 +163,21 @@ function DataLoaderFeature() {
    * Flow: choose an error-specific or normal duration, map the semantic status
    * to the matching Sonner API, and fall back to the neutral toast for info.
    */
-  const notify = (type: 'success' | 'error' | 'info', message: string, description?: string) => {
+  const notify = (
+    type: 'success' | 'error' | 'info',
+    message: string,
+    description?: string,
+    cause?: unknown,
+  ) => {
     // A description (such as a skipped-files report) needs time to read.
     const duration = description ? 10000 : type === 'error' ? 6000 : 3500;
     const options = { duration, description };
     if (type === 'success') {
       toast.success(message, options);
     } else if (type === 'error') {
-      // Messages that are Python diagnostics go under Details (issue 205).
-      toastError(message, message, options);
+      // The error's written message, with technical text under Details
+      // (issue 205); `message` is the fallback.
+      toastError(cause ?? message, message, options);
     } else {
       toast(message, options);
     }
@@ -319,7 +325,7 @@ function DataLoaderFeature() {
     try {
       await handleAddFileToWorkspace(addFileName, selectedSheet);
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to add file to project.');
+      notify('error', 'Failed to add file to project.', undefined, error);
     } finally {
       setAddFileName(null);
     }
@@ -342,7 +348,7 @@ function DataLoaderFeature() {
     try {
       await handleAddFileToWorkspace(addBatchSource.path);
     } catch (error) {
-      notify('error', (error as Error).message || 'Failed to add to project.');
+      notify('error', 'Failed to add to project.', undefined, error);
     }
   };
   const handleAddBatchTables = async (ids: string[]) => {

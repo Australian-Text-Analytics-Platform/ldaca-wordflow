@@ -116,3 +116,28 @@ def test_provider_failure_messages_say_what_to_do() -> None:
     assert provider_failure_message("annotation_provider_failed", "custom") == (
         "The request to the AI provider failed. Try again."
     )
+
+
+def test_load_failures_say_why_and_what_to_do() -> None:
+    """Issue 205: each kind of unreadable file gets its own advice."""
+
+    import zipfile
+
+    from ldaca_wordflow.infrastructure.storage.data_loading import (
+        DataFileLoadError,
+        describe_load_failure,
+    )
+
+    def wrapped(cause: BaseException) -> DataFileLoadError:
+        error = DataFileLoadError("Data file could not be loaded")
+        error.__cause__ = cause
+        return error
+
+    assert "password-protected" in describe_load_failure(
+        wrapped(RuntimeError("File a.txt is encrypted, password required for extraction")),
+        "texts.zip",
+    )
+    assert "damaged" in describe_load_failure(wrapped(zipfile.BadZipFile("bad")), "texts.zip")
+    assert "UTF-8" in describe_load_failure(wrapped(UnicodeDecodeError("utf-8", b"\xff", 0, 1, "x")))
+    assert "spreadsheet" in describe_load_failure(wrapped(ValueError("bad")), "book.xlsx")
+    assert "isn't damaged" in describe_load_failure(wrapped(OSError("odd")), "notes.txt")

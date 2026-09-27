@@ -148,7 +148,57 @@ _DATA_FILE_LOAD_EXCEPTIONS = (
     zipfile.LargeZipFile,
     fastexcel.FastExcelError,
     pl.exceptions.PolarsError,
+    # zipfile raises RuntimeError for password-protected members.
+    RuntimeError,
 )
+
+
+def describe_load_failure(exc: BaseException, filename: str = "") -> str:
+    """Why a file could not be read, and what to do, in plain words (issue 205).
+
+    Looks through the cause chain of a ``DataFileLoadError``; the library's own
+    text stays in the diagnostic shown under Details.
+    """
+
+    chain: list[BaseException] = []
+    current: BaseException | None = exc
+    while current is not None and current not in chain:
+        chain.append(current)
+        current = current.__cause__ or current.__context__
+    text = " ".join(str(item).lower() for item in chain)
+    kinds = tuple(type(item) for item in chain)
+    file_type = detect_file_type(filename) if filename else "unknown"
+    if any(issubclass(kind, UnicodeError) for kind in kinds) or "utf-8" in text or "utf8" in text:
+        return (
+            "The file isn't saved as UTF-8 text. Save it again as UTF-8 "
+            "(in Excel: CSV UTF-8) and upload it again."
+        )
+    if "encrypted" in text or "password" in text:
+        return (
+            "The ZIP file is password-protected. Unzip it, or save it again "
+            "without a password, then upload it again."
+        )
+    if any(issubclass(kind, zipfile.BadZipFile) for kind in kinds):
+        return "The ZIP file is damaged or incomplete. Create it again and upload it."
+    if any(issubclass(kind, pl.exceptions.NoDataError) for kind in kinds) or "empty" in text:
+        return "The file is empty."
+    if file_type == "excel" or any(issubclass(kind, fastexcel.FastExcelError) for kind in kinds):
+        return (
+            "Wordflow couldn't read this spreadsheet. Open it in Excel, save it "
+            "again as .xlsx, and upload it again."
+        )
+    if file_type in {"json", "jsonl"} or "json" in text:
+        return (
+            "The JSON file isn't valid. Check it with a JSON validator, then "
+            "upload it again."
+        )
+    if any(issubclass(kind, pl.exceptions.PolarsError) for kind in kinds):
+        return (
+            "Wordflow couldn't read the rows of this file. Check that every row "
+            "has the same number of columns and that text containing commas is "
+            "in quotes."
+        )
+    return "Wordflow couldn't read this file. Check that it isn't damaged, then try again."
 
 
 def _load_data_file(
@@ -550,15 +600,16 @@ def normalize_dtypes(
             reason_parts: list[str] = []
             if time_zone is None:
                 expr = expr.dt.replace_time_zone("UTC")
-                reason_parts.append("naive datetime assumed UTC")
+                reason_parts.append(
+                    "the times have no time zone, so Wordflow reads them as UTC"
+                )
             elif time_zone != "UTC":
                 expr = expr.dt.convert_time_zone("UTC")
-                reason_parts.append(f"converted from {time_zone} to UTC")
+                reason_parts.append(f"the times were converted from {time_zone} to UTC")
             if time_unit != "us":
                 expr = expr.dt.cast_time_unit("us")
                 reason_parts.append(
-                    f"precision {time_unit}->us "
-                    "(text analytics does not need sub-microsecond resolution)"
+                    "stored to the microsecond (a change you won't see)"
                 )
             casts.append(expr.alias(col))
             changes.append(
@@ -578,8 +629,9 @@ def normalize_dtypes(
                     "from_dtype": str(dtype),
                     "to_dtype": "Int64",
                     "reason": (
-                        f"{kind} integer promoted to Int64 so joins/stacks "
-                        "across heterogeneous sources align"
+                        f"{kind} whole numbers stored in the standard size, so "
+                        "Data Blocks from different files line up (a change "
+                        "you won't see)"
                     ),
                 }
             )
@@ -590,7 +642,10 @@ def normalize_dtypes(
                     "column": col,
                     "from_dtype": "Float32",
                     "to_dtype": "Float64",
-                    "reason": "Float32 widened to Float64 for cross-source alignment",
+                    "reason": (
+                        "decimals stored in the standard size, so Data Blocks "
+                        "from different files line up (a change you won't see)"
+                    ),
                 }
             )
 
