@@ -8,7 +8,7 @@
 
 The Data Builder makes new Data Blocks from existing ones. Its tools change which rows are present: every sub-tab creates a new child Data Block (made from another), and the source is never altered.
 
-Tools that add or change columns (Combine columns, Count, Duplicate column, Extract text, Split column, Find & replace, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
+Tools that add or change columns (Combine columns, Count, Copy column, Extract text, Split column, Find & replace, Clean text) live in the [Data Editor](./ui.md#help-ui-data-viewer) below the Project Graph. They update the selected Data Block in place and never change the number or order of rows.
 
 There are currently eight sub-tabs:
 

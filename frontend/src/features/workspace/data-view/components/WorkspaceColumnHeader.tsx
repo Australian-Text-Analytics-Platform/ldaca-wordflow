@@ -64,7 +64,7 @@ export interface WorkspaceColumnHeaderProps {
   canDelete: boolean;
   /**
    * The column holds topic coverage (issue 200): it cannot be sorted, change
-   * type, or be read by the text tools, so only Duplicate is offered.
+   * type, or be read by the text tools, so only Copy column is offered.
    */
   isTopicCoverage?: boolean;
 
@@ -92,7 +92,7 @@ const COLUMN_TOOLS: { tool: DataEditorTool; label: string }[] = [
   { tool: 'extract', label: 'Extract text…' },
   { tool: 'split', label: 'Split…' },
   { tool: 'count', label: 'Count…' },
-  { tool: 'duplicate', label: 'Duplicate…' },
+  { tool: 'duplicate', label: 'Copy column…' },
 ];
 
 const TOPIC_COVERAGE_TOOLS = COLUMN_TOOLS.filter((item) => item.tool === 'duplicate');

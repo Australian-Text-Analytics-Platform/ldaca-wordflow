@@ -394,8 +394,8 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
         onMouseDown={stopGraphControlEvent}
         onClick={handleAddClick}
         className={CUSTOM_NODE_TOOLBAR_BUTTON_CLASS}
-        title="Add to selection"
-        aria-label="Add Data Block to selection"
+        title="Add to tool"
+        aria-label="Add Data Block to tool"
       >
         <Plus className="h-4 w-4" />
       </button>

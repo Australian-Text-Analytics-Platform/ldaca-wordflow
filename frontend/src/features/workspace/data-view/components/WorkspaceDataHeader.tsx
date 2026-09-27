@@ -94,7 +94,7 @@ export const WorkspaceDataHeader = ({
                       onOpenTool('duplicate');
                     }}
                   >
-                    Duplicate column…
+                    Copy column…
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {

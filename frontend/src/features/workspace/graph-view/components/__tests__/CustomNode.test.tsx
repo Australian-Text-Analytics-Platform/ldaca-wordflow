@@ -125,7 +125,7 @@ describe('CustomNode', () => {
     await user.hover(screen.getByTitle('Corpus'));
     const card = screen.getByTestId('custom-node-card');
     expect(card).not.toHaveClass('ring-1', 'ring-inset', 'ring-focus');
-    fireEvent.click(screen.getByRole('button', { name: 'Add Data Block to selection' }), {
+    fireEvent.click(screen.getByRole('button', { name: 'Add Data Block to tool' }), {
       clientX: 180,
       clientY: 220,
       detail: 1,
@@ -165,7 +165,7 @@ describe('CustomNode', () => {
 
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Clone' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Make a copy' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Undo' })).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Redo' })).toBeDisabled();
     await user.click(screen.getByRole('button', { name: 'Undo' }));

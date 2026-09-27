@@ -205,7 +205,7 @@ describe('WorkspaceTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Column settings for TOPIC_coverage' }));
     const menu = await screen.findByRole('menu');
-    expect(within(menu).getByRole('menuitem', { name: 'Duplicate…' })).toBeInTheDocument();
+    expect(within(menu).getByRole('menuitem', { name: 'Copy column…' })).toBeInTheDocument();
     expect(within(menu).queryByRole('menuitem', { name: 'Find & replace…' })).toBeNull();
     expect(within(menu).queryByRole('menuitem', { name: 'Clean text…' })).toBeNull();
   });

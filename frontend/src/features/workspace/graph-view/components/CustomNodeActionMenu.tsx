@@ -83,7 +83,7 @@ export function CustomNodeActionMenu({
             onClick={onCopyNode}
             className="min-h-control w-full rounded-sm px-2 py-1 text-left text-label-secondary hover:bg-panel/60"
           >
-            Clone
+            Make a copy
           </button>
 
           <button

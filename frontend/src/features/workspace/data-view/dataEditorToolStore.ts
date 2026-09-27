@@ -24,7 +24,7 @@ export const DATA_EDITOR_TOOL_LABELS: Record<DataEditorTool, string> = {
   find_replace: 'Find & replace',
   extract: 'Extract text',
   combine: 'Combine columns',
-  duplicate: 'Duplicate column',
+  duplicate: 'Copy column',
   clean_text: 'Clean text',
   split: 'Split column',
   count: 'Count',

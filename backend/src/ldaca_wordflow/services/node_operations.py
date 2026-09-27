@@ -136,7 +136,7 @@ def build_derived_lazyframe(
         source = _node(workspace, request.source_node_id)
         return (
             source.data.clone(),
-            f"{source.name}_clone",  # issue 182
+            f"{source.name}_copy",  # issues 182 and 205: "Make a copy"
             operation,
             [source],
         )

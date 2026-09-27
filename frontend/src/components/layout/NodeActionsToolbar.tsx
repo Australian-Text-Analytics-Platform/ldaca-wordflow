@@ -81,7 +81,7 @@ export function NodePinButton({ node, isPinned, onTogglePin }: NodePinButtonProp
 /**
  * Compact per-Data-Block action toolbar rendered at the end of each row in the
  * sidebar Data Blocks list. Mirrors the graph card's hover toolbar
- * (settings menu with Rename / Clone / Undo / Redo / Delete, and an add-to-inputs
+ * (settings menu with Rename / Make a copy / Undo / Redo / Delete, and an add-to-inputs
  * button) with hover action overlay.
  *
  * Rendered by: Sidebar via WorkspaceNodeList's ``renderRowActions``
@@ -133,7 +133,7 @@ export function NodeActionsToolbar({
               onClone(node.id);
             }}
           >
-            Clone
+            Make a copy
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-error focus:text-error"
@@ -155,8 +155,8 @@ export function NodeActionsToolbar({
           );
         }}
         className={iconButtonClass}
-        title="Add to selection"
-        aria-label={`Add ${node.name} to selection`}
+        title="Add to tool"
+        aria-label={`Add ${node.name} to tool`}
       >
         <Plus className="h-3.5 w-3.5" />
       </button>

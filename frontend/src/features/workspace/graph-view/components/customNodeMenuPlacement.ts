@@ -1,6 +1,6 @@
 /**
  * Approximate rendered height (px) of the settings dropdown: five fixed rows
- * (Rename / Clone / Undo / Redo / Delete) plus borders and the trigger gap.
+ * (Rename / Make a copy / Undo / Redo / Delete) plus borders and the trigger gap.
  */
 const NODE_MENU_ESTIMATED_HEIGHT_PX = 180;
 
