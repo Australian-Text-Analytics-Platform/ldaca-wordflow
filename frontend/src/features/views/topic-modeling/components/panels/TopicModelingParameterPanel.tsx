@@ -180,11 +180,11 @@ export function TopicModelingParameterPanel({
     if (!lastRunClustering) return null;
     const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} segments`;
     if (lastRunClustering.requestedMaxTopicSize !== null) {
-      return `${segments}, capped at ${lastRunClustering.requestedMaxTopicSize.toLocaleString()}`;
+      return `${segments}; topics larger than ${lastRunClustering.requestedMaxTopicSize.toLocaleString()} were split`;
     }
     return lastRunClustering.appliedMaxTopicSize === null
-      ? `${segments}, Auto: no cap needed`
-      : `${segments}, Auto capped at ${lastRunClustering.appliedMaxTopicSize.toLocaleString()}`;
+      ? `${segments}; no topic needed splitting`
+      : `${segments}; topics larger than ${lastRunClustering.appliedMaxTopicSize.toLocaleString()} were split`;
   })();
 
   const handleMinClusterSizeBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -359,7 +359,7 @@ export function TopicModelingParameterPanel({
           <fieldset className="space-y-1">
             <ParameterLabel
               as="legend"
-              help="The smallest and largest topic, in Topic Segments (not documents). Min sets the HDBSCAN minimum: smaller values can produce more natural topics. Leave Max empty for Auto: it only steps in when one topic holds more than half of all segments, splitting it into its sub-topics, and keeps the result only if that topic is not lost to outliers. A fixed Max must be larger than Min. Changing either requires running a new analysis; Number of topics only merges the resulting topics."
+              help="The smallest and largest topic, counted in Topic Segments (not documents). A smaller Min finds more, smaller topics. Leave Max empty for Auto: Wordflow then splits a topic only when it holds more than half of all segments. A fixed Max must be larger than Min. Changing Topic size needs a new Run; Number of topics only merges the topics found."
             >
               Topic size
             </ParameterLabel>

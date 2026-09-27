@@ -49,7 +49,8 @@ export function TopicCoverageBar({ value }: Props) {
         aria-label={entries
           .map(
             (entry) =>
-              `Topic ${String(entry.topic_id)}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
+              // Rows with no topic read "No topic", not "outlier" or "Topic -1" (issue 205).
+              `${entry.topic_id < 0 ? 'No topic' : `Topic ${String(entry.topic_id)}`}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
           )
           .join(', ')}
       >
@@ -80,7 +81,7 @@ export function TopicCoverageBar({ value }: Props) {
                 className="inline-block h-2 w-2 rounded-[2px]"
                 style={{ backgroundColor: topicColor(entry.topic_id) }}
               />
-              {entry.topic_id < 0 ? 'outlier' : `T${String(entry.topic_id)}`}{' '}
+              {entry.topic_id < 0 ? 'No topic' : `T${String(entry.topic_id)}`}{' '}
               {percentage.toFixed(0)}%
             </span>
           );

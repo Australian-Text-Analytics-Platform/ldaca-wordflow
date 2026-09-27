@@ -256,7 +256,7 @@ describe('TopicModelingParameterPanel', () => {
         }}
       />,
     );
-    expect(screen.getByText('Last run: 4,047 segments, Auto: no cap needed')).toBeInTheDocument();
+    expect(screen.getByText('Last run: 4,047 segments; no topic needed splitting')).toBeInTheDocument();
 
     rerender(
       <TopicModelingParameterPanel
@@ -268,6 +268,6 @@ describe('TopicModelingParameterPanel', () => {
         }}
       />,
     );
-    expect(screen.getByText('Last run: 4,047 segments, Auto capped at 1,540')).toBeInTheDocument();
+    expect(screen.getByText('Last run: 4,047 segments; topics larger than 1,540 were split')).toBeInTheDocument();
   });
 });

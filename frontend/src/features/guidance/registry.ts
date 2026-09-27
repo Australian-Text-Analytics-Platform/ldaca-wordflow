@@ -276,7 +276,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.topicModeling.results,
     '[data-guidance="topic-modeling-results"]',
     'Explore patterns, not labels',
-    'The bubbles and representative words describe discovered clusters; topic −1 contains outliers. Inspect source documents before naming or interpreting a topic.',
+    'The bubbles and representative words describe the topics found; segments that fit no topic are marked No topic. Inspect source documents before naming or interpreting a topic.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.topicModeling.addToWorkspace,

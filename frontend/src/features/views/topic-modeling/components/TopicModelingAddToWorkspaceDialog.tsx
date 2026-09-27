@@ -126,8 +126,8 @@ export function TopicModelingAddToWorkspaceDialog({
       description={
         <>
           {rowUnit === 'documents'
-            ? 'Creates topic-data and topic-meanings Data Blocks for each selected source, with one row per document and its topic coverage.'
-            : "Creates topic-segment and topic-meanings Data Blocks for each selected source, with one row per document and topic. The document column holds only that topic's segments, joined by line breaks."}
+            ? 'For each selected source, creates a Data Block with one row per document and its topic coverage, and a Data Block of topic meanings.'
+            : "For each selected source, creates a Data Block with one row per topic in each document, and a Data Block of topic meanings. The document column holds only that topic's segments, joined by line breaks."}
           {topicScope}
         </>
       }
@@ -142,8 +142,8 @@ export function TopicModelingAddToWorkspaceDialog({
             aria-labelledby="topic-detach-row-unit-label"
           >
             <TabsList>
-              <TabsTrigger value="documents">Per document</TabsTrigger>
-              <TabsTrigger value="topics">Per topic</TabsTrigger>
+              <TabsTrigger value="documents">One row per document</TabsTrigger>
+              <TabsTrigger value="topics">One row per topic</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>

@@ -527,10 +527,7 @@ export function ConcordanceDispersionSummary({
               {onChartModeChange && (
                 <div className="flex items-center gap-2 text-body text-foreground">
                   <span id={`${controlId}-chart-mode`}>Chart</span>
-                  <Popover
-                    open={chartMenuOpen}
-                    onOpenChange={setChartMenuOpen}
-                  >
+                  <Popover open={chartMenuOpen} onOpenChange={setChartMenuOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"

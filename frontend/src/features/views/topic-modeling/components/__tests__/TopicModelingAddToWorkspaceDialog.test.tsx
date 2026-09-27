@@ -144,8 +144,8 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
       />,
     );
 
-    fireEvent.mouseDown(screen.getByRole('tab', { name: 'Per topic' }));
-    fireEvent.click(screen.getByRole('tab', { name: 'Per topic' }));
+    fireEvent.mouseDown(screen.getByRole('tab', { name: 'One row per topic' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'One row per topic' }));
 
     expect(screen.getByText(/one row per document and topic/i)).toBeInTheDocument();
     expect(screen.getByRole('checkbox', { name: 'TOPIC_topic (required)' })).toBeDisabled();
@@ -188,8 +188,8 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
       );
 
       if (rowUnit === 'topics') {
-        fireEvent.mouseDown(screen.getByRole('tab', { name: 'Per topic' }));
-        fireEvent.click(screen.getByRole('tab', { name: 'Per topic' }));
+        fireEvent.mouseDown(screen.getByRole('tab', { name: 'One row per topic' }));
+        fireEvent.click(screen.getByRole('tab', { name: 'One row per topic' }));
       }
       fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 

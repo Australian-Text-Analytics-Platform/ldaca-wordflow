@@ -73,22 +73,22 @@ stable topics.
 
 <h4 id="help-topic-modeling-min-cluster-size">Topic size: minimum (Min topic size)</h4>
 
-Sets the smallest number of Topic Segments that can form a natural HDBSCAN
-Topic. The default is 10 and the minimum is 2. Smaller values can produce more,
-finer natural Topics but may be noisier; larger values require more supporting
-segments per natural Topic. Changing this value requires a new run.
+Sets the smallest number of Topic Segments a Topic can have. The default is 10
+and the minimum is 2. A smaller value finds more, smaller Topics, which may be
+noisier; a larger value needs more segments behind each Topic. Changing this
+value needs a new Run.
 
 <h4 id="help-topic-modeling-max-cluster-size">Topic size: maximum (Max topic size)</h4>
 
 Limits the largest number of Topic Segments one Topic can hold. Topic size
-counts segments, not documents. Leave it empty for **Auto**: HDBSCAN sometimes
-picks one huge Topic that swallows most of the corpus, especially with short
-segments, so Auto re-clusters only when one Topic holds more than half of all
-segments. It then splits that Topic into its sub-topics, and keeps the split only
-if most of that Topic's segments stay in Topics rather than becoming outliers.
-A fixed value must be larger than Min topic size. The number of segments is only
-known after a run, so after each run the field shows the segment count and
-whether Auto applied a cap, to help you choose a fixed value.
+counts segments, not documents. Leave it empty for **Auto**: sometimes one huge
+Topic swallows most of the corpus, especially with short segments, so Auto
+steps in only when one Topic holds more than half of all segments. It then
+splits that Topic into smaller ones, and keeps the split only if most of its
+segments still belong to a Topic afterwards. A fixed value must be larger than
+Min topic size. The number of segments is only known after a run, so after each
+run the field shows the segment count and whether any Topic was split, to help
+you choose a fixed value.
 
 <h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 
@@ -131,10 +131,10 @@ Topics** lists each have their own resize grip, like the chart itself.
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
-The Result starts at HDBSCAN's natural number of real Topics. Use **Number of
-topics** to merge that fit down to one Topic without rerunning embedding or
-dimensionality reduction. Topic −1 is an outlier group, remains unchanged, and
-does not count toward the displayed number. Results with zero or one real Topic
+The Result starts with the number of Topics the run found. Use **Number of
+topics** to merge them, down to one Topic, without running the analysis again.
+Segments that fit no Topic are marked **No topic**; they stay as they are and
+do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
 
 The lower bound appears to the left of the slider. Change the topic count with
@@ -243,8 +243,7 @@ two-corpus run, colour composition compares the Topic's share of each analyzed
 corpus, then normalizes those two shares for the colour blend. This prevents a
 larger corpus from dominating the colour solely because it has more rows. A row
 may count in multiple bubbles, so bubble totals need not equal the source-row
-count. Nearby bubbles have more similar topic representations. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. Topic −1 remains
-an outlier group and is not a real-Topic bubble membership. Topics with a total
+count. Nearby bubbles have more similar topic representations. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. Segments with **No topic** have no bubble. Topics with a total
 bubble count of zero are omitted from the graph but remain available in the
 Topic lists and Result data.
 
@@ -281,7 +280,7 @@ remain checked, Sync columns turns off automatically.
 
 The **Rows** choice in the dialog sets how rows are formed:
 
-- **Per document** (default): one row per source document, with its dominant
+- **One row per document** (default): one row per source document, with its dominant
   topic (`TOPIC_top1`) and full topic coverage (`TOPIC_coverage`).
 
   Most tools cannot use the `TOPIC_coverage` column yet. Analyses leave it out
@@ -289,21 +288,21 @@ The **Rows** choice in the dialog sets how rows are formed:
   it (to keep rows by a topic threshold), and in the Data Editor it can only be
   duplicated, renamed, or deleted. CSV and Excel exports write it as text;
   Parquet keeps it as it is.
-- **Per topic**: one row per document and topic. The document column holds only
+- **One row per topic**: one row for each topic in each document. The document column holds only
   the segments assigned to that topic, joined by line breaks in source order, so
   a document with three topics becomes three rows. Each row also carries the
   topic (`TOPIC_topic`), its share of the document's text (`TOPIC_share`), and how
-  many segments it joined (`TOPIC_segment_count`). Outlier segments are left
-  out. Use this when you are interested in particular topics rather than whole
+  many segments it joined (`TOPIC_segment_count`). Segments with no topic are
+  left out. Use this when you are interested in particular topics rather than whole
   documents.
 
 The suggested name for each new Data Block includes the selected topic numbers,
 for example _Corpus topic 5_ or _Corpus topics 3, 7_ (with more than three
-topics selected, _Corpus 8 topics_). **Per topic** names end in _segments_,
+topics selected, _Corpus 8 topics_). **One row per topic** names end in _segments_,
 for example _Corpus topic 5 segments_. You can edit the name before adding it.
 
 Both modes use the topics as currently shown, including any merging from
-**Number of topics**. Per topic needs a result from this version of Wordflow;
+**Number of topics**. One row per topic needs a result from this version of Wordflow;
 for older results, re-run the analysis first.
 
 The download control exports the current panned and zoomed graph viewport. Its
@@ -321,7 +320,7 @@ available for the next run.
 
 | Symptom | What to try |
 | --- | --- |
-| Almost all documents are outliers | Increase sampling, try another segmentation method, or check whether the corpus has shared themes |
+| Almost all segments have No topic | Increase sampling, try another segmentation method, or check whether the corpus has shared themes |
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
 | A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
@@ -346,6 +345,6 @@ available for the next run.
 3. Move Number of topics down and compare the merged representative words.
 4. Clear the Result, choose Paragraph or Sentence, and run again with the same
    sample and seed.
-5. Compare the topic map, representative words, and outlier coverage.
+5. Compare the topic map, representative words, and how many segments have No topic.
 
 [← Back to tutorial index](./index.md)

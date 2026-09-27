@@ -145,10 +145,11 @@ export function TopicModelingBubbleChartSection({
     const nodeName = (nodeNames ?? []).filter(Boolean).join('_') || 'data';
     const header: ChartExportHeaderItem[] = [
       { label: 'Data Block', value: nodeNames?.join(', ') ?? 'data' },
-      { label: 'Clusters', value: clusterCount != null ? String(clusterCount) : '—' },
+      // One name for the topic count (issue 205).
+      { label: 'Number of topics', value: clusterCount != null ? String(clusterCount) : '—' },
       { label: 'Top topics per document', value: topNTopics != null ? String(topNTopics) : '—' },
       { label: 'Random Seed', value: randomSeed != null ? String(randomSeed) : '—' },
-      { label: 'Topics', value: String(topics.length) },
+      { label: 'Topics in the chart', value: String(topics.length) },
       ...(activeColorScheme ? [{ label: 'Colour by', value: activeColorScheme.column }] : []),
     ];
     try {
