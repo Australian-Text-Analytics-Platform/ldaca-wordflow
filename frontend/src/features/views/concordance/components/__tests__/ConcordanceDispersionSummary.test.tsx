@@ -58,16 +58,16 @@ describe('ConcordanceDispersionSummary', () => {
       />,
     );
 
-    expect(screen.getByRole('combobox', { name: 'Bin No.' })).toHaveAttribute(
+    expect(screen.getByRole('combobox', { name: 'Sections' })).toHaveAttribute(
       'data-state',
       'closed',
     );
-    expect(screen.getByRole('combobox', { name: 'Chart' })).toHaveTextContent('Density: line');
-    expect(screen.getByText('Density: line dispersion')).toBeInTheDocument();
+    expect(screen.getByRole('combobox', { name: 'Chart' })).toHaveTextContent('Line');
+    expect(screen.getByText('Where matches occur in the documents')).toBeInTheDocument();
     expect(screen.getByTestId('concordance-echarts')).toBeInTheDocument();
   });
 
-  it('keeps cumulative behind More and forwards the selected chart mode', () => {
+  it('lists every chart type, including Running total, and forwards the choice (issue 205)', () => {
     const onChartModeChange = vi.fn();
     render(
       <ConcordanceDispersionSummary
@@ -82,9 +82,7 @@ describe('ConcordanceDispersionSummary', () => {
     );
 
     fireEvent.click(screen.getByRole('combobox', { name: 'Chart' }));
-    expect(screen.queryByRole('button', { name: 'Cumulative' })).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'More' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Cumulative' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Running total' }));
     expect(onChartModeChange).toHaveBeenCalledWith('cumulative');
   });
 
@@ -237,7 +235,7 @@ describe('ConcordanceDispersionSummary', () => {
 
     expect(screen.getByTestId('filterable-series-controls')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'alpha (1)' })).toBeInTheDocument();
-    expect(screen.getByRole('checkbox', { name: 'Uncased' })).toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'Ignore capitals' })).toBeInTheDocument();
     expect(screen.queryByTestId('concordance-dispersion-chart')).not.toBeInTheDocument();
   });
 

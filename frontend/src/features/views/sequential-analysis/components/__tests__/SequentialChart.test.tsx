@@ -138,12 +138,12 @@ describe('SequentialChart', () => {
     );
 
     const controls = within(screen.getByTestId('filterable-series-controls'));
-    const uncased = controls.getByRole('checkbox', { name: 'Uncased' });
+    const uncased = controls.getByRole('checkbox', { name: 'Ignore capitals' });
     const minimumCount = controls.getByRole('spinbutton', { name: 'Minimum group count' });
     expect(uncased).toBeChecked();
     expect(minimumCount).toHaveValue(0);
     expect(screen.getByTestId('filterable-series-controls')).toHaveTextContent(
-      /Uncased.*Minimum group count/s,
+      /Ignore capitals.*Minimum group count/s,
     );
     fireEvent.change(minimumCount, { target: { value: '4' } });
     expect(onMinimumGroupCountChange).toHaveBeenCalledWith(4);

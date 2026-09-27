@@ -55,7 +55,7 @@ export function FilterableSeriesControls({
                     onUncasedChange(checked === true);
                   }}
                 />
-                <span>Uncased</span>
+                <span>Ignore capitals</span>
               </label>
             ) : null}
             {controlsAfterUncased}

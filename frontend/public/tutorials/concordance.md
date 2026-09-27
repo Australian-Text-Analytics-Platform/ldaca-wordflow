@@ -152,21 +152,22 @@ page does not change the chart.
 
 <h4 id="help-concordance-chart-type">Chart type</h4>
 
-Choose **Density: line**, **Density: bar**, or **Density: area** from the
-**Chart** menu; **More** offers **Cumulative**, which adds up the matches from
-the start of the document to each position. This presentation choice applies to the
+The chart, **Where matches occur in the documents**, has **Position in document
+(%)** along the bottom and **Matches** up the side. Choose **Line**, **Bars**,
+**Area**, or **Running total** from the **Chart** menu; **Running total** adds
+up the matches from the start of the document to each position. This presentation choice applies to the
 dispersion blocks in the current session. Bar charts use side-by-side series
-with alternating bin backgrounds at 4, 5, or 10 bins. At 20, 25, 50, or 100
-bins, the series stack into one bar per bin so the bars remain visible. Other
-chart types are unchanged by the selected bin count.
+with alternating section backgrounds at 4, 5, or 10 sections. At 20, 25, 50, or 100
+sections, the series stack into one bar per section so the bars remain visible. Other
+chart types are unchanged by the number of sections.
 
 ![The Chart menu](tutorials/assets/concordance/chart_type_menu.png)
 
-<h4 id="help-concordance-bin-count">Bin count</h4>
+<h4 id="help-concordance-bin-count">Sections</h4>
 
-**Bin No.** divides the 0–100 % document range into 4, 5, 10, 20, 25, 50, or
-100 buckets. Changing the count clears selected bins so an old bin index is not
-reinterpreted under new boundaries.
+**Sections** divides each document, from start (0 %) to end (100 %), into 4,
+5, 10, 20, 25, 50, or 100 equal parts. Changing the number clears the selected
+sections, because the old ones no longer line up with the new boundaries.
 
 <h4 id="help-concordance-bin-selection">Selecting bins</h4>
 
@@ -183,7 +184,7 @@ Data Block Creation.
 Each document row shades the selected range, so its match markers line up with
 the selection (positions count characters, so emoji and other symbols count once).
 Documents without a surviving match disappear. Preview has a static legend and
-does not apply these filters. Select **Uncased** beside a chart legend to merge
+does not apply these filters. Select **Ignore capitals** beside a chart legend to merge
 case variants into one series, colour, and summed legend count; for example,
 `jobs (35)` and `Jobs (2)` become `jobs/Jobs (37)`. This checkbox is shared by
 all separated charts and Combined View. Changing it restores all hidden legend
@@ -301,8 +302,8 @@ disabled until you choose **Clear**.
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table View |
 | Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasized when off |
-| Bin No. | 20 | 4, 5, 10, 20, 25, 50, or 100 |
-| Chart type | Density: line | Density: line, bar, or area, or More → Cumulative |
+| Sections | 20 | 4, 5, 10, 20, 25, 50, or 100 |
+| Chart | Line | Line, Bars, Area, or Running total |
 | Term visibility after Run | All terms | Exact, case-sensitive labels |
 
 ## Practice exercise

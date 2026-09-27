@@ -896,7 +896,7 @@ describe('ConcordanceFeature', () => {
       }
     });
 
-    const separatedUncasedControls = screen.getAllByRole('checkbox', { name: 'Uncased' });
+    const separatedUncasedControls = screen.getAllByRole('checkbox', { name: 'Ignore capitals' });
     expect(separatedUncasedControls).toHaveLength(2);
     separatedUncasedControls.forEach((control) => {
       expect(control).not.toBeChecked();
@@ -904,7 +904,7 @@ describe('ConcordanceFeature', () => {
 
     fireEvent.click(separatedUncasedControls[0]!);
     await waitFor(() => {
-      for (const control of screen.getAllByRole('checkbox', { name: 'Uncased' })) {
+      for (const control of screen.getAllByRole('checkbox', { name: 'Ignore capitals' })) {
         expect(control).toBeChecked();
       }
     });
@@ -933,7 +933,7 @@ describe('ConcordanceFeature', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Combined' }));
     await waitFor(() => {
-      expect(screen.getByRole('checkbox', { name: 'Uncased' })).toBeChecked();
+      expect(screen.getByRole('checkbox', { name: 'Ignore capitals' })).toBeChecked();
       expect(screen.getByRole('button', { name: 'jobs/Jobs (400)' })).toHaveAttribute(
         'aria-pressed',
         'true',

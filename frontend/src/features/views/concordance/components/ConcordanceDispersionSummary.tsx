@@ -1,13 +1,12 @@
 import { ResultChartFit, ResultFrame } from '@/features/views/common/components/ResultFrame';
 import { useId, useMemo, useRef, useState } from 'react';
-import { Check, ChevronDown, ChevronRight, Download } from 'lucide-react';
+import { Check, ChevronDown, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import type { EChartsCoreOption } from 'echarts/core';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartImageDownloadDialog } from '@/components/ui/ChartImageDownloadDialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Select,
@@ -101,10 +100,11 @@ const CHART_HEIGHT = 240;
 const GROUPED_BAR_MAX_BIN_COUNT = 10;
 const SELECTION_DIMENSION = '__wordflow_selected__';
 const CHART_MODE_LABELS: Record<ConcordanceDispersionChartMode, string> = {
-  'density-line': 'Density: line',
-  'density-bar': 'Density: bar',
-  'density-area': 'Density: area',
-  cumulative: 'Cumulative',
+  // Plain chart names (issue 205).
+  'density-line': 'Line',
+  'density-bar': 'Bars',
+  'density-area': 'Area',
+  cumulative: 'Running total',
 };
 
 /**
@@ -192,7 +192,6 @@ export function ConcordanceDispersionSummary({
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
   const [chartMenuOpen, setChartMenuOpen] = useState(false);
-  const [cumulativeOptionOpen, setCumulativeOptionOpen] = useState(false);
 
   const { bins, totalsByKey, labelsByKey, matchedTextsByKey, sources } = useMemo(() => {
     if (densitySeries) {
@@ -208,10 +207,10 @@ export function ConcordanceDispersionSummary({
   }, [rows, textColumn, binCount, splitBySource, densitySeries, uncasedMatchedTexts]);
 
   const scopeText = densitySeries
-    ? 'exact-term matches at relative locations across the entire Result'
-    : 'exact-term matches at relative locations of documents from page above';
+    ? 'all matches in the Result'
+    : 'matches in the documents on this page';
   const titleText = `${dataBlockLabel}: ${scopeText}`;
-  const chartTitle = `${CHART_MODE_LABELS[chartMode]} dispersion`;
+  const chartTitle = 'Where matches occur in the documents';
 
   const allSeries: DispersionChartSeries[] = useMemo(() => {
     const selected = selection?.selectedIndices ?? new Set<number>();
@@ -376,6 +375,10 @@ export function ConcordanceDispersionSummary({
       axisTick: { show: false },
       axisLabel: { formatter: (value: number) => formatTickLabel(value), margin: 8 },
       splitLine: { show: false },
+      name: 'Position in document (%)',
+      nameLocation: 'middle',
+      nameGap: 26,
+      nameTextStyle: { color: 'var(--vscode-descriptionForeground)' },
     },
     yAxis: {
       type: 'value',
@@ -384,6 +387,10 @@ export function ConcordanceDispersionSummary({
       axisTick: { show: false },
       axisLabel: { margin: 8 },
       splitLine: { lineStyle: { color: 'var(--vscode-charts-lines)' } },
+      name: chartMode === 'cumulative' ? 'Matches so far' : 'Matches',
+      nameLocation: 'middle',
+      nameGap: 34,
+      nameTextStyle: { color: 'var(--vscode-descriptionForeground)' },
     },
     // Per-item opacity is encoded for bars. Line and area modes show selection
     // through their point symbols instead.
@@ -489,7 +496,7 @@ export function ConcordanceDispersionSummary({
             <div className="flex flex-wrap items-center justify-end gap-3">
               {onBinCountChange && (
                 <div className="flex items-center gap-2 text-body text-foreground">
-                  <span id={`${controlId}-bin-count`}>Bin No.</span>
+                  <span id={`${controlId}-bin-count`}>Sections</span>
                   <Select
                     value={String(binCount)}
                     onValueChange={(value) => {
@@ -522,10 +529,7 @@ export function ConcordanceDispersionSummary({
                   <span id={`${controlId}-chart-mode`}>Chart</span>
                   <Popover
                     open={chartMenuOpen}
-                    onOpenChange={(open) => {
-                      setChartMenuOpen(open);
-                      if (!open) setCumulativeOptionOpen(false);
-                    }}
+                    onOpenChange={setChartMenuOpen}
                   >
                     <PopoverTrigger asChild>
                       <Button
@@ -542,9 +546,8 @@ export function ConcordanceDispersionSummary({
                     </PopoverTrigger>
                     <PopoverContent align="end" className="w-44 p-1">
                       <div className="space-y-0.5">
-                        {CONCORDANCE_DISPERSION_CHART_MODES.filter(
-                          (value) => value !== 'cumulative',
-                        ).map((value) => (
+                        {/* Every chart type in one list (issue 205). */}
+                        {CONCORDANCE_DISPERSION_CHART_MODES.map((value) => (
                           <button
                             key={value}
                             type="button"
@@ -558,28 +561,6 @@ export function ConcordanceDispersionSummary({
                             {chartMode === value && <Check className="size-4" />}
                           </button>
                         ))}
-                        <Collapsible
-                          open={cumulativeOptionOpen}
-                          onOpenChange={setCumulativeOptionOpen}
-                        >
-                          <CollapsibleTrigger className="group flex w-full items-center justify-between rounded-sm px-2 py-1.5 text-body text-description hover:bg-list-hover hover:text-foreground focus-visible:bg-list-hover focus-visible:text-foreground focus-visible:outline-hidden">
-                            More
-                            <ChevronRight className="size-4 transition-transform group-data-[state=open]:rotate-90" />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="pt-0.5">
-                            <button
-                              type="button"
-                              className="flex w-full items-center justify-between rounded-sm py-1.5 pr-2 pl-5 text-left text-body hover:bg-list-hover hover:text-foreground focus-visible:bg-list-hover focus-visible:text-foreground focus-visible:outline-hidden"
-                              onClick={() => {
-                                onChartModeChange('cumulative');
-                                setChartMenuOpen(false);
-                              }}
-                            >
-                              Cumulative
-                              {chartMode === 'cumulative' && <Check className="size-4" />}
-                            </button>
-                          </CollapsibleContent>
-                        </Collapsible>
                       </div>
                     </PopoverContent>
                   </Popover>

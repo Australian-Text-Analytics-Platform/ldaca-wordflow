@@ -74,7 +74,7 @@ Click **Add Group** to add a column selector row. A badge next to each selector 
 When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.
 
 Trends retains exact group values in its result. After the analysis finishes,
-use **Uncased** beside the result legend when values that differ only in
+use **Ignore capitals** beside the result legend when values that differ only in
 capitalisation should be displayed and filtered as one group.
 
 <h2 id="help-sequential-run">Step 5 — Run the analysis</h2>
@@ -83,7 +83,7 @@ Click **Run** to start the analysis. The label always remains **Run**. Parameter
 lock only while the Analysis is submitting, queued, or running. After success,
 change an execution input to enable Run again; reverting to the submitted values
 disables it. Minimum group count, chart type, axis, selection, visibility, and
-Uncased controls do not enable Run because they only change result presentation
+Ignore capitals controls do not enable Run because they only change result presentation
 or filtering.
 
 <h2 id="help-sequential-results">Result panel</h2>
@@ -92,7 +92,7 @@ or filtering.
 
 The result panel follows the Concordance dispersion layout: result actions in
 the header, chart presentation controls directly above the plot, then the chart
-and its legend card. The legend card keeps the Uncased, minimum group count, and
+and its legend card. The legend card keeps Ignore capitals, minimum group count, and
 period-selection controls together. Time column, frequency or interval, and
 Group By settings remain visible in the parameter panel instead of being
 repeated in the result.
@@ -104,16 +104,16 @@ repeated in the result.
 For grouped results, **Minimum group count** hides any group whose total count
 across the complete result is below the entered value. The default is **10**;
 enter **0** to show every group. A group whose count equals the threshold remains
-visible. The control appears in the legend card immediately after **Uncased**.
+visible. The control appears in the legend card immediately after **Ignore capitals**.
 
 The filter removes small groups from the chart, legend, chart export, displayed
 counts, and Add to Project. It does not change manual legend visibility: if a
 filtered group was struck out, lowering the threshold restores it still struck
 out. Selected periods do not change which groups meet the threshold. With
-**Uncased** enabled, case variants are merged before their total is compared
+**Ignore capitals** enabled, case variants are merged before their total is compared
 with the threshold.
 
-![Legend card with Uncased, Minimum group count, and Clear Selection](tutorials/assets/sequential_analysis/legend.png)
+![Legend card with Ignore capitals, Minimum group count, and Clear Selection](tutorials/assets/sequential_analysis/legend.png)
 
 <h3 id="help-sequential-chart-type">Chart type</h3>
 
@@ -152,7 +152,7 @@ Use this to focus on a subset of groups. Hidden groups are not plotted and are
 marked hidden in chart exports, while their legend entry retains its
 full-result count.
 
-Select **Uncased** beside the legend to merge case variants without rerunning
+Select **Ignore capitals** beside the legend to merge case variants without rerunning
 the analysis. For example, `jobs` and `Jobs` become `jobs/Jobs`, with their
 per-period values, totals, percentages, tooltip values, and export entry
 summed. Changing this checkbox restores all hidden groups while preserving
@@ -185,7 +185,7 @@ removed by Minimum group count and groups hidden through the legend are always
 excluded. Zoom changes only the viewport and never the rows added to the
 Project.
 
-When Uncased is enabled, hiding a merged legend entry excludes every exact
+When Ignore capitals is on, hiding a merged legend entry excludes every exact
 spelling represented by that entry.
 
 The time or numeric axis column is required. The source Document Column and
@@ -223,7 +223,7 @@ visibility.
 | Start | Smallest value | Leave blank unless you need a specific start |
 | Step | 1 | Required; must be > 0 |
 | Group By | None | Up to 3 columns |
-| Uncased | Off | Beside the legend of a grouped result; merges case variants of a group |
+| Ignore capitals | Off | Beside the legend of a grouped result; merges case variants of a group |
 | Minimum group count | 10 | Grouped results only; enter 0 to show all groups |
 | Chart Type | Line Chart | — |
 | X-axis | Categorical | Switch to Linear for time-proportional spacing |
