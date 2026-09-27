@@ -17,7 +17,8 @@ use super::reduce;
 use super::rollup;
 use super::{DocumentResult, TopicInfo, TopicModelingResult};
 
-const CONTEXT_VERSION: u8 = 2;
+const CONTEXT_VERSION: u8 = 3;
+const MIN_READABLE_CONTEXT_VERSION: u8 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Leaf {
@@ -32,7 +33,13 @@ struct SegmentFact {
     document_index: usize,
     leaf_id: i32,
     owned_character_weight: usize,
+    #[serde(default)]
+    span: Option<(usize, usize)>,
 }
+
+/// One segment's document index, Unicode-character span, and projected Topic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct SegmentTopicAssignment(pub usize, pub usize, pub usize, pub i32);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Merge {
@@ -60,6 +67,7 @@ pub struct ProjectionInput<'a> {
     pub embedding_points: &'a [&'a [f32]],
     pub document_indices: &'a [usize],
     pub owned_character_weights: &'a [usize],
+    pub character_spans: &'a [(usize, usize)],
     pub per_leaf_term_counts: &'a [HashMap<String, usize>],
     pub seed: u64,
 }
@@ -89,6 +97,7 @@ pub fn prepare_context(input: ProjectionInput<'_>) -> Result<TopicProjectionCont
         embedding_points,
         document_indices,
         owned_character_weights,
+        character_spans,
         per_leaf_term_counts,
         seed,
     } = input;
@@ -96,6 +105,7 @@ pub fn prepare_context(input: ProjectionInput<'_>) -> Result<TopicProjectionCont
     if embedding_points.len() != segment_count
         || document_indices.len() != segment_count
         || owned_character_weights.len() != segment_count
+        || character_spans.len() != segment_count
     {
         bail!("Topic projection inputs must align by Topic Segment");
     }
@@ -192,11 +202,13 @@ pub fn prepare_context(input: ProjectionInput<'_>) -> Result<TopicProjectionCont
         .iter()
         .zip(document_indices)
         .zip(owned_character_weights)
+        .zip(character_spans)
         .map(
-            |((&leaf_id, &document_index), &owned_character_weight)| SegmentFact {
+            |(((&leaf_id, &document_index), &owned_character_weight), &span)| SegmentFact {
                 document_index,
                 leaf_id,
                 owned_character_weight,
+                span: Some(span),
             },
         )
         .collect();
@@ -489,6 +501,7 @@ pub fn project(
         topics,
         documents: project_documents(context, topic_count)?,
         n_segments: context.n_segments,
+        max_topic_size: None,
         projection_context: None,
     })
 }
@@ -542,6 +555,47 @@ pub fn project_documents(
     Ok(documents)
 }
 
+/// Project each segment's source span using the same merge cut as the chart.
+/// Version-2 contexts remain readable for other projections but lack spans.
+pub fn project_segments(
+    context: &TopicProjectionContext,
+    topic_count: usize,
+) -> Result<Vec<SegmentTopicAssignment>> {
+    validate_context(context)?;
+    let projection_ids = leaf_projection_ids(context, topic_count)?;
+    context
+        .segments
+        .iter()
+        .map(|segment| {
+            let (start, end) = segment.span.context(
+                "Topic projection context has no segment spans; re-run the analysis to detach per topic",
+            )?;
+            let topic_id = if segment.leaf_id == OUTLIER_LABEL {
+                OUTLIER_LABEL
+            } else {
+                let leaf = usize::try_from(segment.leaf_id)
+                    .context("Topic projection segment has an invalid leaf")?;
+                *projection_ids
+                    .get(leaf)
+                    .context("Topic projection segment references an unknown leaf")?
+            };
+            Ok(SegmentTopicAssignment(
+                segment.document_index,
+                start,
+                end,
+                topic_id,
+            ))
+        })
+        .collect()
+}
+
+pub fn project_serialized_context_segments(
+    bytes: &[u8],
+    topic_count: usize,
+) -> Result<Vec<SegmentTopicAssignment>> {
+    project_segments(&deserialize_context(bytes)?, topic_count)
+}
+
 /// Rank the complete merged vocabulary, excluding words only after scoring.
 pub fn project_words(
     context: &TopicProjectionContext,
@@ -566,7 +620,7 @@ pub fn project_words(
 }
 
 fn validate_context(context: &TopicProjectionContext) -> Result<()> {
-    if context.version != CONTEXT_VERSION {
+    if !(MIN_READABLE_CONTEXT_VERSION..=CONTEXT_VERSION).contains(&context.version) {
         bail!(
             "unsupported Topic projection context version {}",
             context.version
@@ -765,6 +819,7 @@ mod tests {
             embedding_points: &embedding_points,
             document_indices: &[0, 0, 0, 0, 1, 1, 1],
             owned_character_weights: &[1, 1, 1, 1, 2, 2, 4],
+            character_spans: &[(0, 1), (1, 2), (2, 3), (3, 4), (0, 2), (2, 4), (4, 8)],
             per_leaf_term_counts: &counts,
             seed: 7,
         })
@@ -841,5 +896,31 @@ mod tests {
         let projected = project(&fixture(), 1).unwrap();
         assert_eq!(projected.topics.len(), 1);
         assert_eq!((projected.topics[0].x, projected.topics[0].y), (0.0, 0.0));
+    }
+
+    #[test]
+    fn projected_segments_keep_source_spans_and_merge_cut() {
+        let context = fixture();
+        let natural = project_segments(&context, 3).unwrap();
+        assert_eq!(natural[0], SegmentTopicAssignment(0, 0, 1, 0));
+        assert_eq!(natural[6], SegmentTopicAssignment(1, 4, 8, OUTLIER_LABEL));
+        let merged = project_segments(&context, 2).unwrap();
+        assert_eq!(merged[0].3, merged[2].3);
+        assert_ne!(merged[0].3, merged[4].3);
+    }
+
+    #[test]
+    fn version_two_contexts_remain_readable_without_detach() {
+        let mut context = fixture();
+        context.version = 2;
+        for segment in &mut context.segments {
+            segment.span = None;
+        }
+        let bytes = serialize_context(&context).unwrap();
+        assert!(project_serialized_context(&bytes, 2).is_ok());
+        assert!(project_serialized_context_segments(&bytes, 2)
+            .unwrap_err()
+            .to_string()
+            .contains("no segment spans"));
     }
 }

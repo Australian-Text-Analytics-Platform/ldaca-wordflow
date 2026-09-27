@@ -1,6 +1,6 @@
 # polars-text API Reference
 
-Version 0.6 requires Python Polars 1.44.1. Importing `polars_text` registers the
+Version 0.8 requires Python Polars 1.44.1. Importing `polars_text` registers the
 sole expression façade, the `.text` namespace. The namespace registers native
 plugins against the exact imported `_internal` extension; all custom computation delegates to the native `ldaca-rs` library.
 
@@ -18,7 +18,8 @@ expr.text.embedding(*, model=None, cache=None, batch_size=None)
 expr.text.topic_modeling(
     *, embedding_model=None, embedding_cache=None,
     segmentation="automatic", max_tokens=256, seed=42,
-    min_topic_size=10, tokenizer_model=None, lowercase=True
+    min_topic_size=10, max_topic_size=None,
+    tokenizer_model=None, lowercase=True
 )
 expr.text.clean_text()
 expr.text.word_count()
@@ -51,6 +52,7 @@ The scalar topic result is:
   documents: [{doc_index, dominant_topic, topic_coverage}],
   topics: [{id, representative_words, x, y}],
   n_segments,
+  max_topic_size,
   projection_context
 }
 ```
@@ -62,17 +64,25 @@ Topic, `topics` is empty and `projection_context` is null. Otherwise the context
 is compressed MessagePack used by supported projectors without rerunning
 embedding or HDBSCAN.
 
+`max_topic_size=None` selects the adapter's adaptive cap; a positive fixed value
+sets the largest selectable topic in segments. Wordflow's own native Topic
+Modelling workflow retains its established uncapped clustering behavior.
+
 ## Whole-Series Utilities
 
 - `token_frequencies(series, model=...)`
 - `token_frequency_stats(corpus_0, corpus_1)`
 - `project_topics(projection_context, topic_count)`
 - `project_topic_basis(projection_context, topic_count, corpus_sizes)`
+- `project_topic_segments(projection_context, topic_count)`
 
 `project_topics` returns projected `documents` and `topics` for any count from
 one through the natural real-Topic count.
 `project_topic_basis` returns topic metadata plus sorted
 `[corpus_index, topic_id, minimum_n, count]` activations.
+`project_topic_segments` returns `(document_index, start_char, end_char,
+topic_id)` for every segment at the selected merge cut. Older version-2
+contexts remain readable for other projections but cannot supply spans.
 
 The immutable tokenizer catalogue is `TOKENIZER_MODELS`, a tuple of
 `TokenizerModel(model_id, label, languages)` records. Registry prefetch and

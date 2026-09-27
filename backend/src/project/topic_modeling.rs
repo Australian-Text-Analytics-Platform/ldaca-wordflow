@@ -79,6 +79,7 @@ impl TopicRequest {
             },
             seed: self.seed,
             min_cluster_size: self.minimum_topic_size,
+            topic_size_limit: engine::TopicSizeLimit::Uncapped,
             vectorizer_model_id: Some(self.tokenizer.clone()),
             lowercase: true,
         }
@@ -1097,7 +1098,7 @@ mod tests {
         p.database.publish_analysis(AcceptedAnalysis { id,tab_id:tab,kind:KIND },|conn| {
             conn.execute_batch(&format!("CREATE TABLE wordflow.{} AS SELECT row_number() OVER ()::UBIGINT document_id,t AS source FROM data.texts t",artifact_table(docs)))?;
             register_table(conn,id,docs,"documents_0")?;
-            let result=TopicModelingResult { topics:vec![],documents:(0..25).map(|doc_index|DocumentResult {doc_index,dominant_topic:-1,topic_coverage:if doc_index==1 || doc_index==2 {vec![]} else {vec![(-1,1.0)]}}).collect(),n_segments:23,projection_context:None };
+            let result=TopicModelingResult { topics:vec![],documents:(0..25).map(|doc_index|DocumentResult {doc_index,dominant_topic:-1,topic_coverage:if doc_index==1 || doc_index==2 {vec![]} else {vec![(-1,1.0)]}}).collect(),n_segments:23,max_topic_size:None,projection_context:None };
             register_blob(conn,id,natural,"natural_projection","application/json",&serde_json::to_vec(&result)?)?;
             Ok(serde_json::to_value(TopicResultV1 { sources:vec![TopicSource { input:request().inputs.remove(0),columns:vec![("id".into(),"BIGINT".into()),("text".into(),"VARCHAR".into())],document_count:25,total_count:25,documents:Some(docs) }],natural_topic_count:0,segment_count:23,resolved_model:MODELS[0].id.into(),natural_projection:natural,projection_context:None })?)
         }).unwrap();

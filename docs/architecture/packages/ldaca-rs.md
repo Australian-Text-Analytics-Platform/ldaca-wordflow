@@ -22,6 +22,9 @@ frequency statistics, embeddings, topic computation/projections and quotation
 extraction. The Polars adapter owns Series conversion, lazy plugin registration,
 Python argument validation and output schemas. Model and algorithm code has one
 implementation in the core, including the formerly Python frequency statistics.
+Hosts select uncapped, adaptive or fixed topic-size clustering explicitly;
+Wordflow uses uncapped clustering. Projection contexts retain Unicode-character
+segment spans for the adapter's per-topic document extraction.
 
 The native backend depends only on `data`. It continues to own project naming,
 operation supervision, import publication and error translation. The SDK retains

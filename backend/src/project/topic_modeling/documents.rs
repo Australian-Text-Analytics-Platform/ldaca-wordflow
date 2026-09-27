@@ -280,6 +280,7 @@ mod tests {
                 })
                 .collect(),
                 n_segments: 8,
+                max_topic_size: None,
                 projection_context: None,
             },
             context: None,

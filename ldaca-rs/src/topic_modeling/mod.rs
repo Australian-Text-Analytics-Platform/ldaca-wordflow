@@ -40,6 +40,8 @@ use crate::embedding_cache::{get_or_insert_embeddings, CacheScope};
 #[cfg(feature = "topic-modeling")]
 use crate::tokenizer::PLAIN_WORDS_EN_MODEL_ID;
 #[cfg(feature = "topic-modeling")]
+pub use cluster::TopicSizeLimit;
+#[cfg(feature = "topic-modeling")]
 pub use ctfidf::RepresentativeWord;
 #[cfg(feature = "topic-modeling")]
 use segmentation::SegmentationConfig;
@@ -58,6 +60,7 @@ pub struct RunConfig {
     pub segmentation: SegmentationConfig,
     pub seed: u64,
     pub min_cluster_size: usize,
+    pub topic_size_limit: TopicSizeLimit,
     pub vectorizer_model_id: Option<String>,
     pub lowercase: bool,
 }
@@ -90,6 +93,8 @@ pub struct TopicModelingResult {
     pub topics: Vec<TopicInfo>,
     pub documents: Vec<DocumentResult>,
     pub n_segments: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_topic_size: Option<usize>,
     #[serde(skip)]
     pub projection_context: Option<Vec<u8>>,
 }
@@ -165,6 +170,18 @@ pub fn run_with_progress(
         .iter()
         .map(|segment| segment.owned_character_count)
         .collect::<Vec<_>>();
+    let segment_character_spans = segments
+        .iter()
+        .map(|segment| {
+            let document = documents[segment.doc_index];
+            let start = document
+                .get(..segment.start_byte)
+                .context("Topic Segment start is not a character boundary")?
+                .chars()
+                .count();
+            Ok((start, start + segment.owned_character_count))
+        })
+        .collect::<Result<Vec<_>>>()?;
 
     // PaCMAP needs at least three points and HDBSCAN needs at least one full
     // minimum cluster. Anything smaller has no defensible density-based Topic.
@@ -227,7 +244,7 @@ pub fn run_with_progress(
     progress("Reducing embeddings", None)?;
     let reduced = reduce::reduce(&embeddings, reduce_dims, cfg.seed)?;
     progress("Clustering segments", None)?;
-    let clustered = cluster::cluster(&reduced, cfg.min_cluster_size)?;
+    let clustered = cluster::cluster(&reduced, cfg.min_cluster_size, cfg.topic_size_limit)?;
     progress("Counting representative words", None)?;
     if clustered.n_topics == 0 {
         return Ok(no_topic_result(
@@ -263,11 +280,13 @@ pub fn run_with_progress(
         embedding_points: &embedding_points,
         document_indices: &segment_doc_indices,
         owned_character_weights: &segment_weights,
+        character_spans: &segment_character_spans,
         per_leaf_term_counts: &term_counts,
         seed: cfg.seed,
     })?;
     progress("Projecting topics", None)?;
     let mut result = projection::project(&context, clustered.n_topics)?;
+    result.max_topic_size = clustered.max_cluster_size;
     result.projection_context = Some(projection::serialize_context(&context)?);
     progress("Model complete", Some(1.0))?;
     Ok(result)
@@ -302,6 +321,7 @@ fn no_topic_result(
         topics: Vec::new(),
         documents,
         n_segments: segment_doc_indices.len(),
+        max_topic_size: None,
         projection_context: None,
     }
 }
@@ -319,6 +339,7 @@ mod tests {
             segmentation: SegmentationConfig::default(),
             seed: 0,
             min_cluster_size: 10,
+            topic_size_limit: TopicSizeLimit::Uncapped,
             vectorizer_model_id: None,
             lowercase: true,
         };
