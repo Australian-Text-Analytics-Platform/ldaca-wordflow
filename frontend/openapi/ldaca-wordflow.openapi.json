@@ -5414,13 +5414,25 @@
       },
       "Failure": {
         "additionalProperties": false,
-        "description": "Durable terminal failure containing a complete backend diagnostic.",
+        "description": "Durable terminal failure: a message for users and, when the failure\nwas not written for them, the backend diagnostic for Details (issue 205).",
         "properties": {
           "code": {
             "maxLength": 100,
             "pattern": "^[a-z][a-z0-9_]*$",
             "title": "Code",
             "type": "string"
+          },
+          "diagnostic": {
+            "anyOf": [
+              {
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Diagnostic"
           },
           "message": {
             "minLength": 1,

@@ -40,7 +40,8 @@ interface Props {
     started_at?: string | null;
   } | null;
   result: TopicModelingResponse | null;
-  error?: string | null;
+  /** A message, or a stored failure whose diagnostic shows under Details. */
+  error?: unknown;
   topics: TopicModelingTopic[];
   exportTopics?: TopicModelingTopic[];
   containerRef: React.RefObject<HTMLDivElement | null>;

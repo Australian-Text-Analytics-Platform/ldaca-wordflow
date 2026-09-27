@@ -294,6 +294,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     stopTask,
     isStopping,
     analysisError,
+    analysisFailure,
     result: baseResult,
   } = useAnalysisFeature<ConcordanceAnalysisResponse, AnalysisRequestOfKind<'concordance'>>({
     taskType: ANALYSIS_TASK_TYPES.concordance,
@@ -947,7 +948,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {analysisError && (
         <Card>
           <CardContent>
-            <ErrorNotice error={analysisError} />
+            <ErrorNotice error={analysisFailure ?? analysisError} />
           </CardContent>
         </Card>
       )}

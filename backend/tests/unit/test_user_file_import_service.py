@@ -11,6 +11,7 @@ from typing import Any, cast
 import anyio
 import pytest
 
+from ldaca_wordflow.shared.errors import UNEXPECTED_ERROR_MESSAGE
 from ldaca_wordflow.domain import (
     SampleUserFileImportRequest,
     SampleUserFileImportResult,
@@ -255,7 +256,8 @@ async def test_execution_failure_persists_the_complete_python_diagnostic(
 
         assert failed.error is not None
         assert failed.error.code == "user_file_import_execution_failed"
-        assert failed.error.message == f"RuntimeError: {message}"
+        assert failed.error.message == UNEXPECTED_ERROR_MESSAGE
+        assert failed.error.diagnostic == f"RuntimeError: {message}"
         await service.close(anyio.current_time() + 1)
 
 

@@ -24,6 +24,7 @@ from ..infrastructure.providers.annotation_ai import (
 )
 from ..infrastructure.storage.durable_fs import atomic_output_path
 from ..infrastructure.storage.input_snapshots import load_snapshot_node
+from ..domain.annotation import provider_failure_message
 from ..shared.errors import format_exception_diagnostic
 from .utils import process_entrypoint
 
@@ -115,7 +116,12 @@ def run_annotation_analysis(
                 "state": "failed",
                 "failure": {
                     "code": error.code,
-                    "message": format_exception_diagnostic(error),
+                    # Plain words for users; the provider's text is kept for
+                    # Details (issue 205).
+                    "message": provider_failure_message(
+                        error.code, source_request.provider
+                    ),
+                    "diagnostic": format_exception_diagnostic(error),
                 },
             }
         if len(outcome.labels) != len(target_indices) or len(

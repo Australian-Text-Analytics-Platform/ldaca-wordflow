@@ -114,7 +114,11 @@ def test_fatal_provider_failure_returns_diagnostic_envelope_without_artifact(
         "state": "failed",
         "failure": {
             "code": "annotation_provider_authentication_failed",
-            "message": "AnnotationAiError: private SDK response containing secret material",
+            # Plain words for users; the provider's text for Details (issue 205).
+            "message": "OpenAI rejected the API key. Check it in Settings.",
+            "diagnostic": (
+                "AnnotationAiError: private SDK response containing secret material"
+            ),
         },
     }
     assert list(output.iterdir()) == []

@@ -2758,13 +2758,18 @@ export type ExpressionNodeEditRequest = {
 /**
  * Failure
  *
- * Durable terminal failure containing a complete backend diagnostic.
+ * Durable terminal failure: a message for users and, when the failure
+ * was not written for them, the backend diagnostic for Details (issue 205).
  */
 export type Failure = {
     /**
      * Code
      */
     code: string;
+    /**
+     * Diagnostic
+     */
+    diagnostic?: string | null;
     /**
      * Message
      */

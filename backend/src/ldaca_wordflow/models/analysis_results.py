@@ -484,6 +484,8 @@ class AnalysisWorkerFailureData(_StrictModel):
 
     code: AnnotationProviderFailureCode
     message: str = Field(min_length=1)
+    # The provider's own text, shown under Details (issue 205).
+    diagnostic: str | None = Field(default=None, min_length=1)
 
 
 class AnalysisWorkerFailure(_StrictModel):

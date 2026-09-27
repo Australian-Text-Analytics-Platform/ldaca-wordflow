@@ -28,10 +28,10 @@ from ..models.user_file_imports import (
     UserFileImportItem,
     UserFileImportPage,
 )
+from .failures import failure_from_exception
 from ..shared.errors import (
     AppError,
     BackendStoppingError,
-    format_exception_diagnostic,
     UserFileImportCorruptError,
     UserFileImportNotCancellableError,
     UserFileImportNotFoundError,
@@ -167,7 +167,7 @@ class UserFileImportService:
                     self._clock(),
                     failure=Failure(
                         code="user_file_import_interrupted",
-                        message="User File import was interrupted",
+                        message="The file import was interrupted. Import the files again.",
                     ),
                     progress=record.progress,
                 )
@@ -547,23 +547,15 @@ class UserFileImportService:
         except anyio.get_cancelled_exc_class():
             cancellation_ready = True
         except AppError as exc:
-            failure = Failure(
-                code=exc.code,
-                message=(
-                    format_exception_diagnostic(exc)
-                    if exc.status_code >= 500
-                    else exc.message
-                ),
-            )
+            failure = failure_from_exception(exc, code=exc.code)
         except SupervisedProcessError as exc:
             logger.exception(
                 "Data Portal import failed import_id=%s user_id=%s",
                 key.import_id,
                 key.user_id,
             )
-            failure = Failure(
-                code="user_file_import_execution_failed",
-                message=exc.user_message or format_exception_diagnostic(exc),
+            failure = failure_from_exception(
+                exc, code="user_file_import_execution_failed"
             )
         except Exception as exc:
             logger.exception(
@@ -571,9 +563,8 @@ class UserFileImportService:
                 key.import_id,
                 key.user_id,
             )
-            failure = Failure(
-                code="user_file_import_execution_failed",
-                message=format_exception_diagnostic(exc),
+            failure = failure_from_exception(
+                exc, code="user_file_import_execution_failed"
             )
         finally:
             if execution is not None:
@@ -641,10 +632,7 @@ class UserFileImportService:
                     )
                     failed = record.fail(
                         self._clock(),
-                        failure=Failure(
-                            code="progress_invalid",
-                            message=format_exception_diagnostic(exc),
-                        ),
+                        failure=failure_from_exception(exc, code="progress_invalid"),
                         progress=self._current_progress(key, record),
                     )
                 else:
@@ -801,7 +789,7 @@ class UserFileImportService:
                         self._clock(),
                         failure=Failure(
                             code="user_file_import_interrupted",
-                            message="User File import was interrupted",
+                            message="The file import was interrupted. Import the files again.",
                         ),
                         progress=progress,
                     )
@@ -849,7 +837,7 @@ class UserFileImportService:
                 self._clock(),
                 failure=Failure(
                     code="user_file_import_interrupted",
-                    message="User File import was interrupted",
+                    message="The file import was interrupted. Import the files again.",
                 ),
                 progress=record.progress,
             )

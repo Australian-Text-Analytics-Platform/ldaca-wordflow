@@ -18,6 +18,7 @@ import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
+from ..domain.annotation import provider_failure_message
 from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
 from ..analysis.concordance_projection import filter_concordance_documents
@@ -1330,9 +1331,10 @@ async def _query_annotation_snapshot(
             examples,
         )
     except AnnotationAiError as exc:
+        # Plain words for users; the provider's text is the cause (issue 205).
         raise AnnotationProviderError(
             exc.code,
-            str(exc),
+            provider_failure_message(exc.code, request.provider),
             provider=request.provider,
             model=request.model,
         ) from exc

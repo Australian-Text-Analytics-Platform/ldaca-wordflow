@@ -12,6 +12,7 @@ import anyio
 import polars as pl
 import pytest
 
+from ldaca_wordflow.shared.errors import UNEXPECTED_ERROR_MESSAGE
 from ldaca_wordflow.domain.workspace import (
     AnalysisExecutionScope,
     AnalysisKind,
@@ -726,7 +727,9 @@ async def test_dispatch_preserves_unexpected_admission_diagnostic(
     assert failed.state is AnalysisState.FAILED
     assert failed.error is not None
     assert failed.error.code == "analysis_start_failed"
-    assert failed.error.message == "RuntimeError: private diagnostic"
+    # Plain words for users; the diagnostic is kept for Details (issue 205).
+    assert failed.error.message == UNEXPECTED_ERROR_MESSAGE
+    assert failed.error.diagnostic == "RuntimeError: private diagnostic"
 
 
 @pytest.mark.anyio

@@ -58,8 +58,8 @@ class _Service:
     async def report_progress(self, *_args):
         return None
 
-    async def fail_execution(self, _key, *, code, message):
-        self.failures.append((code, message))
+    async def fail_execution(self, _key, *, code, message, diagnostic=None):
+        self.failures.append((code, message, diagnostic))
 
     async def complete_execution(self, _key, _result):
         self.completed = True
@@ -81,6 +81,7 @@ async def test_worker_diagnostic_is_persisted_without_publication() -> None:
         (
             "annotation_provider_access_denied",
             "ProviderError: account lacks model access",
+            None,
         )
     ]
     assert service.completed is False

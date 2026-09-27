@@ -20,6 +20,8 @@ interface TaskItemBase {
   started_at?: string | null;
   finished_at?: string | null;
   error?: string | null;
+  /** The failure's diagnostic, shown under Details (issue 205). */
+  error_detail?: string | null;
 }
 
 interface AnalysisTaskItem extends TaskItemBase {
@@ -76,6 +78,12 @@ const failureMessage = (value: unknown): string | undefined => {
   return typeof message === 'string' ? message : undefined;
 };
 
+const failureDiagnostic = (value: unknown): string | null => {
+  if (!value || typeof value !== 'object') return null;
+  const diagnostic = (value as { diagnostic?: unknown }).diagnostic;
+  return typeof diagnostic === 'string' ? diagnostic : null;
+};
+
 export const analysisToTask = (
   resource: Analysis | UnavailableAnalysis,
   workspaceId: string,
@@ -100,6 +108,7 @@ export const analysisToTask = (
       started_at: resource.started_at,
       finished_at: resource.finished_at,
       error: failureMessage(resource.error) ?? null,
+      error_detail: failureDiagnostic(resource.error),
     };
   }
 
@@ -141,6 +150,7 @@ export const importToTask = (resource: UserFileImport | UnavailableUserFileImpor
     started_at: resource.started_at,
     finished_at: resource.finished_at,
     error: failureMessage(resource.error) ?? null,
+    error_detail: failureDiagnostic(resource.error),
   };
 };
 

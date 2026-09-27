@@ -48,6 +48,7 @@ from ..domain.workspace import (
 )
 from ..models.analyses import AnalysisCreate, AnalysisPage
 from ..models.analysis_results import ConcordanceRunAllStoredResult
+from .failures import failure_from_exception
 from ..shared.errors import (
     AppError,
     AnalysisCorruptError,
@@ -59,7 +60,6 @@ from ..shared.errors import (
     AnalysisNotSucceededError,
     AnalysisParentInvalidError,
     BackendStoppingError,
-    format_exception_diagnostic,
     TabAnalysisExistsError,
     TabNotFoundError,
 )
@@ -856,24 +856,12 @@ class AnalysisService:
                     reserved = True
                     lease.workspace.replace_analysis(record.start(self._clock()))
                 except Exception as exc:
-                    if isinstance(exc, AppError):
-                        failure = Failure(
-                            code=exc.code,
-                            message=(
-                                format_exception_diagnostic(exc)
-                                if exc.status_code >= 500
-                                else exc.message
-                            ),
-                        )
-                    else:
+                    failure = failure_from_exception(exc, code="analysis_start_failed")
+                    if not isinstance(exc, AppError):
                         logger.exception(
                             "Analysis dispatch admission failed analysis_id=%s user_id=%s",
                             key.analysis_id,
                             key.user_id,
-                        )
-                        failure = Failure(
-                            code="analysis_start_failed",
-                            message=format_exception_diagnostic(exc),
                         )
                     if reserved:
                         await discard_launch(key)
@@ -949,10 +937,7 @@ class AnalysisService:
                 )
                 failed = record.fail(
                     self._clock(),
-                    failure=Failure(
-                        code="progress_invalid",
-                        message=format_exception_diagnostic(exc),
-                    ),
+                    failure=failure_from_exception(exc, code="progress_invalid"),
                     progress=self._current_progress(key.workspace_id, record),
                 )
                 lease.workspace.replace_analysis(failed)
@@ -1150,9 +1135,8 @@ class AnalysisService:
                     )
                     terminal = record.fail(
                         self._clock(),
-                        failure=Failure(
-                            code="analysis_execution_failed",
-                            message=format_exception_diagnostic(exc),
+                        failure=failure_from_exception(
+                            exc, code="analysis_execution_failed"
                         ),
                         progress=progress,
                     )
@@ -1177,6 +1161,7 @@ class AnalysisService:
         *,
         message: str,
         code: str = "analysis_execution_failed",
+        diagnostic: str | None = None,
     ) -> None:
         """Persist one isolated failure when execution cannot complete."""
 
@@ -1195,7 +1180,7 @@ class AnalysisService:
             progress = self._current_progress(key.workspace_id, record)
             failed = record.fail(
                 self._clock(),
-                failure=Failure(code=code, message=message),
+                failure=Failure(code=code, message=message, diagnostic=diagnostic),
                 progress=progress,
             )
             lease.workspace.replace_analysis(failed)

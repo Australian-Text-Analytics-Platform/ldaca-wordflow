@@ -7,6 +7,7 @@ from typing import cast
 
 import pytest
 
+from ldaca_wordflow.domain.annotation import provider_failure_message
 from ldaca_wordflow.infrastructure.providers.annotation_ai import AnnotationAiError
 from ldaca_wordflow.models.annotations import AnnotationModelsRequest
 from ldaca_wordflow.services.annotations import AnnotationService
@@ -62,6 +63,8 @@ async def test_model_discovery_maps_each_provider_category_to_diagnostic_502(
 
     assert exc_info.value.status_code == 502
     assert exc_info.value.code == code
-    assert exc_info.value.message == "private SDK body https://secret.invalid"
+    # Plain words for users; the SDK text stays in the cause (issue 205).
+    assert exc_info.value.message == provider_failure_message(code, "openai")
+    assert str(exc_info.value.__cause__) == "private SDK body https://secret.invalid"
     assert exc_info.value.provider == "openai"
     assert exc_info.value.model is None

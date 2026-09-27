@@ -155,7 +155,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     clearResults,
     stopTask,
     banner: topicWaitingBanner,
-    analysisError,
+    analysisFailure,
     result,
     isResultFetching,
     isResultPlaceholderData,
@@ -506,7 +506,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         <TopicModelingResultsPanel
           topicWaitingBanner={topicWaitingBanner}
           runningTask={topicRunningTask}
-          error={error ?? analysisError}
+          error={error ?? analysisFailure}
           result={result}
           topics={topics}
           exportTopics={exportTopics}

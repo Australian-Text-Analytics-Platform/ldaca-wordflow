@@ -15,7 +15,8 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import ValidationError
 
 from ..models.analysis_results import AnalysisWorkerFailure
-from ..shared.errors import AppError, format_exception_diagnostic
+from ..shared.errors import AppError
+from .failures import failure_from_exception
 from .analyses import AnalysisService
 from .analysis_execution_types import (
     AnalysisExecutionControl,
@@ -173,25 +174,32 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
             ):
                 await self._run_admitted(item, service)
         except AppError as exc:
-            await service.fail_execution(
-                item.key,
-                code=exc.code,
-                message=(
-                    format_exception_diagnostic(exc)
-                    if exc.status_code >= 500
-                    else exc.message
-                ),
-            )
+            await self._fail(service, item, exc, code=exc.code)
         except Exception as exc:
             logger.exception(
                 "Analysis admission failed analysis_id=%s user_id=%s",
                 item.key.analysis_id,
                 item.key.user_id,
             )
-            await service.fail_execution(
-                item.key,
-                message=format_exception_diagnostic(exc),
-            )
+            await self._fail(service, item, exc, code="analysis_execution_failed")
+
+    async def _fail(
+        self,
+        service: AnalysisService,
+        item: ScheduledAnalysis,
+        exc: BaseException,
+        *,
+        code: str,
+    ) -> None:
+        """Record a plain message, keeping the diagnostic for Details (issue 205)."""
+
+        failure = failure_from_exception(exc, code=code)
+        await service.fail_execution(
+            item.key,
+            code=failure.code,
+            message=failure.message,
+            diagnostic=failure.diagnostic,
+        )
 
     async def _run_admitted(
         self,
@@ -235,33 +243,21 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
                 item.key.analysis_id,
                 item.key.user_id,
             )
-            await service.fail_execution(
-                item.key,
-                code="analysis_start_failed",
-                message=format_exception_diagnostic(exc),
-            )
+            await self._fail(service, item, exc, code="analysis_start_failed")
         except SupervisedProcessError as exc:
             logger.exception(
                 "Analysis process failed analysis_id=%s user_id=%s",
                 item.key.analysis_id,
                 item.key.user_id,
             )
-            # A written message reaches users as is; anything else keeps the
-            # "Type: text" diagnostic, which the UI shows under Details.
-            await service.fail_execution(
-                item.key,
-                message=exc.user_message or format_exception_diagnostic(exc),
-            )
+            await self._fail(service, item, exc, code="analysis_execution_failed")
         except Exception as exc:
             logger.exception(
                 "Analysis execution failed analysis_id=%s user_id=%s",
                 item.key.analysis_id,
                 item.key.user_id,
             )
-            await service.fail_execution(
-                item.key,
-                message=format_exception_diagnostic(exc),
-            )
+            await self._fail(service, item, exc, code="analysis_execution_failed")
         else:
             result_mapping = (
                 cast(dict[str, object], result)
@@ -278,15 +274,13 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
                         item.key.analysis_id,
                         item.key.user_id,
                     )
-                    await service.fail_execution(
-                        item.key,
-                        message=format_exception_diagnostic(exc),
-                    )
+                    await self._fail(service, item, exc, code="analysis_execution_failed")
                 else:
                     await service.fail_execution(
                         item.key,
                         code=failure.failure.code,
                         message=failure.failure.message,
+                        diagnostic=failure.failure.diagnostic,
                     )
             else:
                 await service.complete_execution(item.key, result)

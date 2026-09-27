@@ -43,4 +43,20 @@ describe('errorPresentation (issue 205)', () => {
       technical: 'RuntimeError: boom\nReference: r-1',
     });
   });
+
+  it('reads a stored failure with its diagnostic', () => {
+    expect(
+      presentError(
+        {
+          code: 'annotation_provider_authentication_failed',
+          message: 'OpenAI rejected the API key. Check it in Settings.',
+          diagnostic: 'AuthenticationError: Error code: 401',
+        },
+        'x',
+      ),
+    ).toEqual({
+      message: 'OpenAI rejected the API key. Check it in Settings.',
+      technical: 'AuthenticationError: Error code: 401',
+    });
+  });
 });

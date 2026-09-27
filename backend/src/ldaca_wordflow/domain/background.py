@@ -48,12 +48,15 @@ class Progress(BaseModel):
 
 
 class Failure(BaseModel):
-    """Durable terminal failure containing a complete backend diagnostic."""
+    """Durable terminal failure: a message for users and, when the failure
+    was not written for them, the backend diagnostic for Details (issue 205).
+    """
 
     model_config = ConfigDict(extra="forbid", strict=True)
 
     code: str = Field(pattern=r"^[a-z][a-z0-9_]*$", max_length=100)
     message: DiagnosticText
+    diagnostic: DiagnosticText | None = None
 
 
 __all__ = ["BackgroundState", "DiagnosticText", "Failure", "Progress"]

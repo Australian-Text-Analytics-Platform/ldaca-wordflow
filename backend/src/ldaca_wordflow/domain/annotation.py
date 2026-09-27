@@ -34,6 +34,54 @@ AnnotationProviderFailureCode = Literal[
     "annotation_provider_failed",
 ]
 
+_PROVIDER_NAMES: dict[str, str] = {
+    "openai": "OpenAI",
+    "openrouter": "OpenRouter",
+    "anthropic": "Anthropic",
+    "google": "Google",
+}
+
+
+def provider_failure_message(code: str, provider: str | None) -> str:
+    """A plain sentence, with what to do, for one provider failure (issue 205).
+
+    The provider's own text stays in the diagnostic, shown under Details.
+    """
+
+    name = _PROVIDER_NAMES.get(provider or "", "The AI provider")
+    messages = {
+        "annotation_provider_authentication_failed": (
+            f"{name} rejected the API key. Check it in Settings."
+        ),
+        "annotation_provider_access_denied": (
+            f"{name} refused access to this model. Check that your account can "
+            "use it, or choose another model."
+        ),
+        "annotation_provider_rate_limited": (
+            f"{name} is receiving too many requests. Wait a minute and try "
+            "again, or send fewer rows at a time."
+        ),
+        "annotation_provider_request_rejected": (
+            f"{name} rejected the request. Check the model and settings, then "
+            "try again."
+        ),
+        "annotation_provider_unavailable": (
+            f"{name} is not responding. Check your internet connection or the "
+            "provider's status, then try again."
+        ),
+        "annotation_provider_context_limit": (
+            "The text is too long for this model. Choose a model that takes "
+            "longer texts, use fewer examples, or annotate shorter texts."
+        ),
+        "annotation_provider_invalid_response": (
+            f"{name} returned an answer Wordflow couldn't read. Try again, or "
+            "choose another model."
+        ),
+    }
+    fallback_target = _PROVIDER_NAMES.get(provider or "", "the AI provider")
+    return messages.get(code, f"The request to {fallback_target} failed. Try again.")
+
+
 AnnotationExampleSamplingMethod = Literal["random", "first_n", "last_n"]
 
 AnnotationClassName = Annotated[
@@ -97,6 +145,7 @@ __all__ = [
     "AnnotationExampleSamplingMethod",
     "AnnotationProvider",
     "AnnotationProviderFailureCode",
+    "provider_failure_message",
     "AnnotationProviderSnapshot",
     "normalize_annotation_provider_base_url",
 ]

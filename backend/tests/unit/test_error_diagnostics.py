@@ -84,3 +84,35 @@ def test_validation_message_names_the_field_in_plain_words() -> None:
         == "Number of topics: must be between 2 and 200. Seed: x."
     )
     assert validation_message([]) == "Some settings are not valid. Check them and try again."
+
+
+def test_failure_from_exception_keeps_written_messages_and_diagnostics() -> None:
+    """Issue 205: users read plain words; Details keep the diagnostic."""
+
+    from ldaca_wordflow.services.failures import failure_from_exception
+    from ldaca_wordflow.shared.errors import (
+        UNEXPECTED_ERROR_MESSAGE,
+        InvalidInputError,
+    )
+
+    written = failure_from_exception(InvalidInputError("Choose a text column."), code="x")
+    assert (written.code, written.message, written.diagnostic) == (
+        "invalid_input",
+        "Choose a text column.",
+        None,
+    )
+    unexpected = failure_from_exception(KeyError("tokens"), code="analysis_execution_failed")
+    assert unexpected.message == UNEXPECTED_ERROR_MESSAGE
+    assert unexpected.diagnostic == "KeyError: 'tokens'"
+
+
+def test_provider_failure_messages_say_what_to_do() -> None:
+    from ldaca_wordflow.domain.annotation import provider_failure_message
+
+    assert (
+        provider_failure_message("annotation_provider_authentication_failed", "anthropic")
+        == "Anthropic rejected the API key. Check it in Settings."
+    )
+    assert provider_failure_message("annotation_provider_failed", "custom") == (
+        "The request to the AI provider failed. Try again."
+    )

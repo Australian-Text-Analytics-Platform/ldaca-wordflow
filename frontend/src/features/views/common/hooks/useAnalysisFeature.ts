@@ -61,6 +61,8 @@ interface UseAnalysisFeatureReturn<TResult, TRequest extends Analysis['request']
   request: TRequest | null;
   analysisState: Analysis['state'] | null;
   analysisError: string | null;
+  /** The stored failure, for ErrorNotice's Details (issue 205). */
+  analysisFailure: Analysis['error'] | null;
   result: TResult | null;
   isResultFetching: boolean;
   isResultPlaceholderData: boolean;
@@ -321,6 +323,7 @@ export function useAnalysisFeature<
     request: hydratedRequest,
     analysisState: analysis?.state ?? null,
     analysisError: analysis?.error?.message ?? null,
+    analysisFailure: analysis?.error ?? null,
     result,
     isResultFetching: session.isResultFetching,
     isResultPlaceholderData: session.isResultPlaceholderData,

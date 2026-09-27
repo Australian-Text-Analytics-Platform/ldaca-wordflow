@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from ..domain.annotation import provider_failure_message
 from ..infrastructure.providers.annotation_ai import (
     AnnotationAiError,
     resolve_provider_adapter,
@@ -42,9 +43,11 @@ class AnnotationService:
                 request.provider_base_url,
             ).list_models(api_key)
         except AnnotationAiError as exc:
+            # A plain sentence for users; the provider's text is the cause,
+            # shown under Details (issue 205).
             raise AnnotationProviderError(
                 exc.code,
-                str(exc),
+                provider_failure_message(exc.code, request.provider),
                 provider=request.provider,
             ) from exc
         return AnnotationModelsResource(

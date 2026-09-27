@@ -68,6 +68,7 @@ import { useAnnotationAiPreview } from './hooks/useAnnotationAiPreview';
 import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescriptions';
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
 import { toastError } from '@/lib/toastError';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 const SOURCE_NODE_CONSTRAINTS: NodeInputConstraints = {
   fieldPredicate: isArrowStringField,
@@ -1283,12 +1284,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           />
         ) : null}
         {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (
-          <div
-            role="alert"
-            className="mt-4 rounded-md border border-error/40 bg-error/5 px-4 py-3 text-body text-error"
-          >
-            {annotationRunAll.error?.message ?? 'Annotation Run failed.'}
-          </div>
+          <ErrorNotice
+            className="mt-4"
+            error={annotationRunAll.error}
+            fallback="The Annotation Run failed. Try again."
+          />
         ) : null}
         {annotationMode === 'manual' && manualReviewSnapshot ? (
           <AnnotationResultsPanel
