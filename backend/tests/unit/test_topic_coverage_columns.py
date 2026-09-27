@@ -452,3 +452,27 @@ def test_exports_write_topic_coverage_readably(source: pl.LazyFrame) -> None:
     )
     assert is_topic_coverage_dtype(parquet.schema[COVERAGE])
     assert b'"topic_id":0' in _export(source, DataBlockExportFormat.JSON)
+
+
+def test_join_suffixes_clashing_columns_with_the_second_data_block_name(
+    source: pl.LazyFrame,
+) -> None:
+    """Issue 205: "party_Topics again", not "party_right"."""
+
+    derived, *_ = node_operations.build_derived_lazyframe(
+        _workspace(source),
+        DERIVATION.validate_python(
+            {
+                "kind": "join",
+                "left_node_id": NODE_ID,
+                "right_node_id": OTHER_ID,
+                "left_on": "id",
+                "right_on": "id",
+                "how": "inner",
+            }
+        ),
+    )
+
+    columns = derived.collect_schema().names()
+    assert "party_Topics again" in columns
+    assert not any(name.endswith("_right") for name in columns)

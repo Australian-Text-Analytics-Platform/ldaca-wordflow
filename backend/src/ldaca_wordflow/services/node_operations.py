@@ -192,8 +192,11 @@ def build_derived_lazyframe(
         right = _node(workspace, request.right_node_id)
         if left.id == right.id:
             raise InvalidInputError("Choose two different Data Blocks to join")
+        # A column name in both gets the second Data Block's name, for example
+        # "speaker_members", rather than "_right" (issue 205).
+        suffix = f"_{right.name}"
         if request.how == "cross":
-            result = left.data.join(right.data, how="cross")
+            result = left.data.join(right.data, how="cross", suffix=suffix)
         else:
             left_on = cast(str, request.left_on)
             right_on = cast(str, request.right_on)
@@ -203,6 +206,7 @@ def build_derived_lazyframe(
                 left_on=left_on,
                 right_on=right_on,
                 how=request.how,
+                suffix=suffix,
             )
         return (
             result,

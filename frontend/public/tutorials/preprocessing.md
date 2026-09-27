@@ -162,6 +162,8 @@ Join type controls how unmatched rows are handled. The first data block you add 
 | Keep matches | Left rows that have a match in the right, without adding any right columns (for example, speeches whose speaker is in a list) |
 | Keep non-matches | Left rows with no match in the right (for example, dropping documents listed in another block) |
 
+When both blocks have a column with the same name, the right block's copy is named after that block, for example `speaker_members` when the right block is `members`.
+
 <h3 id="help-preprocessing-join-node-name">Join output name</h3>
 
 Give the joined output a clear name. Leave it blank to use the auto-generated suggestion. Join is create-only.
