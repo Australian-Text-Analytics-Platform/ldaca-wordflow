@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     on: vi.fn((name: string, handler: (event: unknown) => void) => handlers.set(name, handler)),
     off: vi.fn(),
     setOption: vi.fn(),
+    clear: vi.fn(),
     dispatchAction: vi.fn(),
     containPixel: vi.fn(() => true),
     resize: vi.fn(),
@@ -208,5 +209,27 @@ describe('EChartsView', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Reset zoom' }));
     expect(screen.getByText('Chart zoom reset')).toBeInTheDocument();
+  });
+
+  it('clears the chart before drawing a different set of series (issue 213)', () => {
+    const optionWith = (ids: string[]) => ({ series: ids.map((id) => ({ id, type: 'line' })) });
+    const props = {
+      height: 200,
+      pointCount: 3,
+      dataResetKey: 'result-1',
+      ariaLabel: 'Trends chart',
+    };
+    const { rerender } = render(<EChartsView {...props} option={optionWith(['a', 'b', 'c'])} />);
+    expect(mocks.chart.clear).not.toHaveBeenCalled();
+
+    rerender(<EChartsView {...props} option={optionWith(['a', 'b', 'c'])} />);
+    expect(mocks.chart.clear).not.toHaveBeenCalled();
+
+    rerender(<EChartsView {...props} option={optionWith(['a', 'c'])} />);
+    expect(mocks.chart.clear).toHaveBeenCalledTimes(1);
+    const clearOrder = mocks.chart.clear.mock.invocationCallOrder[0] ?? 0;
+    const lastSetOrder = mocks.chart.setOption.mock.invocationCallOrder.at(-1) ?? 0;
+    expect(clearOrder).toBeLessThan(lastSetOrder);
+    expect(mocks.init).toHaveBeenCalledTimes(1);
   });
 });

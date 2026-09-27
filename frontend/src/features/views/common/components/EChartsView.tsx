@@ -80,6 +80,19 @@ interface EChartsViewProps {
   toolbarStart?: ReactNode;
 }
 
+/** The ids (or names) of an option's series, in order. */
+const seriesSignature = (option: EChartsCoreOption): string => {
+  const series = (option as { series?: unknown }).series;
+  if (!Array.isArray(series)) return '';
+  return series
+    .map((item: unknown) => {
+      const entry = item as { id?: unknown; name?: unknown } | null;
+      const key = entry?.id ?? entry?.name;
+      return typeof key === 'string' || typeof key === 'number' ? String(key) : '';
+    })
+    .join('\u0000');
+};
+
 const FULL_ZOOM: EChartsZoomRange = { start: 0, end: 100 };
 const MIN_ZOOM_SPAN = 5;
 
@@ -141,6 +154,7 @@ function EChartsInstance({
   const nearestPointIndexRef = useRef<number | null>(null);
   const suppressBrushEventRef = useRef(false);
   const zoomRangeRef = useRef<EChartsZoomRange>(FULL_ZOOM);
+  const seriesSignatureRef = useRef<string | null>(null);
   const [selectionMode, setSelectionMode] = useState<'point' | 'range'>('point');
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomRange, setZoomRange] = useState<EChartsZoomRange>(FULL_ZOOM);
@@ -238,6 +252,16 @@ function EChartsInstance({
     const chart = chartRef.current;
     if (!chart) return;
     const currentZoom = zoomRangeRef.current;
+    // When the set of series changes, clear the chart before drawing the new
+    // one (issue 213). The SVG renderer numbers its clip paths by position and
+    // reuses the ids, and WebKit keeps painting a line with the old clip
+    // geometry until something repaints it, so lines vanished and only their
+    // dots showed. Clearing keeps the zoom, which is passed in below.
+    const signature = seriesSignature(option);
+    if (seriesSignatureRef.current !== null && seriesSignatureRef.current !== signature) {
+      chart.clear();
+    }
+    seriesSignatureRef.current = signature;
     chart.setOption(
       {
         ...option,
