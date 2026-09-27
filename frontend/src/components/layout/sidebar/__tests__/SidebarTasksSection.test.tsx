@@ -60,7 +60,7 @@ const rowLabels = () =>
     .map((row) => row.getAttribute('aria-label')?.replace(/^Task: (.*?)\. .*$/, '$1'));
 
 describe('SidebarTasksSection', () => {
-  it('names tasks by tool and tab, showing old "Analysis N" tabs as N (issue 199)', () => {
+  it('names tasks by their tab, showing old default names with the tool prefix (issue 211)', () => {
     renderTasks([
       analysisTask({ task_id: 'a', tab_id: 'freq-tab', finished_at: '2026-01-02T00:00:00Z' }),
       analysisTask({
@@ -72,7 +72,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['Freq - 1', 'Topic - JP vs AUS']);
+    expect(rowLabels()).toEqual(['F-1', 'JP vs AUS']);
   });
 
   it('keeps successful tasks visible until the user clears them', () => {
@@ -81,7 +81,7 @@ describe('SidebarTasksSection', () => {
       analysisTask({ task_id: 'a', tab_id: 'freq-tab', finished_at: '2026-01-01T00:00:00Z' }),
     ]);
     vi.advanceTimersByTime(10_000);
-    expect(screen.getByRole('button', { name: /^Task: Freq - 1/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Task: F-1/ })).toBeInTheDocument();
     vi.useRealTimers();
   });
 
@@ -106,7 +106,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['Conc - 2 · Run', 'Topic - JP vs AUS · Run', 'Freq - 1']);
+    expect(rowLabels()).toEqual(['C-2 · Run', 'JP vs AUS · Run', 'F-1']);
   });
 
   it("combines a tab's successful tasks into one row that lists each step", async () => {
@@ -137,9 +137,9 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['Conc - 2']);
-    await user.click(screen.getByRole('button', { name: /^Task: Conc - 2/ }));
-    const steps = within(screen.getByRole('list', { name: 'Conc - 2 steps' }));
+    expect(rowLabels()).toEqual(['C-2']);
+    await user.click(screen.getByRole('button', { name: /^Task: C-2/ }));
+    const steps = within(screen.getByRole('list', { name: 'C-2 steps' }));
     expect(steps.getAllByRole('listitem').map((item) => item.firstChild?.textContent)).toEqual([
       'Add to Project',
       'Run',
@@ -156,14 +156,14 @@ describe('SidebarTasksSection', () => {
       { onOpenTarget },
     );
 
-    await user.click(screen.getByRole('button', { name: 'Open Freq - 1' }));
+    await user.click(screen.getByRole('button', { name: 'Open F-1' }));
 
     expect(onOpenTarget).toHaveBeenCalledWith({
       kind: 'tab',
       tabKind: 'token_frequency',
       tabId: 'freq-tab',
     });
-    expect(screen.getByRole('button', { name: /^Task: Freq - 1/ })).toHaveAttribute(
+    expect(screen.getByRole('button', { name: /^Task: F-1/ })).toHaveAttribute(
       'aria-expanded',
       'false',
     );
@@ -184,7 +184,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    await user.click(screen.getByRole('button', { name: /^Task: Topic - JP vs AUS · Run/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: JP vs AUS · Run/ }));
 
     expect(screen.getByText(/save failed/i)).toBeInTheDocument();
     expect(screen.queryByText('40%')).not.toBeInTheDocument();
@@ -203,7 +203,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    await user.click(screen.getByRole('button', { name: /^Task: Freq - 1 · Run/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: F-1 · Run/ }));
 
     expect(screen.getByText(/tokenizing documents/i)).toBeInTheDocument();
   });
@@ -223,8 +223,8 @@ describe('SidebarTasksSection', () => {
       analysisTask({ task_id: 'ok', tab_id: 'freq-tab', created_at: '2026-01-01T00:00:00Z' }),
     ]);
 
-    await user.click(screen.getByRole('button', { name: /^Task: Topic - JP vs AUS/ }));
-    await user.click(screen.getByRole('button', { name: /^Task: Freq - 1/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: JP vs AUS/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: F-1/ }));
 
     expect(screen.queryByRole('button', { name: /^stop$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /^clear$/i })).not.toBeInTheDocument();
@@ -250,7 +250,7 @@ describe('SidebarTasksSection', () => {
       { onClearUnavailableAnalysis },
     );
 
-    await user.click(screen.getByRole('button', { name: /^Task: Freq - 1 · Unavailable/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: F-1 · Unavailable/ }));
     await user.click(screen.getByRole('button', { name: /clear results/i }));
 
     expect(onClearUnavailableAnalysis).toHaveBeenCalledWith('workspace-1', 'freq-tab');
@@ -348,9 +348,9 @@ describe('SidebarTasksSection Run All grouping (issue 199)', () => {
       />,
     );
 
-    expect(rowLabels()).toEqual(['Conc - 2 · Run']);
-    await user.click(screen.getByRole('button', { name: /^Task: Conc - 2 · Run/ }));
-    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run Data Blocks' }));
+    expect(rowLabels()).toEqual(['C-2 · Run']);
+    await user.click(screen.getByRole('button', { name: /^Task: C-2 · Run/ }));
+    const blocks = within(screen.getByRole('list', { name: 'C-2 · Run Data Blocks' }));
     expect(blocks.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
       'Q1 JP: cannot cast',
       'Q1 UK',

@@ -54,18 +54,21 @@ Below the tool list, the **Data Blocks** panel shows every Data Block in the act
 The **Tasks** panel sits below data selection and projects background Analyses
 from the active Project together with your retained User File Imports.
 
-- Each analysis task is named after its tool and tab, for example
-  **Freq - 1** or **Topic - JP vs AUS**, and follows the tab when you rename
-  it. New tabs are numbered 1, 2, 3, and so on.
+- Each analysis task has the same name as its tab, for example **F-1** or
+  **JP vs AUS**, and follows the tab when you rename it. New tabs are named
+  with the tool's letter and a number: **F-1** for Frequency, **C-1** for
+  Concordance, **T-1** for Trends, **TM-1** for Topic Modelling, **Q-1** for
+  Quotation and **A-1** for Annotation. Numbering continues from the highest
+  number used.
 - The finished steps of one tab share a row: click the row to see each step
   (**Preview**, **Run**, or **Add to Project**), the Data Blocks it
   used, and when it finished. A step that failed or is still running has its
-  own row, for example **Conc - 2 · Run**.
+  own row, for example **C-2 · Run**.
 - A **Run** with two Data Blocks runs each Data Block separately but shows as
   one task: open it to see how each Data Block went, including the reason if
   one of them failed.
 
-![Tasks panel with the Conc - 1 row expanded](tutorials/assets/ui/tasks_panel.png)
+![Tasks panel with the C-1 row expanded](tutorials/assets/ui/tasks_panel.png)
 
 - Failed and cancelled tasks are listed first, then running ones, then
   finished ones.
@@ -220,7 +223,7 @@ The centre column is the main working area and shows the interface of whichever 
 - In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused; double-click the bar to go back to the default. Each tool remembers its own setting.
 - The main results (tables, lists, and charts) fill the space below the bar, sharing it when there are several, so the bar makes them taller or shorter. To size one result on its own, drag its bottom-right corner, as with the Stop words box; the others share the space that is left. Double-click the corner to let it fill the space again. For example, in Topic Modelling make the bubble chart shorter to give the topic lists more room. Word clouds keep their width-based height until you resize them.
 - Help icons (**?**) are placed next to individual controls and link directly to the relevant written Help section.
-- The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open Project, for example **Frequency: 1**: type to filter them, and choose one to open it.
+- The arrows at the top of the window go back and forward between the tools you have visited. The search box beside them (**Open quick access**) lists the analysis tabs of the open Project, for example **Frequency: F-1**: type to filter them, and choose one to open it.
 
 ![Quick access list of analysis tabs](tutorials/assets/ui/quick_access.png)
 

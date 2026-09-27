@@ -36,7 +36,7 @@ export const buildStopWordListSources = (
       return [
         {
           tabId: tab.id,
-          label: `${STOP_WORD_TOOL_LABELS[settings.kind]} · ${displayTabTitle(tab.name)}`,
+          label: `${STOP_WORD_TOOL_LABELS[settings.kind]} · ${displayTabTitle(tab.name, settings.kind)}`,
           words,
         },
       ];

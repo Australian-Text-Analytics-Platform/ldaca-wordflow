@@ -125,7 +125,8 @@ export function buildTaskRows(
     const kind = tab?.kind ?? kindFromRequest(task.request_kind ?? task.task_type);
     const tool = kind ? analysisNavigationForKind(kind).shortLabel : 'Analysis';
     return {
-      name: tab ? `${tool} - ${displayTabTitle(tab.name)}` : tool,
+      // The tab's own name, as on the tab (issue 211): F-1, or a renamed tab's name.
+      name: tab ? displayTabTitle(tab.name, tab.kind) : tool,
       target: kind ? ({ kind: 'tab', tabKind: kind, tabId: task.tab_id } as const) : null,
     };
   };

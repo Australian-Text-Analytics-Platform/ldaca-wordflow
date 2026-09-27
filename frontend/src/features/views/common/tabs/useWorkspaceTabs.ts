@@ -274,9 +274,15 @@ export function useWorkspaceTabs(
     async (title?: string): Promise<Tab | null> => {
       if (!workspaceId || isCreating || creatingRef.current) return null;
       creatingRef.current = true;
-      return await createServerTabAsync(title ?? nextTabTitle(serverTabs.map((tab) => tab.name)));
+      return await createServerTabAsync(
+        title ??
+          nextTabTitle(
+            serverTabs.map((tab) => tab.name),
+            kind,
+          ),
+      );
     },
-    [createServerTabAsync, isCreating, serverTabs, workspaceId],
+    [createServerTabAsync, isCreating, kind, serverTabs, workspaceId],
   );
 
   const closeMutation = useMutation({

@@ -53,7 +53,7 @@ export function tabFromResource(tab: Tab, local?: Partial<AnalysisTab>): Analysi
   }
   return {
     tab_id: tab.id,
-    title: local?.title ?? displayTabTitle(tab.name),
+    title: local?.title ?? displayTabTitle(tab.name, tab.kind),
     kind: tab.kind,
     input_sets: local?.input_sets ?? { [DEFAULT_TAB_INPUT_SET_ID]: [] },
     settings: local?.settings ?? {},
