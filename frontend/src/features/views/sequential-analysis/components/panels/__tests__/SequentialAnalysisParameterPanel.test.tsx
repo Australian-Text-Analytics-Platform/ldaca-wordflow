@@ -10,11 +10,44 @@ vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 vi.mock('@/features/views/common/components/NodeInputsPanel', () => ({
   NodeInputsPanel: () => null,
 }));
+vi.mock('../../UniqueValueCount', () => ({ UniqueValueCount: () => null }));
 
 window.HTMLElement.prototype.hasPointerCapture = vi.fn();
 window.HTMLElement.prototype.setPointerCapture = vi.fn();
 window.HTMLElement.prototype.releasePointerCapture = vi.fn();
 window.HTMLElement.prototype.scrollIntoView = vi.fn();
+
+const renderPanel = (groupByColumns: string[]) =>
+  render(
+    <SequentialAnalysisParameterPanel
+      nodeInputs={{} as UseTabNodeInputsResult}
+      onColumnChange={vi.fn()}
+      derivedColumnType="numeric"
+      inputsDisabled={false}
+      activeNodeId="node-1"
+      selectedNodeId="node-1"
+      currentWorkspaceId="workspace-1"
+      frequency="daily"
+      onFrequencyChange={vi.fn()}
+      customIntervalValueInput="1"
+      onCustomIntervalValueChange={vi.fn()}
+      customIntervalUnit="days"
+      onCustomIntervalUnitChange={vi.fn()}
+      numericOriginInput=""
+      onNumericOriginChange={vi.fn()}
+      numericIntervalInput="1"
+      onNumericIntervalChange={vi.fn()}
+      availableColumns={[
+        { name: 'count', typeName: 'Int64', field: new Field('count', new Int64()) },
+        { name: 'score', typeName: 'Float64', field: new Field('score', new Float64()) },
+        { name: 'legacy_text', typeName: 'Utf8', field: new Field('legacy_text', new Utf8()) },
+      ]}
+      groupByColumns={groupByColumns}
+      onAddGroupByColumn={vi.fn()}
+      onRemoveGroupByColumn={vi.fn()}
+      onGroupByColumnChange={vi.fn()}
+    />,
+  );
 
 describe('SequentialAnalysisParameterPanel', () => {
   it('shows plain type names for every column in group-by options (issue 205)', async () => {
@@ -56,5 +89,15 @@ describe('SequentialAnalysisParameterPanel', () => {
     expect(screen.getByRole('option', { name: 'count (whole number)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'score (decimal)' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: 'legacy_text (text)' })).toBeInTheDocument();
+  });
+
+  it('does not offer a column already chosen in another Group By row (issue 212)', async () => {
+    const user = userEvent.setup();
+    renderPanel(['count', '']);
+
+    await user.click(screen.getAllByRole('combobox')[1]!);
+
+    expect(screen.queryByRole('option', { name: 'count (whole number)' })).not.toBeInTheDocument();
+    expect(screen.getByRole('option', { name: 'score (decimal)' })).toBeInTheDocument();
   });
 });

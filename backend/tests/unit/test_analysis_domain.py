@@ -683,3 +683,22 @@ def test_analysis_output_node_ids_are_required_unique_and_strictly_plural() -> N
     duplicate["output_node_ids"] = [first, first]
     with pytest.raises(ValidationError, match="unique"):
         AnalysisRecord.model_validate(duplicate)
+
+
+def test_sequential_request_rejects_a_repeated_group_by_column() -> None:
+    """A repeated Group By column is a plain validation error (issue 212)."""
+
+    from ldaca_wordflow.domain.workspace import SequentialAnalysisRequest
+
+    with pytest.raises(ValidationError, match="choose each column only once"):
+        SequentialAnalysisRequest(
+            node_id=uuid.uuid4(),
+            time_column="created_at",
+            group_by_columns=["gender", "gender"],
+        )
+    request = SequentialAnalysisRequest(
+        node_id=uuid.uuid4(),
+        time_column="created_at",
+        group_by_columns=["gender", "party"],
+    )
+    assert request.group_by_columns == ["gender", "party"]

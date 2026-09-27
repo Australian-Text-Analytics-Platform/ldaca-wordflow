@@ -292,11 +292,21 @@ export function SequentialAnalysisParameterPanel({
                   <SelectValue placeholder="Select column" />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableColumns.map((col) => (
-                    <SelectItem key={col.name} value={col.name}>
-                      {col.name} ({arrowTypeDisplayName(col.field)})
-                    </SelectItem>
-                  ))}
+                  {/* A column already chosen in another row is not offered
+                      again: Trends cannot group by the same column twice (issue 212). */}
+                  {availableColumns
+                    .filter(
+                      (col) =>
+                        col.name === column ||
+                        !groupByColumns.some(
+                          (chosen, chosenIndex) => chosenIndex !== index && chosen === col.name,
+                        ),
+                    )
+                    .map((col) => (
+                      <SelectItem key={col.name} value={col.name}>
+                        {col.name} ({arrowTypeDisplayName(col.field)})
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
               {column && (

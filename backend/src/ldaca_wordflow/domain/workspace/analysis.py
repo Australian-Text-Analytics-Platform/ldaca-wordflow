@@ -15,6 +15,7 @@ from pydantic import (
     Field,
     SecretStr,
     StringConstraints,
+    field_validator,
     model_validator,
 )
 
@@ -220,6 +221,14 @@ class SequentialAnalysisRequest(_StrictModel):
     custom_interval_unit: (
         Literal["seconds", "minutes", "hours", "days", "weeks"] | None
     ) = None
+
+    @field_validator("group_by_columns")
+    @classmethod
+    def validate_unique_group_by(cls, columns: list[str]) -> list[str]:
+        # A repeated column makes Polars fail with DuplicateError (issue 212).
+        if len(set(columns)) != len(columns):
+            raise ValueError("choose each column only once")
+        return columns
 
     @model_validator(mode="after")
     def validate_interval(self) -> SequentialAnalysisRequest:
