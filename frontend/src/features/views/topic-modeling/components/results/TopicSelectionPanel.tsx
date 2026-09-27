@@ -51,34 +51,43 @@ export function TopicSelectionPanel({
 
   const selectedTopics = sortedTopics.filter((t) => selectedTopicIds.has(t.id));
 
+  // Both lists share one frame that fills the results pane, so neither is
+  // squeezed while the other has room (issue 196).
   return (
-    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-      {/* Left column: selected topics */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <h4 className="text-body font-medium text-foreground">
-            Selected Topics ({selectedTopics.length})
-          </h4>
-          {selectedTopics.length > 0 && (
-            <button
-              type="button"
-              onClick={onClearSelection}
-              className="text-label-secondary text-description hover:text-foreground"
-            >
-              Clear all
-            </button>
+    <ResultFrame storageKey="topic-modeling.topic-lists" minHeight={240}>
+      {(height) => (
+        <div
+          className={cn(
+            'grid grid-cols-1 gap-4 md:grid-cols-2',
+            height !== null && 'h-full grid-rows-2 md:grid-rows-1',
           )}
-        </div>
-        {selectedTopics.length === 0 ? (
-          <p className="text-label-secondary text-description italic">
-            Click topics in the chart or list to prioritize them in the chart export.
-          </p>
-        ) : (
-          <ResultFrame storageKey="topic-modeling.selected-topics" fitContent minHeight={120}>
-            {(height) => (
+        >
+          {/* Left column: selected topics */}
+          <div className="flex min-h-0 flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <h4 className="text-body font-medium text-foreground">
+                Selected Topics ({selectedTopics.length})
+              </h4>
+              {selectedTopics.length > 0 && (
+                <button
+                  type="button"
+                  onClick={onClearSelection}
+                  className="text-label-secondary text-description hover:text-foreground"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
+            {selectedTopics.length === 0 ? (
+              <p className="text-label-secondary text-description italic">
+                Click topics in the chart or list to prioritize them in the chart export.
+              </p>
+            ) : (
               <div
-                data-result-frame-scroll
-                className={cn('space-y-1 overflow-y-auto', height !== null ? 'h-full' : 'max-h-80')}
+                className={cn(
+                  'space-y-1 overflow-y-auto',
+                  height !== null ? 'min-h-0 flex-1' : 'max-h-80',
+                )}
               >
                 {selectedTopics.map((topic) => {
                   const isHovered = hoveredTopicId === topic.id;
@@ -119,36 +128,34 @@ export function TopicSelectionPanel({
                 })}
               </div>
             )}
-          </ResultFrame>
-        )}
-      </div>
+          </div>
 
-      {/* Right column: all topics (filtered) */}
-      <div className="space-y-2">
-        <h4 className="text-body font-medium text-foreground">
-          All Topics (
-          {hasLassoFilter
-            ? `${String(filteredTopics.length)} of ${String(topics.length)}`
-            : filteredTopics.length}
-          )
-        </h4>
-        <div className="relative">
-          <Search className="pointer-events-none absolute top-2 left-2.5 h-3.5 w-3.5 text-description" />
-          <input
-            type="text"
-            value={topicSearchQuery}
-            onChange={(e) => {
-              onTopicSearchQueryChange(e.target.value);
-            }}
-            placeholder="Search representative words…"
-            className="h-8 w-full rounded-md border border-input-border bg-editor pl-8 pr-3 text-label-secondary placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
-          />
-        </div>
-        <ResultFrame storageKey="topic-modeling.all-topics" fitContent minHeight={120}>
-          {(height) => (
+          {/* Right column: all topics (filtered) */}
+          <div className="flex min-h-0 flex-col gap-2">
+            <h4 className="text-body font-medium text-foreground">
+              All Topics (
+              {hasLassoFilter
+                ? `${String(filteredTopics.length)} of ${String(topics.length)}`
+                : filteredTopics.length}
+              )
+            </h4>
+            <div className="relative">
+              <Search className="pointer-events-none absolute top-2 left-2.5 h-3.5 w-3.5 text-description" />
+              <input
+                type="text"
+                value={topicSearchQuery}
+                onChange={(e) => {
+                  onTopicSearchQueryChange(e.target.value);
+                }}
+                placeholder="Search representative words…"
+                className="h-8 w-full rounded-md border border-input-border bg-editor pl-8 pr-3 text-label-secondary placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
+              />
+            </div>
             <div
-              data-result-frame-scroll
-              className={cn('space-y-1 overflow-y-auto', height !== null ? 'h-full' : 'max-h-70')}
+              className={cn(
+                'space-y-1 overflow-y-auto',
+                height !== null ? 'min-h-0 flex-1' : 'max-h-70',
+              )}
             >
               {filteredTopics.map((topic) => {
                 const isSelected = selectedTopicIds.has(topic.id);
@@ -205,9 +212,9 @@ export function TopicSelectionPanel({
                 </p>
               )}
             </div>
-          )}
-        </ResultFrame>
-      </div>
-    </div>
+          </div>
+        </div>
+      )}
+    </ResultFrame>
   );
 }
