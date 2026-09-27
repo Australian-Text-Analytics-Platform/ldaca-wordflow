@@ -423,7 +423,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
           randomSeed: mode === 'random_sample' ? randomSeedValue : undefined,
         },
       });
-      toast.success(`Created ${responseName}.`);
+      toast.success(`Added ${responseName} to the Project.`);
     } catch (error) {
       const operationLabel = mode === 'slice' ? 'Slice' : 'Random sample';
       const message = error instanceof Error ? error.message : `${operationLabel} operation failed`;

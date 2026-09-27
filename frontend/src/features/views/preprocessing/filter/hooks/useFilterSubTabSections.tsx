@@ -573,7 +573,7 @@ export const useFilterSubTabSections = (
     try {
       setIsFiltering(true);
       const created: unknown = await filterNode(selectedNodeId, request);
-      toast.success(`Created ${createdBlockName(created, requestName)}.`);
+      toast.success(`Added ${createdBlockName(created, requestName)} to the Project.`);
     } catch (error) {
       onAlert("Couldn't create the Data Block.", error);
     } finally {

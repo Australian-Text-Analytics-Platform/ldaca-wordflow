@@ -7,7 +7,7 @@
 // Older backends said "workspace"; the UI term is now "project" (issue 132).
 const isInvalidNameMessage = (message: string): boolean => {
   const lower = message.toLowerCase();
-  return lower.includes('invalid Project name') || lower.includes('invalid workspace name');
+  return lower.includes('invalid project name') || lower.includes('invalid workspace name');
 };
 
 export const getInvalidWorkspaceNameMessage = (error: unknown): string | null => {

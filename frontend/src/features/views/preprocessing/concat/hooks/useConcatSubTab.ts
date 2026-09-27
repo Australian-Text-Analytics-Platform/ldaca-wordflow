@@ -404,7 +404,7 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
     try {
       setIsConcatenating(true);
       const created: unknown = await concatNodes(nodeIds, requestedName, deduplicate);
-      toast.success(`Created ${createdBlockName(created, requestedName)}.`);
+      toast.success(`Added ${createdBlockName(created, requestedName)} to the Project.`);
     } catch (error) {
       onAlert("Couldn't create the Data Block.", error);
     } finally {

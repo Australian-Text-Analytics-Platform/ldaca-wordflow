@@ -457,7 +457,7 @@ export const useJoinSubTab = (props: JoinSubTabProps): UseJoinSubTabResult => {
         rightColumns,
         requestedName,
       );
-      toast.success(`Created ${createdBlockName(created, requestedName)}.`);
+      toast.success(`Added ${createdBlockName(created, requestedName)} to the Project.`);
     } catch (error) {
       onAlert("Couldn't create the Data Block.", error);
     } finally {
