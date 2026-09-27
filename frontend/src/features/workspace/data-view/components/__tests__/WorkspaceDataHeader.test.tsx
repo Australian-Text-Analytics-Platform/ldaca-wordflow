@@ -5,7 +5,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { WorkspaceDataHeader } from '../WorkspaceDataHeader';
 
 describe('WorkspaceDataHeader', () => {
-  it('shows the data-view help control', () => {
+  it('leaves the title and renaming to the tab strip (issue 206)', () => {
     render(
       <TooltipProvider>
         <WorkspaceDataHeader
@@ -21,33 +21,11 @@ describe('WorkspaceDataHeader', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByRole('button', { name: 'Data Editor' })).toBeInTheDocument();
-  });
-
-  it('keeps the selected node name in a leading-fade single-line wrapper', () => {
-    const longName = 'reddit/reddit_comments_topic_sampled_fr_0_1_rs_0_topic_meanings';
-
-    render(
-      <TooltipProvider>
-        <WorkspaceDataHeader
-          info={{
-            nodeLabel: longName,
-            tabPosition: 1,
-            totalTabs: 1,
-            isEmptyTable: false,
-            canUndo: false,
-            canRedo: false,
-          }}
-          onRename={vi.fn()}
-        />
-      </TooltipProvider>,
-    );
-
-    const nodeName = screen.getByText(longName);
-    expect(nodeName).toBeInTheDocument();
-    expect(screen.getByTestId('workspace-data-node-label')).toHaveClass('overflow-hidden');
-    expect(screen.getByTestId('workspace-data-node-label-fade')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rename node' })).toBeInTheDocument();
+    expect(screen.queryByText('Data Editor')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('sample_data/ADO/qldelection2020_candidate_tweets_conc'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /rename/i })).not.toBeInTheDocument();
   });
 
   it('drives Undo and Redo disabled state solely from backend flags', () => {

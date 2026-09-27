@@ -110,7 +110,6 @@ export function WorkspaceDataTableFeature(_props: WorkspaceDataTableFeatureProps
       <div className="flex min-h-0 flex-1 flex-col">
         <WorkspaceDataHeader
           info={header}
-          onRename={nodeActions.onRename}
           onUndo={nodeActions.onUndo}
           onRedo={nodeActions.onRedo}
           onDeleteColumns={nodeActions.onDeleteColumns}

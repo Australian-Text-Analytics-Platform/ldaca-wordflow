@@ -122,19 +122,22 @@ describe('EditorTabs', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Analysis 1');
   });
 
-  it('renames the active tab when it is clicked again', async () => {
+  it('renames the active tab on double-click, not on a single click (issue 206)', async () => {
     const user = userEvent.setup();
     const { onRename } = renderTabs();
     const first = screen.getAllByRole('tab')[0]!;
 
     fireEvent.pointerDown(first, { button: 0, pointerId: 1, clientX: 0 });
     fireEvent.pointerUp(first, { pointerId: 1, clientX: 0 });
+    expect(screen.queryByRole('textbox', { name: /rename tab/i })).not.toBeInTheDocument();
 
+    fireEvent.doubleClick(first);
     const input = screen.getByRole('textbox', { name: /rename tab/i });
     await user.clear(input);
-    await user.type(input, 'Renamed{Enter}');
+    // Spaces used to be swallowed by the tab's own key handling.
+    await user.type(input, 'JP vs AUS{Enter}');
 
-    expect(onRename).toHaveBeenCalledWith('tab-1', 'Renamed');
+    expect(onRename).toHaveBeenCalledWith('tab-1', 'JP vs AUS');
   });
 
   it('keeps the active close action visible and reveals inactive actions on interaction', () => {

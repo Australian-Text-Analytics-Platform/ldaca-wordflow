@@ -74,7 +74,7 @@ const tutorial = {
   'ui.change-project': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-change-project',
-    label: 'Change Project',
+    label: 'Switch Project',
   },
   'ui.data-editor.column-tools': {
     file: 'tutorials/ui.md',

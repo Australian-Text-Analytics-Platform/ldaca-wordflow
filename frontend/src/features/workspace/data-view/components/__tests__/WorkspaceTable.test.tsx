@@ -51,7 +51,7 @@ describe('WorkspaceTable', () => {
 
     expect(
       screen.getByRole('button', { name: 'Change data type for column representative_words' }),
-    ).toHaveTextContent('LargeList<Utf8View>');
+    ).toHaveAttribute('aria-description', 'LargeList<Utf8View>');
     expect(screen.queryByText('string-list')).not.toBeInTheDocument();
   });
 
@@ -83,24 +83,31 @@ describe('WorkspaceTable', () => {
 
     expect(
       screen.getByRole('button', { name: 'Change data type for column text' }),
-    ).toHaveTextContent('text');
+    ).toHaveAttribute('aria-description', 'Text');
     expect(
       screen.getByRole('button', { name: 'Change data type for column category' }),
-    ).toHaveTextContent('categorical');
+    ).toHaveAttribute('aria-description', 'Categorical');
     expect(
       screen.getByRole('button', { name: 'Change data type for column count' }),
-    ).toHaveTextContent('integer');
+    ).toHaveAttribute('aria-description', 'Whole number');
+    // Issue 206: the button shows a short symbol; the full name is in its tooltip and menu.
+    expect(
+      screen.getByRole('button', { name: 'Change data type for column count' }),
+    ).toHaveTextContent(/^123$/);
+    expect(
+      screen.getByRole('button', { name: 'Change data type for column text' }),
+    ).toHaveTextContent(/^Aa$/);
     expect(
       screen.getByRole('button', { name: 'Change data type for column score' }),
-    ).toHaveTextContent('decimal');
+    ).toHaveAttribute('aria-description', 'Decimal');
     expect(
       screen.getByRole('button', { name: 'Change data type for column created_at' }),
-    ).toHaveTextContent('datetime');
+    ).toHaveAttribute('aria-description', 'Date and time');
 
     await user.click(screen.getByRole('button', { name: 'Change data type for column category' }));
 
     expect(
-      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'categorical' }),
+      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'Categorical' }),
     ).toHaveLength(1);
   });
 

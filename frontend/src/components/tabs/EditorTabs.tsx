@@ -291,8 +291,9 @@ export function EditorTabs({
     }
 
     dragRef.current = null;
-    if (tab.id === activeTabId && onRename) beginRename(tab);
-    else onActivate(tab.id);
+    // A click activates; renaming takes a double-click on the active tab
+    // (issue 206), so a stray click on the current tab never starts it.
+    if (tab.id !== activeTabId) onActivate(tab.id);
   };
 
   const handleRenameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
@@ -301,6 +302,9 @@ export function EditorTabs({
   };
 
   const handleTabKeyDown = (tab: EditorTabItem, event: KeyboardEvent<HTMLDivElement>) => {
+    // Keys typed in the rename box bubble here; leave them to the input so
+    // spaces and the arrow, Home, and End keys edit the name.
+    if (event.target !== event.currentTarget) return;
     const currentIndex = orderIds.indexOf(tab.id);
     let targetIndex: number | null = null;
 
@@ -376,6 +380,9 @@ export function EditorTabs({
                       onPointerMove={handlePointerMove}
                       onPointerUp={(event) => {
                         handlePointerUp(tab, event);
+                      }}
+                      onDoubleClick={() => {
+                        if (onRename && id === activeTabId && !isRenaming) beginRename(tab);
                       }}
                       style={{
                         width: widths[index],

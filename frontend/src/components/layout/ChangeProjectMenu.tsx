@@ -93,7 +93,7 @@ export function ChangeProjectMenu() {
             disabled={switching}
           >
             <ArrowLeftRight className="h-3.5 w-3.5" aria-hidden="true" />
-            {switching ? 'Switching…' : 'Change Project'}
+            {switching ? 'Switching…' : 'Switch Project'}
             <ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>

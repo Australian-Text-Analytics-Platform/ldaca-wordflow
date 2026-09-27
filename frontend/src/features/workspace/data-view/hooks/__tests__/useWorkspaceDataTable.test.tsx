@@ -250,7 +250,7 @@ describe('useWorkspaceDataTable', () => {
     const [message, options] = toastWarningMock.mock.calls[0]!;
     // Even a tiny share is reported: a few typos should not go unnoticed.
     expect(message).toBe(
-      '2 of 10,000 values in "count" (1%) could not be converted to integer and are now empty.',
+      '2 of 10,000 values in "count" (1%) could not be converted to whole number and are now empty.',
     );
     expect(options.description).toMatch(
       /^The first is row 5,000 \(page \d+\): "5OO"\. Undo restores them\.$/,

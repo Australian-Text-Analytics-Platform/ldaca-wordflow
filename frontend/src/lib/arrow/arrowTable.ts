@@ -16,10 +16,12 @@ const ARROW_EXTENSION_NAME = 'ARROW:extension:name';
 const COMMON_ARROW_TYPE_DISPLAY_NAMES = new Map<string, string>([
   ['Utf8View', 'text'],
   ['Dictionary<Uint32, Utf8View>', 'categorical'],
-  ['Int64', 'integer'],
+  // Plain words rather than "integer" and "datetime" (issue 206).
+  ['Int64', 'whole number'],
   ['Float64', 'decimal'],
-  ['Timestamp<MICROSECOND, UTC>', 'datetime'],
+  ['Timestamp<MICROSECOND, UTC>', 'date and time'],
   ['Date32<DAY>', 'date'],
+  ['Bool', 'true / false'],
 ]);
 
 /** Every concrete Arrow type supplies its native schema spelling via `toString`. */
@@ -99,6 +101,13 @@ export const isArrowFloatField = (field: ArrowField): boolean =>
 export const isArrowDateField = (field: ArrowField): boolean => DataType.isDate(field.type);
 
 export const isArrowBooleanField = (field: ArrowField): boolean => DataType.isBool(field.type);
+
+/** A date with a time of day (Arrow Timestamp). */
+export const isArrowTimestampField = (field: ArrowField): boolean =>
+  DataType.isTimestamp(field.type);
+
+export const isArrowListField = (field: ArrowField): boolean =>
+  arrowListChild(field.type) !== undefined;
 
 export const isArrowTemporalField = (field: ArrowField): boolean =>
   DataType.isDate(field.type) ||

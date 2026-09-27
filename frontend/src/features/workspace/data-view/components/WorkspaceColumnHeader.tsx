@@ -22,8 +22,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { ArrowField } from '@/lib/arrow/arrowTable';
 
 import { isColumnCastType, type ColumnCastType } from '../services/schemaMutations';
+import { ColumnTypeSymbol } from './ColumnTypeSymbol';
 import { RenameInput } from './RenameInput';
 import type { WorkspaceTableColumn } from './workspaceTableFeatures';
 import type { DataEditorTool } from '../dataEditorToolStore';
@@ -46,6 +49,8 @@ export interface WorkspaceColumnHeaderProps {
 
   // Mutation state
   currentType: string;
+  /** The column's decoded field, which picks the type button's symbol. */
+  field?: ArrowField;
   displayLabel: string;
   availableTypes: DataTypeOption[];
   isColumnBusy: boolean;
@@ -92,6 +97,9 @@ const TOPIC_COVERAGE_TOOLS = COLUMN_TOOLS.filter((item) => item.tool === 'duplic
 const TOPIC_COVERAGE_SORT_REASON = "Topic coverage columns can't be sorted yet.";
 const TOPIC_COVERAGE_TYPE_REASON = "Topic coverage columns can't change type yet.";
 
+/** "whole number" reads as "Whole number" when it stands alone. */
+const typeName = (label: string): string => label.charAt(0).toUpperCase() + label.slice(1);
+
 /**
  * Renders one server-backed table column header with identity-preserving cast,
  * rename, and delete controls.
@@ -100,6 +108,7 @@ export function WorkspaceColumnHeader({
   column,
   colInst,
   currentType,
+  field,
   displayLabel,
   availableTypes,
   isColumnBusy,
@@ -122,6 +131,28 @@ export function WorkspaceColumnHeader({
 }: WorkspaceColumnHeaderProps) {
   const openedToolRef = useRef(false);
   const isPinnedStart = colInst.getIsPinned() === 'start';
+
+  const typeButton = (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      disabled={isColumnBusy || !canCast || isTopicCoverage}
+      className={cn(
+        'h-7 w-fit shrink-0 gap-0.5 px-1 text-label-secondary font-medium',
+        isColumnBusy && 'cursor-progress opacity-80',
+      )}
+      aria-label={`Change data type for column ${column}`}
+      aria-description={typeName(displayLabel)}
+    >
+      <ColumnTypeSymbol field={field} />
+      {isColumnBusy ? (
+        <Loader2 className="h-3 w-3 animate-spin text-description" />
+      ) : (
+        <ChevronDown className="h-3 w-3 text-description" />
+      )}
+    </Button>
+  );
 
   return (
     <div className="flex min-w-0 items-center gap-1">
@@ -182,30 +213,22 @@ export function WorkspaceColumnHeader({
         </button>
       </DisabledReasonTooltip>
 
-      {/* Data type selector */}
+      {/* Data type selector: a symbol, with the full name in the tooltip and menu (issue 206) */}
       <DropdownMenu>
-        <DisabledReasonTooltip reason={isTopicCoverage ? TOPIC_COVERAGE_TYPE_REASON : null}>
-          <DropdownMenuTrigger asChild>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              disabled={isColumnBusy || !canCast || isTopicCoverage}
-              className={cn(
-                'h-7 w-fit justify-between gap-1 px-1.5 text-label-secondary font-medium',
-                isColumnBusy && 'cursor-progress opacity-80',
-              )}
-              aria-label={`Change data type for column ${column}`}
-            >
-              <span className="truncate">{displayLabel}</span>
-              {isColumnBusy ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin text-description" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5 text-description" />
-              )}
-            </Button>
-          </DropdownMenuTrigger>
-        </DisabledReasonTooltip>
+        {isTopicCoverage ? (
+          <DisabledReasonTooltip reason={TOPIC_COVERAGE_TYPE_REASON}>
+            <DropdownMenuTrigger asChild>{typeButton}</DropdownMenuTrigger>
+          </DisabledReasonTooltip>
+        ) : (
+          <TooltipProvider delayDuration={300} skipDelayDuration={100}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>{typeButton}</DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent>{typeName(displayLabel)}</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
         <DropdownMenuContent align="start" className="w-40 p-1">
           <DropdownMenuRadioGroup
             value={currentType}
@@ -215,7 +238,7 @@ export function WorkspaceColumnHeader({
           >
             {availableTypes.map((t) => (
               <DropdownMenuRadioItem key={t.value} value={t.value} className="text-label-secondary">
-                {t.label}
+                {typeName(t.label)}
               </DropdownMenuRadioItem>
             ))}
           </DropdownMenuRadioGroup>

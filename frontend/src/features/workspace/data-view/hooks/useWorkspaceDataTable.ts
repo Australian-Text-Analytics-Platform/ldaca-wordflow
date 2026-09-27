@@ -32,7 +32,6 @@ export interface WorkspaceDataTableHeaderInfo {
 
 interface WorkspaceDataTableNodeActions {
   onDelete?: () => void;
-  onRename?: (newName: string) => void;
   onUndo?: () => void;
   onRedo?: () => void;
   onDeleteColumns?: (columns: string[]) => Promise<void>;
@@ -65,6 +64,8 @@ export interface WorkspaceSelectionTabsState {
   onTabChange: (nodeId: string) => void;
   onTabClose: (nodeId: string) => void;
   onTabReorder: (orderedNodeIds: string[]) => void;
+  /** Renames the Data Block behind a tab (double-click the active tab, issue 206). */
+  onTabRename?: (nodeId: string, name: string) => void;
 }
 
 export interface WorkspaceDataTableViewModel {
@@ -157,7 +158,9 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   } = useWorkspaceActions();
 
   const multiSelectedNodes = selectedNodes.filter(Boolean);
-  const shouldShowTabs = selectedNodeIds.length > 1;
+  // The tab strip also carries the Data Editor title and renaming, so it
+  // shows from one selected block up (issue 206).
+  const shouldShowTabs = selectedNodeIds.length > 0;
 
   const nodeById = (() => {
     const map = new Map<string, (typeof multiSelectedNodes)[number]>();
@@ -410,9 +413,6 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
 
   const nodeActions: WorkspaceDataTableNodeActions = {
     onDelete: selectedNode?.id ? () => void deleteNode(selectedNode.id) : undefined,
-    onRename: selectedNode?.id
-      ? (newName: string) => void renameNode(selectedNode.id, newName)
-      : undefined,
     onUndo: selectedNode?.id ? () => void undoNode(selectedNode.id) : undefined,
     onRedo: selectedNode?.id ? () => void redoNode(selectedNode.id) : undefined,
     onDeleteColumns: selectedNode?.id
@@ -448,6 +448,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     onTabChange: handleTabChange,
     onTabClose: handleTabClose,
     onTabReorder: handleTabReorder,
+    onTabRename: (nodeId: string, name: string) => void renameNode(nodeId, name),
   };
 
   const sorting: SortingState = nodeTableRequest.sort_by

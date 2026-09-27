@@ -95,9 +95,9 @@ from the active Project together with your retained User File Imports.
 The **Project Graph** occupies the top-right area and visualises Data Block creation lineage. Every Data Block is a node, and creating a child Data Block (made from another) draws an edge from parent to child. Updating an existing Data Block does not change the graph.
 
 <span id="help-ui-change-project"></span>
-To switch projects without going to the Data Loader, use **Change Project** at the right end of the Project Graph title bar and choose another project. Wordflow asks you to confirm, then closes the current project (it is saved automatically as you work) and opens the one you chose. While a task is still running in the current project, the projects in the list are disabled and a note says so: wait for the task to finish, or stop it in its tab, and then switch.
+To switch projects without going to the Data Loader, use **Switch Project** at the right end of the Project Graph title bar and choose another project. Wordflow asks you to confirm, then closes the current project (it is saved automatically as you work) and opens the one you chose. While a task is still running in the current project, the projects in the list are disabled and a note says so: wait for the task to finish, or stop it in its tab, and then switch.
 
-![Change Project menu in the Project Graph title bar](tutorials/assets/ui/change_project.png)
+![Switch Project menu in the Project Graph title bar](tutorials/assets/ui/change_project.png)
 
 - Click a node to select that data block across the entire interface. Click it again to deselect. Selections made here are reflected immediately in the Data Blocks panel (section 2) and vice versa.
 - Each Data Block shows its name. When you zoom in far enough, it also shows its size, for example **2,380 rows × 21 columns**.
@@ -126,10 +126,13 @@ To switch projects without going to the Data Loader, use **Change Project** at t
 
 The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make new data blocks or change which rows are present (Filter, Group, Join, Segment, Aggregate, Sample, Deduplicate, Stack) are in the [Data Builder](./preprocessing.md).
 
-- When two or more data blocks are selected, tabs along the top let you switch between them. The **×** on the current tab deselects that data block.
-- The **Rename** button lets you rename the data block.
+- Each selected data block has a tab in the Data Editor title bar. Click a tab to show that data block; the **×** on a tab deselects it, and you can drag tabs to reorder them.
+- To rename a data block, click its tab to make it the current one, then double-click the tab name, type the new name, and press Enter (Esc cancels). Analysis tool tabs are renamed the same way.
+- With many tabs, click the arrow at the right end of the title bar for a list of every tab in alphabetical order, and choose one to switch to it.
 
 ![Data Editor header with two selected data blocks as tabs](tutorials/assets/ui/data_editor_header.png)
+
+![The list of Data Editor tabs, opened from the arrow at the right end of the title bar](tutorials/assets/ui/data_editor_tab_list.png)
 
 <span id="help-ui-data-editor-column-tools"></span>
 
@@ -154,7 +157,21 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 ![Delete columns dialog with three columns ticked](tutorials/assets/ui/delete_columns.png)
 
 - **Undo** and **Redo** revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
-- Each column header shows the column name and its data type: `text`, `categorical`, `integer`, `decimal`, `datetime`, or `date` (`date` is a calendar date with no time of day, useful for publication or sitting dates). Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column, and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
+- Each column header shows the column name and a symbol for its data type, which keeps columns narrow. Point to the symbol to see the type's name:
+
+  | Symbol | Data type |
+  |---|---|
+  | `Aa` | Text |
+  | tag | Categorical |
+  | `123` | Whole number |
+  | `1.2` | Decimal |
+  | calendar | Date (a calendar date with no time of day, useful for publication or sitting dates) |
+  | clock | Date and time |
+  | tick box | True / false |
+  | list | List |
+  | pie chart | Topic coverage |
+
+  Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column, and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
 
 ![Column headers: pin, name, sort, data type, and settings](tutorials/assets/ui/column_header.png)
 
@@ -162,12 +179,12 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 
 ![A column's settings menu](tutorials/assets/ui/column_menu.png)
 
-- Click the data type (for example **datetime**) to convert the column to another type. The current type is ticked.
+- Click the data type symbol to convert the column to another type. The menu lists the types by name, with the current type ticked.
 
 ![The data type menu of a column](tutorials/assets/ui/column_type_menu.png)
 
 - A topic coverage column (`TOPIC_coverage`, added by Topic Modelling's **Add to Project**) holds each row's share of every topic rather than a single value. Its **Sort** and data type buttons are disabled, and among the column tools its settings menu offers only **Duplicate** (you can still rename or delete it).
-- A type change never stops because of messy data: values that cannot be converted (for example a typo such as `5OO` in a column changed to integer) become empty, and a warning says how many there were and gives the row and value of the first one, so you can find and fix it. **Undo** restores them while the Project is open.
+- A type change never stops because of messy data: values that cannot be converted (for example a typo such as `5OO` in a column changed to whole number) become empty, and a warning says how many there were and gives the row and value of the first one, so you can find and fix it. **Undo** restores them while the Project is open.
 - Missing values, NaN, and blank text are all shown as empty cells, in the table, previews, and Row Details.
 - When converting text to a date or datetime, the app attempts to guess the date format automatically. This works for many common formats but can fail or produce incorrect results when the format is ambiguous (e.g. `01/02/03` could be read as DD/MM/YY, MM/DD/YY, or YY/MM/DD). If the conversion fails or the dates look wrong, use the **Format** field to specify the format explicitly using [Python strftime/strptime codes](https://docs.python.org/3/library/datetime.html#strftime-and-strptime-format-codes). Common examples:
   - `%Y-%m-%d` → `2025-05-06`

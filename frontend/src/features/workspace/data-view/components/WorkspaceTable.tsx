@@ -351,6 +351,7 @@ export function WorkspaceTable({
           column={column}
           colInst={colInst}
           currentType={currentType}
+          field={currentField}
           displayLabel={displayLabel}
           availableTypes={availableTypes}
           isColumnBusy={isColumnBusy}
@@ -670,7 +671,7 @@ export function WorkspaceTable({
         onConfirm={handleDatetimeFormatConfirm}
         columnName={datetimeModal.column}
         targetLabel={
-          datetimeModal.targetType ? castTypeLabel(datetimeModal.targetType) : 'datetime'
+          datetimeModal.targetType ? castTypeLabel(datetimeModal.targetType) : 'date and time'
         }
         sampleValues={sanitizedData
           .slice(0, 25)

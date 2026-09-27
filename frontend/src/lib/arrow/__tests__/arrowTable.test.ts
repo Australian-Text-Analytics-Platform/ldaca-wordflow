@@ -57,9 +57,9 @@ describe('Arrow table transport', () => {
     expect(fields.map((field) => arrowTypeDisplayName(field))).toEqual([
       'text',
       'categorical',
-      'integer',
+      'whole number',
       'decimal',
-      'datetime',
+      'date and time',
     ]);
     expect(fields.map((field) => arrowTypeName(field))).toEqual([
       'Utf8View',

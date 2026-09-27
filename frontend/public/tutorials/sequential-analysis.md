@@ -18,18 +18,18 @@ Use the data-block selector to pick the corpus you want to analyse. Only one dat
 
 <h3 id="help-sequential-time-column">Step 2 — Choose a time or number column</h3>
 
-The **Time or number column** dropdown lists every column in the selected data block that holds a datetime, date, integer, or decimal value. Pick the column that represents the order or time axis you want to plot along.
+The **Time or number column** dropdown lists every column in the selected data block that holds a date and time, date, whole number, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
-- **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
-- **Number columns** (integer or decimal) are grouped by a fixed width you specify (the **Step**).
+- **Date and time columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
+- **Number columns** (whole number or decimal) are grouped by a fixed width you specify (the **Step**).
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
 ![Selected data block with its Time or number column, and the Frequency setting](tutorials/assets/sequential_analysis/parameters.png)
 
-<h3 id="help-sequential-frequency">Step 3 — Set the frequency (datetime columns)</h3>
+<h3 id="help-sequential-frequency">Step 3 — Set the frequency (date and time columns)</h3>
 
-When a datetime column is selected, choose how to group records into time buckets.
+When a date and time column is selected, choose how to group records into time buckets.
 
 **Standard frequencies**
 
@@ -57,7 +57,7 @@ Select **Customised** to bucket by a fixed duration you define: enter a positive
 
 <h3 id="help-sequential-numeric">Step 3 — Set the start and step (number columns)</h3>
 
-When an integer or decimal column is selected, two fields appear:
+When a whole number or decimal column is selected, two fields appear:
 
 **Start**: where the first group begins. Leave blank to start at the smallest value in the data.
 
@@ -130,7 +130,7 @@ The **X-axis** dropdown next to the chart type selector switches the horizontal 
 - **Categorical** *(default)* — every time bucket gets an equal slot on the axis, regardless of the real gap between them. Best when buckets are dense and you want a clean, evenly-spaced view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
 - **Linear** — the axis is a true number/date line and bucket positions are proportional to their values. Gaps in the data become visible as visible gaps on the axis. Useful for spotting unevenly-spaced events or comparing rates of change across long time spans.
 
-In Linear mode with a datetime column, axis ticks render as date labels (e.g. *Apr 2018*) rather than raw epoch numbers. The tool aims for about ten ticks across the visible range, dropping labels automatically if the chart is too narrow.
+In Linear mode with a date and time column, axis ticks render as date labels (e.g. *Apr 2018*) rather than raw epoch numbers. The tool aims for about ten ticks across the visible range, dropping labels automatically if the chart is too narrow.
 
 **Missing buckets are shown as zero.** When a group has no documents in a given bucket, the line stays connected and dips to zero rather than breaking. This matches the analytical intent — "no occurrences" is genuinely zero, not unknown — and is most visible in Linear mode where the gap distance is proportional to time.
 
@@ -218,7 +218,7 @@ visibility.
 
 | Setting | Default | Notes |
 |---|---|---|
-| Frequency (datetime) | Monthly | Any standard or custom interval works |
+| Frequency (date and time) | Monthly | Any standard or custom interval works |
 | Custom interval | 1 day | Enter a positive number and choose a unit |
 | Start | Smallest value | Leave blank unless you need a specific start |
 | Step | 1 | Required; must be > 0 |
@@ -232,7 +232,7 @@ visibility.
 
 ## Practice exercise
 
-1. Select a data block that has a datetime column.
+1. Select a data block that has a date and time column.
 2. Run the analysis with **Monthly** frequency to see the overall trend.
 3. Switch to **Weekly** and compare the granularity.
 4. Add a categorical column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.

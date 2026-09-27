@@ -78,7 +78,7 @@ describe('useColumnMutations', () => {
 
     await waitFor(() => {
       expect(toastMock.error).toHaveBeenCalledWith(
-        'Failed to convert column "published_at" to integer: invalid date',
+        'Failed to convert column "published_at" to whole number: invalid date',
       );
       expect(result.current.loadingCast).toEqual({});
     });

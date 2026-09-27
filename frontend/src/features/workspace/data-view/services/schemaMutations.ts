@@ -3,9 +3,10 @@ import { arrowTypeDisplayName, type ArrowColumn, type ArrowField } from '@/lib/a
 export const DATA_TYPES = [
   { value: 'string', label: 'text' },
   { value: 'categorical', label: 'categorical' },
-  { value: 'integer', label: 'integer' },
+  // Plain words rather than "integer" and "datetime" (issue 206).
+  { value: 'integer', label: 'whole number' },
   { value: 'float', label: 'decimal' },
-  { value: 'datetime', label: 'datetime' },
+  { value: 'datetime', label: 'date and time' },
   // A calendar date with no time of day (issue 187).
   { value: 'date', label: 'date' },
 ] as const;
