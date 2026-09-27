@@ -20,6 +20,7 @@ import { QUOTATION_DOCUMENT_COLUMN } from '../../common/generatedColumns';
 import type { QuotationResultRow } from '../quotationResultsModel';
 import { QuotationClampedCell } from './QuotationClampedCell';
 import { QuotationHighlightedCell, type QuotationHoverState } from './QuotationHighlightedCell';
+import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
 
 export interface QuotationNodeBlockProps {
   /** Identifier for the node whose quotation results are shown. */
@@ -157,7 +158,7 @@ function QuotationNodeBlockContent({
       const sortable =
         Boolean(sourceSortColumn) &&
         (columnName === QUOTATION_DOCUMENT_COLUMN || sortableColumnSet.has(columnName));
-      if (!sortable) return <span>{columnName}</span>;
+      if (!sortable) return <GeneratedColumnLabel name={columnName} />;
       const active = sortBy === sourceSortColumn;
       return (
         <button
@@ -167,7 +168,7 @@ function QuotationNodeBlockContent({
             onSort(nodeId, sourceSortColumn);
           }}
         >
-          <span>{columnName}</span>
+          <GeneratedColumnLabel name={columnName} />
           <ArrowUpDown className={`h-3 w-3 ${active ? 'text-foreground' : 'opacity-60'}`} />
         </button>
       );

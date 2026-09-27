@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ColumnSelectionActions } from './ColumnSelectionActions';
+import { GENERATED_COLUMN_EXPLANATIONS } from '../generatedColumns';
 
 export interface AddToWorkspaceColumn {
   name: string;
@@ -291,6 +292,12 @@ export function AddToWorkspaceDialog({
                               />
                               <span className="truncate" title={column.title ?? column.name}>
                                 {column.name}{' '}
+                                {GENERATED_COLUMN_EXPLANATIONS[column.name] ? (
+                                  // A plain explanation beside the stored name (issue 205).
+                                  <span aria-hidden="true" className="text-description">
+                                    {GENERATED_COLUMN_EXPLANATIONS[column.name]}{' '}
+                                  </span>
+                                ) : null}
                                 {required ? (
                                   <span className="text-description">
                                     ({column.requiredDescription ?? 'required'})

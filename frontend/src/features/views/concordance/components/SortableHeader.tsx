@@ -1,5 +1,6 @@
 import { TableHead } from '@/components/ui/table';
 import type { PaginationState } from '../hooks/useConcordanceTaskFlow';
+import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
 
 interface Props {
   columnKey: string;
@@ -33,7 +34,7 @@ export function SortableHeader({
       }}
     >
       <div className="flex items-center space-x-1">
-        <span>{label}</span>
+        <GeneratedColumnLabel name={label} />
         <span className={`text-label-secondary ${isSorted ? 'text-link' : 'text-description'}`}>
           {sortIcon}
         </span>

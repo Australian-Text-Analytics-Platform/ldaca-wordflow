@@ -17,6 +17,7 @@ import {
 } from '../concordanceDispersionDomain';
 import { toCellText } from '../concordanceTableDomain';
 import { ConcordanceDispersionCell } from './ConcordanceDispersionCell';
+import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
 
 interface Props {
   rows: ConcordanceDispersionRow[];
@@ -74,7 +75,7 @@ export function ConcordanceDispersionRowsTable({
                   : metadataColumnStyle
               }
             >
-              {columnKey}
+              <GeneratedColumnLabel name={columnKey} />
             </TableHead>
           ))}
         </TableRow>

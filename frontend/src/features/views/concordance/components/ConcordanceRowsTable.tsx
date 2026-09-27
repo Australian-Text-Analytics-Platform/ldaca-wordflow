@@ -20,6 +20,7 @@ import type {
   ServerTableHeader,
   ServerTableInstance,
 } from '@/features/views/common/hooks/useServerTable';
+import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
 
 interface Props {
   table: ServerTableInstance<ConcordanceRow>;
@@ -222,7 +223,7 @@ export function ConcordancePlainHeader({
       className={`px-3 py-2 text-label-secondary font-medium uppercase tracking-wider text-description ${alignmentClassForColumn(header.column.id) || 'text-left'}`}
     >
       <DisabledReasonTooltip reason={hint} side="bottom">
-        <span>{header.column.id}</span>
+        <GeneratedColumnLabel name={header.column.id} />
       </DisabledReasonTooltip>
     </TableHead>
   );
