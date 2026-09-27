@@ -59,6 +59,9 @@ from the active Project together with your retained User File Imports.
   (**Preview**, **Run**, **Run All**, or **Add to Project**), the data blocks it
   used, and when it finished. A step that failed or is still running has its
   own row, for example **Conc - 2 · Run All**.
+- A **Run All** with two data blocks runs each block separately but shows as
+  one task: open it to see how each data block went, including the reason if
+  one of them failed.
 
 ![Tasks panel with the Conc - 1 row expanded](tutorials/assets/ui/tasks_panel.png)
 

@@ -40,6 +40,8 @@ export interface TaskRow {
   primary: TaskItem;
   /** Steps of a combined row (successful tasks of one tab); one entry otherwise. */
   steps: TaskRowStep[];
+  /** A Run All's per-block results, folded under it (one entry per data block). */
+  blockResults: TaskRowStep[];
   target: TaskRowTarget | null;
 }
 
@@ -91,6 +93,16 @@ export function buildTaskRows(
 ): TaskRow[] {
   const rows: TaskRow[] = [];
   const successfulByTab = new Map<string, TaskItem[]>();
+  // A Run All stores one parent analysis plus one supporting analysis per
+  // data block; show them as one task (issue 199).
+  const taskIds = new Set(tasks.map((task) => task.task_id));
+  const childrenByParent = new Map<string, TaskItem[]>();
+  for (const task of tasks) {
+    const parentId = task.resource_type === 'analysis' ? task.parent_analysis_id : null;
+    if (parentId && taskIds.has(parentId)) {
+      childrenByParent.set(parentId, [...(childrenByParent.get(parentId) ?? []), task]);
+    }
+  }
 
   const step = (task: TaskItem): TaskRowStep => ({
     task,
@@ -111,7 +123,17 @@ export function buildTaskRows(
     };
   };
 
+  const blockResults = (task: TaskItem): TaskRowStep[] =>
+    (childrenByParent.get(task.task_id) ?? []).map(step);
+
   for (const task of tasks) {
+    if (
+      task.resource_type === 'analysis' &&
+      task.parent_analysis_id &&
+      taskIds.has(task.parent_analysis_id)
+    ) {
+      continue;
+    }
     if (task.resource_type !== 'analysis') {
       rows.push({
         key: task.task_id,
@@ -119,6 +141,7 @@ export function buildTaskRows(
         state: task.state,
         primary: task,
         steps: [step(task)],
+        blockResults: [],
         target: { kind: 'data-loader' },
       });
       continue;
@@ -134,6 +157,7 @@ export function buildTaskRows(
       state: task.state,
       primary: task,
       steps: [step(task)],
+      blockResults: blockResults(task),
       target: identity.target,
     });
   }
@@ -149,6 +173,7 @@ export function buildTaskRows(
       state: 'successful',
       primary: newest,
       steps: ordered.map(step),
+      blockResults: [],
       target: identity.target,
     });
   }

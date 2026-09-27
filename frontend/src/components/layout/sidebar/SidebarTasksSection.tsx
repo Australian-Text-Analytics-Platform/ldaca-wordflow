@@ -300,7 +300,36 @@ function SidebarTasksSection({
                         task.progress_message !== task.message && (
                           <p className="text-[11px] text-description">{task.progress_message}</p>
                         )}
-                      {row.steps[0] && row.steps[0].blocks.length > 0 ? (
+                      {row.blockResults.length > 0 ? (
+                        <ul aria-label={`${label} data blocks`} className="space-y-1">
+                          {row.blockResults.map((result) => {
+                            const resultMeta = statusMeta(result.task.state);
+                            const ResultIcon = resultMeta.icon;
+                            return (
+                              <li
+                                key={result.task.task_id}
+                                className="flex gap-1.5 text-badge text-description"
+                              >
+                                <ResultIcon
+                                  className={cn('mt-0.5 h-3 w-3 shrink-0', resultMeta.className)}
+                                  aria-label={resultMeta.label}
+                                />
+                                <span className="min-w-0 wrap-break-word">
+                                  <span className="font-semibold text-foreground">
+                                    {result.blocks.join(', ') || result.label}
+                                  </span>
+                                  {result.task.state === 'failed' && result.task.message
+                                    ? `: ${result.task.message}`
+                                    : null}
+                                </span>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
+                      {row.blockResults.length === 0 &&
+                      row.steps[0] &&
+                      row.steps[0].blocks.length > 0 ? (
                         <p className="text-badge text-description">
                           <span className="font-semibold text-foreground">
                             {row.steps[0].label}

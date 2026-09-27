@@ -30,6 +30,8 @@ interface AnalysisTaskItem extends TaskItemBase {
   request_kind?: string | null;
   /** Data Blocks the request reads, for task details (issue 199). */
   node_ids?: string[];
+  /** Set on a Run All's per-block analyses, which the Tasks panel folds under their parent. */
+  parent_analysis_id?: string | null;
 }
 
 interface UserFileImportTaskItem extends TaskItemBase {
@@ -88,6 +90,8 @@ export const analysisToTask = (
       tab_id: resource.tab_id,
       request_kind: resource.request.kind,
       node_ids: requestNodeIds(resource.request),
+      parent_analysis_id:
+        resource.execution_scope === 'supporting' ? (resource.parent_analysis_id ?? null) : null,
       state: toTaskState(resource.state),
       progress: progress?.fraction ?? undefined,
       progress_message: progress?.message ?? undefined,

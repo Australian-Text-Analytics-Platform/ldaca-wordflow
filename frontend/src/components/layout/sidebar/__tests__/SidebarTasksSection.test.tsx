@@ -300,3 +300,60 @@ describe('SidebarTasksSection', () => {
     expect(onClearUserFileImport).not.toHaveBeenCalled();
   });
 });
+
+describe('SidebarTasksSection Run All grouping (issue 199)', () => {
+  it("folds a Run All's per-block analyses into its row and shows each result", async () => {
+    const user = userEvent.setup();
+    const names = new Map([
+      ['jp', 'Q1 JP'],
+      ['uk', 'Q1 UK'],
+    ]);
+    render(
+      <SidebarTasksSection
+        {...baseProps}
+        tabsById={tabs}
+        nodeNameById={names}
+        tasks={[
+          analysisTask({
+            task_id: 'parent',
+            tab_id: 'conc-tab',
+            task_type: 'concordance_run_all',
+            request_kind: 'concordance_run_all',
+            node_ids: ['jp', 'uk'],
+            state: 'failed',
+            message: 'cannot cast',
+            finished_at: '2026-01-01T00:00:02Z',
+          }),
+          analysisTask({
+            task_id: 'child-jp',
+            tab_id: 'conc-tab',
+            task_type: 'concordance_run_all',
+            request_kind: 'concordance_run_all',
+            node_ids: ['jp'],
+            parent_analysis_id: 'parent',
+            state: 'failed',
+            message: 'cannot cast',
+            finished_at: '2026-01-01T00:00:01Z',
+          }),
+          analysisTask({
+            task_id: 'child-uk',
+            tab_id: 'conc-tab',
+            task_type: 'concordance_run_all',
+            request_kind: 'concordance_run_all',
+            node_ids: ['uk'],
+            parent_analysis_id: 'parent',
+            finished_at: '2026-01-01T00:00:01Z',
+          }),
+        ]}
+      />,
+    );
+
+    expect(rowLabels()).toEqual(['Conc - 2 · Run All']);
+    await user.click(screen.getByRole('button', { name: /^Task: Conc - 2 · Run All/ }));
+    const blocks = within(screen.getByRole('list', { name: 'Conc - 2 · Run All data blocks' }));
+    expect(blocks.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Q1 JP: cannot cast',
+      'Q1 UK',
+    ]);
+  });
+});
