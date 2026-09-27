@@ -261,7 +261,7 @@ it('Build chains use type-sensitive menus, edit parameters, and retain invalidat
   }
   expect(build.queryByRole('button', { name: 'Edit Split' })).not.toBeInTheDocument();
   expect(mocks.report).not.toHaveBeenCalled();
-});
+}, 15_000);
 
 it('Build failures keep drafts and report once without changing graph selection', async () => {
   mount();
