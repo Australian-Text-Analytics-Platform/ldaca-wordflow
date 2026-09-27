@@ -1,6 +1,6 @@
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 
-import { Button } from '@/components/ui/button';
+import { SendFeedbackButton } from '@/components/layout/SendFeedbackButton';
 import BlockingScreen from '@/features/auth/components/BlockingScreen';
 import { DataRootContext, type DataRootResource } from '@/features/bootstrap/DataRootContext';
 import { DataRootSetupForm } from '@/features/bootstrap/DataRootSetupForm';
@@ -9,7 +9,6 @@ import {
   type ResolvedBackendConnection,
   resolveBackendConnection,
 } from '@/lib/backend/backendConnection';
-import { useUIStore } from '@/stores/uiStore';
 
 const RETRY_DELAY_MS = 750;
 const READY_REFRESH_MS = 5_000;
@@ -43,7 +42,6 @@ export function BackendBootstrapGate({
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [initialRuntimeGeneration, setInitialRuntimeGeneration] = useState<number | null>(null);
   const reloadRequested = useRef(false);
-  const openFeedback = useUIStore((state) => state.openFeedback);
 
   useEffect(() => {
     let cancelled = false;
@@ -182,11 +180,7 @@ export function BackendBootstrapGate({
         status="Checking backend liveness…"
         error={connectionError}
         hint="Check the backend logs and connection settings. Wordflow will keep retrying."
-        actions={
-          <Button type="button" onClick={openFeedback}>
-            Send feedback
-          </Button>
-        }
+        actions={<SendFeedbackButton variant="default" />}
       />
     );
   }
@@ -218,6 +212,7 @@ export function BackendBootstrapGate({
         description="Wordflow is closing its active Data Root runtime."
         status="Stopping…"
         hint="Wordflow will reconnect automatically if the backend starts again."
+        actions={<SendFeedbackButton variant="default" />}
       />
     );
   }
@@ -253,6 +248,7 @@ export function BackendBootstrapGate({
         status="Runtime unavailable"
         error={resource.error?.message ?? null}
         hint="Set a valid DATA_ROOT in the backend environment and restart Wordflow."
+        actions={<SendFeedbackButton variant="default" />}
       />
     );
   }

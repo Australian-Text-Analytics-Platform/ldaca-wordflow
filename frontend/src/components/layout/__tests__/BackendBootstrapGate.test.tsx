@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useDataRoot } from '@/features/bootstrap/DataRootContext';
+import { useUIStore } from '@/stores/uiStore';
 import { BackendBootstrapGate } from '../BackendBootstrapGate';
 
 const { connection } = vi.hoisted(() => ({
@@ -308,6 +309,11 @@ describe('BackendBootstrapGate', () => {
 
     expect(await screen.findByText('Data Root requires operator attention')).toBeInTheDocument();
     expect(screen.getByText('Configured root is unavailable')).toBeInTheDocument();
+
+    // Issue 207: a user stuck at startup can still report what happened.
+    useUIStore.getState().closeFeedback();
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Send feedback' }));
+    expect(useUIStore.getState().feedbackOpen).toBe(true);
   });
 
   it('shows shutdown progress without offering Data Root setup while stopping', async () => {
@@ -330,6 +336,7 @@ describe('BackendBootstrapGate', () => {
 
     expect(await screen.findByText('Backend shutting down')).toBeInTheDocument();
     expect(screen.getByText('Stopping…')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Send feedback' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Choose folder' })).not.toBeInTheDocument();
     expect(screen.queryByText('Set up Wordflow')).not.toBeInTheDocument();
   });

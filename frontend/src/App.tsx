@@ -9,6 +9,7 @@ import { WorkspaceShell } from '@/components/layout/WorkspaceShell';
 import { GlobalHosts } from '@/components/layout/GlobalHosts';
 import { BackendBootstrapGate } from '@/components/layout/BackendBootstrapGate';
 import { DesktopWindowFrame } from '@/components/layout/DesktopWindowFrame';
+import { SendFeedbackButton } from '@/components/layout/SendFeedbackButton';
 import { Button } from '@/components/ui/button';
 
 function App() {
@@ -72,14 +73,17 @@ function AuthGate() {
         hint={blockingCopy.hint}
         error={blockingCopy.error}
         actions={
-          <Button
-            type="button"
-            onClick={() => {
-              void refreshAuth();
-            }}
-          >
-            Retry connection
-          </Button>
+          <>
+            <Button
+              type="button"
+              onClick={() => {
+                void refreshAuth();
+              }}
+            >
+              Retry connection
+            </Button>
+            <SendFeedbackButton />
+          </>
         }
       />
     );
