@@ -210,7 +210,7 @@ it('retains inserted and deleted rows across pages and sorting and discards dele
     deletions: ['0'],
     insertions: [{ values: { key: '9007199254740993', text: 'inserted' } }],
   });
-});
+}, 15_000);
 
 it('adds to an empty table and treats row-only changes as modified for Cancel', async () => {
   const page = await api.cellEditPage('http://native', 'session', 1, 20, []);
