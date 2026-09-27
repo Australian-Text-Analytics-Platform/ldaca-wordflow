@@ -8,7 +8,11 @@ describe('Button', () => {
   it('blocks activation while disabled and forwards it after enabling', async () => {
     const user = userEvent.setup();
     const onClick = vi.fn();
-    const { rerender } = render(<Button disabled onClick={onClick}>Save</Button>);
+    const { rerender } = render(
+      <Button disabled onClick={onClick}>
+        Save
+      </Button>,
+    );
     await user.click(screen.getByRole('button', { name: 'Save' }));
     expect(onClick).not.toHaveBeenCalled();
 

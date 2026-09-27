@@ -45,11 +45,6 @@ function PopoverContent({
   return portalled ? <PopoverPrimitive.Portal>{content}</PopoverPrimitive.Portal> : content;
 }
 
-/** Used by: popover consumers that position content relative to custom anchors. */
-function PopoverAnchor({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Anchor>) {
-  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
-}
-
 /** Used by: popover panels with title and description copy. */
 function PopoverHeader({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -66,4 +61,4 @@ function PopoverTitle({ className, ...props }: React.ComponentProps<'h2'>) {
   return <div data-slot="popover-title" className={cn('font-medium', className)} {...props} />;
 }
 
-export { Popover, PopoverTrigger, PopoverContent, PopoverAnchor, PopoverHeader, PopoverTitle };
+export { Popover, PopoverTrigger, PopoverContent, PopoverHeader, PopoverTitle };

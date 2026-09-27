@@ -1,44 +1,24 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
 import { NodeInputPointerCarrier } from '../NodeInputPointerCarrier';
 
-const mocks = vi.hoisted(() => ({
-  useWorkspaceData: vi.fn(),
-  useUIStore: vi.fn(),
-}));
-
-vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
-  useWorkspaceData: mocks.useWorkspaceData,
-}));
-
-vi.mock('@/stores', () => ({
-  useUIStore: mocks.useUIStore,
-}));
+const nodes = [
+  { id: 'node-a', name: 'Corpus A' },
+  { id: 'node-b', name: 'Corpus B' },
+];
 
 describe('NodeInputPointerCarrier', () => {
   beforeEach(() => {
     useNodeInputRequestsStore.setState({ nextId: 1, pendingRequests: [] });
-    mocks.useWorkspaceData.mockReturnValue({
-      currentWorkspaceId: 'workspace-1',
-      nodes: [
-        { id: 'node-a', name: 'Corpus A' },
-        { id: 'node-b', name: 'Corpus B' },
-      ],
-    });
-    mocks.useUIStore.mockImplementation((selector: (state: { currentView: string }) => unknown) =>
-      selector({ currentView: 'annotation' }),
-    );
   });
 
   it('follows the pointer and displays the carried Data Blocks as a LIFO stack', () => {
     act(() => {
-      useNodeInputRequestsStore
-        .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-a', { x: 40, y: 60 });
+      useNodeInputRequestsStore.getState().requestAdd('', 'annotation', 'node-a', { x: 40, y: 60 });
     });
-    render(<NodeInputPointerCarrier />);
+    render(<NodeInputPointerCarrier scopeId="" tool="annotation" nodes={nodes} />);
 
     const firstCarrier = screen.getByRole('status', { name: 'Carrying 1 Data Block' });
     expect(firstCarrier).toHaveStyle({ left: '56px', top: '76px' });
@@ -50,7 +30,7 @@ describe('NodeInputPointerCarrier', () => {
     act(() => {
       useNodeInputRequestsStore
         .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-b', { x: 300, y: 320 });
+        .requestAdd('', 'annotation', 'node-b', { x: 300, y: 320 });
     });
 
     const stack = screen.getByRole('status', { name: 'Carrying 2 Data Blocks' });
@@ -65,14 +45,12 @@ describe('NodeInputPointerCarrier', () => {
 
   it('clears the complete carried stack with Escape', () => {
     act(() => {
+      useNodeInputRequestsStore.getState().requestAdd('', 'annotation', 'node-a', { x: 40, y: 60 });
       useNodeInputRequestsStore
         .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-a', { x: 40, y: 60 });
-      useNodeInputRequestsStore
-        .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-b', { x: 80, y: 100 });
+        .requestAdd('', 'annotation', 'node-b', { x: 80, y: 100 });
     });
-    render(<NodeInputPointerCarrier />);
+    render(<NodeInputPointerCarrier scopeId="" tool="annotation" nodes={nodes} />);
 
     fireEvent.keyDown(window, { key: 'Escape' });
 
@@ -82,14 +60,12 @@ describe('NodeInputPointerCarrier', () => {
 
   it('discards only the latest Data Block and suppresses the context menu on right-click', () => {
     act(() => {
+      useNodeInputRequestsStore.getState().requestAdd('', 'annotation', 'node-a', { x: 40, y: 60 });
       useNodeInputRequestsStore
         .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-a', { x: 40, y: 60 });
-      useNodeInputRequestsStore
-        .getState()
-        .requestAdd('workspace-1', 'annotation', 'node-b', { x: 80, y: 100 });
+        .requestAdd('', 'annotation', 'node-b', { x: 80, y: 100 });
     });
-    render(<NodeInputPointerCarrier />);
+    render(<NodeInputPointerCarrier scopeId="" tool="annotation" nodes={nodes} />);
 
     expect(fireEvent.contextMenu(window)).toBe(false);
 

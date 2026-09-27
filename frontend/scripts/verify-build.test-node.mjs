@@ -57,3 +57,12 @@ test('rejects complete localhost and loopback API URLs', async () => {
     );
   });
 });
+
+for (const marker of ['__wdio_original_core__', '__wordflowDiagnostics']) {
+  test(`rejects test instrumentation (${marker}) in distributable assets`, async () => {
+    await withBuildFixture(async (directory) => {
+      await writeFile(path.join(directory, 'assets', 'bridge.js'), `window.${marker} = {};`);
+      await assert.rejects(verifyFrontendBuild(directory), /contains test instrumentation/);
+    });
+  });
+}

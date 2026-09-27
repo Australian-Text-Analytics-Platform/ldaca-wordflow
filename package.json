@@ -9,15 +9,24 @@
     "dev:backend": "node scripts/dev.mjs --backend",
     "dev:frontend": "node scripts/dev.mjs --frontend",
     "test:dev": "node --test scripts/dev.test.mjs",
+    "prepare:e2e:models": "pnpm -C frontend prepare:e2e:models",
+    "test:e2e": "pnpm -C frontend test:e2e",
+    "test:e2e:browser": "pnpm -C frontend test:e2e:browser",
+    "build:e2e:native": "pnpm -C frontend build:e2e:native",
+    "test:e2e:native": "pnpm -C frontend test:e2e:native",
     "build": "pnpm -C frontend build",
     "bump-version": "node scripts/bump-version.mjs",
     "check-versions": "node scripts/check-versions.mjs",
     "docs:links": "node --test scripts/check-markdown-links.test.mjs && node scripts/check-markdown-links.mjs",
-    "deploy_frontend_to_backend": "pnpm -C frontend build && node scripts/deploy-frontend-to-backend.mjs",
     "dev:desktop": "pnpm -C frontend dev:desktop",
     "build:desktop:mac": "pnpm -C frontend build:desktop:mac",
     "build:desktop:windows": "pnpm -C frontend build:desktop:windows",
-    "prepare:backend-runtime": "pnpm -C frontend prepare:backend-runtime"
+    "build:e2e:native:release": "pnpm -C frontend build:e2e:native:release",
+    "test:e2e:native:release": "pnpm -C frontend test:e2e:native:release",
+    "build:qa:mac": "pnpm -C frontend build:qa:mac",
+    "verify:qa:mac": "pnpm -C frontend verify:qa:mac",
+    "api:generate": "node frontend/scripts/generate-api.mjs",
+    "api:check": "node frontend/scripts/generate-api.mjs --check"
   },
   "devDependencies": {
     "concurrently": "^10.0.5"

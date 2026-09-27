@@ -37,7 +37,7 @@ the repository-level [`docs/`](../../docs/index.md) system.
 
 ## Additional guides
 
-**Question:** *Where do I find desktop build and workspace setup notes?*
+**Question:** *Where do I find desktop build and package setup notes?*
 
 **Answer:**
 

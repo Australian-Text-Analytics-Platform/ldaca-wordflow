@@ -1,0 +1,8 @@
+[workspace]
+members = ["backend", "server", "frontend/src-tauri", "ldaca-rs"]
+exclude = ["polars-text"]
+default-members = ["backend"]
+resolver = "3"
+
+[profile.dev.package.ldaca-rs]
+debug = 0

@@ -32,7 +32,7 @@ const TableHeader = ({ className, ref, ...props }: React.ComponentProps<'thead'>
   <thead ref={ref} className={cn('[&_tr]:border-b', className)} {...props} />
 );
 
-/** Table body section used for rows rendered by feature and workspace tables. */
+/** Table body section used for rows rendered by feature and project tables. */
 const TableBody = ({ className, ref, ...props }: React.ComponentProps<'tbody'>) => (
   <tbody ref={ref} className={cn('[&_tr:last-child]:border-0', className)} {...props} />
 );
@@ -61,7 +61,7 @@ const TableHead = ({ className, ref, ...props }: React.ComponentProps<'th'>) => 
   />
 );
 
-/** Table data cell primitive used by feature rows and workspace data previews. */
+/** Table data cell primitive used by feature rows and project data previews. */
 const TableCell = ({ className, ref, ...props }: React.ComponentProps<'td'>) => (
   <td
     ref={ref}

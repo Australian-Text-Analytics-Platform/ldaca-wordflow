@@ -3,7 +3,10 @@ packages:
 
 allowBuilds:
   '@google/genai': false
+  # The embedded Tauri driver does not need standalone browser-driver downloads.
+  edgedriver: false
   esbuild: true
+  geckodriver: false
   msw: false
   protobufjs: false
 

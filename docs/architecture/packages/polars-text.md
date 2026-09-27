@@ -1,79 +1,32 @@
 # polars-text Architecture
 
-`polars-text` is the compiled text-processing layer used by Wordflow. Python
-provides the typed ergonomic API and registers Polars expressions; Rust/PyO3
-implements the heavy work.
+`polars-text` is the Polars/PyO3 adapter for the sibling
+[ldaca-rs library](ldaca-rs.md). It requires that sibling folder for local builds.
 
 ```mermaid
 flowchart LR
-    CALLER["Polars expression"] --> PYTHON["Expr.text namespace"]
-    PYTHON --> REGISTER["Register exact compiled plugin symbol"]
-    REGISTER --> RUST["Rust expression implementation"]
-    RUST --> TOKENIZER["Tokenizer and model registry"]
-    RUST --> CACHE["Optional row-preserving DuckDB cache"]
-    RUST --> OUTPUT["Declared lazy Polars output schema"]
-
-    DIRECT["Whole-Series or projection call"] --> PYO3["Direct PyO3 function"]
-    PYO3 --> TOKENIZER
-    PYO3 --> DIRECT_OUTPUT["Dictionary or inventory result"]
+    Expression["Lazy Expr.text expression"] --> Adapter["Polars plugin and Series conversion"]
+    Direct["Python whole-Series utility"] --> Binding["PyO3 binding"]
+    Adapter --> Core["ldaca-rs computation"]
+    Binding --> Core
+    Core --> Result["Rust results"]
+    Result --> Output["Polars schemas or Python values"]
 ```
 
-## Boundaries
+Python preserves its typed namespace and public call signatures. Rust adapter
+code registers plugin symbols, preserves row/null semantics, translates errors,
+and constructs the declared Series schemas. It does not own algorithms, model
+loading implementations, caches, UDPipe sources, or tokenizer catalogue entries.
+Those are owned by `ldaca-rs` and selected through forwarded Cargo features.
 
-- `polars_text/namespace.py` is the expression façade and validates arguments
-  before registering plugin functions against the exact imported extension path.
-- `src/expressions.rs` implements lazy Polars plugins and output schemas.
-- `src/tokenizer.rs` owns tokenizer backend dispatch and its process-local
-  registry.
-- `src/cache.rs` owns the shared DuckDB-backed, row-preserving cache flow and
-  locking; token and embedding schemas remain with their expression modules.
-  Each configured file is dedicated disposable package storage: unknown
-  schemas are initialized in a same-directory temporary database and replace
-  the old cache only after successful initialization.
-- `src/concordance.rs` and `src/offsets.rs` own matching and Unicode offset
-  conversion.
-- `src/topic_modeling/` owns Topic Segment construction, native embedding,
-  reduction, clustering, deterministic cosine average-linkage projection,
-  document roll-up, and
-  c-TF-IDF topic-label computation. Its internal unit is a Topic Segment.
+Topic modelling remains a scalar whole-column expression with independent
+`documents[]`, `topics[]`, metadata, and optional projection context. Direct
+projectors return Python structures without re-running model inference. Quotation
+preserves source-character offsets and reuses a core extractor per adapter thread.
 
-Topic modelling is one non-elementwise scalar expression. It consumes the full
-document column and returns one run result with independent `documents[]` and
-complete `topics[]` lists plus run metadata and an opaque projection context.
-Segmentation is the only mode-specific stage; every source character belongs to
-at most one segment, and the shared rollup weights owned Unicode characters
-without changing the equal-observation clustering input. Direct PyO3 projectors
-cut a cosine average-linkage tree over natural Topic embeddings without
-rerunning embedding or HDBSCAN. PaCMAP is used once for segment clustering and,
-for three or more projected Topics, only on merged Topic centroids for display
-coordinates. Topic Data Block Creation requests complete row coverage. Result-time bubble
-queries request only Topic metadata plus aggregated
-`(corpus, topic, minimum N, count)` activations, so row coverage is not
-serialized across the native boundary for interactive Top-N changes. A no-topic
-result has no projection context and therefore no projection Artifact.
+The adapter retains Polars allocation, list/struct builders, lazy execution, and
+binary licence notices. No Python list materialization is required for token
+frequency counting. Retired serialized Polars-plan rewriting is preserved under `archive/polars-source-utils/` and is not used by the native project format.
 
-Expression APIs preserve lazy execution. Direct PyO3 functions are reserved
-for whole-Series token frequencies and topic projections, which are not natural
-row expressions. The tokenizer inventory is immutable Python data.
-
-Serialized LazyFrame path inspection and rewriting does not belong here; it is
-owned by `polars-source-utils`, keeping tokenizer-focused builds independent of
-the broad `polars-plan` feature surface.
-
-## Local quotation extraction
-
-The optional `quotation` feature (included in `full`) owns normalization,
-original-text mapping, grammatical parsing, quotation rules, and typed Polars
-output. A narrow CXX bridge statically links unmodified UDPipe 1.4.0 source.
-Rust reads an explicit model path; one owned model is cached per calling thread,
-replaced when the canonical path changes. There is no nested parallelism and no
-model acquisition in the package. Backend orchestration owns first-use download.
-
-The rules process syntactic/according-to candidates, floating quotations, then
-heuristic candidates before length and overlap filtering. UD complement and
-reporting-clause relationships replace spaCy-specific grammar. Returned spans
-are Unicode character offsets into the original input, with exact source slices.
-Multiword components use exact partitioned ranges when possible and the containing
-surface-token range otherwise. The [API reference](../../reference/polars-text-api.md)
-defines the public expression; the [runtime reference](../../reference/quotation-runtime.md)
-records the model and licence.
+See the [API reference](../../reference/polars-text-api.md) for output contracts
+and [development runbook](../../runbooks/polars-text-development.md) for checks.

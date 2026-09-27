@@ -1,0 +1,19 @@
+{
+  "productName": "LDaCA Wordflow Dev",
+  "identifier": "au.edu.ldaca.wordflow.dev",
+  "build": {
+    "beforeBundleCommand": null
+  },
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "fileAssociations": [],
+    "macOS": {
+      "files": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  }
+}

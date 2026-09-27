@@ -1,5 +1,5 @@
-import type { ArrowField } from './arrowTable';
-import { arrowExtensionName } from './arrowTable';
+import type { ArrowField } from './decodeArrowTable';
+import { arrowExtensionName } from './decodeArrowTable';
 
 /** Exact semantic identity published by the backend in Arrow extension metadata. */
 export const TOPIC_COVERAGE_EXTENSION = 'org.ldaca.wordflow.topic_coverage.v1';

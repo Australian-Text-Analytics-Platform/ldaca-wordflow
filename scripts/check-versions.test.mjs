@@ -3,28 +3,32 @@ import test from 'node:test';
 
 import { SEMVER, VERSION_TARGETS, versionFromReleaseTag } from './version-targets.mjs';
 
-test('one registry includes the Tauri manifest and lock entry', () => {
+test('one registry includes all release Rust packages in the workspace lock', () => {
     assert.deepEqual(
         VERSION_TARGETS.map(({ path }) => path),
         [
-            'pyproject.toml',
-            'backend/pyproject.toml',
             'frontend/package.json',
             'frontend/src-tauri/Cargo.toml',
-            'frontend/src-tauri/Cargo.lock',
+            'Cargo.lock',
             'frontend/src-tauri/tauri.conf.json',
+            'backend/Cargo.toml',
+            'Cargo.lock',
+            'server/Cargo.toml',
+            'Cargo.lock',
         ],
     );
 });
 
 test('each target extracts its replacement from a representative fixture', () => {
     const fixtures = [
-        'version = "0.5.0"',
-        'version = "0.5.0"',
         '{ "version": "0.5.0" }',
         '[package]\nname = "ldaca-wordflow"\nversion = "0.5.0"',
         '[[package]]\nname = "ldaca-wordflow"\nversion = "0.5.0"',
         '{ "version": "0.5.0" }',
+        'version = "0.5.0"',
+        '[[package]]\nname = "wordflow-backend"\nversion = "0.5.0"',
+        'version = "0.5.0"',
+        '[[package]]\nname = "wordflow-server"\nversion = "0.5.0"',
     ];
     VERSION_TARGETS.forEach((target, index) => {
         const replaced = target.replace(fixtures[index], '0.6.0');

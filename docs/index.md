@@ -13,8 +13,12 @@ Read only the sections relevant to the work at hand.
   semantics.
 - [Architecture decisions](adr/) explain accepted, hard-to-reverse trade-offs.
 - [Reference](reference/) contains exact APIs, settings, and package contracts.
-- [Persistence integrity](reference/persistence-integrity.md) records the
-  current persistence guarantees and the hardening boundaries that remain.
+- [Native project persistence](architecture/backend/native-projects.md) records
+  current transaction and file-ownership guarantees.
+- [Standalone server](architecture/backend/server.md) describes browser libraries,
+  project sessions and native release ownership.
+- [Native analyses](architecture/backend/native-analyses.md) describes Frequency
+  execution and project-owned result/artifact storage.
 - [Runbooks](runbooks/) contains operational and development procedures.
 - [Test suites](runbooks/test-suites.md) explains suite ownership, model provisioning
   and installed-artifact verification.

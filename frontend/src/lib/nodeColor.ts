@@ -4,8 +4,8 @@ const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 
 /**
  * Normalises a raw ``Node.color`` value into a render-safe identity colour.
- * Used by: the workspace graph node card (CustomNode) and the Data Blocks list
- * row (WorkspaceNodeList) because both derive an identity surface from the
+ * Used by: the project graph node card (CustomNode) and the Data Blocks list
+ * row (ProjectNodeList) because both derive an identity surface from the
  * node's persisted colour and must ignore ``null`` / non-hex values so uncoloured
  * nodes keep their default look.
  * Returns the lower-cased ``#rrggbb`` string when valid, otherwise ``null``.

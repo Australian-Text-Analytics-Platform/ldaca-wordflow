@@ -1,0 +1,513 @@
+import { useCallback, useMemo, useState } from 'react';
+import type { TokenFrequencyRequest, TokenFrequencyResponse } from '@/api';
+import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
+import { useProgressiveContextualHints } from '@/features/guidance/useProgressiveContextualHints';
+import { usePersistNodeDocumentColumn } from '@/features/views/common/hooks/usePersistNodeDocumentColumn';
+import { usePersistNodeTokenizerModel } from '@/features/views/common/hooks/usePersistNodeTokenizerModel';
+import type { AnalysisTabFeatureProps } from '@/features/views/common/tabs/AnalysisTabsHost';
+import { useProjectActions } from '@/features/project/common/hooks/useProjectActions';
+import { useProjectData } from '@/features/project/common/hooks/useProjectData';
+import { useUIStore } from '@/stores/uiStore';
+import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import { getAnalysisResultResource } from '../common/analysisApi';
+import { ANALYSIS_TASK_TYPES } from '../common/analysisIds';
+import TokenizerModelSelector from '../common/components/TokenizerModelSelector';
+import { type AnalysisRequestOfKind, useAnalysisFeature } from '../common/hooks/useAnalysisFeature';
+import { useNodeColorControls } from '../common/hooks/useNodeColorControls';
+import { useTabNodeInputs } from '../common/nodeInputs';
+import { hasParameterDiff } from '../common/parameterComparison';
+import { getRerunActionState } from '../common/rerunActionState';
+import { hasClearRequiredAnalysis } from '../common/analysisActionLifecycle';
+import { DEFAULT_TAB_INPUT_SET_ID } from '../common/tabs/tabStateOps';
+import { deriveTokenizerModelsByNode } from '../common/tokenizerModelPreferences';
+import { DEFAULT_TOKEN_LIMIT } from '../common/utils';
+import FillDefaultStopWordsDialog from './components/FillDefaultStopWordsDialog';
+import { TokenFrequencyParameterPanel } from './components/panels/TokenFrequencyParameterPanel';
+import { TokenFrequencyResultsPanel } from './components/panels/TokenFrequencyResultsPanel';
+import { TokenFrequencyDownloadDialog } from './components/TokenFrequencyDownloadDialog';
+import { useTokenFrequencyPreferences } from './hooks/useTokenFrequencyPreferences';
+import { useTokenFrequencyResultModel } from './hooks/useTokenFrequencyResultModel';
+import { useTokenFrequencyTaskFlow } from './hooks/useTokenFrequencyTaskFlow';
+import {
+  buildNodeIdDisplayNameMap,
+  buildSelectionNameById,
+  deriveBackendTokenLimit,
+  derivePanelNodeIds,
+  deriveStudyNodeOrder,
+  type NodeNameEntry,
+  reconcileHydratedTokenFrequencyInputs,
+} from './tokenFrequencyUtils';
+
+const MAX_TOKEN_LIMIT_INPUT = 100;
+const EMPTY_STOP_SET = new Set<string>();
+
+/** Coordinates token-frequency selection, execution, and export wiring for the analysis tab. */
+/**
+ * Rendered by: the viewComponents tabbed loader, which mounts one instance per analysis tab and feeds it tab props.
+ * Flow: read project state, derive inputs and analysis parameters, wire hydration/run/clear callbacks, then render controls and results.
+ *
+ * The required host supplies normalized task/input state and closure-bound
+ * persistence commands for the active tab; this feature has no standalone or
+ * optional-tab compatibility path.
+ */
+const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
+  const {
+    latestRunAll,
+    activeAnalysis,
+    analyses,
+    refreshAnalyses,
+    inputSets: tabInputSets,
+    setInputSet: onTabInputSetChange,
+  } = host;
+  const tabTaskId = latestRunAll?.id ?? null;
+  const [liveTokenizerModelsByNode, setLiveTokenizerModelsByNode] = useState<
+    Record<string, string>
+  >({});
+  // Controls the "Add Default" stop-words dialog where the user confirms which
+  // language's defaults to append (guessed on the fly, not stored per column).
+  const [fillDialogOpen, setFillDialogOpen] = useState(false);
+  const { currentProject } = useProjectData();
+  const currentProjectId = currentProject?.id ?? null;
+  const nodeInputs = useTabNodeInputs({
+    tabInputSets,
+    onTabInputSetChange,
+    constraints: {
+      fieldPredicate: isArrowStringField,
+      docTypeOnly: true,
+      maxNodes: 2,
+    },
+  });
+  const nodeColumnSelections = nodeInputs.nodeColumnSelections;
+  const setNodeColumnSelection = nodeInputs.setColumn;
+  const panelSelectedNodes = nodeInputs.selectedNodes;
+  const { setNodeColor: persistNodeColor } = useProjectActions();
+  const setCurrentView = useUIStore((state) => state.setCurrentView);
+
+  const [lastCompareNodeIds, setLastCompareNodeIds] = useState<string[]>([]);
+  const [studyNodeId, setStudyNodeId] = useState<string | null>(null);
+
+  const restoreAnalysisNodeContext = (request: TokenFrequencyRequest) => {
+    const nodeIds = request.node_ids.slice(0, 2);
+    if (nodeIds.length === 0) return;
+
+    setLastCompareNodeIds(nodeIds);
+    setStudyNodeId(nodeIds[1] ?? null);
+
+    const hydratedInputs = nodeIds.map((nodeId) => ({
+      node_id: nodeId,
+      column: request.node_columns[nodeId] ?? '',
+    }));
+    const currentInputs = tabInputSets[DEFAULT_TAB_INPUT_SET_ID] ?? [];
+    const restoredInputs = reconcileHydratedTokenFrequencyInputs(currentInputs, hydratedInputs);
+    const inputsMatch =
+      currentInputs.length === restoredInputs.length &&
+      currentInputs.every((input, index) => {
+        const restoredInput = restoredInputs[index];
+        return (
+          input.node_id === restoredInput?.node_id && (input.column ?? '') === restoredInput.column
+        );
+      });
+    if (!inputsMatch) {
+      onTabInputSetChange(DEFAULT_TAB_INPUT_SET_ID, restoredInputs);
+    }
+
+    setLiveTokenizerModelsByNode(
+      Object.fromEntries(
+        nodeIds.flatMap((nodeId) => {
+          const model = request.node_tokenizer_models[nodeId];
+          return model?.trim() ? [[nodeId, model]] : [];
+        }),
+      ),
+    );
+  };
+
+  const panelNodeIds = derivePanelNodeIds(panelSelectedNodes);
+  const { effectiveStudyNodeId, orderedPanelNodeIds } = deriveStudyNodeOrder(
+    panelNodeIds,
+    studyNodeId,
+  );
+
+  // Per-source chart colours come from persisted node metadata, with palette
+  // defaults written before a run when a selected node has no colour yet.
+  const tokenActiveNodeIds = panelNodeIds.slice(0, 2);
+  const { defaultPalette, nodeColors, setNodeColor, ensureNodeColors } = useNodeColorControls({
+    nodeIds: tokenActiveNodeIds,
+    nodes: panelSelectedNodes,
+    persistNodeColor,
+  });
+
+  const {
+    request: serverRequest,
+    isRunning,
+    isStopping,
+    runAnalysis,
+    taskStatus,
+    clearResults,
+    stopTask,
+    result: results,
+  } = useAnalysisFeature<TokenFrequencyResponse, AnalysisRequestOfKind<'token_frequency'>>({
+    taskType: ANALYSIS_TASK_TYPES.tokenFrequencies,
+    projectId: currentProjectId,
+    tabId: host.tabId,
+    // The forest's newest Run All Analysis wins hydration over transient
+    // submission state.
+    hydrationTaskId: tabTaskId,
+    controlAnalysisId: activeAnalysis?.id ?? null,
+    tabAnalysisIds: analyses.map((analysis) => analysis.id),
+    /** Fetches the latest task result so polling and hydration share one retrieval path. */
+    fetchResult: async (taskId) => {
+      if (!currentProjectId) throw new Error('No project selected');
+      return getAnalysisResultResource<TokenFrequencyResponse>(currentProjectId, taskId);
+    },
+    /**
+     * Rehydrates the complete node-input context from a persisted request.
+     * Flow: unwrap the saved request, then restore columns, tokenizer models,
+     * and study/reference roles while retaining an existing parameter-card order.
+     */
+    onRequest: (request) => {
+      restoreAnalysisNodeContext(request);
+      applyTokenLimitState(request.token_limit ?? null);
+    },
+    /** Clears local result and selection state when the feature reset action runs. */
+    onCleared: () => {
+      // Refresh the canonical forest; curated inputs remain in the Tab draft.
+      refreshAnalyses();
+      setLastCompareNodeIds([]);
+      setStudyNodeId(null);
+      resetPreferenceUiState();
+    },
+  });
+
+  const effectiveTokenizerModelsByNode = useMemo(() => {
+    // Seed with models persisted to the backend from previous sessions,
+    // then apply any live overrides the user has made in this session.
+    return deriveTokenizerModelsByNode(
+      nodeColumnSelections,
+      nodeInputs.nodeInfoById,
+      liveTokenizerModelsByNode,
+    );
+  }, [nodeColumnSelections, nodeInputs.nodeInfoById, liveTokenizerModelsByNode]);
+
+  // useCallback so the section components below stay React.memo-stable
+  // across stopword-keystroke re-renders of this feature. Without it,
+  // every render hands a fresh function ref to the sections, busting
+  // memoisation and updating the external ECharts layout per keystroke.
+  const getColorForNode = useCallback(
+    (nodeId: string, index = 0) => {
+      return nodeColors[nodeId] ?? defaultPalette[index % defaultPalette.length] ?? '#000000';
+    },
+    [nodeColors, defaultPalette],
+  );
+
+  const backendTokenLimit = deriveBackendTokenLimit(results);
+  const frequencyResultKey = tabTaskId ?? (results ? '__hydrated__' : null);
+  const [stopWordsEnabledForResult, setStopWordsEnabledForResult] = useState<string | null>(null);
+  const stopWordsEnabled =
+    frequencyResultKey !== null && stopWordsEnabledForResult === frequencyResultKey;
+  const savedTokenLimit = Number(host.settings['tokenFrequency.tokenLimit']);
+  // Primary node/column the "Add Default" dialog samples to guess a language.
+  // Language is not stored per column (a column may mix languages), so the guess
+  // is derived on demand from the first selected text column and the user
+  // confirms or overrides it in the dialog.
+  const fillDefaultSelection = nodeColumnSelections.find((selection) => selection.column);
+  const fillDefaultTarget = {
+    nodeId: fillDefaultSelection?.nodeId ?? null,
+    column: fillDefaultSelection?.column ?? null,
+  };
+
+  const {
+    stopWords,
+    setStopWords,
+    isLoadingStopWords,
+    appliedStopSet,
+    tokenLimitInput,
+    tokenLimitError,
+    isApplyingTokenLimit,
+    effectiveTokenLimit,
+    applyTokenLimitState,
+    applyStopSetFromText,
+    sortStopWords,
+    handleTokenLimitInputChange,
+    handleTokenLimitBlur,
+    applyTokenLimit,
+    handleAddDefaultStopWords,
+    resetPreferenceUiState,
+  } = useTokenFrequencyPreferences({
+    results,
+    backendTokenLimit,
+    backendStopWordsKey: '',
+    maxTokenLimitInput: MAX_TOKEN_LIMIT_INPUT,
+    savedTokenLimit: Number.isFinite(savedTokenLimit) ? savedTokenLimit : undefined,
+    savedStopWordsJson: JSON.stringify(host.stopWords),
+    onTokenLimitChange: (value) => {
+      host.setSetting('tokenFrequency.tokenLimit', String(value));
+    },
+    onStopWordsChange: (words) => {
+      void host.setPresentationSettings({ stopWords: words });
+    },
+  });
+  const effectiveAppliedStopSet = stopWordsEnabled ? appliedStopSet : EMPTY_STOP_SET;
+
+  const lockedNodeNameMap = useMemo(
+    () =>
+      buildSelectionNameById(
+        panelSelectedNodes as NodeNameEntry[],
+        panelSelectedNodes as NodeNameEntry[],
+      ),
+    [panelSelectedNodes],
+  );
+
+  const nodeIdToName = useMemo(
+    () => buildNodeIdDisplayNameMap(panelSelectedNodes),
+    [panelSelectedNodes],
+  );
+  const resultNodeColumnSelections = lastCompareNodeIds.map((nodeId) => ({ nodeId }));
+
+  const { handleAnalyze, handleTokenClick, handleTokenRightClick } = useTokenFrequencyTaskFlow({
+    state: {
+      currentProjectId,
+      tabId: host.tabId,
+      panelNodeIds: orderedPanelNodeIds,
+      panelSelectedNodes,
+      effectiveNodeColumnSelections: nodeColumnSelections,
+      tokenizerModelsByNode: effectiveTokenizerModelsByNode,
+      stopWords,
+      lastCompareNodeIds,
+    },
+    actions: {
+      runAnalysis,
+      setLastCompareNodeIds,
+      setStopWords,
+      prepareBeforeRun: ensureNodeColors,
+    },
+    navigation: {
+      setCurrentView,
+      applyStopSetFromText,
+    },
+  });
+
+  const {
+    computeDisplayName,
+    normalizedNodeResults,
+    nodeDisplayResults,
+    downloadDialogOpen,
+    setDownloadDialogOpen,
+    downloadDialogMode,
+    registerWordCloudRef,
+    openWordCloudDownload,
+    openFrequencyDownload,
+    confirmDownload,
+  } = useTokenFrequencyResultModel({
+    results,
+    lastCompareNodeIds,
+    nodeColumnSelections: resultNodeColumnSelections,
+    lockedNodeNameMap,
+    nodeIdToName,
+    appliedStopSet: effectiveAppliedStopSet,
+    effectiveTokenLimit,
+    stopWords,
+  });
+
+  /** Passed to TokenFrequencyResultsPanel to apply its stop-word editor text. */
+  const handleApplyStopWords = () => {
+    applyStopSetFromText(stopWords);
+  };
+
+  const hasIncompleteSelections = nodeColumnSelections.some((selection) => !selection.column);
+  const selectedNodeIdsWithColumns = orderedPanelNodeIds.filter((nodeId) =>
+    nodeColumnSelections.some((selection) => selection.nodeId === nodeId && selection.column),
+  );
+  const missingTokenizerModelNodeIds = selectedNodeIdsWithColumns.filter(
+    (nodeId) => !(effectiveTokenizerModelsByNode[nodeId] ?? '').trim(),
+  );
+
+  const lastRunRequest = serverRequest ?? null;
+  const currentTokenFrequencyParams = {
+    node_ids: orderedPanelNodeIds,
+    node_columns: Object.fromEntries(
+      nodeColumnSelections
+        .filter((selection) => orderedPanelNodeIds.includes(selection.nodeId) && selection.column)
+        .map((selection) => [selection.nodeId, selection.column]),
+    ),
+    node_tokenizer_models: Object.fromEntries(
+      orderedPanelNodeIds.flatMap((nodeId) => {
+        const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
+        return model ? [[nodeId, model]] : [];
+      }),
+    ),
+  };
+  const serverTokenFrequencyParams = (request: Record<string, unknown>) => ({
+    node_ids: Array.isArray(request.node_ids) ? request.node_ids : [],
+    node_columns:
+      request.node_columns && typeof request.node_columns === 'object' ? request.node_columns : {},
+    node_tokenizer_models:
+      request.node_tokenizer_models && typeof request.node_tokenizer_models === 'object'
+        ? request.node_tokenizer_models
+        : {},
+  });
+  const hasChanges = !lastRunRequest
+    ? true
+    : hasParameterDiff(currentTokenFrequencyParams, serverTokenFrequencyParams(lastRunRequest));
+  const parametersLocked = isRunning || Boolean(activeAnalysis);
+  const requiresClear = hasClearRequiredAnalysis(analyses);
+  const baseActionState = getRerunActionState({
+    hasProject: Boolean(currentProjectId),
+    isRunnable: panelSelectedNodes.length > 0 && !hasIncompleteSelections,
+    hasAttachedAnalysis: Boolean(tabTaskId),
+    hasAnyAnalysis: analyses.length > 0,
+    analysisState: taskStatus.tasks[0]?.state ?? null,
+    hasChanges,
+    requiresClear,
+    isBusy: parametersLocked,
+  });
+  const hasTokenizerModel = missingTokenizerModelNodeIds.length === 0;
+  const actionState = {
+    ...baseActionState,
+    runDisabled: baseActionState.runDisabled || !hasTokenizerModel,
+    runDisabledReason: !hasTokenizerModel
+      ? 'Select a tokenizer model for each data block'
+      : baseActionState.runDisabledReason,
+  };
+
+  const persistDocumentColumn = usePersistNodeDocumentColumn({
+    projectId: currentProjectId,
+  });
+  const persistTokenizerModel = usePersistNodeTokenizerModel({
+    projectId: currentProjectId,
+  });
+
+  /** Passed to TokenFrequencyParameterPanel to update and persist a node's document column. */
+  const handleColumnChange = (nodeId: string, column: string) => {
+    setNodeColumnSelection(nodeId, column);
+    void persistDocumentColumn(nodeId, column);
+  };
+
+  /**
+   * Passed to each parameter-panel tokenizer selector to update its live model
+   * and persist the node-level model independently from the document column.
+   */
+  const handleTokenizerModelChange = (
+    nodeId: string,
+    _column: string,
+    model: string,
+    _language: string | null,
+  ) => {
+    setLiveTokenizerModelsByNode((prev) => ({ ...prev, [nodeId]: model.trim() }));
+    void persistTokenizerModel(nodeId, model);
+  };
+
+  useProgressiveContextualHints([
+    CONTEXTUAL_HINT_IDS.tokenFrequency.inputs,
+    ...(!actionState.runDisabled ? [CONTEXTUAL_HINT_IDS.tokenFrequency.run] : []),
+    ...(results ? [CONTEXTUAL_HINT_IDS.tokenFrequency.results] : []),
+  ]);
+
+  return (
+    <div className="space-y-4">
+      <TokenFrequencyParameterPanel
+        nodeInputs={nodeInputs}
+        onColumnChange={handleColumnChange}
+        actionState={actionState}
+        parametersLocked={parametersLocked}
+        isAnalyzing={isRunning}
+        isStopping={isStopping}
+        onAnalyze={() => {
+          void handleAnalyze();
+        }}
+        onStop={
+          activeAnalysis
+            ? () => {
+                void stopTask();
+              }
+            : undefined
+        }
+        onClearResults={() => {
+          void clearResults();
+        }}
+        hasIncompleteSelections={hasIncompleteSelections}
+        studyNodeId={effectiveStudyNodeId}
+        onStudyNodeChange={(nodeId: string) => {
+          setStudyNodeId(nodeId);
+        }}
+        nodeColors={nodeColors}
+        onNodeColorChange={(nodeId, color) => {
+          setNodeColor(nodeId, color);
+        }}
+        computeDisplayName={computeDisplayName}
+        renderTokenizerModelSelector={({ nodeId, column }) => (
+          <TokenizerModelSelector
+            projectId={currentProjectId}
+            nodeId={nodeId}
+            column={column}
+            value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
+            autoSelectRecommended
+            onChange={(model, detectedLanguage) => {
+              handleTokenizerModelChange(nodeId, column, model, detectedLanguage);
+            }}
+          />
+        )}
+      />
+
+      <TokenFrequencyResultsPanel
+        results={results}
+        isRunning={isRunning || Boolean(taskStatus.runningTask)}
+        runningTask={taskStatus.runningTask}
+        stopWords={stopWords}
+        onStopWordsChange={setStopWords}
+        onStopWordsApply={handleApplyStopWords}
+        isLoadingStopWords={isLoadingStopWords}
+        onFillDefaultStopWords={() => {
+          setFillDialogOpen(true);
+        }}
+        onSortStopWords={sortStopWords}
+        stopWordsEnabled={stopWordsEnabled}
+        onStopWordsEnabledChange={(enabled) => {
+          if (!frequencyResultKey) return;
+          setStopWordsEnabledForResult(enabled ? frequencyResultKey : null);
+        }}
+        tokenLimitInput={tokenLimitInput}
+        onTokenLimitInputChange={handleTokenLimitInputChange}
+        onTokenLimitBlur={handleTokenLimitBlur}
+        applyCloudTokenLimit={applyTokenLimit}
+        tokenLimitError={tokenLimitError}
+        isApplyingTokenLimit={isApplyingTokenLimit}
+        appliedStopCount={effectiveAppliedStopSet.size}
+        normalizedNodeResults={normalizedNodeResults}
+        nodeDisplayResults={nodeDisplayResults}
+        lastCompareNodeIds={lastCompareNodeIds}
+        appliedStopSet={effectiveAppliedStopSet}
+        effectiveTokenLimit={effectiveTokenLimit}
+        defaultTokenLimit={DEFAULT_TOKEN_LIMIT}
+        computeDisplayName={computeDisplayName}
+        getColorForNode={getColorForNode}
+        onDownloadWordCloud={openWordCloudDownload}
+        onTokenClick={handleTokenClick}
+        onTokenRightClick={stopWordsEnabled ? handleTokenRightClick : () => undefined}
+        registerWordCloudRef={registerWordCloudRef}
+        onDownloadFrequencyCsv={openFrequencyDownload}
+      />
+
+      <TokenFrequencyDownloadDialog
+        open={downloadDialogOpen}
+        onOpenChange={setDownloadDialogOpen}
+        mode={downloadDialogMode}
+        onConfirm={(options) => {
+          void confirmDownload(options);
+        }}
+      />
+
+      <FillDefaultStopWordsDialog
+        key={fillDialogOpen ? 'fill-dialog-open' : 'fill-dialog-closed'}
+        open={fillDialogOpen}
+        onOpenChange={setFillDialogOpen}
+        projectId={currentProjectId}
+        nodeId={fillDefaultTarget.nodeId}
+        column={fillDefaultTarget.column}
+        isLoading={isLoadingStopWords}
+        onFill={handleAddDefaultStopWords}
+      />
+    </div>
+  );
+};
+
+export default TokenFrequencyFeature;

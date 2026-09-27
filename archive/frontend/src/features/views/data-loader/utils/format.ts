@@ -1,0 +1,34 @@
+/**
+ * 1024-based byte formatter used by Data Loader file/project sizes.
+ * `lib/utils.ts` exports a 1000-based variant; do not merge — they target
+ * different displays.
+ * Used by: Data Loader components and tests because file lists and progress surfaces must display byte counts consistently.
+ * Steps: reject missing values, choose the largest 1024 unit, and format precision by display size.
+ */
+export const formatBytes = (bytes?: number | null): string => {
+  if (!bytes || Number.isNaN(bytes)) return '—';
+  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const idx = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+  const value = bytes / 1024 ** idx;
+  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[idx] ?? ''}`;
+};
+
+/**
+ * Formats project timestamps for compact card metadata. Data Loader cards
+ * call this for both backend epoch values and ISO strings.
+ * Used by Data Loader status copy and `ActiveProjectCard` metadata.
+ * Steps: normalize epoch seconds/milliseconds or ISO text into a Date, then fall back when parsing fails.
+ */
+export const formatTimestamp = (value?: number | string | null): string => {
+  if (!value) return '—';
+  let date: Date | null = null;
+  if (typeof value === 'number') {
+    date = new Date(value * (value > 1e12 ? 1 : 1000));
+  } else if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    if (!Number.isNaN(parsed)) {
+      date = new Date(parsed);
+    }
+  }
+  return date ? date.toLocaleString() : '—';
+};

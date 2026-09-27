@@ -1,19 +1,19 @@
-use sha2::{Digest, Sha256};
-use std::{env, fs, path::PathBuf};
-
 fn main() {
-    let manifest_dir = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").expect("manifest dir"));
-    let lock_path = manifest_dir.join("../../backend/uv.lock");
-    println!("cargo:rerun-if-changed={}", lock_path.display());
-    let lock = fs::read(&lock_path).unwrap_or_else(|error| {
-        panic!(
-            "Cannot read backend lockfile {}: {error}",
-            lock_path.display()
-        )
-    });
-    println!(
-        "cargo:rustc-env=LDACA_UV_LOCK_SHA256={:x}",
-        Sha256::digest(lock)
-    );
+    // Cargo does not forward a dependency's rustc-link-arg to the final Tauri binary.
+    // Keep Foundation Models optional so the app still launches before macOS 26.
+    if std::env::var("CARGO_CFG_TARGET_OS").as_deref() == Ok("macos") {
+        let sdk = std::process::Command::new("xcrun")
+            .arg("--show-sdk-path")
+            .output()
+            .expect("macOS SDK");
+        let path = String::from_utf8(sdk.stdout).expect("SDK path");
+        if std::path::Path::new(path.trim())
+            .join("System/Library/Frameworks/FoundationModels.framework")
+            .exists()
+        {
+            println!("cargo:rustc-link-arg=-Wl,-weak_framework,FoundationModels");
+        }
+        println!("cargo:rustc-link-arg=-Wl,-rpath,/usr/lib/swift");
+    }
     tauri_build::build()
 }

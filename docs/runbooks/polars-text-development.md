@@ -58,3 +58,11 @@ UDPipe or its bridge. No external UDPipe installation is used.
 
 See [test suite ownership and artifact verification](test-suites.md) for offline
 checks, feature matrices and installed-wheel acceptance.
+
+## Shared native core
+
+Local builds require `../ldaca-rs`, a regular folder in the Wordflow checkout.
+Run algorithm tests and feature checks from that crate; keep Series/schema and
+Python ABI tests here. Model sources and provisioning scripts belong to the core.
+The adapter's existing script entrypoints delegate there. Standalone CI and
+publication setup for the sibling dependency are deferred.

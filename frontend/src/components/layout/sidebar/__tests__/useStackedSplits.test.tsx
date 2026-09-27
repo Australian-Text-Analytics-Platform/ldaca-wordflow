@@ -6,19 +6,19 @@ import { useStackedSplits } from '../useStackedSplits';
 describe('useStackedSplits', () => {
   it('derives collapse state and flex ratios from the latest render state', () => {
     const { result } = renderHook(() =>
-      useStackedSplits(['views', 'nodes'] as const, {
-        initialRatios: { views: 0.4, nodes: 0.6 },
+      useStackedSplits(['tools', 'nodes'] as const, {
+        initialRatios: { tools: 0.4, nodes: 0.6 },
       }),
     );
 
-    expect(result.current.getSectionFlexStyle('views')).toMatchObject({ flexGrow: 0.4 });
+    expect(result.current.getSectionFlexStyle('tools')).toMatchObject({ flexGrow: 0.4 });
 
     act(() => {
-      result.current.toggleSection('views');
+      result.current.toggleSection('tools');
     });
 
-    expect(result.current.isCollapsed('views')).toBe(true);
-    expect(result.current.getSectionFlexStyle('views')).toEqual({ flex: '0 0 auto' });
+    expect(result.current.isCollapsed('tools')).toBe(true);
+    expect(result.current.getSectionFlexStyle('tools')).toEqual({ flex: '0 0 auto' });
     expect(result.current.getSectionFlexStyle('nodes')).toMatchObject({ flexGrow: 1 });
   });
 
@@ -41,6 +41,7 @@ describe('useStackedSplits', () => {
 
     const handle = document.createElement('div');
     handle.setPointerCapture = vi.fn();
+    handle.hasPointerCapture = vi.fn().mockReturnValue(true);
     handle.releasePointerCapture = vi.fn();
 
     act(() => {
@@ -55,8 +56,8 @@ describe('useStackedSplits', () => {
     expect(result.current.resizingLowerKey).toBe('tasks');
 
     act(() => {
-      window.dispatchEvent(new PointerEvent('pointermove', { clientY: 200, pointerId: 7 }));
-      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7 }));
+      handle.dispatchEvent(new PointerEvent('pointermove', { clientY: 200, pointerId: 7 }));
+      handle.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7 }));
     });
 
     expect(result.current.getSectionFlexStyle('nodes')).toMatchObject({ flexGrow: 0.86 });
@@ -66,45 +67,49 @@ describe('useStackedSplits', () => {
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(7);
   });
 
-  it('clears active drag state on pointer cancellation', () => {
-    const { result } = renderHook(() =>
-      useStackedSplits(['views', 'nodes'] as const, {
-        initialRatios: { views: 0.5, nodes: 0.5 },
-      }),
-    );
-    const handle = document.createElement('div');
-    handle.setPointerCapture = vi.fn();
-    handle.releasePointerCapture = vi.fn();
+  it.each(['pointercancel', 'lostpointercapture'])(
+    'clears active drag state on %s',
+    (eventType) => {
+      const { result } = renderHook(() =>
+        useStackedSplits(['tools', 'nodes'] as const, {
+          initialRatios: { tools: 0.5, nodes: 0.5 },
+        }),
+      );
+      const handle = document.createElement('div');
+      handle.setPointerCapture = vi.fn();
+      handle.hasPointerCapture = vi.fn().mockReturnValue(true);
+      handle.releasePointerCapture = vi.fn();
 
-    act(() => {
-      result.current.containerRef.current = Object.assign(document.createElement('div'), {
-        getBoundingClientRect: () => ({ height: 400 }),
+      act(() => {
+        result.current.containerRef.current = Object.assign(document.createElement('div'), {
+          getBoundingClientRect: () => ({ height: 400 }),
+        });
+        result.current.handleResizeStart('tools', 'nodes', {
+          button: 0,
+          clientY: 0,
+          pointerId: 3,
+          currentTarget: handle,
+          preventDefault: vi.fn(),
+        } as unknown as React.PointerEvent<HTMLDivElement>);
       });
-      result.current.handleResizeStart('views', 'nodes', {
-        button: 0,
-        clientY: 0,
-        pointerId: 3,
-        currentTarget: handle,
-        preventDefault: vi.fn(),
-      } as unknown as React.PointerEvent<HTMLDivElement>);
-    });
-    expect(result.current.resizingLowerKey).toBe('nodes');
+      expect(result.current.resizingLowerKey).toBe('nodes');
 
-    act(() => {
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 3 }));
-    });
+      act(() => {
+        handle.dispatchEvent(new PointerEvent(eventType, { pointerId: 3 }));
+      });
 
-    expect(result.current.resizingLowerKey).toBeNull();
-  });
+      expect(result.current.resizingLowerKey).toBeNull();
+    },
+  );
 
   it('does not start a drag across a collapsed section boundary', () => {
-    const { result } = renderHook(() => useStackedSplits(['views', 'nodes'] as const));
+    const { result } = renderHook(() => useStackedSplits(['tools', 'nodes'] as const));
 
     act(() => {
-      result.current.toggleSection('views');
+      result.current.toggleSection('tools');
     });
     act(() => {
-      result.current.handleResizeStart('views', 'nodes', {
+      result.current.handleResizeStart('tools', 'nodes', {
         button: 0,
         clientY: 0,
         pointerId: 5,

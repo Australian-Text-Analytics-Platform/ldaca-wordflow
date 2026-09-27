@@ -2,8 +2,7 @@
 
 Version 0.6 requires Python Polars 1.44.1. Importing `polars_text` registers the
 sole expression façade, the `.text` namespace. The namespace registers native
-plugins against the exact imported `_internal` extension; `clean_text` and
-`char_count` are native Polars expression compositions.
+plugins against the exact imported `_internal` extension; all custom computation delegates to the native `ldaca-rs` library.
 
 ## Expression Namespace
 

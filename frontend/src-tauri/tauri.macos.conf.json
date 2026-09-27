@@ -10,13 +10,24 @@
         "minWidth": 1000,
         "minHeight": 700,
         "zoomHotkeysEnabled": true,
-        "dragDropEnabled": false,
+        "dragDropEnabled": true,
         "visible": false,
         "useHttpsScheme": true,
         "resizable": true,
         "fullscreen": false,
-        "transparent": true
+        "transparent": false,
+        "create": false
       }
     ]
+  },
+  "build": {
+    "beforeBundleCommand": "pnpm build:quicklook"
+  },
+  "bundle": {
+    "macOS": {
+      "files": {
+        "PlugIns/WordflowPreview.appex": "target/quicklook/products/WordflowPreview.appex"
+      }
+    }
   }
 }

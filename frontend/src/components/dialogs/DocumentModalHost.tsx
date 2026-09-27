@@ -40,7 +40,7 @@ const DOCUMENT_PRESENTATION: Record<
  * targets. The canonical target carries its kind through registry lookup and
  * UI intent, so switching targets never requires parallel modal slots.
  *
- * Rendered by: `WorkspaceShell` so every documentation affordance shares one
+ * Rendered by: `ServerProjectShell` so every documentation affordance shares one
  * lazy viewer, focus trap, close action, and target lifecycle.
  */
 export function DocumentModalHost() {

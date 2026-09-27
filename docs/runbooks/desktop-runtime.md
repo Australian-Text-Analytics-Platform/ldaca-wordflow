@@ -1,163 +1,321 @@
 # Desktop Runtime Runbook
 
-## Build And Stage
+## Develop and Build
 
-Use the root-owned command for local and CI packaging:
+The desktop links Axum directly into Tauri. Use the root Cargo workspace and
+lockfile for backend and desktop checks. Python and uv are not desktop
+prerequisites. macOS builds also use Xcode's Swift compiler for the on-device
+Annotation provider; build with the macOS 26 SDK or newer to include Foundation
+Models support. Older SDKs build an unavailable-provider stub.
 
-```bash
-pnpm prepare:backend-runtime
-```
-
-`scripts/package_backend_runtime.py` creates a clean managed standard Python
-`3.14` runtime, installs the backend without editable links, copies platform
-runtime support, and writes the schema 3 `runtime-manifest.json`. The manifest
-records the installed backend version and the exact `backend/uv.lock` digest in
-addition to the relocatable Python layout. The locked sync honors
-`backend/pyproject.toml` source overrides, so checked-out sibling packages are
-built when configured and packages without an override come from their locked
-registry source. Packaging fails when `pyproject.toml` and `uv.lock` disagree;
-the default path does not use `--no-sources`. The manual desktop workflows
-expose an opt-in `no_sources` input, defaulting to `false`. When enabled, CI
-passes `--no-sources`, resolves dependencies from PyPI without `--locked`, and
-refuses source distribution builds for `polars-text` and
-`polars-source-utils`. This installs their Python 3.14 wheels without compiling
-either Rust extension.
-
-The packager removes Finder `._*` and `.DS_Store` metadata before signing
-because HFS disk-image installation does not preserve those pseudo-files as
-ordinary sealed resources. The frontend staging script validates the target,
-backend version, lock digest, Python ABI, and layout, copies into a temporary
-sibling directory, then replaces `frontend/src-tauri/backend-runtime` as a
-whole. A previous runtime can never be merged into the replacement.
-
-Do not set `PYTHONPATH` manually or create another desktop development runtime.
-`pnpm dev:desktop` and release builds consume the same staged directory through
-their explicit development and packaging profiles.
-
-Build the local Apple Silicon application and DMG from the repository root:
-
-```bash
-pnpm build:desktop:mac
-```
-
-Routine packaging copies `frontend/src-tauri/icons/Assets.car`; it does not
-compile the Icon Composer document. After changing `wordflow.icon`, regenerate
-the catalog explicitly with `pnpm -C frontend compile:desktop:mac-icon` and
-review both source and generated asset changes together.
-
-Local build commands disable updater-archive generation because updater
-signatures require the private key held by GitHub Actions. Release builds keep
-updater generation enabled through the base Tauri configuration.
-
-## Develop
-
-Start the native development application from the repository root:
-
-```bash
+```sh
 pnpm dev:desktop
+pnpm build:desktop:mac
+pnpm build:desktop:windows
 ```
 
-The desktop Vite server owns the fixed strict origin
-`http://127.0.0.1:3001`. It exits when that port is occupied and never scans for
-or kills another listener. Identify the listener before stopping the intended
-process:
+`pnpm dev:desktop` explicitly loads `frontend/src-tauri/tauri.dev.conf.json`.
+It runs **LDaCA Wordflow Dev** (`au.edu.ldaca.wordflow.dev`), separately from
+**LDaCA Wordflow** (`au.edu.ldaca.wordflow`). Local production bundles and CI
+releases keep the production identity. Raw `tauri dev` does not load this
+override automatically. Restart an already-running development app once to
+pick up the new identity.
 
-```bash
-lsof -nP -iTCP:3001 -sTCP:LISTEN
+For native QA while Dev is running, build the current source with the production
+configuration and launch that local bundle. Both identities may run together;
+another production instance still shares the bundle's single-instance lock.
+Use temporary projects: different application identities do not permit two
+processes to write the same DuckDB project. Follow the
+[agent testing instructions](../../frontend/AGENTS.md#desktop-and-documentation)
+when an existing development process needs to be stopped.
+
+Final visual, performance and packaging acceptance uses a **release build without
+WebDriver instrumentation**, retaining the production identity. On macOS:
+
+```sh
+pnpm build:qa:mac
+pnpm verify:qa:mac
+open "target/release/bundle/macos/LDaCA Wordflow.app"
 ```
 
-On Windows, use PowerShell:
+The build uses the normal frontend, release Rust profile, on-demand ICU and Quick
+Look extension. The verification command checks the signature, identity, packaged
+asset checksum, startup and timezone/DST queries without remote sample downloads.
+It creates only a temporary Untitled project and closes its own process. The local
+bundle is ad-hoc signed; it does not prove notarization or updater installation.
+Use `build:desktop:windows` for clean Windows installer acceptance, separately from
+automation. Before distribution, test the actual signed/notarized artifacts.
 
-```powershell
-Get-NetTCPConnection -LocalPort 3001 -State Listen
+For a faster local macOS debug bundle with the inspector available (not final
+performance or release acceptance):
+
+```sh
+pnpm -C frontend tauri build --debug --config src-tauri/tauri.local-build.conf.json --bundles app
 ```
 
-The loopback-only Vite server does not restrict the desktop application's
-outbound access. LDaCA Data Portal traffic leaves through the supervised Python
-backend.
+For a packaged Dev app when testing requires one, explicitly pass the same
+override, for example on macOS:
 
-The development command explicitly enables the Rust `dev-runtime` feature, so
-the supervisor reads only `frontend/src-tauri/backend-runtime`. Packaged builds
-do not enable that feature. They use `pnpm -C frontend tauri:build`, which
-applies `src-tauri/tauri.bundle.conf.json` and makes Tauri embed the staged
-directory as its `backend-runtime` resource. Do not invoke raw `tauri build` for
-a distributable package.
+```sh
+pnpm -C frontend tauri build --debug --config src-tauri/tauri.dev.conf.json --bundles app
+```
+
+Dev disables updater endpoints and updater artifacts, file associations, and
+the macOS Quick Look build/embedding hook. Its updates menu is disabled and
+Settings explains that updates are unavailable. Keep Finder/Quick Look and
+release-upgrade testing on production bundles. Tauri Store paths follow the
+application identifier; Dev does not migrate production preferences. Frontend
+preferences also differ between Vite's development origin and packaged content.
+
+Desktop Vite uses the fixed strict origin `http://127.0.0.1:3001`. An occupied
+port is an error; do not automatically kill its owner or choose a random port.
+Identify an existing Wordflow development session before intentionally stopping
+it under the agent testing instructions. The native backend
+binds a separate ephemeral loopback port, discovered through Tauri IPC.
+
+The local Apple Silicon build creates an application and DMG. Local commands
+use `tauri.local-build.conf.json` to disable updater artifact signing. CI keeps
+updater artifacts enabled and uses its existing signing secrets.
+Disabling artifact creation alone does not disable the runtime updater; local
+production bundles retain it to exercise the release configuration.
+Routine packaging copies the committed Icon Composer `Assets.car`; regenerate
+it only after changing the icon source with
+`pnpm -C frontend compile:desktop:mac-icon`.
+
+To run only the Rust HTTP backend:
+
+```sh
+cargo run --manifest-path backend/Cargo.toml --bin wordflow-api-dev
+```
+
+`WORDFLOW_BIND_ADDR` overrides the default `127.0.0.1:8002`. See the
+[native backend reference](../reference/native-backend.md) for HTTP and IPC.
+`pnpm dev` initializes a temporary Untitled project and starts Rust on port 8002 and Vite's project interface on port 3000.
+The project interface is also the default for `pnpm -C frontend dev` and builds;
+no `--mode rust` flag or saved backend selection is needed.
+Vite binds loopback and proxies project and health requests. `pnpm dev:desktop` runs the actual
+Tauri application. The Python server tooling is archived.
+`FRONTEND_PORT` and `VITE_BACKEND_PORT` override the browser development ports.
+
+## Automated native tests
+
+WebdriverIO drives the actual Tauri webview on macOS and Windows using its
+[embedded driver](https://webdriver.io/docs/desktop-testing/tauri/). No external
+`tauri-driver`, browser-driver download or paid service is needed. The fast suite
+uses an unbundled debug executable:
+
+```sh
+pnpm -C frontend build:e2e:native
+pnpm -C frontend test:e2e:native
+```
+
+The build compiles frontend assets and a debug executable with the opt-in Cargo
+`e2e` feature and the test-only bridge injected by Vite's `e2e` mode.
+`tauri.e2e.conf.json` grants bridge access to project windows, enables the public
+Tauri JavaScript API for real IPC assertions and disables automatic updates. The production identifier,
+single-instance handling and project runtime remain intact. Normal Dev and
+distributable release builds omit the WebDriver dependency and server. Never distribute an
+instrumented binary.
+
+The service owns launch and cleanup, runs one process at a time and starts with
+an empty temporary Untitled project. It can coexist with Wordflow Dev. Close a
+running production-identity Wordflow before testing; do not disable the
+single-instance plugin. Tests restore any theme preference they change. Reuse
+the built binary for test-only changes; rebuild after Rust or frontend changes.
+Use `pnpm -C frontend test:e2e:native --spec ./e2e-native/project.spec.ts` to
+select a spec. Logs, failure screenshots and theme captures live in
+`frontend/.tmp/wdio/native-debug/` and are uploaded by macOS/Windows CI.
+
+Annotation uses repository-owned imported files and a deterministic local HTTP
+provider in its default browser/native scenarios. Provider configuration lives
+in a temporary test directory. On an eligible Mac with Apple Intelligence enabled
+and the system model downloaded, include real on-device inference with:
+
+```sh
+WORDFLOW_TEST_APPLE_AI=1 pnpm -C frontend test:e2e:native --spec ./e2e-native/annotation.spec.ts
+```
+
+This opt-in scenario exercises Preview, correction editing and Run without a
+cloud account or credential. It is separate from deterministic adapter coverage
+and does not establish macOS 26, Windows or Linux acceptance. The integration uses
+the macOS 26+ framework; the `fm` CLI is not a runtime dependency. See the
+[provider architecture](../architecture/backend/native-analyses.md#host-provider-services).
+
+Run the optimized, still-instrumented lane for release-profile regressions:
+
+```sh
+pnpm build:e2e:native:release
+pnpm test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts
+```
+
+Both commands use the same scenario runner and production identity. The release
+lane uses isolated Cargo outputs under `target/e2e-release/`; it launches
+the bundled executable on macOS and stages resources beside the unbundled Windows
+executable. It does not test Windows installation. Test frontend assets are isolated
+in `.tmp/e2e-build/`, leaving ordinary `build/` assets untouched. ICU downloads on first timezone use and is retained in the host cache; neither
+build command bundles it. Normal frontend builds reject test
+bridge markers.
+
+Evidence is separated into `.tmp/wdio/native-debug/` and `native-release/`. Each
+contains `build.json` identifying the profile, production identity, instrumentation,
+binary path, hash and build time. The runner rejects a binary that changed after
+that record was written. CI runs the full debug suite, representative release
+scenarios on macOS/Windows, and a clean macOS release-bundle smoke check. These
+are distinct gates: an optimized instrumented test is not a shipping-app or
+performance acceptance result. Report the profile, instrumentation, platform and
+manual/automated method with every verification claim.
+
+Each spec worker explicitly selects `project-0`, reloads the webview and waits
+for Data Loader before its tests start. Explicit window selection avoids the
+service's automatic title matching and its window-state IPC checks during reload,
+which can otherwise stall for the 30-second script timeout. Reloading resets the
+screen and frontend drafts, not the database: specs share the same project runtime
+and use distinct test object names. There are no intentional pauses between actions.
+The embedded driver's refresh returns before navigation finishes. The test setup
+marks the old document and waits for its replacement through the native page-source
+read before running more commands. This avoids interacting with the old screen or
+losing an execute-script result while its document is being discarded.
+The runner and service own log-directory creation, app launch and cleanup. Run only
+one native suite at a time, since it owns the production identity and embedded driver.
+Keep the Mac unlocked and the test window visible for interactive checks. WebKit
+can suspend animations in an inactive window, leaving popovers invisible and
+causing `waitForStable` to reject even though the application has loaded.
+
+The browser WebdriverIO suite lives under `frontend/e2e-browser/`, run by
+`test:e2e` or `test:e2e:browser`. Its launcher owns the Rust/Vite preview hosts,
+and WebdriverIO manages Chrome and ChromeDriver. It uses an isolated browser
+session and resets the temporary project before each scenario. This is a browser,
+not the native webview. Native WebDriver checks also do not prove file chooser,
+OS menu, Finder, signing, notarization or updater-install behavior; retain the
+manual and packaging checks below for those boundaries.
+
+Embedded-driver 1.4 emits mouse events for pointer actions rather than DOM
+Pointer Events. The native smoke test activates draggable tabs through their
+keyboard controls. Keep pointer-capture dragging and resize coverage in
+the WebdriverIO browser suite and native computer-use checks; do not add synthetic application
+events to make an embedded-driver test appear to exercise OS input.
 
 ## Validate
 
-```bash
-pnpm -C frontend versions:check
-cd frontend/src-tauri
-cargo test
-cargo clippy --all-targets --all-features -- -D warnings
+For recent-project integration, use a bundled macOS app and temporary `.wfpj`
+files. Save an Untitled project, use Save As, close and reopen it through the
+actual Dock recent-document list, then quit and repeat from the Dock. Also check
+opening an already-open project focuses one window, paths containing spaces and
+Unicode, identical filenames in separate directories, and missing/locked files.
+Failed opens, cancelled saves, Untitled projects and data imports must not add
+history entries. Verify Dev and production histories separately. Native WebDriver
+does not exercise the Dock; report this OS check separately and do not clear the
+user's existing recent-document history during testing.
+
+```sh
+cargo fmt --manifest-path backend/Cargo.toml --check
+cargo test --manifest-path backend/Cargo.toml --locked
+cargo clippy --manifest-path backend/Cargo.toml --all-targets --all-features --locked -- -D warnings
+cargo fmt --manifest-path frontend/src-tauri/Cargo.toml --check
+cargo test --manifest-path frontend/src-tauri/Cargo.toml --locked
+cargo clippy --manifest-path frontend/src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
+pnpm -C frontend check
+pnpm -C frontend test:e2e
+pnpm -C frontend build:e2e:native
+pnpm -C frontend test:e2e:native
+pnpm docs:links
 ```
 
-Preparation and packaging must fail when the staged manifest or any declared
-path is missing, absolute, escaping, corrupt, stale, or for another
-version/platform/ABI. Rust also compiles the current lockfile digest into the
-desktop binary and verifies the bundled manifest against it before Python
-starts. After bundling, the ignored package probe must resolve the final
-resource directory, import the backend and both compiled extensions, exercise
-DuckDB-backed cached tokenization, launch the packaged backend without a Data
-Root, verify `/health/live`, and shut down its process tree.
-The cached-tokenization probe uses the built-in tokenizer so it verifies that
-DuckDB's JSON support is statically linked in a clean temporary home without
-downloading a model or DuckDB extension. Run
-macOS signature verification again after this probe: the shared launcher
-disables Python bytecode writes so the packaged runtime must not mutate the
-sealed application resources.
+On macOS, launch the built application and confirm Untitled opens
+with the original three panes and no Data Root prompt or Python child. Use Window → Reload or
+Cmd/Ctrl+R and confirm
+it rediscovers the backend. Close during startup, close normally, and use Quit;
+each closes only the affected project and releases its listener after work settles.
+Closing the last macOS window leaves the app running; Quit exits after all
+project prompts complete. Repeated close/Quit
+requests must not bypass the pending drain. Inspect the bundle for absence of
+`backend-runtime` and `libpython`.
 
-The local Quotation UDPipe model is deliberately not installed into the sealed
-runtime. First use downloads model data into the OS-native
-`au.edu.ldaca.wordflow` application cache and loads it by path, leaving the
-signed application unchanged. An offline first use therefore fails normally
-and can be retried when network access is available. Verified cached data works
-offline. See the [quotation runtime reference](../reference/quotation-runtime.md)
-for model licensing and checksums. A published-wheel desktop release must wait
-until polars-text 0.8.0 is available; local source builds may test it beforehand.
+Verify titlebar dragging, traffic lights, resize, zoom, and the light/dark
+VS Code window backgrounds. The panes sit directly on the window background. The updater window keeps
+its independent UI and must not initiate backend shutdown when closed.
 
-## Desktop CI
+Import a CSV through file selection and by dropping it onto the graph. Both
+must show Add to Project. Confirm recent files, column selection, Table/View
+labels and data preview. Save As, delete the original CSV, and reopen `.wfpj`
+through the File menu and the OS in independent windows. Verify untouched and populated Untitled windows both prompt on Close, Cancel
+preserves the window, and named windows close without a save prompt.
+Attempt Save As onto another open project, first in a second Wordflow window
+and then in an external DuckDB process. The source stays usable and the error
+asks to close the destination. Repeat after closing the owner to confirm native
+Replace approval is honored. Open and Save As must not claim a destination
+concurrently.
 
-`.github/workflows/desktop-build.yml` is the single reusable Windows and macOS
-packaging workflow. `.github/workflows/desktop-release.yml` invokes it manually
-once per platform after version validation. Backend Ruff, Ty, and Pytest gates
-belong to the root CI workflow; desktop CI retains only supervisor, bundle, and
-packaged-runtime checks.
+Check **More → Edit Table**, then File Save, Close and Reload: each returns focus
+to the editor before any document prompt. Save/Cancel releases protection. Keep
+read-only page and preprocessing previews available, including while editor
+startup waits for admitted writes. Graph cards show columns only. Closing/reopening
+a preview retains column pinning, widths, expansion and pagination.
 
-Leave `no_sources` disabled when a desktop artifact must include unpublished
-local extension changes. Enable it only after the matching `polars-text` and
-`polars-source-utils` versions and Python 3.14 wheels are published to PyPI.
+Project catalogue, User File, authentication, and Data Root requests must be absent.
+Browser E2E checks the Rust-backed project interface and does not substitute
+for native application QA. The retired FastAPI tests remain in `archive/`.
 
-The reusable build workflow owns all compilation and packaging. It prepares the
-selected backend runtime and invokes only the packaging configuration, then:
+The format-6 backend and Quick Look reject older project files without migration.
+Backend task checks cover production imports, opted-in SQL, Materialize and Clone,
+as well as overlapping transactions, isolated cancellation, retained ownership,
+SSE, Save As and editor startup races. Frontend tests cover progress, completion
+refresh and reconnect behavior. In an owned desktop session, run a local import,
+sample import, Default SQL, Materialize and Clone in both themes. Close an import
+dialog and cancel from Tasks; confirm other work remains usable. Confirm previews,
+page navigation and SQL-cell autosaves add no summaries. There is no demonstration
+task endpoint. Native exports also own one task through file installation. Verify replacement
+and cancellation preserve the destination correctly. Analysis remains deferred.
 
-- creates a signed MSI and updater signature on Windows;
-- builds explicitly for `aarch64-apple-darwin` on Apple Silicon;
-- deep-signs the embedded Python runtime and outer application with the
-  Developer ID certificate;
-- notarizes and staples the application;
-- creates and signs the updater `.app.tar.gz` from that final application;
-- creates, signs, notarizes, and staples the direct-download DMG.
+## Finder Quick Look
 
-The desktop release workflow does not rebuild. It downloads both build artifacts,
-creates `latest.json`, and publishes the MSI, DMG, updater archives, signatures,
-and manifest to the matching GitHub Release. Publication requires the release
-tag and checked-out ref to peel to the same commit.
+macOS packaging builds the Quick Look extension automatically before bundling:
 
-Repository Actions secrets required by this workflow are:
+```sh
+pnpm build:desktop:mac
+```
 
-- `APPLE_CERTIFICATE`
-- `APPLE_CERTIFICATE_PASSWORD`
-- `APPLE_ID`
-- `APPLE_PASSWORD`
-- `APPLE_SIGNING_IDENTITY`
-- `APPLE_TEAM_ID`
-- `TAURI_SIGNING_PRIVATE_KEY`
-- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+For focused extension development, run `pnpm -C frontend build:quicklook`, then
+`pnpm -C frontend test:quicklook`. These commands use Xcode and put the extension,
+verified DuckDB download, renderer, and native test executable beneath
+`frontend/src-tauri/target/quicklook`. The pinned download in
+`frontend/src-tauri/quicklook/duckdb.json` must match the Rust backend's DuckDB
+engine. The native tests create temporary databases without Python or a server.
 
-The matching Tauri updater public key is committed in
-`frontend/src-tauri/tauri.conf.json`. Never commit the private key or its
-password.
+Open the regular bundled Wordflow app once to register it with macOS. Select a
+closed `.wfpj` in Finder and press Space. Verify file size/date, description,
+Data Block and saved SQL-cell counts, full names, Table/View labels, colours and
+expandable column names/types. Check keyboard disclosure, narrow-width wrapping,
+vertical scrolling and system light/dark appearance.
+There must be no row counts or network requests. With that project open in
+Wordflow, request a fresh preview and verify the in-use message. Conversely,
+keep a successful preview visible and open the file in Wordflow: Quick Look
+must already have released its database lock. Test empty, moved, unsupported,
+and damaged files as well as a project whose source file no longer exists.
+
+Use the regular bundle for Finder verification; `pnpm dev:desktop` does not
+install an extension. If macOS selects an older Wordflow build, check Finder's
+Open With association and `pluginkit -m -v -i au.edu.ldaca.wordflow.preview`
+before diagnosing the reader. Do not change users' default associations as
+part of automated tests. Quick Look remains macOS-only; Windows and ordinary
+desktop development do not invoke Xcode or download the preview library.
+
+## Desktop CI and Releases
+
+The reusable desktop workflow builds Windows and macOS with stable Rust,
+checks native lifecycle and frontend contracts, and verifies absence of a
+bundled Python runtime. Root CI also tests native project persistence, SQL
+rewriting, file locking, WAL recovery, and cancellation on Linux, macOS,
+and Windows. The former Python server CI jobs are archived.
+
+Release CI retains Developer ID signing, notarization and stapling, signed MSI,
+DMG and updater artifacts, and existing tag/version validation. The old Python
+runtime preparation, `no_sources` selection, runtime-manifest tests, and
+embedded-interpreter signing have been removed.
+
+Local validation does not publish a release. Signed release acceptance still
+requires Gatekeeper checks and an update from an older installed signed build.
+Windows native acceptance must be reported independently from local macOS QA.
 
 ## Updater Key Rotation
 
@@ -176,75 +334,17 @@ An application can verify only keys embedded when it was built, so rotation
 requires a bridge release signed by the old key before later releases switch
 exclusively to the new key.
 
-## Release Acceptance
+## Verify on-demand ICU
 
-For each published version, verify the GitHub Release contains `latest.json`,
-the MSI and signature, the Apple Silicon updater archive and signature, and the
-notarized DMG. Open the quarantined DMG on a clean Mac, confirm Gatekeeper
-acceptance, and verify startup performs no updater request and opens no updater
-window. In an older signed build, choose **Check for Updates…** from the native
-application menu, accept the standard system confirmation, and verify the app
-downloads, verifies, installs, and relaunches into the new version. In a current
-build, the same menu action must show the native up-to-date dialog. Failed checks
-must show a native error dialog within the Rust-owned 15-second request timeout.
+Normal desktop/server builds do not provision ICU. First timezone use downloads
+and signature-validates the version/platform-matched extension; subsequent uses
+reuse the host cache. Test this explicitly with:
 
-Verify the final macOS bundle is signed, notarized, and has no App Sandbox
-entitlement. On a clean launch, use the recommended app-private root without a
-permission prompt. Then select Documents through the native picker and verify
-the Python child can create, read, write, and delete its probe file. Exercise
-denial followed by reselection, revoked permission, unavailable volumes, and a
-moved or deleted directory; each recoverable failure must return to folder
-selection while `/health/live` remains available. Relaunch and confirm the
-saved selected directory is restored.
+```sh
+cargo test -p wordflow-backend --locked first_use_download_and_offline_reuse -- --ignored
+```
 
-On macOS 26 or later, visually verify the Clear Liquid Glass backplane in light
-and dark Wordflow themes over light, dark, and colorful desktop content.
-The titlebar and gutters around the application cards must show native glass,
-while the sidebar interior, middle content card, tabbed analysis panels, graph,
-data table, and startup or login card remain opaque. Text and icons directly on
-the glass titlebar must use the white glass foreground, while opaque controls
-retain their normal theme foreground. Exercise resize, sidebar collapse,
-traffic-light controls, titlebar dragging, inactive-window state, reload, and
-fullscreen. On an older supported macOS release, repeat the surface checks
-against the plugin's vibrancy fallback. A forced plugin initialization failure
-must retain the normal solid backgrounds. Browser deployments and the updater
-window must remain opaque and visually unchanged.
-
-Verify the packaged application reaches the Workspace after setup, then reload
-the webview repeatedly and confirm each load discovers the current random-port
-backend and passes the bootstrap gate. Switch the Data Root through Settings,
-confirm the backend port and child PID do not change, and verify Wordflow reloads
-automatically for the new `runtime_generation`. Immediately import sample data
-and confirm it opens from the new root without a CSRF error. Perform an additional
-reload check with Command-R on macOS and Ctrl-R on Windows. The packaged
-application must never fall back to port `8001`; that port remains only the
-documented split web development default.
-
-Also exercise lifecycle interruption before accepting a desktop build. Close
-the hidden/startup application while Python is still launching and confirm the
-application exits without waiting for the 30-second readiness deadline, no
-startup-error dialog appears after the close, and the child process tree is
-gone. Repeat with a normal live application close and with application Quit;
-each path must terminate only its owned backend process and leave no orphan.
-
-Exercise all three desktop download paths: a large User File or Workspace GET,
-a Data Block POST export, and a client-generated chart or table file. Confirm
-each appears in Downloads without buffering backend bodies in the webview. Save
-the same filename concurrently from two desktop instances and verify both files
-remain with collision-free numeric suffixes. The packaged webview must have no
-filesystem capability; **Show in folder** may reveal only the path returned by
-the Rust saver. Repeat a representative download in the browser deployment and
-confirm it still uses the browser's own download UI.
-
-## LDaCA SDK dependency
-
-The local runtime build includes the adjacent `ldaca-data-rs` checkout through
-backend uv source mappings. The SDK owns ONI networking and Arrow tabulation;
-no additional model or Python DataFrame package is required. Published-wheel
-builds require `ldaca-data-rs>=0.1.0,<0.2` to be available on the package index
-and must not compile it implicitly. Publishing the new SDK and its referenced
-submodule commit is a separate release prerequisite.
-
-Backend local-wheel fingerprints include Python sources and the bundled frontend
-archive. This keeps `--no-editable` desktop installs current after source changes
-even when the package version has not changed.
+`verify-signed-native.sh --online` exercises first use in a signed application;
+its `--offline` mode requires an already populated cache. `prepare-icu.mjs` remains
+an explicit test/offline-installation helper, never an ordinary build hook.
+Verify Windows/Linux separately on their target hosts.

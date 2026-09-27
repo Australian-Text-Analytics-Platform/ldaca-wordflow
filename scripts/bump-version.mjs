@@ -38,4 +38,4 @@ for (const target of VERSION_TARGETS) {
 
 if (missing) process.exit(2);
 
-console.log('\nNext: run `pnpm deploy_frontend_to_backend`, then `pnpm check-versions`.');
+console.log('\nNext: run `pnpm check-versions`.');

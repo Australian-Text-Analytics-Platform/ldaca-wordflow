@@ -1,455 +1,665 @@
-//! Native saves restricted to the supervised local backend and user-selected paths.
-
-use crate::supervisor::BackendSupervisor;
-use futures_util::StreamExt;
-use serde::Serialize;
-use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
-use tauri::{State, WebviewWindow};
-use tauri_plugin_dialog::DialogExt;
-use tokio::io::AsyncWriteExt;
-
-fn safe_filename(name: &str) -> Result<&str, String> {
-    let path = Path::new(name);
-    let stem = name.split('.').next().unwrap_or(name).to_ascii_uppercase();
-    let windows_reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
-        || (stem.len() == 4
-            && (stem.starts_with("COM") || stem.starts_with("LPT"))
-            && stem.as_bytes()[3].is_ascii_digit()
-            && stem.as_bytes()[3] != b'0');
-    let valid = !name.is_empty()
-        && name != "."
-        && name != ".."
-        && !name.ends_with('.')
-        && !name.ends_with(' ')
-        && !windows_reserved
-        && path.file_name().and_then(|value| value.to_str()) == Some(name)
-        && !name.chars().any(|character| {
-            character.is_control()
-                || matches!(
-                    character,
-                    '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|'
-                )
-        });
-    valid
-        .then_some(name)
-        .ok_or_else(|| "invalid_download_filename".to_owned())
+//! Export directly into a destination-adjacent staging file and install it within one task.
+use std::{
+    future::Future,
+    io::Write,
+    path::{Path, PathBuf},
+};
+use tauri::{AppHandle, Manager, WebviewWindow};
+use wordflow_backend::{Error, FrequencyExportFormat, FrequencyQuery};
+type Result<T> = std::result::Result<T, Error>;
+fn io(error: impl std::fmt::Display) -> Error {
+    Error::new("export_error", error.to_string())
+}
+fn filename(name: &str, extension: &str) -> String {
+    format!("{}.{}", suggested_filename(name), extension)
+}
+fn suggested_filename(name: &str) -> String {
+    wordflow_backend::safe_filename(name)
 }
 
-fn backend_download_url(base_url: &str, api_path: &str) -> Result<reqwest::Url, String> {
-    if !api_path.starts_with("/api/")
-        || api_path.contains('\\')
-        || api_path.contains('#')
-        || api_path.chars().any(char::is_control)
-    {
-        return Err("invalid_backend_download_path".to_owned());
+pub(crate) fn install(
+    target: PathBuf,
+    temporary: tempfile::NamedTempFile,
+    context: &wordflow_backend::TaskContext,
+    replace: bool,
+) -> Result<String> {
+    let _destination_lock = wordflow_backend::lock_destination(&target)?;
+    temporary.as_file().sync_all()?;
+    context.check_cancelled()?;
+    if replace {
+        temporary.persist(&target).map_err(|error| error.error)?;
+    } else {
+        temporary
+            .persist_noclobber(&target)
+            .map_err(|error| error.error)?;
     }
-    let base = reqwest::Url::parse(&format!("{}/", base_url.trim_end_matches('/')))
-        .map_err(|_| "backend_unavailable".to_owned())?;
-    let url = base
-        .join(api_path.trim_start_matches('/'))
-        .map_err(|_| "invalid_backend_download_path".to_owned())?;
-    if url.scheme() != base.scheme()
-        || url.host_str() != base.host_str()
-        || url.port_or_known_default() != base.port_or_known_default()
-        || !url.path().starts_with("/api/")
-    {
-        return Err("invalid_backend_download_path".to_owned());
-    }
-    Ok(url)
+    Ok(target.to_string_lossy().into_owned())
 }
-
-fn temporary_path(target: &Path) -> Result<PathBuf, String> {
-    let directory = target
-        .parent()
-        .ok_or_else(|| "download_directory_unavailable".to_owned())?;
-    let nonce = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| "download_clock_invalid".to_owned())?
-        .as_nanos();
-    Ok(directory.join(format!(
-        ".wordflow-download-{}-{nonce}.part",
-        std::process::id()
-    )))
+fn temporary(target: &Path) -> Result<tempfile::NamedTempFile> {
+    tempfile::Builder::new()
+        .prefix(".wordflow-export-")
+        .tempfile_in(target.parent().unwrap_or(Path::new(".")))
+        .map_err(io)
 }
+use wordflow_backend::ExportFormat;
 
-fn selected_save_path(window: &WebviewWindow, filename: &str) -> Result<Option<PathBuf>, String> {
-    let filename = safe_filename(filename)?;
-    window
-        .dialog()
-        .file()
-        .set_parent(window)
-        .set_file_name(filename)
-        .blocking_save_file()
-        .map(|path| {
-            path.into_path()
-                .map_err(|_| "download_path_unavailable".to_owned())
-        })
-        .transpose()
+#[derive(serde::Serialize)]
+pub(crate) struct ExportError {
+    #[serde(flatten)]
+    error: Error,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    task_id: Option<String>,
 }
-
-async fn install_temporary(target: &Path, temporary: &Path) -> Result<PathBuf, String> {
-    tokio::fs::rename(temporary, target)
-        .await
-        .map_err(|_| "download_install_failed".to_owned())?;
-    Ok(target.to_path_buf())
-}
-
-fn backend_client() -> Result<reqwest::Client, String> {
-    reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::none())
-        .build()
-        .map_err(|_| "download_client_failed".to_owned())
-}
-
-/// Stream one local API response to a private temporary file, then install it.
-async fn download_response(
-    target: &Path,
-    request: reqwest::RequestBuilder,
-) -> Result<(PathBuf, reqwest::header::HeaderMap), String> {
-    let temporary = temporary_path(target)?;
-    let response = request
-        .send()
-        .await
-        .map_err(|_| "backend_download_failed".to_owned())?;
-    if !response.status().is_success() {
-        return Err(format!(
-            "backend_download_http_{}",
-            response.status().as_u16()
-        ));
-    }
-    let response_headers = response.headers().clone();
-
-    let result = async {
-        let mut file = tokio::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)
-            .await
-            .map_err(|_| "download_temporary_create_failed".to_owned())?;
-        let mut stream = response.bytes_stream();
-        while let Some(chunk) = stream.next().await {
-            file.write_all(&chunk.map_err(|_| "backend_download_failed".to_owned())?)
-                .await
-                .map_err(|_| "download_write_failed".to_owned())?;
+impl From<Error> for ExportError {
+    fn from(error: Error) -> Self {
+        Self {
+            error,
+            task_id: None,
         }
-        file.flush()
-            .await
-            .map_err(|_| "download_flush_failed".to_owned())?;
-        file.sync_all()
-            .await
-            .map_err(|_| "download_flush_failed".to_owned())?;
-        drop(file);
-        install_temporary(target, &temporary).await
     }
-    .await;
-    if result.is_err() {
-        let _ = tokio::fs::remove_file(&temporary).await;
-    }
-    result.map(|path| (path, response_headers))
-}
-
-async fn save_bytes(target: &Path, bytes: &[u8]) -> Result<PathBuf, String> {
-    let temporary = temporary_path(target)?;
-    let result = async {
-        let mut file = tokio::fs::OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&temporary)
-            .await
-            .map_err(|_| "download_temporary_create_failed".to_owned())?;
-        file.write_all(bytes)
-            .await
-            .map_err(|_| "download_write_failed".to_owned())?;
-        file.flush()
-            .await
-            .map_err(|_| "download_flush_failed".to_owned())?;
-        file.sync_all()
-            .await
-            .map_err(|_| "download_flush_failed".to_owned())?;
-        drop(file);
-        install_temporary(target, &temporary).await
-    }
-    .await;
-    if result.is_err() {
-        let _ = tokio::fs::remove_file(&temporary).await;
-    }
-    result
-}
-
-/// Stream one GET-only relative `/api/` resource from the supervised backend.
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct BackendDownloadResult {
-    full_path: String,
-    omitted_tab_count: u64,
-    omitted_analysis_count: u64,
-}
-
-fn omission_count(headers: &reqwest::header::HeaderMap, name: &str) -> u64 {
-    headers
-        .get(name)
-        .and_then(|value| value.to_str().ok())
-        .and_then(|value| value.parse().ok())
-        .unwrap_or(0)
 }
 
 #[tauri::command]
-pub(crate) async fn save_backend_download(
+pub(crate) async fn save_node_export(
     window: WebviewWindow,
-    state: State<'_, BackendSupervisor>,
-    api_path: String,
-    filename: String,
-) -> Result<Option<BackendDownloadResult>, String> {
-    let Some(target) = selected_save_path(&window, &filename)? else {
+    table_name: String,
+    schema: Option<String>,
+    format: ExportFormat,
+) -> std::result::Result<Option<String>, ExportError> {
+    save_export(
+        window,
+        wordflow_backend::ExportRequest::Files {
+            objects: vec![wordflow_backend::ObjectTarget {
+                schema,
+                name: table_name,
+            }],
+            format,
+        },
+    )
+    .await
+}
+
+#[tauri::command]
+pub(crate) async fn save_export(
+    window: WebviewWindow,
+    request: wordflow_backend::ExportRequest,
+) -> std::result::Result<Option<String>, ExportError> {
+    let document = crate::documents::document(&window)?;
+    let project = document.backend.project.clone();
+    let title = project
+        .status()
+        .await?
+        .map(|info| info.title)
+        .unwrap_or_else(|| "Untitled".into());
+    let name = request.filename(&title);
+    let Some(target) = crate::documents::choose_save(&window, &name).await? else {
         return Ok(None);
     };
-    let backend_url = state.backend_url()?;
-    let url = backend_download_url(&backend_url, &api_path)?;
-    let request = backend_client()?.get(url);
-    download_response(&target, request)
-        .await
-        .map(|(path, headers)| BackendDownloadResult {
-            full_path: path.to_string_lossy().into_owned(),
-            omitted_tab_count: omission_count(&headers, "x-wordflow-omitted-tab-count"),
-            omitted_analysis_count: omission_count(&headers, "x-wordflow-omitted-analysis-count"),
-        })
-        .map(Some)
+    let app = window.app_handle().clone();
+    let task =
+        project
+            .clone()
+            .submit_task(format!("Export {name}"), move |context| async move {
+                context.progress("Exporting committed data", None);
+                stage_and_install(target, Some(app), context, move |file| async move {
+                    project.export_into(request, file).await
+                })
+                .await
+            })?;
+    await_export(task).await
 }
 
-#[derive(Serialize)]
-struct DataBlockExportBody<'a> {
-    node_ids: &'a [String],
-    format: &'a str,
-}
-
-fn data_block_export_request(
-    base_url: &str,
-    workspace_id: &str,
-    node_ids: &[String],
-    format: &str,
-    csrf_token: &str,
-) -> Result<reqwest::RequestBuilder, String> {
-    let valid_workspace_id = !workspace_id.is_empty()
-        && workspace_id
-            .chars()
-            .all(|character| character.is_ascii_hexdigit() || character == '-');
-    if !valid_workspace_id || node_ids.is_empty() {
-        return Err("invalid_data_block_export".to_owned());
-    }
-    if !matches!(format, "csv" | "json" | "ndjson" | "parquet" | "ipc") {
-        return Err("invalid_data_block_export".to_owned());
-    }
-    let api_path = format!("/api/workspaces/{workspace_id}/nodes/exports");
-    let url = backend_download_url(base_url, &api_path)?;
-    let origin = url.origin().ascii_serialization();
-    let csrf_header = reqwest::header::HeaderValue::from_str(csrf_token)
-        .map_err(|_| "invalid_data_block_export".to_owned())?;
-    let body = serde_json::to_vec(&DataBlockExportBody { node_ids, format })
-        .map_err(|_| "invalid_data_block_export".to_owned())?;
-    Ok(backend_client()?
-        .post(url)
-        .header(reqwest::header::ORIGIN, origin)
-        .header("X-CSRF-Token", csrf_header)
-        .header(reqwest::header::CONTENT_TYPE, "application/json")
-        .body(body))
-}
-
-/// Stream the one supported POST export without exposing a generic HTTP proxy.
 #[tauri::command]
-pub(crate) async fn save_data_block_export(
+pub(crate) async fn save_generated_export(
     window: WebviewWindow,
-    state: State<'_, BackendSupervisor>,
-    workspace_id: String,
-    node_ids: Vec<String>,
-    format: String,
-    filename: String,
-    csrf_token: String,
-) -> Result<Option<String>, String> {
-    let Some(target) = selected_save_path(&window, &filename)? else {
-        return Ok(None);
-    };
-    let backend_url = state.backend_url()?;
-    let request =
-        data_block_export_request(&backend_url, &workspace_id, &node_ids, &format, &csrf_token)?;
-    download_response(&target, request)
-        .await
-        .map(|(path, _headers)| Some(path.to_string_lossy().into_owned()))
-}
-
-/// Save webview-generated bytes to a path selected by the native dialog.
-#[tauri::command]
-pub(crate) async fn save_generated_bytes(
-    window: WebviewWindow,
-    filename: String,
+    suggested_name: String,
     bytes: Vec<u8>,
-) -> Result<Option<String>, String> {
-    let Some(target) = selected_save_path(&window, &filename)? else {
+) -> std::result::Result<Option<String>, ExportError> {
+    let document = crate::documents::document(&window)?;
+    let name = suggested_filename(&suggested_name);
+    let Some(target) = crate::documents::choose_save(&window, &name).await? else {
         return Ok(None);
     };
-    save_bytes(&target, &bytes)
-        .await
-        .map(|path| Some(path.to_string_lossy().into_owned()))
+    let task = start_generated_export(
+        document.backend.project.clone(),
+        name,
+        bytes,
+        target,
+        Some(window.app_handle().clone()),
+    )?;
+    await_export(task).await
+}
+
+#[tauri::command]
+pub(crate) async fn save_frequency_export(
+    window: WebviewWindow,
+    analysis_id: String,
+    query: FrequencyQuery,
+    format: FrequencyExportFormat,
+) -> std::result::Result<Option<String>, ExportError> {
+    let document = crate::documents::document(&window)?;
+    let analysis_id = analysis_id
+        .parse()
+        .map_err(|_| Error::new("invalid_request", "Invalid analysis result ID"))?;
+    let Some(target) =
+        crate::documents::choose_save(&window, &filename("frequency", format.extension())).await?
+    else {
+        return Ok(None);
+    };
+    let project = document.backend.project.clone();
+    let app = window.app_handle().clone();
+    let task = project
+        .clone()
+        .submit_task("Export Frequency", move |context| async move {
+            context.progress("Exporting results", None);
+            stage_and_install(target, Some(app), context, move |file| async move {
+                project
+                    .export_frequency_into(analysis_id, query, format, file)
+                    .await
+            })
+            .await
+        })?;
+    await_export(task).await
+}
+
+async fn await_export(
+    task: wordflow_backend::TaskHandle<String>,
+) -> std::result::Result<Option<String>, ExportError> {
+    let id = task.id.to_string();
+    task.wait().await.map(Some).map_err(|error| ExportError {
+        error,
+        task_id: Some(id),
+    })
 }
 
 #[cfg(test)]
+fn start_export(
+    project: wordflow_backend::ProjectRuntime,
+    table_name: impl Into<wordflow_backend::ObjectTarget>,
+    format: ExportFormat,
+    target: PathBuf,
+) -> Result<wordflow_backend::TaskHandle<String>> {
+    let table_name = table_name.into();
+    project
+        .clone()
+        .submit_task(format!("Export {table_name}"), move |context| async move {
+            context.progress("Exporting data", None);
+            stage_and_install(target, None, context, move |file| async move {
+                project.export_node_into(table_name, format, file).await
+            })
+            .await
+        })
+}
+
+fn start_generated_export(
+    project: wordflow_backend::ProjectRuntime,
+    name: String,
+    bytes: Vec<u8>,
+    target: PathBuf,
+    app: Option<AppHandle>,
+) -> Result<wordflow_backend::TaskHandle<String>> {
+    project.submit_task(format!("Export {name}"), move |context| async move {
+        context.progress("Saving file", None);
+        let writer_context = context.clone();
+        stage_and_install(target, app, context, move |mut file| async move {
+            writer_context
+                .run_blocking(move |context| {
+                    for chunk in bytes.chunks(64 * 1024) {
+                        context.check_cancelled()?;
+                        file.write_all(chunk)?;
+                    }
+                    Ok(file)
+                })
+                .await
+        })
+        .await
+    })
+}
+
+async fn stage_and_install<F>(
+    target: PathBuf,
+    app: Option<AppHandle>,
+    context: wordflow_backend::TaskContext,
+    write: impl FnOnce(tempfile::NamedTempFile) -> F,
+) -> Result<String>
+where
+    F: Future<Output = Result<tempfile::NamedTempFile>>,
+{
+    let replace = target.exists();
+    let staging_target = target.clone();
+    let file = context
+        .run_blocking(move |_| temporary(&staging_target))
+        .await?;
+    let file = write(file).await?;
+    context.progress("Saving file", None);
+    if let Some(app) = app {
+        return app
+            .state::<crate::documents::Documents>()
+            .install_export(target, file, context, replace)
+            .await;
+    }
+    context
+        .run_blocking(move |context| install(target, file, &context, replace))
+        .await
+}
+#[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
-
     #[test]
-    fn filename_and_url_boundaries_are_strict() {
-        assert!(safe_filename("result.csv").is_ok());
-        assert!(safe_filename("../result.csv").is_err());
-        assert!(safe_filename("CON.txt").is_err());
-        assert!(safe_filename("result.").is_err());
-        assert!(backend_download_url("http://127.0.0.1:8001", "/api/files/1").is_ok());
-        assert!(backend_download_url("http://127.0.0.1:8001", "https://evil.test").is_err());
-        assert!(backend_download_url("http://127.0.0.1:8001", "/api/../health").is_err());
+    fn sql_names_and_export_filenames_are_separate() {
+        assert_eq!(filename("a/b", "csv"), "a_b.csv");
+        assert_eq!(filename("CON", "csv"), "_CON.csv");
+        assert_eq!(suggested_filename("cloud.svg"), "cloud.svg");
+        assert_eq!(suggested_filename("../cloud.svg"), ".._cloud.svg");
+        assert_eq!(suggested_filename("NUL.png"), "_NUL.png");
     }
 
     #[tokio::test]
-    async fn native_download_streams_local_api_response_to_disk() {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind fixture server");
-        let address = listener.local_addr().expect("server address");
-        let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept request");
-            let mut request = [0_u8; 2048];
-            let read = stream.read(&mut request).expect("read request");
-            assert!(String::from_utf8_lossy(&request[..read]).contains("GET /api/file"));
-            stream
-                .write_all(
-                    b"HTTP/1.1 200 OK\r\nContent-Length: 7\r\nX-Wordflow-Omitted-Analysis-Count: 2\r\nConnection: close\r\n\r\npayload",
-                )
-                .expect("write response");
-        });
-        let directory = std::env::temp_dir().join(format!(
-            "ldaca-download-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&directory).expect("download directory");
-
-        let url =
-            backend_download_url(&format!("http://{address}"), "/api/file").expect("fixture URL");
-        let target = directory.join("result.bin");
-        let (output, headers) =
-            download_response(&target, backend_client().expect("client").get(url))
-                .await
-                .expect("download succeeds");
-
-        assert_eq!(std::fs::read(output).expect("read output"), b"payload");
-        assert_eq!(
-            omission_count(&headers, "x-wordflow-omitted-analysis-count"),
-            2
-        );
-        server.join().expect("server thread");
-        std::fs::remove_dir_all(directory).expect("remove downloads");
-    }
-
-    #[tokio::test]
-    async fn native_byte_save_replaces_the_selected_file() {
-        let directory = std::env::temp_dir().join(format!(
-            "ldaca-byte-save-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&directory).expect("download directory");
-        let target = directory.join("result.bin");
-        std::fs::write(&target, b"existing").expect("existing file");
-
-        let output = save_bytes(&target, b"payload")
-            .await
-            .expect("byte save succeeds");
-
-        assert_eq!(output, target);
-        assert_eq!(std::fs::read(output).expect("read output"), b"payload");
-        std::fs::remove_dir_all(directory).expect("remove downloads");
-    }
-
-    #[tokio::test]
-    async fn failed_install_removes_the_temporary_file() {
-        let directory = std::env::temp_dir().join(format!(
-            "ldaca-byte-save-failure-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        ));
-        let target = directory.join("existing-directory");
-        std::fs::create_dir_all(&target).expect("target directory");
-
-        let result = save_bytes(&target, b"payload").await;
-        let temporary_remains = std::fs::read_dir(&directory)
-            .expect("read directory")
-            .filter_map(Result::ok)
-            .any(|entry| {
-                entry
-                    .file_name()
-                    .to_string_lossy()
-                    .starts_with(".wordflow-download-")
-            });
-
-        assert!(result.is_err() && !temporary_remains);
-        std::fs::remove_dir_all(directory).expect("remove downloads");
-    }
-
-    #[tokio::test]
-    async fn data_block_export_uses_the_one_supported_post_contract() {
-        let listener = TcpListener::bind("127.0.0.1:0").expect("bind fixture server");
-        let address = listener.local_addr().expect("server address");
-        let (request_sender, request_receiver) = std::sync::mpsc::channel();
-        let server = std::thread::spawn(move || {
-            let (mut stream, _) = listener.accept().expect("accept request");
-            let mut request = [0_u8; 4096];
-            let read = stream.read(&mut request).expect("read request");
-            request_sender
-                .send(String::from_utf8_lossy(&request[..read]).into_owned())
-                .expect("capture request");
-            stream
-                .write_all(
-                    b"HTTP/1.1 200 OK\r\nContent-Length: 7\r\nConnection: close\r\n\r\npayload",
-                )
-                .expect("write response");
-        });
-        let directory = std::env::temp_dir().join(format!(
-            "ldaca-post-download-{}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("clock")
-                .as_nanos()
-        ));
-        std::fs::create_dir_all(&directory).expect("download directory");
-        let node_ids = vec!["00000000-0000-0000-0000-000000000002".to_owned()];
-        let request = data_block_export_request(
-            &format!("http://{address}"),
-            "00000000-0000-0000-0000-000000000001",
-            &node_ids,
-            "parquet",
-            "desktop-csrf",
+    async fn generated_bytes_replace_the_destination_after_caller_disconnect() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("cloud.svg");
+        std::fs::write(&target, "old").unwrap();
+        let project =
+            wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+        let bytes = b"<svg>captured result</svg>";
+        let task = start_generated_export(
+            project.clone(),
+            "cloud.svg".into(),
+            bytes.to_vec(),
+            target.clone(),
+            None,
         )
-        .expect("export request");
+        .unwrap();
+        let id = task.id;
+        drop(task);
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while !project
+                .tasks()
+                .tasks
+                .iter()
+                .find(|task| task.id == id)
+                .unwrap()
+                .state
+                .is_finished()
+            {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(std::fs::read(target).unwrap(), bytes);
+        assert_eq!(
+            project.tasks().tasks[0].state,
+            wordflow_backend::TaskState::Succeeded
+        );
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
 
-        download_response(&directory.join("result.parquet"), request)
+    #[tokio::test]
+    async fn generated_export_failure_retains_task_identity_and_cleans_staging() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("occupied");
+        std::fs::create_dir(&target).unwrap();
+        let project =
+            wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+        let task = start_generated_export(
+            project.clone(),
+            "cloud.png".into(),
+            vec![1, 2, 3],
+            target.clone(),
+            None,
+        )
+        .unwrap();
+        let id = task.id.to_string();
+        let error = await_export(task).await.err().unwrap();
+        let error = serde_json::to_value(error).unwrap();
+        assert_eq!(error["task_id"], id);
+        assert!(error["code"].is_string());
+        assert!(error["message"].is_string());
+        assert_eq!(
+            project.tasks().tasks[0].state,
+            wordflow_backend::TaskState::Failed
+        );
+        assert!(target.is_dir());
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[tokio::test]
+    async fn cancellation_during_staging_preserves_the_existing_file() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("cloud.svg");
+        std::fs::write(&target, "old").unwrap();
+        let destination = target.clone();
+        let project =
+            wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+        let (started, staged) = tokio::sync::oneshot::channel();
+        let (resume, resumed) = tokio::sync::oneshot::channel();
+        let task = project
+            .submit_task("Export cloud.svg", move |context| async move {
+                stage_and_install(destination, None, context, move |mut file| async move {
+                    file.write_all(b"new")?;
+                    started.send(()).unwrap();
+                    resumed.await.unwrap();
+                    Ok(file)
+                })
+                .await
+            })
+            .unwrap();
+        staged.await.unwrap();
+        project.cancel_task(task.id).unwrap();
+        resume.send(()).unwrap();
+        assert!(task.wait().await.is_err());
+        assert_eq!(
+            project.tasks().tasks[0].state,
+            wordflow_backend::TaskState::Cancelled
+        );
+        assert_eq!(std::fs::read(target).unwrap(), b"old");
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+    #[tokio::test]
+    async fn installation_honors_replace() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("data.csv");
+        std::fs::write(&target, "old").unwrap();
+        let mut file = temporary(&target).unwrap();
+        std::io::Write::write_all(&mut file, b"new").unwrap();
+        let runtime =
+            wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+        let destination = target.clone();
+        runtime
+            .submit_task("Export", move |context| async move {
+                context
+                    .run_blocking(move |context| install(destination, file, &context, true))
+                    .await
+            })
+            .unwrap()
+            .wait()
             .await
-            .expect("download succeeds");
-        let captured = request_receiver.recv().expect("captured request");
-        let captured_lower = captured.to_ascii_lowercase();
+            .unwrap();
+        assert_eq!(std::fs::read(&target).unwrap(), b"new");
+    }
 
-        assert!(captured.starts_with(
-            "POST /api/workspaces/00000000-0000-0000-0000-000000000001/nodes/exports HTTP/1.1"
+    #[tokio::test]
+    async fn cancellation_and_install_failure_clean_staging_and_preserve_destination() {
+        for cancel in [true, false] {
+            let directory = tempfile::tempdir().unwrap();
+            let target = directory.path().join("destination");
+            if cancel {
+                std::fs::write(&target, "old").unwrap();
+            } else {
+                std::fs::create_dir(&target).unwrap();
+            }
+            let file = temporary(&target).unwrap();
+            let staging = file.path().to_owned();
+            let destination = target.clone();
+            let runtime =
+                wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+            let result = runtime
+                .submit_task("Export", move |context| async move {
+                    context
+                        .run_blocking(move |context| {
+                            if cancel {
+                                context.cancellation().cancel();
+                            }
+                            install(destination, file, &context, true)
+                        })
+                        .await
+                })
+                .unwrap()
+                .wait()
+                .await;
+            assert!(result.is_err());
+            assert!(!staging.exists());
+            if cancel {
+                assert_eq!(std::fs::read(target).unwrap(), b"old");
+            } else {
+                assert!(target.is_dir());
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn installation_wins_over_a_late_cancellation() {
+        let directory = tempfile::tempdir().unwrap();
+        let target = directory.path().join("result.csv");
+        let file = temporary(&target).unwrap();
+        let runtime =
+            wordflow_backend::ProjectRuntime::new(tokio_util::sync::CancellationToken::new());
+        runtime
+            .submit_task("Export", move |context| async move {
+                context
+                    .run_blocking(move |context| {
+                        let result = install(target, file, &context, false)?;
+                        context.cancellation().cancel();
+                        Ok(result)
+                    })
+                    .await
+            })
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        assert_eq!(
+            runtime.tasks().tasks[0].state,
+            wordflow_backend::TaskState::Succeeded
+        );
+    }
+
+    #[tokio::test]
+    async fn direct_exports_keep_full_output_and_own_installation_after_caller_disconnect() {
+        let directory = tempfile::tempdir().unwrap();
+        let shutdown = tokio_util::sync::CancellationToken::new();
+        let project = wordflow_backend::ProjectRuntime::new(shutdown.clone());
+        project.create(None).await.unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/api/project/sql", listener.local_addr().unwrap());
+        let server = tokio::spawn(wordflow_backend::serve(
+            listener,
+            vec![],
+            shutdown.clone(),
+            project.clone(),
         ));
-        assert!(captured_lower.contains(&format!("origin: http://{address}")));
-        assert!(captured_lower.contains("x-csrf-token: desktop-csrf"));
-        assert!(captured.contains(
-            r#"{"node_ids":["00000000-0000-0000-0000-000000000002"],"format":"parquet"}"#
+        let seeded = reqwest::Client::new()
+            .post(url)
+            .json(&serde_json::json!({"response":"command","statements":[
+                {"sql":"CREATE TABLE documents AS SELECT i, 'row' AS text FROM range(1200) t(i)"},
+                {"sql":"INSERT INTO wordflow.nodes(table_name) VALUES ('documents')"},
+                {"sql":"CREATE SCHEMA other"},
+                {"sql":"CREATE TABLE other.documents AS SELECT 7 AS n"}
+            ]}))
+            .send()
+            .await
+            .unwrap();
+        assert!(seeded.status().is_success());
+        for format in [
+            ExportFormat::Csv,
+            ExportFormat::Json,
+            ExportFormat::Ndjson,
+            ExportFormat::Parquet,
+            ExportFormat::Ipc,
+        ] {
+            let target = directory
+                .path()
+                .join(format!("data.{}", format.extension()));
+            let task = start_export(project.clone(), "documents", format, target.clone()).unwrap();
+            task.wait().await.unwrap();
+            assert!(std::fs::metadata(&target).unwrap().len() > 0);
+            if matches!(format, ExportFormat::Csv) {
+                let text = std::fs::read_to_string(target).unwrap();
+                assert_eq!(text.lines().count(), 1201);
+                assert!(text.contains("1199,row"));
+            }
+        }
+        let explicit = directory.path().join("other.csv");
+        start_export(
+            project.clone(),
+            wordflow_backend::ObjectTarget {
+                schema: Some("other".into()),
+                name: "documents".into(),
+            },
+            ExportFormat::Csv,
+            explicit.clone(),
+        )
+        .unwrap()
+        .wait()
+        .await
+        .unwrap();
+        assert_eq!(std::fs::read_to_string(explicit).unwrap(), "n\n7\n");
+        let target = directory.path().join("detached.csv");
+        let task = start_export(
+            project.clone(),
+            "documents",
+            ExportFormat::Csv,
+            target.clone(),
+        )
+        .unwrap();
+        let id = task.id;
+        drop(task);
+        tokio::time::timeout(std::time::Duration::from_secs(5), async {
+            while project
+                .tasks()
+                .tasks
+                .iter()
+                .find(|t| t.id == id)
+                .unwrap()
+                .finished_at
+                .is_none()
+            {
+                tokio::task::yield_now().await;
+            }
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            project
+                .tasks()
+                .tasks
+                .iter()
+                .find(|t| t.id == id)
+                .unwrap()
+                .state,
+            wordflow_backend::TaskState::Succeeded
+        );
+        assert_eq!(
+            std::fs::read_to_string(target).unwrap().lines().count(),
+            1201
+        );
+        assert!(std::fs::read_dir(directory.path())
+            .unwrap()
+            .all(|entry| !entry
+                .unwrap()
+                .file_name()
+                .to_string_lossy()
+                .starts_with(".wordflow-export-")));
+        shutdown.cancel();
+        server.await.unwrap().unwrap();
+    }
+
+    #[tokio::test]
+    async fn frequency_exports_install_all_filtered_saved_rows_in_both_formats() {
+        let directory = tempfile::tempdir().unwrap();
+        let shutdown = tokio_util::sync::CancellationToken::new();
+        let project = wordflow_backend::ProjectRuntime::new(shutdown.clone());
+        project.create(None).await.unwrap();
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let base = format!("http://{}/api/project", listener.local_addr().unwrap());
+        let server = tokio::spawn(wordflow_backend::serve(
+            listener,
+            vec![],
+            shutdown.clone(),
+            project.clone(),
         ));
-        server.join().expect("server thread");
-        std::fs::remove_dir_all(directory).expect("remove downloads");
+        let client = reqwest::Client::new();
+        client
+            .post(format!("{base}/sql"))
+            .json(&serde_json::json!({"response":"command","script":
+                "CREATE TABLE documents AS SELECT 'alpha beta gamma delta' AS text"}))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap();
+        let tab: serde_json::Value = client
+            .post(format!("{base}/tabs"))
+            .json(&serde_json::json!({"kind":"frequency"}))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let result: serde_json::Value = client
+            .post(format!(
+                "{base}/tabs/{}/frequency",
+                tab["id"].as_str().unwrap()
+            ))
+            .json(&serde_json::json!({"inputs":[{
+                "source":{"schema":"data","name":"documents"},
+                "column":"text","tokenizer":"native:plain_words_en"
+            }]}))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap()
+            .json()
+            .await
+            .unwrap();
+        let analysis_id = result["id"].as_str().unwrap().parse().unwrap();
+        client
+            .post(format!("{base}/sql"))
+            .json(&serde_json::json!({"response":"command","script":"DROP TABLE documents"}))
+            .send()
+            .await
+            .unwrap()
+            .error_for_status()
+            .unwrap();
+        client.post(format!("{base}/sql")).json(&serde_json::json!({"script":"CREATE TABLE export_stopwords(word VARCHAR); INSERT INTO export_stopwords VALUES ('alpha'); INSERT INTO wordflow.nodes(table_name) VALUES ('export_stopwords')"})).send().await.unwrap().error_for_status().unwrap();
+        for format in [FrequencyExportFormat::Csv, FrequencyExportFormat::Markdown] {
+            let target = directory
+                .path()
+                .join(filename("frequency", format.extension()));
+            std::fs::write(&target, "old").unwrap();
+            let destination = target.clone();
+            let runtime = project.clone();
+            let query = FrequencyQuery {
+                filter: Some("*a*".into()),
+                stopword_source: Some(wordflow_backend::StopwordSource {
+                    source: "export_stopwords".to_string().into(),
+                    column: "word".into(),
+                }),
+                page_size: Some(1),
+                limit: Some(1),
+                ..Default::default()
+            };
+            project
+                .submit_task("Export Frequency", move |context| async move {
+                    stage_and_install(destination, None, context, move |file| async move {
+                        runtime
+                            .export_frequency_into(analysis_id, query, format, file)
+                            .await
+                    })
+                    .await
+                })
+                .unwrap()
+                .wait()
+                .await
+                .unwrap();
+            let saved = std::fs::read_to_string(target).unwrap();
+            for token in ["beta", "gamma", "delta"] {
+                assert!(saved.contains(token), "missing {token}: {saved}");
+            }
+            assert!(!saved.contains("alpha"));
+            let expected_lines = match format {
+                FrequencyExportFormat::Csv => 4,
+                FrequencyExportFormat::Markdown => 5,
+            };
+            assert_eq!(saved.lines().count(), expected_lines);
+        }
+        assert_eq!(std::fs::read_dir(directory.path()).unwrap().count(), 2);
+        shutdown.cancel();
+        server.await.unwrap().unwrap();
     }
 }

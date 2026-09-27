@@ -246,7 +246,7 @@ Resource events invalidate the forest and exact Result keys.
 Analysis and preprocessing input panels derive their candidates directly from
 the current Workspace graph and expose one searchable Add action; there is no
 second recent-selection or preset-input catalogue. Graph and sidebar Add
-requests are consumed immediately when a view has one placement target. Views
+requests are consumed immediately when a tool has one placement target. Tools
 with multiple input roles retain the request only until the user chooses the
 target role.
 
@@ -289,20 +289,11 @@ and Quotation Review retains its existing projection controls.
 `CONC_dispersion` remains frontend presentation state rather than a stored
 column.
 
-Concordance Review fetches whole-Result density only while Dispersion View is
-active. Its TanStack Query key is Workspace, child Analysis, and table identity,
-excluding page and sort. The frontend reaggregates the backend's exact-term
-100-bin series into the selected display resolution. Exact, case-sensitive
-term exclusions are shared across every source and Combined View, while selected
-bins remain view-block-specific. A shared, session-only Uncased flag optionally
-case-folds exact labels and aggregates their density series, counts, and colours;
-changing that mode clears term exclusions so a partially hidden case group
-cannot survive the semantic switch. Grouped legend actions expand back to every
-exact spelling before projection or Data Block Creation. Both exclusions and
-selected bins are included in each document-projection query key, reset that
-source to page one, and filter before sorting, counting, and paging. Separated
-mode keeps those filters per source. Combined mode owns one frontend-only filter
-and sends it independently to each source.
+Concordance's native Dispersion state and fixed-resolution density cache are
+owned as described in the [frontend overview](overview.md#concordance). Only
+saved Dispersion applies term/bin filters before document sorting, counting,
+paging and publication; Preview and KWIC Table ignore those filters. Presentation
+switches preserve selections, while replacing the saved result clears them.
 
 Trends uses the same session-only case-folded visibility contract for result
 groups. Run All always returns exact group tuples and stable backend
@@ -383,6 +374,9 @@ attempt issues one Tab presentation PATCH.
 
 The Topic graph is a non-editable React Flow projection over normalized backend
 coordinates. React Flow owns its container measurement and viewport; fitted
+nodes receive their known dimensions, measured bounds and empty handle list
+from the bubble geometry. Controlled selection/hover updates therefore retain
+fit eligibility without restarting the node observation cycle. Fitted
 views include complete node bounds and refit on container resize, while a user
 pan or zoom switches to a deliberately manual viewport until Fit View or the
 next Result projection. A freehand canvas overlay owns sticky additive lasso
@@ -470,6 +464,7 @@ search mode captured in its request.
 
 ## Documentation Registry
 
-The bundled registry keeps help available offline; a valid remote registry may
-shadow bundled entries. `frontend/scripts/check-docs-drift.mjs` validates
+The bundled registry owns help target mappings directly. Remote Markdown content
+may update documents, with bundled content as the offline fallback; mappings have
+no remote overlay or store. `frontend/scripts/check-docs-drift.mjs` validates
 registered documents, anchors, relative links, and literal consumer keys.

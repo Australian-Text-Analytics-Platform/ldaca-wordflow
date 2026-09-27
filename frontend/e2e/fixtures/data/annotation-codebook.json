@@ -1,0 +1,12 @@
+[
+  {
+    "code": "A",
+    "description": "Support for the proposal",
+    "retained": "first"
+  },
+  {
+    "code": "B",
+    "description": "Concerns or disagreement",
+    "retained": "second"
+  }
+]

@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -53,7 +54,7 @@ export interface StackedSplitsApi<KeyT extends string> {
  * Hook used by the sidebar to manage collapsible, drag-resizable vertical
  * sections. It owns section ratios, collapse state, resize observation, and
  * overflow scrolling so the sidebar component can stay focused on rendering
- * views, nodes, and tasks.
+ * tools, nodes, and tasks.
  * Why: the sidebar needs collapsible, resizable vertical sections without mixing layout math into rendering code.
  * Flow: seed collapse and ratio state, observe container height, compute flex
  * styles, apply section-specific resize minimums, and expose collapse, ref, and
@@ -85,6 +86,13 @@ export const useStackedSplits = <KeyT extends string>(
   const sectionScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [containerHeight, setContainerHeight] = useState(0);
   const [resizingLowerKey, setResizingLowerKey] = useState<KeyT | null>(null);
+  const releaseDrag = useRef<(() => void) | null>(null);
+  useEffect(
+    () => () => {
+      releaseDrag.current?.();
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -125,8 +133,7 @@ export const useStackedSplits = <KeyT extends string>(
   };
 
   // These callbacks cross ref/listener boundaries: React invokes the ref during
-  // attach/detach, and a resize gesture installs window listeners that must
-  // share one captured interaction until mouseup removes them.
+  // attach/detach; the captured handle owns each resize until capture ends.
   const assignSectionScrollRef = useCallback((key: KeyT, node: HTMLDivElement | null) => {
     sectionScrollRefs.current[key] = node;
   }, []);
@@ -179,15 +186,12 @@ export const useStackedSplits = <KeyT extends string>(
         return;
       }
 
+      releaseDrag.current?.();
+      handle.setPointerCapture(pointerId);
       setResizingLowerKey(lowerKey);
-      try {
-        handle.setPointerCapture(pointerId);
-      } catch {
-        // Pointer capture is an enhancement; window listeners still own the drag.
-      }
 
       /**
-       * Called by the window pointermove listener installed below for this drag.
+       * Called by the captured handle during this drag.
        * Flow: convert pointer delta to section ratios, clamp the upper/lower pair, update heights, then scroll overflow when the drag hits a minimum bound.
        */
       const onMove = (moveEvent: PointerEvent) => {
@@ -221,23 +225,23 @@ export const useStackedSplits = <KeyT extends string>(
         }
       };
 
-      /** Removes this drag's window listeners when the pointer ends or is cancelled. */
-      const onEnd = (endEvent: PointerEvent) => {
-        if (endEvent.pointerId !== pointerId) return;
-        window.removeEventListener('pointermove', onMove);
-        window.removeEventListener('pointerup', onEnd);
-        window.removeEventListener('pointercancel', onEnd);
+      const cleanup = () => {
+        handle.removeEventListener('pointermove', onMove);
+        handle.removeEventListener('pointerup', onEnd);
+        handle.removeEventListener('pointercancel', onEnd);
+        handle.removeEventListener('lostpointercapture', onEnd);
+        releaseDrag.current = null;
         setResizingLowerKey(null);
-        try {
-          handle.releasePointerCapture(pointerId);
-        } catch {
-          // Ignore release failures when capture was unavailable or already lost.
-        }
+        if (handle.hasPointerCapture(pointerId)) handle.releasePointerCapture(pointerId);
       };
-
-      window.addEventListener('pointermove', onMove);
-      window.addEventListener('pointerup', onEnd);
-      window.addEventListener('pointercancel', onEnd);
+      const onEnd = (event: PointerEvent) => {
+        if (event.pointerId === pointerId) cleanup();
+      };
+      releaseDrag.current = cleanup;
+      handle.addEventListener('pointermove', onMove);
+      handle.addEventListener('pointerup', onEnd);
+      handle.addEventListener('pointercancel', onEnd);
+      handle.addEventListener('lostpointercapture', onEnd);
     },
     [collapsedSections, containerHeight, sectionHeights, minSectionPx, sectionMinPx, scrollSection],
   );

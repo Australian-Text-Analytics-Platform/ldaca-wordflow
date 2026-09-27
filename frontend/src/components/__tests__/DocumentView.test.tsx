@@ -97,4 +97,26 @@ describe('DocumentView (docType="tutorial")', () => {
       'https://docs.example.com/wordflow/v0.7/tutorials/assets/chart.png',
     );
   });
+  it('aborts obsolete remote downloads without attempting a bundled fallback', async () => {
+    const signals: AbortSignal[] = [];
+    global.fetch = vi.fn(
+      (_url, options) =>
+        new Promise<Response>((_resolve, reject) => {
+          const signal = options?.signal as AbortSignal;
+          signals.push(signal);
+          signal.addEventListener('abort', () => reject(new DOMException('Aborted', 'AbortError')));
+        }),
+    );
+    const view = render(<DocumentView docType="tutorial" target={target} />);
+    view.rerender(
+      <DocumentView
+        docType="tutorial"
+        target={{ ...target, file: 'tutorials/preprocessing.md' }}
+      />,
+    );
+    expect(signals[0]?.aborted).toBe(true);
+    view.unmount();
+    expect(signals[1]?.aborted).toBe(true);
+    await waitFor(() => expect(global.fetch).toHaveBeenCalledTimes(2));
+  });
 });

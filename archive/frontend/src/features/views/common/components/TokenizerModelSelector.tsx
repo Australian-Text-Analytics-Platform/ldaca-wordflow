@@ -1,0 +1,207 @@
+import { useEffect, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { listTokenizerModels } from '@/api';
+import type { TokenizerModelInfo } from '@/api/frontendModels';
+import { queryKeys } from '@/lib/queryKeys';
+import { partitionTokenizerModelsForLanguage } from '@/lib/languages';
+import { cn } from '@/lib/utils';
+import { useDetectedColumnLanguage } from '../hooks/useDetectedColumnLanguage';
+
+const TOKENIZER_MODELS_LOADING_VALUE = '__ldaca__tokenizer_models_loading__';
+const TOKENIZER_MODELS_ERROR_VALUE = '__ldaca__tokenizer_models_error__';
+const TOKENIZER_MODELS_EMPTY_VALUE = '__ldaca__tokenizer_models_empty__';
+const TOKENIZER_MODEL_CLEAR_VALUE = '__ldaca__select_tokenizer_model__';
+
+interface TokenizerModelSelectorProps {
+  projectId: string | null;
+  nodeId: string;
+  column: string;
+  value?: string;
+  onChange: (value: string, detectedLanguage: string | null) => void;
+  autoSelectRecommended?: boolean;
+  disabled?: boolean;
+  disabledReason?: string;
+  className?: string;
+}
+
+/**
+ * Lets token-based analysis panels choose a tokenizer model for the selected
+ * source column, using sampled text to group backend models by detected language.
+ * Used by: concordance and token-frequency parameter panels.
+ */
+function TokenizerModelSelector({
+  projectId,
+  nodeId,
+  column,
+  value,
+  onChange,
+  autoSelectRecommended = false,
+  disabled = false,
+  disabledReason,
+  className,
+}: TokenizerModelSelectorProps) {
+  const [open, setOpen] = useState(false);
+  const autoSelectionKeyRef = useRef<string | null>(null);
+  const canFetchSample = Boolean(projectId && nodeId && column);
+  const isDisabled = disabled || !column;
+  const reason = disabled ? disabledReason : !column ? 'Select a text column first' : undefined;
+  const { detectedLanguage } = useDetectedColumnLanguage({
+    projectId,
+    nodeId,
+    column,
+    enabled: canFetchSample,
+  });
+
+  const modelQuery = useQuery({
+    queryKey: queryKeys.tokenizerModels,
+    enabled: (open || autoSelectRecommended) && !isDisabled,
+    staleTime: 10 * 60_000,
+    /** Called by: TanStack Query for automatic selection or an opened selector. */
+    queryFn: async (): Promise<TokenizerModelInfo[]> => {
+      const { data } = await listTokenizerModels({
+        throwOnError: true,
+      });
+      return data.map((model) => ({
+        model: model.id,
+        label: model.label,
+        languages: model.languages ?? [],
+      }));
+    },
+  });
+  const { recommended, other } = partitionTokenizerModelsForLanguage(
+    modelQuery.data ?? [],
+    detectedLanguage,
+  );
+  const firstRecommendedModel = recommended[0]?.model ?? null;
+  const modelCatalogueLoaded = modelQuery.data !== undefined;
+
+  useEffect(() => {
+    if (
+      !autoSelectRecommended ||
+      !projectId ||
+      isDisabled ||
+      !detectedLanguage ||
+      !modelCatalogueLoaded
+    ) {
+      return;
+    }
+
+    const autoSelectionKey = `${projectId}:${nodeId}:${column}`;
+    if (autoSelectionKeyRef.current === autoSelectionKey) return;
+    autoSelectionKeyRef.current = autoSelectionKey;
+
+    if (!value?.trim() && firstRecommendedModel) {
+      onChange(firstRecommendedModel, detectedLanguage);
+    }
+  }, [
+    autoSelectRecommended,
+    column,
+    detectedLanguage,
+    firstRecommendedModel,
+    isDisabled,
+    modelCatalogueLoaded,
+    nodeId,
+    onChange,
+    value,
+    projectId,
+  ]);
+
+  const selectedModel = modelQuery.data?.find((option) => option.model === value);
+  const selectValue = value && value.length > 0 ? value : TOKENIZER_MODEL_CLEAR_VALUE;
+
+  return (
+    <div className={cn('space-y-1', className)}>
+      <span className="block text-label-secondary font-medium text-description">
+        Tokenizer Model
+      </span>
+      <DisabledReasonTooltip reason={isDisabled ? reason : undefined} className="w-full">
+        <Select
+          open={open}
+          value={selectValue}
+          onOpenChange={(nextOpen) => {
+            if (!isDisabled) setOpen(nextOpen);
+          }}
+          onValueChange={(nextValue) => {
+            onChange(nextValue === TOKENIZER_MODEL_CLEAR_VALUE ? '' : nextValue, detectedLanguage);
+          }}
+          disabled={isDisabled}
+        >
+          <SelectTrigger className="w-full text-body" aria-label="Tokenizer model">
+            <SelectValue placeholder="None">
+              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- empty value should display the placeholder, not '' */}
+              {selectedModel?.label ?? (value ? value : 'None')}
+            </SelectValue>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={TOKENIZER_MODEL_CLEAR_VALUE}>None</SelectItem>
+            {modelQuery.isFetching && !modelQuery.data ? (
+              <SelectItem value={TOKENIZER_MODELS_LOADING_VALUE} disabled>
+                Loading models...
+              </SelectItem>
+            ) : null}
+            {modelQuery.isError ? (
+              <SelectItem value={TOKENIZER_MODELS_ERROR_VALUE} disabled>
+                Could not load models
+              </SelectItem>
+            ) : null}
+            {!modelQuery.isFetching && !modelQuery.isError && modelQuery.data?.length === 0 ? (
+              <SelectItem value={TOKENIZER_MODELS_EMPTY_VALUE} disabled>
+                No models available
+              </SelectItem>
+            ) : null}
+            {recommended.length > 0 ? (
+              <SelectGroup
+                data-testid="tokenizer-model-recommendations"
+                className="my-1 rounded-lg border border-button/40 bg-transparent p-1"
+              >
+                <SelectLabel className="px-2 py-1 text-label-secondary font-medium text-link">
+                  Recommended
+                </SelectLabel>
+                {recommended.map((option) => (
+                  <SelectItem
+                    key={option.model}
+                    value={option.model}
+                    className="!h-auto min-h-control-sm py-1"
+                  >
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate">{option.label}</span>
+                      <span className="truncate font-mono text-label-secondary text-description">
+                        {option.model}
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ) : null}
+            {other.map((option) => (
+              <SelectItem
+                key={option.model}
+                value={option.model}
+                className="!h-auto min-h-control-sm py-1"
+              >
+                <span className="flex min-w-0 flex-col">
+                  <span className="truncate">{option.label}</span>
+                  <span className="truncate font-mono text-label-secondary text-description">
+                    {option.model}
+                  </span>
+                </span>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </DisabledReasonTooltip>
+    </div>
+  );
+}
+
+export default TokenizerModelSelector;

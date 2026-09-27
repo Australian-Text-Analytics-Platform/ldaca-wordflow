@@ -2,181 +2,88 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-data-loader-section">Data Loader tutorial</h1>
+<h1 id="help-data-loader-section">Data Loader</h1>
 
-The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active workspace panel, the workspace manager, and the files and uploads section.
+Add data to the current project through **Local files**, **Samples** or **LDaCA**.
+Each source stays inside the main pane, with the graph and Tasks available beside
+it. Switching sources or visiting Preprocessing preserves your unfinished choices.
+Reloading discards these drafts.
 
-![Data loader screenshot](tutorials/assets/data_loader.png)
+New and Open in the native File menu create independent project windows; the
+filename is the project name. See [project files](./ui.md#help-ui-project-files)
+for saving and closing.
 
-<h2 id="help-data-loader-active-workspace">Active workspace overview</h2>
+<h2 id="help-data-loader-files-section">Local files</h2>
 
-![Active workspace screenshot](tutorials/assets/data_loader/active_workspace.png)
+<h3 id="help-data-loader-upload-button">Choose or drop files</h3>
 
-The active workspace panel displays the currently loaded project along with its associated data blocks. From here you can rename or unload the active workspace. When no workspace is loaded, this panel also shows the option to create a new, empty workspace.
+Local files opens by default. Choose **Choose files…** or drop files onto Data
+Loader or the exposed graph. Supported formats are CSV, TSV, Parquet, JSON,
+JSONL and NDJSON. Choosing or dropping files starts importing immediately, with
+all columns included. The Rust browser preview accepts absolute paths on its host.
 
-- Verify the correct project is loaded before starting any analysis.
-- Create, rename, or unload a workspace as needed.
+**Recent files** shows filenames, parent folders, file-type icons and current file
+sizes. Click one to import it again, or drag it onto Data Loader or the graph.
+The original file must still exist; an unreadable or missing file shows **Size
+unavailable**. Recent files update after a successful import.
 
-<h2 id="help-data-loader-create-workspace-name">Workspace name input</h2>
+<h3 id="help-data-loader-add-button">Import into the project</h3>
 
-![Create workspace screenshot](tutorials/assets/data_loader/create_workspace.png)
+Each file creates a Data Block named after the file. If that name already exists,
+a numeric suffix is added. Rename the Data Block or remove unwanted columns
+after import using its menu and Data Viewer. There is no staging or confirmation
+step for these formats. Excel workbooks are not currently supported.
 
-This field is visible only when no workspace is currently active. Use it to specify a name for a new empty workspace. Choose a descriptive name that reflects the project or dataset (e.g. the project title or dataset identifier). An optional description can also be provided at this stage.
+Follow progress or cancel in **Tasks**. You can import more files or switch sources
+while an import runs. Failed imports leave the project unchanged; select the file
+again to retry.
 
-Workspace names are not unique identifiers — the application allows multiple workspaces to share the same name, each stored in a separate directory. Using identical names for different workspaces is strongly discouraged, as it can cause confusion when managing or revisiting projects.
+Local data is stored inside the project. Imports preserve an internal raw Table
+and show a View over it. You can move or remove the original file afterward.
+To edit stored cells, choose **Materialize**, then **More → Edit Table**.
+New Data Blocks appear in the graph and sidebar without changing selection or
+opening the Data Viewer. Use **Preview data** or select a sidebar row to inspect them.
 
-<h2 id="help-data-loader-create-workspace-button">Create workspace button</h2>
+<h2 id="help-data-loader-import-sample-button">Samples</h2>
 
-Clicking this button creates a new workspace with the specified name and optional description.
+Open **Samples** and expand a collection to select individual files. Its checkbox
+selects or clears all files; a dash indicates a partial selection. The footer
+shows the selected-file count beside **Import selected**.
 
-- The newly created workspace becomes the active workspace immediately.
-- **An active workspace is required before files can be loaded and analysed.**
+**Import as views** is selected by default. These Views read online data at a
+fixed published revision; an internet connection is required to query them.
+Clear the checkbox to import stored Tables for offline use. Existing sample
+Views keep their original revision when newer samples are published.
 
-<h2 id="help-data-loader-rename-workspace-input">Rename workspace input</h2>
+<h2 id="help-data-loader-import-ldaca-button">LDaCA</h2>
 
-Use this field to rename the currently active workspace. Renaming is useful when the project scope evolves or when you want a more organised workspace list. The workspace description can also be updated from this field.
+Open **LDaCA**, search by keyword or collection ID, and use the collection and
+file-type filters to narrow the results. Expand **Access token** when a collection
+requires credentials; the token stays in this window and is not saved in the project.
 
-<h2 id="help-data-loader-unload-button">Unload workspace</h2>
+Review each result's source, access information and licence. **Details** exposes
+the complete description and identifier; the title opens its source portal page.
+Choose **Import** to embed an importable collection in the project. Search results
+remain available afterward.
 
-The unload action closes the active workspace without deleting it.
-
-- Use this to switch between projects.
-- The unloaded workspace remains accessible in the workspace manager.
-
-<h2 id="help-data-loader-workspace-manager">Workspace manager overview</h2>
-
-![Workspace manager screenshot](tutorials/assets/data_loader/workspace_manager.png)
-
-The workspace manager lists all saved workspaces, enabling you to switch between projects and maintain an organised inventory.
-
-- Click **Activate** to set a workspace as the active project; the active workspace is visually highlighted.
-- Review the last-modified timestamp and data-block count to confirm you are loading the intended workspace.
-- Click **Download** to export the entire workspace as a ZIP archive. The archive contains Workspace metadata and Data Blocks together with compatible Tabs, completed or otherwise terminal Analyses, their durable Results and declared Artifacts, and the immutable query inputs needed to reopen them. Queued and running Analyses are omitted and their exported Tabs are empty. If the Workspace contains Analysis history written by a newer incompatible version, Wordflow preserves it in the saved Workspace but omits it and its dependent history from the portable ZIP; a warning reports the omitted Tab and Analysis counts during download or upload. Data Blocks and retained query inputs are stored in [Parquet](https://parquet.apache.org/) format — a compressed, column-oriented binary format that preserves data types exactly and is far more compact than CSV. Because Parquet is a well-supported open standard, the downloaded files can also be opened directly in tools such as Python (pandas/polars), R, or DuckDB. The ZIP is saved to your browser's default downloads folder (or your system Downloads folder in the desktop app). You can upload the ZIP to another instance of the application to resume your work there — for example when sharing a project with a collaborator or moving between a local installation and a hosted server.
-- Click **Delete** to permanently remove a workspace that is no longer needed.
-
-<h2 id="help-data-loader-files-section">Files and uploads section</h2>
-
-![Files section screenshot](tutorials/assets/data_loader/files_section.png)
-
-This panel is used to bring data into the application. It supports file and folder uploads, sample data imports, LDaCA imports, and add-to-workspace operations. You can also create subfolder structures, reorganise files via drag-and-drop, and remove files that are no longer needed.
-
-<h2 id="help-data-loader-upload-button">Upload files and folders</h2>
-
-Use **Upload files** to select one or more loose files. Use **Upload folder** to
-select one folder and preserve its root and nested structure. You can also drop
-loose files, folders, or a mixture of both onto the file list. If folder drop is
-not supported in the current browser, use **Upload folder** instead.
-
-Before uploading, Wordflow checks the complete selection for invalid paths,
-duplicate destinations, and conflicts with existing User Files. If any path
-conflicts, nothing is uploaded and the dialog lists every path to resolve.
-Existing folders can be reused, but existing files are never overwritten.
-
-During a large upload, the panel shows whether it is preparing, creating
-folders, or uploading files. **Cancel** finishes the current request and stops
-before the next one. Files and folders already created are retained if an
-upload is cancelled or fails. Dot-prefixed files and folders and `Thumbs.db`
-files are skipped and reported in the completion message. Source folders that
-contain no uploadable files are not created.
-
-Supported loadable formats:
-
-- Delimited tables: `.csv`, `.tsv`
-- JSON: `.json`, `.jsonl`, `.ndjson`
-- Columnar tables: `.parquet`, `.avro`, `.arrow`, `.ipc`, `.feather`
-- Spreadsheets: `.xlsx`, `.xls`, `.xlsm`, `.xlsb`, `.ods`
-- UTF-8 text: `.txt`, `.text`, `.md`, `.rst`, `.log`
-- UTF-8 document archives: `.zip`
-
-The application stores other uploaded files, but the Data Loader hides them
-because they cannot become Data Blocks. Folders remain visible even when they
-contain no supported files.
-
-Supported file types can be previewed before being added to the workspace as a
-Data Block. A ZIP becomes a table with one row per member that can be decoded as
-strict UTF-8; members that fail decoding are ignored. The table records each member's path,
-filename stem, extension, and complete document text.
-
-<h2 id="help-data-loader-import-sample-button">Import sample data</h2>
-
-Use this option to download curated sample datasets from the Wordflow sample-data repository. These are intended for first-time users to explore the app's capabilities. All sample data is publicly available and may be freely tested or removed. If sample data is used in a research output, please cite <img alt="citemark" src="references/assets/mark_ref.png" style="display: inline; height: 1em; vertical-align: middle;"> the dataset appropriately.
-
-<h2 id="help-data-loader-import-ldaca-button">Import from LDaCA</h2>
-
-Use this option to import a dataset directly from the Language Data Commons of Australia (LDaCA).
-
-![Copy download link](tutorials/assets/data_loader/ldaca_loader_link.png)
-
-1. On the LDaCA repository page, right-click the download icon to copy the ZIP download URL.
-2. Paste the URL into the import dialog.
-
-![Paste download link](tutorials/assets/data_loader/ldaca_loader_input.png)
-
-The import runs in the background and may take 30 seconds to a few minutes depending on collection size and network speed. The imported collection appears in the files list under the **LDaCA** folder as a Parquet file once extraction completes. If files do not appear, click the refresh button in the top-right corner of the panel.
-
-Currently supported fully public collections: [COOEE](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26180~23961609&_crateId=arcp%3A%2F%2Fname%2Chdl10.26180~23961609), [ICE-AUS](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1&_crateId=arcp%3A%2F%2Fname%2Chdl10.25949~24769173.v1), and [La Trobe Australian Spoken English](https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26181~23089559&_crateId=arcp%3A%2F%2Fname%2Chdl10.26181~23089559).
-
-<h2 id="help-data-loader-add-button">Add file to workspace</h2>
-
-![Files operations](tutorials/assets/data_loader/file_operations.png)
-
-Once a file is uploaded, imported, or downloaded, the following actions are available:
-
-- **Preview** the file contents before adding it to the workspace.
-- **Add to Workspace** to load the file as a data block in the active workspace.
-- **Download** the original file to your local machine.
-- **Remove** the file from the application.
-
-<h2 id="help-data-loader-file-organisation">Organising files</h2>
-
-The files panel supports folder management and drag-and-drop reorganisation so you can keep uploads tidy across projects.
-
-**Creating folders**
-
-Click the <kbd>+</kbd> folder icon next to any existing folder to create a subfolder inside it, or use the equivalent button at the root level to create a top-level folder. A dialog will prompt you for a name. Folders can be nested to any depth.
-
-**Deleting files and folders**
-
-Click the trash icon next to a file or folder to request its permanent removal. A confirmation dialog identifies the selected item before deletion. Deleting a folder also deletes everything inside it.
-
-**Moving files by drag-and-drop**
-
-Drag any file row and drop it onto a target folder (or onto any file inside a target folder) to move the file there. Valid drop targets are highlighted as you drag. A file cannot be moved to the folder it already belongs to, and dropping a file into a folder that already contains a file with the same name is not allowed.
-
-<h2 id="help-data-loader-citation-notice">Citation and licensing notices</h2>
-
-Some folders — particularly those created by the LDaCA importer — display a small quote icon (<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:text-bottom"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/></svg>) next to the folder name. This icon indicates that the folder contains a `README.md` file with citation, licensing, or copyright information provided by the dataset's author.
-
-**Click the icon to open the notice.** The contents are rendered as formatted text and may include:
-
-- A required citation or acknowledgement for the dataset.
-- Licence terms (e.g. Creative Commons, restricted use).
-- Copyright or access conditions.
-
-**If this icon appears on a folder you intend to use in research or publication, review the notice carefully and follow the stated requirements before sharing or publishing your results.**
+All imports appear in **Tasks**, which owns progress and cancellation. You can
+switch sources or leave Data Loader while accepted work continues. Cancelling
+before commit leaves no partially imported Data Blocks.
 
 <h2 id="help-data-loader-troubleshooting">Troubleshooting</h2>
 
-| Symptom | Likely cause | What to try |
-|---|---|---|
-| File fails to load | Unsupported format or encoding | Check that the file is UTF-8 encoded and uses a supported format |
-| CSV preview shows all data in one column | Wrong delimiter | Re-export with a comma delimiter, or contact the developer team |
-| LDaCA import does not appear | Import still in progress | Wait a moment and click the refresh button |
-| Workspace not visible in the manager | Working directory changed | Check the working directory setting at the bottom of the sidebar |
-| Duplicate workspace names | Created before uniqueness was enforced | Activate each, review contents, and rename to distinct labels |
+- If a file cannot load, verify its format and review the expandable error.
+- If sample collections cannot load, use **Retry**. Failed LDaCA searches can be
+  submitted again after checking the query or token.
+- If an online View cannot be queried, check its source and connection. Its
+  graph card remains available even if row inspection fails.
+- If importing is blocked by a table editor, finish that editor with Save or Cancel.
 
-<h2 id="help-data-loader-defaults">Quick-reference defaults</h2>
+## Practice
 
-| Setting | Default | Notes |
-|---|---|---|
-| Working directory | `~/Documents/ldaca` | Changeable via the edit icon at the bottom of the sidebar |
-
-## Practice exercise
-
-1. Create a workspace named **Practice Corpus**.
-2. Upload a CSV file and preview its contents.
-3. Add the file to the workspace as a data block.
-4. Rename the workspace to **Practice Corpus v1**.
-5. Unload the workspace and reload it from the workspace manager.
+1. Choose a CSV and wait for its Data Block to appear in the graph.
+2. Open its preview and inspect another page.
+3. Save the Untitled project as a `.wfpj` file.
+4. Reopen the project in Wordflow without the original CSV.
 
 [← Back to tutorial index](./index.md)

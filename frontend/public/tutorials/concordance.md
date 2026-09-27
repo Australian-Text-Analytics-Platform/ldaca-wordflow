@@ -4,289 +4,253 @@
 
 <h1 id="help-concordance-section">Concordance tutorial</h1>
 
-Concordance searches one or two Data Blocks for a word or phrase and shows each
-match in context. It is useful for comparing how terms are used and where they
-appear within documents.
+Concordance finds words and phrases in one or two Data Blocks and shows their
+contexts and positions. Entering the tool with no tabs creates **Concordance 1**.
+Use **+** to create another numbered tab, or rename and reorder existing tabs.
+Closing the last tab leaves an empty state until you create one or leave and return.
 
-<h2 id="help-concordance-parameters">Parameter panel</h2>
+Each tab has a **Request** panel and a **Results** panel. **Preview** is temporary
+and calculated on demand. **Run** saves the latest successful complete result
+inside the project. An accepted Run saves its request and clears the previous result before calculation; a later failure or cancellation leaves no saved output.
 
-<h3 id="help-concordance-data-block">Step 1 — Select your data</h3>
+<h2 id="help-concordance-parameters">Request panel</h2>
+<h3 id="help-concordance-data-block">Choose inputs</h3>
 
-Add up to two Data Blocks and choose the source text column for each one. A
-fresh selector initializes that choice from the Data Block's saved Document
-Column Preference when it has one.
+Add one or two Data Blocks and choose a document column for each. The initial
+column follows the Data Block's Document Column Preference when available.
+Source colors identify the corpora; matched-term colors in dispersion are separate.
+You can add, remove or clear inputs without changing the graph selection.
 
-<h3 id="help-concordance-search-term">Step 2 — Enter a search term</h3>
+<h3 id="help-concordance-search-term">Enter a search</h3>
 
-Enter the word, phrase, or token alternatives to find. Each result includes the
-left context, matched text, right context, and any source metadata columns you
-choose to display.
+Enter a word, phrase or token alternatives. Clicking a token in Frequency opens a
+new Concordance tab with all of that saved result's inputs and source columns,
+in the same order, and a whole-word Text search. Preview runs for both corpora
+when Frequency has two inputs, even if you clicked an individual cloud or list.
+If a source is missing, select a replacement.
 
-<h4 id="help-concordance-search-mode">Search mode</h4>
+<h4 id="help-concordance-search-mode">Text and Tokens</h4>
 
-- **Text** searches the original text column. Whole-word, regular-expression,
-  and case-sensitive options apply in this mode.
-- **Tokens** performs exact-token matching. Separate alternatives with spaces,
-  commas, or `|`.
+**Text** searches original text. **Tokens** matches exact token alternatives,
+separated by spaces, commas or a pipe. Choose a tokenizer for each input in Tokens
+mode. Switching modes retains your Text options, including Regex; inactive Text options do not change token matching. Sampled language recommendations are suggestions and never replace your
+explicit choice. Some models require an initial download; plain words is local.
 
-Running Tokens mode requires a tokenizer model for every selected Data Block.
-The selector saves each model as that Data Block's Tokenizer Preference,
-separately from its Document Column Preference. A fresh Concordance Analysis
-always starts in Text mode, including when every selected Data Block already has
-a saved model or you arrive from Token Frequency. Select Tokens mode explicitly
-to enable the tokenizer selectors, then choose or confirm a model for each
-source.
+Execution settings remain local drafts until Run is accepted. Run saves the submitted
+request independently of its results. Preview never saves its request. Editing a draft
+during either operation does not change the captured request or lose your edits.
 
-Preview records the exact source columns, tokenizer mapping, and search mode in
-the immutable Analysis request. Reopening an existing Preview Analysis uses
-those saved values even if the current Data Block preferences have since
-changed.
+<h5 id="help-concordance-regex-toggle">Search options</h5>
 
-<h5 id="help-concordance-regex-toggle">Regular expressions</h5>
+Text mode offers **Whole word**, **Regex** and **Case sensitive**. For example,
+regex `cat|dog` matches either term. Invalid patterns report an error; a Run that already cleared its prior output does not restore it. Native regex does not support lookaround or backreferences.
+Tokens mode uses exact alternatives rather than regular expressions.
 
-In Text mode, enable **Use Regular Expression** for pattern matching.
+<h3 id="help-concordance-context">Context</h3>
 
-| Pattern | What it matches |
-|---|---|
-| `child(ren)?` | *child* or *children* |
-| `tax\|budget\|welfare` | Any one of the three words |
-| `#\w+` | Any hashtag |
-| `\w{2}-\d{4,6}` | IDs such as *SA-3988* or *id-4589* |
+Left and right context default to ten tokens and accept 0–50. **Ignore punctuation**
+means punctuation-only tokens do not consume Text context counts or become L1/R1.
+Original punctuation and spacing remain in the displayed text. Token mode uses
+the selected tokenizer's punctuation filtering. L1 and R1 identify neighboring eligible tokens. Token mode keeps these
+neighbors even with zero visible context; Text mode uses the displayed context.
 
-Use [regexr.com](https://regexr.com/) to test unfamiliar patterns. **Whole
-Word** excludes partial-word matches, and **Case Sensitive** keeps letter case
-distinct.
+<h3 id="help-concordance-batch-size">Documents per page</h3>
 
-<h3 id="help-concordance-context">Step 3 — Set the context window</h3>
+Preview pages contain a bounded number of source documents (20 by default).
+Documents without matches produce no visible rows; several matches in one
+document produce several KWIC rows. An empty page does not mean later pages are
+empty. Next uses a lookahead row rather than counting the complete source.
 
-**Left context** and **Right context** control how many tokens appear around a
-match. Both default to 10 and accept values from 0 to 50. In Text mode,
-**Ignore punctuation** is on by default: punctuation and symbol-only tokens do
-not consume those counts or become L1/R1, but the original punctuation and
-whitespace remain visible in each context. This option does not change which
-text or regular-expression matches are found. Tokens mode already applies its
-tokenizer's punctuation filtering and does not show this option.
+<h2 id="help-concordance-run">Preview</h2>
 
-<h3 id="help-concordance-batch-size">Step 4 — Choose documents per page</h3>
+Click **Preview** to submit the current draft. Typing does not calculate matches.
+Paging, page-size changes and metadata sorting use the last submitted settings.
+Sorting can require a larger database scan, but only the requested document page
+is matched. Presentation, colors and metadata visibility reuse the page.
 
-Concordance Preview is document-paged. **Documents per page** controls how many
-source documents the current page evaluates: 10, 20, 50, 100, 200, 400, or
-800. A page can contain fewer visible rows because documents without a match
-are omitted, while a document with several matches contributes several rows.
+An explicit Preview click refreshes unchanged settings until that request has a successful Run. Preview is unavailable while Run is active or when its successful saved request matches your draft. Change execution inputs/options or Clear results to preview again. Relevant source or
+dependency changes refresh active previews; unrelated graph movement does not.
+An old page remains visible and marked outdated while refreshing or after failure.
+**Cancel** in the progress card cancels pending Preview work. Preview creates no
+saved request, result or task. Leaving the tool, switching tabs, reloading, Run or
+Clear discards it. Returning restores your local draft or saved Run request, without
+recalculating Preview. Finish Table editing before submitting Preview.
 
-The footer reports the matches and matching documents found after processing
-the current source-document batch. An empty page does not mean later pages are
-empty.
+<h2 id="help-concordance-results">Results panel</h2>
+<h3 id="help-concordance-views">Result presentation</h3>
 
-<h2 id="help-concordance-run">Step 5 — Preview</h2>
+The Results panel follows the latest Preview or successful Run. Run replaces the Preview display; there is no Preview/Saved results switch. Use the **Table** and **Dispersion** tabs at the top to change presentation. A notice marks
+results whose submitted settings differ from the current draft. Saved results
+retain matching source rows and remain readable after the original source changes
+or disappears. Rerunning requires valid current inputs.
 
-Click **Preview** to create a durable Preview Analysis. The label always remains
-**Preview**. After success, changing an execution parameter enables Preview
-again; reverting exactly to its submitted request disables it. Preview and
-**Run All** keep independent submitted-request baselines.
-Each page navigation or sort request recomputes that page from the retained
-input snapshot. Preview pages are not retained or reused.
+<h3 id="help-concordance-table-view">Table</h3>
 
-<h2 id="help-concordance-results">Result panel</h2>
+Each row is one match, with left context, matched text, right context, L1/R1 and character offsets. Saved
+results additionally show L1/R1 frequencies. Frequencies
+describe the complete saved source result, not merely the displayed page.
+Saved match rows support sorting by their generated fields and selected metadata.
+Preview supports source-metadata sorting only.
 
-Preview pages, page sizes, and source-metadata sorts are fresh projections over
-the retained snapshot. They never read the current mutable Data Block, so
-editing a source cannot silently change that Preview Analysis.
+<h3 id="help-concordance-tooltip">Inspect a document</h3>
 
-In separated Preview tables, selected source metadata headers are sortable.
-Generated scalar headers such as matched text, L1/R1, frequencies, and offsets
-show **Run All to enable sorting** because Preview has not materialized the
-whole Result. Full document and left/right context strings stay unsorted.
+Click a match or document bar to open the full retained document with highlighted
+matches and metadata. Previous/next navigates rows and pages. Hovering a dispersion
+marker shows its context. Emoji and other Unicode characters retain correct offsets.
 
-<h3 id="help-concordance-views">Table and dispersion views</h3>
+<h3 id="help-concordance-metadata">Metadata</h3>
 
-<h4 id="help-concordance-table-view">Table view</h4>
+Click **Metadata** to open the column-selection popover. Select original source columns, or use Select all/none. Escape or a click outside closes it without discarding your selections.
+These choices affect presentation, not calculation. Combined presentation offers
+only columns shared by all selected sources.
 
-Table view shows one row per match. Click a row to inspect the full source
-document and its metadata. Use the metadata selector to add source columns to
-the table.
+<h3 id="help-concordance-display-mode">Table and Dispersion</h3>
 
-**L1** (`CONC_l1`) is the token immediately left of the match and **R1**
-(`CONC_r1`) is the token immediately right. Their frequency columns count each
-value across the complete Run All Result. The matched-text cell always uses
-strong source-colour emphasis. The last exact, case-sensitive L1 occurrence in
-the left context and the first R1 occurrence in the right context use a softer
-source-colour tint. Empty or unmatched anchors remain plain. Turn off
-**Highlight L1/R1 in context** to hide only those inline tints for the current
-tab session. The direct L1/R1 cells remain plain and available for sorting,
-frequencies, export, and Data Block Creation.
+Table presents individual occurrences. Dispersion presents qualifying documents
+and their match positions. Saved Table pages count matches; saved Dispersion
+pages count documents. Preview always pages source documents.
 
-<h4 id="help-concordance-dispersion-view">Dispersion view</h4>
+<h3 id="help-concordance-sources-mode">Separated and Combined</h3>
 
-Dispersion view groups the current page by source document. Vertical marks show
-the relative position of each match within the document. **Bar length
-proportional to text length** scales bars by document length; with it off, all
-bars use the same width for easier positional comparison.
+Use the **Separated / Combined** tabs on the right of the Results header when
+both corpora are present. Separated keeps a source card and page controls for
+each corpus. Combined interleaves the source pages and disables sorting. Source
+colors remain distinct. Switching returns to the first page and combines loaded
+results locally without rerunning the analysis. The layout choice is local to
+the open results panel.
 
-Match markers and dispersion series use the colour assigned to their exact,
-case-sensitive matched text. Colours come from the sorted union of term labels
-for the Result and remain stable when terms are hidden.
+<h3 id="help-concordance-dispersion-view">Dispersion</h3>
 
-<h4 id="help-concordance-tooltip">Hover details</h4>
+Document bars come first, followed by pagination, the matched-term legend and
+the summary chart. Metadata appears in columns beside the bars; click a document
+to inspect it or hover a marker for its context.
 
-![Hover tooltip on a dispersion bar](tutorials/assets/concordance/dispersion_tooltip.png)
+**Bar length proportional to text length** is off by default: equal-width bars
+show relative match positions, and the summary chart is available. Turn it on to
+compare actual document lengths; the summary chart is hidden. The legend and
+Clear selection remain available, and existing selections are retained.
 
-Hover over a match line to see its immediate left context, matched text, and
-right context.
+Matched-term colors are consistent across sources and separate from source colors.
+The legend shows total counts, or selected/total counts when bins are selected.
+Saved Dispersion shares term visibility between cards; each source keeps its own
+bin selection, while Combined has a separate selection.
 
-<h3 id="help-concordance-summary-plot">Dispersion summary</h3>
+<h4 id="help-concordance-summary-plot">Summary</h4>
 
-When proportional bar length is off, the chart shows one series for each exact
-matched term across relative-position bins. Preview derives its static legend
-from the current page. Review uses whole-Result density, so changing the table
-page does not change the chart.
+Saved density is calculated across the complete saved result, independently of
+the visible document page. Preview density describes only the current captured
+page. Only saved Dispersion supports term and bin filtering. Preview supports
+inspection, zoom and downloads. The KWIC Table remains unfiltered; returning to
+Dispersion restores its selections. Filtering never reruns analysis.
 
 <h4 id="help-concordance-chart-type">Chart type</h4>
 
-Choose **Line**, **Bar**, or **Area**. This presentation choice applies to the
-dispersion blocks in the current session. Bar charts use side-by-side series
-with alternating bin backgrounds at 4, 5, or 10 bins. At 20, 25, 50, or 100
-bins, the series stack into one bar per bin so the bars remain visible. Other
-chart types are unchanged by the selected bin count.
+Choose smooth Density: line or Density: area, Density: bar, or the stepped
+Cumulative chart. Chart mode and bin count are shared across source cards.
+Use Zoom in, Zoom out, Reset zoom, the slider or the mouse wheel to inspect a
+range. Selecting bins preserves the zoom. Downloads include source labels,
+query, scope, legend and filter context.
 
-<h4 id="help-concordance-bin-count">Bin count</h4>
+<h4 id="help-concordance-bin-count">Bins and case</h4>
 
-**Bin No.** divides the 0–100 % document range into 4, 5, 10, 20, 25, 50, or
-100 buckets. Changing the count clears selected bins so an old bin index is not
-reinterpreted under new boundaries.
+Choose the number of equal relative-position bins (20 by default). Changing it
+clears bin selections. **Uncased** combines term case variants and clears term
+exclusions. Grouped labels retain the original spellings, such as `jobs/Jobs`.
 
-<h4 id="help-concordance-bin-selection">Selecting bins</h4>
+<h4 id="help-concordance-bin-selection">Select a range</h4>
 
-In Review, click anywhere inside the plot to select the bin nearest the vertical
-axis pointer; Shift-click another bin to extend
-the range. **Clear Selection** removes the bin filter. Click a legend term to
-hide or show it. Visible terms intersected with selected bins control the
-displayed documents, match markers, legend counts, and Concordance Document
-Data Block Creation.
-Documents without a surviving match disappear. Preview has a static legend and
-does not apply these filters. Select **Uncased** beside a chart legend to merge
-case variants into one series, colour, and summed legend count; for example,
-`jobs (35)` and `Jobs (2)` become `jobs/Jobs (37)`. This checkbox is shared by
-all separated charts and Combined View. Changing it restores all hidden legend
-terms while preserving selected bins.
+In saved Dispersion, click a point or its plot position to toggle a bin.
+Shift-click adds a range to your selection. **Select range** toggles drag mode:
+a drag replaces the selection; Shift-drag adds to it. Selected dots are filled.
 
-<h4 id="help-concordance-download">Download the plot</h4>
+Focus the chart to inspect points with arrows/Home/End and select with Enter or
+Space. Shift extends the selection. Escape exits range mode and hides the tooltip;
+**Clear selection** removes the current block's bin filter. Preview points can be
+inspected but not selected.
 
-![Plot download dialog](tutorials/assets/concordance/download_dialog.png)
+<h2 id="help-concordance-run-all">Run</h2>
 
-Download the current chart as PNG, SVG, or JPEG. The export includes the
-visible term series, complete legend with hidden-state indication, and active
-bin and term-filter summary.
+Run first saves its request and clears the previous output, then matches all selected
+inputs and atomically publishes the new result. Only one run per tab is active; other tabs may run independently.
+Follow stages or cancel through Tasks or the progress card. Finish table editing before starting.
+Closing a tab cancels its work and removes owned results. Published Data Blocks remain.
 
-<h3 id="help-concordance-metadata">Show metadata</h3>
+<h2 id="help-concordance-download">Downloads and Add to Project</h2>
 
-Enable **Show metadata** and select source columns to display beside matches.
-With two Data Blocks, common columns and source-specific columns are grouped
-and colour-coded. Generated Concordance fields are already part of the Result
-and do not become source-metadata sort keys.
+Download summary charts as PNG, SVG or JPEG. Native saving uses the system chooser;
+browser saving downloads the file.
 
-<h3 id="help-concordance-display-mode">Separated and combined display</h3>
+**Add to Project → Matches** creates one row per saved occurrence. **Add to Project → Documents** creates one row per qualifying retained document and required
+`CONC_extraction` from surviving contexts. Both publication modes capture the
+current presentation: Dispersion applies its term/bin filters, while Table
+publishes without those filters. Both include all qualifying rows across pages.
 
-With two Data Blocks, **Separated** gives each source its own Result block and
-sort state. **Combined** interleaves the current pages and colours rows by
-source. Combined headers are display-only because one sort order cannot be
-applied independently to both source snapshots.
+Choose sources, edit output names, select metadata/generated columns, use Select
+all/none or Sync columns, then Add. The document column is required. All selected
+Tables commit together, and existing objects are never overwritten. Cancel leaves
+the project unchanged. Published Tables are independent of later result clearing,
+rerunning or tab deletion; export them through ordinary Data Block controls.
 
-<h4 id="help-concordance-sources-mode">Combined filters</h4>
+<h2 id="help-concordance-clear-results">Clear results</h2>
 
-In Separated mode, each source has independent hidden terms and selected bins.
-In Combined mode, one frontend-only filter is applied separately to both
-source Results before their pages are interleaved. Terms, rather than sources,
-remain the chart series.
-
-<h3 id="help-concordance-run-all">Run All and Review</h3>
-
-**Run All** can be started before or after Preview. It submits one thin Run All
-group with one independent Supporting Analysis per selected source. Each child
-uses the Run All request's immutable snapshot and tokenizer mapping and retains
-one complete table Result. Run All does not add Data Blocks to the Workspace.
-
-After success, **Review** reads each immutable Result through explicit match and
-document projections. Table View always shows **Matches per page**. Dispersion
-View always shows qualifying **Documents per page**; filtering occurs before
-sorting, counting, and paging, and the selected page size applies independently
-to each source. Review has no page-local Found summary.
-
-Separated Review Table View can sort selected metadata, matched text, L1/R1,
-their frequencies, and start/end offsets across the complete materialized
-Result. Sorting is case-sensitive and uses Polars' default null ordering. Equal
-values have no guaranteed secondary order. The document and full context
-headers remain plain, and combined Review remains unsorted.
-
-The Review density chart always summarizes the complete immutable Result, not
-the visible page. `CONC_dispersion` remains a frontend presentation field and
-is never stored or queried as a physical Result column.
-
-Use **Add to Workspace** to create Derived Data Blocks after reviewing the
-Result. Table View creates a **Concordance Match Data Block Creation**, with one row per
-match and the current flat selected-column behavior. Dispersion View creates a
-**Concordance Document Data Block Creation**, with one row per qualifying original
-source row. It contains the required original document, required
-`CONC_extraction` (surviving KWIC extractions joined with plain newlines), and
-optional metadata. The document and extraction columns are locked on and
-metadata starts off. Every source is checked by default; unchecking a source
-hides but retains its controls, and at least one source must remain checked.
-For multiple sources, enable **Sync columns** to limit optional choices to exact,
-case-sensitive column names shared by every checked source. Existing shared
-selections are combined when Sync columns is enabled, and individual changes or
-**Select all** and **Select none** then apply to every checked source. Unchecked
-sources keep their independent selections. Required document and extraction
-columns remain locked on and are not synchronized. If fewer than two sources
-remain checked, Sync columns turns off automatically.
-Submitting the checked sources is atomic, including when a source has no
-qualifying rows and therefore creates a schema-only Data Block.
-
-<h3 id="help-concordance-clear-results">Clear results</h3>
-
-The Tab keeps its complete Analysis forest. **Clear Results** removes that
-forest. Preview or Run All locks every parameter only while submission or
-execution is active; Stop becomes available once the task exists. If either
-root fails or is cancelled, parameters unlock but both execution actions stay
-disabled until Clear Results.
+Clear results removes both Preview and saved output while retaining the tab, saved Run request, draft and
+preferences. It also makes Preview available again. It is disabled while that tab is running. Cancelling or failing a
+new run never clears the previous successful result.
 
 <h2 id="help-concordance-troubleshooting">Troubleshooting</h2>
 
-| Symptom | Likely cause | What to try |
-|---|---|---|
-| No results on one page | The current source-document batch has no match | Continue to the next page |
-| Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
-| Too many partial matches | Whole Word is off in Text mode | Enable **Whole Word** |
-| A regular expression fails | Invalid pattern syntax | Test the pattern on regexr.com |
-| A generated Preview header does not sort | Whole-Result generated sorting requires materialized matches | Run All, then sort the separated Review table |
-| Run All is disabled | Inputs are incomplete or another Run All is active | Complete the inputs or wait for the active Analysis |
-| Preview differs from the edited Data Block | You reopened a historical Preview Analysis | Change an execution input and choose **Preview** to capture a new snapshot |
+| Symptom | Action |
+| --- | --- |
+| Preview shows no matches | Check options and try the next document page |
+| Results marked outdated | Submit Preview or Run with the intended draft |
+| Source unavailable | Replace the input; saved results remain readable |
+| Run disabled | Choose valid inputs/query and finish table editing |
+| Regex error | Use a supported native pattern; lookaround/backreferences are unsupported |
+| Publication failed | Check names, selected columns and conflicts; the dialog retains choices |
 
-<h2 id="help-concordance-defaults">Quick-reference defaults</h2>
+<h2 id="help-concordance-defaults">Defaults</h2>
 
-| Setting | Default | Notes |
-|---|---|---|
-| Search mode | Text | Select Tokens explicitly to enable tokenizer selection |
-| Left / Right context | 10 tokens each | Range 0–50 |
-| Whole Word | Off | Text mode only |
-| Regular expression | Off | Text mode only |
-| Case Sensitive | Off | Text mode only |
-| Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
-| Documents per page | 20 | Controls source documents evaluated per Preview page |
-| View | Table | Returning to Concordance starts in Table View |
-| Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasized when off |
-| Bin No. | 20 | 4, 5, 10, 20, 25, 50, or 100 |
-| Chart type | Line | Line, Bar, or Area |
-| Review term visibility | All terms | Exact, case-sensitive labels |
+Text mode, whole word on, regex off, case insensitive, punctuation ignored,
+ten tokens of context on either side, 20 documents per page, Table presentation,
+20 bins and Line chart.
 
-## Practice exercise
+The KWIC table has a bounded scroll area and sticky headers. Click a row to inspect
+its full document; selecting text does not open the inspector. Preview includes
+L1, R1 and character offsets; whole-result L1/R1 frequencies appear only in saved
+results. A Preview summary distinguishes matches, matching documents and inspected
+source documents. Combined paging limits apply to each source separately.
 
-1. Select a Data Block and Preview a Text-mode Whole Word search.
-2. Compare two source-metadata sort orders.
-3. Switch to Preview Dispersion and compare the per-term series.
-4. Run All, open Review Dispersion, hide a term, and select a bin range.
-5. Compare Concordance Match Data Block Creation from Table View with
-   Concordance Document Data Block Creation from Dispersion View.
-6. Change an execution input, then choose **Preview** to compare the new request
-   deliberately while the earlier Result remains bound to its snapshot.
+The metadata picker groups shared and source-specific columns. Separated cards
+show only fields present in that source; Combined uses shared metadata, source
+labels and row colors. Invalid numeric input reverts to its previous value with a
+reminder. Attempting an unavailable execution action explains what is required.
 
-[← Back to tutorial index](./index.md)
+The area below parameters shows progress while calculating or loading, then **Preview**
+or **Results**. Empty tabs have no output card. **Cancel** belongs to the progress
+card. If saved results cannot load or display, **Retry** tries reading the same
+output again and **Run** becomes **Rerun**. Rerun uses the current parameters,
+clears the tab's old results and artifacts, and calculates from scratch. Retry
+creates no analysis task. Clear never restores an older Preview.
+
+When completed results match the current parameters, **Run** is disabled. Change
+execution parameters to enable it; reverting them disables it again. Colors,
+filters, stopwords and other presentation controls do not enable Run. To calculate
+again after changing the source data, use **Clear results**, then **Run**. This
+retains your parameters. Saved-output errors still allow **Rerun**; a successful
+**Retry** restores the normal Run availability.
+
+## Settings from another version
+
+If saved settings contain fields or values this version cannot use, the parameter
+panel restores the supported settings and shows a warning above Run. Expand a
+large value to inspect its complete original JSON. Check the defaults and replace
+any missing inputs before running. Opening, editing, Preview (where available)
+and Clear results leave the saved settings unchanged. Run saves only supported
+settings; with existing results, the action is called Rerun.
+
+Your submitted Run request and its optional output belong to one saved analysis
+in this project. Clear results removes the output but keeps the submitted settings.
+A failed or cancelled Run also keeps its settings, without showing saved output.
+Unsubmitted edits and Preview remain temporary. Projects using the previous
+database layout cannot be opened by this schema-version-1 build; no automatic
+conversion is performed.

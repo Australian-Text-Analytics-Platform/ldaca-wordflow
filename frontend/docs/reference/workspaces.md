@@ -6,7 +6,7 @@
 
 **Question:** _How is the web app organized?_
 
-**Answer:** The root `ldaca_web_app/` folder is the pnpm workspace root, with `frontend/` as the pnpm workspace package and `backend/` as a sibling Python project.
+**Answer:** The root `ldaca_web_app/` folder is the pnpm workspace root, with `frontend/` as the pnpm workspace package and `backend/` as the shared Rust runtime.
 
 ## 2) Installing dependencies
 

@@ -1,7 +1,5 @@
 /** Shared registry for every independently stamped release version. */
 export const VERSION_TARGETS = [
-    tomlTarget('workspace pyproject.toml', 'pyproject.toml'),
-    tomlTarget('backend/pyproject.toml', 'backend/pyproject.toml'),
     jsonTarget('frontend/package.json', 'frontend/package.json'),
     {
         label: 'frontend/src-tauri/Cargo.toml',
@@ -15,8 +13,8 @@ export const VERSION_TARGETS = [
             ),
     },
     {
-        label: 'frontend/src-tauri/Cargo.lock',
-        path: 'frontend/src-tauri/Cargo.lock',
+        label: 'Cargo.lock',
+        path: 'Cargo.lock',
         extract: (source) =>
             source.match(/\[\[package\]\]\nname = "ldaca-wordflow"\nversion = "([^"]+)"/)?.[1],
         replace: (source, version) =>
@@ -26,6 +24,10 @@ export const VERSION_TARGETS = [
             ),
     },
     jsonTarget('frontend/src-tauri/tauri.conf.json', 'frontend/src-tauri/tauri.conf.json'),
+    tomlTarget('backend/Cargo.toml', 'backend/Cargo.toml'),
+    lockTarget('Cargo.lock', 'wordflow-backend'),
+    tomlTarget('server/Cargo.toml', 'server/Cargo.toml'),
+    lockTarget('Cargo.lock', 'wordflow-server'),
 ];
 
 export const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
@@ -56,5 +58,15 @@ function jsonTarget(label, path) {
         extract: (source) => source.match(/"version"\s*:\s*"([^"]+)"/)?.[1],
         replace: (source, version) =>
             source.replace(/("version"\s*:\s*)"[^"]+"/, `$1"${version}"`),
+    };
+}
+
+function lockTarget(path, packageName) {
+    const pattern = new RegExp(`(\\[\\[package\\]\\]\\nname = "${packageName}"\\nversion = )"([^"]+)"`);
+    return {
+        label: `${path} (${packageName})`,
+        path,
+        extract: (source) => source.match(pattern)?.[2],
+        replace: (source, version) => source.replace(pattern, `$1"${version}"`),
     };
 }

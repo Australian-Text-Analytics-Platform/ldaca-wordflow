@@ -1,0 +1,45 @@
+import { useEffect, useRef, useState } from 'react';
+
+import { Input } from '@/components/ui/input';
+
+interface RenameInputProps {
+  column: string;
+  onSubmit: (column: string, value: string) => void;
+  onCancel: () => void;
+}
+
+/**
+ * Provides the inline editor opened from a column's settings menu.
+ */
+export function RenameInput({ column, onSubmit, onCancel }: RenameInputProps) {
+  const [draft, setDraft] = useState(column);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  return (
+    <Input
+      ref={inputRef}
+      value={draft}
+      onChange={(event) => {
+        setDraft(event.target.value);
+      }}
+      onBlur={() => {
+        onSubmit(column, draft);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onSubmit(column, draft);
+        } else if (event.key === 'Escape') {
+          onCancel();
+        }
+      }}
+      className="h-7 w-40 truncate text-label-secondary"
+      aria-label={`Rename column ${column}`}
+    />
+  );
+}

@@ -2,8 +2,8 @@
 
 <h1 id="info-general-overview">About Wordflow</h1>
 
-Wordflow is a web-based platform that helps you explore and analyse text collections. You can upload your own text files or use sample datasets, then apply a range of analysis tools — such as word frequency counts, topic discovery, concordance searches, and quotation extraction — all from a single interface.
+Wordflow is a desktop application for exploring and analysing text collections. Import local files or sample datasets, prepare them with visual tools or DuckDB SQL, and use Frequency to count and compare terms. Concordance, topic modelling and the other analysis tools have not yet been restored in the native application.
 
-Your work is organised into **workspaces**. Each workspace keeps your uploaded data, processed results, and derived outputs together so you can pick up where you left off. Results from one tool can be fed directly into another, making it easy to combine different types of analysis.
+Your work is organised into **projects**, saved as `.wfpj` database files. Each project keeps its Data Blocks, SQL definitions and saved Frequency results together. Preprocessing creates or edits Data Blocks; Frequency tabs save their results separately without adding graph nodes.
 
 No programming or command-line knowledge is required. The platform is designed for researchers across all disciplines.

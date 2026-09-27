@@ -1,4 +1,3 @@
-import { useUIStore } from '../../stores/uiStore';
 import { isTauri } from '@/lib/isTauri';
 import { DEPLOYMENT_ID, APP_VERSION, APP_BUILD } from '@/config/env';
 
@@ -40,19 +39,17 @@ export interface FeedbackContext {
 }
 
 /**
- * Captures app/build/view context for `FeedbackPanel` just before the survey is
+ * Captures app/build/tool context for `FeedbackPanel` just before the survey is
  * opened, giving Qualtrics enough metadata to route feedback to the right area.
- * Called by: FeedbackPanel before building the iframe URL.
- * Flow: read build metadata and current view, resolve deployment, merge user-role overrides, then stamp the submission timestamp.
+ * Called by: the UI store when the invoking feature opens Feedback.
+ * Flow: read build metadata and the invoking feature, resolve deployment, then stamp the opening timestamp.
  */
-export const captureFeedbackContext = (
-  overrides: Partial<Pick<FeedbackContext, 'user_role'>> = {},
-): FeedbackContext => ({
+export const captureFeedbackContext = (feature: string): FeedbackContext => ({
   app_version: APP_VERSION,
   app_build: APP_BUILD,
   deployment: resolveDeployment(),
-  feature: useUIStore.getState().currentView,
-  user_role: overrides.user_role ?? 'anonymous',
+  feature,
+  user_role: 'anonymous',
   submitted_at: new Date().toISOString(),
 });
 

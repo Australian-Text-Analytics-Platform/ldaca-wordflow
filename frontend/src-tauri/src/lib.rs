@@ -1,20 +1,26 @@
-mod backend_process;
 mod desktop_updater;
+mod documents;
 mod download;
-mod platform;
-mod runtime;
+#[cfg(feature = "e2e")]
+mod e2e_profile;
+mod events;
+#[cfg(target_os = "macos")]
+mod macos_quit;
+mod recent_projects;
 mod supervisor;
 
 use std::io;
 
-use tauri::menu::{Menu, MenuItemBuilder};
 #[cfg(not(target_os = "macos"))]
-use tauri::menu::{PredefinedMenuItem, HELP_SUBMENU_ID};
-use tauri::{Manager, State};
+use tauri::menu::HELP_SUBMENU_ID;
+use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu, WINDOW_SUBMENU_ID};
+use tauri::{Manager, WebviewWindow};
 
 #[tauri::command]
-fn get_backend_url(state: State<'_, supervisor::BackendSupervisor>) -> Result<String, String> {
-    state.backend_url()
+fn get_backend_status(
+    window: WebviewWindow,
+) -> Result<supervisor::BackendStatus, wordflow_backend::Error> {
+    Ok(documents::document(&window)?.backend.snapshot())
 }
 
 fn boxed_error(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -22,11 +28,22 @@ fn boxed_error(message: impl Into<String>) -> Box<dyn std::error::Error> {
 }
 
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
+const RELOAD_MENU_ID: &str = "reload-project-window";
 
 fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let menu = Menu::default(app)?;
     let check_for_updates =
-        MenuItemBuilder::with_id(CHECK_FOR_UPDATES_MENU_ID, "Check for Updates…").build(app)?;
+        MenuItemBuilder::with_id(CHECK_FOR_UPDATES_MENU_ID, "Check for Updates…")
+            .enabled(desktop_updater::updates_available(app.config()))
+            .build(app)?;
+    let reload = MenuItemBuilder::with_id(RELOAD_MENU_ID, "Reload")
+        .accelerator("CmdOrCtrl+R")
+        .build(app)?;
+    let window_menu = menu
+        .get(WINDOW_SUBMENU_ID)
+        .and_then(|item| item.as_submenu().cloned())
+        .ok_or_else(|| boxed_error("Default Window menu not found"))?;
+    window_menu.append(&reload)?;
 
     #[cfg(target_os = "macos")]
     {
@@ -38,6 +55,47 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
             .ok_or_else(|| boxed_error("Default macOS application menu not found"))?;
         application_menu.insert(&check_for_updates, 1)?;
     }
+    let file_menu = match menu
+        .items()?
+        .into_iter()
+        .filter_map(|item| item.as_submenu().cloned())
+        .find(|item| item.text().ok().as_deref() == Some("File"))
+    {
+        Some(menu) => menu,
+        None => {
+            let file = Submenu::new(app, "File", true)?;
+            menu.prepend(&file)?;
+            file
+        }
+    };
+    // Tauri's default close item also adds macOS Close All. Use the document coordinator only.
+    for submenu in [&file_menu, &window_menu] {
+        for item in submenu.items()? {
+            if item
+                .as_predefined_menuitem()
+                .is_some_and(|item| item.text().ok().as_deref() == Some("Close Window"))
+            {
+                submenu.remove(&item)?;
+            }
+        }
+    }
+    let new = MenuItemBuilder::with_id("project-new", "New Project")
+        .accelerator("CmdOrCtrl+N")
+        .build(app)?;
+    let open = MenuItemBuilder::with_id("project-open", "Open…")
+        .accelerator("CmdOrCtrl+O")
+        .build(app)?;
+    let save = MenuItemBuilder::with_id("project-save", "Save")
+        .accelerator("CmdOrCtrl+S")
+        .build(app)?;
+    let save_as = MenuItemBuilder::with_id("project-save-as", "Save As…")
+        .accelerator("CmdOrCtrl+Shift+S")
+        .build(app)?;
+    let separator = PredefinedMenuItem::separator(app)?;
+    let close = MenuItemBuilder::with_id("project-close", "Close Project")
+        .accelerator("CmdOrCtrl+W")
+        .build(app)?;
+    file_menu.prepend_items(&[&new, &open, &save, &save_as, &close, &separator])?;
 
     #[cfg(not(target_os = "macos"))]
     {
@@ -55,23 +113,44 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
 
 /// Assemble and run the desktop shell around the React app and local backend.
 ///
-/// Called only by `main.rs`. Runtime resolution, process lifecycle, platform
-/// behavior, and native downloads live in focused modules; this function owns
+/// Called only by `main.rs`. Backend lifecycle, updates, and native downloads
+/// live in focused modules; this function owns
 /// Tauri wiring and the ordering between those domains.
 pub fn run() {
-    let builder = tauri::Builder::default();
-    #[cfg(target_os = "macos")]
-    let builder = builder.plugin(tauri_plugin_liquid_glass::init());
+    let context = tauri::generate_context!();
+    #[cfg(all(feature = "e2e", target_os = "macos"))]
+    if std::env::var_os("WORDFLOW_E2E_CLEANUP_STORE").is_some() {
+        e2e_profile::remove_store_process(context);
+        return;
+    }
+    let _ = tracing_subscriber::fmt()
+        .with_env_filter(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
+        )
+        .with_writer(std::io::stderr)
+        .try_init();
+    let builder = tauri::Builder::default()
+        .manage(documents::Documents::default())
+        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {
+            documents::open_paths(
+                app,
+                documents::argument_paths(args, std::path::Path::new(&cwd)),
+            );
+        }));
+
+    #[cfg(feature = "e2e")]
+    let builder = builder
+        .plugin(tauri_plugin_wdio_webdriver::init())
+        .plugin(tauri_plugin_wdio::init());
 
     let app = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_store::Builder::default().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .manage(supervisor::BackendSupervisor::new())
         .manage(desktop_updater::DesktopUpdaterState::default())
         .invoke_handler(tauri::generate_handler![
-            get_backend_url,
+            get_backend_status,
             desktop_updater::get_updater_snapshot,
             desktop_updater::check_for_updates,
             desktop_updater::download_update,
@@ -80,24 +159,57 @@ pub fn run() {
             desktop_updater::open_update_link,
             desktop_updater::get_update_preferences,
             desktop_updater::set_automatic_update_checks,
-            download::save_backend_download,
-            download::save_data_block_export,
-            download::save_generated_bytes
+            download::save_node_export,
+            download::save_export,
+            download::save_frequency_export,
+            download::save_generated_export,
         ])
         .setup(|app| {
+            tracing::info!("Initializing desktop shell");
+            #[cfg(feature = "e2e")]
+            let provider_path = {
+                let profile = e2e_profile::Profile::new()?;
+                let path = profile.directory.path().join("ai-providers.json");
+                app.manage(profile);
+                path
+            };
+            #[cfg(not(feature = "e2e"))]
+            let provider_path = app.path().app_config_dir()?.join("ai-providers.json");
+            app.manage(wordflow_backend::AiConfiguration::new(
+                &app.config().identifier,
+                provider_path,
+            ));
             install_application_menu(app.handle())?;
+            #[cfg(target_os = "macos")]
+            macos_quit::install(app.handle())?;
+            documents::open_paths(
+                app.handle(),
+                documents::argument_paths(std::env::args(), &std::env::current_dir()?),
+            );
+            documents::ensure_window(app.handle());
             app.on_menu_event(|app_handle, event| {
+                documents::menu_action(app_handle, event.id().as_ref());
                 if event.id() == CHECK_FOR_UPDATES_MENU_ID {
                     desktop_updater::show_manual_check(app_handle.clone());
                 }
+                if event.id() == RELOAD_MENU_ID {
+                    if let Some(window) = documents::focused(app_handle) {
+                        documents::reload(window);
+                    }
+                }
             });
-            app.get_webview_window("main")
-                .ok_or_else(|| boxed_error("Main window not found"))?;
-            supervisor::start(app.handle().clone());
             desktop_updater::schedule_automatic_check(app.handle().clone());
             Ok(())
         })
+        .on_page_load(|webview, payload| {
+            if payload.event() == tauri::webview::PageLoadEvent::Started {
+                documents::webview_unloaded(webview.app_handle(), webview.label());
+            }
+        })
         .on_window_event(|window, event| {
+            if matches!(event, tauri::WindowEvent::Destroyed) {
+                documents::webview_unloaded(window.app_handle(), window.label());
+            }
             if desktop_updater::handle_window_event(window, event) {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     api.prevent_close();
@@ -105,17 +217,44 @@ pub fn run() {
                 return;
             }
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" && supervisor::request_window_close(window.clone()) {
-                    api.prevent_close();
+                if let Some(view) = window.app_handle().get_webview_window(window.label()) {
+                    if documents::request_close(&view) {
+                        api.prevent_close();
+                    }
                 }
             }
         })
-        .build(tauri::generate_context!());
+        .build(context);
 
     match app {
         Ok(app) => app.run(|app_handle, event| {
-            if let tauri::RunEvent::ExitRequested { .. } = event {
-                supervisor::shutdown_on_exit(app_handle);
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Opened { ref urls } = event {
+                documents::open_paths(
+                    app_handle,
+                    urls.iter().filter_map(|url| url.to_file_path().ok()),
+                );
+            }
+            if let tauri::RunEvent::Ready = event {
+                documents::ensure_window(app_handle);
+            }
+            #[cfg(target_os = "macos")]
+            if let tauri::RunEvent::Reopen {
+                has_visible_windows: false,
+                ..
+            } = event
+            {
+                documents::ensure_window(app_handle);
+            }
+            if let tauri::RunEvent::ExitRequested { api, code, .. } = event {
+                #[cfg(target_os = "macos")]
+                if code.is_none() {
+                    api.prevent_exit();
+                    return;
+                }
+                if documents::intercept_exit(app_handle, code.unwrap_or(0)) {
+                    api.prevent_exit();
+                }
             }
         }),
         Err(error) => eprintln!("Error while building Tauri application: {error}"),

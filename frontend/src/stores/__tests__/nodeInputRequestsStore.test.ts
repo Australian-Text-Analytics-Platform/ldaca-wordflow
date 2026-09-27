@@ -13,21 +13,21 @@ describe('nodeInputRequestsStore', () => {
   it('pushes Data Blocks onto a LIFO placement stack', () => {
     const { requestAdd } = useNodeInputRequestsStore.getState();
 
-    requestAdd('workspace-1', 'annotation', 'node-a', { x: 100, y: 120 });
-    requestAdd('workspace-1', 'annotation', 'node-b', { x: 240, y: 260 });
+    requestAdd('project-1', 'annotation', 'node-a', { x: 100, y: 120 });
+    requestAdd('project-1', 'annotation', 'node-b', { x: 240, y: 260 });
 
     expect(useNodeInputRequestsStore.getState().pendingRequests).toEqual([
       {
         id: 1,
-        workspaceId: 'workspace-1',
-        view: 'annotation',
+        scopeId: 'project-1',
+        tool: 'annotation',
         nodeId: 'node-a',
         pointer: { x: 100, y: 120 },
       },
       {
         id: 2,
-        workspaceId: 'workspace-1',
-        view: 'annotation',
+        scopeId: 'project-1',
+        tool: 'annotation',
         nodeId: 'node-b',
         pointer: { x: 240, y: 260 },
       },
@@ -37,8 +37,8 @@ describe('nodeInputRequestsStore', () => {
   it('removes one placed item without disturbing the rest of the stack', () => {
     const { requestAdd } = useNodeInputRequestsStore.getState();
 
-    requestAdd('workspace-1', 'annotation', 'node-a');
-    requestAdd('workspace-1', 'annotation', 'node-b');
+    requestAdd('project-1', 'annotation', 'node-a');
+    requestAdd('project-1', 'annotation', 'node-b');
 
     useNodeInputRequestsStore.getState().consume(2);
 
@@ -49,11 +49,25 @@ describe('nodeInputRequestsStore', () => {
 
   it('clears the complete carried stack', () => {
     const { requestAdd } = useNodeInputRequestsStore.getState();
-    requestAdd('workspace-1', 'annotation', 'node-a');
-    requestAdd('workspace-1', 'annotation', 'node-b');
+    requestAdd('project-1', 'annotation', 'node-a');
+    requestAdd('project-1', 'annotation', 'node-b');
 
     useNodeInputRequestsStore.getState().clear();
 
     expect(useNodeInputRequestsStore.getState().pendingRequests).toEqual([]);
+  });
+
+  it('renames and prunes native table identities without affecting another connection', () => {
+    const state = useNodeInputRequestsStore.getState();
+    state.requestAdd('', 'join', 'a');
+    state.requestAdd('other', 'join', 'a');
+    state.rename('', 'a', 'renamed');
+    expect(
+      useNodeInputRequestsStore.getState().pendingRequests.map((request) => request.nodeId),
+    ).toEqual(['renamed', 'a']);
+    state.prune('', []);
+    expect(
+      useNodeInputRequestsStore.getState().pendingRequests.map((request) => request.scopeId),
+    ).toEqual(['other']);
   });
 });

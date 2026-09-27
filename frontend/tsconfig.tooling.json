@@ -1,9 +1,31 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "lib": ["ESNext"],
-    "types": ["node", "vite/client", "vitest/config"]
+    "lib": [
+      "ESNext",
+      "DOM"
+    ],
+    "types": [
+      "node",
+      "vite/client",
+      "vitest/config",
+      "expect-webdriverio"
+    ]
   },
-  "include": ["vite.config.ts", "openapi.config.ts", "playwright.config.ts", "e2e/**/*.ts"],
-  "exclude": ["dist", "build", "node_modules"]
+  "include": [
+    "src/stopword.d.ts",
+    "vite.config.ts",
+    "e2e-browser/**/*.ts",
+    "wdio.conf.ts",
+    "e2e-native/**/*.ts",
+    "wdio.browser.conf.ts",
+    "type-tests/**/*.ts",
+    "wdio.server.conf.ts",
+    "e2e-server/**/*.ts"
+  ],
+  "exclude": [
+    "dist",
+    "build",
+    "node_modules"
+  ]
 }

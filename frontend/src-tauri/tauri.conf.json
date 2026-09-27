@@ -1,15 +1,14 @@
 {
   "productName": "LDaCA Wordflow",
-  "version": "0.8.0",
+  "version": "8.0.0",
   "identifier": "au.edu.ldaca.wordflow",
   "build": {
     "beforeDevCommand": "pnpm dev:tauri",
     "devUrl": "http://127.0.0.1:3001",
-    "beforeBuildCommand": "pnpm build && node scripts/stage-backend-runtime.mjs --validate-only",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../build"
   },
   "app": {
-    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "LDaCA Wordflow",
@@ -20,16 +19,18 @@
         "minWidth": 1000,
         "minHeight": 700,
         "zoomHotkeysEnabled": true,
-        "dragDropEnabled": false,
+        "dragDropEnabled": true,
         "visible": false,
         "useHttpsScheme": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "transparent": false,
+        "create": false
       }
     ],
     "security": {
-      "csp": "default-src 'self' tauri: https://tauri.localhost; connect-src 'self' ipc: tauri: https://tauri.localhost http://ipc.localhost http://127.0.0.1:*; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://sydney.au1.qualtrics.com https://*.qualtrics.com;",
-      "devCsp": "default-src 'self' tauri: https://tauri.localhost; connect-src 'self' ipc: tauri: https://tauri.localhost http://ipc.localhost http://127.0.0.1:* ws://127.0.0.1:3001; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://sydney.au1.qualtrics.com https://*.qualtrics.com;"
+      "csp": "default-src 'self' tauri: https://tauri.localhost; connect-src 'self' ipc: tauri: https://tauri.localhost http://ipc.localhost http://127.0.0.1:*; script-src 'self' 'wasm-unsafe-eval' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://sydney.au1.qualtrics.com https://*.qualtrics.com;",
+      "devCsp": "default-src 'self' tauri: https://tauri.localhost; connect-src 'self' ipc: tauri: https://tauri.localhost http://ipc.localhost http://127.0.0.1:* ws://127.0.0.1:3001; script-src 'self' 'unsafe-inline' 'unsafe-eval' http://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; frame-src https://sydney.au1.qualtrics.com https://*.qualtrics.com;"
     }
   },
   "bundle": {
@@ -48,12 +49,30 @@
       "icons/icon.ico"
     ],
     "macOS": {
-      "signingIdentity": "-"
+      "signingIdentity": "-",
+      "entitlements": "entitlements.plist"
     },
-    "copyright": "Copyright © 2025 Language Data Commons of Australia (LDaCA)",
+    "copyright": "Copyright \u00a9 2025 Language Data Commons of Australia (LDaCA)",
     "category": "Education",
     "shortDescription": "Text analytics and visualization platform",
-    "longDescription": "LDaCA Wordflow provides comprehensive tools for text analysis, including concordance, frequency analysis, topic modeling, and timeline visualization."
+    "longDescription": "LDaCA Wordflow provides comprehensive tools for text analysis, including concordance, frequency analysis, topic modeling, and timeline visualization.",
+    "fileAssociations": [
+      {
+        "ext": [
+          "wfpj"
+        ],
+        "name": "Wordflow Project",
+        "description": "Wordflow DuckDB project",
+        "role": "Editor",
+        "mimeType": "application/x-wordflow-project",
+        "exportedType": {
+          "identifier": "au.edu.ldaca.wordflow.project",
+          "conformsTo": [
+            "public.data"
+          ]
+        }
+      }
+    ]
   },
   "plugins": {
     "updater": {

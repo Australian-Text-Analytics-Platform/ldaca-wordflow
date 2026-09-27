@@ -1,8 +1,12 @@
 ---
-status: accepted
+status: superseded
 ---
 
 # Use native Liquid Glass for the macOS window backplane
+
+The desktop now uses opaque VS Code theme colors. The material plugin,
+private API permission, and transparent-window initialization were removed.
+This record describes the superseded decision.
 
 ## Context
 

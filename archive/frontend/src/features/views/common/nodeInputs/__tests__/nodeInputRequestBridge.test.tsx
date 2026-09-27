@@ -1,0 +1,123 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Field, Utf8 } from 'apache-arrow';
+import { StrictMode } from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { NodeInputsPanel } from '@/features/project/common/ServerProjectNodeInputsPanel';
+import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
+import type { AnalysisTabInput } from '../../tabs/tabStateOps';
+import { useTabNodeInputs } from '../useTabNodeInputs';
+
+const mocks = vi.hoisted(() => ({
+  useProjectData: vi.fn(),
+  useNodeColumnInfos: vi.fn(),
+  useUIStore: vi.fn(),
+}));
+
+vi.mock('@/features/project/common/hooks/useProjectData', () => ({
+  useProjectData: mocks.useProjectData,
+}));
+
+vi.mock('@/features/project/common/hooks/useNodeColumnInfos', () => ({
+  useNodeColumnInfos: mocks.useNodeColumnInfos,
+}));
+
+vi.mock('@/stores', () => ({
+  useUIStore: mocks.useUIStore,
+}));
+
+function RequestBridgeHarness({
+  onInputSetChange,
+  deferNodeInputPlacement = false,
+}: {
+  onInputSetChange: (selectorId: string, inputs: AnalysisTabInput[]) => void;
+  deferNodeInputPlacement?: boolean;
+}) {
+  const nodeInputs = useTabNodeInputs({
+    tabInputSets: { source: [] },
+    onTabInputSetChange: onInputSetChange,
+    constraints: { maxNodes: 1 },
+    deferNodeInputPlacement,
+  });
+
+  return (
+    <NodeInputsPanel
+      title="Preprocessing Inputs"
+      resolvedNodes={nodeInputs.resolvedNodes}
+      availableNodes={nodeInputs.availableNodes}
+      canAddMore={nodeInputs.canAddMore}
+      maxNodes={1}
+      onAddNodes={nodeInputs.addNodes}
+      onRemoveNode={nodeInputs.removeNode}
+      onClear={nodeInputs.clear}
+      onColumnChange={nodeInputs.setColumn}
+    />
+  );
+}
+
+describe('node input request bridge', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useNodeInputRequestsStore.setState({
+      nextId: 1,
+      pendingRequests: [],
+    });
+    mocks.useProjectData.mockReturnValue({
+      currentProjectId: 'project-1',
+      nodes: [{ id: 'node-a', name: 'Node A' }],
+    });
+    mocks.useNodeColumnInfos.mockReturnValue({
+      getColumnInfos: () => [
+        { name: 'text', typeName: 'Utf8', field: new Field('text', new Utf8()) },
+      ],
+      nodeInfoById: {},
+    });
+    mocks.useUIStore.mockImplementation((selector: (state: { currentView: string }) => unknown) =>
+      selector({ currentView: 'filter' }),
+    );
+  });
+
+  it('adds a matching request directly when this is the only placement area', async () => {
+    const onInputSetChange = vi.fn();
+    useNodeInputRequestsStore.setState({
+      nextId: 2,
+      pendingRequests: [{ id: 1, scopeId: 'project-1', view: 'filter', nodeId: 'node-a' }],
+    });
+
+    render(
+      <StrictMode>
+        <RequestBridgeHarness onInputSetChange={onInputSetChange} />
+      </StrictMode>,
+    );
+
+    await waitFor(() => {
+      expect(onInputSetChange).toHaveBeenCalledWith('source', [
+        { node_id: 'node-a', column: 'text' },
+      ]);
+    });
+    expect(useNodeInputRequestsStore.getState().pendingRequests).toEqual([]);
+    expect(screen.queryByRole('button', { name: 'Add to Preprocessing Inputs' })).toBeNull();
+    expect(onInputSetChange).toHaveBeenCalledOnce();
+  });
+
+  it('keeps a request carried when a multi-area view defers placement', async () => {
+    const user = userEvent.setup();
+    const onInputSetChange = vi.fn();
+    useNodeInputRequestsStore.setState({
+      nextId: 2,
+      pendingRequests: [{ id: 1, scopeId: 'project-1', view: 'filter', nodeId: 'node-a' }],
+    });
+
+    render(<RequestBridgeHarness onInputSetChange={onInputSetChange} deferNodeInputPlacement />);
+
+    expect(onInputSetChange).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Add to Preprocessing Inputs' }));
+
+    await waitFor(() => {
+      expect(onInputSetChange).toHaveBeenCalledWith('source', [
+        { node_id: 'node-a', column: 'text' },
+      ]);
+    });
+    expect(useNodeInputRequestsStore.getState().pendingRequests).toEqual([]);
+  });
+});

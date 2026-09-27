@@ -67,10 +67,10 @@ describe('optional Sentry adapter', () => {
     await initSentry({ dsn: 'https://example.invalid/1' });
     const error = new Error('render failed');
 
-    captureThroughAdapter(error, { tags: { boundary: 'workspace' } });
+    captureThroughAdapter(error, { tags: { boundary: 'project' } });
 
     expect(captureException).toHaveBeenCalledWith(error, {
-      tags: { boundary: 'workspace' },
+      tags: { boundary: 'project' },
     });
   });
 });

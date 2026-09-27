@@ -287,18 +287,6 @@ function SidebarInset({ className, ...props }: React.ComponentProps<'main'>) {
   );
 }
 
-/** Used by: Sidebar to render branding and account controls. */
-function SidebarHeader({ className, ...props }: React.ComponentProps<'div'>) {
-  return (
-    <div
-      data-slot="sidebar-header"
-      data-sidebar="header"
-      className={cn('flex flex-col gap-2 p-2', className)}
-      {...props}
-    />
-  );
-}
-
 /** Used by: Sidebar to render secondary actions and working-directory controls. */
 function SidebarFooter({ className, ...props }: React.ComponentProps<'div'>) {
   return (
@@ -430,7 +418,6 @@ export {
   Sidebar,
   SidebarContent,
   SidebarFooter,
-  SidebarHeader,
   SidebarInset,
   SidebarMenu,
   SidebarMenuButton,

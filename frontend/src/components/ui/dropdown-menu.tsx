@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { DropdownMenu as DropdownMenuPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, ChevronRight } from 'lucide-react';
 
 /** Dropdown root primitive used by menus in sidebar and feature actions. */
 const DropdownMenu = DropdownMenuPrimitive.Root;
@@ -13,6 +13,40 @@ const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
 
 /** Radio-group primitive for menus with mutually exclusive choices. */
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
+
+const DropdownMenuSub = DropdownMenuPrimitive.Sub;
+
+const DropdownMenuSubTrigger = ({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubTrigger>) => (
+  <DropdownMenuPrimitive.SubTrigger
+    className={cn(
+      'flex h-control-sm cursor-default select-none items-center gap-2 rounded-sm px-2 text-body outline-hidden focus:bg-[var(--vscode-menu-selectionBackground)] data-[state=open]:bg-[var(--vscode-menu-selectionBackground)] data-disabled:text-disabled',
+      className,
+    )}
+    {...props}
+  >
+    {children}
+    <ChevronRight className="ml-auto size-4" />
+  </DropdownMenuPrimitive.SubTrigger>
+);
+
+const DropdownMenuSubContent = ({
+  className,
+  ...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) => (
+  <DropdownMenuPrimitive.Portal>
+    <DropdownMenuPrimitive.SubContent
+      className={cn(
+        'z-50 min-w-32 rounded-md border border-[var(--vscode-menu-border)] bg-menu p-1 text-menu-foreground shadow-[var(--vscode-shadow-lg)]',
+        className,
+      )}
+      {...props}
+    />
+  </DropdownMenuPrimitive.Portal>
+);
 
 /** Main dropdown content panel used by sidebar and toolbar menus. */
 const DropdownMenuContent = ({
@@ -103,20 +137,6 @@ const DropdownMenuRadioItem = ({
   </DropdownMenuPrimitive.RadioItem>
 );
 
-/** Non-interactive label row used to name dropdown sections. */
-const DropdownMenuLabel = ({
-  className,
-  inset,
-  ref,
-  ...props
-}: React.ComponentProps<typeof DropdownMenuPrimitive.Label> & { inset?: boolean }) => (
-  <DropdownMenuPrimitive.Label
-    ref={ref}
-    className={cn('px-2 py-1 text-label font-semibold', inset && 'pl-8', className)}
-    {...props}
-  />
-);
-
 /** Separator row used to visually divide dropdown item groups. */
 const DropdownMenuSeparator = ({
   className,
@@ -137,7 +157,9 @@ export {
   DropdownMenuItem,
   DropdownMenuCheckboxItem,
   DropdownMenuRadioItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuRadioGroup,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 };

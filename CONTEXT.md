@@ -1,333 +1,84 @@
 # LDaCA Wordflow
 
-LDaCA Wordflow is a text-analysis product for assembling datasets, deriving
-new data, and running analyses while preserving data lineage. This file is the
-project's domain glossary; it contains no implementation instructions or
-temporary project status.
+Wordflow is a text-analysis application for importing, transforming and analysing
+corpora in a DuckDB project. This glossary describes the current native system.
+Archived server terminology and unimplemented analysis workflows are historical
+reference, not current product contracts.
 
-## Language
+## Project and data
 
-**Workspace**:
-A user-owned analysis area containing an ordered lineage graph of Data Blocks.
-At runtime, the backend permits at most one open Workspace per user; this is a
-resource state, not a remembered client selection.
-_Avoid_: project, document workspace, current workspace
+**Project**: The database belonging to one application window. A saved project is
+one `.wfpj` file; an Untitled project is initially in memory. Its runtime owns
+connections, tasks and lifecycle permissions. Different projects can run
+independently. See [project semantics](docs/domain/native-projects.md).
+_Avoid_: Workspace, Data Root, user-owned server workspace.
 
-**Unavailable Workspace**:
-An owned, discoverable Workspace that cannot currently open because its native
-format is incompatible, its snapshot is corrupt, or it exceeds configured
-deployment limits. It remains identifiable and deletable without exposing
-unvalidated Workspace metadata.
-_Avoid_: failed Workspace, broken project, recoverable backup
+**Data Block**: A registered Table or View with project metadata. Visible Data
+Blocks appear in the sidebar and normal graph; hidden registrations can support
+imports. `Node` is the backend/API representation, not product terminology.
 
-**Data Block**:
-A named tabular dataset in a Workspace, together with its lineage and analysis
-metadata. Backend code and HTTP schemas represent a Data Block as a `Node`;
-`Node` is an implementation/API term rather than the product term.
-_Avoid_: node in product-facing prose, dataframe, table
+**Table**: A database object storing rows. Changing its values or columns changes
+the object in place. Materializing a View converts its current rows to a Table.
 
-**Document Column Preference**:
-An optional Data Block convenience value identifying the raw-text column that
-a newly added analysis selector should choose. A function may expose this
-preference, the Tokenizer Preference, both, or neither. The two preferences are
-independent, and a submitted Analysis retains its own document-column mapping.
-_Avoid_: required document column, Analysis document parameter
+**View**: A named live SQL query. Its current definition determines its database
+dependencies. Query-layer Undo belongs to edits of that definition; there is no
+general database Undo/Redo or version history.
 
-**Tokenizer Preference**:
-An optional Data Block convenience value identifying the tokenizer model that
-a newly added analysis selector should choose. It is independent of the
-Document Column Preference and is neither an Analysis parameter nor cached
-token content. A submitted Analysis retains its own tokenizer-model mapping.
-_Avoid_: tokenization column, account tokenizer default, cached tokenizer
+**SQL dependency**: A direct reference from a source Table/View to a dependent
+View, calculated from current SQL. It is not stored as historical lineage.
 
-**Semantic Column Type**:
-A globally named column meaning layered over a physical tabular storage type.
-It may be owned by Wordflow or by the producer of imported data and remains
-part of the Data Block schema even when Wordflow has no specialized behavior
-for it.
-_Avoid_: inferred column shape, Wordflow-only custom type
+**Logical link**: A stored virtual association between registered Data Blocks,
+independent of their current SQL. It does not enforce dependencies or trigger
+transitive data refresh. A pair may carry both a logical link and SQL dependency.
 
-**Source Data Block**:
-A Data Block created by snapshotting an imported User File into a Workspace.
-It has no parent Data Block.
-_Avoid_: uploaded node, root node
+**Document Column Preference**: An optional Data Block default for a newly added
+text-input selector. Submitted analysis settings capture their own column choice.
 
-**Derived Data Block**:
-A Data Block created from one or more parent Data Blocks by a transformation,
-including a Supporting Analysis such as Derived Data Block Creation.
-_Avoid_: child table, output node
+**Tokenizer Preference**: An optional Data Block default for a newly added input's
+tokenizer. It is independent of its document-column preference. It is neither a
+cached token column nor a substitute for submitted analysis settings.
 
-**Workspace SQL Query**:
-A stateless SQL command evaluated against explicitly declared Data Blocks in
-one Workspace. It either returns one tabular page or creates a Derived Data
-Block; it never edits a Data Block in place.
-_Avoid_: SQL session, database query, SQL edit
+**Semantic Column Type**: Explicit meaning layered over a DuckDB physical type,
+including producer-supplied Arrow extension metadata. A similar column name or
+physical shape does not establish semantic identity.
 
-**Data Block Edit**:
-An identity-preserving replacement of one Data Block's tabular execution plan.
-It changes neither creation lineage nor any descendant Data Block's independent
-plan. Session Undo/Redo is interaction history for these edits, not provenance
-or a durable audit trail.
-_Avoid_: derivation, lineage update, saved edit history
+**Stopword Data Block**: An ordinary Table or View selected by an analysis together
+with one column. Its current normalized words filter saved Frequency results;
+it is not an artifact or copied array in analysis preferences.
 
-**Tab**:
-A named Workspace-owned analysis slot with a fixed analysis kind and an ordered
-Analysis Forest. Kind-specific presentation settings may belong to the Tab;
-Active Analysis Drafts do not. Tab presentation settings are changed only by
-an explicit Tab update; Analysis lifecycle operations and Result clearing
-preserve them.
-_Avoid_: frontend-only tab, singleton analysis slot
+## Tools and analyses
 
-**Analysis**:
-A Workspace-owned lifecycle record for one immutable typed text-analysis
-request. Every Analysis belongs to one Tab and may optionally name a parent in
-that Tab. A successful Analysis may produce a queryable Result, own Artifacts,
-or atomically create zero or more Derived Data Blocks.
-_Avoid_: task, job, analysis endpoint
+**Tool**: A function opened from the **Tools** sidebar, such as Data Loader,
+Preprocessing or Frequency. A tool may contain named analysis tabs.
+_Avoid_: view for a tool; **View** means a SQL database object.
 
-**Result**:
-The output-only typed outcome of a successful Analysis. Lifecycle, immutable
-request parameters, and ownership remain on the Analysis. A Result is distinct
-from any retained file that carries its large data and from Tab presentation
-settings.
-_Avoid_: payload, artifact when referring to the typed outcome
+**Analysis tab**: A project-owned named slot of one analysis kind. It stores its
+order within that kind, durable presentation preferences and at most one latest
+successful result. Frequency is currently the only restored analysis tool.
 
-**Derived Data Block Creation**:
-A Supporting Analysis whose successful outcome creates one or more Derived
-Data Blocks from user-selected data in a parent Result.
-_Avoid_: automatic Run All output
+**Analysis draft**: Window-local input, column and tokenizer edits. Drafts survive
+tab/tool navigation but not reload. A completed run does not overwrite newer
+local edits. Frequency browsing controls are also window-local; colours and
+stopword source/column/enabled selection are durable tab preferences.
 
-**Concordance Match Data Block Creation**:
-The Table View creation that explodes a nested Concordance Result and emits one
-Derived Data Block row per Concordance Match.
-_Avoid_: generic Concordance Data Block Creation
+**Result**: An immutable successful run with captured submitted settings, source
+descriptions and a versioned typed descriptor. A new success replaces the tab's
+previous result atomically; failure or cancellation preserves it. Provenance is
+not a live dependency or a source-version guarantee.
 
-**Concordance Document Data Block Creation**:
-The Dispersion View creation that keeps stable source-row identity, applies
-the exact visible-term and selected-bin Review filter, and emits one row per
-qualifying source document with a newline-joined `CONC_extraction`.
-_Avoid_: grouping by document text
+**Artifact**: A named output owned by a result: a private typed Table/View or a
+binary BLOB in the project. Artifacts are absent from both graph modes and do not
+become Data Blocks automatically. See [native analyses](docs/architecture/backend/native-analyses.md).
 
-**Concordance Match**:
-One matched span in one source document, identified by its exact matched text
-and character offsets. A matching document may contain multiple Concordance
-Matches. Table View and Match Data Block Creation use this unit; Dispersion
-View and Document Data Block Creation use the stable source-document unit.
-_Avoid_: document hit, dispersion row, cached line
+**Task**: An accepted, runtime-owned operation with progress, cancellation and a
+terminal summary. Task history is bounded and in memory, separate from saved
+results. Navigating away or disconnecting does not cancel accepted work.
 
-**Topic Coverage**:
-The ordered per-document source-character coverage for outlier Topic `-1`
-followed by every real Topic in ascending ID order. Every entry is present,
-absent coverage is zero, and coverage sums to approximately one. Each Topic
-Segment contributes the Unicode-character length of its non-overlapping owned
-source span. Outlier coverage remains in the denominator and competes normally
-for dominance, with the smaller Topic ID winning an exact tie. Topic Coverage
-is distinct from the single dominant Topic.
-_Avoid_: Topic Distribution, probability, variable topic list
+**SQL console**: Project SQL cells with local unrun drafts and saved source after
+execution. Default mode can mutate the database; Read and Preview use read-only
+transactions. Arbitrary Execute refreshes broadly, while known application writes
+identify affected objects and their SQL dependants.
 
-**Topic Segment**:
-The bounded span of source text embedded and clustered as one observation by
-Topic Modelling. A document may contribute one or many Topic Segments, whose
-assignments are rolled up into its Topic Coverage. Every non-whitespace source
-character belongs to at most one Topic Segment; oversized units are split
-without overlap or discarded tail text.
-_Avoid_: document when referring to the model input, chunk
-
-**Representative Word**:
-A term retained for a Topic in descending c-TF-IDF distinctiveness order. Its
-occurrence count is the number of tokens in assigned non-overlapping Topic
-Segments. It is not source-document frequency or a human-authored topic label.
-_Avoid_: label, document count, source occurrence
-
-**Artifact**:
-A named retained file owned by an Analysis and exposed without revealing its
-host filesystem path.
-_Avoid_: result file when ownership matters, temporary file
-
-**User File**:
-A mutable file or folder in a user's import area. Adding it to a Workspace
-creates an independent Source Data Block snapshot.
-_Avoid_: source node, workspace file
-
-**Loadable User File**:
-A stored User File whose filename extension is supported for creating a Source
-Data Block. Unsupported assets remain User Files but are not loadable.
-_Avoid_: previewable file, supported upload
-
-**User File Import**:
-A user-owned retained lifecycle record for publishing a complete sample or
-Data Portal collection into the User File area. It is not Workspace content
-and has no generic background-work parent.
-_Avoid_: import task, download job
-
-**Data Root**:
-The configured storage root containing users, Workspaces, User File Import
-records, caches, response snapshots, and the authentication database.
-_Avoid_: working directory, current directory
-
-**Session**:
-A hosted-browser authentication record identifying one user and its CSRF
-proof. Single-user mode uses the canonical Root User process identity instead
-of a browser Session.
-_Avoid_: access token, login token
-
-**Revision**:
-A monotonically increasing durable resource version used by Workspaces, Tabs,
-Analyses, and User File Imports. Live progress events do not advance it.
-_Avoid_: version when referring to optimistic concurrency
-
-**Progress**:
-The strict optional fraction and public message describing live Analysis or
-User File Import execution. Intermediate Progress is ephemeral; only creation
-and terminal transitions persist it.
-_Avoid_: durable progress log, execution phase tree
-
-**Guided Tour**:
-A replayable multi-step orientation that a user deliberately starts.
-_Avoid_: automatic tour, contextual hint
-
-**Contextual Hint**:
-A single versioned guidance message shown when its feature milestone is
-eligible. Several independently acknowledged hints may form a progressive
-sequence within one function visit.
-_Avoid_: tour step, coach-mark scheduler
-
-**Inline Guidance**:
-Persistent explanatory copy, empty-state instruction, or disabled-control
-reason presented as part of the interface.
-_Avoid_: contextual hint, tooltip
-
-**Tooltip**:
-A brief hover or focus clarification attached to one interface control.
-_Avoid_: help article, contextual hint
-
-**Hint Acknowledgment History**:
-The device-local record of the highest Contextual Hint version acknowledged by
-each user. **Not now**, Escape, and a missing target defer the current function
-visit and do not change this history.
-_Avoid_: transient deferral list, account preference
-
-**User Preferences**:
-A user's synchronized, non-secret choices that apply across their Wordflow
-sessions.
-_Avoid_: Workspace state, credential store, device state
-
-**Provider Credential**:
-A user-owned secret that authorizes Wordflow to call an external provider on
-that user's behalf. An Annotation Provider Configuration may contain one
-write-only Provider Credential. The secret is consumed only for the provider
-request and is neither synchronized User Preferences nor portable Workspace,
-Analysis, or User File Import state.
-_Avoid_: API-key preference, Analysis parameter, Workspace secret
-
-**Annotation Provider Configuration**:
-An ordered, user-named Annotation connection with an opaque identity, provider
-type, immutable provider locator, and one optional write-only Provider
-Credential. Its UUID is stable while its name or credential changes. Multiple
-configurations may repeat the same name, type, locator, or credential. An
-Analysis retains the selected safe identity, type, and Custom base URL, but
-never the display name or credential.
-_Avoid_: provider type, credential slot, model preference
-
-**Analysis Execution Scope**:
-The declared role of an Analysis in a Tab: Preview, Run All, or Supporting.
-Scope describes intent and presentation; it does not create a separate
-lifecycle or resource type.
-_Avoid_: task mode, endpoint type
-
-**Analysis Forest**:
-The ordered collection of Analysis trees owned by one Tab. Any Analysis may
-reference one parent in the same Tab, and a Tab may own multiple independent
-roots.
-_Avoid_: current Analysis, singleton run
-
-**Analysis Group**:
-A thin coordinating Analysis whose Supporting descendants perform independent
-work that must be presented or published as one outcome. Two-source
-Concordance Run All is an Analysis Group.
-_Avoid_: batch task, combined worker
-
-**Sub-Analysis**:
-An Analysis with a `parent_analysis_id`. A Sub-Analysis has the same lifecycle,
-request, Result, cancellation, and persistence rules as any other Analysis and
-may itself own Sub-Analyses.
-_Avoid_: direct child task, operation
-
-**Active Analysis Draft**:
-Unsaved parameter and input changes for one open Tab. The draft exists only in
-the current client presentation session and is discarded when the user leaves
-that Tab. It is not an Analysis, Result, or synchronized preference.
-_Avoid_: cached Analysis, server draft
-
-**Review**:
-The post-Run-All view of durable output. Annotation Review reads the edited
-source Data Block; Concordance and Quotation Review read immutable Result
-tables without requiring a created Data Block.
-_Avoid_: preview result
-
-**Example Data Block**:
-An optional Annotation input containing the pool from which nonblank reviewed
-text and label pairs are selected as verbatim examples for Preview and Run All.
-_Avoid_: training data, cached prompt
-
-**Codebook**:
-An Annotation Data Block containing a code column and a description column.
-Each row defines one candidate code and its meaning for Manual Annotation, AI
-Preview, and Run All.
-_Avoid_: class descriptions, class-description node
-
-**User Correction Column**:
-A string column selected from the Annotation Manual, Preview, or Review table
-toolbar. The Tab keeps the live selection per source Data Block, while each
-submitted Analysis captures an immutable snapshot of that selection for
-provenance. Selecting **None** or using **Clear Results** removes the live Tab
-selection without deleting the column or its values. Explicit reviewer choices
-are written there as Data Block Edits; AI Preview predictions are never written
-automatically.
-_Avoid_: prediction column, hidden review state
-
-## Relationships
-
-- A Workspace owns an ordered directed acyclic graph of Data Blocks.
-- A Workspace also owns its Tabs and every Analysis reachable from them.
-- A user's backend resources contain zero or one open Workspace. Other
-  Workspaces may be closed or closing, and a client does not infer an open
-  Workspace from device history.
-- A Source Data Block snapshots a User File; later User File changes do not
-  mutate the Data Block.
-- Only a Loadable User File can become a Source Data Block.
-- A Derived Data Block records one or more parent Data Blocks.
-- A Data Block may have a Document Column Preference, a Tokenizer Preference,
-  both, or neither. Analysis controls expose and persist only the preferences
-  they use, and submitted Analyses retain their exact mappings independently.
-- A Semantic Column Type remains part of a Data Block's schema across storage,
-  derivation, and tabular transport; an unknown producer does not erase it.
-- A Workspace SQL Query may read only its declared Data Blocks. SQL creation
-  records every declared Data Block as an ordered parent, whether or not the
-  submitted SQL references every binding.
-- Data Block provenance records creation lineage only. A Data Block Edit
-  changes the selected Data Block's plan without changing its identity,
-  parents, descendants, graph edges, or provenance.
-- A Tab owns one ordered Analysis Forest and may contain multiple roots.
-- An Analysis may own Sub-Analyses and Artifacts at arbitrary depth.
-- Preview, Run All, and Supporting are Analysis Execution Scopes, not separate
-  resource kinds or fixed parent-child positions.
-- A successful Analysis may explicitly supersede terminal Analyses in the same
-  Tab. Failure or cancellation preserves the predecessors.
-- A User File Import belongs to one user independently of every Workspace.
-- A hosted Session identifies a user; single-user mode always identifies the
-  fixed Root User by the backend process.
-- User Preferences belong to one user independently of every Workspace.
-- Annotation Provider Configurations belong to one user. Their Provider
-  Credentials never belong to User Preferences, a Workspace, an Analysis, or a
-  User File Import.
-- Hint Acknowledgment History is device-local and does not belong to User
-  Preferences.
-- Manual Annotation is a sequence of Data Block Edits. AI Annotation Preview
-  uses a Preview-scoped Analysis whose page queries never write predicted
-  labels. Explicit reviewer corrections are Data Block Edits. Annotation Run
-  All is an independent Run-All-scoped Analysis that edits the selected source
-  column in place.
-- Concordance and Quotation Run All retain immutable Result tables and do not
-  change the Data Block graph. Concordance exposes named Match and Document
-  Data Block Creation flows; Quotation retains Derived Data Block Creation.
+**Data View**: The shared preview of one Table/View. Its target is independent of
+graph selection. Previewing or editing an unregistered database object never
+registers it automatically.

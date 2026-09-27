@@ -1,0 +1,45 @@
+[package]
+name = "wordflow-backend"
+version = "8.0.0"
+edition = "2024"
+publish = false
+description = "Shared native Wordflow HTTP runtime"
+
+[dependencies]
+flate2 = "1"
+sha2 = "0.10"
+caseless = "0.2.2"
+keyring-core = "1.0"
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+ldaca-rs = { path = "../ldaca-rs", features = ["data", "tokenization", "quotation", "topic-modeling", "cache"] }
+axum = "0.8.9"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+duckdb = { version = "~1.10505.0", features = ["bundled", "json", "parquet"] }
+arrow-ipc = "58.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4", "serde"] }
+tempfile = "3"
+zip = { version = "6", default-features = false, features = ["deflate"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "fs"] }
+tokio-util = { version = "0.7", features = ["rt", "io"] }
+tower-http = { version = "0.7", features = ["cors", "trace"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+utoipa = { version = "=5.4.0", features = ["uuid", "axum_extras"] }
+utoipa-axum = "=0.2.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+apple-native-keyring-store = { version = "1.0.2", features = ["keychain"] }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows-native-keyring-store = "1.1"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+zbus-secret-service-keyring-store = { version = "1.0.1", features = ["crypto-rust"] }
+
+[dev-dependencies]
+tower = { version = "0.5", features = ["util"] }

@@ -6,6 +6,32 @@
 
 @plugin "@tailwindcss/typography";
 
+/* Document Markdown follows the same semantic colors as its surrounding UI. */
+@utility prose-vscode {
+  --tw-prose-body: var(--vscode-surface-foreground);
+  --tw-prose-headings: var(--vscode-surface-foreground);
+  --tw-prose-lead: var(--vscode-descriptionForeground);
+  --tw-prose-links: var(--vscode-textLink-foreground);
+  --tw-prose-bold: var(--vscode-surface-foreground);
+  --tw-prose-counters: var(--vscode-descriptionForeground);
+  --tw-prose-bullets: var(--vscode-descriptionForeground);
+  --tw-prose-hr: var(--vscode-surface-border);
+  --tw-prose-quotes: var(--vscode-surface-foreground);
+  --tw-prose-quote-borders: var(--vscode-surface-border);
+  --tw-prose-captions: var(--vscode-descriptionForeground);
+  --tw-prose-kbd: var(--vscode-surface-foreground);
+  --tw-prose-kbd-shadows: var(--vscode-surface-border);
+  --tw-prose-code: var(--vscode-surface-foreground);
+  --tw-prose-pre-code: var(--vscode-editor-foreground);
+  --tw-prose-pre-bg: var(--vscode-editor-background);
+  --tw-prose-th-borders: var(--vscode-surface-border);
+  --tw-prose-td-borders: var(--vscode-surface-border);
+
+  & svg:not([fill]) {
+    fill: currentColor;
+  }
+}
+
 @theme inline {
   --radius-sm: var(--vscode-cornerRadius-small);
   --radius-md: var(--vscode-cornerRadius-medium);
@@ -111,13 +137,6 @@
     color: var(--vscode-foreground);
   }
 
-  html[data-native-glass="active"],
-  html[data-native-glass="active"] body,
-  html[data-native-glass="active"] #root {
-    background: transparent !important;
-    background-color: transparent !important;
-  }
-
   ::selection {
     background: var(--vscode-editor-selectionBackground);
   }
@@ -143,35 +162,17 @@
     background: var(--vscode-titleBar-activeBackground);
   }
 
-  html[data-native-glass="active"] .app-window-backplane,
-  html[data-native-glass="active"] .app-titlebar-backplane {
-    background: transparent !important;
-    background-color: transparent !important;
-  }
-
-  html[data-native-glass="active"] .app-glass-titlebar-foreground {
-    --vscode-titleBar-activeForeground: var(--vscode-button-foreground);
-    --vscode-descriptionForeground: color-mix(
-      in srgb,
-      var(--vscode-button-foreground) 78%,
-      transparent
-    );
-    --vscode-textLink-foreground: var(--vscode-button-foreground);
-    --vscode-charts-green: var(--vscode-button-foreground);
-    --vscode-toolbar-hoverBackground: color-mix(
-      in srgb,
-      var(--vscode-button-foreground) 16%,
-      transparent
-    );
-    color: var(--vscode-button-foreground);
-  }
-
   section[aria-label="Annotation Review"] tbody > tr:nth-child(odd) {
     background-color: var(--vscode-surface-background) !important;
   }
 
   section[aria-label="Annotation Review"] tbody > tr:nth-child(even) {
     background-color: var(--vscode-list-hoverBackground) !important;
+  }
+
+  /* WebKit needs a painted stroke to honour React Flow's wider hit area. */
+  .react-flow__edge-interaction {
+    stroke: transparent;
   }
 
   .react-flow {
@@ -182,6 +183,7 @@
     --xy-edge-stroke: var(--vscode-charts-lines);
     --xy-edge-stroke-selected: var(--vscode-focusBorder);
     --xy-connectionline-stroke: var(--vscode-focusBorder);
+    --xy-connectionline-stroke-width: 2;
     --xy-attribution-background-color: color-mix(
       in srgb,
       var(--vscode-editor-background) 80%,
@@ -200,8 +202,8 @@
     --xy-node-group-background-color: var(--vscode-editor-inactiveSelectionBackground);
     --xy-node-boxshadow-hover: none;
     --xy-node-boxshadow-selected: 0 0 0 1px var(--vscode-focusBorder);
-    --xy-handle-background-color: var(--vscode-icon-foreground);
-    --xy-handle-border-color: var(--vscode-surface-background);
+    --xy-handle-background-color: var(--vscode-surface-background);
+    --xy-handle-border-color: var(--vscode-icon-foreground);
     --xy-selection-background-color: var(--vscode-editor-inactiveSelectionBackground);
     --xy-selection-border: 1px dotted var(--vscode-focusBorder);
     --xy-controls-button-background-color: var(--vscode-editor-background);

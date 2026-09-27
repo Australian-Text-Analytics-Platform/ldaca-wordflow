@@ -7,6 +7,7 @@ current system documentation.
 
 ## Completed changes
 
+- [Native Frequency restoration](native-frequency/spec.md), completed 2026-09-19.
 - [Focused per-class Annotation example sampling](48-example-sampling/spec.md)
   ([issue #48](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/issues/48)),
   completed 2026-08-12.

@@ -1,0 +1,25 @@
+{
+  "name": "MediaPipe Language Detector",
+  "version": "float32/1",
+  "file": "language-detector.tflite",
+  "source": "https://storage.googleapis.com/mediapipe-models/language_detector/language_detector/float32/1/language_detector.tflite",
+  "sha256": "7db4f23dfe1ad8966b050b419a865da451143fd43eb6b606a256aadeeb1e5417",
+  "size": 315294,
+  "model_card": "https://storage.googleapis.com/mediapipe-assets/LanguageDetector%20Model%20Card.pdf",
+  "authors": "Learn2Compress and Conceptual Understanding of Learning Architectures teams, Google Research",
+  "license": "Apache-2.0",
+  "license_file": "LICENSE.language-detector.txt",
+  "license_source": "https://raw.githubusercontent.com/google-ai-edge/mediapipe/v0.10.21/LICENSE",
+  "runtime": {
+    "package": "@mediapipe/tasks-text",
+    "version": "1.0.1",
+    "license": "Apache-2.0",
+    "source": "https://registry.npmjs.org/@mediapipe/tasks-text/-/tasks-text-1.0.1.tgz",
+    "files": {
+      "text_wasm_internal.js": "204cbc2fd85d397b843d160226ab943910c579b72de5165d523b287be393ae0e",
+      "text_wasm_internal.wasm": "18ea3a2dcf96a918613bbff886504e103477f990a9775db6e9748bdf6f9067e4",
+      "text_wasm_nosimd_internal.js": "d854e41e4d6ca627d4ee7d1326739d68c643dfa40e12c0b1a3bac113ec565325",
+      "text_wasm_nosimd_internal.wasm": "705870923b51d7e9f577bb6478d8ef37682283192521552b8697173d74512365"
+    }
+  }
+}

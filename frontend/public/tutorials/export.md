@@ -2,77 +2,82 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-export-section">Export tutorial</h1>
+<h1 id="help-export-section">Export data and projects</h1>
 
-![Export screenshot](tutorials/assets/export.png)
+Choose **Export** in the sidebar. Use **Data files** for interchange, or
+**Wordflow project** for an independent `.wfpj` copy. The graph menu's **Export**
+shortcut still downloads a single Data Block.
 
-Export lets you download any number of Data Blocks for offline analysis or
-sharing. A single selection downloads as one file. Two or more selections are
-packaged by the backend into one ZIP containing one file per Data Block.
+<h2 id="help-export-parameters">Choose the output</h2>
 
-<h2 id="help-export-parameters">Parameter panel</h2>
+Add Data Blocks through the searchable picker, **Add all**, **Use graph selection**,
+or a Data Block's **+** button. Remove individual cards or use **Clear all**.
+The picker normally shows visible Data Blocks. Enable **Include hidden and other
+schema objects** when needed. Add all respects the picker's search and scope.
 
-<h3 id="help-export-data-blocks">Step 1 — Select your data</h3>
+<h3 id="help-export-format">Format</h3>
 
-Use **Add data block** to choose individual Data Blocks, **Add preset** to use a
-graph selection, or **Add All** to select every remaining Data Block. There is
-no selector maximum. Remove a card or use **Clear all** to change the selection.
+| Format | Use |
+|---|---|
+| CSV (default) | Spreadsheet and plain table exchange |
+| JSON | A JSON array of row objects |
+| NDJSON | One JSON object per line |
+| Parquet | Typed, compressed columnar data |
+| Arrow IPC | A standard `.arrow` file with typed values and Wordflow field annotations |
 
-<h3 id="help-export-format">Step 2 — Choose a format</h3>
+One selected Data Block produces one file. Multiple selections produce a ZIP
+with one file per Data Block, in selection order. Export includes all committed
+rows and columns, regardless of Data View paging, filters or unsaved edits.
+Parquet preserves typed values; use Arrow IPC or `.wfpj` when you need Wordflow's
+extension annotations too.
 
-Use the **Format** dropdown to choose the output file format:
+### Wordflow project
 
-| Format | Extension | Best used for |
-|---|---|---|
-| CSV | .csv | Maximum compatibility; opens in any spreadsheet or text editor |
-| JSON | .json | Hierarchical or nested data; web and API workflows |
-| NDJSON | .ndjson | Streaming JSON; one JSON object per line |
-| Parquet | .parquet | Efficient columnar storage; best for large datasets or re-importing into the app |
-| Arrow IPC | .arrow | High-performance binary format for data pipeline use |
+**Selected Data Blocks** creates a fresh project containing the selection,
+applicable metadata and relationships. Table constraints, defaults and indexes
+are retained. If a foreign key requires another Table, include it explicitly.
+If a Table definition depends on SQL macros, use Complete project to preserve
+the macro definitions and parameter defaults.
+Saved analyses and SQL cells are excluded.
 
-The same format applies to all blocks in a bundle export.
+**Complete project** includes hidden/unregistered data, saved analyses and their
+outputs, SQL cells and project metadata. Temporary Preview, unfinished form edits,
+active tasks, provider credentials and host model caches are excluded. An
+incomplete analysis retains its submitted settings without resuming its task.
 
-<h2 id="help-export-results">Step 3 — Download</h2>
+The contents list explains which Views remain Views and which become Tables.
+Views whose dependencies are excluded, external or cannot be safely inspected
+are materialized. This makes their exported data independent of the original
+project. A required View that cannot be read prevents the export; no partial
+project is saved. Inspection is repeated during export. External files can still
+change while they are being read. SQL cells are preserved as authored; export
+does not rewrite paths in arbitrary future SQL.
 
-<h3 id="help-export-run">Export selected Data Blocks</h3>
+<h2 id="help-export-results">Save the file</h2>
 
-Click **Export 1 Data Block** to download one file directly in the selected
-format.
+<h3 id="help-export-run">Export</h3>
 
-For a shortcut anywhere in the Workspace graph, open a Data Block's node menu,
-choose **Export**, select the format in the dialog, and click **Export**. This
-shortcut always exports that one Data Block directly.
+Choose **Export**, then select a destination in the native save dialog. The
+Task Centre shows progress and provides Cancel. You can continue working while
+export reads a consistent committed snapshot. Cancellation or failure before
+installation preserves an existing destination; successful export replaces it
+only after the new output is ready. Choose a destination other than an open
+project. Errors appear once through the expandable notification.
 
-With two or more selections, the action becomes **Export N Data Blocks**. The
-backend writes every Data Block in the selected format and returns one ZIP in
-the same order. Files inside the ZIP are named after their Data Blocks, with a
-numeric suffix when names collide.
+The original project stays open, with the same name and path. Export never opens
+the new copy automatically. Browser usage downloads through normal browser
+handling. Choices survive navigation to another tool but reset on reload.
 
-<h3 id="help-export-bundle">Complete Workspace archive</h3>
+**Save As** changes the open document's destination. **Export → Wordflow project**
+creates a separate portable copy while you keep working in the original.
 
-**Export workspace archive** remains a separate action. It exports the complete
-portable Workspace, including its graph, Tabs, Analyses, and Data Blocks, for
-later import into Wordflow.
+## Practice
 
-<h2 id="help-export-troubleshooting">Troubleshooting</h2>
-
-| Symptom | Likely cause | What to try |
-|---|---|---|
-| Download button does nothing | Browser blocked the download | Check browser download permissions or pop-up blocker settings |
-| File opens with garbled characters | Character encoding mismatch | Re-open the CSV in your tool and specify UTF-8 encoding |
-| Parquet file unreadable | Tool does not support Parquet | Use pandas, DuckDB, or re-import into this app instead |
-
-<h2 id="help-export-defaults">Quick-reference defaults</h2>
-
-| Setting | Default | Notes |
-|---|---|---|
-| Format | CSV | Change to match your downstream tool |
-
-## Practice exercise
-
-1. Add one Data Block, choose **CSV**, and export it as a direct download.
-2. Add a second Data Block and export again; confirm the download is a ZIP.
-3. Open the ZIP and confirm that it contains one CSV per selected Data Block.
-4. Choose **Parquet**, use **Add All**, and export every Data Block together.
+1. Export two Data Blocks as CSV and inspect both files inside the ZIP.
+2. Export one as Arrow IPC and verify the complete row count.
+3. Export a selected project and review its View materialization list.
+4. Open the copy separately and check its data without the original source files.
 
 [← Back to tutorial index](./index.md)
+
+Project inspection summarizes Data Blocks, saved analyses and SQL cells. Expand internal details for backing storage. Blockers and required materialization remain visible before export.

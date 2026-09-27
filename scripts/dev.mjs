@@ -26,18 +26,18 @@ export function parseDevMode(arguments_) {
 
 export function createDevCommands(mode, environment = process.env) {
   const frontendPort = developmentPort(environment, 'FRONTEND_PORT', '3000');
-  const backendPort = developmentPort(environment, 'VITE_BACKEND_PORT', '8001');
+  const backendPort = developmentPort(environment, 'VITE_BACKEND_PORT', '8002');
   const developmentCorsOrigins = [
     `http://localhost:${frontendPort}`,
     `http://127.0.0.1:${frontendPort}`,
   ];
   const backend = {
-    command:
-      'uv run --project backend uvicorn ldaca_wordflow.asgi:app ' +
-      `--reload --port ${backendPort}`,
+    command: 'cargo run --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev -- --untitled',
     name: 'backend',
     prefixColor: 'blue',
     env: {
+      ...(environment.WORDFLOW_CONFIG_DIR ? { WORDFLOW_CONFIG_DIR: environment.WORDFLOW_CONFIG_DIR } : {}),
+      WORDFLOW_BIND_ADDR: `127.0.0.1:${backendPort}`,
       CORS_ALLOWED_ORIGINS:
         environment.CORS_ALLOWED_ORIGINS ??
         JSON.stringify(developmentCorsOrigins),
@@ -45,6 +45,7 @@ export function createDevCommands(mode, environment = process.env) {
   };
   const frontend = {
     command: frontendCommand,
+    env: { FRONTEND_PORT: frontendPort, VITE_BACKEND_PORT: backendPort },
     name: 'frontend',
     prefixColor: 'magenta',
   };

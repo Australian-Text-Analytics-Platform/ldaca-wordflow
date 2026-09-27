@@ -14,7 +14,7 @@ outside this pass; frontend-owned desktop configuration tests are included.
 
 | Area | Decision and practical consequence |
 |---|---|
-| WorkspaceShell / viewRegistry | Remove duplicated tab classification and the static label/order inventory. Retain workspace gating and tab ownership; browser navigation actually opens each view. |
+| WorkspaceShell / toolRegistry | Remove duplicated tab classification and the static label/order inventory. Retain workspace gating and tab ownership; browser navigation actually opens each view. |
 | Button | Replace six disabled CSS variants and a geometry snapshot with disabled/enabled clicking. A class string cannot prove the action is blocked. |
 | ScrollArea | Remove the CSS-only scrollbar visibility test and obsolete lint suppression. Retain the viewport ref contract used for controlled scrolling. |
 | ResizeHandle | Remove grip/highlight styling inventories. Exercise both separator orientations, callback forwarding and disabled keyboard navigation. |

@@ -1,27 +1,18 @@
 # Running the Frontend UI
 
-**Scope statement:** This guide explains how to run the React frontend locally.
+Install dependencies from the repository root with `pnpm install`. Then run:
 
-## Step 1 — Install dependencies
+```sh
+pnpm dev
+```
 
-**Question:** *Where do I run `pnpm install`?*
+This starts the Rust backend with an Untitled project and the browser interface
+at `http://127.0.0.1:3000`. Vite forwards project and health requests to the
+backend; there is no separate backend selection step.
 
-**Answer:** Run `pnpm install` from the `ldaca_web_app/` repo root so the root lockfile installs the frontend workspace package.
+Use `pnpm dev:desktop` for the native Tauri application. For separate development
+terminals, use `pnpm dev:backend` and `pnpm dev:frontend`. Both frontend commands
+render the same current project interface.
 
-## Step 2 — Start the dev server
-
-**Question:** *How do I start the UI?*
-
-**Answer:** Run the dev server from the workspace root. The UI defaults to port 3000 unless configured otherwise.
-
-## Step 3 — Connect to the backend
-
-**Question:** *How does the UI find the backend?*
-
-**Answer:** The frontend auto‑detects the backend base URL. You can override it using `VITE_BACKEND_API_BASE` if needed.
-
-## Recap
-
-**Question:** *What should I read next?*
-
-**Answer:** Use the app tour to learn the UI, or jump to the architecture page if you are extending the frontend.
+See [configuration](../reference/configuration.md) for port overrides and
+optional documentation settings. Python is not required for these commands.

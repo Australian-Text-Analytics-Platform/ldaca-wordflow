@@ -1,0 +1,36 @@
+import { $, browser, expect } from '@wdio/globals';
+import { resolve } from 'node:path';
+import { it } from 'mocha';
+const base='http://127.0.0.1:3237';
+it('manages real research files and projects through the native server', async () => {
+  await browser.url(`${base}/`);
+  await expect($('button=Data files')).toBeDisplayed();
+  const uploaded=await browser.uploadFile(resolve('e2e/fixtures/data/community-survey.csv'));
+  await $('input[type="file"]').addValue(uploaded);
+  await expect($('button=Import')).toBeDisplayed();
+  // Upload alone must leave the project empty.
+  await expect($('span=community-survey')).not.toExist();
+  await $('button=Import').click();
+  await expect($('[data-id="community-survey"]')).toExist();
+  await $('button=Project').click(); await $('[role="menuitem"]=Save').click();
+  await $('input[placeholder="My research.wfpj"]').setValue('Research 文本');
+  await $('button=Save').click();
+  await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Research 文本'));
+  await $('button=Project').click(); await $('[role="menuitem"]=New project').click();
+  await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Untitled'));
+  await $('button=Project').click(); await $('[role="menuitem"]=Open / manage projects…').click();
+  await $('button=Open').click();
+  await $('button=Discard').click();
+  await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Research 文本'));
+  await expect($('[data-id="community-survey"]')).toExist();
+  await browser.refresh();
+  await expect($('[data-id="community-survey"]')).toExist();
+  await browser.setWindowSize(800,900);
+  await $('button=Data files').click();
+  await expect($('[role="dialog"]')).toBeDisplayed();
+  await expect($('[role="dialog"]').$('button=Download')).toBeDisplayed();
+  await browser.saveScreenshot(resolve('.tmp/wdio/server/narrow-library.png'));
+  await $('[role="dialog"]').$('button=Close').click();
+  await browser.setWindowSize(1280,900);
+  await expect($('[data-sonner-toast][data-type="error"]')).not.toExist();
+});

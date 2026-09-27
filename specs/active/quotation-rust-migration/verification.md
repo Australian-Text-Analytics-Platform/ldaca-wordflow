@@ -57,6 +57,13 @@ original intervening space. Every native non-null span passes source slicing.
 
 ## Unresolved acceptance findings
 
+Historical evidence: the command below used the pre-delegation `polars-text`
+layout. Its [retired harness](../../../archive/scripts/smoke_quotation_sanitizers.py)
+is preserved for reference and is not an active test command. The current native
+bridge lives in `ldaca-rs`; this cleanup does not resolve or revalidate the recorded
+sanitizer finding.
+
+
 1. UBSan reports a misaligned float load in UDPipe's GRU tokenizer model loader:
    `gru_tokenizer_network_implementation<64>::load`, vendor/udpipe/udpipe.cpp:13013,
    through libc++ `copy_n` from the binary decoder's packed data. This occurs

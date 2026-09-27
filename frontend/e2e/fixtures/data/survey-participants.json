@@ -1,0 +1,877 @@
+[
+  {
+    "row_id": 3,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 6,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 9,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 12,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 15,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 18,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 21,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 24,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 27,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 30,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 33,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 33,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 36,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 39,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 42,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 45,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 48,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 51,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 54,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 57,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 60,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 63,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 66,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 66,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 69,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 72,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 75,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 78,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 81,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 84,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 87,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 90,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 93,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 96,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 99,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 99,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 102,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 105,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 108,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 111,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 114,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 117,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 120,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 123,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 126,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 129,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 132,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 132,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 135,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 138,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 141,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 144,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 147,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 150,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 153,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 156,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 159,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 162,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 165,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 165,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 168,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 171,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 174,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 177,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 180,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 183,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 186,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 189,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 192,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 195,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 198,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 198,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 201,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 204,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 207,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 210,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 213,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 216,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 219,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 222,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 225,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 228,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 231,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 231,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 234,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 237,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 240,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 243,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 246,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 249,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 252,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 255,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 258,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 261,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 264,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 264,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 267,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 270,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 273,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 276,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 279,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 282,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 285,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 288,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 291,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 294,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 297,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 297,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 300,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 303,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 306,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 309,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 312,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 315,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 318,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 321,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 324,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 327,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 330,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 330,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 333,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 336,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 339,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 342,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 345,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 348,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 351,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 354,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 357,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 360,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 363,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 363,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 366,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 369,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 372,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 375,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 378,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 381,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 384,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 387,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 390,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 393,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 396,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 396,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 399,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 402,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 405,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 408,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 411,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 414,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 417,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 420,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 423,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 426,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 429,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 429,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 432,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 435,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 438,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 441,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 444,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 447,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 450,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 453,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 456,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 459,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 462,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 462,
+    "cohort": "Panel B",
+    "consent": false
+  },
+  {
+    "row_id": 465,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 468,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 471,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 474,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 477,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 480,
+    "cohort": "Panel A",
+    "consent": true
+  },
+  {
+    "row_id": 999,
+    "cohort": "No response",
+    "consent": false
+  }
+]

@@ -2,11 +2,11 @@ import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
 /**
- * Session-only pin tracking for the workspace list view.
+ * Session-only pin tracking for the project list view.
  *
- * Rendered/consumed by: WorkspaceNodeList and WorkspaceListView because the
+ * Rendered/consumed by: ProjectNodeList and ProjectListView because the
  * sidebar list needs a client-owned ordering lane that does not mutate the
- * backend workspace order. Pinned ids are stored in append order so the list can
+ * backend project order. Pinned ids are stored in append order so the list can
  * render pinned nodes first while preserving the user's pin sequence.
  *
  * Flow: toolbar pin clicks toggle ids in ``pinnedNodeIds``; list rendering drops
@@ -56,7 +56,7 @@ export const usePinnedNodesStore = create<PinnedNodesState>()(
       });
     },
 
-    /** Clears session pinning. Used by tests and workspace-session reset flows. */
+    /** Clears session pinning. Used by tests and project-session reset flows. */
     reset: () => {
       set((state) => {
         state.pinnedNodeIds = [];

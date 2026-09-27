@@ -1,4 +1,4 @@
-name: Manual Desktop Release
+name: Manual Wordflow Release
 
 on:
   workflow_dispatch:
@@ -13,26 +13,23 @@ on:
         required: false
         type: boolean
         default: false
-      no_sources:
-        description: "Use PyPI wheels instead of checked-out polars packages"
-        required: false
-        type: boolean
-        default: false
       release_tag:
         description: "Release tag to publish when publish_release is enabled"
         required: false
         type: string
 
 concurrency:
-  group: desktop-release-${{ inputs.ref != '' && inputs.ref || github.ref_name }}
+  group: wordflow-release-${{ inputs.ref != '' && inputs.ref || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  verify-versions:
-    name: Verify version consistency
+  prepare:
+    name: Resolve release identity
+    outputs:
+      sha: ${{ steps.source.outputs.sha }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -41,6 +38,10 @@ jobs:
           ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
           fetch-depth: 0
           submodules: recursive
+
+      - name: Resolve immutable source commit
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Check version, lock, and release-tag identity
         env:
@@ -56,7 +57,7 @@ jobs:
           set -Eeuo pipefail
           test -n "$RELEASE_TAG" || { echo "release_tag is required when publishing" >&2; exit 1; }
           checked_out_sha="$(git rev-parse HEAD)"
-          release_sha="$(git rev-parse "${RELEASE_TAG}^{commit}")"
+          release_sha="$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")"
           if [ "$checked_out_sha" != "$release_sha" ]; then
             echo "Checked-out commit $checked_out_sha does not match $RELEASE_TAG ($release_sha)" >&2
             exit 1
@@ -64,7 +65,7 @@ jobs:
 
   build-desktop:
     name: Build ${{ matrix.name }}
-    needs: verify-versions
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -78,13 +79,21 @@ jobs:
     with:
       platform: ${{ matrix.platform }}
       debug: false
-      no_sources: ${{ inputs.no_sources }}
-      ref: ${{ inputs.ref != '' && inputs.ref || github.ref }}
+      ref: ${{ needs.prepare.outputs.sha }}
+
+  build-server:
+    needs: prepare
+    uses: ./.github/workflows/server-build.yml
+    secrets: inherit
+    with:
+      ref: ${{ needs.prepare.outputs.sha }}
 
   publish-release:
-    name: Publish Desktop Assets
+    permissions:
+      contents: write
+    name: Publish Desktop and Server Assets
     if: ${{ inputs.publish_release }}
-    needs: build-desktop
+    needs: [build-desktop, build-server]
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
@@ -100,6 +109,16 @@ jobs:
         with:
           name: ldaca-desktop-macos-apple-silicon
           path: release-assets/macos
+
+      - name: Download server artifacts
+        uses: actions/download-artifact@v8.0.1
+        with:
+          pattern: wordflow-server-*
+          path: release-assets/server
+          merge-multiple: true
+
+      - name: Assemble server checksums
+        run: cat release-assets/server/*.sha256 > release-assets/server/server-SHA256SUMS
 
       - name: Create signed updater manifest
         shell: bash
@@ -119,6 +138,7 @@ jobs:
           if ! gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release create "$RELEASE_TAG" \
               --verify-tag \
+              --latest=false \
               --generate-notes \
               --title "$RELEASE_TAG" \
               --repo "$GITHUB_REPOSITORY"
@@ -158,16 +178,12 @@ jobs:
             '.version != "" and (.platforms | keys | sort) == ["darwin-aarch64", "windows-x86_64"] and all(.platforms[]; .signature != "" and .url != "")' \
             release-assets/latest.json >/dev/null
 
-      - name: Replace GitHub release assets
+      - name: Replace only assets owned by this build
         shell: bash
         env:
           RELEASE_TAG: ${{ inputs.release_tag }}
         run: |
           set -Eeuo pipefail
-          while IFS= read -r asset_name; do
-            [ -n "$asset_name" ] && gh release delete-asset "$RELEASE_TAG" "$asset_name" --yes --repo "$GITHUB_REPOSITORY"
-          done < <(gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-
           gh release upload "$RELEASE_TAG" \
             release-assets/windows/*.msi \
             release-assets/windows/*.msi.sig \
@@ -175,5 +191,9 @@ jobs:
             release-assets/macos/updater/*.app.tar.gz \
             release-assets/macos/updater/*.app.tar.gz.sig \
             release-assets/latest.json \
+            release-assets/server/*.tar.gz \
+            release-assets/server/*.zip \
+            release-assets/server/server-SHA256SUMS \
+            --clobber \
             --repo "$GITHUB_REPOSITORY"
           gh release edit "$RELEASE_TAG" --latest --repo "$GITHUB_REPOSITORY"

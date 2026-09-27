@@ -1,0 +1,180 @@
+import React from 'react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { Field, Utf8 } from 'apache-arrow';
+import { describe, expect, it, vi } from 'vitest';
+
+import { TokenFrequencyParameterPanel } from '../TokenFrequencyParameterPanel';
+import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
+import { projectProjectNodeMetadata } from '@/features/project/common/projectNodeMetadata';
+
+vi.mock('@/components/help/HelpIcon', () => ({
+  // Used by: panel tests so help widgets do not add tooltip behavior to layout assertions.
+  default: () => null,
+}));
+
+vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
+  // Used by: parameter-panel tests to expose actions and children without card chrome.
+  AnalysisCardLayout: ({
+    actions,
+    children,
+  }: {
+    actions?: { extraContent?: React.ReactNode };
+    children: React.ReactNode;
+  }) => (
+    <section>
+      <div data-testid="action-extra">{actions?.extraContent}</div>
+      {children}
+    </section>
+  ),
+}));
+
+vi.mock('@/features/project/common/ServerProjectNodeInputsPanel', () => ({
+  // Used by: placement tests as the stable boundary for the selected-node selector.
+  NodeInputsPanel: ({
+    resolvedNodes,
+    unavailableNodes,
+    inputOrder,
+    nodeColors,
+    renderExtraNodeContent,
+  }: {
+    resolvedNodes: {
+      id: string;
+      node: { id: string; name: string };
+      column: string;
+      columnOptions: { name: string }[];
+    }[];
+    unavailableNodes?: { id: string; name: string; column?: string }[];
+    inputOrder?: string[];
+    nodeColors?: Record<string, string>;
+    renderExtraNodeContent?: (args: {
+      node: { id: string; name: string };
+      nodeId: string;
+      index: number;
+      color: string;
+      column: string;
+      columns: string[];
+    }) => React.ReactNode;
+  }) => (
+    <div data-testid="node-inputs-panel">
+      {resolvedNodes.map((resolved, index) => (
+        <div key={resolved.id} data-testid={`node-card-${resolved.id}`}>
+          {renderExtraNodeContent?.({
+            node: resolved.node,
+            nodeId: resolved.id,
+            index,
+            color: nodeColors?.[resolved.id] ?? '#000000',
+            column: resolved.column,
+            columns: resolved.columnOptions.map((column) => column.name),
+          })}
+        </div>
+      ))}
+      {unavailableNodes?.map((node) => (
+        <div key={node.id} data-testid={`unavailable-node-${node.id}`}>
+          {node.name} · {node.column}
+        </div>
+      ))}
+      <div data-testid="input-order">{inputOrder?.join('|')}</div>
+    </div>
+  ),
+}));
+
+const nodeInputsFixture = (): UseTabNodeInputsResult => {
+  const nodeA = projectProjectNodeMetadata({ id: 'node-a', name: 'Corpus A' });
+  const nodeB = projectProjectNodeMetadata({ id: 'node-b', name: 'Corpus B' });
+  return {
+    inputs: [
+      { node_id: 'node-a', column: 'text' },
+      { node_id: 'node-b', column: 'text' },
+    ],
+    resolvedNodes: [
+      {
+        id: 'node-a',
+        name: 'Corpus A',
+        node: nodeA,
+        column: 'text',
+        columnOptions: [{ name: 'text', typeName: 'Utf8', field: new Field('text', new Utf8()) }],
+      },
+      {
+        id: 'node-b',
+        name: 'Corpus B',
+        node: nodeB,
+        column: 'text',
+        columnOptions: [{ name: 'text', typeName: 'Utf8', field: new Field('text', new Utf8()) }],
+      },
+    ],
+    selectedNodes: [nodeA, nodeB],
+    nodeColumnSelections: [
+      { nodeId: 'node-a', column: 'text' },
+      { nodeId: 'node-b', column: 'text' },
+    ],
+    availableNodes: [],
+    canAddMore: false,
+    addNodes: vi.fn(() => []),
+    removeNode: vi.fn(),
+    clear: vi.fn(),
+    setColumn: vi.fn(),
+    projectId: 'project-1',
+    nodeInfoById: {},
+    getColumnInfos: vi.fn(() => []),
+    getNodeInfo: vi.fn(() => undefined),
+  };
+};
+
+const baseProps = {
+  nodeInputs: nodeInputsFixture(),
+  onColumnChange: vi.fn(),
+  actionState: { runDisabled: false, clearDisabled: false },
+  isAnalyzing: false,
+  onAnalyze: vi.fn(),
+  onStop: vi.fn(),
+  isStopping: false,
+  onClearResults: vi.fn(),
+  hasIncompleteSelections: false,
+  studyNodeId: 'node-a',
+  onStudyNodeChange: vi.fn(),
+  nodeColors: { 'node-a': '#2563eb', 'node-b': '#dc2626' },
+  onNodeColorChange: vi.fn(),
+  computeDisplayName: (nodeId: string) => (nodeId === 'node-a' ? 'Corpus A' : 'Corpus B'),
+};
+
+describe('TokenFrequencyParameterPanel', () => {
+  it('renders synced corpus role switches inside the selected-node cards', () => {
+    const onStudyNodeChange = vi.fn();
+    render(<TokenFrequencyParameterPanel {...baseProps} onStudyNodeChange={onStudyNodeChange} />);
+
+    expect(screen.queryByRole('radiogroup', { name: 'Study Data Block' })).not.toBeInTheDocument();
+    expect(screen.getByTestId('action-extra')).toBeEmptyDOMElement();
+
+    const cardA = within(screen.getByTestId('node-card-node-a'));
+    const cardB = within(screen.getByTestId('node-card-node-b'));
+    expect(cardA.getByText('Study Corpus')).toBeInTheDocument();
+    expect(cardA.getByText('Reference Corpus')).toBeInTheDocument();
+    expect(cardB.getByText('Study Corpus')).toBeInTheDocument();
+    expect(cardB.getByText('Reference Corpus')).toBeInTheDocument();
+
+    expect(cardA.getByRole('switch', { name: /Corpus A corpus role/i })).toHaveAttribute(
+      'aria-checked',
+      'false',
+    );
+    const corpusBSwitch = cardB.getByRole('switch', { name: /Corpus B corpus role/i });
+    expect(corpusBSwitch).toHaveAttribute('aria-checked', 'true');
+
+    fireEvent.click(corpusBSwitch);
+
+    expect(onStudyNodeChange).toHaveBeenCalledWith('node-b');
+  });
+
+  it('projects a deleted saved input with its historical result name', () => {
+    const nodeInputs = nodeInputsFixture();
+    const remainingNode = nodeInputs.resolvedNodes[1];
+    if (!remainingNode) throw new Error('Expected the second fixture node.');
+    nodeInputs.resolvedNodes = [remainingNode];
+    nodeInputs.selectedNodes = [remainingNode.node];
+    nodeInputs.nodeColumnSelections = [{ nodeId: remainingNode.id, column: remainingNode.column }];
+
+    render(<TokenFrequencyParameterPanel {...baseProps} nodeInputs={nodeInputs} />);
+
+    expect(screen.getByTestId('unavailable-node-node-a')).toHaveTextContent('Corpus A · text');
+    expect(screen.getByTestId('input-order')).toHaveTextContent('node-a|node-b');
+  });
+});

@@ -1,10 +1,10 @@
-import { act, renderHook } from '@testing-library/react';
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { useResizableSplit } from '../useResizableSplit';
 
 describe('useResizableSplit pointer dragging', () => {
-  it('tracks movement on the window and cleans up after pointer release', () => {
+  it('tracks captured movement on the separator and cleans up after pointer release', () => {
     const { result } = renderHook(() =>
       useResizableSplit({
         mode: 'pixel',
@@ -28,6 +28,7 @@ describe('useResizableSplit pointer dragging', () => {
     result.current.containerRef.current = container;
 
     const handle = document.createElement('div');
+    handle.hasPointerCapture = vi.fn(() => true);
     handle.setPointerCapture = vi.fn();
     handle.releasePointerCapture = vi.fn();
 
@@ -41,8 +42,8 @@ describe('useResizableSplit pointer dragging', () => {
     expect(result.current.isDragging).toBe(true);
 
     act(() => {
-      window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 7, clientY: 180 }));
-      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7 }));
+      handle.dispatchEvent(new PointerEvent('pointermove', { pointerId: 7, clientY: 180 }));
+      handle.dispatchEvent(new PointerEvent('pointerup', { pointerId: 7 }));
     });
 
     expect(result.current.value).toBe(180);
@@ -50,14 +51,15 @@ describe('useResizableSplit pointer dragging', () => {
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(7);
 
     act(() => {
-      window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 7, clientY: 250 }));
+      handle.dispatchEvent(new PointerEvent('pointermove', { pointerId: 7, clientY: 250 }));
     });
     expect(result.current.value).toBe(180);
   });
 
-  it('ends a drag when the pointer is cancelled', () => {
+  it.each(['pointercancel', 'lostpointercapture'])('ends a drag on %s', (eventType) => {
     const { result } = renderHook(() => useResizableSplit({ defaultValue: 0.4 }));
     const handle = document.createElement('div');
+    handle.hasPointerCapture = vi.fn(() => true);
     handle.setPointerCapture = vi.fn();
     handle.releasePointerCapture = vi.fn();
 
@@ -67,7 +69,7 @@ describe('useResizableSplit pointer dragging', () => {
         pointerId: 11,
         currentTarget: handle,
       } as unknown as React.PointerEvent<HTMLDivElement>);
-      window.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 11 }));
+      handle.dispatchEvent(new PointerEvent(eventType, { pointerId: 11 }));
     });
 
     expect(result.current.isDragging).toBe(false);
@@ -101,4 +103,94 @@ describe('useResizableSplit persistence', () => {
       window.localStorage.removeItem('test.split');
     },
   );
+});
+
+describe('useResizableSplit sizing', () => {
+  it('uses the configured default for keyboard and double-click resets', () => {
+    const { result } = renderHook(() => useResizableSplit({ defaultValue: 0.3 }));
+    for (const key of ['Enter', ' ']) {
+      act(() =>
+        result.current.splitterProps.onKeyDown({
+          key,
+          preventDefault: vi.fn(),
+        } as unknown as React.KeyboardEvent<HTMLDivElement>),
+      );
+      expect(result.current.value).toBe(0.3);
+    }
+    act(() => result.current.splitterProps.onDoubleClick());
+    expect(result.current.value).toBe(0.3);
+  });
+
+  it('caps restored and keyboard sizes against the measured container without losing the preferred ratio', () => {
+    let width = 2000;
+    let resize: ResizeObserverCallback | undefined;
+    const rect = vi
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(() => ({
+        width,
+        height: 900,
+        x: 0,
+        y: 0,
+        top: 0,
+        left: 0,
+        right: width,
+        bottom: 900,
+        toJSON: () => ({}),
+      }));
+    const observer = globalThis.ResizeObserver;
+    globalThis.ResizeObserver = class {
+      constructor(callback: ResizeObserverCallback) {
+        resize = callback;
+      }
+      observe() {
+        /* Layout is measured on mount. */
+      }
+      unobserve() {
+        /* No individual targets are removed. */
+      }
+      disconnect() {
+        /* Test observer has no external resources. */
+      }
+    } as typeof ResizeObserver;
+    localStorage.setItem('test.capped', '0.8');
+    function Split() {
+      const split = useResizableSplit({
+        orientation: 'vertical',
+        anchor: 'end',
+        defaultValue: 0.3,
+        min: 0.15,
+        max: 0.8,
+        maxPixels: 800,
+        persistKey: 'test.capped',
+      });
+      return (
+        <div ref={split.containerRef}>
+          <div {...split.splitterProps} />
+        </div>
+      );
+    }
+    const view = render(<Split />);
+    try {
+      const handle = screen.getByRole('separator');
+      expect(handle).toHaveAttribute('aria-valuenow', '40');
+      expect(handle).toHaveAttribute('aria-valuemax', '40');
+      expect(localStorage.getItem('test.capped')).toBe('0.8');
+      width = 1000;
+      act(() => resize?.([], {} as ResizeObserver));
+      expect(handle).toHaveAttribute('aria-valuenow', '80');
+      width = 2000;
+      act(() => resize?.([], {} as ResizeObserver));
+      fireEvent.keyDown(handle, { key: 'ArrowRight' });
+      expect(handle).toHaveAttribute('aria-valuenow', '35');
+      fireEvent.keyDown(handle, { key: 'End' });
+      expect(handle).toHaveAttribute('aria-valuenow', '40');
+      fireEvent.doubleClick(handle);
+      expect(handle).toHaveAttribute('aria-valuenow', '30');
+    } finally {
+      view.unmount();
+      rect.mockRestore();
+      globalThis.ResizeObserver = observer;
+      localStorage.removeItem('test.capped');
+    }
+  });
 });

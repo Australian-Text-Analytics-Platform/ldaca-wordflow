@@ -7,14 +7,8 @@ import { ModalLayerRegistration } from '@/features/guidance/ModalLayerRegistrati
 /** Radix dialog root re-export used by modal wrappers throughout the app. */
 const Dialog = DialogPrimitive.Root;
 
-/** Dialog trigger primitive for callers that need Radix-managed open state. */
-const DialogTrigger = DialogPrimitive.Trigger;
-
 /** Dialog portal primitive used by content wrappers to render outside normal layout flow. */
 const DialogPortal = DialogPrimitive.Portal;
-
-/** Dialog close primitive used by consumers that need custom close controls. */
-const DialogClose = DialogPrimitive.Close;
 
 /** Shared modal backdrop used by `DialogContent` for app dialogs. */
 const DialogOverlay = ({
@@ -36,6 +30,7 @@ const DialogOverlay = ({
 const DialogContent = ({
   className,
   children,
+  onInteractOutside,
   ref,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) => (
@@ -44,6 +39,13 @@ const DialogContent = ({
     <ModalLayerRegistration>
       <DialogPrimitive.Content
         ref={ref}
+        onInteractOutside={(event) => {
+          if (event.target instanceof Element && event.target.closest('[data-sonner-toaster]')) {
+            event.preventDefault();
+          } else {
+            onInteractOutside?.(event);
+          }
+        }}
         className={cn(
           'fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg origin-center translate-x-[-50%] translate-y-[-50%] gap-3 rounded-lg border border-[var(--vscode-widget-border)] bg-widget p-4 text-widget-foreground shadow-[var(--vscode-shadow-lg)] duration-150 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
           className,
@@ -105,15 +107,4 @@ const DialogDescription = ({
   />
 );
 
-export {
-  Dialog,
-  DialogPortal,
-  DialogOverlay,
-  DialogTrigger,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogFooter,
-  DialogTitle,
-  DialogDescription,
-};
+export { Dialog, DialogContent, DialogHeader, DialogFooter, DialogTitle, DialogDescription };

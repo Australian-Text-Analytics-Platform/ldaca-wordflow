@@ -1,0 +1,160 @@
+import { tableFromArrays, tableToIPC } from 'apache-arrow';
+import type {
+  Analysis,
+  DataPortalSearchResource,
+  FileResource,
+  ProviderCredentialSummary,
+  SampleCatalogueResource,
+  SessionResponse,
+  Tab,
+  TokenizerModelResource,
+  UserFileImport,
+  WorkspaceNodeInfo,
+  WorkspaceResource,
+} from '@/api';
+
+const TEST_DATE = '2026-01-01T00:00:00Z';
+
+export const userFileImportResponse = (overrides: Partial<UserFileImport> = {}): UserFileImport => ({
+  availability: 'available',
+  id: 'import-1',
+  state: 'queued',
+  cancellation_requested_at: null,
+  created_at: TEST_DATE,
+  started_at: null,
+  finished_at: null,
+  revision: 1,
+  progress: { fraction: 0, message: 'Queued' },
+  error: null,
+  request: { kind: 'data_portal', identifier: 'arcp://name,test-corpus' },
+  result: null,
+  ...overrides,
+});
+
+/** Builds the canonical cookie-session bootstrap response used by shared tests. */
+export const sessionResponse = (overrides: Partial<SessionResponse> = {}): SessionResponse => ({
+  authenticated: false,
+  csrf_token: 'test-csrf-token',
+  mode: 'single_user',
+  providers: [],
+  user: null,
+  ...overrides,
+});
+
+export const projectResponse = (
+  overrides: Partial<WorkspaceResource> = {},
+): WorkspaceResource => ({
+  id: 'project-1',
+  name: 'Project',
+  description: '',
+  created_at: TEST_DATE,
+  modified_at: TEST_DATE,
+  revision: 1,
+  runtime_state: 'open',
+  total_nodes: 0,
+  root_nodes: 0,
+  leaf_nodes: 0,
+  ...overrides,
+});
+
+export const tabResponse = (overrides: Partial<Tab> = {}): Tab => ({
+  availability: 'available',
+  id: 'tab-1',
+  name: 'Analysis',
+  kind: 'token_frequency',
+  analysis_ids: [],
+  created_at: TEST_DATE,
+  modified_at: TEST_DATE,
+  revision: 1,
+  settings: { kind: 'token_frequency', stop_words: { words: [] } },
+  ...overrides,
+});
+
+/** Minimal canonical Analysis used by status and tab tests. */
+export const analysisResponse = (overrides: Partial<Analysis> = {}): Analysis => ({
+  availability: 'available',
+  id: 'analysis-1',
+  tab_id: 'tab-1',
+  parent_analysis_id: null,
+  execution_scope: 'run_all',
+  supersedes_analysis_ids: [],
+  state: 'succeeded',
+  cancellation_requested_at: null,
+  created_at: TEST_DATE,
+  started_at: TEST_DATE,
+  finished_at: TEST_DATE,
+  revision: 1,
+  progress: { fraction: 1, message: 'Complete' },
+  error: null,
+  integrity: { status: 'valid' },
+  output_node_ids: [],
+  request: {
+    kind: 'token_frequency',
+    node_ids: ['node-1'],
+    node_columns: { 'node-1': 'text' },
+    node_tokenizer_models: { 'node-1': 'native:plain_words_en' },
+    token_limit: 20,
+  },
+  ...overrides,
+});
+
+export const nodeResponse = (overrides: Partial<WorkspaceNodeInfo> = {}): WorkspaceNodeInfo => ({
+  availability: 'available',
+  id: 'node-1',
+  name: 'Text',
+  derivation_description: 'Source file',
+  provenance: { type: 'source', file_path: 'text.csv' },
+  parent_ids: [],
+  child_ids: [],
+  shape: [1, 1],
+  ...overrides,
+});
+
+/** Builds the canonical Arrow row stream used by shared node-table handlers. */
+export const nodeRowsArrowStream = (): Uint8Array =>
+  tableToIPC(
+    tableFromArrays({ text: ['This is an English sample document for language detection.'] }),
+    'stream',
+  );
+
+export const fileResponse = (overrides: Partial<FileResource> = {}): FileResource => ({
+  path: 'text.csv',
+  name: 'text.csv',
+  type: 'file',
+  file_type: 'csv',
+  size_bytes: 64,
+  modified_at: 1,
+  loadable: true,
+  ...overrides,
+});
+
+export const dataPortalResponse = (
+  overrides: Partial<DataPortalSearchResource> = {},
+): DataPortalSearchResource => ({
+  items: [],
+  page: 1,
+  page_size: 20,
+  total: 0,
+  ...overrides,
+});
+
+export const sampleCatalogueResponse = (
+  overrides: Partial<SampleCatalogueResource> = {},
+): SampleCatalogueResource => ({
+  collections: [],
+  schema_version: 1,
+  ...overrides,
+});
+
+export const providerCredentialResponse = (
+  overrides: Partial<ProviderCredentialSummary> = {},
+): ProviderCredentialSummary => ({
+  storage: 'backend',
+  annotation_providers: [],
+  data_portal: { deployment_configured: false, user_configured: false },
+  ...overrides,
+});
+
+export const tokenizerModelsResponse = (
+  overrides: TokenizerModelResource[] = [],
+): TokenizerModelResource[] => overrides;

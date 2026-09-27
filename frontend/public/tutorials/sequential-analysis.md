@@ -2,224 +2,140 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-sequential-section">Trends and Sequence tutorial</h1>
+<h1 id="help-sequential-section">Trends tutorial</h1>
 
-![Trends and Sequence screenshot](tutorials/assets/sequential_analysis.png)
+Open **Plots → Trends** to explore rows over a date or numeric axis. The other
+[Plots modes](./plots.md) compare categories, individual observations, cells and
+transitions. Each mode keeps its own named tabs, parameters and saved results.
 
-The Trends and Sequence tool counts documents over time — or over any ordered numeric axis — and plots the result as a chart. It is useful for seeing how activity, mentions, or any measurable quantity rises and falls across a corpus.
+<h2 id="help-sequential-parameters">Parameters</h2>
+<h3 id="help-sequential-data-block">Choose a Data Block</h3>
 
-You can break a single trend into multiple lines by grouping on one or more categorical columns, then zoom into and select specific periods for closer inspection.
+Select one Table or View. Join tables, reshape columns and convert text dates in
+Preprocessing first. Run retains a snapshot so subsequent source changes do not
+alter this result.
 
-<h2 id="help-sequential-parameters">Parameter panel</h2>
+<h3 id="help-sequential-time-column">Choose the axis</h3>
 
-<h3 id="help-sequential-data-block">Step 1 — Select your data</h3>
+Use a date, timestamp or numeric column. Positions always represent real dates
+or numbers. Unusable axis values are omitted and their count is reported.
 
-Use the data-block selector to pick the corpus you want to analyse. Only one data block can be selected at a time.
+<h3 id="help-sequential-frequency">Time intervals</h3>
 
-<h3 id="help-sequential-time-column">Step 2 — Choose a time or numeric column</h3>
+Daily is the default. Choose second, minute, hour, day, week, month, quarter or
+year. Use **Every** for a custom number of seconds, minutes, hours, days or
+weeks. Weeks start Monday. Timezone-aware timestamps have a timezone selector,
+defaulting to UTC. Plain dates/timestamps retain their stored calendar meaning.
 
-The **Time/Numeric Column** dropdown lists every column in the selected data block that holds a datetime, integer, or float value. Pick the column that represents the order or time axis you want to plot along.
+Datetime conversion first tries DuckDB's direct cast on up to 200 rows. If it
+fails, Wordflow infers a format and checks the same sample. Ambiguous or
+unsupported formats open a manual-format dialog. For example,
+`2020-10-17 00:52:37.000 +0000` uses `%Y-%m-%d %H:%M:%S.%f %z`.
+Parsed offsets retain timezone-aware values. This is a sample check: a View may
+still encounter incompatible values later, reported through the error notification.
 
-- **Datetime columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.).
-- **Numeric columns** (integer or float) are bucketed by a fixed interval width you specify.
+<h3 id="help-sequential-numeric">Numeric intervals</h3>
 
-The tool detects the column type automatically and shows the relevant configuration controls below.
+Width defaults to 1. Leave origin empty to use the smallest usable axis value,
+or enter an origin explicitly. Fractional widths and negative axes are supported.
+For extremely large exact values, the renderer may label an offset axis to keep
+adjacent observations distinct; tooltips retain original values.
 
-<h3 id="help-sequential-frequency">Step 3 — Set the frequency (datetime columns)</h3>
+<h3 id="help-sequential-group-by">Group the observations</h3>
 
-When a datetime column is selected, choose how to group records into time buckets.
+Use **Add** in Grouping to select up to three columns. Each row shows its
+distinct-value count and a remove button; removing all groups restores a single
+series for all rows. Exact spellings remain distinct unless Uncased is enabled in Results.
+Choose Count rows (default), Sum, Mean or Median. The last three require a numeric
+measurement column. Invalid measurements are reported separately.
 
-**Standard frequencies**
+<h2 id="help-sequential-run">Run</h2>
 
-| Option | Groups records by |
-|---|---|
-| Per second | Each second |
-| Per minute | Each minute |
-| Hourly | Each hour of the day |
-| Daily | Each calendar day |
-| Weekly | Each week (Mon–Sun) |
-| Monthly | Each calendar month |
-| Quarterly | Each quarter (Q1–Q4) |
-| Yearly | Each calendar year |
+Run saves the submitted parameters and replaces previous output. Cancel through
+the progress card or Task Centre. Failed/cancelled runs retain their submitted
+request and remain runnable. There is no Preview in Plots.
 
-**Customised interval**
+Unchanged successful parameters disable Run. Change parameters or Clear results
+to run again. Saved-output errors enable Rerun. Presentation settings do not
+re-enable Run. Editing the form does not alter the saved request until Run.
 
-Select **Customised** to bucket by a fixed duration you define: enter a positive whole number and choose a unit (seconds, minutes, hours, days, or weeks). For example, *Every 30 minutes* groups records into half-hour windows.
+<h2 id="help-sequential-results">Results</h2>
+<h3 id="help-sequential-minimum-group-count">Minimum rows per group</h3>
 
-- Smaller intervals show more detail but may produce many sparse buckets.
-- Larger intervals smooth the trend and reduce noise.
+The default is **0**, showing every group. The threshold applies to the complete
+case-merged group, independently of interval selection. Lowering it restores
+eligible groups; manually hidden groups remain hidden.
 
-<h3 id="help-sequential-numeric">Step 3 — Set the numeric interval (numeric columns)</h3>
+<h3 id="help-sequential-chart-type">Presentation</h3>
 
-When an integer or float column is selected, two fields appear:
+Line is the default. Smooth curves changes interpolation, not observations.
+Count and nonnegative Sum also support stacked Area and Bar. Mean, Median and
+signed sums use Line or grouped Bar. Daily time results additionally support
+Calendar: one calendar per visible group, a shared color scale, and year
+navigation that changes only the viewport.
 
-**Numeric Origin** — the starting point of the first bucket. Leave blank to auto-detect from the minimum value in the data.
+Normalize to 100% is available for Count/nonnegative Sum. The denominator
+includes all groups passing the minimum filter, including hidden groups.
+Zero-total percentages are undefined.
 
-**Numeric Interval** — the width of each bucket (required). For example, an interval of 10 groups values 0–9, 10–19, 20–29, and so on.
+<h3 id="help-sequential-x-axis">Continuous positions and gaps</h3>
 
-<h3 id="help-sequential-group-by">Step 4 — Group By Columns (optional)</h3>
+Every interval between the first and last usable observations is represented.
+An empty interval contributes zero Count/Sum and a gap for Mean/Median. An
+observed interval with no usable measurement is a gap even for Sum. There is
+no categorical-spacing switch.
 
-To split the trend into multiple lines — one per category — add up to three columns as grouping conditions. Each added column should have a small number of distinct values; these become the separate series in the chart.
+<h3 id="help-sequential-legend">Legend</h3>
 
-Click **Add Group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced.
+Click a colored group label to hide/show it. Labels retain total row counts and
+show selected/total counts when intervals are selected. Hidden labels are
+subdued and struck through. Uncased merges case variants from original saved
+observations, including correct means and medians, resets hidden groups and
+preserves interval selections.
 
-When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.
+<h3 id="help-sequential-zoom">Zoom and keyboard navigation</h3>
 
-Trends retains exact group values in its result. After the analysis finishes,
-use **Uncased** beside the result legend when values that differ only in
-capitalisation should be displayed and filtered as one group.
+Use the slider, wheel, Zoom in/out or Reset zoom. Zoom changes only the viewport.
+Focus the chart and use arrow keys/Home/End to inspect points. Enter/Space selects;
+Shift extends selection. Escape exits range mode.
 
-<h2 id="help-sequential-run">Step 5 — Run the analysis</h2>
+<h3 id="help-sequential-period-selection">Select intervals</h3>
 
-Click **Run** to start the analysis. The label always remains **Run**. Parameters
-lock only while the Analysis is submitting, queued, or running. After success,
-change an execution input to enable Run again; reverting to the submitted values
-disables it. Minimum group count, chart type, axis, selection, visibility, and
-Uncased controls do not enable Run because they only change result presentation
-or filtering.
+Click a point or plot position to toggle an interval across visible groups.
+Shift-click extends from the previous anchor. Select range enables dragging:
+a plain drag replaces selection, while Shift-drag adds. Clear Selection leaves
+other settings unchanged.
 
-<h2 id="help-sequential-results">Result panel</h2>
+<h3 id="help-sequential-download">Download</h3>
 
-![Trends and Sequence results](tutorials/assets/sequential_analysis/trends_results.png)
+Choose PNG, SVG or JPEG and Download chart. The export captures displayed zoom,
+filters, selection, source, measure, interval/timezone and the colored legend.
+Exports remain unavailable while projections are loading or outdated.
 
-The result panel follows the Concordance dispersion layout: result actions in
-the header, chart presentation controls directly above the plot, then the chart
-and its legend card. The legend card keeps the Uncased, minimum group count, and
-period-selection controls together. Time column, frequency or interval, and
-Group By settings remain visible in the parameter panel instead of being
-repeated in the result.
+<h3 id="help-sequential-add-to-project">Add to Project</h3>
 
-<h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
-
-For grouped results, **Minimum group count** hides any group whose total count
-across the complete result is below the entered value. The default is **10**;
-enter **0** to show every group. A group whose count equals the threshold remains
-visible. The control appears in the legend card immediately after **Uncased**.
-
-The filter removes small groups from the chart, legend, chart export, displayed
-counts, and Add to Workspace. It does not change manual legend visibility: if a
-filtered group was struck out, lowering the threshold restores it still struck
-out. Selected periods do not change which groups meet the threshold. With
-**Uncased** enabled, case variants are merged before their total is compared
-with the threshold.
-
-<h3 id="help-sequential-chart-type">Chart type</h3>
-
-Three plot modes are available in the **Chart Type** dropdown:
-
-- **Line Chart** — best for displaying continuous trends across time, especially when groups overlap or you want to compare rates of change.
-- **Bar Chart** — best for highlighting contrast between categories at each time step.
-- **Area Chart** — stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
-
-<h3 id="help-sequential-x-axis">X-axis: Categorical vs Linear</h3>
-
-The **X-axis** dropdown next to the chart type selector switches the horizontal axis between two modes:
-
-- **Categorical** *(default)* — every time bucket gets an equal slot on the axis, regardless of the real gap between them. Best when buckets are dense and you want a clean, evenly-spaced view.
-- **Linear** — the axis is a true number/date line and bucket positions are proportional to their values. Gaps in the data become visible as visible gaps on the axis. Useful for spotting unevenly-spaced events or comparing rates of change across long time spans.
-
-In Linear mode with a datetime column, axis ticks render as date labels (e.g. *Apr 2018*) rather than raw epoch numbers. The tool aims for about ten ticks across the visible range, dropping labels automatically if the chart is too narrow.
-
-**Missing buckets are shown as zero.** When a group has no documents in a given bucket, the line stays connected and dips to zero rather than breaking. This matches the analytical intent — "no occurrences" is genuinely zero, not unknown — and is most visible in Linear mode where the gap distance is proportional to time.
-
-<h3 id="help-sequential-download">Download chart</h3>
-
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the data block name, time column, frequency, and document counts, plus a legend.
-
-<h3 id="help-sequential-legend">Legend and group visibility</h3>
-
-The legend below the chart lists groups that meet the minimum group count, with
-their colours, full-result count, and share of the counts among currently
-visible groups. Percentages use one decimal place and do not change when periods
-are selected. When periods are selected, each visible label shows *selected /
-total* before the percentage. Click any legend item to hide or show that group.
-Hidden groups retain their count detail, show **Hidden**, and use a strikethrough
-label with reduced opacity.
-
-Use this to focus on a subset of groups. Hidden groups are not plotted and are
-marked hidden in chart exports, while their legend entry retains its
-full-result count.
-
-Select **Uncased** beside the legend to merge case variants without rerunning
-the analysis. For example, `jobs` and `Jobs` become `jobs/Jobs`, with their
-per-period values, totals, percentages, tooltip values, and export entry
-summed. Changing this checkbox restores all hidden groups while preserving
-selected periods, zoom, chart type, and axis mode.
-
-<h3 id="help-sequential-zoom">Zoom and navigation</h3>
-
-Use the chart slider, mouse wheel, or trackpad pinch to zoom along the horizontal axis. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
-
-<h3 id="help-sequential-period-selection">Period selection</h3>
-
-Click anywhere inside the plot to select the time period nearest the vertical axis pointer. You do not need to target a line point, bar, or area segment. Selected periods are highlighted; unselected periods are dimmed to 25 % opacity.
-
-To select a range, click one period then **Shift-click** another — all periods between them are selected.
-
-For drag selection, turn on **Select range** and drag across the periods you want. A new drag replaces the current selection; **Shift-drag** adds the brushed range. Turn the mode off, or press **Escape** while the chart is focused, to return to point selection.
-
-With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**, and **End** to inspect points. Press **Enter** or **Space** to select the focused point; hold **Shift** to extend the existing selection semantics.
-
-Use **Clear Selection** to deselect all periods without losing any other settings.
-
-<h3 id="help-sequential-add-to-workspace">Add to Workspace</h3>
-
-Click **Add to Workspace** to create a Data Block containing original source
-rows represented by the current Trends result. If periods are selected, only
-those periods are included; with no selection, all periods are included. Groups
-removed by Minimum group count and groups hidden through the legend are always
-excluded. Zoom changes only the viewport and never the rows added to the
-Workspace.
-
-When Uncased is enabled, hiding a merged legend entry excludes every exact
-spelling represented by that entry.
-
-The time or numeric axis column is required. The source Document Column and
-Group By columns start selected but remain optional, while other source columns
-start unselected. The dialog preserves source-column order and defaults the new
-name to the source name followed by `_trends`.
+Publish original retained rows from selected intervals and visible eligible
+groups. With no interval selection, all intervals are included. Zoom and Calendar
+year do not restrict publication. Required execution columns remain selected;
+other metadata is optional. The new Table is independently owned and does not
+open Data View or change graph selection.
 
 <h3 id="help-sequential-clear-results">Clear results</h3>
 
-The tab keeps its current Trends and Sequence Analysis in the backend so it can
-reload its lifecycle and Result. **Clear Results** removes that Analysis and
-resets the tab. After a failure or cancellation, parameters remain editable but
-Run stays disabled until you choose Clear Results. Clearing or replacing the
-result restores Minimum group count to **10** and clears manual legend
-visibility.
+Clear removes saved output while retaining submitted parameters and presentation
+settings. It resets transient selections and visibility. It is unavailable during
+an active Run. Published Tables are unaffected.
 
 <h2 id="help-sequential-troubleshooting">Troubleshooting</h2>
 
-| Symptom | Likely cause | What to try |
-|---|---|---|
-| Chart shows only one bar / point | Frequency too coarse for the date range | Try a finer frequency (e.g. daily instead of yearly) |
-| Too many series, chart is unreadable | Too many distinct values in group-by column(s) | Remove a group-by column, or filter the data block first |
-| No groups meet the minimum group count | Every grouped total is below the filter | Lower Minimum group count, or enter 0 to show all groups |
-| "No sequential analysis data available" | Column type or interval is incompatible with the data | Check the column contains valid dates or numbers; check the interval is > 0 |
+If a plot is empty, check the axis, measurement and minimum group size. If there
+are too many groups, remove grouping columns or filter the input in Preprocessing.
+If a projection fails, use Retry or adjust its settings; Rerun replaces saved
+output. Missing source data does not prevent reading an existing saved result.
 
-<h2 id="help-sequential-defaults">Quick-reference defaults</h2>
+<h2 id="help-sequential-defaults">Defaults</h2>
 
-| Setting | Default | Notes |
-|---|---|---|
-| Frequency (datetime) | Monthly | Any standard or custom interval works |
-| Custom interval | 1 day | Enter a positive number and choose a unit |
-| Numeric Origin | Auto-detect | Leave blank unless you need a specific start |
-| Numeric Interval | 1 | Required; must be > 0 |
-| Group By | None | Up to 3 columns |
-| Case Sensitive | Off | Only appears when a group-by column is added |
-| Minimum group count | 10 | Grouped results only; enter 0 to show all groups |
-| Chart Type | Line Chart | — |
-| X-axis | Categorical | Switch to Linear for time-proportional spacing |
-| Zoom | Full range | Use Reset zoom to restore the complete result |
-| Select range | Off | Turn on before dragging across periods |
-
-## Practice exercise
-
-1. Select a data block that has a datetime column.
-2. Run the analysis with **Monthly** frequency to see the overall trend.
-3. Switch to **Weekly** and compare the granularity.
-4. Add a categorical column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.
-5. Zoom into a period of high activity, turn on **Select range**, and drag across several periods.
-6. Download the chart in the format you need and compare it with the monthly view.
+Count rows; daily intervals; numeric width 1 with automatic origin; no groups;
+exact case; minimum rows 0; Line; smoothing on; full viewport; no selection.
 
 [← Back to tutorial index](./index.md)

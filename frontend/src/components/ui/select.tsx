@@ -97,19 +97,6 @@ const SelectContent = ({
   </SelectPrimitive.Portal>
 );
 
-/** Select label row used to name grouped option sets. */
-const SelectLabel = ({
-  className,
-  ref,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.Label>) => (
-  <SelectPrimitive.Label
-    ref={ref}
-    className={cn('px-2 py-1 text-label font-semibold', className)}
-    {...props}
-  />
-);
-
 type SelectItemProps = React.ComponentProps<typeof SelectPrimitive.Item>;
 
 /** Select option row with checkmark indicator for chosen values. */
@@ -131,4 +118,4 @@ const SelectItem = ({ className, children, ref, ...props }: SelectItemProps) => 
   </SelectPrimitive.Item>
 );
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectLabel, SelectItem };
+export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectItem };

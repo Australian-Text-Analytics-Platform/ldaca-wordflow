@@ -1,6 +1,6 @@
 [package]
 name = "ldaca-wordflow"
-version = "0.8.0"
+version = "8.0.0"
 description = "LDaCA Wordflow Desktop Application"
 authors = ["Australian Text Analytics Platform"]
 edition = "2021"
@@ -8,32 +8,37 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-sha2 = "0.10"
 tauri-build = { version = "2", features = [] }
 
 [features]
-dev-runtime = []
+# Opt in only for local/CI automation. Normal Dev and release builds have no driver.
+e2e = ["dep:uuid", "dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio"]
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api"] }
-# Used by native save commands to fetch large export bodies from the local
-# backend and stream them to disk. Bypassing the JS
-# fetch body path avoids WebView2 + IPC reliability issues on Windows for
-# responses larger than 10 MB.
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
-futures-util = "0.3"
+uuid = { version = "1", features = ["v4"], optional = true }
+tauri-plugin-wdio-webdriver = { version = "1.4.0", optional = true }
+tauri-plugin-wdio = { version = "1.4.0", optional = true }
+wordflow-backend = { path = "../../backend" }
+tokio-util = { version = "0.7", features = ["rt"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tauri = { version = "2", features = [] }
+http = "1"
+tempfile = "3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-store = "2"
 tauri-plugin-updater = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-tauri-plugin-liquid-glass = "=0.1.6"
+objc2 = "0.6"
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
+tauri = { version = "2", features = ["test"] }

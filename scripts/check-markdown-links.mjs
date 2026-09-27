@@ -42,10 +42,11 @@ function isMaintainedMarkdown(path) {
   const base = repoPath.slice(repoPath.lastIndexOf("/") + 1);
   const maintainedReadmes = new Set([
     "README.md",
-    "backend/README.md",
+    "archive/README.md",
     "frontend/README.md",
     "polars-text/README.md",
-    "polars-source-utils/README.md",
+    "ldaca-rs/README.md",
+
   ]);
   return (
     base === "AGENTS.md" ||
@@ -61,6 +62,11 @@ function isMaintainedMarkdown(path) {
 function collectMarkdown(directory, files = []) {
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     if (entry.isDirectory() && excludedDirectories.has(entry.name)) continue;
+    // Archived source retains historical paths; only its index is maintained.
+    if (directory === repositoryRoot && entry.name === "archive") {
+      files.push(join(directory, "archive", "README.md"));
+      continue;
+    }
     const path = join(directory, entry.name);
     if (entry.isDirectory()) {
       collectMarkdown(path, files);

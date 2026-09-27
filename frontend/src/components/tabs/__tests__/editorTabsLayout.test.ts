@@ -27,7 +27,6 @@ describe('editorTabsLayout', () => {
     it('floors short titles at the minimum width', () => {
       expect(computeContentTabWidths([20, 30])).toEqual([TAB_MIN_WIDTH, TAB_MIN_WIDTH]);
     });
-
   });
 
   describe('computeTabPositions', () => {

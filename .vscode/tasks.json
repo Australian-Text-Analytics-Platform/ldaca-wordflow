@@ -1,6 +1,4 @@
 {
-    // See https://go.microsoft.com/fwlink/?LinkId=733558
-    // for the documentation about the tasks.json format
     "version": "2.0.0",
     "tasks": [
         {
@@ -58,26 +56,9 @@
             }
         },
         {
-            "label": "Prepare backend (MacOS)",
-            "type": "shell",
-            "command": "uv run --no-project python scripts/package_backend_runtime.py --clean",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
             "label": "Compile Tauri App (MacOS)",
             "type": "shell",
-            "command": "pnpm desktop:build:mac",
+            "command": "pnpm build:desktop:mac",
             "options": {
                 "cwd": "${workspaceFolder}/frontend"
             },
@@ -94,7 +75,7 @@
         {
             "label": "Compile Tauri App (Windows)",
             "type": "shell",
-            "command": "pnpm desktop:build:windows",
+            "command": "pnpm build:desktop:windows",
             "options": {
                 "cwd": "${workspaceFolder}/frontend"
             },
@@ -111,7 +92,7 @@
         {
             "label": "Test All",
             "type": "shell",
-            "command": "(cd backend && uv run pytest && uvx ty check) && (cd polars-text && uv run pytest && uvx ty check) && (cd frontend && pnpm test -- --run && pnpm lint && pnpm build)",
+            "command": "cargo test --workspace --locked && pnpm -C frontend check && (cd polars-text && uv run pytest && uvx ty check)",
             "options": {
                 "cwd": "${workspaceFolder}"
             },

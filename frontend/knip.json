@@ -1,24 +1,26 @@
 {
-    "$schema": "https://unpkg.com/knip@6/schema.json",
-    "entry": [
-        "openapi.config.ts",
-        "playwright.config.ts",
-        "e2e/**/*.spec.ts",
-        "src/updater/index.tsx"
-    ],
-    "project": [
-        "src/**/*.{ts,tsx}"
-    ],
-    "ignore": [
-        "src/api/generated/**"
-    ],
-    "ignoreDependencies": [
-        "tw-animate-css",
-        "tailwindcss",
-        "@tailwindcss/typography"
-    ],
-    "ignoreBinaries": [
-        "uv"
-    ],
-    "playwright": false
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/index.tsx",
+    "src/updater/index.tsx",
+    "src/features/quicklook/render.ts",
+    "e2e-browser/**/*.spec.ts",
+    "e2e-native/**/*.spec.ts",
+    "e2e-native/setup.ts",
+    "scripts/generate-api.mjs"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}"
+  ],
+  "ignoreDependencies": [
+    "tw-animate-css",
+    "tailwindcss",
+    "@tailwindcss/typography",
+    "@wdio/local-runner"
+  ],
+  "ignoreIssues": {
+    "src/api/generated/native.ts": [
+      "types"
+    ]
+  }
 }

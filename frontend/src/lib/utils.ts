@@ -23,7 +23,7 @@ const mergeClasses = extendTailwindMerge({
 });
 
 /** Merges conditional class values while resolving Tailwind utility conflicts. */
-/** Shared by layout, UI primitives, hints, analysis panels, and workspace views. */
+/** Shared by layout, UI primitives, hints, analysis panels, and project views. */
 export function cn(...inputs: ClassValue[]) {
   return mergeClasses(clsx(inputs));
 }

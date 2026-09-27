@@ -3,139 +3,155 @@
 [← Back to tutorial index](./index.md)
 <h1 id="help-annotation-section">Annotation tutorial</h1>
 
-Use Annotation to apply one of the codes in a Codebook to each source row,
-either directly or with predictions from a configured AI provider.
+Annotation assigns a single Codebook label to each document. **Manual** and **AI**
+share the source and Codebook controls in each numbered tab. Labels belong to the
+source Table; a saved AI result is a report of its Run.
 
 <h2 id="help-annotation-setup">Set up the source and Codebook</h2>
 
-1. Under **Annotation Data Block**, add one Data Block and choose the text
-   column.
-2. Select an existing string annotation column, or choose **Start new
-   annotation** and create one. This is an immediate Data Block Edit.
-3. Under **Codebook**, add a Data Block and map its code and description
-   columns. Use **Create New** when you need an empty Codebook, then review and
-   edit its rows before labelling.
-4. Choose **Manual** or **AI**. The source and Codebook are shared between both
-   modes.
+1. Add one Data Block and choose its document column.
+2. Choose an annotation destination, or create a string column. AI Preview does
+   not require a destination. To write labels into a View, explicitly choose
+   **Materialize in place** first.
+3. Select a Codebook and its code and description columns. **Create Codebook**
+   creates an empty Table; **Edit Codebook** opens staged editing. Views can be
+   used as read-only Codebooks.
+4. Optionally choose a separate correction column to retain reviewed decisions.
+
+Codebook codes are trimmed, nonblank and unique ignoring case. A Codebook may
+contain up to 200 codes; codes have a 200-character limit and descriptions a
+2,000-character limit. Editing a Codebook preserves its unrelated columns.
+Existing invalid source labels remain visible until deliberately changed.
 
 <h2 id="help-annotation-manual">Manual workflow</h2>
 
-Choose **Start** to open the annotation table. Select a Codebook value for each
-row; each change is written directly to the annotation column as a Data Block
-Edit. Start captures the source, annotation column, Codebook mapping, and table
-inputs. You can edit the setup as the draft for the next table without changing
-the open table. Choose **Close** even if that draft is incomplete; the next
-Start captures the new setup. Switching modes hides but does not rewrite the
-open Manual snapshot.
+Choose **Start** to open an editing session. Change labels and corrections using
+the current Codebook. **None** writes SQL NULL. Changes remain staged across
+pages: **Save** commits them together, while **Cancel** discards them. **Close**
+ends the session; if changes are pending, choose **Save**, **Discard** or **Stay**.
+A failed Save keeps the draft open.
 
-Use **Compare To** to add another coder or model. Each comparison starts masked
-as `•••` so you can code without seeing how individual rows were coded. Its
-header always shows the reliability score (hover or focus it for the confusion
-matrix) and the row-filter menu; reveal the column from the eye button to show
-its values and difference colours. Removing the filtered column clears the
-filter; hiding it does not. Reliability statistics summarize agreement but do
-not explain why labels differ.
+The source Table is protected while editing, including against rename, deletion
+and schema changes. Reads and unrelated Table operations remain available.
+Independent Tables can be edited separately. SQL Console is read-only while an
+editing operation is active. If a Codebook changes, choices update; a staged
+label removed from the Codebook is flagged and must be corrected before Save.
 
-The funnel button in the annotation column header and in each comparison header
-opens a filter menu with two independent conditions: **Differs** and a value
-radio (**All rows**, **Has value**, **Empty**). On a comparison column, Differs
-keeps rows whose label differs from the annotation column; on the annotation
-column it keeps rows that differ from at least one selected comparison column.
-Conditions combine, so Differs with Has value narrows further, while Empty greys
-out Differs because an empty cell never differs. Only one column carries a filter
-at a time; setting a filter on another column replaces it. Filtered rows and
-counts are calculated before server pagination. Preview has no row filter
-because its rows are chosen by the AI request.
+Use **Compare To** to add another coder/model column. Comparisons start masked
+so labels do not influence your own decisions. **Reveal** shows values;
+**Mask** hides them again. The header score opens a confusion matrix on hover or
+keyboard focus, including the number of included and excluded rows. Choose
+Cohen's κ (default), nominal Krippendorff's α or Percent Agreement.
 
-A cell counts as **empty** when it is blank or holds a value that is not a
-Codebook class (for example `P` instead of `promise`, or a date pasted by
-accident). Such values are still displayed, in muted italics, but they never
-count as differences, never contribute to reliability, and match **Empty**
-rather than **Has value**. Matching is exact after trimming spaces; `Promise`
-is not `promise`. Without a Codebook only the blank rule applies.
+**Row filter** selects one annotation/comparison column and combines valid-label
+presence with **Different valid labels**. Blank or invalid labels never contribute
+to differences or agreement. Choosing **Blank or invalid label** disables the
+difference condition. **Clear filter** returns all rows. Filters and metrics
+apply to the complete Table before pagination and include unsaved patches, marked
+**Includes unsaved changes**. Preview has no row filters.
 
-Drag the handle under the table to make it taller, up to three quarters of the
-window; double-click the handle to reset. The height is shared by Manual,
-Preview, and Review in the same tab, and the table scrolls inside its frame
-when a page does not fit.
-
-**Compare To** and **Show metadata** are exclusive roles: a selected column is
-disabled in the other menu, and **Select all** skips disabled columns. The
-active correction column appears in neither menu. Add a correction column when
-you want reviewed decisions kept separately, and use metadata columns to retain
-useful source context in the table.
+Validity uses exact-case Codebook labels after trimming: `Promise` and `promise`
+are different. Without a Codebook, nonblank labels are eligible. Comparison and
+metadata roles are disjoint, and document/annotation/correction columns retain
+their dedicated roles. Metadata stays beside the labels in a horizontally
+scrollable table. The table defaults to ten rows per page; drag its bottom-right
+resize handle to adjust its shared height, bounded by the window.
 
 <h2 id="help-annotation-ai">AI workflow</h2>
 
-Expand AI settings and choose a named provider configuration and model. Provider
-credentials stay in Settings and are attached only when the request is sent.
-Create or edit connections under **Settings → AI**. API keys are optional when
-saving, but a built-in provider marked **Needs API key** cannot list models,
-Preview, or Run All until you add one. Custom endpoints may be keyless. Editing
-a key updates future requests; a Run All already queued or running keeps the key
-captured when it was submitted.
-An **Example Data Block** is optional; if used, choose both its text column and
-an existing annotation column containing reviewed labels. Set **Max examples
-per class**, then choose **Random**, **First N**, or **Last N**. Random sampling
-also accepts a nonnegative seed and defaults to 0. The same Data Block snapshot,
-maximum, method, and seed produce the same per-class subset throughout one
-Analysis; groups with fewer examples contribute every usable row.
+Choose a named connection and search its discovered models, or enter a model
+identifier. **New connection** and **Edit connection** manage OpenAI, OpenRouter,
+Anthropic, Google and Custom OpenAI-compatible endpoints. Custom endpoints may be
+local and keyless. Remembered keys use the host operating system's credential
+store; **Session only** keeps a key in memory until the host closes. Keys never
+enter project files. A missing/unavailable credential store does not silently
+save plaintext. A copied project may require selecting a connection on its new
+host.
 
-Advanced settings include the instruction prompt, processing mode, batch size,
-retry count, and a distinct native panel for the selected provider. Anthropic's
-panel contains Claude thinking controls and has no temperature field; current
-Claude models use adaptive thinking while older Claude models use a fixed
-budget. Google has its own temperature and thinking panel. OpenAI, OpenRouter,
-and Custom each have separate sampling and reasoning panels, whose support still
-depends on the selected model. Wordflow-owned Run All processing, batch, and
-retry controls appear separately below the provider panel. Defaults are a good
-starting point. Change one setting deliberately, because provider capability,
-cost, latency, and repeatability vary by model.
+On supported Macs, **Apple Foundation Models (on-device)** is available without
+creating a connection or entering a key. It uses the system model locally and
+requires macOS 26+, compatible hardware, enabled Apple Intelligence and a ready
+model. Its availability message explains unmet requirements. It supports guided
+structured labels; it does not fall back to a cloud provider.
+
+Enter an instruction, or press Tab in the empty instruction field to accept the
+suggested prompt. **Advanced settings and examples** contains provider-aware
+inference controls and execution limits. Empty temperature and **Provider
+default** reasoning leave those choices to the provider. Unsupported explicit
+settings fail visibly instead of being silently ignored.
+
+An optional example source supplies text and reviewed labels. Choose Random,
+First N or Last N; defaults are up to ten examples per code and seed zero.
+Examples outside the current Codebook are excluded and counted. With no valid
+examples, inference proceeds without examples. **Use as Example** selects the
+current source and correction column. When corrections are staged, use **Save
+and use as examples** first.
+
+Default execution uses batches of 20 documents, two retries and up to ten
+concurrent requests. Only document text, your instruction, the Codebook and
+selected examples are sent to the selected provider. Unrelated metadata is not
+sent. Cloud providers may charge for inference.
 
 <h3 id="help-annotation-preview">Preview</h3>
 
-Choose **Preview** to create an immutable Analysis snapshot and inspect predicted
-labels without writing to the annotation column. Page through the predictions,
-compare them with existing labels, add corrections if useful, then revise the
-Codebook, examples, model, or settings when the errors show a pattern.
-Preview waits for the bounded provider attempt instead of imposing a shorter
-browser deadline; use cancellation when you no longer want to wait.
-The label remains **Preview**, and it becomes available after an
-execution-request change. **Run All** compares against its own submitted request.
+**Preview** predicts a fresh document page without changing source labels or
+saving a request/result. Every explicit page or page-size action captures the
+current form and makes fresh predictions. Old predictions clear immediately.
+Typing, focus, theme changes and presentation controls do not invoke the model.
+Already-labelled nonblank documents are included; **Fill missing only** affects
+Run alone.
 
-<h3 id="help-annotation-run-all">Run All and review</h3>
+Successful predictions remain visible alongside explicit failed-row states.
+Authentication or provider-wide failures fail the request. A failed prediction
+is never displayed as a valid None label. Comparisons summarize this page only.
 
-Choose **Run All** only after Preview is satisfactory. Run All executes from the
-saved Preview snapshot and writes labels to the selected annotation column. The
-Review table reflects the current Data Block and supports the same hidden-first
-comparisons, row filters, reliability, metadata, resizable frame, and correction
-controls. A reviewed
-correction column can also be selected as the Example annotation column for a
-later run.
+**Edit corrections** opens the shared editor for a writable Table after checking
+that the displayed source is still current. A changed source needs a fresh
+Preview before editing. Clearing predictions or requesting another page retains
+unsaved correction patches. Leaving the tab discards predictions and prompts
+for any unsaved edits. A new visit never automatically invokes a provider.
 
-A provider-wide failure is shown in Annotation and Tasks and writes no labels.
-When only individual rows cannot fit the provider context or produce a valid
-response, successful rows are published and a warning reports failed rows and
-batches. Failed rows keep their existing values in **Reprocess all** and remain
-blank in **Fill missing**; a successful explicit empty prediction may still
-clear a value.
+<h3 id="help-annotation-run-all">Run and review</h3>
 
-<h2 id="help-annotation-results">Results, Clear Results, and Undo</h2>
+**Run** captures the current request independently of Preview. The default
+**Reprocess all** predicts every nonblank document. **Fill missing only** selects
+NULL, empty or whitespace-only destination labels; existing invalid nonblank
+labels are preserved. NULL/blank documents are skipped without changing labels.
+The progress card and Task Centre show the same task, with cancellation.
 
-**Clear Results** removes the tab's Preview and Run All Analyses and clears its
-result state; it does not undo labels already written to the Data Block. Use the
-Data Block's session **Undo** action to reverse the latest manual edit, AI write,
-or column creation. Undo history lasts only for the current backend Workspace
-session.
+Run protects the target Table, stages predictions and writes successful labels
+atomically with its saved report. Fatal failure or cancellation before commit
+changes no labels and retains the submitted parameters. An individual document
+failure preserves that row's old label while other successful predictions can
+commit. A successful None prediction may clear an existing label. Partial runs
+offer **Rerun**; inspect **Failed-row diagnostics** to see what failed.
 
-Preview or Run All locks the parameter panel only while submission or execution
-is active. A failed or cancelled root unlocks parameters but disables both
-execution actions until Clear Results. Existing tables remain tied to the
-request or Manual Start snapshot that produced them while you edit the next
-draft.
+**Results** distinguishes historical processed/preserved/skipped/failed counts
+from current source labels. **Captured Codebook and examples** shows the actual
+inference context. Review uses the live Codebook and source, including full-Table
+comparisons and filters. **Edit corrections** explicitly opens a protected
+session. Historical diagnostics are never applied to new row positions.
 
-Before using labels downstream, sample every code, inspect uncertain or costly
-errors, and record who or what produced the labels. Treat AI predictions and
-agreement scores as evidence for review rather than proof of correctness.
+<h2 id="help-annotation-results">Results, Clear results and restoration</h2>
+
+**Clear results** removes temporary predictions, the saved report and its owned
+context/diagnostics. It retains source labels, submitted Run parameters and any
+open correction draft. Committed Table-label Undo is not implemented; review
+staged edits before Save. Existing View Undo remains separate.
+
+An unchanged, fully successful request disables Run and Preview. Change execution
+settings or Clear results to run again; presentation changes do not enable Run.
+Partial results and loading failures offer Rerun. Failed/cancelled runs with no
+completed result remain runnable. A completed Run is independent of navigation.
+
+Reopening restores shared setup from the latest successful Manual Start or
+accepted AI Run, plus saved AI inference controls. It never starts editing or
+inference automatically. Unsupported saved settings appear in a compatibility
+warning above the actions; recognized values still populate the panel. Local
+edits are preserved while results load.
+
+Before using labels downstream, inspect examples from every code and review
+uncertain or costly errors. Agreement and model predictions support review;
+they do not establish that a label is correct.
 
 [← Back to tutorial index](./index.md)

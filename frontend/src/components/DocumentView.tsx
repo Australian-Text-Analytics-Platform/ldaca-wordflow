@@ -127,7 +127,8 @@ function DocumentView({
   useDocumentAnchor({ activeAnchor, loading, error });
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
+    const { signal } = controller;
     /**
      * Called by: DocumentView's markdown-loading effect whenever the selected file changes.
      * Flow: derive the requested doc URL, fetch markdown without cache, replace build placeholders, then update content/error/loading if still mounted.
@@ -151,8 +152,9 @@ function DocumentView({
         let sourceRoot = '';
         let lastError: Error = new Error('Failed to load document');
         for (const source of sources) {
+          signal.throwIfAborted();
           try {
-            const resp = await fetch(source.url, { cache: 'no-store' });
+            const resp = await fetch(source.url, { cache: 'no-store', signal });
             if (!resp.ok) {
               lastError = new Error(`HTTP ${String(resp.status)}`);
               continue;
@@ -161,6 +163,7 @@ function DocumentView({
             sourceRoot = source.root;
             break;
           } catch (sourceError: unknown) {
+            signal.throwIfAborted();
             lastError =
               sourceError instanceof Error ? sourceError : new Error('Failed to load document');
           }
@@ -174,23 +177,23 @@ function DocumentView({
           .replace(/\{\{\s*VERSION\s*\}\}/g, APP_VERSION)
           .replace(/\{\{\s*BUILD_DATE\s*\}\}/g, APP_BUILD_DATE)
           .replace(/\{\{\s*BUILD\s*\}\}/g, APP_BUILD);
-        if (!cancelled) {
+        if (!signal.aborted) {
           setContent(rendered);
           setDocumentSourceRoot(sourceRoot);
         }
       } catch (err: unknown) {
-        if (!cancelled) {
+        if (!signal.aborted) {
           const message =
             err instanceof Error && err.message ? err.message : 'Failed to load document';
           setError(message);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!signal.aborted) setLoading(false);
       }
     };
     void load();
     return () => {
-      cancelled = true;
+      controller.abort();
     };
   }, [currentTarget.file]);
 
@@ -333,7 +336,7 @@ function DocumentView({
       </header>
       <main className="max-w-4xl mx-auto bg-surface rounded-lg border border-surface-border mt-6 mb-10 p-6">
         <div
-          className="prose prose-slate prose-img:mx-auto mx-auto"
+          className="prose prose-vscode prose-img:mx-auto mx-auto"
           style={{
             transform: `scale(${String(zoom)})`,
             transformOrigin: 'top center',

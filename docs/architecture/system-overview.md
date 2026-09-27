@@ -1,75 +1,29 @@
-# System Overview
+# System overview
 
-LDaCA Wordflow is a text-analysis application distributed as a hosted web app,
-a packaged desktop app, and a Python package that can serve the bundled SPA.
-
-## Projects
-
-- `frontend/` contains the React/Vite application and Tauri desktop shell.
-- `backend/` contains the FastAPI service published as `ldaca-wordflow`.
-- `polars-text/` contains Rust/PyO3 Polars text-processing extensions.
-- `polars-source-utils/` contains Rust/PyO3 serialized-plan path utilities.
-- `ldaca-data-rs/` contains native ONI access and Arrow-based RO-Crate conversion.
-
-The backend is tracked directly in this repository, which owns its CI and
-`ldaca-wordflow` release workflow. The two Polars package roots remain Git
-submodules. `ldaca-data-rs` currently has an independent local repository; shared
-submodule registration waits for its initial commit to be published. Each package
-has its own manifest and release workflow. The root project
-coordinates local source resolution, frontend packaging, desktop builds, and
-version stamping.
+Wordflow's active application uses React, Tauri, Axum and DuckDB. Each desktop
+window owns an independent embedded backend and project database. The standalone
+Rust server supports the browser preview of that native interface.
 
 ```mermaid
 flowchart LR
-    subgraph Clients["Client deployments"]
-        WEB["Hosted browser"]
-        DESKTOP["Tauri desktop"]
-    end
-
-    subgraph Product["Wordflow product"]
-        FRONTEND["React and Vite frontend"]
-        BACKEND["FastAPI backend"]
-    end
-
-    subgraph Packages["Compiled package boundaries"]
-        TEXT["polars-text<br/>text expressions"]
-        PATHS["polars-source-utils<br/>serialized-plan relocation"]
-        DATA["ldaca-data-rs<br/>ONI and RO-Crate conversion"]
-    end
-
-    WEB --> FRONTEND
-    DESKTOP --> FRONTEND
-    FRONTEND -->|"typed HTTP and SSE"| BACKEND
-    BACKEND --> TEXT
-    BACKEND --> DATA
-    BACKEND -->|"persistence boundaries only"| PATHS
-    BACKEND --> ROOT[("Data Root")]
-    BACKEND --> PROVIDERS["External identity and data providers"]
+    Desktop["Tauri project window"] --> Runtime["Axum ProjectRuntime"]
+    Browser["Rust browser preview"] --> Runtime
+    Runtime --> Database["DuckDB .wfpj"]
+    Runtime --> Data["ldaca-rs data"]
+    Adapter["polars-text adapter"] --> Core["ldaca-rs text and models"]
 ```
 
-## Runtime Flow
+- `backend/` owns native HTTP, execution and project persistence.
+- `frontend/` owns the shared interface, native controller and Tauri host.
+- `ldaca-rs/` provides independent text, model and data-access APIs.
+- `polars-text/` remains a supported adapter with its own Python tooling.
+- [archive/](../../archive/README.md) preserves the retired FastAPI backend,
+  Polars plan-storage utilities, Python environment and associated CI/packaging.
 
-1. The React client selects a Workspace and addresses backend resources by ID.
-2. The backend snapshots User Files into Source Data Blocks and persists the
-   Workspace graph.
-3. Tabs and Analyses persist as portable Workspace-owned resources; remote
-   collection downloads persist independently as user-owned User File Imports.
-4. Private schedulers select queued work fairly, and fresh worker processes
-   receive immutable Analysis inputs and write bounded Artifacts.
-5. Analysis completion may publish Derived Data Blocks through the Workspace
-   mutation boundary.
-6. The unified SSE stream carries revisioned resource refresh and live Progress
-   events; clients refetch authoritative REST resources.
+The old server components still used by shared frontend presentation remain in
+source. Their presence does not make the archived Python backend a maintained
+runtime. Legacy engineering pages remain references for future analysis work.
 
-In a hosted deployment, FastAPI normally serves the SPA on the same site. In a
-desktop deployment, Tauri launches the packaged Python runtime on a private
-loopback port and exposes its URL to the same SPA. The backend owns Data Root
-bootstrap and switching; Tauri contributes the native directory picker.
-
-## Dependency Direction
-
-The backend owns product state and HTTP contracts. The frontend consumes the
-exported OpenAPI schema. `polars-text` provides computation primitives, while
-`polars-source-utils` is used only at explicit serialized-plan persistence and
-relocation boundaries. `ldaca-data-rs` owns portal protocol and conversion;
-Wordflow owns credentials, import lifecycle and storage publication.
+See [native projects](backend/native-projects.md),
+[desktop architecture](frontend/desktop.md), and
+[package architecture](packages/ldaca-rs.md).

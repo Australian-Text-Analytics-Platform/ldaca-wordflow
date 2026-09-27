@@ -1,44 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { getUpdatePreferences, setAutomaticUpdateChecks } from './desktopUpdater';
 
 export function DesktopUpdateSettings() {
-  const [enabled, setEnabled] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    void getUpdatePreferences()
-      .then((preferences) => {
-        setEnabled(preferences.automaticChecks);
-      })
-      .catch(() => {
-        setError('Could not load desktop update preferences.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
-  }, []);
-
-  const setAutomaticChecks = async (nextEnabled: boolean) => {
-    const previous = enabled;
-    setEnabled(nextEnabled);
-    setSaving(true);
-    setError(null);
-    try {
-      const saved = await setAutomaticUpdateChecks(nextEnabled);
-      setEnabled(saved.automaticChecks);
-    } catch {
-      setEnabled(previous);
-      setError('Could not save desktop update preferences.');
-    } finally {
-      setSaving(false);
-    }
-  };
-
+  const cache = useQueryClient();
+  const preferences = useQuery({
+    queryKey: ['desktop', 'update-preferences'],
+    queryFn: getUpdatePreferences,
+  });
+  const update = useMutation({
+    mutationFn: setAutomaticUpdateChecks,
+    onSuccess: (value) => {
+      cache.setQueryData(['desktop', 'update-preferences'], value);
+    },
+  });
+  if (preferences.data === null) {
+    return (
+      <section className="space-y-3 border-t border-surface-border/60 pt-4">
+        <h3 className="text-body font-semibold">Desktop Updates</h3>
+        <p className="text-body text-description">Updates are disabled for this build.</p>
+      </section>
+    );
+  }
   return (
     <section className="space-y-3 border-t border-surface-border/60 pt-4">
       <div>
@@ -54,12 +39,13 @@ export function DesktopUpdateSettings() {
         <Switch
           id="settings-automatic-update-checks"
           aria-label="Automatically check for updates"
-          checked={enabled}
-          disabled={loading || saving}
-          onCheckedChange={(checked) => void setAutomaticChecks(checked)}
+          checked={preferences.data?.automaticChecks ?? false}
+          disabled={!preferences.data || update.isPending}
+          onCheckedChange={(checked) => {
+            update.mutate(checked);
+          }}
         />
       </div>
-      {error && <p className="text-label-secondary text-error">{error}</p>}
     </section>
   );
 }

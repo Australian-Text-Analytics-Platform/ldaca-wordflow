@@ -1,0 +1,577 @@
+import { useEffect, useRef, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
+import { useProgressiveContextualHints } from '@/features/guidance/useProgressiveContextualHints';
+import { useProjectData } from '@/features/project/common/hooks/useProjectData';
+import { useProjectStatus } from '@/features/project/common/hooks/useProjectStatus';
+import { useProjectActions } from '@/features/project/common/hooks/useProjectActions';
+import { useSchemaManagement } from '@/features/project/common/hooks/useSchemaManagement';
+
+import { arrowSchemaToFields } from '@/features/project/common/hooks/useSchemaManagement';
+import {
+  type ArrowField,
+  isArrowFloatField,
+  isArrowIntegerField,
+  isArrowTemporalField,
+} from '@/lib/arrow/decodeArrowTable';
+import { fetchNodeSchema } from '@/lib/nodeSchema';
+import AnalysisTaskBanner from '@/features/views/common/components/AnalysisTaskBanner';
+import { type AnalysisRequestOfKind, useAnalysisFeature } from '../common/hooks/useAnalysisFeature';
+import { ANALYSIS_TASK_TYPES } from '../common/analysisIds';
+import { nodeInputsFromSelections, useTabNodeInputs } from '../common/nodeInputs';
+import { getRerunActionState } from '../common/rerunActionState';
+import { hasClearRequiredAnalysis } from '../common/analysisActionLifecycle';
+import { hasParameterDiff } from '../common/parameterComparison';
+import { getAnalysisResultResource } from '../common/analysisApi';
+import { AnalysisCardLayout } from '../common/components/AnalysisCardLayout';
+import { useSequentialAnalysisTaskFlow } from './hooks/useSequentialAnalysisTaskFlow';
+import { buildSequentialChartExportMetadata } from './hooks/sequentialChartExport';
+import { buildSequentialChartModel, type ChartTypeOption } from './hooks/sequentialChartModel';
+import {
+  deriveSequentialParameterValues,
+  readSequentialServerParams,
+  useSequentialAnalysisParameters,
+  type SequentialHydratedParams,
+} from './hooks/useSequentialAnalysisParameters';
+import { useSequentialChartControls } from './hooks/useSequentialChartControls';
+import { SequentialAnalysisParameterPanel } from './components/panels/SequentialAnalysisParameterPanel';
+import { SequentialAnalysisResultsPanel } from './components/panels/SequentialAnalysisResultsPanel';
+import { SequentialAddToProjectDialog } from './components/SequentialAddToProjectDialog';
+import type { AddToProjectSelection } from '../common/components/AddToProjectDialog';
+import { buildSequentialDataBlockCreationRequest } from './sequentialDataBlockCreation';
+import { ChartImageDownloadDialog } from '@/components/ui/ChartImageDownloadDialog';
+import { downloadChartAs, findSvgInContainer, type ChartImageFormat } from '@/lib/chartExport';
+import { DEFAULT_TAB_INPUT_SET_ID } from '@/features/views/common/tabs/tabStateOps';
+import type { AnalysisTabFeatureProps } from '@/features/views/common/tabs/AnalysisTabsHost';
+import type { SequentialAnalysisResponse } from '@/api';
+
+const isTimeCompatibleField = (field: ArrowField): boolean =>
+  isArrowTemporalField(field) || isArrowIntegerField(field) || isArrowFloatField(field);
+
+/**
+ * Renders the sequential-analysis workflow for live trends and result exploration.
+ *
+ * Rendered by: the viewComponents tabbed loader, which mounts one instance per analysis tab and feeds it tab props.
+ * Flow: read project/tab state, derive inputs and analysis parameters, wire hydration/run/clear callbacks, then render controls and results.
+ *
+ * The required host supplies normalized task/input state and closure-bound
+ * persistence commands for the active tab; this feature has no standalone or
+ * optional-tab compatibility path.
+ */
+const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
+  const {
+    latestRunAll,
+    activeAnalysis,
+    analyses,
+    refreshAnalyses,
+    inputSets: tabInputSets,
+    setInputSet: onTabInputSetChange,
+  } = host;
+  const tabTaskId = latestRunAll?.id ?? null;
+  const queryClient = useQueryClient();
+  const { currentProjectId } = useProjectData();
+  const { createResultDataBlocks } = useProjectActions();
+  const { isLoading } = useProjectStatus();
+
+  const nodeInputs = useTabNodeInputs({
+    tabInputSets,
+    onTabInputSetChange,
+    constraints: {
+      fieldPredicate: isTimeCompatibleField,
+      maxNodes: 1,
+      docTypeOnly: false,
+    },
+  });
+  const nodeColumnSelections = nodeInputs.nodeColumnSelections;
+  const setNodeColumnSelection = nodeInputs.setColumn;
+  const panelSelectedNodes = nodeInputs.selectedNodes;
+  const activeNodeId = nodeInputs.resolvedNodes[0]?.id ?? '';
+  const applyInputsFromSelections = (selections: { nodeId: string; column?: string | null }[]) => {
+    onTabInputSetChange(DEFAULT_TAB_INPUT_SET_ID, nodeInputsFromSelections(selections));
+  };
+  const sequentialParameters = useSequentialAnalysisParameters();
+  const {
+    timeColumn,
+    setTimeColumn,
+    groupByColumns,
+    frequency,
+    setFrequency,
+    numericOriginInput,
+    setNumericOriginInput,
+    numericIntervalInput,
+    setNumericIntervalInput,
+    customIntervalValueInput,
+    setCustomIntervalValueInput,
+    customIntervalUnit,
+    setCustomIntervalUnit,
+  } = sequentialParameters;
+  const savedChartType = host.settings['sequential.chartType'];
+  const [chartType, setChartTypeState] = useState<ChartTypeOption>(
+    savedChartType === 'bar' || savedChartType === 'area' ? savedChartType : 'line',
+  );
+  const [addToProjectDialogOpen, setAddToProjectDialogOpen] = useState(false);
+  const [isAddingToProject, setIsAddingToProject] = useState(false);
+  const setChartType = (value: ChartTypeOption) => {
+    setChartTypeState(value);
+    host.setSetting('sequential.chartType', value);
+  };
+  const chartControls = useSequentialChartControls(tabTaskId);
+  const {
+    xAxisType,
+    setXAxisType,
+    uncasedGroups,
+    excludedGroupIndices,
+    minimumGroupCount,
+    downloadDialogOpen,
+    setDownloadDialogOpen,
+    selectedPeriodIndices,
+  } = chartControls;
+  const chartContainerRef = useRef<HTMLDivElement | null>(null);
+
+  // Use schema management hook
+  const { setLockedSchema, availableColumns, lockCurrentSchema } = useSchemaManagement({
+    nodeId: activeNodeId,
+    isLocked: false,
+    projectId: currentProjectId ?? undefined,
+  });
+
+  const [hydratingSelection, setHydratingSelection] = useState(false);
+  const hydratedParamsRef = useRef<SequentialHydratedParams | null>(null);
+
+  const {
+    request: serverRequest,
+    isRunning: isAnalyzing,
+    isStopping,
+    runAnalysis,
+    banner: sequentialWaitingBanner,
+    taskStatus,
+    clearResults,
+    stopTask,
+    result: results,
+  } = useAnalysisFeature<SequentialAnalysisResponse, AnalysisRequestOfKind<'sequential'>>({
+    taskType: ANALYSIS_TASK_TYPES.sequential,
+    projectId: currentProjectId,
+    tabId: host.tabId,
+    // The forest's newest Run All Analysis wins hydration over transient
+    // submission state.
+    hydrationTaskId: tabTaskId,
+    controlAnalysisId: activeAnalysis?.id ?? null,
+    tabAnalysisIds: analyses.map((analysis) => analysis.id),
+    // Loads the latest sequential-analysis result for polling and task resumption.
+    fetchResult: async (taskId) => {
+      if (!currentProjectId) throw new Error('No project selected');
+      return getAnalysisResultResource<SequentialAnalysisResponse>(currentProjectId, taskId);
+    },
+    // Restores sequential request parameters, selection lock, and schema after reload.
+    // Called by: useAnalysisFeature hydration because Trends restores must rebuild time-column selection, bucket settings, grouping columns, and case handling from the submitted request. Flow: unwrap request data, apply numeric or datetime controls, restore node/group selections, then release hydration state.
+    onRequest: async (request) => {
+      setHydratingSelection(true);
+      try {
+        const hydrated = sequentialParameters.applyHydratedRequest(request);
+        const nodeIdStr = hydrated.nodeId;
+        onTabInputSetChange(DEFAULT_TAB_INPUT_SET_ID, [
+          { node_id: request.node_id, column: request.time_column },
+        ]);
+        hydratedParamsRef.current = hydrated.hydratedParams;
+        if (nodeIdStr && currentProjectId) {
+          const schema = await fetchNodeSchema({
+            queryClient,
+            projectId: currentProjectId,
+            nodeId: nodeIdStr,
+          });
+          setLockedSchema(arrowSchemaToFields(schema));
+        }
+      } finally {
+        setHydratingSelection(false);
+      }
+    },
+    // Clears sequential-specific state after the shared lifecycle removes the task result.
+    onCleared: () => {
+      chartControls.resetAfterClear();
+      // Refresh the canonical forest; curated inputs remain in the Tab draft.
+      refreshAnalyses();
+      setLockedSchema(null);
+    },
+  });
+
+  const timeCompatibleColumns = availableColumns
+    .filter(
+      (column) =>
+        isArrowTemporalField(column.field) ||
+        isArrowIntegerField(column.field) ||
+        isArrowFloatField(column.field),
+    )
+    .sort((a, b) => {
+      // Prioritizes datetime columns before numeric fallbacks in the default selector.
+      /**
+       * Called by the selectable-column sort comparator below.
+       */
+      return Number(!isArrowTemporalField(a.field)) - Number(!isArrowTemporalField(b.field));
+    });
+
+  const timeColumnOptions = timeCompatibleColumns.map((column) => column.name);
+
+  const activeTimeColumn = (() => {
+    if (!activeNodeId) return '';
+    const selection = nodeColumnSelections.find((s) => s.nodeId === activeNodeId);
+    if (selection?.column) return selection.column;
+    if (timeColumn) return timeColumn;
+    return '';
+  })();
+
+  const activeColumnInfo = timeCompatibleColumns.find((column) => column.name === activeTimeColumn);
+  const activeColumnField = activeColumnInfo?.field ?? timeCompatibleColumns[0]?.field;
+  const derivedColumnType: 'datetime' | 'numeric' =
+    activeColumnField &&
+    (isArrowIntegerField(activeColumnField) || isArrowFloatField(activeColumnField))
+      ? 'numeric'
+      : 'datetime';
+  const {
+    numericOriginValue,
+    numericIntervalValue,
+    customIntervalValue,
+    customIntervalUnitValue,
+    currentSequentialParams,
+  } = deriveSequentialParameterValues(sequentialParameters, derivedColumnType);
+
+  const lastRunRequest = serverRequest ?? null;
+  const serverNodeId =
+    lastRunRequest && typeof lastRunRequest.node_id === 'string' ? lastRunRequest.node_id : '';
+  const serverColumn = lastRunRequest ? lastRunRequest.time_column : '';
+  const resultNodeId = serverNodeId || activeNodeId;
+  const resultNodeInfo = resultNodeId ? nodeInputs.nodeInfoById[resultNodeId] : null;
+  const currentRequestSignature = {
+    ...currentSequentialParams,
+    node_id: activeNodeId,
+    time_column: activeTimeColumn,
+  };
+  const hasParamsChanged = !lastRunRequest
+    ? true
+    : hasParameterDiff(currentRequestSignature, {
+        ...readSequentialServerParams(lastRunRequest),
+        node_id: serverNodeId,
+        time_column: serverColumn,
+      });
+
+  const parametersLocked = isAnalyzing || Boolean(activeAnalysis);
+  const requiresClear = hasClearRequiredAnalysis(analyses);
+  const actionState = getRerunActionState({
+    hasProject: Boolean(currentProjectId),
+    isRunnable: Boolean(activeNodeId),
+    hasAttachedAnalysis: Boolean(tabTaskId),
+    hasAnyAnalysis: analyses.length > 0,
+    analysisState: taskStatus.tasks[0]?.state ?? null,
+    hasChanges: hasParamsChanged,
+    requiresClear,
+    isBusy: parametersLocked,
+  });
+
+  useEffect(() => {
+    if (hydratingSelection) return;
+    const selection = nodeColumnSelections.find((s) => s.nodeId === activeNodeId);
+    // Empty selected/option column names must fall through to the next source, so
+    // logical-OR (not nullish) is intentional here.
+    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+    const nextColumn = selection?.column || timeColumnOptions[0] || '';
+    if (nextColumn && nextColumn !== timeColumn) {
+      const id = requestAnimationFrame(() => {
+        setTimeColumn(nextColumn);
+      });
+      return () => {
+        cancelAnimationFrame(id);
+      };
+    }
+  }, [
+    hydratingSelection,
+    activeNodeId,
+    timeColumnOptions,
+    nodeColumnSelections,
+    timeColumn,
+    setTimeColumn,
+  ]);
+
+  const { handleAnalyze, handleClearResults, handleChartTypeChange } =
+    useSequentialAnalysisTaskFlow({
+      state: {
+        currentProjectId,
+        tabId: host.tabId,
+        activeNodeId,
+        nodeColumnSelections,
+        timeColumn,
+        groupByColumns,
+        frequency,
+        derivedColumnType,
+        numericOriginValue,
+        numericIntervalValue,
+        numericOriginInput,
+        customIntervalValue,
+        customIntervalUnit: customIntervalUnitValue,
+      },
+      actions: {
+        runAnalysis,
+        setChartType,
+        setNodeColumnSelections: (selections) => {
+          applyInputsFromSelections(selections);
+        },
+        setTimeColumn,
+        lockCurrentSchema,
+        clearResults,
+      },
+    });
+
+  const handleRunOrUpdate = async () => {
+    await handleAnalyze();
+  };
+
+  useProgressiveContextualHints([
+    CONTEXTUAL_HINT_IDS.trends.inputs,
+    ...(!actionState.runDisabled && activeTimeColumn ? [CONTEXTUAL_HINT_IDS.trends.run] : []),
+    ...(results ? [CONTEXTUAL_HINT_IDS.trends.results] : []),
+  ]);
+
+  const chartModel = buildSequentialChartModel({
+    results,
+    parameters: serverRequest,
+    fallbacks: {
+      timeColumn,
+      groupBy: groupByColumns,
+      columnType: derivedColumnType,
+      numericOrigin: numericOriginValue ?? null,
+      numericInterval: numericIntervalValue ?? null,
+      frequency,
+      customIntervalValue,
+      customIntervalUnit: customIntervalUnitValue,
+    },
+    chartType,
+    xAxisType,
+    minimumGroupCount,
+    uncased: uncasedGroups,
+    excludedGroupIndices,
+    selectedPeriodIndices,
+  });
+  const { summary } = chartModel;
+
+  const resultsSummary = summary.timeColumn
+    ? summary.columnType === 'numeric'
+      ? `Numeric bin counts for ${summary.timeColumn}`
+      : `Frequency of records grouped by ${summary.timeColumn}`
+    : 'Aggregated frequency over time';
+
+  const handleAddToProject = async (selection: AddToProjectSelection) => {
+    if (!tabTaskId || !results?.source) return;
+    setIsAddingToProject(true);
+    try {
+      await createResultDataBlocks(
+        host.tabId,
+        tabTaskId,
+        buildSequentialDataBlockCreationRequest(
+          selection,
+          chartModel.selection.selectedPeriodIds,
+          chartModel.excludedGroupIndices,
+        ),
+      );
+      setAddToProjectDialogOpen(false);
+      toast.success('Adding the Trends selection to the Project.');
+    } catch (cause) {
+      toast.error('Could not add the Trends selection.', {
+        description: cause instanceof Error ? cause.message : String(cause),
+      });
+    } finally {
+      setIsAddingToProject(false);
+    }
+  };
+
+  // Exports the rendered chart SVG with contextual title and legend metadata.
+  /**
+   * Passed to the results panel as its chart-download handler.
+   * Flow: validate the rendered chart, derive export metadata, then save the requested image format.
+   */
+  const handleDownloadChart = async (format: ChartImageFormat) => {
+    if (!chartContainerRef.current) {
+      toast.error('Chart not available for export.');
+      return;
+    }
+    const svg = findSvgInContainer(chartContainerRef.current);
+    if (!svg) {
+      toast.error('Chart SVG not found.');
+      return;
+    }
+    const nodeName =
+      resultNodeInfo?.name ?? panelSelectedNodes[0]?.name ?? panelSelectedNodes[0]?.id ?? 'data';
+    const { header, legend } = buildSequentialChartExportMetadata({
+      nodeName,
+      model: chartModel,
+    });
+    try {
+      await downloadChartAs(svg, {
+        nodeName,
+        toolSuffix: 'trends',
+        format,
+        header,
+        legend,
+      });
+    } catch (err) {
+      toast.error('Failed to export chart.');
+      console.error(err);
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      <AnalysisCardLayout
+        title="Trends and Sequence"
+        info={{
+          targetKey: 'sequential-analysis.overview',
+          label: 'About Sequential Analysis',
+          tooltip: 'Learn what sequential analysis is and how it can help you.',
+        }}
+        help={{
+          targetKey: 'analysis.sequential-analysis.parameters',
+          label: 'Sequential analysis parameters',
+          tooltip: 'Select a time column, choose frequency, and configure group-by options.',
+        }}
+        actions={{
+          // Routes the Run button through live sequential analysis.
+          onRunAll: () => {
+            void handleRunOrUpdate();
+          },
+          // Stops the active sequential-analysis task from the shared layout action.
+          onStop: activeAnalysis
+            ? () => {
+                void stopTask();
+              }
+            : undefined,
+          // Clears live sequential-analysis results from the shared layout action.
+          onClear: () => {
+            void handleClearResults();
+          },
+          runAllDisabled:
+            parametersLocked ||
+            actionState.runDisabled ||
+            isLoading.operations ||
+            !activeTimeColumn,
+          runAllDisabledReason: (() => {
+            if (isAnalyzing || isLoading.operations) return undefined;
+            if (actionState.runDisabledReason) return actionState.runDisabledReason;
+            if (!activeTimeColumn) return 'Select a time column to run';
+            return undefined;
+          })(),
+          clearDisabled: actionState.clearDisabled,
+          clearDisabledReason: actionState.clearDisabledReason,
+          isRunningAll: isAnalyzing,
+          isStopping,
+          runAllLabel: 'Run',
+          clearHelp: {
+            targetKey: 'analysis.sequential-analysis.clear-results',
+            label: 'Clear results',
+          },
+        }}
+        actionsGuidanceTarget="trends-actions"
+        parametersLocked={parametersLocked}
+      >
+        <SequentialAnalysisParameterPanel
+          nodeInputs={nodeInputs}
+          onColumnChange={(nodeId, column) => {
+            setNodeColumnSelection(nodeId, column);
+            setTimeColumn(column);
+          }}
+          derivedColumnType={derivedColumnType}
+          inputsDisabled={isAnalyzing || isLoading.operations || !activeNodeId}
+          activeNodeId={activeNodeId}
+          selectedNodeId={activeNodeId}
+          currentProjectId={currentProjectId}
+          frequency={frequency}
+          onFrequencyChange={setFrequency}
+          customIntervalValueInput={customIntervalValueInput}
+          onCustomIntervalValueChange={setCustomIntervalValueInput}
+          customIntervalUnit={customIntervalUnit}
+          onCustomIntervalUnitChange={setCustomIntervalUnit}
+          numericOriginInput={numericOriginInput}
+          onNumericOriginChange={setNumericOriginInput}
+          numericIntervalInput={numericIntervalInput}
+          onNumericIntervalChange={setNumericIntervalInput}
+          availableColumns={availableColumns}
+          groupByColumns={groupByColumns}
+          onAddGroupByColumn={sequentialParameters.addGroupByColumn}
+          onRemoveGroupByColumn={sequentialParameters.removeGroupByColumn}
+          onGroupByColumnChange={sequentialParameters.changeGroupByColumn}
+        />
+      </AnalysisCardLayout>
+
+      {sequentialWaitingBanner && (
+        <AnalysisTaskBanner
+          analysisName="Trends and Sequence"
+          status={sequentialWaitingBanner.status}
+          taskId={sequentialWaitingBanner.taskId}
+          message={sequentialWaitingBanner.message}
+          className="mt-4"
+        />
+      )}
+
+      {results && (
+        <SequentialAnalysisResultsPanel
+          resultsSummary={resultsSummary}
+          model={chartModel}
+          minimumGroupCount={minimumGroupCount}
+          onMinimumGroupCountChange={chartControls.setMinimumGroupCount}
+          onChartTypeChange={(value) => {
+            handleChartTypeChange(value);
+          }}
+          onXAxisTypeChange={setXAxisType}
+          onDownloadClick={() => {
+            setDownloadDialogOpen(true);
+          }}
+          onAddToProject={() => {
+            setAddToProjectDialogOpen(true);
+          }}
+          addToProjectDisabled={chartModel.eligibleDocumentCount === 0}
+          dataResetKey={tabTaskId ?? 'trends-result'}
+          onToggleGroupIndices={chartControls.toggleGroupIndices}
+          onUncasedChange={chartControls.setUncasedGroups}
+          onPeriodClick={(index, shiftHeld) => {
+            chartControls.selectPeriod(index, shiftHeld, chartModel.chartData.length);
+          }}
+          onPeriodRangeSelect={(startIndex, endIndex, shiftHeld) => {
+            chartControls.selectPeriodRange(
+              startIndex,
+              endIndex,
+              shiftHeld,
+              chartModel.chartData.length,
+            );
+          }}
+          onClearSelection={chartControls.clearPeriodSelection}
+          containerRef={chartContainerRef}
+        />
+      )}
+      <ChartImageDownloadDialog
+        open={downloadDialogOpen}
+        onOpenChange={setDownloadDialogOpen}
+        title="Download Trends Chart"
+        onConfirm={(format) => {
+          void handleDownloadChart(format);
+        }}
+      />
+      {results?.source ? (
+        <SequentialAddToProjectDialog
+          open={addToProjectDialogOpen}
+          onOpenChange={setAddToProjectDialogOpen}
+          source={results.source}
+          axisColumn={summary.timeColumn}
+          groupByColumns={summary.groupBy}
+          filterSummary={
+            chartModel.selection.selectedCount > 0
+              ? `${String(chartModel.eligibleDocumentCount)} source rows in ${String(chartModel.selection.selectedCount)} selected period${chartModel.selection.selectedCount === 1 ? '' : 's'} and the visible groups`
+              : `${String(chartModel.eligibleDocumentCount)} source rows across all periods and the visible groups`
+          }
+          isSubmitting={isAddingToProject}
+          onSubmit={(selection) => {
+            void handleAddToProject(selection);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+};
+
+export default SequentialAnalysisFeature;

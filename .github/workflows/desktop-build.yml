@@ -17,11 +17,6 @@ on:
         required: false
         type: boolean
         default: false
-      no_sources:
-        description: "Use PyPI wheels instead of checked-out polars packages"
-        required: false
-        type: boolean
-        default: false
   workflow_dispatch:
     inputs:
       platform:
@@ -40,11 +35,6 @@ on:
         required: false
         type: boolean
         default: false
-      no_sources:
-        description: "Use PyPI wheels instead of checked-out polars packages"
-        required: false
-        type: boolean
-        default: false
 
 permissions:
   contents: read
@@ -52,11 +42,9 @@ permissions:
 jobs:
   build:
     name: Build ${{ inputs.platform }}
-    runs-on: ${{ inputs.platform == 'windows' && 'windows-latest' || 'macos-latest' }}
+    runs-on: ${{ inputs.platform == 'windows' && 'windows-2022' || 'macos-15' }}
     env:
       CI: "true"
-      PYTHONUTF8: ${{ inputs.platform == 'windows' && '1' || '' }}
-      PYTHONIOENCODING: ${{ inputs.platform == 'windows' && 'utf-8' || '' }}
       TAURI_PROFILE: ${{ inputs.platform == 'windows' && inputs.debug && 'debug' || 'release' }}
       COPYFILE_DISABLE: ${{ inputs.platform == 'macos' && '1' || '' }}
 
@@ -100,14 +88,8 @@ jobs:
         with:
           node-version: 24
 
-      - name: Set up Rust nightly for backend extension builds
-        uses: dtolnay/rust-toolchain@nightly
-
       - name: Set up stable Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install uv CLI
-        uses: astral-sh/setup-uv@v9.0.0
 
       - name: Install Node dependencies
         shell: bash
@@ -115,31 +97,6 @@ jobs:
           set -Eeuo pipefail
           corepack enable
           pnpm install --frozen-lockfile
-
-      - name: Validate desktop supervisor and runtime contract
-        shell: bash
-        working-directory: frontend
-        run: |
-          set -Eeuo pipefail
-          node --test ../scripts/prepare-backend-runtime.test.mjs
-          node --test scripts/stage-backend-runtime.test-node.mjs
-          pnpm exec vitest run scripts/desktop-contract.test.mjs src/lib/download.test.ts
-          cargo fmt --manifest-path src-tauri/Cargo.toml --check
-          cargo test --manifest-path src-tauri/Cargo.toml --lib
-          cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
-
-      - name: Prepare backend runtime
-        shell: bash
-        working-directory: frontend
-        env:
-          NO_SOURCES: ${{ inputs.no_sources }}
-        run: |
-          set -Eeuo pipefail
-          args=()
-          if [ "$NO_SOURCES" = "true" ]; then
-            args+=(--no-sources)
-          fi
-          pnpm prepare:backend-runtime "${args[@]}"
 
       - name: Require updater signing key
         shell: bash
@@ -163,9 +120,9 @@ jobs:
           Set-StrictMode -Version Latest
           [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           if ($env:TAURI_BUILD_FLAGS) {
-            pnpm tauri:build $env:TAURI_BUILD_FLAGS
+            pnpm tauri:build $env:TAURI_BUILD_FLAGS -- --locked
           } else {
-            pnpm tauri:build
+            pnpm tauri:build -- --locked
           }
 
       - name: Import Apple code-signing certificate
@@ -180,7 +137,7 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          test "$(uname -m)" = "arm64" || { echo "macos-latest must be Apple Silicon" >&2; exit 1; }
+          test "$(uname -m)" = "arm64" || { echo "macOS runner must be Apple Silicon" >&2; exit 1; }
 
       - name: Build macOS application bundle
         if: inputs.platform == 'macos'
@@ -190,9 +147,9 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: pnpm tauri:build --bundles app --target aarch64-apple-darwin
+        run: pnpm tauri:build --bundles app --target aarch64-apple-darwin -- --locked
 
-      - name: Deep-sign embedded backend runtime and application
+      - name: Sign the native application
         if: inputs.platform == 'macos'
         shell: bash
         working-directory: frontend
@@ -200,23 +157,11 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -Eeuo pipefail
-          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
-          runtime="$app_path/Contents/Resources/backend-runtime"
+          app_path="../target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
           bundle_id="$(node -p "require('./src-tauri/tauri.conf.json').identifier")"
 
-          test -d "$runtime" || { echo "backend-runtime missing inside .app" >&2; exit 1; }
           xattr -cr "$app_path"
           find "$app_path" -type f -name "._*" -delete
-
-          signed_count=0
-          while IFS= read -r -d '' file_path; do
-            if file -b "$file_path" | grep -qE '^Mach-O'; then
-              codesign --force --options runtime --timestamp \
-                --sign "$APPLE_SIGNING_IDENTITY" "$file_path"
-              signed_count=$((signed_count + 1))
-            fi
-          done < <(find "$runtime" -type f -print0)
-          echo "Signed $signed_count Mach-O files inside backend-runtime"
 
           codesign --remove-signature "$app_path/Contents/MacOS/ldaca-wordflow"
           codesign --force --options runtime --timestamp \
@@ -235,7 +180,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -Eeuo pipefail
-          app_path="src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="../target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
           zip_path="$(mktemp -d)/ldaca-wordflow.zip"
           log_path="$(mktemp)"
           ditto -c -k --keepParent "$app_path" "$zip_path"
@@ -274,10 +219,9 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -Eeuo pipefail
-          bundle_root="src-tauri/target/aarch64-apple-darwin/release/bundle"
+          bundle_root="../target/aarch64-apple-darwin/release/bundle"
           updater_dir="$bundle_root/updater"
-          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          archive="$updater_dir/ldaca-wordflow_${version}_darwin-aarch64.app.tar.gz"
+          archive="$updater_dir/ldaca-wordflow_darwin-aarch64.app.tar.gz"
           mkdir -p "$updater_dir"
           tar -C "$bundle_root/macos" -czf "$archive" "LDaCA Wordflow.app"
           pnpm tauri signer sign "$archive"
@@ -292,11 +236,10 @@ jobs:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
         run: |
           set -Eeuo pipefail
-          bundle_root="src-tauri/target/aarch64-apple-darwin/release/bundle"
+          bundle_root="../target/aarch64-apple-darwin/release/bundle"
           app_path="$bundle_root/macos/LDaCA Wordflow.app"
           dmg_dir="$bundle_root/dmg"
-          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
-          dmg_path="$dmg_dir/ldaca-wordflow_${version}_darwin-aarch64.dmg"
+          dmg_path="$dmg_dir/ldaca-wordflow_darwin-aarch64.dmg"
           stage_dir="$(mktemp -d)"
           mkdir -p "$dmg_dir"
           ditto "$app_path" "$stage_dir/LDaCA Wordflow.app"
@@ -342,7 +285,7 @@ jobs:
           EXPECTED_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           set -Eeuo pipefail
-          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
+          app_path="$PWD/../target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
           codesign_output="$(mktemp)"
           gatekeeper_output="$(mktemp)"
           codesign -dvv "$app_path" 2>&1 | tee "$codesign_output"
@@ -351,36 +294,6 @@ jobs:
           spctl --assess --verbose=4 --type execute "$app_path" 2>&1 | tee "$gatekeeper_output"
           grep -q "source=Notarized Developer ID" "$gatekeeper_output"
 
-      - name: Validate bundled Windows backend runtime
-        if: inputs.platform == 'windows'
-        shell: pwsh
-        run: |
-          Set-StrictMode -Version Latest
-          $runtimeDir = "frontend\src-tauri\target\$env:TAURI_PROFILE\backend-runtime"
-          if (-not (Test-Path (Join-Path $runtimeDir "runtime-manifest.json"))) {
-            Write-Error "runtime-manifest.json missing from bundled runtime"
-            exit 1
-          }
-          $env:LDACA_TEST_RUNTIME_ROOT = (Resolve-Path $runtimeDir).Path
-          cargo test `
-            --manifest-path frontend/src-tauri/Cargo.toml `
-            packaged_runtime_matches_launcher_environment `
-            -- --ignored
-
-      - name: Validate bundled macOS backend runtime
-        if: inputs.platform == 'macos'
-        shell: bash
-        working-directory: frontend
-        run: |
-          set -Eeuo pipefail
-          app_path="$PWD/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/LDaCA Wordflow.app"
-          runtime_path="$app_path/Contents/Resources/backend-runtime"
-          test -f "$runtime_path/runtime-manifest.json"
-          test -f "$runtime_path/python/lib/libpython3.14.dylib"
-          LDACA_TEST_RUNTIME_ROOT="$runtime_path" \
-            cargo test --manifest-path src-tauri/Cargo.toml \
-            packaged_runtime_matches_launcher_environment -- --ignored
-
       - name: Stage Windows release artifacts
         if: inputs.platform == 'windows'
         shell: pwsh
@@ -388,15 +301,14 @@ jobs:
         run: |
           Set-StrictMode -Version Latest
           $profile = if ($env:TAURI_PROFILE) { $env:TAURI_PROFILE } else { "release" }
-          $bundleDir = "src-tauri\target\$profile\bundle\msi"
-          $outputDir = "src-tauri\target\$profile\release-assets"
-          $version = (Get-Content "src-tauri\tauri.conf.json" | ConvertFrom-Json).version
+          $bundleDir = "..\target\$profile\bundle\msi"
+          $outputDir = "..\target\$profile\release-assets"
           $source = Get-ChildItem -Path $bundleDir -Filter "*.msi" | Select-Object -First 1
           if (-not $source -or -not (Test-Path "$($source.FullName).sig")) {
             throw "Signed Windows updater artifact is missing"
           }
           New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
-          $destination = Join-Path $outputDir "ldaca-wordflow_${version}_windows-x86_64.msi"
+          $destination = Join-Path $outputDir "ldaca-wordflow_windows-x86_64.msi"
           Copy-Item $source.FullName $destination -Force
           Copy-Item "$($source.FullName).sig" "$destination.sig" -Force
 
@@ -405,7 +317,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: ldaca-desktop-windows-msi${{ inputs.debug && '-debug' || '' }}
-          path: frontend/src-tauri/target/${{ inputs.debug && 'debug' || 'release' }}/release-assets/*
+          path: target/${{ inputs.debug && 'debug' || 'release' }}/release-assets/*
           if-no-files-found: error
           retention-days: 14
 
@@ -415,9 +327,9 @@ jobs:
         with:
           name: ldaca-desktop-macos-apple-silicon
           path: |
-            frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz
-            frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz.sig
+            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
+            target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz
+            target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz.sig
           if-no-files-found: error
           retention-days: 14
 
@@ -427,7 +339,7 @@ jobs:
         working-directory: frontend
         run: |
           set -Eeuo pipefail
-          app_dir="src-tauri/target/aarch64-apple-darwin/release/bundle/macos"
+          app_dir="../target/aarch64-apple-darwin/release/bundle/macos"
           if [ -d "$app_dir/LDaCA Wordflow.app" ]; then
             tar -C "$app_dir" -czf /tmp/ldaca-wordflow-app.tgz "LDaCA Wordflow.app"
           fi

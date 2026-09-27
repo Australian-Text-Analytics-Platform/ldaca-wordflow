@@ -1,0 +1,31 @@
+{
+  "app": {
+    "withGlobalTauri": true,
+    "security": {
+      "capabilities": [
+        "default",
+        "updater",
+        {
+          "identifier": "native-tests",
+          "windows": [
+            "project-*"
+          ],
+          "permissions": [
+            "wdio:default",
+            "core:window:allow-close",
+            "core:window:allow-set-focus"
+          ]
+        }
+      ]
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": []
+    }
+  },
+  "build": {
+    "beforeBuildCommand": "pnpm exec tsc --noEmit && pnpm exec vite build --mode e2e --outDir .tmp/e2e-build",
+    "frontendDist": "../.tmp/e2e-build"
+  }
+}

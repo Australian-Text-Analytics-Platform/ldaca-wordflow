@@ -1,34 +1,29 @@
 # Frontend Configuration Reference
 
-**Scope statement:** This page summarizes the environment variables used by the frontend.
+The current application uses the Rust project backend by default. No `.env`
+file, experimental mode, backend selector or saved backend URL is required.
 
-## Build‑time variables
+## Development ports
 
-**Question:** *Which variables are read by the dev server?*
+Set shell environment variables when starting the root development command:
 
-**Answer:**
+```sh
+FRONTEND_PORT=4000 VITE_BACKEND_PORT=8003 pnpm dev
+```
 
-- `FRONTEND_PORT` — sets the normal web dev/preview port. Tauri development has
-  a fixed strict `127.0.0.1:3001` contract so its configured URL cannot drift.
+Defaults are frontend port 3000 and Rust backend port 8002. The browser uses
+same-origin `/api/project` and `/health` requests; Vite proxies them to Rust.
+Vite binds loopback and refuses an occupied port.
 
-## Runtime variables
+`pnpm dev:desktop` uses the fixed Vite origin `http://127.0.0.1:3001` and
+separate ephemeral embedded-backend ports discovered through Tauri IPC.
 
-**Question:** *Which variables are available in the browser?*
+## Optional build variables
 
-**Answer:**
+- `VITE_DOCS_ORIGIN`: online documentation root, with bundled documentation as
+  fallback. May be set in `.env.local` during development.
+- `VITE_DEPLOYMENT_ID`: deployment label displayed in Feedback.
 
-- `VITE_BACKEND_PORT` — backend port override.
-- `VITE_BACKEND_API_BASE` — full backend URL override.
-- `VITE_GOOGLE_CLIENT_ID` — OAuth client ID.
-
-## Auto‑detection behavior
-
-**Question:** *What happens if I set nothing?*
-
-**Answer:** The frontend defaults to localhost in dev and `/api` in production, with JupyterHub/Binder proxy detection.
-
-## Recap
-
-**Question:** *Where can I see these in action?*
-
-**Answer:** The running‑UI guide shows how to override ports and base URLs.
+App version, build revision and build date are supplied by Vite from the
+package and checkout. The retired FastAPI OAuth and API-base settings do not
+configure the current project interface.

@@ -9,7 +9,7 @@ export type ColorTheme = typeof LIGHT_THEME | typeof DARK_THEME;
 const listeners = new Set<() => void>();
 let activeTheme: ColorTheme = readThemeFromDocument();
 
-export function isColorTheme(value: unknown): value is ColorTheme {
+function isColorTheme(value: unknown): value is ColorTheme {
   return value === LIGHT_THEME || value === DARK_THEME;
 }
 

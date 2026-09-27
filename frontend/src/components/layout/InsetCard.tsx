@@ -8,7 +8,7 @@ export interface InsetCardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * Ref-forwarding card shell used by workspace split panes. It mirrors the
+ * Ref-forwarding card shell used by project split panes. It mirrors the
  * sidebar inset treatment so graph/table cards keep bounded flat surfaces and
  * rounded-sm corners inside overflow-constrained layout parents.
  */

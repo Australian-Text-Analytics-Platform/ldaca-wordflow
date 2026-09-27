@@ -1,0 +1,1087 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import React from 'react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { listFeaturedDataPortalCollections } from '@/api';
+import type { FileTreeNode } from '@/features/views/data-loader/types';
+import { ProjectDownloadsProvider } from '@/features/project/project-downloads/ProjectDownloadsProvider';
+import DataLoaderFeature from '../DataLoaderFeature';
+
+const {
+  mockCreateProject,
+  mockSetCurrentProject,
+  mockDeleteProject,
+  mockUpdateProjectDescription,
+  mockUploadFileAtPath,
+  mockCreateUploadDirectory,
+  mockGetUploadResource,
+  mockRefreshFiles,
+  mockHandleDeleteFile,
+  mockRawFile,
+  mockCreateFolder,
+  mockMoveFile,
+  mockListFeaturedDataPortalCollections,
+  mockImportProjectArchive,
+  mockPublishContextualHints,
+  mockToast,
+} = vi.hoisted(() => ({
+  mockCreateProject: vi.fn(),
+  mockSetCurrentProject: vi.fn(),
+  mockDeleteProject: vi.fn(),
+  mockUpdateProjectDescription: vi.fn(),
+  mockUploadFileAtPath: vi.fn(),
+  mockCreateUploadDirectory: vi.fn(),
+  mockGetUploadResource: vi.fn(),
+  mockRefreshFiles: vi.fn(),
+  mockHandleDeleteFile: vi.fn(),
+  mockRawFile: vi.fn(),
+  mockCreateFolder: vi.fn(),
+  mockMoveFile: vi.fn(),
+  mockListFeaturedDataPortalCollections: vi.fn(),
+  mockImportProjectArchive: vi.fn(),
+  mockPublishContextualHints: vi.fn(),
+  mockToast: vi.fn(),
+}));
+
+interface MockProjectState {
+  projects: {
+    id: string;
+    name: string;
+    description: string;
+    created_at: string;
+    modified_at: string;
+    total_nodes: number;
+  }[];
+  projectCatalogue?: (
+    | MockProjectState['projects'][number]
+    | {
+        availability: 'unavailable';
+        id: string;
+        reason: 'incompatible_format' | 'corrupt_snapshot' | 'configured_limit';
+        message: string;
+        name?: string | null;
+        description?: string | null;
+        created_at?: string | null;
+        modified_at?: string | null;
+        stored_data_schema_version?: number | null;
+        supported_data_schema_version?: number | null;
+      }
+  )[];
+  currentProjectId: string | null;
+  projectGraph: { nodes: unknown[] };
+}
+
+let mockProjectState: MockProjectState = {
+  projects: [
+    {
+      id: 'ws-1',
+      name: 'Main Project',
+      description: 'Initial project description',
+      created_at: '2024-01-01',
+      modified_at: '2024-01-02',
+      total_nodes: 0,
+    },
+  ],
+  currentProjectId: 'ws-1',
+  projectGraph: { nodes: [] },
+};
+
+vi.mock('sonner', () => ({
+  toast: Object.assign(mockToast, {
+    success: vi.fn(),
+    error: vi.fn(),
+    promise: vi.fn((promise: Promise<unknown>) => promise),
+  }),
+}));
+
+vi.mock('@/features/project/common/hooks/useProjectData', () => ({
+  // Supplies a mutable project fixture so each test can exercise loaded and
+  // unloaded Data Loader states without mounting the real project provider.
+  useProjectData: () => ({
+    ...mockProjectState,
+    projectCatalogue: mockProjectState.projectCatalogue ?? mockProjectState.projects,
+  }),
+}));
+
+vi.mock('@/features/project/common/hooks/useProjectActions', () => ({
+  // Exposes only the project actions that this feature test asserts, while
+  // keeping unrelated mutations inert.
+  useProjectActions: () => ({
+    createProject: mockCreateProject,
+    renameProject: vi.fn(),
+    updateProjectDescription: mockUpdateProjectDescription,
+    saveProject: vi.fn(),
+    deleteProject: mockDeleteProject,
+    setCurrentProject: mockSetCurrentProject,
+    createNodeFromFile: vi.fn(),
+  }),
+}));
+
+vi.mock('@/features/project/common/hooks/useProjectStatus', () => ({
+  // Keeps project cards out of loading state so tests can target controls.
+  useProjectStatus: () => ({
+    isLoading: { projects: false, currentProject: false },
+  }),
+}));
+
+vi.mock('@/features/auth/hooks/useAuth', () => ({
+  // Provides the auth surface needed by file-browser controls.
+  useAuth: () => ({}),
+}));
+
+vi.mock('@/features/guidance/useProgressiveContextualHints', () => ({
+  useProgressiveContextualHints: mockPublishContextualHints,
+}));
+
+const defaultMockFileTree: FileTreeNode[] = [
+  {
+    name: 'sample_data',
+    path: 'sample_data',
+    type: 'directory' as const,
+    children: [
+      {
+        name: 'ADO',
+        path: 'sample_data/ADO',
+        type: 'directory' as const,
+        children: [
+          {
+            name: 'README.md',
+            path: 'sample_data/ADO/README.md',
+            type: 'file' as const,
+            size: 48,
+          },
+          {
+            name: 'docs.csv',
+            path: 'sample_data/ADO/docs.csv',
+            type: 'file' as const,
+            size: 100,
+          },
+        ],
+      },
+      {
+        name: 'Other',
+        path: 'sample_data/Other',
+        type: 'directory' as const,
+        children: [
+          {
+            name: 'no-readme.csv',
+            path: 'sample_data/Other/no-readme.csv',
+            type: 'file' as const,
+            size: 75,
+          },
+        ],
+      },
+    ],
+  },
+];
+let mockFileTree = defaultMockFileTree;
+
+vi.mock('@/api', async (importOriginal) => ({
+  ...(await importOriginal()),
+  getRawFile: mockRawFile,
+  createFolder: mockCreateFolder,
+  moveFile: mockMoveFile,
+  importSampleData: vi.fn(),
+  importWorkspaceArchive: mockImportProjectArchive,
+  listFeaturedDataPortalCollections: mockListFeaturedDataPortalCollections,
+}));
+
+vi.mock('@/features/views/data-loader/hooks/useFiles', () => ({
+  // Supplies a stable file tree with README citation coverage for the Data
+  // Loader browser tests.
+  useFiles: () => ({
+    fileTree: mockFileTree,
+    selectedFile: null,
+    setSelectedFile: vi.fn(),
+    loadingFiles: false,
+    loading: false,
+    completeFileTree: mockFileTree,
+    uploadFileAtPath: mockUploadFileAtPath,
+    createUploadDirectory: mockCreateUploadDirectory,
+    getUploadResource: mockGetUploadResource,
+    handleDeleteFile: mockHandleDeleteFile,
+    handleDownloadFile: vi.fn(),
+    refreshFiles: mockRefreshFiles,
+  }),
+}));
+
+vi.mock('@/features/views/data-loader/components', () => ({
+  // The panel internals are covered elsewhere; this suite only needs Data
+  // Loader wiring and file/project controls.
+  AddFilePanel: () => null,
+  /**
+   * Keeps preview rendering inert while preserving the feature prop contract.
+   */
+  FilePreviewPanel: () => null,
+}));
+
+vi.mock('@/components/help/HelpIcon', () => ({
+  /**
+   * Replaces help chrome so tests focus on Data Loader behavior.
+   */
+  default: () => null,
+}));
+
+vi.mock('@/components/help/InfoIcon', () => ({
+  /**
+   * Replaces info chrome so tests focus on Data Loader behavior.
+   */
+  default: () => null,
+}));
+
+describe('DataLoaderFeature citation UI', () => {
+  /**
+   * Selects the visible duplicate when responsive/mobile markup leaves more
+   * than one matching control in the test DOM.
+   */
+  const getVisibleMatch = <T extends HTMLElement>(elements: T[]) => {
+    return elements.at(-1) ?? elements[0]!;
+  };
+
+  /**
+   * Mounts DataLoaderFeature with a QueryClient because sample/LDaCA dialogs use
+   * TanStack Query even in focused feature tests.
+   */
+  const renderWithProviders = (ui: React.ReactElement) => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          retry: false,
+        },
+      },
+    });
+    return render(
+      <QueryClientProvider client={queryClient}>
+        <ProjectDownloadsProvider>{ui}</ProjectDownloadsProvider>
+      </QueryClientProvider>,
+    );
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    localStorage.clear();
+    mockFileTree = defaultMockFileTree;
+    mockCreateProject.mockResolvedValue({ id: 'ws-new' });
+    mockDeleteProject.mockResolvedValue(undefined);
+    mockUploadFileAtPath.mockResolvedValue(undefined);
+    mockCreateUploadDirectory.mockResolvedValue(undefined);
+    mockGetUploadResource.mockResolvedValue({ type: 'directory', path: 'existing' });
+    mockRefreshFiles.mockImplementation(async () => mockFileTree);
+    mockRawFile.mockResolvedValue({ data: '# ADO Citation\n\nReference text.', error: undefined });
+    mockCreateFolder.mockResolvedValue({
+      data: { message: 'Folder created', path: 'new-folder' },
+      error: undefined,
+    });
+    mockMoveFile.mockResolvedValue({
+      data: { message: 'File moved', path: 'sample_data/Other/docs.csv' },
+      error: undefined,
+    });
+    mockListFeaturedDataPortalCollections.mockResolvedValue({
+      data: { items: [], page: 1, page_size: 20, total: 0 },
+      error: undefined,
+    });
+    mockImportProjectArchive.mockResolvedValue({
+      data: {},
+      response: new Response(null),
+    });
+    mockProjectState = {
+      projects: [
+        {
+          id: 'ws-1',
+          name: 'Main Project',
+          description: 'Initial project description',
+          created_at: '2024-01-01',
+          modified_at: '2024-01-02',
+          total_nodes: 0,
+        },
+      ],
+      currentProjectId: 'ws-1',
+      projectGraph: { nodes: [] },
+    };
+  });
+
+  it('resizes the project cards without changing the files pane height', () => {
+    renderWithProviders(<DataLoaderFeature />);
+    const separator = screen.getByRole('separator', { name: 'Resize data loader sections' });
+    const splitContainer = screen.getByTestId('data-loader-split');
+    const projectPane = screen.getByTestId('data-loader-project-pane');
+    const filesPane = screen.getByTestId('data-loader-files-pane');
+    vi.spyOn(splitContainer, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 0,
+      top: 0,
+      right: 1000,
+      bottom: 1000,
+      left: 0,
+      width: 1000,
+      height: 1000,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(filesPane, 'getBoundingClientRect').mockReturnValue({
+      x: 0,
+      y: 408,
+      top: 408,
+      right: 1000,
+      bottom: 828,
+      left: 0,
+      width: 1000,
+      height: 420,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.pointerDown(separator, { pointerId: 5, clientY: 400 });
+    fireEvent.pointerMove(window, { pointerId: 5, clientY: 600 });
+    fireEvent.pointerUp(window, { pointerId: 5, clientY: 600 });
+
+    expect(projectPane.style.flexBasis).toBe('600px');
+    expect(filesPane.style.flexBasis).toBe('420px');
+  });
+
+  it('keeps a stable file-list toolbar fallback for contextual guidance', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    expect(screen.getByRole('toolbar', { name: 'File list' })).toHaveAttribute(
+      'data-guidance',
+      'file-library-toolbar',
+    );
+    expect(screen.getByRole('region', { name: 'Files upload area' })).not.toHaveAttribute(
+      'data-guidance',
+    );
+  });
+
+  it('renders preserved empty directories while counting only loadable files', () => {
+    mockFileTree = [
+      {
+        name: 'figures',
+        path: 'figures',
+        type: 'directory',
+        children: [],
+      },
+    ];
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    expect(screen.getByRole('button', { name: 'figures' })).toBeInTheDocument();
+    expect(within(screen.getByTestId('folder-row-figures')).getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('Total files: 0')).toBeInTheDocument();
+    expect(
+      screen.queryByText('No files found. Upload a dataset to begin.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows folder citation icons only for directories with readme and opens citation dialog', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+
+    const citationButtons = screen.getAllByLabelText(/view citation/i);
+    expect(citationButtons).toHaveLength(1);
+    expect(screen.queryByText('README.md')).not.toBeInTheDocument();
+
+    await user.click(citationButtons[0]!);
+
+    await waitFor(() => {
+      expect(mockRawFile).toHaveBeenCalledWith({
+        parseAs: 'text',
+        query: { path: 'sample_data/ADO/README.md' },
+        throwOnError: true,
+      });
+    });
+    expect(screen.getByRole('heading', { name: 'Citation' })).toBeInTheDocument();
+    expect(screen.getByText('ADO Citation')).toBeInTheDocument();
+    expect(screen.getByText('Reference text.')).toBeInTheDocument();
+  });
+
+  it('creates a root folder from the top-level add folder button', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+
+    fireEvent.click(getVisibleMatch(screen.getAllByRole('button', { name: /add root folder/i })));
+    await user.type(screen.getByLabelText(/folder name/i), 'Research Notes');
+    fireEvent.click(screen.getByRole('button', { name: /^create folder$/i }));
+
+    await waitFor(() => {
+      expect(mockCreateFolder).toHaveBeenCalledWith({
+        body: { name: 'Research Notes', parent_path: '' },
+        throwOnError: true,
+      });
+    });
+  });
+
+  it('clears the folder-name draft when the create-folder dialog closes', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+
+    fireEvent.click(getVisibleMatch(screen.getAllByRole('button', { name: /add root folder/i })));
+    await user.type(screen.getByLabelText(/folder name/i), 'Draft Folder');
+    fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }));
+    fireEvent.click(getVisibleMatch(screen.getAllByRole('button', { name: /add root folder/i })));
+
+    expect(screen.getByLabelText(/folder name/i)).toHaveValue('');
+  });
+
+  it('creates a subfolder from a directory row action', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+
+    fireEvent.click(
+      getVisibleMatch(screen.getAllByRole('button', { name: /add folder inside ado/i })),
+    );
+    await user.type(screen.getByLabelText(/folder name/i), 'Transcripts');
+    fireEvent.click(screen.getByRole('button', { name: /^create folder$/i }));
+
+    await waitFor(() => {
+      expect(mockCreateFolder).toHaveBeenCalledWith({
+        body: { name: 'Transcripts', parent_path: 'sample_data/ADO' },
+        throwOnError: true,
+      });
+    });
+  });
+
+  it('deletes a folder only after confirmation', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    fireEvent.click(getVisibleMatch(screen.getAllByRole('button', { name: /delete folder ado/i })));
+
+    expect(mockHandleDeleteFile).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: /^delete folder$/i }));
+
+    expect(mockHandleDeleteFile).toHaveBeenCalledWith('sample_data/ADO');
+  });
+
+  it('persists folder collapsed state in localStorage', () => {
+    const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+    const storageKey = 'ldaca-wordflow-collapsed-folders-v2:__anonymous__:ws-1';
+    localStorage.setItem(storageKey, JSON.stringify(['sample_data/Other']));
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    // Target folder ADO trigger click
+    const toggleFolderAdo = screen.getByRole('button', { name: /^ADO$/i });
+    fireEvent.click(toggleFolderAdo);
+
+    expect(setItemSpy).toHaveBeenCalledWith(storageKey, expect.stringContaining('sample_data/ADO'));
+
+    // Toggle back to open
+    fireEvent.click(toggleFolderAdo);
+    expect(setItemSpy).toHaveBeenLastCalledWith(storageKey, JSON.stringify(['sample_data/Other']));
+
+    setItemSpy.mockRestore();
+    localStorage.clear();
+  });
+
+  it('moves a dragged file when dropped on a folder row', async () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const draggedFileRow = getVisibleMatch(
+      screen.getAllByTestId('file-row-sample_data/ADO/docs.csv'),
+    );
+    const targetFolderRow = getVisibleMatch(screen.getAllByTestId('folder-row-sample_data/Other'));
+    let currentDragPath = 'sample_data/ADO/docs.csv';
+
+    const dataTransfer = {
+      effectAllowed: 'move',
+      dropEffect: 'move',
+      setData: vi.fn(),
+      getData: vi.fn((type: string) =>
+        type === 'application/x-ldaca-file-path' ? currentDragPath : '',
+      ),
+      types: ['application/x-ldaca-file-path', 'text/plain'],
+    };
+
+    fireEvent.dragStart(draggedFileRow, { dataTransfer });
+    currentDragPath = '';
+    fireEvent.dragOver(targetFolderRow, { dataTransfer });
+
+    fireEvent.drop(targetFolderRow, { dataTransfer });
+
+    await waitFor(() => {
+      expect(mockMoveFile).toHaveBeenCalledWith({
+        body: {
+          source_path: 'sample_data/ADO/docs.csv',
+          target_directory_path: 'sample_data/Other',
+        },
+        throwOnError: true,
+      });
+    });
+  });
+
+  it('moves a dragged file when dropped on a file row inside a folder', async () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const draggedFileRow = getVisibleMatch(
+      screen.getAllByTestId('file-row-sample_data/ADO/docs.csv'),
+    );
+    const targetFileRow = getVisibleMatch(
+      screen.getAllByTestId('file-row-sample_data/Other/no-readme.csv'),
+    );
+    let currentDragPath = 'sample_data/ADO/docs.csv';
+
+    const dataTransfer = {
+      effectAllowed: 'move',
+      dropEffect: 'move',
+      setData: vi.fn(),
+      getData: vi.fn((type: string) =>
+        type === 'application/x-ldaca-file-path' ? currentDragPath : '',
+      ),
+      types: ['application/x-ldaca-file-path', 'text/plain'],
+    };
+
+    fireEvent.dragStart(draggedFileRow, { dataTransfer });
+    currentDragPath = '';
+    fireEvent.dragOver(targetFileRow, { dataTransfer });
+
+    fireEvent.drop(targetFileRow, { dataTransfer });
+
+    await waitFor(() => {
+      expect(mockMoveFile).toHaveBeenCalledWith({
+        body: {
+          source_path: 'sample_data/ADO/docs.csv',
+          target_directory_path: 'sample_data/Other',
+        },
+        throwOnError: true,
+      });
+    });
+  });
+
+  it('renders project upload and download controls', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    expect(screen.getAllByRole('button', { name: /upload project/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole('button', { name: /download/i }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('0 data blocks').length).toBeGreaterThan(0);
+    expect(screen.queryByRole('button', { name: /save as/i })).not.toBeInTheDocument();
+  });
+
+  it('warns when incompatible Analysis history is omitted during upload', async () => {
+    mockImportProjectArchive.mockResolvedValue({
+      data: {},
+      response: new Response(null, {
+        headers: {
+          'X-Wordflow-Omitted-Tab-Count': '1',
+          'X-Wordflow-Omitted-Analysis-Count': '2',
+        },
+      }),
+    });
+    renderWithProviders(<DataLoaderFeature />);
+    const input = screen.getByLabelText('Upload project archive');
+
+    fireEvent.change(input, {
+      target: { files: [new File(['zip'], 'future.zip', { type: 'application/zip' })] },
+    });
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        'Project ZIP uploaded with 1 unavailable Tab and 2 unavailable Analysis records omitted.',
+        { duration: 3500 },
+      ),
+    );
+  });
+
+  it('renders unavailable project metadata and keeps archive download available', async () => {
+    const user = userEvent.setup();
+    const unavailableId = '0a120442-2f33-4474-9d09-9adbdfea7ebc';
+    mockSetCurrentProject.mockRejectedValueOnce(new Error('Stored data could not be loaded.'));
+    mockProjectState.projectCatalogue = [
+      {
+        availability: 'unavailable',
+        id: unavailableId,
+        reason: 'incompatible_format',
+        message: 'Project data schema 14 is incompatible with supported data schema 15.',
+        name: 'Archived workshop project',
+        description: 'Project from the winter workshop.',
+        created_at: '2024-01-01T00:00:00Z',
+        modified_at: '2024-01-02T00:00:00Z',
+        stored_data_schema_version: 14,
+        supported_data_schema_version: 15,
+      },
+      ...mockProjectState.projects,
+    ];
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    const cards = screen.getAllByTestId(/^project-manager-item-/);
+    expect(cards.at(-1)).toHaveAttribute('data-testid', `project-manager-item-${unavailableId}`);
+    const unavailable = within(cards.at(-1)!);
+    expect(unavailable.getByText('Archived workshop project')).toBeInTheDocument();
+    expect(unavailable.getByText(unavailableId)).toBeInTheDocument();
+    expect(unavailable.queryByText('Project from the winter workshop.')).not.toBeInTheDocument();
+    expect(unavailable.getByText(/Created/)).toBeInTheDocument();
+    expect(
+      unavailable.getByText(
+        'Project data schema 14 is incompatible with supported data schema 15.',
+      ),
+    ).toBeInTheDocument();
+    expect(unavailable.getByRole('button', { name: 'Load' })).toBeEnabled();
+    expect(unavailable.getByRole('button', { name: 'Download archive' })).toBeEnabled();
+    expect(unavailable.getByRole('button', { name: 'Delete' })).toBeEnabled();
+    expect(unavailable.queryByLabelText(/favorites/i)).not.toBeInTheDocument();
+    const descriptionButton = unavailable.getByRole('button', {
+      name: 'View project description',
+    });
+    fireEvent.pointerDown(descriptionButton, { button: 0 });
+    expect(screen.getByText('Project from the winter workshop.')).toBeInTheDocument();
+
+    await user.click(unavailable.getByRole('button', { name: 'Load' }));
+    expect(mockSetCurrentProject).toHaveBeenCalledWith(unavailableId);
+    expect(await unavailable.findByRole('alert')).toHaveTextContent(
+      'Failed to load: Stored data could not be loaded.',
+    );
+
+    await user.click(unavailable.getByRole('button', { name: 'Delete' }));
+    const confirmation = screen.getByRole('alertdialog', { name: 'Delete project?' });
+    expect(confirmation).toHaveTextContent(unavailableId);
+    await user.click(within(confirmation).getByRole('button', { name: 'Cancel' }));
+    expect(mockDeleteProject).not.toHaveBeenCalled();
+  });
+
+  it('links LDaCA collection card titles to their portal pages', async () => {
+    const user = userEvent.setup();
+    vi.mocked(listFeaturedDataPortalCollections).mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            id: 'arcp://name,hdl10.26180~23961609',
+            crate_id: 'arcp://name,hdl10.26180~23961609',
+            title: 'A COrpus of Oz Early English (COOEE)',
+            description: 'Historical English corpus',
+            types: ['Dataset'],
+            license: 'https://creativecommons.org/licenses/by/4.0/',
+            importable: true,
+            collections: [],
+            file_formats: [],
+            stats: {},
+          },
+        ],
+        page: 1,
+        page_size: 20,
+        total: 1,
+      },
+      error: undefined,
+    });
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    await user.click(screen.getByRole('button', { name: /^import from ldaca$/i }));
+
+    const titleLink = await screen.findByRole('link', {
+      name: 'A COrpus of Oz Early English (COOEE)',
+    });
+    expect(titleLink).toHaveAttribute(
+      'href',
+      'https://data.ldaca.edu.au/collection?id=arcp%3A%2F%2Fname%2Chdl10.26180~23961609&_crateId=arcp%3A%2F%2Fname%2Chdl10.26180~23961609',
+    );
+    expect(titleLink).toHaveAttribute('target', '_blank');
+  });
+
+  it('shows only active project controls when a project is loaded and allows quick unload from the manager', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const activeProjectCard = getVisibleMatch(screen.getAllByTestId('active-project-card'));
+    expect(within(activeProjectCard).getByText('Active project')).toBeInTheDocument();
+    expect(within(activeProjectCard).queryByText('Create project')).not.toBeInTheDocument();
+    expect(
+      within(activeProjectCard).queryByPlaceholderText('Project name'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(activeProjectCard).queryByPlaceholderText('Optional description'),
+    ).not.toBeInTheDocument();
+
+    const projectManagerCard = getVisibleMatch(
+      screen.getAllByTestId('project-manager-item-ws-1'),
+    );
+
+    expect(within(activeProjectCard).getByPlaceholderText('Enter new name')).toBeInTheDocument();
+
+    const quickUnloadButton = within(projectManagerCard).getByText(/^Unload$/i, {
+      selector: 'button',
+    });
+    expect(quickUnloadButton).toBeEnabled();
+
+    fireEvent.click(quickUnloadButton);
+
+    expect(mockSetCurrentProject).toHaveBeenCalledWith(null);
+  });
+
+  it('keeps each project load failure visible until that project loads successfully', async () => {
+    const user = userEvent.setup();
+    mockProjectState = {
+      projects: [
+        {
+          id: 'ws-corrupt',
+          name: 'Corrupt Project',
+          description: '',
+          created_at: '2024-01-01',
+          modified_at: '2024-01-02',
+          total_nodes: 2,
+        },
+        {
+          id: 'ws-offline',
+          name: 'Remote Project',
+          description: '',
+          created_at: '2024-01-01',
+          modified_at: '2024-01-02',
+          total_nodes: 1,
+        },
+      ],
+      currentProjectId: null,
+      projectGraph: { nodes: [] },
+    };
+    mockSetCurrentProject
+      .mockRejectedValueOnce(new Error('Project snapshot is corrupt.'))
+      .mockRejectedValueOnce(new Error('Unable to reach the backend.'))
+      .mockResolvedValueOnce(undefined);
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    const corruptProject = getVisibleMatch(
+      screen.getAllByTestId('project-manager-item-ws-corrupt'),
+    );
+    const offlineProject = getVisibleMatch(
+      screen.getAllByTestId('project-manager-item-ws-offline'),
+    );
+
+    await user.click(within(corruptProject).getByRole('button', { name: 'Load' }));
+    expect(await within(corruptProject).findByRole('alert')).toHaveTextContent(
+      'Failed to load: Project snapshot is corrupt.',
+    );
+
+    await user.click(within(offlineProject).getByRole('button', { name: 'Load' }));
+    expect(await within(offlineProject).findByRole('alert')).toHaveTextContent(
+      'Failed to load: Unable to reach the backend.',
+    );
+    expect(within(corruptProject).getByRole('alert')).toBeInTheDocument();
+
+    await user.click(within(corruptProject).getByRole('button', { name: 'Load' }));
+    await waitFor(() => {
+      expect(within(corruptProject).queryByRole('alert')).not.toBeInTheDocument();
+    });
+    expect(within(offlineProject).getByRole('alert')).toBeInTheDocument();
+  });
+
+  it('serializes pending Load controls and shows the target loading state', async () => {
+    const user = userEvent.setup();
+    let finishLoad: () => void = () => undefined;
+    mockProjectState = {
+      projects: [
+        ...mockProjectState.projects,
+        {
+          id: 'ws-2',
+          name: 'Second Project',
+          description: '',
+          created_at: '2024-01-01',
+          modified_at: '2024-01-03',
+          total_nodes: 0,
+        },
+      ],
+      currentProjectId: null,
+      projectGraph: { nodes: [] },
+    };
+    mockSetCurrentProject.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishLoad = resolve;
+        }),
+    );
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    const project = getVisibleMatch(screen.getAllByTestId('project-manager-item-ws-1'));
+    const other = getVisibleMatch(screen.getAllByTestId('project-manager-item-ws-2'));
+    await user.click(within(project).getByRole('button', { name: 'Load' }));
+
+    expect(within(project).getByRole('button', { name: 'Loading…' })).toBeDisabled();
+    expect(within(other).getByRole('button', { name: 'Load' })).toBeDisabled();
+    await user.click(within(other).getByRole('button', { name: 'Load' }));
+    expect(mockSetCurrentProject).toHaveBeenCalledTimes(1);
+
+    finishLoad();
+
+    await waitFor(() => {
+      expect(within(other).getByRole('button', { name: 'Load' })).toBeEnabled();
+    });
+  });
+
+  it('serializes pending Unload controls and shows Unloading on the active Project', async () => {
+    const user = userEvent.setup();
+    let finishUnload: () => void = () => undefined;
+    mockSetCurrentProject.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishUnload = resolve;
+        }),
+    );
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    const activeCard = getVisibleMatch(screen.getAllByTestId('active-project-card'));
+    await user.click(within(activeCard).getByRole('button', { name: 'Unload' }));
+
+    expect(within(activeCard).getByRole('button', { name: 'Unloading…' })).toBeDisabled();
+    const manager = getVisibleMatch(screen.getAllByTestId('project-manager-item-ws-1'));
+    expect(within(manager).getByRole('button', { name: 'Unloading…' })).toBeDisabled();
+    expect(mockSetCurrentProject).toHaveBeenCalledTimes(1);
+
+    finishUnload();
+    await waitFor(() => {
+      expect(within(activeCard).getByRole('button', { name: 'Unload' })).toBeEnabled();
+    });
+  });
+
+  it('shows project description details from the manager', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const activeProjectCard = getVisibleMatch(screen.getAllByTestId('active-project-card'));
+    const projectManagerCard = getVisibleMatch(
+      screen.getAllByTestId('project-manager-item-ws-1'),
+    );
+    expect(
+      within(activeProjectCard).getByDisplayValue('Initial project description'),
+    ).toBeInTheDocument();
+
+    const projectDescriptionButton = within(projectManagerCard).getByLabelText(
+      /view project description/i,
+    );
+    fireEvent.pointerDown(projectDescriptionButton, { button: 0 });
+
+    expect(screen.getByText('Initial project description')).toBeInTheDocument();
+  });
+
+  it('creates and loads a project when no project is active', async () => {
+    const user = userEvent.setup();
+    mockProjectState = {
+      projects: [
+        {
+          id: 'ws-1',
+          name: 'Main Project',
+          description: 'Initial project description',
+          created_at: '2024-01-01',
+          modified_at: '2024-01-02',
+          total_nodes: 0,
+        },
+      ],
+      currentProjectId: null,
+      projectGraph: { nodes: [] },
+    };
+
+    renderWithProviders(<DataLoaderFeature />);
+
+    const createProjectCard = getVisibleMatch(screen.getAllByTestId('create-project-card'));
+    const createProjectButton = within(createProjectCard).getByRole('button', {
+      name: /create project/i,
+    });
+    expect(within(createProjectCard).queryByText('Active project')).not.toBeInTheDocument();
+    expect(within(createProjectCard).getAllByText('Create project')).toHaveLength(2);
+    expect(within(createProjectCard).getByPlaceholderText('Project name')).toBeInTheDocument();
+    expect(
+      within(createProjectCard).getByPlaceholderText('Optional description'),
+    ).toBeInTheDocument();
+    expect(createProjectButton).toBeInTheDocument();
+    expect(
+      within(createProjectCard).queryByPlaceholderText('Enter new name'),
+    ).not.toBeInTheDocument();
+    expect(
+      within(createProjectCard).queryByLabelText('Project description'),
+    ).not.toBeInTheDocument();
+
+    await user.type(
+      within(createProjectCard).getByPlaceholderText('Project name'),
+      'New Project',
+    );
+    await user.click(
+      within(createProjectCard).getByRole('button', {
+        name: /create project/i,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(mockCreateProject).toHaveBeenCalledWith('New Project', undefined);
+      expect(mockSetCurrentProject).toHaveBeenCalledWith('ws-new');
+    });
+  });
+
+  it('shows automatic post-create Load failures on the created Project card', async () => {
+    const user = userEvent.setup();
+    mockProjectState = {
+      projects: [],
+      currentProjectId: null,
+      projectGraph: { nodes: [] },
+    };
+    mockCreateProject.mockImplementationOnce(async () => {
+      mockProjectState = {
+        projects: [
+          {
+            id: 'ws-new',
+            name: 'New Project',
+            description: '',
+            created_at: '2024-01-01',
+            modified_at: '2024-01-01',
+            total_nodes: 0,
+          },
+        ],
+        currentProjectId: null,
+        projectGraph: { nodes: [] },
+      };
+      return { id: 'ws-new' };
+    });
+    mockSetCurrentProject.mockRejectedValueOnce(new Error('Snapshot failed validation.'));
+
+    renderWithProviders(<DataLoaderFeature />);
+    const createCard = getVisibleMatch(screen.getAllByTestId('create-project-card'));
+    await user.type(within(createCard).getByPlaceholderText('Project name'), 'New Project');
+    await user.click(within(createCard).getByRole('button', { name: /create project/i }));
+
+    const createdCard = await screen.findByTestId('project-manager-item-ws-new');
+    expect(await within(createdCard).findByRole('alert')).toHaveTextContent(
+      'Failed to load: Snapshot failed validation.',
+    );
+  });
+
+  it('clears a transient Load failure after deleting its Project', async () => {
+    const user = userEvent.setup();
+    mockProjectState.currentProjectId = null;
+    mockSetCurrentProject.mockRejectedValueOnce(new Error('Temporary load error.'));
+
+    renderWithProviders(<DataLoaderFeature />);
+    const project = getVisibleMatch(screen.getAllByTestId('project-manager-item-ws-1'));
+    await user.click(within(project).getByRole('button', { name: 'Load' }));
+    expect(await within(project).findByRole('alert')).toBeInTheDocument();
+
+    await user.click(within(project).getByRole('button', { name: 'Delete' }));
+    await user.click(screen.getByRole('button', { name: 'Delete project' }));
+
+    await waitFor(() => {
+      expect(within(project).queryByRole('alert')).not.toBeInTheDocument();
+    });
+  });
+
+  it('allows selecting multiple files from the upload picker', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+
+    const uploadInput = screen.getAllByLabelText(/upload files/i, { selector: 'input' }).at(-1);
+    expect(uploadInput).toBeDefined();
+    expect(uploadInput).toHaveAttribute('multiple');
+
+    const firstFile = new File(['alpha'], 'first.csv', { type: 'text/csv' });
+    const secondFile = new File(['beta'], 'second.csv', { type: 'text/csv' });
+
+    await user.upload(uploadInput!, [firstFile, secondFile]);
+
+    await waitFor(() => {
+      expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
+    });
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(1, firstFile, 'first.csv');
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(2, secondFile, 'second.csv');
+  });
+
+  it('offers a single-folder picker alongside the multi-file picker', () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const fileInput = screen.getAllByLabelText('Upload files', { selector: 'input' }).at(-1);
+    const folderInput = screen.getAllByLabelText('Upload folder', { selector: 'input' }).at(-1);
+
+    expect(fileInput).toHaveAttribute('multiple');
+    expect(folderInput).not.toHaveAttribute('multiple');
+    expect(folderInput).toHaveAttribute('webkitdirectory');
+    expect(screen.getAllByRole('button', { name: 'Upload folder' }).at(-1)).toBeEnabled();
+  });
+
+  it('shows every preflight conflict and uploads nothing', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+    const uploadInput = screen.getAllByLabelText('Upload files', { selector: 'input' }).at(-1)!;
+    const firstFile = new File(['old'], 'docs.csv');
+    Object.defineProperty(firstFile, 'webkitRelativePath', {
+      value: 'sample_data/ADO/docs.csv',
+    });
+    const secondFile = new File(['old'], 'no-readme.csv');
+    Object.defineProperty(secondFile, 'webkitRelativePath', {
+      value: 'sample_data/Other/no-readme.csv',
+    });
+
+    await user.upload(uploadInput, [firstFile, secondFile]);
+
+    const dialog = await screen.findByRole('dialog', { name: 'Upload conflicts' });
+    expect(within(dialog).getByText('sample_data/ADO/docs.csv')).toBeInTheDocument();
+    expect(within(dialog).getByText('sample_data/Other/no-readme.csv')).toBeInTheDocument();
+    expect(mockUploadFileAtPath).not.toHaveBeenCalled();
+    expect(mockCreateUploadDirectory).not.toHaveBeenCalled();
+  });
+
+  it('announces upload progress and offers cooperative cancellation', async () => {
+    let finishUpload!: () => void;
+    mockUploadFileAtPath.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          finishUpload = resolve;
+        }),
+    );
+    const user = userEvent.setup();
+    renderWithProviders(<DataLoaderFeature />);
+    const uploadInput = screen.getAllByLabelText('Upload files', { selector: 'input' }).at(-1)!;
+
+    await user.upload(uploadInput, new File(['new'], 'new.csv'));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('Uploading file 1 of 1: new.csv');
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await act(async () => finishUpload());
+    await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
+  });
+
+  it('guides users to the folder picker when folder drop entries are unavailable', async () => {
+    renderWithProviders(<DataLoaderFeature />);
+    const uploadArea = screen.getAllByRole('region', { name: /files upload area/i }).at(-1)!;
+
+    fireEvent.drop(uploadArea, {
+      dataTransfer: {
+        files: [],
+        items: [
+          {
+            kind: 'file',
+            getAsFile: () => null,
+          },
+        ],
+        types: ['Files'],
+      },
+    });
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith(
+        'Folder drop is not supported here. Use Upload folder instead.',
+        expect.any(Object),
+      );
+    });
+    expect(mockUploadFileAtPath).not.toHaveBeenCalled();
+  });
+
+  it('uploads multiple dropped files from the files area', async () => {
+    renderWithProviders(<DataLoaderFeature />);
+
+    const uploadArea = screen.getAllByRole('region', { name: /files upload area/i }).at(-1);
+    expect(uploadArea).toBeDefined();
+    const firstFile = new File(['alpha'], 'dragged-a.csv', { type: 'text/csv' });
+    const secondFile = new File(['beta'], 'dragged-b.csv', { type: 'text/csv' });
+
+    fireEvent.dragOver(uploadArea!, {
+      dataTransfer: {
+        files: [firstFile, secondFile],
+        types: ['Files'],
+      },
+    });
+
+    fireEvent.drop(uploadArea!, {
+      dataTransfer: {
+        files: [firstFile, secondFile],
+        types: ['Files'],
+      },
+    });
+
+    await waitFor(() => {
+      expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
+    });
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(1, firstFile, 'dragged-a.csv');
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(2, secondFile, 'dragged-b.csv');
+  });
+});

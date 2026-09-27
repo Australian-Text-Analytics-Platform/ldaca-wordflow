@@ -23,8 +23,8 @@ assignments into source-character Topic Coverage for the source document.
    by the Unicode-character length owned by each segment.
 
 For keyword extraction, c-TF-IDF combines all Topic Segments assigned to a
-topic into one class-level text. The configured vectorizer tokenises that text
-and removes applicable stopwords. A term receives a high score when it occurs
+topic into one class-level text. The shared representative-word tokenizer tokenises that text. Stopword Tables
+or Views filter the complete ranking without changing its original scores. A term receives a high score when it occurs
 often within that topic but is less common across the other topics. The highest
 scoring terms become the representative words. They describe distinctive
 vocabulary, not necessarily the topic's meaning or an author's intent.
@@ -39,6 +39,7 @@ coverage is neither repeated nor silently discarded.
 
 <h3 id="info-topic-modeling-what-you-can-do">What you can do</h3>
 
+- Fit temporary sampled Previews before committing to an all-row Run.
 - Explore prominent and niche language patterns.
 - Compare the contribution of two corpora to the same discovered topics.
 - Adjust the displayed number of real Topics from the natural fit down to one.
@@ -68,7 +69,7 @@ does not rerun the model and cannot split above that natural count. Topic −1 i
 never counted or merged. After each change Wordflow recalculates representative
 words, coordinates, and document assignments.
 
-Top topics per document defaults to two. A bubble counts a source row when that
+Top topics per document defaults to two or the available real-topic count when smaller. A bubble counts a source row when that
 Topic has a positive share among the row's strongest N real-topic shares.
 Outlier −1 and zero shares do not count; ties at the cutoff all count. A row can
 therefore contribute to several bubbles, and bubble totals can exceed the

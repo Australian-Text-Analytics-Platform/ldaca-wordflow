@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
  * Shared drag-to-resize hook for splitter UIs.
@@ -43,7 +43,7 @@ interface UseResizableSplitOptions {
    *   0.6 means "top/left pane takes 60% of the container".
    * - 'end' — the value tracks the bottom/right pane. Useful when the
    *   sensible cap (`maxPixels`) belongs to that pane (e.g. a right-anchored
-   *   workspace view that shouldn't grow past 800 px on ultrawide screens).
+   *   project view that shouldn't grow past 800 px on ultrawide screens).
    */
   anchor?: ResizableSplitAnchor;
   /** Initial value: ratio (`0..1`) or pixels, depending on `mode`. */
@@ -149,9 +149,9 @@ const clampSplitValue = (
 
 /** Provides state, DOM refs, keyboard handlers, and pointer handlers for resizable panes. */
 /**
- * Used directly by: `WorkspaceView`, `DataLoaderFeature`, and the
+ * Used directly by: `ProjectView`, `DataLoaderFeature`, and the
  * `useRightPanelResize`/`useSidebarResize` layout wrappers.
- * Flow: initialize persisted split value, clamp pointer and keyboard updates, track active pointers on the window, then expose value, drag state, refs, and ARIA props.
+ * Flow: initialize persisted split value, clamp pointer and keyboard updates, capture the active pointer on its separator, then expose value, drag state, refs, and ARIA props.
  */
 export function useResizableSplit({
   orientation = 'horizontal',
@@ -176,12 +176,29 @@ export function useResizableSplit({
   const step = keyboardStep ?? (mode === 'percent' ? 0.05 : 10);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const draggingRef = useRef(false);
   // Lazy initializer so we read localStorage exactly once on mount,
   // then drive state through normal setValue paths.
-  const [value, setValue] = useState(() =>
+  const [preferredValue, setValue] = useState(() =>
     clampSplitValue(readPersisted(persistKey, defaultValue), min, max, mode, maxPixels),
   );
+  const [containerSize, setContainerSize] = useState<number>();
+  // Measure only pixel-capped splits. Keep the user's preferred ratio when a
+  // smaller effective value is needed on a wider window.
+  useLayoutEffect(() => {
+    const container = containerRef.current;
+    if (!container || mode !== 'percent' || maxPixels === undefined) return;
+    const measure = () => {
+      const rect = container.getBoundingClientRect();
+      setContainerSize(orientation === 'vertical' ? rect.width : rect.height);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+    };
+  }, [mode, maxPixels, orientation]);
+  const value = clampSplitValue(preferredValue, min, max, mode, maxPixels, containerSize);
   const liveValueRef = useRef(value);
   const rafIdRef = useRef<number | null>(null);
   const dragCleanupRef = useRef<(() => void) | null>(null);
@@ -193,13 +210,11 @@ export function useResizableSplit({
   const onDragEndRef = useRef(onDragEnd);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Write committed value to localStorage on every change. Skips the
-  // initial commit since the value came from persistence in the first
-  // place; subsequent renders pay the cost of a setItem call (cheap).
+  // Persist user choices, not temporary constraints from the container size.
   useEffect(() => {
     if (!persistKey) return;
-    writePersisted(persistKey, value);
-  }, [persistKey, value]);
+    writePersisted(persistKey, preferredValue);
+  }, [persistKey, preferredValue]);
 
   useEffect(() => {
     onLiveUpdateRef.current = onLiveUpdate;
@@ -207,7 +222,7 @@ export function useResizableSplit({
     onDragEndRef.current = onDragEnd;
   }, [onLiveUpdate, onDragStart, onDragEnd]);
 
-  // Cancel an active drag and any pending rAF on unmount so stale window
+  // Cancel an active drag and any pending rAF on unmount so stale separator
   // listeners or handles cannot fire after the component disappears.
   useEffect(() => {
     return () => {
@@ -224,9 +239,9 @@ export function useResizableSplit({
    * getBoundingClientRect().
    */
   const clamp = useCallback(
-    (v: number, containerSize?: number): number =>
-      clampSplitValue(v, min, max, mode, maxPixels, containerSize),
-    [min, max, mode, maxPixels],
+    (v: number, size = containerSize): number =>
+      clampSplitValue(v, min, max, mode, maxPixels, size),
+    [min, max, mode, maxPixels, containerSize],
   );
 
   /** Converts pointer coordinates into the split value represented by the configured anchor/mode. */
@@ -251,12 +266,12 @@ export function useResizableSplit({
     [orientation, anchor, mode, clamp],
   );
 
-  /** Starts a drag interaction and tracks it on the window until release or cancellation. */
+  /** Starts a drag interaction and captures its pointer until release or cancellation. */
   const onPointerDown = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      event.preventDefault();
+      // The handle's touch-action/user-select styles prevent selection while
+      // preserving native click events (including double-click reset).
       dragCleanupRef.current?.();
-      draggingRef.current = true;
       setIsDragging(true);
       liveValueRef.current = value;
       onDragStartRef.current?.();
@@ -265,7 +280,7 @@ export function useResizableSplit({
       const handle = event.currentTarget;
 
       const handlePointerMove = (moveEvent: PointerEvent) => {
-        if (!draggingRef.current || moveEvent.pointerId !== pointerId) return;
+        if (!handle.hasPointerCapture(pointerId) || moveEvent.pointerId !== pointerId) return;
         const next = computeFromPointer(moveEvent);
         if (next === null) return;
         liveValueRef.current = next;
@@ -281,15 +296,15 @@ export function useResizableSplit({
       };
 
       const cleanup = () => {
-        window.removeEventListener('pointermove', handlePointerMove);
-        window.removeEventListener('pointerup', handlePointerEnd);
-        window.removeEventListener('pointercancel', handlePointerEnd);
+        handle.removeEventListener('pointermove', handlePointerMove);
+        handle.removeEventListener('pointerup', handlePointerEnd);
+        handle.removeEventListener('pointercancel', handlePointerEnd);
+        handle.removeEventListener('lostpointercapture', handlePointerEnd);
         if (dragCleanupRef.current === cleanup) dragCleanupRef.current = null;
       };
 
       const handlePointerEnd = (endEvent: PointerEvent) => {
-        if (!draggingRef.current || endEvent.pointerId !== pointerId) return;
-        draggingRef.current = false;
+        if (endEvent.pointerId !== pointerId) return;
         setIsDragging(false);
         cleanup();
         if (rafIdRef.current !== null) {
@@ -306,9 +321,10 @@ export function useResizableSplit({
       };
 
       dragCleanupRef.current = cleanup;
-      window.addEventListener('pointermove', handlePointerMove);
-      window.addEventListener('pointerup', handlePointerEnd);
-      window.addEventListener('pointercancel', handlePointerEnd);
+      handle.addEventListener('pointermove', handlePointerMove);
+      handle.addEventListener('pointerup', handlePointerEnd);
+      handle.addEventListener('pointercancel', handlePointerEnd);
+      handle.addEventListener('lostpointercapture', handlePointerEnd);
       try {
         handle.setPointerCapture(pointerId);
       } catch {
@@ -335,10 +351,10 @@ export function useResizableSplit({
       const endwardDelta = anchor === 'end' ? -step : step;
       if (isStartward) {
         event.preventDefault();
-        setValue((prev) => clamp(prev + startwardDelta));
+        setValue(clamp(value + startwardDelta));
       } else if (isEndward) {
         event.preventDefault();
-        setValue((prev) => clamp(prev + endwardDelta));
+        setValue(clamp(value + endwardDelta));
       } else if (event.key === 'Home') {
         event.preventDefault();
         setValue(clamp(min));
@@ -347,23 +363,23 @@ export function useResizableSplit({
         setValue(clamp(max));
       } else if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault();
-        // Reset to default: midpoint for percent, defaultValue for pixel.
-        setValue(mode === 'percent' ? 0.5 : defaultValue);
+        // Reset to the configured default in either mode.
+        setValue(clamp(defaultValue));
       }
     },
-    [orientation, anchor, clamp, step, min, max, mode, defaultValue],
+    [orientation, anchor, clamp, step, min, max, defaultValue, value],
   );
 
-  /** Resets the split to its default/midpoint for users who overshoot a drag. */
+  /** Resets the split to its configured default for users who overshoot a drag. */
   const onDoubleClick = useCallback(() => {
-    setValue(mode === 'percent' ? 0.5 : defaultValue);
-  }, [mode, defaultValue]);
+    setValue(clamp(defaultValue));
+  }, [clamp, defaultValue]);
 
   // ARIA value reporting: clamp to a 0..100 integer scale so screen readers
   // get a sensible % regardless of mode.
   const reportedNow = mode === 'percent' ? value * 100 : value;
   const reportedMin = mode === 'percent' ? min * 100 : Number.isFinite(min) ? min : 0;
-  const reportedMax = mode === 'percent' ? max * 100 : Number.isFinite(max) ? max : 100;
+  const reportedMax = mode === 'percent' ? clamp(max) * 100 : Number.isFinite(max) ? max : 100;
 
   const splitterProps: ResizableSplitHandle['splitterProps'] = {
     role: 'separator',

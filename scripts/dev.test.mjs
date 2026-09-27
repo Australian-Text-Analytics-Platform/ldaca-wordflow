@@ -21,11 +21,11 @@ test('the default development mode starts backend and frontend', () => {
 });
 
 test('backend development preserves an explicit CORS configuration', () => {
-  const commands = createDevCommands('backend', {
+  const commands = createDevCommands('web', {
     CORS_ALLOWED_ORIGINS: '["http://example.test:3000"]',
   });
 
-  assert.equal(commands.length, 1);
+  assert.equal(commands.length, 2);
   assert.equal(commands[0].name, 'backend');
   assert.equal(
     commands[0].env.CORS_ALLOWED_ORIGINS,
@@ -46,7 +46,10 @@ test('development ports configure both processes and the CORS default', () => {
     VITE_BACKEND_PORT: '8101',
   });
 
-  assert.match(commands[0].command, /--port 8101$/);
+  assert.match(commands[0].command, /^cargo run --locked/);
+  assert.equal(commands[0].env.WORDFLOW_BIND_ADDR, '127.0.0.1:8101');
+  assert.equal(commands[1].env.VITE_BACKEND_PORT, '8101');
+  assert.equal(commands[1].command, 'pnpm -C frontend dev');
   assert.equal(
     commands[0].env.CORS_ALLOWED_ORIGINS,
     '["http://localhost:3100","http://127.0.0.1:3100"]',
@@ -62,4 +65,15 @@ test('development mode arguments reject unsupported combinations', () => {
   assert.equal(parseDevMode(['--backend']), 'backend');
   assert.equal(parseDevMode(['--frontend']), 'frontend');
   assert.throws(() => parseDevMode(['--backend', '--frontend']), /Usage/);
+});
+
+test('retired Python mode is unavailable', () => {
+  assert.throws(() => parseDevMode(['--python']), /Usage/);
+});
+
+// Isolated test hosts must not write provider metadata into the developer's account.
+test('backend receives an explicitly isolated host configuration directory', () => {
+  const commands = createDevCommands('web', { WORDFLOW_CONFIG_DIR: '/tmp/test-provider-settings' });
+  assert.equal(commands[0].env.WORDFLOW_CONFIG_DIR, '/tmp/test-provider-settings');
+  assert.equal(Object.hasOwn(commands[1].env, 'WORDFLOW_CONFIG_DIR'), false);
 });

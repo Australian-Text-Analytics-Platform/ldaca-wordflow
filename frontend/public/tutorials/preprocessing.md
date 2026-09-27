@@ -4,266 +4,420 @@
 
 <h1 id="help-preprocessing-section">Preprocessing tutorial</h1>
 
-![Preprocessing screenshot](tutorials/assets/preprocessing.png)
+Preprocessing transforms Data Blocks with DuckDB SQL. The existing tools work with
+both Tables and Views, without loading a Python or Polars runtime.
 
-The Preprocessing tools transform and prepare raw text data blocks into analysis-ready datasets. Each sub-tab performs a specific type of transformation. Filter, Find, Create, and Expression can either create a **new Data Block** or update the selected Data Block. Sample, Join, and Stack always create a new Derived Data Block. There are currently seven sub-tabs:
+Filter, Sample, Join, Stack and Build create a **new View**, leaving their inputs
+unchanged. Find adds or replaces a column **in the selected Data Block**.
 
-| Sub-tab | What it does | Apply behavior |
-|---|---|---|
-| Filter | Keep only the rows that match one or more conditions | Create or update |
-| Sample | Extract a contiguous slice or a random subset of rows | Create only |
-| Join | Combine two data blocks side-by-side on a shared column | Create only |
-| Stack | Vertically concatenate two data blocks that share the same columns | Create only |
-| Find | Match text patterns with Regular Expressions, then remove, replace, or extract matches | Create or update |
-| Create | Build a new column by combining the contents of existing columns | Create or update |
-| Expression | Compose validated typed expression items for advanced transformations | Create or update |
-
-The general workflow for any sub-tab is:
-
-1. Select one or more data blocks from the workspace.
-2. Configure the transformation.
-3. Review the **Preview** table to check the expected output.
-4. For an eligible tool, choose **Create new Data Block** or **Update selected Data Block** under **Apply result as**.
-5. Click **Create Data Block** or **Update Data Block**.
+| Tool | Purpose |
+|---|---|
+| Filter | Keep matching rows |
+| Sample | Slice, sample, or shuffle rows |
+| Join | Combine two inputs using keys |
+| Stack | Combine inputs by column name |
+| Find | Add or replace a column with regex results in place |
+| Build | Build a column from columns and literals |
+| SQL | Run scripts in saved SQL cells |
 
 <h2 id="help-preprocessing-common-section">Common controls</h2>
 
-These controls appear across multiple sub-tabs and work the same way throughout.
+<h3 id="help-preprocessing-common-node-selection">Data Block selection</h3>
 
-<h3 id="help-preprocessing-common-node-selection">Data block selection</h3>
+Use **Preprocessing Inputs** to select inputs. Double-click a graph card, or use its
+add button or the sidebar's add button, to add that Data Block to the active tool.
+When a view has more than one input area, the Data Block follows your pointer:
+click the desired area to place it, right-click to discard the latest carried
+block, or press Escape to clear the carried stack.
 
-Select one or more data blocks from the workspace graph or the data block list. Each sub-tab requires a specific number of data blocks (one for Filter, Sample, Find, Create; two for Join, Stack).
+Inputs are independent of graph selection and opened data previews. New results leave existing previews and graph selection unchanged. Filter, Sample, Find and
+Build accept one input; Join accepts two; Stack accepts two or more. SQL uses actual
+table names without an input picker. Each tool retains its inputs and draft when you change
+tabs or return to Data Loader. Reloading the window may reset drafts.
 
 <h3 id="help-preprocessing-common-preview">Preview table</h3>
 
-The preview pane shows the result of the current configuration in a paginated format with an estimated row count. Check the preview before applying to confirm the output looks as expected. No data block is created until you click the action button.
+You can submit Apply again or change inputs while earlier operations run. Each
+submission uses the inputs and output settings captured when you clicked Apply.
+Conflicts are reported by DuckDB without automatic retries.
 
-<h3 id="help-preprocessing-common-apply-button">Apply result as</h3>
+Visual tools preview automatically after a short pause. The shared pagination controls show a page and whether another
+page exists; previewing does not count the complete result. Column names and types
+are shown even when no rows match. A preview does not create or modify a Data Block. Complete requests can be applied
+while previews load, fail, or return no rows; DuckDB validates Apply.
 
-For Filter, Find, Create, and Expression, **Create new Data Block** is selected by default. It preserves the source and records the new block's creation lineage. Choose **Update selected Data Block** only when you deliberately want to replace the selected block's current execution plan. The choice remains available for repeated applies in the same tool and source, but resets to Create when you change the tool or selected Data Block. It is not saved as a preference.
+Preview and Apply evaluate separately. Remote data or random sampling can therefore
+produce different rows when applied. An error appears once in an expandable
+notification and leaves your draft available to correct.
 
-Sample (including Slice, Random Sample, and Shuffle), Join, and Stack have no update mode and always create Derived Data Blocks.
+Temporal Filter values remain exactly as typed. Use the shadcn calendar to change
+the date portion and the time text field for seconds or fractional seconds. Explicit
+timezone text is preserved. Opening the picker does not change a value; DuckDB
+validates it. Date, time and interval columns show controls appropriate to their type.
 
-An update keeps the selected Data Block's identity, graph edges, parents, descendants, and creation provenance unchanged. Descendants keep their existing independent plans and are not recomputed. Undo/Redo stores only plans for the current open Workspace session, up to 50 edits per Data Block. Closing and reopening the Workspace, importing it, or restarting the backend preserves the latest data but clears Undo/Redo history.
+<h3 id="help-preprocessing-common-apply-button">Create Data Block</h3>
+
+For Filter, Sample, Join, Stack and Build, choose an unused Data Block name and
+click **Create Data Block**. The result is
+always a View: it stores the query and follows changes to its sources. Its inputs
+appear as SQL dependencies in the graph. Existing names are never silently overwritten.
+There is no result-type or update-input selector. Find instead uses **Apply** to
+change the selected Data Block in place.
+
+To store fixed rows afterward, choose **Materialize** in the result's graph menu.
+Table cell-edit sessions must finish before preprocessing can apply changes;
+schema reads and previews remain available. The SQL console remains independent
+and executes the SQL you write.
 
 <h2 id="help-preprocessing-filter-section">Filter</h2>
 
-![Filter screenshot](tutorials/assets/preprocessing/filter.png)
-
-The Filter sub-tab keeps only the rows that match defined conditions. Use it to remove noise, focus on a subset, or create a clean working dataset before analysis.
-
 <h3 id="help-preprocessing-filter-conditions">Filter conditions</h3>
 
-![Filter conditions screenshot](tutorials/assets/preprocessing/filter_conditions.png)
+Add column conditions, choose **AND** or **OR**, and optionally negate individual
+conditions. Available controls follow the column type: text matches and regex,
+numeric and temporal comparisons, ranges, categorical checklists, string-list
+membership, and explicitly registered Topic Coverage fields.
 
-Define one or more column-based filter conditions. The behaviour of each condition depends on the data type of the selected column. All conditions are combined using either AND or OR logic (mixed logic chains are not supported).
+SQL conditions keep only rows where the complete predicate is true. NULL does not
+match an ordinary comparison; choose **is null** or select NULL in a checklist when
+needed. Negating a comparison does not automatically include NULL. An empty result
+is valid; the new View applies the predicate through its WHERE clause.
 
-- Click **Add Condition** to add more conditions.
-- Select **AND** or **OR** to control how conditions are combined.
-- Check **Negate** on any individual condition to invert it.
-- When a selected column contains missing values, a warning reports how many.
-  Ordinary filter conditions do not match those rows; choose **is null** to
-  target them explicitly.
-- The preview shows how many rows the current condition set would keep. An empty result is possible if no rows satisfy the conditions or if conditions conflict.
-- Categorical values load in ordered pages. Scroll to load more, use search to
-  filter on the server, and use **Select loaded** to select only the values
-  currently available. Existing selections remain selected across searches.
+Categorical choices load in pages. Search narrows the available choices; **Select
+loaded** selects the currently loaded values. Existing choices persist across
+searches. Numeric filter values are sent as exact text, preserving large integers
+and decimal precision.
 
-<h3 id="help-preprocessing-filter-new-node-name">New data block name</h3>
+<h3 id="help-preprocessing-filter-new-node-name">New Data Block name</h3>
 
-![Filter new data block name screenshot](tutorials/assets/preprocessing/filter_new_node_name.png)
-
-In create mode, give the filtered output a descriptive name so it is easy to find in the workspace. The new block is a child of the selected source block. This field is hidden in update mode because the selected Data Block keeps its existing identity and name.
-
-**Practice exercise**
-
-1. Select a dataset with a clear category column.
-2. Add a condition that keeps only one category.
-3. Add the filtered result as a new data block and confirm the row count in the preview.
+The suggested name describes the conditions. Change it to any unused name. The
+result reads the selected input, producing a SQL-dependency arrow.
 
 <h2 id="help-preprocessing-slice-section">Sample</h2>
 
-![Sample screenshot](tutorials/assets/preprocessing/sample.png)
+<h3 id="help-preprocessing-slice-offset">Slice — offset and length</h3>
 
-The Sample sub-tab extracts either a contiguous range or a randomly selected set of rows. A small representative subset makes exploring and debugging quicker than working with the full dataset.
-
-<h3 id="help-preprocessing-slice-offset">Slice — Offset and length</h3>
-
-![Slice screenshot](tutorials/assets/preprocessing/sample_slice.png)
-
-The slice option extracts a contiguous chunk of rows. **Offset** sets the starting row (0-indexed) and **Length** sets how many rows to include. Leave Length blank to slice to the end of the data block. For example, to extract rows 101–200 set Offset = 100 and Length = 100.
+Offset is zero-based. Offset 100 and Length 100 returns rows 101–200 of the current
+query order. SQL does not promise an enduring row order without ORDER BY.
 
 <h3 id="help-preprocessing-slice-length">Length</h3>
 
-The number of rows to include in the slice. Leave blank to slice from the offset to the end of the data block.
+Leave Length blank to take all rows after the offset.
 
-<h3 id="help-preprocessing-sample-fraction">Random sample — Fraction or count</h3>
+<h3 id="help-preprocessing-sample-fraction">Random sample — fraction or count</h3>
 
-![Random screenshot](tutorials/assets/preprocessing/sample_random.png)
-
-The random sample option extracts a randomly selected set of rows.
-
-- **Fraction** — enter a decimal between 0 and 1 (e.g. 0.3 for 30 % of rows).
-- **Count** — enter a whole number of rows to extract (e.g. 500). If the count exceeds the data block size, all rows are returned in shuffled order.
+DuckDB reservoir sampling accepts a fraction between zero and one, or a whole-row
+count. An oversized count returns all available rows. **Shuffle** samples the full
+input. No user-defined random sampling algorithm runs in Wordflow.
 
 <h3 id="help-preprocessing-sample-seed">Random seed</h3>
 
-The random seed controls reproducibility. Using the same seed on the same data always produces the same rows.
+The default seed is **0**; **No Random Seed** omits it. A seed alone does not promise
+identical results across repeated parallel executions. DuckDB guarantees seeded
+repeatability with single-threaded execution, while Wordflow keeps the runtime's
+normal threading. To preserve one evaluated sample, **Materialize** the resulting
+View from its graph menu. This stores the rows evaluated during materialization,
+which may differ from the preview.
+The preview is illustrative. See [DuckDB sampling](https://duckdb.org/docs/stable/sql/samples).
 
-- Use any non-negative integer (e.g. 0).
-- Check **No Random Seed** to draw a truly random sample — note that this makes the sample irreproducible and the randomness propagates to all derived child data blocks.
+<h3 id="help-preprocessing-slice-new-node-name">Sample output name</h3>
 
-<h3 id="help-preprocessing-slice-new-node-name">New data block name</h3>
-
-The pre-populated name includes the sampling parameters. Edit it if you need a more descriptive label. Sample is create-only.
-
-**Practice exercise**
-
-1. Select a dataset with at least 200 rows.
-2. Try Slice with Offset 50 and Length 25, then try Random Sample with Fraction 0.2 and a fixed seed.
-3. Add each result as a new data block and compare the row counts.
+Sample always creates a new View. The name suggestion includes the options.
 
 <h2 id="help-preprocessing-join-section">Join</h2>
 
-![Join screenshot](tutorials/assets/preprocessing/join.png)
-
-The Join sub-tab combines two data blocks side-by-side using matching columns. Use it when your text data is in one block and metadata is in another, or when you need to enrich a block before analysis. The result includes all columns from both blocks, making it wider than either source.
-
 <h3 id="help-preprocessing-join-column-picker">Join column picker</h3>
 
-![Join column picker screenshot](tutorials/assets/preprocessing/join_column_picker.png)
-
-Choose which column to match in each data block. The app pre-populates the most likely shared columns, but you are responsible for selecting the correct joining columns. Use clean, consistent identifier columns for the best results.
+Choose a **Left input** and **Right input**, each with its own key. The same Data
+Block can fill both roles for a self-join. Double-click a graph card, then place
+the carried block into the desired role. Matching key names use USING; different names
+use ON. DuckDB decides type compatibility and disambiguates duplicate output column
+names. The preview shows the same column names that the new result will use.
 
 <h3 id="help-preprocessing-join-type">Join type</h3>
 
-Join type controls how unmatched rows are handled:
-
-| Type | Keeps |
+| Type | Rows retained |
 |---|---|
-| Inner | Only rows with a match in both blocks |
-| Left | All rows from the left block; matched rows from the right |
-| Right | All rows from the right block; matched rows from the left |
-| Full | All rows from both blocks; unmatched values become nulls |
-| Semi | Left-block rows that have at least one match in the right |
-| Anti | Left-block rows with no match in the right |
-| Cross | Cartesian product of both blocks (can be very large) |
+| Inner | Matches from both inputs |
+| Left | All left rows, with matching right values |
+| Right | All right rows, with matching left values |
+| Full | All rows; unmatched values become NULL |
+| Semi | Left rows with a match |
+| Anti | Left rows without a match |
+| Cross | Every pair of left and right rows; no keys required |
 
 <h3 id="help-preprocessing-join-node-name">Join output name</h3>
 
-Give the joined output a clear name. Leave it blank to use the auto-generated suggestion. Join is create-only.
-
-**Practice exercise**
-
-1. Select two datasets that share an identifier column.
-2. Pick that column in both column pickers and run an Inner join.
-3. Compare the row count in the preview against both source blocks.
+Join creates a new View with SQL-dependency arrows from its distinct inputs.
+Empty outputs are allowed; a live View can gain matching rows later. Check the
+preview before creating a potentially large cross join.
 
 <h2 id="help-preprocessing-concat-section">Stack</h2>
 
-![Stack screenshot](tutorials/assets/preprocessing/concat.png)
+<h3 id="help-preprocessing-concat-schema-status">Schema alignment</h3>
 
-The Stack sub-tab vertically concatenates two or more data blocks. Use it when you want to merge data blocks with identical column structures into one longer block.
-
-<h3 id="help-preprocessing-concat-schema-status">Schema status</h3>
-
-![Schema status screenshot](tutorials/assets/preprocessing/concat_schema_status.png)
-
-The schema status panel tells you whether all selected data blocks share the same column structure and highlights any mismatches. Resolve mismatches (e.g. by renaming or removing columns) before stacking.
+Stack combines rows with **UNION ALL BY NAME**. Inputs can have different columns:
+DuckDB aligns names, fills missing values with NULL, and chooses compatible types.
+Inspect the resulting preview schema. Incompatible types produce an error; there
+is no requirement to manually make every input schema identical.
 
 <h3 id="help-preprocessing-concat-deduplicate">Drop duplicate rows after stacking</h3>
 
-Tick **Drop duplicate rows after stacking** to remove exact duplicate rows from the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset).
+Enable this option to use **UNION BY NAME**, removing duplicate complete output
+rows after name alignment and type coercion.
 
-<h3 id="help-preprocessing-concat-new-node-name">New data block name</h3>
+<h3 id="help-preprocessing-concat-new-node-name">Stack output name</h3>
 
-Provide a label for the stacked output. Leave it blank to use the auto-generated suggestion. Stack is create-only.
-
-**Practice exercise**
-
-1. Select two datasets with the same column structure.
-2. Review the schema status to confirm no mismatches.
-3. Add the stacked result and confirm the row count equals the sum of both sources.
+Stack always creates a new View; its referenced inputs appear as SQL dependencies.
 
 <h2 id="help-preprocessing-find-replace">Find</h2>
 
-![Find screenshot](tutorials/assets/preprocessing/find.png)
+Choose a text column and a DuckDB regular expression. **Replace** offers **First
+match** or **All matches**. An empty replacement removes matches. Replacement
+capture references use `\1`, `\2`, and so on, not `$1`. For example, pattern
+`(\w+) (\w+)` and replacement `\2, \1` swaps two words.
 
-The Find sub-tab performs text manipulation on a selected column using Regular Expressions (RegEx). It supports two operations — **Replace** and **Extract** — and the transformation can overwrite the source column or write an output column. Separately, **Apply result as** decides whether the transformed plan creates a Data Block or updates the selected one.
+**Extract** joins all matches, or the first N matches, using the chosen connector.
+Set **Output column name** and click **Apply**:
 
-**Replace**
+- Leave it blank to replace the selected source column.
+- Enter another existing column name to replace that column (names are case-insensitive).
+- Enter an unused name to add a text column.
 
-![Replace screenshot](tutorials/assets/preprocessing/find_replace.png)
+The Data Block keeps its name and graph identity. A **Table** stores the values
+when Apply runs and has no Undo. Existing Table columns retain their types and
+constraints; DuckDB reports incompatible assignments. A failed Apply rolls back
+the entire change, including any new column. A **View** stores a live expression
+over its previous definition; **Undo** removes the latest query layer.
 
-Match a pattern and replace each match with a fixed string. To delete matched text, replace with an empty string. For example, to remove all URLs from a column, match `https?://\S+` and replace with an empty string.
+For example, with source `text`, pattern `\d+` and replacement `#`, leave the
+output blank to clean `text` itself, or enter `clean_text` to keep the original
+column. Extraction uses the same output rules.
 
-**Extract**
+Selection and the displayed Data View stay unchanged. An open preview refreshes;
+a closed preview stays closed. Drafts remain available after success or failure.
+DuckDB uses RE2 regex syntax; unsupported constructs report an error.
+See [DuckDB regex functions](https://duckdb.org/docs/stable/sql/functions/regular_expressions).
 
-![Extract screenshot](tutorials/assets/preprocessing/find_extract.png)
+<h2 id="help-preprocessing-build-section">Build</h2>
 
-Match a pattern and extract all captured matches into a new column. For example, to extract all @-mentions from a tweet column, match `@\w+` and save to a new column named *mentioned*.
+<h3 id="help-preprocessing-build-builder">Column and literal builder</h3>
 
-**Practice exercise**
+Build creates or replaces **one column**. Search the column bubbles and drag them
+into the builder, or click a palette bubble to add it. The palette always copies;
+dragging a placed expression moves it, including any nested contents. A floating
+bubble follows your pointer and the original stays dimmed until you drop it.
+Dropping outside a highlighted destination leaves it unchanged. Click a
+container to make it the destination for palette clicks, or choose **Expression
+root** to add at the top level.
 
-1. Select a dataset with a text column that contains noise (e.g. XML tags, URLs).
-2. Write a RegEx pattern to match the noise and replace it with an empty string.
-3. Review the preview, choose create or update mode, and apply the result.
+**Add value** offers **Text** (default), **Number**, **Boolean** and **NULL**.
+Text stays exactly as entered, so `00123` remains text; numeric input preserves its
+precision. Click a placed value to edit it.
 
-<h2 id="help-preprocessing-aggregate-section">Create</h2>
+Click a placed column to open its operations. Steps run in displayed order and
+appear as attached chips. Click any chip to edit its parameters. Only the last
+operation has a removal ×; removing it exposes the previous step. If editing an
+earlier step makes a later one invalid, it stays visible with its reason. Menus
+follow the preceding operation's output, so **Split** offers list operations.
 
-![Create screenshot](tutorials/assets/preprocessing/create.png)
+The separate × on a bubble removes the whole expression, including its children.
+For keyboard movement, focus its drag handle: **Space** picks up, **arrow keys**
+choose a valid insertion position, **Enter** drops and **Escape** cancels. The
+destination is highlighted, announced and scrolled into view.
 
-The Create sub-tab builds new columns by combining the contents of existing columns as text. Use it when you need to analyse multiple columns together — for example, concatenating a title and a body into a single full-text column for topic modelling.
+A single root expression needs no combination. Adding a second opens **Choose how
+to combine**. Cancelling keeps both bubbles and leaves the draft incomplete until
+you choose a function. A function bubble contains its ordered arguments:
 
-<h3 id="help-preprocessing-aggregate-builder">Basic builder</h3>
+| Group | Choices | Behavior |
+|---|---|---|
+| Text | Join text | Set a separator, including a space, or leave it empty. NULL parts are skipped. |
+| Numeric | Add, Subtract in order, Multiply, Divide in order, Greatest, Least | Subtract and Divide evaluate from the first part to the last. Arithmetic propagates NULL; Greatest/Least skip NULL arguments. |
+| Values | First non-NULL, Make list | First non-NULL uses the first available value. Make list keeps separate elements, including NULLs. DuckDB determines compatible types. |
+| Lists | Concatenate lists | Joins list contents, skipping NULL lists while retaining NULL elements. |
+| Boolean | AND, OR | Uses SQL three-valued Boolean logic. |
 
-Drag column tokens and custom text blocks into the builder to assemble the expression without typing.
+Choices follow the parts' types after their operations. A previously chosen
+combination that becomes invalid remains visible until corrected; Wordflow never
+silently substitutes another choice.
 
-- Drag column bubbles into the builder to add them to the expression.
-- Add a **Custom Text** bubble for separators or literals, then click it to edit the value.
-- Reorder bubbles by dragging them to a new position.
+Use **Add function** inside a container to nest another combination. For example,
+put `first_name` and `last_name` inside **Join text**, click each column to add
+**Trim both ends**, then click **Join text** to add **Lowercase** to the combined
+result. The same label opens function settings, including the text separator.
+You can also apply **Round** to **Add**, or **List length** to **Concatenate lists**.
+Borders show containment; drop indicators show the exact insertion position.
 
-<h3 id="help-preprocessing-aggregate-expression">Advanced expression</h3>
+The SQL stays visible while you build. **Needs input** marks an empty function;
+**Choose a function** marks an unresolved combination; **Incomplete input** points
+to an unfinished child. **Check operation** identifies an invalid chain.
+**Draft SQL** preserves all bubbles and marks missing pieces explicitly, for example
+`concat_ws(' ', "first_name", concat_ws(' ', /* add input */))`. It is not sent to
+the database until the visual expression is complete. You can choose **Edit SQL
+expression** to complete the displayed draft directly; returning to bubbles requires
+valid SQL. The previous successful preview remains visible and marked outdated.
 
-![Advanced expression screenshot](tutorials/assets/preprocessing/create_expression.png)
+The menu follows the preceding step's result type. For example:
 
-Use the Advanced tab for full control, including helper functions and conditional logic.
+- **Trim both ends → Lowercase → Count distinct** counts normalized text values.
+- **Split → List length → Mean** computes the average number of list elements.
+- **Mean → Round** rounds a column's average.
 
-- Reference columns by name (`title`) or in quotes if the name contains spaces (`"Total Count"`).
-- Combine values with `+`.
-- Use helpers such as `abs()`, `round(value, 2)`, `when(condition, then, otherwise)`, `coalesce(a, b)`.
-- Use `lit("value")` to force a literal string when it would otherwise be interpreted as a column name.
-
-<h3 id="help-preprocessing-aggregate-column-name">New column name</h3>
-
-Set a clear label for the new column so it is easy to find downstream. This is a transformation field and remains available in both create and update modes.
-
-**Practice exercise**
-
-1. Select a dataset with a title column and a body or abstract column.
-2. Use the Basic builder to drag both columns into the expression with a space separator.
-3. Preview the combined column, choose create or update mode, then apply it.
-
-<h2 id="help-preprocessing-expression-section">Expression</h2>
-
-The Expression sub-tab accepts JSON expression items from Wordflow's generated typed-expression contract. Raw Python and executable Polars source are not accepted. Each item contains an `expression` object with an `op`; optional item fields such as `alias` and the separate Sort direction control shape the output.
-
-Five context modes are available:
-
-| Mode | What it does |
+| Input | Available operations |
 |---|---|
-| Filter | Supply a boolean expression to keep only matching rows |
-| With Columns | Add or overwrite columns using one or more expressions |
-| Select | Choose and transform specific columns |
-| Sort | Sort by one or more expressions, with optional descending order |
-| Group By | Group by a key expression and apply aggregations |
+| All types | Is NULL, Is not NULL, Count non-NULL, Count NULL |
+| Supported scalar types | Fill NULL, Count distinct, Minimum, Maximum |
+| Numeric | Absolute value, Sign, Round, Truncate, Floor, Ceiling, Square root, Power, Natural logarithm, Base-10 logarithm, Exponential |
+| Numeric summaries | Sum, Mean, Median, Sample standard deviation, Sample variance |
+| Text and categorical | Lowercase, Uppercase, Trim both ends/left/right, Strip accents, Character length, Reverse text, Substring, Replace literal text, Contains, Starts with, Ends with, Split, Parse datetime |
+| Date/time | Extract applicable parts; truncate dates/timestamps; format dates/timestamps as text |
+| Boolean | NOT, Is true, Is false, Count true, Count false, All true, Any true |
+| Lists | Length, Non-NULL element count, Distinct elements, Sort, Reverse, Element at index, Slice, Contains element; Join text elements; Sum/Mean/Minimum/Maximum of numeric elements |
 
-Each mode displays a typed JSON example. Click **Preview** to validate and inspect results, choose create or update mode, then click **Create Data Block** or **Update Data Block**. The new-Data-Block name field is shown only in create mode.
+Date parts follow the source type: dates expose calendar parts, times expose
+hour/minute/second, and timestamps expose both. **isodow** uses Monday=1; **week**
+is the ISO week number; **second** returns whole seconds. Datetime parsing and
+formatting use DuckDB formats: `.%f` for fractional seconds and `%z` for a UTC
+offset. Invalid input or out-of-domain numeric operations produce native errors.
 
-**Practice exercise**
+List indices are 1-based and negative indices count from the end. Slice endpoints
+are inclusive. List length includes NULL elements; non-NULL element count does
+not. Distinct elements removes NULLs and can change order. Joining text elements
+skips NULLs. Empty lists and NULL lists retain DuckDB's normal behavior.
 
-1. Select a dataset and switch to the **Filter** context.
-2. Enter `{"expression":{"op":"gt","left":{"op":"column","name":"word_count"},"right":{"op":"literal","value":100}}}`.
-3. Click **Preview** to inspect the filtered rows, then choose whether to create a Derived Data Block or update the selected Data Block.
+Explicit semantic types and unsupported structures expose only NULL checks and
+counts; Wordflow does not guess semantic operations from their shape. Exact
+result types appear in the preview. Numeric parameters retain their entered
+precision. If a removed step or changed source schema invalidates a chain, the
+draft remains visible with the step identified; correct it before Preview or Apply.
+
+See DuckDB's [text](https://duckdb.org/docs/current/sql/functions/text),
+[numeric](https://duckdb.org/docs/current/sql/functions/numeric),
+[date/time](https://duckdb.org/docs/current/sql/functions/datepart), and
+[list](https://duckdb.org/docs/current/sql/functions/list) references for native semantics.
+
+<h3 id="help-preprocessing-build-expression">Column summaries and SQL</h3>
+
+Independent branches can each have a column-wide summary. A summary on a
+container is available only when none of its children already contains a summary. Scalar operations can run before
+or after it. The summary uses the entire input, before preview pagination, and
+broadcasts its result to each row. A summary does not create a row for an empty
+input. Count ignores NULLs unless explicitly labeled Count NULL; sample standard
+deviation and variance require enough non-NULL values and follow DuckDB's rules.
+Use **Edit SQL expression** for arithmetic with mixed operators, nested functions
+or `CASE` expressions. It renders the current expression in the themed editor. For example:
+
+```sql
+CASE WHEN "score" >= 50 THEN 'Pass' ELSE 'Review' END
+```
+
+**Insert column** searches the input schema and inserts a correctly quoted name
+at the cursor. Write an expression, not a complete SELECT or script; use the SQL
+console for full statements, grouping or row expansion.
+
+Adding a summary in the builder produces a window expression for the new View.
+Handwritten SQL, including explicit scalar subqueries, keeps its meaning when
+switching between SQL and bubbles.
+
+**Return to bubble builder** parses the current SQL without running it. Supported
+functions, operators and summaries become editable bubbles. Other fragments,
+including CASE and unfamiliar subqueries, remain **SQL-expression bubbles** that
+you can edit, move or combine. Their result type stays unknown unless reliably
+established, so Wordflow does not guess additional type-specific operations.
+Conversion preserves expression meaning, including arithmetic grouping and exact
+numbers, but may change formatting or discard comments. Malformed SQL stays in
+the editor for correction; it does not replace the last valid tree.
+
+Drafts survive application-tab changes. Reloading may discard them.
+
+Both modes preview after a **350 ms** pause. Pagination resets when the expression
+changes. The last successful table stays visible while a replacement loads or fails,
+with an **Outdated** notice. Automatic SQL errors appear beside the editor without
+repeated notifications while typing. Apply remains available for complete requests
+regardless of preview success; failed Apply reports one expandable error and keeps
+your draft.
+
+<h3 id="help-preprocessing-build-column-name">Output column name</h3>
+
+An existing column name replaces that column only in the new View; the input
+is unchanged. DuckDB determines the output type from the expression. Unchanged, explicitly
+mapped columns retain applicable metadata; computed columns do not inherit semantic
+descriptors. Document and tokenizer preferences remain only for compatible columns.
+
+<h2 id="help-preprocessing-sql-section">SQL</h2>
+
+The SQL console contains independently saved cells. Write ordinary DuckDB SQL
+against actual table names; the default schema is `data`:
+
+```sql
+SELECT * FROM "documents" WHERE length(text) > 100;
+```
+
+The Play button executes the cell (**⌘/Ctrl+Enter**). Its menu offers:
+
+- **Default:** explicitly run the complete script. Statements execute in order in
+  one transaction, showing the last statement's result. A failure rolls back the
+  database changes. File effects from SQL such as COPY cannot be rolled back.
+- **Live preview:** after a 600 ms pause in typing, run one complete query in a
+  read-only transaction. Multiple statements and writes require Default. Opening
+  the console or duplicating a Live cell never automatically runs it. DuckDB limits
+  this query to 50,001 rows to detect truncation; only 50,000 are displayed. Errors
+  in unvisited rows may not appear. Aggregates and sorting can still scan all input.
+
+Explicit runs can overlap, including repeated Play in the same cell. The latest
+successful completion supplies its result, even if that run was submitted earlier.
+Failed or cancelled runs keep the previous result. Automatic Live previews run one
+at a time per cell and keep only the latest pending edit. Conflicting writes report DuckDB
+errors without automatic retries.
+
+Variables, explicit session settings and `USE` apply only within the current
+Run. For example, `SET VARIABLE minimum = 10; SELECT * FROM documents WHERE
+length(text) > getvariable('minimum');` works in Default mode. Another cell or
+a later Run starts with a fresh connection and the `data` schema.
+
+Use **Add Cell**, or the plus between cells, to insert a cell. Drag its handle to
+reorder, or use **Move cell up/down** in the menu. **⌘/Ctrl+↑/↓** moves a focused
+handle without changing editor cursor keys. The menu also offers Duplicate,
+Delete and **Format selection/cell** (**⌘/Ctrl+Alt+O** in the editor). Formatting
+preserves identifier casing and leaves unsupported syntax unchanged.
+
+New cells stay local until their first run, including Live preview. Typing, changing
+mode and blur do not save a never-run cell. First Run saves its SQL and mode before
+execution; after that, text saves on blur and before Run. A failed script remains saved.
+Ordering and deletion changes to saved cells are also saved. Unsaved/Saving/Saved indicates
+source persistence. Drafts and results survive switching application tabs. Text
+in never-run cells is discarded on reload. Later edits to saved cells must reach blur
+or Run to be guaranteed saved before closing.
+Results are kept only in memory and are never executed automatically on reopening.
+
+Each cell displays up to **50,000 rows**, with a notice when truncated. Paging reads
+that captured result and does not rerun SQL. Editing SQL marks its previous result
+outdated. The display cap does not limit INSERT, UPDATE, DELETE or COPY effects.
+For full output, use DuckDB SQL, for example:
+
+```sql
+COPY (SELECT * FROM documents) TO '/absolute/path/documents.parquet' (FORMAT PARQUET);
+```
+
+SQL-created objects appear with **Show Dependencies** enabled. They do not automatically
+appear in the logical graph or preprocessing inputs. Register them
+and additional virtual relationships explicitly when desired; View SQL dependencies
+are calculated automatically:
+
+```sql
+CREATE VIEW long_documents AS SELECT * FROM documents WHERE length(text) > 100;
+INSERT INTO wordflow.nodes (table_name) VALUES ('long_documents');
+INSERT INTO wordflow.edges (source_name, target_name) VALUES ('documents', 'long_documents');
+```
+
+Direct SQL owns its metadata and constraints. The console does not infer graph
+relationships, repair downstream Views or add Undo layers. Successful Default
+runs refresh existing graph/data displays without changing selection or previews.
+Finish table editing before saving or executing SQL cells. Runtime transaction
+control, connection settings, attachments and extension management are unavailable
+in cells because the project owns the shared connection.
 
 [← Back to tutorial index](./index.md)
+
+New Stack requests preserve duplicate rows. **Remove identical complete rows after stacking** is optional and compares whole rows. A Join can produce multiple output rows when a key has multiple matches.

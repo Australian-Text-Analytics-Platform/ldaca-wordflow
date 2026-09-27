@@ -1,16 +1,4 @@
-/**
- * Bundled fallback registry. Ships inside the app bundle and is used:
- *  - when `VITE_DOCS_ORIGIN` is unset (offline-only build),
- *  - while the remote `registry.json` fetch is in flight on first paint,
- *  - if the remote fetch fails and no cache is present.
- *
- * The runtime merges remote-over-bundled, so anything in the bundle here is
- * shadowed once the remote registry arrives. To drop an entry from the
- * bundle, delete it here — the remote registry continues to serve it.
- *
- * This registry remains complete because bundled docs are the offline source
- * of truth; a matching remote minor tag may shadow entries for urgent fixes.
- */
+/** Bundled help target mappings. Remote delivery updates document content only. */
 
 export interface DocTarget {
   file: string;
@@ -51,60 +39,30 @@ const tutorial = {
     anchor: 'help-ui-task-centre',
     label: 'Task Centre',
   },
-  'ui.workspace-graph-view': {
+  'ui.project-graph-view': {
     file: 'tutorials/ui.md',
-    anchor: 'help-ui-workspace-graph-view',
-    label: 'Workspace Graph View',
+    anchor: 'help-ui-project-graph-view',
+    label: 'Project Graph',
   },
   'ui.data-viewer': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-data-viewer',
     label: 'Data Viewer',
   },
-  'ui.working-directory': {
+  'ui.project-files': {
     file: 'tutorials/ui.md',
-    anchor: 'help-ui-working-directory',
-    label: 'Working Directory',
+    anchor: 'help-ui-project-files',
+    label: 'Project files',
   },
   'ui.help-feedback': {
     file: 'tutorials/ui.md',
     anchor: 'help-ui-help-feedback',
     label: 'Help and Feedback',
   },
-  'data-loader.active-workspace.section': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-active-workspace',
-    label: 'Active workspace overview',
-  },
   'data-loader.tab': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-section',
     label: 'Data loader overview',
-  },
-  'data-loader.workspace-manager.section': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-workspace-manager',
-    label: 'Workspace manager overview',
-  },
-  'data-loader.create-workspace.name': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-create-workspace-name',
-    label: 'Workspace name input',
-  },
-  'data-loader.create-workspace.button': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-create-workspace-button',
-    label: 'Create workspace button',
-  },
-  'data-loader.rename-workspace.input': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-rename-workspace-input',
-    label: 'Rename workspace input',
-  },
-  'data-loader.unload.button': {
-    file: 'tutorials/data-loader.md',
-    anchor: 'help-data-loader-unload-button',
-    label: 'Unload workspace',
   },
   'data-loader.files.section': {
     file: 'tutorials/data-loader.md',
@@ -129,7 +87,7 @@ const tutorial = {
   'data-loader.add.button': {
     file: 'tutorials/data-loader.md',
     anchor: 'help-data-loader-add-button',
-    label: 'Add file to workspace',
+    label: 'Add file to project',
   },
   'preprocessing.join.tab': {
     file: 'tutorials/preprocessing.md',
@@ -221,24 +179,24 @@ const tutorial = {
     anchor: 'help-preprocessing-concat-schema-status',
     label: 'Schema status',
   },
-  'preprocessing.aggregate.tab': {
+  'preprocessing.build.tab': {
     file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-section',
-    label: 'Create sub-tab overview',
+    anchor: 'help-preprocessing-build-section',
+    label: 'Build sub-tab overview',
   },
-  'preprocessing.aggregate.builder': {
+  'preprocessing.build.builder': {
     file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-builder',
+    anchor: 'help-preprocessing-build-builder',
     label: 'Expression builder',
   },
-  'preprocessing.aggregate.expression': {
+  'preprocessing.build.expression': {
     file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-expression',
+    anchor: 'help-preprocessing-build-expression',
     label: 'Advanced expression',
   },
-  'preprocessing.aggregate.column-name': {
+  'preprocessing.build.column-name': {
     file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-aggregate-column-name',
+    anchor: 'help-preprocessing-build-column-name',
     label: 'Computed column name',
   },
   'preprocessing.find.tab': {
@@ -246,10 +204,10 @@ const tutorial = {
     anchor: 'help-preprocessing-find-replace',
     label: 'Find sub-tab overview',
   },
-  'preprocessing.expression.tab': {
+  'preprocessing.sql.tab': {
     file: 'tutorials/preprocessing.md',
-    anchor: 'help-preprocessing-expression-section',
-    label: 'Expression sub-tab overview',
+    anchor: 'help-preprocessing-sql-section',
+    label: 'SQL console',
   },
   'analysis.token-frequency.tab': {
     file: 'tutorials/token-frequency.md',
@@ -400,6 +358,11 @@ const tutorial = {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-words-per-topic',
     label: 'Words per topic',
+  },
+  'analysis.plots.parameters': {
+    file: 'tutorials/plots.md',
+    anchor: 'plots-parameters',
+    label: 'Plots parameters',
   },
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',

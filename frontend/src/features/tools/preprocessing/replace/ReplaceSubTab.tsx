@@ -1,0 +1,262 @@
+import type { ReactNode } from 'react';
+import { Search } from 'lucide-react';
+import type { ProjectNode } from '@/features/project/api';
+
+import HelpIcon from '@/components/help/HelpIcon';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { PreviewTable } from '../components/PreviewTable';
+import { SubTabActivityTag } from '../components/SubTabActivityTag';
+import { acceptPlaceholderOnTab } from '@/features/tools/common/placeholderTabFill';
+import { useReplaceSubTab, type ReplaceSubTabProps } from './hooks/useReplaceSubTab';
+
+type ReplaceSubTabComponentProps = ReplaceSubTabProps & {
+  renderNodeInputsPanel?: () => ReactNode;
+  sourceKind?: ProjectNode['kind'];
+};
+
+/**
+ * Renders the Find/Transform preprocessing tab. It delegates regex/extract
+ * state, preview, and apply behavior to `useReplaceSubTab`.
+ * Rendered by `DataPreprocessingFeature`; `useReplaceSubTab` supplies its model.
+ * Flow: render target column/find-replace controls, show preview output, and delegate
+ * apply/preview actions to the replace hook.
+ */
+export function ReplaceSubTab(props: ReplaceSubTabComponentProps) {
+  const { renderNodeInputsPanel } = props;
+  const {
+    hasSelection,
+    effectiveNodes,
+    stringColumns,
+    selectedColumn,
+    mode,
+    setMode,
+    n,
+    setN,
+    pattern,
+    setPattern,
+    replacement,
+    setReplacement,
+    connector,
+    setConnector,
+    outputColumnName,
+    setOutputColumnName,
+    controlsDisabled,
+    canApply,
+    applyDisabledReason,
+    applyLoading,
+    handleApply,
+    preview,
+  } = useReplaceSubTab(props);
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader className="space-y-0 pb-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5" />
+                Find &amp; Transform with Regex
+                <HelpIcon
+                  targetKey="preprocessing.find.tab"
+                  label="Find sub-tab overview"
+                  tooltip="Replace or extract regex matches into a column of the selected Data Block."
+                />
+              </CardTitle>
+            </div>
+            <SubTabActivityTag active={applyLoading} verb="Applying" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-0">
+          {renderNodeInputsPanel?.()}
+
+          {hasSelection && stringColumns.length === 0 && (
+            <div className="rounded-md border border-dashed border-warning bg-warning-background/70 p-4 text-body text-warning">
+              The selected data block has no string columns available for regex operations.
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="w-32 space-y-2">
+              <Label htmlFor="find-mode">Mode</Label>
+              <Select
+                value={mode}
+                onValueChange={(value: 'replace' | 'extract') => {
+                  setMode(value);
+                }}
+                disabled={controlsDisabled || !selectedColumn}
+              >
+                <SelectTrigger id="find-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="replace">Replace</SelectItem>
+                  <SelectItem value="extract">Extract</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-44 space-y-2">
+              <Label htmlFor="find-n">Matches</Label>
+              {mode === 'replace' ? (
+                <Select
+                  value={n === null ? 'all' : 'first'}
+                  onValueChange={(value) => {
+                    setN(value === 'all' ? null : 1);
+                  }}
+                  disabled={controlsDisabled || !selectedColumn}
+                >
+                  <SelectTrigger id="find-n">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="first">First match</SelectItem>
+                    <SelectItem value="all">All matches</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  id="find-n"
+                  type="number"
+                  min={1}
+                  value={n ?? ''}
+                  onChange={(event) => {
+                    setN(event.target.value ? Number(event.target.value) : null);
+                  }}
+                  placeholder="All if left blank"
+                  disabled={controlsDisabled || !selectedColumn}
+                />
+              )}
+            </div>
+
+            <div className="min-w-0 flex-1 space-y-2">
+              <Label htmlFor="find-pattern">Regex pattern</Label>
+              <Input
+                id="find-pattern"
+                value={pattern}
+                onChange={(event) => {
+                  setPattern(event.target.value);
+                }}
+                placeholder="\\d+"
+                disabled={controlsDisabled || !selectedColumn}
+              />
+            </div>
+
+            {mode === 'replace' ? (
+              <>
+                <span className="mb-2 text-body text-description">with</span>
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Label htmlFor="find-replacement">Replacement</Label>
+                  <Input
+                    id="find-replacement"
+                    value={replacement}
+                    onChange={(event) => {
+                      setReplacement(event.target.value);
+                    }}
+                    placeholder="#"
+                    disabled={controlsDisabled || !selectedColumn}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="mb-2 text-body text-description">join with</span>
+                <div className="w-56 max-w-full space-y-2">
+                  <Label htmlFor="find-connector">Connector</Label>
+                  <Input
+                    id="find-connector"
+                    value={connector}
+                    onChange={(event) => {
+                      setConnector(event.target.value);
+                    }}
+                    placeholder={'" " will be used by default'}
+                    disabled={controlsDisabled || !selectedColumn}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        </CardContent>
+        <CardFooter className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4">
+          <div className="min-w-0 flex-1 basis-64 space-y-2">
+            <Label htmlFor="replace-output-column" className="shrink-0">
+              Output column name
+            </Label>
+            <Input
+              id="replace-output-column"
+              value={outputColumnName}
+              onChange={(event) => {
+                setOutputColumnName(event.target.value);
+              }}
+              onKeyDown={(event) => {
+                acceptPlaceholderOnTab({
+                  event,
+                  value: outputColumnName,
+                  setValue: setOutputColumnName,
+                });
+              }}
+              placeholder={selectedColumn || 'Leave blank to overwrite the selected column'}
+              aria-describedby="replace-output-help"
+              disabled={controlsDisabled || !selectedColumn}
+              className="min-w-0 flex-1"
+            />
+            <p id="replace-output-help" className="text-caption text-description">
+              Leave blank to replace the source column. An existing name replaces that column; a new
+              name adds a column.
+              {props.sourceKind === 'table' &&
+                ' This Table stores the values when Apply runs; no Undo is available.'}
+              {props.sourceKind === 'view' &&
+                ' This View stays live; Undo removes the latest change.'}
+            </p>
+          </div>
+          <DisabledReasonTooltip reason={applyDisabledReason}>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void handleApply()}
+              disabled={!canApply}
+              className="shrink-0"
+            >
+              {applyLoading ? 'Applying…' : 'Apply'}
+            </Button>
+          </DisabledReasonTooltip>
+          <HelpIcon targetKey="preprocessing.find.tab" label="Find Apply action" />
+        </CardFooter>
+      </Card>
+
+      <PreviewTable
+        title={
+          <span className="flex items-center gap-2">
+            Preview results
+            <HelpIcon targetKey="preprocessing.common.preview" label="Preview table" />
+          </span>
+        }
+        description="Review the transformed rows before applying to the selected Data Block."
+        columns={preview.columns}
+        schema={preview.schema}
+        data={preview.data}
+        pagination={preview.pagination}
+        loading={preview.loading}
+        error={preview.error}
+        ready={preview.ready}
+        readyMessage={preview.readyMessage}
+        page={preview.page}
+        pageSize={preview.pageSize}
+        documentColumn={effectiveNodes[0]?.document ?? undefined}
+        onPageSizeChange={preview.setPageSize}
+        onPageChange={preview.onPageChange}
+      />
+    </div>
+  );
+}

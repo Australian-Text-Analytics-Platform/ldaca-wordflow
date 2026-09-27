@@ -1,4 +1,3 @@
-import { type FC } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,34 +5,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useAuth } from '@/features/auth/hooks/useAuth';
-import { SURVEY_BASE_URL, buildSurveyUrl, captureFeedbackContext } from '../feedbackContext';
+import { SURVEY_BASE_URL, buildSurveyUrl, type FeedbackContext } from '../feedbackContext';
 
 interface FeedbackPanelProps {
-  open: boolean;
+  context: FeedbackContext | null;
   onClose: () => void;
 }
 
-/**
- * Feedback survey modal opened from the sidebar footer. It builds a contextual
- * Qualtrics URL only while visible so the embedded survey receives the current
- * view, deployment, build, and auth role at the moment of submission.
- * Rendered lazily by `GlobalHosts` when global feedback intent opens the survey modal.
- * Flow: capture feedback context while open, build the Qualtrics iframe URL, then render the survey or a closed-state placeholder.
- */
-export const FeedbackPanel: FC<FeedbackPanelProps> = ({ open, onClose }) => {
-  const { isAuthenticated } = useAuth();
-
-  const surveyUrl = open
-    ? buildSurveyUrl(
-        SURVEY_BASE_URL,
-        captureFeedbackContext({ user_role: isAuthenticated ? 'authenticated' : 'anonymous' }),
-      )
-    : '';
+/** Feedback presentation for the current project application. */
+export function FeedbackPanelView({ context, onClose }: FeedbackPanelProps) {
+  const surveyUrl = context ? buildSurveyUrl(SURVEY_BASE_URL, context) : '';
 
   return (
     <Dialog
-      open={open}
+      open={context !== null}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) onClose();
       }}
@@ -53,4 +38,4 @@ export const FeedbackPanel: FC<FeedbackPanelProps> = ({ open, onClose }) => {
       </DialogContent>
     </Dialog>
   );
-};
+}

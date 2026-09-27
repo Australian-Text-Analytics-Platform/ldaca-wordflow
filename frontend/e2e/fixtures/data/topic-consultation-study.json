@@ -1,0 +1,676 @@
+[
+  {
+    "document_id": 1,
+    "text": null,
+    "source": "study",
+    "participant": "Synthetic participant 001",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 2,
+    "text": "",
+    "source": "study",
+    "participant": "Synthetic participant 002",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 3,
+    "text": "   ",
+    "source": "study",
+    "participant": "Synthetic participant 003",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 4,
+    "text": "住房租金太高，家庭需要可负担的住房。医院的医生和护士需要更多资源。😀",
+    "source": "study",
+    "participant": "Synthetic participant 004",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 5,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI missed a hospital appointment when the train was cancelled. Audio announcements would help passengers with impaired vision.",
+    "source": "study",
+    "participant": "Synthetic participant 005",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 6,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nThe flat has mould; the landlord has not returned our calls. Better insulation could reduce winter power bills for tenants.",
+    "source": "study",
+    "participant": "Synthetic participant 006",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 7,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nTravelling four hours for dialysis is exhausting. My specialist appointment was postponed twice this winter.",
+    "source": "study",
+    "participant": "Synthetic participant 007",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 8,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nA safe crossing is needed between the station and the primary school. I missed a hospital appointment when the train was cancelled.",
+    "source": "study",
+    "participant": "Synthetic participant 008",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 9,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. I share a bedroom with two siblings because a larger home is unaffordable.",
+    "source": "study",
+    "participant": "Synthetic participant 009",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 10,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. Nurses explained the treatment carefully, but the waiting room was full.",
+    "source": "study",
+    "participant": "Synthetic participant 010",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 11,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. The pharmacy closes before shift workers finish work.",
+    "source": "study",
+    "participant": "Synthetic participant 011",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 12,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nAccessible public housing is scarce in our regional town. Short-stay rentals have replaced homes for permanent residents.",
+    "source": "study",
+    "participant": "Synthetic participant 012",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 13,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nThe pharmacy closes before shift workers finish work. Video appointments help, except when our internet fails.",
+    "source": "study",
+    "participant": "Synthetic participant 013",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 14,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.",
+    "source": "study",
+    "participant": "Synthetic participant 014",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 15,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nWe moved away from school friends after the last eviction. Our lease expires next month and the rent increase would take half our wages.",
+    "source": "study",
+    "participant": "Synthetic participant 015",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 16,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. The flat has mould; the landlord has not returned our calls.",
+    "source": "study",
+    "participant": "Synthetic participant 016",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 17,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI cycle to work, but the protected lane ends at a busy intersection. A safe crossing is needed between the station and the primary school.",
+    "source": "study",
+    "participant": "Synthetic participant 017",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 18,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. Accessible public housing is scarce in our regional town.",
+    "source": "study",
+    "participant": "Synthetic participant 018",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 19,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. The pharmacy closes before shift workers finish work.",
+    "source": "study",
+    "participant": "Synthetic participant 019",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 20,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nAudio announcements would help passengers with impaired vision. I cycle to work, but the protected lane ends at a busy intersection.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nBetter insulation could reduce winter power bills for tenants. A longer lease would help us plan childcare and employment.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMy specialist appointment was postponed twice this winter. A wheelchair-accessible entrance would make the clinic welcoming.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI missed a hospital appointment when the train was cancelled. The last bus leaves before evening classes finish.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. The flat has mould; the landlord has not returned our calls.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. Travelling four hours for dialysis is exhausting.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nBus stops need shade and seating during summer heatwaves. The timetable assumes everyone travels to the city centre.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. We moved away from school friends after the last eviction.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. Mental health support should be available without a long referral process.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nCheaper fares are useful only if services run often enough. Audio announcements would help passengers with impaired vision.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nOur lease expires next month and the rent increase would take half our wages. Better insulation could reduce winter power bills for tenants.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nOur local clinic needs an interpreter for older patients. My specialist appointment was postponed twice this winter.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nA safe crossing is needed between the station and the primary school. I missed a hospital appointment when the train was cancelled.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nAccessible public housing is scarce in our regional town. I share a bedroom with two siblings because a larger home is unaffordable.",
+    "source": "study",
+    "participant": "Synthetic participant 020",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 21,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. Video appointments help, except when our internet fails.",
+    "source": "study",
+    "participant": "Synthetic participant 021",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 22,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nA wheelchair-accessible entrance would make the clinic welcoming. A wheelchair-accessible entrance would make the clinic welcoming.",
+    "source": "study",
+    "participant": "Synthetic participant 022",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 23,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nCheaper fares are useful only if services run often enough. The last bus leaves before evening classes finish.",
+    "source": "study",
+    "participant": "Synthetic participant 023",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 24,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nBetter insulation could reduce winter power bills for tenants. The flat has mould; the landlord has not returned our calls.",
+    "source": "study",
+    "participant": "Synthetic participant 024",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 25,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMy specialist appointment was postponed twice this winter. Travelling four hours for dialysis is exhausting.",
+    "source": "study",
+    "participant": "Synthetic participant 025",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 26,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nOur lease expires next month and the rent increase would take half our wages. Accessible public housing is scarce in our regional town.",
+    "source": "study",
+    "participant": "Synthetic participant 026",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 27,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.",
+    "source": "study",
+    "participant": "Synthetic participant 027",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 28,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nOur local clinic needs an interpreter for older patients. Mental health support should be available without a long referral process.",
+    "source": "study",
+    "participant": "Synthetic participant 028",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 29,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI missed a hospital appointment when the train was cancelled. Audio announcements would help passengers with impaired vision.",
+    "source": "study",
+    "participant": "Synthetic participant 029",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 30,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nThe flat has mould; the landlord has not returned our calls. Better insulation could reduce winter power bills for tenants.",
+    "source": "study",
+    "participant": "Synthetic participant 030",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 31,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nTravelling four hours for dialysis is exhausting. My specialist appointment was postponed twice this winter.",
+    "source": "study",
+    "participant": "Synthetic participant 031",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 32,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nA safe crossing is needed between the station and the primary school. I missed a hospital appointment when the train was cancelled.",
+    "source": "study",
+    "participant": "Synthetic participant 032",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 33,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. I share a bedroom with two siblings because a larger home is unaffordable.",
+    "source": "study",
+    "participant": "Synthetic participant 033",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 34,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. Nurses explained the treatment carefully, but the waiting room was full.",
+    "source": "study",
+    "participant": "Synthetic participant 034",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 35,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nThe timetable assumes everyone travels to the city centre. Bus stops need shade and seating during summer heatwaves.",
+    "source": "study",
+    "participant": "Synthetic participant 035",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 36,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nAccessible public housing is scarce in our regional town. Short-stay rentals have replaced homes for permanent residents.",
+    "source": "study",
+    "participant": "Synthetic participant 036",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 37,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nThe pharmacy closes before shift workers finish work. Video appointments help, except when our internet fails.",
+    "source": "study",
+    "participant": "Synthetic participant 037",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 38,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nBus stops need shade and seating during summer heatwaves. Cheaper fares are useful only if services run often enough.",
+    "source": "study",
+    "participant": "Synthetic participant 038",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 39,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nWe moved away from school friends after the last eviction. Our lease expires next month and the rent increase would take half our wages.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMental health support should be available without a long referral process. Our local clinic needs an interpreter for older patients.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nAudio announcements would help passengers with impaired vision. A safe crossing is needed between the station and the primary school.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nBetter insulation could reduce winter power bills for tenants. Accessible public housing is scarce in our regional town.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMy specialist appointment was postponed twice this winter. The pharmacy closes before shift workers finish work.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI missed a hospital appointment when the train was cancelled. I cycle to work, but the protected lane ends at a busy intersection.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. A longer lease would help us plan childcare and employment.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. A wheelchair-accessible entrance would make the clinic welcoming.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nBus stops need shade and seating during summer heatwaves. The last bus leaves before evening classes finish.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. The flat has mould; the landlord has not returned our calls.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. Travelling four hours for dialysis is exhausting.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nCheaper fares are useful only if services run often enough. The timetable assumes everyone travels to the city centre.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nOur lease expires next month and the rent increase would take half our wages. We moved away from school friends after the last eviction.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nOur local clinic needs an interpreter for older patients. Mental health support should be available without a long referral process.",
+    "source": "study",
+    "participant": "Synthetic participant 039",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 40,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.",
+    "source": "study",
+    "participant": "Synthetic participant 040",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 41,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMental health support should be available without a long referral process. Travelling four hours for dialysis is exhausting.",
+    "source": "study",
+    "participant": "Synthetic participant 041",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 42,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. Accessible public housing is scarce in our regional town.",
+    "source": "study",
+    "participant": "Synthetic participant 042",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 43,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. The pharmacy closes before shift workers finish work.",
+    "source": "study",
+    "participant": "Synthetic participant 043",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 44,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nAudio announcements would help passengers with impaired vision. I cycle to work, but the protected lane ends at a busy intersection.",
+    "source": "study",
+    "participant": "Synthetic participant 044",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 45,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nA longer lease would help us plan childcare and employment. A longer lease would help us plan childcare and employment.",
+    "source": "study",
+    "participant": "Synthetic participant 045",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 46,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nBetter insulation could reduce winter power bills for tenants. Better insulation could reduce winter power bills for tenants.",
+    "source": "study",
+    "participant": "Synthetic participant 046",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 47,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nCheaper fares are useful only if services run often enough. The last bus leaves before evening classes finish.",
+    "source": "study",
+    "participant": "Synthetic participant 047",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 48,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nBetter insulation could reduce winter power bills for tenants. The flat has mould; the landlord has not returned our calls.",
+    "source": "study",
+    "participant": "Synthetic participant 048",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 49,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMy specialist appointment was postponed twice this winter. Travelling four hours for dialysis is exhausting.",
+    "source": "study",
+    "participant": "Synthetic participant 049",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 50,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nThe last bus leaves before evening classes finish. The timetable assumes everyone travels to the city centre.",
+    "source": "study",
+    "participant": "Synthetic participant 050",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 51,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMy specialist appointment was postponed twice this winter. The pharmacy closes before shift workers finish work.",
+    "source": "study",
+    "participant": "Synthetic participant 051",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 52,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nOur local clinic needs an interpreter for older patients. Mental health support should be available without a long referral process.",
+    "source": "study",
+    "participant": "Synthetic participant 052",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 53,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.",
+    "source": "study",
+    "participant": "Synthetic participant 053",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 54,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nThe flat has mould; the landlord has not returned our calls. Better insulation could reduce winter power bills for tenants.",
+    "source": "study",
+    "participant": "Synthetic participant 054",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 55,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nTravelling four hours for dialysis is exhausting. My specialist appointment was postponed twice this winter.",
+    "source": "study",
+    "participant": "Synthetic participant 055",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 56,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. The flat has mould; the landlord has not returned our calls.",
+    "source": "study",
+    "participant": "Synthetic participant 056",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 57,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nI share a bedroom with two siblings because a larger home is unaffordable. I share a bedroom with two siblings because a larger home is unaffordable.",
+    "source": "study",
+    "participant": "Synthetic participant 057",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 58,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nNurses explained the treatment carefully, but the waiting room was full. Nurses explained the treatment carefully, but the waiting room was full.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nBus stops need shade and seating during summer heatwaves. Bus stops need shade and seating during summer heatwaves.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nShort-stay rentals have replaced homes for permanent residents. Short-stay rentals have replaced homes for permanent residents.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nVideo appointments help, except when our internet fails. Video appointments help, except when our internet fails.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nCheaper fares are useful only if services run often enough. Cheaper fares are useful only if services run often enough.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nOur lease expires next month and the rent increase would take half our wages. Our lease expires next month and the rent increase would take half our wages.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nOur local clinic needs an interpreter for older patients. Our local clinic needs an interpreter for older patients.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nA safe crossing is needed between the station and the primary school. A safe crossing is needed between the station and the primary school.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nAccessible public housing is scarce in our regional town. Accessible public housing is scarce in our regional town.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nThe pharmacy closes before shift workers finish work. The pharmacy closes before shift workers finish work.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nI cycle to work, but the protected lane ends at a busy intersection. I cycle to work, but the protected lane ends at a busy intersection.\nTenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nA longer lease would help us plan childcare and employment. A longer lease would help us plan childcare and employment.\nDoctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nA wheelchair-accessible entrance would make the clinic welcoming. A wheelchair-accessible entrance would make the clinic welcoming.\nTrains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nThe last bus leaves before evening classes finish. The last bus leaves before evening classes finish.",
+    "source": "study",
+    "participant": "Synthetic participant 058",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 59,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nThe timetable assumes everyone travels to the city centre. Bus stops need shade and seating during summer heatwaves.",
+    "source": "study",
+    "participant": "Synthetic participant 059",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 60,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nAccessible public housing is scarce in our regional town. Short-stay rentals have replaced homes for permanent residents.",
+    "source": "study",
+    "participant": "Synthetic participant 060",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 61,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nThe pharmacy closes before shift workers finish work. Video appointments help, except when our internet fails.",
+    "source": "study",
+    "participant": "Synthetic participant 061",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 62,
+    "text": "Trains and buses should run more frequently. Commuters need reliable public transport, accessible stations and safe cycling routes to work.\n\nBus stops need shade and seating during summer heatwaves. Cheaper fares are useful only if services run often enough.",
+    "source": "study",
+    "participant": "Synthetic participant 062",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 63,
+    "text": "Tenants need affordable housing. Rental prices are rising and families cannot find a home. The council should build social housing and protect renters.\n\nWe moved away from school friends after the last eviction. Our lease expires next month and the rent increase would take half our wages.",
+    "source": "study",
+    "participant": "Synthetic participant 063",
+    "tags": [
+      "synthetic",
+      "consultation"
+    ],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  },
+  {
+    "document_id": 64,
+    "text": "Doctors and nurses need more resources in local hospitals. Patients wait for treatment and medicine. Community clinics improve public health and prevention.\n\nMental health support should be available without a long referral process. Our local clinic needs an interpreter for older patients.",
+    "source": "study",
+    "participant": "Synthetic participant 064",
+    "tags": [],
+    "TOPIC_top1": "original metadata with a generated-name collision"
+  }
+]

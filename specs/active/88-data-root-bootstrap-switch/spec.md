@@ -1,5 +1,9 @@
 # Issue 88: Unified Data Root Bootstrap And Switching
 
+The desktop portion of this earlier contract is superseded by the
+[native desktop lifecycle](../../../docs/architecture/frontend/desktop.md).
+The FastAPI server retains its Data Root behavior.
+
 ## Intent
 
 The backend owns one process-wide Data Root across direct, browser, and Tauri

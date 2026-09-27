@@ -1,7 +1,7 @@
 import { rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-const tauriTarget = resolve(import.meta.dirname, '../src-tauri/target');
+const tauriTarget = resolve(import.meta.dirname, '../../target');
 const releaseRoots = [
   resolve(tauriTarget, 'release/bundle'),
   resolve(tauriTarget, 'aarch64-apple-darwin/release/bundle'),

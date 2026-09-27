@@ -3,14 +3,14 @@ import { devtools } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 
 /**
- * Ephemeral bridge from graph-node side buttons to the active view's
+ * Ephemeral bridge from graph double-clicks and graph/sidebar add buttons to the active tool's
  * add-node-as-needed input panel.
  *
  * The React Flow graph is mounted outside individual analysis panels, so a
  * node's side "+" button cannot directly call the active tab's
  * ``useNodeInputs.addNodes``. Instead it holds a transient LIFO stack scoped by
- * workspace + active view. A single-selector owner consumes matching requests
- * immediately; multi-selector views expose the stack through each visible
+ * connection scope + active tool. A single-selector owner consumes matching requests
+ * immediately; multi-selector tools expose the stack through each visible
  * ``NodeInputsPanel`` and consume the latest carried Data Block on placement.
  *
  * This store is intentionally not persisted: button clicks are transient UI
@@ -23,8 +23,8 @@ export interface NodeInputPointerPosition {
 
 interface NodeInputAddRequest {
   id: number;
-  workspaceId: string;
-  view: string;
+  scopeId: string;
+  tool: string;
   nodeId: string;
   pointer?: NodeInputPointerPosition;
 }
@@ -36,14 +36,15 @@ interface NodeInputRequestsState {
 
 interface NodeInputRequestsActions {
   requestAdd: (
-    workspaceId: string | null | undefined,
-    view: string | null | undefined,
+    scopeId: string | null | undefined,
+    tool: string | null | undefined,
     nodeId: string,
     pointer?: NodeInputPointerPosition,
   ) => void;
   consume: (id: number) => void;
   clear: () => void;
-  prune: (workspaceId: string, nodeIds: readonly string[]) => void;
+  prune: (scopeId: string, nodeIds: readonly string[]) => void;
+  rename: (scopeId: string, previous: string, next: string) => void;
 }
 
 export type NodeInputRequestsStore = NodeInputRequestsState & NodeInputRequestsActions;
@@ -55,13 +56,13 @@ export const useNodeInputRequestsStore = create<NodeInputRequestsStore>()(
       pendingRequests: [],
 
       /** Pushes a graph/sidebar add intent onto the carried LIFO stack. */
-      requestAdd: (workspaceId, view, nodeId, pointer) => {
+      requestAdd: (scopeId, tool, nodeId, pointer) => {
         set((state) => {
-          if (!workspaceId || !view || !nodeId) return;
+          if (scopeId == null || !tool || !nodeId) return;
           state.pendingRequests.push({
             id: state.nextId,
-            workspaceId,
-            view,
+            scopeId,
+            tool,
             nodeId,
             ...(pointer ? { pointer } : {}),
           });
@@ -84,12 +85,18 @@ export const useNodeInputRequestsStore = create<NodeInputRequestsStore>()(
       },
 
       /** Drops transient add intents whose authoritative target disappeared. */
-      prune: (workspaceId, nodeIds) => {
+      prune: (scopeId, nodeIds) => {
         set((state) => {
           const valid = new Set(nodeIds);
           state.pendingRequests = state.pendingRequests.filter(
-            (request) => request.workspaceId !== workspaceId || valid.has(request.nodeId),
+            (request) => request.scopeId !== scopeId || valid.has(request.nodeId),
           );
+        });
+      },
+      rename: (scopeId, previous, next) => {
+        set((state) => {
+          for (const request of state.pendingRequests)
+            if (request.scopeId === scopeId && request.nodeId === previous) request.nodeId = next;
         });
       },
     })),

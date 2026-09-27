@@ -2,8 +2,6 @@ import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Layers3, MousePointer2 } from 'lucide-react';
 
-import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
-import { useUIStore } from '@/stores';
 import {
   type NodeInputPointerPosition,
   useNodeInputRequestsStore,
@@ -95,12 +93,18 @@ function PointerFollower({
 }
 
 /** Renders the active carried stack as a pointer-following placement preview. */
-export function NodeInputPointerCarrier() {
-  const { currentWorkspaceId, nodes } = useWorkspaceData();
-  const currentView = useUIStore((state) => state.currentView);
+export function NodeInputPointerCarrier({
+  scopeId,
+  tool,
+  nodes,
+}: {
+  scopeId: string | null;
+  tool: string | null;
+  nodes: readonly { id: string; name: string }[];
+}) {
   const pendingRequests = useNodeInputRequestsStore((state) => state.pendingRequests);
   const activeRequests = pendingRequests.flatMap((request) => {
-    if (request.workspaceId !== currentWorkspaceId || request.view !== currentView) return [];
+    if (request.scopeId !== scopeId || request.tool !== tool) return [];
     const node = nodes.find((candidate) => candidate.id === request.nodeId);
     return node ? [{ id: request.id, name: node.name, pointer: request.pointer }] : [];
   });

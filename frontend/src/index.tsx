@@ -3,7 +3,9 @@ import { createRoot } from 'react-dom/client';
 import './index.css';
 import { installExternalFileDropGuard } from './lib/externalFileDropGuard';
 import { startThemeStorageSync } from './features/theme/themeRuntime';
-import { initializeDesktopWindowMaterial } from './lib/desktopWindowMaterial';
+import { serverBase } from './features/server/context';
+import { isTauri } from './lib/isTauri';
+import { listenForSessionErrors } from './features/diagnostics/sessionErrors';
 
 // Silence the harmless "ResizeObserver loop completed with undelivered
 // notifications" message before any module-level code (and Vite's HMR
@@ -26,6 +28,8 @@ if (typeof window !== 'undefined') {
       event.preventDefault();
     }
   });
+  const stopListening = listenForSessionErrors(window);
+  import.meta.hot?.dispose(stopListening);
 }
 
 const container = document.getElementById('root');
@@ -34,16 +38,20 @@ if (!container) {
 }
 
 async function renderApplication(rootContainer: HTMLElement) {
-  await initializeDesktopWindowMaterial();
-  const [{ RouterProvider }, { router }, { initSentry }] = await Promise.all([
-    import('@tanstack/react-router'),
-    import('./router'),
-    import('./lib/sentry'),
-  ]);
-  void initSentry();
+  const server = isTauri() ? null : serverBase();
+  if (server !== null) {
+    const { default: ServerApp } = await import('./features/server/ServerApp');
+    createRoot(rootContainer).render(
+      <React.StrictMode>
+        <ServerApp base={server} />
+      </React.StrictMode>,
+    );
+    return;
+  }
+  const { default: DesktopApp } = await import('./features/desktop/DesktopApp');
   createRoot(rootContainer).render(
     <React.StrictMode>
-      <RouterProvider router={router} />
+      <DesktopApp backendUrl={isTauri() ? undefined : ''} />
     </React.StrictMode>,
   );
 }

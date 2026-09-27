@@ -1,8 +1,0 @@
-/target/
-/.venv/
-/dist/
-__pycache__/
-.pytest_cache/
-.ruff_cache/
-*.so
-*.pyd

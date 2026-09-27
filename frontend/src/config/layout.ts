@@ -1,4 +1,4 @@
-/** Sidebar pixel dimensions used by the useResizableSplit hook in the workspace shell. */
+/** Sidebar pixel dimensions used by the useResizableSplit hook in the project shell. */
 export const SIDEBAR_DEFAULT_WIDTH = 208;
 export const SIDEBAR_MIN_WIDTH = 160;
 export const SIDEBAR_MAX_WIDTH = 400;

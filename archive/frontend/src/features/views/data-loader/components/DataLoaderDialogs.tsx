@@ -1,0 +1,261 @@
+import { Loader2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import type { FileTreeDirectory } from '@/features/views/data-loader/types';
+import { LdacaImportDialog, type LdacaImportDialogProps } from './LdacaImportDialog';
+
+export interface DataLoaderDialogsProps {
+  projectNameAlert: {
+    message: string | null;
+    onClose: () => void;
+  };
+  folderNameAlert: {
+    message: string | null;
+    onClose: () => void;
+  };
+  deleteProject: {
+    target: { id: string; name?: string | null } | null;
+    deleting: boolean;
+    onCancel: () => void;
+    onConfirm: () => void;
+  };
+  ldacaImport: LdacaImportDialogProps;
+  createFolder: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    parentPath: string;
+    parentLabel: string;
+    name: string;
+    onNameChange: (value: string) => void;
+    creating: boolean;
+    onCreate: () => void;
+  };
+  citation: {
+    directory: FileTreeDirectory | null;
+    path: string | null;
+    content: string | null;
+    loading: boolean;
+    onClose: () => void;
+  };
+  uploadConflicts: {
+    paths: string[];
+    onClose: () => void;
+  };
+}
+
+/**
+ * Collects the modal/dialog surfaces owned by the Data Loader. The feature
+ * passes state and callbacks here so destructive confirmations, token entry,
+ * folder creation, citation viewing, and Oni imports stay visually colocated.
+ * Rendered by `DataLoaderFeature` with dialog state owned by its workflow hooks.
+ * Flow: render each modal from hook-owned state, wire form fields to hook setters, then
+ * delegate confirmations/import/search actions back to DataLoaderFeature hooks.
+ */
+export function DataLoaderDialogs({
+  projectNameAlert,
+  folderNameAlert,
+  deleteProject,
+  ldacaImport,
+  createFolder,
+  citation,
+  uploadConflicts,
+}: DataLoaderDialogsProps) {
+  return (
+    <>
+      <AlertDialog
+        open={Boolean(projectNameAlert.message)}
+        onOpenChange={(open) => {
+          if (!open) projectNameAlert.onClose();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Invalid project name</AlertDialogTitle>
+            <AlertDialogDescription>{projectNameAlert.message}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={projectNameAlert.onClose}>Got it</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={Boolean(deleteProject.target)}
+        onOpenChange={(open) => {
+          if (!open) deleteProject.onCancel();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete project?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteProject.target
+                ? // an empty project name should fall through to the id
+                  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+                  `This will permanently delete "${deleteProject.target.name || deleteProject.target.id}" and its data. This action cannot be undone.`
+                : 'This will permanently delete the project and its data. This action cannot be undone.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={deleteProject.onCancel}
+              disabled={deleteProject.deleting}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteProject.onConfirm}
+              className="bg-error text-button-foreground hover:bg-error/90"
+              disabled={deleteProject.deleting}
+            >
+              {deleteProject.deleting ? 'Deleting…' : 'Delete project'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <LdacaImportDialog {...ldacaImport} />
+
+      <Dialog open={createFolder.open} onOpenChange={createFolder.onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create folder</DialogTitle>
+            <DialogDescription>
+              {createFolder.parentPath
+                ? `Create a subfolder inside ${createFolder.parentLabel}.`
+                : 'Create a folder under the root files directory.'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-folder-name">Folder name</Label>
+              <Input
+                id="new-folder-name"
+                value={createFolder.name}
+                onChange={(event) => {
+                  createFolder.onNameChange(event.target.value);
+                }}
+                placeholder="Enter folder name"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                createFolder.onOpenChange(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={createFolder.onCreate}
+              disabled={createFolder.creating || !createFolder.name.trim()}
+            >
+              {createFolder.creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Create folder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(citation.directory)}
+        onOpenChange={(open) => {
+          if (!open) citation.onClose();
+        }}
+      >
+        <DialogContent className="max-h-[80vh] max-w-3xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Citation</DialogTitle>
+            <DialogDescription>
+              {citation.path ? `Source: ${citation.path}` : 'Citation metadata'}
+            </DialogDescription>
+          </DialogHeader>
+          {citation.loading ? (
+            <div className="text-description flex items-center gap-2 text-body">
+              <Loader2 className="h-4 w-4 animate-spin" /> Loading citation…
+            </div>
+          ) : citation.content ? (
+            <div className="prose prose-sm max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{citation.content}</ReactMarkdown>
+            </div>
+          ) : (
+            <p className="text-description text-body">No citation available for this folder.</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={uploadConflicts.paths.length > 0}
+        onOpenChange={(open) => {
+          if (!open) uploadConflicts.onClose();
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Upload conflicts</DialogTitle>
+            <DialogDescription>
+              Nothing was uploaded. Resolve every conflicting User File path, then try again.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-64 overflow-y-auto rounded-md border p-3" tabIndex={0}>
+            <ul className="space-y-1 text-body">
+              {uploadConflicts.paths.map((path) => (
+                <li key={path}>
+                  <code className="break-all">{path}</code>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <DialogFooter>
+            <Button onClick={uploadConflicts.onClose}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog
+        open={Boolean(folderNameAlert.message)}
+        onOpenChange={(open) => {
+          if (!open) folderNameAlert.onClose();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Invalid folder name</AlertDialogTitle>
+            <AlertDialogDescription>
+              {/* an empty alert message should fall through to the default copy */}
+              {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing */}
+              {folderNameAlert.message ||
+                'Folder names cannot include path separators or traversal sequences.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={folderNameAlert.onClose}>Got it</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

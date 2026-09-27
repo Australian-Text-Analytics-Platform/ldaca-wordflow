@@ -15,17 +15,181 @@ permissions:
   contents: read
 
 jobs:
+  workflows:
+    name: Workflow syntax and shell checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install checksum-verified actionlint and validate workflows
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          version=1.7.12
+          archive="actionlint_${version}_linux_amd64.tar.gz"
+          base="https://github.com/rhysd/actionlint/releases/download/v${version}"
+          cd "$RUNNER_TEMP"
+          curl --fail --location --retry 3 "$base/$archive" -o "$archive"
+          curl --fail --location --retry 3 "$base/actionlint_${version}_checksums.txt" -o actionlint-checksums.txt
+          grep "  ${archive}$" actionlint-checksums.txt | sha256sum --check --strict
+          tar -xzf "$archive" actionlint
+          cd "$GITHUB_WORKSPACE"
+          "$RUNNER_TEMP/actionlint" -color
+
+  native-backend:
+    name: Backend and server package (${{ matrix.target }})
+    needs: frontend
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: windows-2022
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+          components: rustfmt, clippy
+      - if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1.13.0
+      - name: Reuse the tested production frontend
+        uses: actions/download-artifact@v8.0.1
+        with:
+          name: frontend-build
+          path: frontend/build
+      - run: cargo fmt -p wordflow-backend -p wordflow-server --check
+      - name: Test backend and server lifecycle, storage and HTTP contracts
+        run: cargo test -p wordflow-backend -p wordflow-server --locked
+      - run: cargo clippy -p wordflow-backend -p wordflow-server --all-targets --all-features --locked -- -D warnings
+      - name: Compile the release server
+        run: cargo build -p wordflow-server --bin wordflow-server --release --locked --target ${{ matrix.target }}
+      - name: Package and audit native dependencies
+        run: node scripts/package-server.mjs ${{ matrix.target }}
+      - name: Test extracted package, first-use ICU and project persistence
+        run: node scripts/verify-server-package.mjs ${{ matrix.target }}
+
+  native-preview:
+    name: Chromium with Rust preview (not Tauri)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - name: Verify generated native HTTP contracts
+        run: pnpm api:check
+      - run: cargo build --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev
+      - name: Prepare pinned Quotation model
+        run: pnpm prepare:e2e:models
+      - run: pnpm -C frontend test:e2e:browser
+      - name: Build the server with production frontend assets
+        run: pnpm -C frontend build && cargo build -p wordflow-server --bin wordflow-server --locked
+      - name: Exercise browser file and project management
+        run: pnpm -C frontend test:e2e:server
+      - uses: actions/upload-artifact@v7.0.1
+        if: always() && !cancelled()
+        with:
+          name: webdriverio-browser-preview
+          path: |
+            frontend/.tmp/wdio/browser
+            frontend/.tmp/wdio/server
+
+  native-shell:
+    name: Tauri ${{ matrix.profile }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, windows-2022]
+        profile: [debug, release]
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - name: Build debug WebDriver binary
+        if: matrix.profile == 'debug'
+        run: pnpm -C frontend build:e2e:native
+      - name: Build optimized WebDriver application
+        if: matrix.profile == 'release'
+        run: pnpm -C frontend build:e2e:native:release
+      - if: matrix.profile == 'debug'
+        run: cargo fmt --manifest-path frontend/src-tauri/Cargo.toml --check
+      - if: matrix.profile == 'debug'
+        run: cargo test --manifest-path frontend/src-tauri/Cargo.toml --locked
+      - if: matrix.profile == 'debug'
+        run: cargo clippy --manifest-path frontend/src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
+      - name: Reject legacy bundled Python runtime
+        shell: bash
+        run: |
+          node --input-type=module - "${{ matrix.profile }}" <<'JS'
+          import assert from 'node:assert/strict';
+          import { existsSync, readdirSync } from 'node:fs';
+          import { join } from 'node:path';
+          import { nativeTestBuild } from './frontend/scripts/native-e2e.mjs';
+          const profile = process.argv[2];
+          const plan = nativeTestBuild(profile);
+          assert.ok(existsSync(plan.binary), 'Native test binary must exist');
+          const files = readdirSync(join(plan.target, profile), { recursive: true });
+          assert.ok(!files.some(file => /(?:backend-runtime|libpython)/i.test(file)), 'Legacy Python runtime must not be bundled');
+          JS
+      - name: Prepare pinned Quotation model
+        run: pnpm prepare:e2e:models
+      - name: Exercise the complete native suite
+        if: matrix.profile == 'debug'
+        run: pnpm -C frontend test:e2e:native
+      - name: Exercise optimized native lifecycle and representative analysis files
+        if: matrix.profile == 'release'
+        run: pnpm -C frontend test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts --spec ./e2e-native/annotation.spec.ts --spec ./e2e-native/topic-modeling.spec.ts --spec ./e2e-native/export.spec.ts --spec ./e2e-native/research-workflow.spec.ts --spec ./e2e-native/project-reopen.spec.ts
+      - name: Build and exercise a clean macOS release bundle
+        if: matrix.profile == 'release' && runner.os == 'macOS'
+        working-directory: frontend
+        run: |
+          pnpm build:qa:mac
+          pnpm test:quicklook
+          test ! -e "../target/release/bundle/macos/LDaCA Wordflow.app/Contents/Resources/backend-runtime"
+          test -z "$(find '../target/release/bundle/macos/LDaCA Wordflow.app' -iname '*libpython*' -print -quit)"
+          bash scripts/verify-signed-native.sh "../target/release/bundle/macos/LDaCA Wordflow.app" --online
+      - uses: actions/upload-artifact@v7.0.1
+        if: always() && !cancelled()
+        with:
+          name: wdio-${{ matrix.os }}-${{ matrix.profile }}
+          path: |
+            frontend/.tmp/wdio/native-${{ matrix.profile }}
+            ${{ runner.temp }}/wordflow-signed-scan.log*
+
+
   frontend:
     name: Frontend
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository with source dependencies
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           submodules: recursive
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@v7.0.0
         with:
           node-version: 24
 
@@ -43,162 +207,9 @@ jobs:
         run: pnpm docs:links
 
       - name: Upload compiled frontend
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: frontend-build
           path: frontend/build
           if-no-files-found: error
           retention-days: 1
-
-  browser-workflows:
-    name: Browser workflows
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository with source dependencies
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Install frontend dependencies
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          corepack enable
-          pnpm install --frozen-lockfile
-
-      - name: Set up Rust nightly for source dependencies
-        uses: dtolnay/rust-toolchain@nightly
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
-        with:
-          python-version: "3.14"
-          enable-cache: true
-          cache-python: true
-          cache-dependency-glob: backend/uv.lock
-
-      - name: Synchronize backend from checked-out sources
-        working-directory: backend
-        run: uv sync --locked
-
-      - name: Install Playwright Chromium
-        run: pnpm -C frontend exec playwright install --with-deps chromium
-
-      - name: Run browser workflow tests
-        run: pnpm -C frontend test:e2e
-
-      - name: Upload browser workflow diagnostics
-        if: failure() && !cancelled()
-        uses: actions/upload-artifact@v7
-        with:
-          name: playwright-browser-workflows
-          path: |
-            frontend/.tmp/playwright-report
-            frontend/.tmp/playwright-results
-          if-no-files-found: warn
-          retention-days: 7
-
-  backend:
-    name: Backend ${{ matrix.name }}
-    needs: frontend
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - name: Linux
-            os: ubuntu-latest
-          - name: macOS
-            os: macos-latest
-          - name: Windows
-            os: windows-latest
-
-    steps:
-      - name: Check out repository with source dependencies
-        uses: actions/checkout@v7
-        with:
-          submodules: recursive
-
-      - name: Download compiled frontend
-        uses: actions/download-artifact@v8
-        with:
-          name: frontend-build
-          path: frontend/build
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v7
-        with:
-          node-version: 24
-
-      - name: Stage frontend for backend packaging
-        run: node scripts/deploy-frontend-to-backend.mjs
-
-      - name: Set up Rust nightly for source dependencies
-        uses: dtolnay/rust-toolchain@nightly
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v9.0.0
-        with:
-          python-version: "3.14"
-          enable-cache: true
-          cache-python: true
-          cache-dependency-glob: backend/uv.lock
-
-      - name: Synchronize backend from checked-out sources
-        working-directory: backend
-        run: uv sync --locked
-
-      - name: Run Ruff
-        working-directory: backend
-        run: uv run --no-sync ruff check .
-
-      - name: Run Ty
-        working-directory: backend
-        run: uv run --no-sync ty check
-
-      - name: Run pytest
-        working-directory: backend
-        run: uv run --no-sync pytest -q -m "not model"
-
-      - name: Provision and test native quotation integration
-        working-directory: backend
-        shell: bash
-        run: |
-          uv run --no-sync python ../polars-text/scripts/download_quotation_test_model.py "$RUNNER_TEMP/quotation.udpipe"
-          WORDFLOW_TEST_UDPIPE_MODEL="$RUNNER_TEMP/quotation.udpipe" uv run --no-sync pytest -q -m model --require-models
-
-      - name: Export OpenAPI without runtime startup
-        working-directory: backend
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          uv run --no-sync python scripts/export_openapi.py --output "$RUNNER_TEMP/openapi.json"
-          uv run --no-sync python - "$RUNNER_TEMP/openapi.json" <<'PY'
-          import json
-          import pathlib
-          import sys
-
-          schema = json.loads(pathlib.Path(sys.argv[1]).read_text())
-          operations = [
-              operation
-              for path in schema["paths"].values()
-              for method, operation in path.items()
-              if method in {"get", "post", "put", "patch", "delete"}
-          ]
-          operation_ids = [operation["operationId"] for operation in operations]
-          assert len(operation_ids) == len(set(operation_ids))
-          assert schema["paths"]["/health"]["get"]["responses"]["200"]["content"]
-          PY
-
-      - name: Build and inspect backend distributions
-        working-directory: backend
-        shell: bash
-        run: |
-          set -Eeuo pipefail
-          uv build
-          uv run --no-sync python ../scripts/verify_backend_distribution.py dist

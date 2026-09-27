@@ -1,6 +1,7 @@
 import { Component, type ReactNode, type ComponentType } from 'react';
 import { captureException } from '@/lib/sentry';
 import { Button } from '@/components/ui/button';
+import { recordSessionError } from '@/features/diagnostics/sessionErrors';
 
 interface ErrorBoundaryState {
   hasError: boolean;
@@ -10,14 +11,16 @@ interface ErrorBoundaryState {
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ComponentType<{ error?: Error; resetError: () => void }>;
+  fallbackRender?: (props: { error?: Error; resetError: () => void }) => ReactNode;
+  onError?: (error: Error) => void;
 }
 
 /**
  * Reusable React error boundary for isolating failures around login and
- * workspace surfaces. Callers can provide feature-specific fallbacks while the
+ * project surfaces. Callers can provide feature-specific fallbacks while the
  * default keeps the SPA recoverable with retry/reload actions.
- * Rendered by `WorkspaceShell`, `LoginScreen`, and `ViewRouter` so failures are
- * contained at workspace, auth-widget, and active-feature recovery scopes.
+ * Rendered by `ServerProjectShell`, `LoginScreen`, and `ViewRouter` so failures are
+ * contained at project, auth-widget, and active-feature recovery scopes.
  * Flow: catch child render errors into state, choose a caller fallback or the default panel, then let fallbacks reset the boundary.
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
@@ -34,6 +37,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   /** Called by: React error recovery to expose stack details for developers and send to Sentry for production monitoring. */
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    this.props.onError?.(error);
+    recordSessionError(error, 'Could not render this screen', 'react');
     console.error('Error Boundary caught an error:', error, errorInfo);
     captureException(error, {
       contexts: { react: errorInfo as unknown as Record<string, unknown> },
@@ -48,6 +53,8 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   /** Called by: React to render either protected children or the caller-selected fallback. */
   override render() {
     if (this.state.hasError) {
+      if (this.props.fallbackRender)
+        return this.props.fallbackRender({ error: this.state.error, resetError: this.resetError });
       const Fallback = this.props.fallback ?? DefaultErrorFallback;
       return <Fallback error={this.state.error} resetError={this.resetError} />;
     }

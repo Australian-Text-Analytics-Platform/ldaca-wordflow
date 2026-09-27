@@ -1,0 +1,29 @@
+[package]
+name = "wordflow-server"
+version = "8.0.0"
+edition = "2024"
+publish = false
+default-run = "wordflow-server"
+description = "Wordflow browser host and native release package"
+
+[dependencies]
+wordflow-backend = { path = "../backend" }
+axum = { version = "0.8.9", features = ["multipart"] }
+clap = { version = "4", features = ["derive", "env"] }
+futures-util = "0.3"
+mime_guess = "2"
+rust-embed = { version = "8", features = ["deterministic-timestamps"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "signal", "sync", "time", "fs", "io-util"] }
+tokio-util = { version = "0.7", features = ["rt", "io"] }
+tower = { version = "0.5", features = ["util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+utoipa = { version = "=5.4.0", features = ["uuid", "axum_extras"] }
+utoipa-axum = "=0.2.0"
+uuid = { version = "1", features = ["v4", "serde"] }
+
+[dev-dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["rustls", "json", "multipart"] }

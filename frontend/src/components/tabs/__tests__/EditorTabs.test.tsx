@@ -124,7 +124,7 @@ describe('EditorTabs', () => {
 
   it('renames the active tab when it is clicked again', async () => {
     const user = userEvent.setup();
-    const { onRename } = renderTabs();
+    const { onRename, onActivate } = renderTabs();
     const first = screen.getAllByRole('tab')[0]!;
 
     fireEvent.pointerDown(first, { button: 0, pointerId: 1, clientX: 0 });
@@ -132,9 +132,10 @@ describe('EditorTabs', () => {
 
     const input = screen.getByRole('textbox', { name: /rename tab/i });
     await user.clear(input);
-    await user.type(input, 'Renamed{Enter}');
+    await user.type(input, 'Renamed tab{ArrowLeft}{ArrowRight}{Enter}');
 
-    expect(onRename).toHaveBeenCalledWith('tab-1', 'Renamed');
+    expect(onRename).toHaveBeenCalledWith('tab-1', 'Renamed tab');
+    expect(onActivate).not.toHaveBeenCalled();
   });
 
   it('keeps the active close action visible and reveals inactive actions on interaction', () => {

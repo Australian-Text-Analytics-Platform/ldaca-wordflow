@@ -1,5 +1,6 @@
 import {
   BUNDLED_FILES,
+  BUNDLED_REGISTRY,
   TUTORIAL_INDEX_TARGET,
   type BundledInfoKey,
   type BundledReferenceKey,
@@ -7,9 +8,8 @@ import {
   type DocLinkKind,
   type DocTarget as RegistryTarget,
 } from './bundledRegistry';
-import { useRegistryStore } from './registryStore';
 
-/** Bundled keys remain autocomplete-safe while remote registries may add keys. */
+/** Bundled keys remain autocomplete-safe while lookup accepts unrecognized document links. */
 export type DocumentKey<Kind extends DocLinkKind> =
   | (Kind extends 'tutorial'
       ? BundledTutorialKey
@@ -21,7 +21,7 @@ export type DocumentKey<Kind extends DocLinkKind> =
 /**
  * Canonical target passed from registry lookup through UI intent to the
  * document viewer. Keeping kind and key with the resolved location removes
- * parallel modal/type contracts while preserving remote-only entries.
+ * parallel modal/type contracts for bundled and remotely delivered content.
  */
 export interface DocumentTarget<Kind extends DocLinkKind = DocLinkKind> {
   kind: Kind;
@@ -32,15 +32,14 @@ export interface DocumentTarget<Kind extends DocLinkKind = DocLinkKind> {
 }
 
 /**
- * Resolves one bundled, cached, or remote document entry into the canonical
+ * Resolves one bundled document entry into the canonical
  * target consumed by icons, hints, the UI store, and `DocumentModalHost`.
  */
 export function getDocumentTarget<Kind extends DocLinkKind>(
   kind: Kind,
   key: DocumentKey<Kind>,
 ): DocumentTarget<Kind> | null {
-  const section: Partial<Record<string, RegistryTarget>> =
-    useRegistryStore.getState().registry[kind];
+  const section: Partial<Record<string, RegistryTarget>> = BUNDLED_REGISTRY[kind];
   const target = section[key];
   return target ? { kind, key, ...target } : null;
 }

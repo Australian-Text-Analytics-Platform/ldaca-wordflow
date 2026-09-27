@@ -247,6 +247,7 @@ export function EditorTabs({
   };
 
   const handleRenameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    event.stopPropagation();
     if (event.key === 'Enter') finishRename();
     else if (event.key === 'Escape') dispatchInteraction({ type: 'renameCancelled' });
   };

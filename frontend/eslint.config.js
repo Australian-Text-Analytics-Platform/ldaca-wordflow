@@ -7,7 +7,7 @@ import tseslint from 'typescript-eslint';
 import testingLibrary from 'eslint-plugin-testing-library';
 
 export default tseslint.config([
-  { ignores: ['dist', 'build', 'node_modules', 'src/api/generated/**', '**/*.config.js'] },
+  { ignores: ['dist', 'build', 'node_modules', '**/*.config.js'] },
 
   ...pluginQuery.configs['flat/recommended'],
 
@@ -91,7 +91,7 @@ export default tseslint.config([
   // Node-executed TypeScript configuration has its own project and globals.
   // The normal source project deliberately remains browser-only.
   {
-    files: ['vite.config.ts', 'openapi.config.ts', 'playwright.config.ts', 'e2e/**/*.ts'],
+    files: ['vite.config.ts', 'e2e-browser/**/*.ts', 'e2e-native/**/*.ts', 'wdio*.conf.ts'],
     languageOptions: {
       globals: globals.node,
       parserOptions: {
@@ -110,7 +110,7 @@ export default tseslint.config([
       '**/__tests__/**/*.{ts,tsx}',
       'src/test/**/*.{ts,tsx}',
     ],
-    ignores: ['e2e/**'],
+    ignores: ['e2e/**', 'e2e-browser/**', 'e2e-native/**'],
     extends: [tseslint.configs.disableTypeChecked],
     languageOptions: {
       parserOptions: {
@@ -137,5 +137,10 @@ export default tseslint.config([
       '@typescript-eslint/unbound-method': 'off',
       'no-console': 'off',
     },
+  },
+  {
+    files: ['src/api/generated/native.ts'],
+    // Keep generator-owned index signatures intact; the declarations remain type-checked.
+    rules: { '@typescript-eslint/consistent-indexed-object-style': 'off' },
   },
 ]);

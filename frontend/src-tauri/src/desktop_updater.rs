@@ -20,6 +20,25 @@ const LAST_CHECK_AT_KEY: &str = "lastCheckAt";
 const SKIPPED_VERSION_KEY: &str = "skippedVersion";
 pub(crate) const UPDATER_WINDOW_LABEL: &str = "updater";
 
+/// An empty endpoint list disables updates for this application flavour.
+pub(crate) fn updates_available(config: &tauri::Config) -> bool {
+    config
+        .plugins
+        .0
+        .get("updater")
+        .and_then(|updater| updater.get("endpoints"))
+        .and_then(serde_json::Value::as_array)
+        .is_some_and(|endpoints| !endpoints.is_empty())
+}
+
+fn require_updates(config: &tauri::Config) -> Result<(), String> {
+    if updates_available(config) {
+        Ok(())
+    } else {
+        Err("Updates are disabled for this build.".to_owned())
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct UpdateMetadata {
@@ -439,6 +458,7 @@ async fn fetch_update(app: &AppHandle) -> Result<Option<Update>, String> {
 }
 
 fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
+    require_updates(app.config())?;
     if let Some(window) = app.get_webview_window(UPDATER_WINDOW_LABEL) {
         window.show().map_err(|error| error.to_string())?;
         window.unminimize().map_err(|error| error.to_string())?;
@@ -469,6 +489,9 @@ pub(crate) fn show_manual_check(app: AppHandle) {
 }
 
 pub(crate) fn schedule_automatic_check(app: AppHandle) {
+    if !updates_available(app.config()) {
+        return;
+    }
     tauri::async_runtime::spawn(async move {
         let now = match now_epoch_seconds() {
             Ok(now) => now,
@@ -529,6 +552,7 @@ pub(crate) fn schedule_automatic_check(app: AppHandle) {
 }
 
 fn require_window(window: &WebviewWindow, expected_label: &str) -> Result<(), String> {
+    require_updates(window.app_handle().config())?;
     if window.label() == expected_label {
         Ok(())
     } else {
@@ -626,17 +650,24 @@ pub(crate) async fn download_update(
 }
 
 #[tauri::command]
-pub(crate) fn install_update(
+pub(crate) async fn install_update(
     window: WebviewWindow,
     app: AppHandle,
     state: tauri::State<'_, DesktopUpdaterState>,
 ) -> Result<(), String> {
     require_window(&window, UPDATER_WINDOW_LABEL)?;
+    let Some(approval) = crate::documents::close_all(&app)
+        .await
+        .map_err(|error| error.to_string())?
+    else {
+        return Ok(());
+    };
     let downloaded = state.begin_install()?;
     if let Err(error) = downloaded.update.install(&downloaded.bytes) {
         state.restore_downloaded(downloaded)?;
         return Err(error.to_string());
     }
+    approval.allow_exit();
     app.restart();
 }
 
@@ -675,12 +706,15 @@ pub(crate) fn open_update_link(
 pub(crate) fn get_update_preferences(
     window: WebviewWindow,
     app: AppHandle,
-) -> Result<UpdatePreferences, String> {
-    require_window(&window, "main")?;
+) -> Result<Option<UpdatePreferences>, String> {
+    crate::documents::document(&window).map_err(|error| error.to_string())?;
+    if !updates_available(app.config()) {
+        return Ok(None);
+    }
     let preferences = load_preferences(&app)?;
-    Ok(UpdatePreferences {
+    Ok(Some(UpdatePreferences {
         automatic_checks: preferences.automatic_checks,
-    })
+    }))
 }
 
 #[tauri::command]
@@ -689,7 +723,8 @@ pub(crate) fn set_automatic_update_checks(
     app: AppHandle,
     enabled: bool,
 ) -> Result<UpdatePreferences, String> {
-    require_window(&window, "main")?;
+    crate::documents::document(&window).map_err(|error| error.to_string())?;
+    require_updates(app.config())?;
     save_automatic_checks(&app, enabled)?;
     if enabled {
         schedule_automatic_check(app);
@@ -721,6 +756,23 @@ mod tests {
         DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
         AUTOMATIC_CHECK_INTERVAL,
     };
+
+    #[test]
+    fn dev_configuration_disables_updates_without_changing_production() {
+        let mut config: tauri::Config =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        assert!(super::require_updates(&config).is_ok());
+        let dev: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.dev.conf.json")).unwrap();
+        config
+            .plugins
+            .0
+            .insert("updater".into(), dev["plugins"]["updater"].clone());
+        assert_eq!(
+            super::require_updates(&config),
+            Err("Updates are disabled for this build.".to_owned())
+        );
+    }
 
     #[test]
     fn automatic_checks_default_to_enabled_and_due() {

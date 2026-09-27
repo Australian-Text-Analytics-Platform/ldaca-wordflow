@@ -1,0 +1,353 @@
+[
+  {
+    "rowid": "01",
+    "text": "Language matters — 语言 😀",
+    "label": "obsolete",
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 0
+  },
+  {
+    "rowid": "1",
+    "text": "Synthetic public consultation response 1: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 1
+  },
+  {
+    "rowid": "doc-002",
+    "text": "Synthetic public consultation response 2: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 2
+  },
+  {
+    "rowid": "doc-003",
+    "text": "Synthetic public consultation response 3: transport and accessible services.",
+    "label": null,
+    "correction": "A",
+    "reference": "B",
+    "region": "North",
+    "count": 3
+  },
+  {
+    "rowid": "doc-004",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 4
+  },
+  {
+    "rowid": "doc-005",
+    "text": "Synthetic public consultation response 5: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 5
+  },
+  {
+    "rowid": "doc-006",
+    "text": "Synthetic public consultation response 6: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 6
+  },
+  {
+    "rowid": "doc-007",
+    "text": "Synthetic public consultation response 7: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 7
+  },
+  {
+    "rowid": "doc-008",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 8
+  },
+  {
+    "rowid": "doc-009",
+    "text": "Synthetic public consultation response 9: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "B",
+    "region": "North",
+    "count": 9
+  },
+  {
+    "rowid": "doc-010",
+    "text": "Synthetic public consultation response 10: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 10
+  },
+  {
+    "rowid": "doc-011",
+    "text": "Synthetic public consultation response 11: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 11
+  },
+  {
+    "rowid": "doc-012",
+    "text": "Language matters — 语言 😀",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 12
+  },
+  {
+    "rowid": "doc-013",
+    "text": "Synthetic public consultation response 13: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 13
+  },
+  {
+    "rowid": "doc-014",
+    "text": "Synthetic public consultation response 14: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 14
+  },
+  {
+    "rowid": "doc-015",
+    "text": "Synthetic public consultation response 15: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "B",
+    "region": "North",
+    "count": 15
+  },
+  {
+    "rowid": "doc-016",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 16
+  },
+  {
+    "rowid": "doc-017",
+    "text": "Synthetic public consultation response 17: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 17
+  },
+  {
+    "rowid": "doc-018",
+    "text": "Synthetic public consultation response 18: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 18
+  },
+  {
+    "rowid": "doc-019",
+    "text": "Synthetic public consultation response 19: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 19
+  },
+  {
+    "rowid": "doc-020",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 20
+  },
+  {
+    "rowid": "doc-021",
+    "text": "Synthetic public consultation response 21: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "B",
+    "region": "North",
+    "count": 21
+  },
+  {
+    "rowid": "doc-022",
+    "text": "Synthetic public consultation response 22: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 22
+  },
+  {
+    "rowid": "doc-023",
+    "text": "Synthetic public consultation response 23: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 23
+  },
+  {
+    "rowid": "doc-024",
+    "text": "Language matters — 语言 😀",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 24
+  },
+  {
+    "rowid": "doc-025",
+    "text": "Synthetic public consultation response 25: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 25
+  },
+  {
+    "rowid": "doc-026",
+    "text": "Synthetic public consultation response 26: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 26
+  },
+  {
+    "rowid": "doc-027",
+    "text": "Synthetic public consultation response 27: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "B",
+    "region": "North",
+    "count": 27
+  },
+  {
+    "rowid": "doc-028",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 28
+  },
+  {
+    "rowid": "doc-029",
+    "text": "Synthetic public consultation response 29: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 29
+  },
+  {
+    "rowid": "doc-030",
+    "text": "Synthetic public consultation response 30: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 30
+  },
+  {
+    "rowid": "doc-031",
+    "text": "Synthetic public consultation response 31: transport and accessible services.",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 31
+  },
+  {
+    "rowid": "doc-032",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 32
+  },
+  {
+    "rowid": "doc-033",
+    "text": "Synthetic public consultation response 33: transport and accessible services.",
+    "label": null,
+    "correction": null,
+    "reference": "B",
+    "region": "North",
+    "count": 33
+  },
+  {
+    "rowid": "doc-034",
+    "text": null,
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "South",
+    "count": 34
+  },
+  {
+    "rowid": "doc-035",
+    "text": "",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "East",
+    "count": 35
+  },
+  {
+    "rowid": "doc-036",
+    "text": " \t\n ",
+    "label": null,
+    "correction": null,
+    "reference": "A",
+    "region": "North",
+    "count": 36
+  },
+  {
+    "rowid": "doc-037",
+    "text": "A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. A synthetic long response about transport and accessible services. ",
+    "label": "A",
+    "correction": null,
+    "reference": "B",
+    "region": "South",
+    "count": 37
+  },
+  {
+    "rowid": "doc-038",
+    "text": "Language matters — 语言 😀",
+    "label": "A",
+    "correction": null,
+    "reference": "A",
+    "region": "East",
+    "count": 38
+  }
+]

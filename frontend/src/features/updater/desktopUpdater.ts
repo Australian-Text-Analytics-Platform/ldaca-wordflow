@@ -53,7 +53,7 @@ export function openUpdateLink(url: string): Promise<void> {
   return invoke('open_update_link', { url });
 }
 
-export function getUpdatePreferences(): Promise<UpdatePreferences> {
+export function getUpdatePreferences(): Promise<UpdatePreferences | null> {
   return invoke('get_update_preferences');
 }
 

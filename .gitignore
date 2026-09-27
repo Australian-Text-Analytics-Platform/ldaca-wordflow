@@ -81,6 +81,9 @@ frontend.log
 *.swo
 *~
 
+# Retired browser-automation output
+.playwright-mcp/
+
 # Testing
 coverage/
 .nyc_output/
@@ -173,12 +176,15 @@ $RECYCLE.BIN/
 
 # LDaCA Specific
 # Backend specific logs and data
-backend/backend.log
-backend/data/user*/
+archive/backend/backend.log
+archive/backend/data/user*/
 
 # Frontend specific logs and builds  
 frontend/frontend.log
 frontend/build/
+# Preprocessing Build is source, not generated output (also scanned by Tailwind).
+!frontend/src/features/tools/preprocessing/build/
+!frontend/src/features/tools/preprocessing/build/**
 frontend/dist/
 
 # Desktop (Tauri) - Build artifacts
@@ -238,5 +244,13 @@ target
 **/uv-bin/
 /.claude
 .vscode/settings.json
-.playwright-mcp/
 .antigravitycli/
+# MediaPipe runtimes are staged offline from the pinned frontend dependency.
+frontend/public/mediapipe/
+
+# Platform-specific ICU bytes are provisioned at desktop build time.
+frontend/src-tauri/resources/icu/*.duckdb_extension
+frontend/src-tauri/resources/icu/manifest.json
+
+# Local visual review output
+.impeccable/

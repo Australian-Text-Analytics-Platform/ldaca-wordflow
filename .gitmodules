@@ -2,7 +2,7 @@
 	path = polars-text
 	url = https://github.com/Australian-Text-Analytics-Platform/polars-text
 [submodule "polars-source-utils"]
-	path = polars-source-utils
+	path = archive/polars-source-utils
 	url = https://github.com/AlexDrBanana/polars-source-utils.git
 [submodule "ldaca-analytics-sample-data"]
 	path = ldaca-analytics-sample-data

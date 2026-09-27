@@ -5,13 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
-const SettingsDialog = React.lazy(() =>
-  import('@/components/dialogs/SettingsDialog').then(({ SettingsDialog }) => ({
-    default: SettingsDialog,
-  })),
-);
-
 interface SettingsButtonProps {
+  renderDialog: (props: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+  }) => React.ReactNode;
   className?: string;
   iconClassName?: string;
   tooltipSide?: React.ComponentProps<typeof TooltipContent>['side'];
@@ -20,6 +18,7 @@ interface SettingsButtonProps {
 /** Opens the shared Settings dialog from application chrome. */
 export function SettingsButton({
   className,
+  renderDialog,
   iconClassName,
   tooltipSide = 'right',
 }: SettingsButtonProps) {
@@ -46,11 +45,7 @@ export function SettingsButton({
         <TooltipContent side={tooltipSide}>Settings</TooltipContent>
       </Tooltip>
 
-      {open ? (
-        <React.Suspense fallback={null}>
-          <SettingsDialog open onOpenChange={setOpen} />
-        </React.Suspense>
-      ) : null}
+      {open ? renderDialog({ open, onOpenChange: setOpen }) : null}
     </>
   );
 }

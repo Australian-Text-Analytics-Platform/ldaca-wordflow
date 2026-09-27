@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-/** Verifies that distributable frontend assets contain no fixed local API URL. */
+/** Verifies distributable assets contain neither fixed local API URLs nor test bridges. */
 
+import { verifyLanguageAssets } from './sync-language-assets.mjs';
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -31,12 +32,15 @@ async function walk(directory) {
   return paths;
 }
 
-/** Returns emitted text assets containing a complete local backend API URL. */
+/** Returns fixed local API URLs; rejects test bridges in the same asset scan. */
 export async function findForbiddenLocalApiBases(buildDirectory) {
   const offenders = [];
   for (const path of await walk(buildDirectory)) {
     if (!TEXT_ASSET_EXTENSIONS.has(extname(path).toLowerCase())) continue;
     const contents = await readFile(path, 'utf8');
+    if (/__wdio_(?:original_core|spy|mocks)__|__wordflowDiagnostics/.test(contents)) {
+      throw new Error(`Frontend build contains test instrumentation: ${relative(buildDirectory, path)}`);
+    }
     FORBIDDEN_LOCAL_API_BASE.lastIndex = 0;
     if (FORBIDDEN_LOCAL_API_BASE.test(contents)) {
       offenders.push(relative(buildDirectory, path));
@@ -55,6 +59,7 @@ export async function verifyFrontendBuild(buildDirectory = DEFAULT_BUILD_DIR) {
       }
     }),
   );
+  await verifyLanguageAssets(buildDirectory);
   const offenders = await findForbiddenLocalApiBases(buildDirectory);
   if (offenders.length > 0) {
     throw new Error(
