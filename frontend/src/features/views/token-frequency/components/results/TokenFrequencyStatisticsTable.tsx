@@ -16,6 +16,7 @@ import { ArrowDown, ArrowUp, ArrowUpDown, Download } from 'lucide-react';
 import { startTransition, useMemo, useState } from 'react';
 import HelpIcon from '@/components/help/HelpIcon';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
+import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -358,6 +359,8 @@ export const TokenFrequencyStatisticsTable = ({
   );
 
   const [sorting, setSorting] = useState<SortingState>([{ id: 'log_likelihood_llv', desc: true }]);
+  // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
+  const stableTableRef = useStableTableHeight<HTMLDivElement>();
   const tokenFilter = tokenFilterProp ?? '';
   const [paginationState, setPaginationState] = useState({
     pageIndex: 0,
@@ -493,58 +496,60 @@ export const TokenFrequencyStatisticsTable = ({
         {totalCount > 0 ? (
           <>
             <div className="overflow-x-auto">
-              <table className="w-full min-w-300 border-collapse text-body">
-                <thead>
-                  {table.getHeaderGroups().map((headerGroup) => (
-                    <tr key={headerGroup.id} className="border-b text-left">
-                      {headerGroup.headers.map((header) => {
-                        const sortDir = header.column.getIsSorted();
-                        const tooltip =
-                          STATISTICS_COLUMN_TOOLTIPS[header.id] ??
-                          'Click to sort the statistics table by this column.';
-                        return (
-                          <th key={header.id} className="px-2 py-2 whitespace-nowrap">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-auto px-0"
-                                  onClick={header.column.getToggleSortingHandler()}
-                                >
-                                  {renderColumnPart(
-                                    header.column.columnDef.header,
-                                    header.getContext(),
-                                  )}
-                                  {sortDir === 'asc' ? (
-                                    <ArrowUp className="ml-1 h-3.5 w-3.5" />
-                                  ) : sortDir === 'desc' ? (
-                                    <ArrowDown className="ml-1 h-3.5 w-3.5" />
-                                  ) : (
-                                    <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">{tooltip}</TooltipContent>
-                            </Tooltip>
-                          </th>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id} className="border-b last:border-b-0">
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id} className="px-2 py-1 whitespace-nowrap tabular-nums">
-                          {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <div ref={stableTableRef}>
+                <table className="w-full min-w-300 border-collapse text-body">
+                  <thead>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr key={headerGroup.id} className="border-b text-left">
+                        {headerGroup.headers.map((header) => {
+                          const sortDir = header.column.getIsSorted();
+                          const tooltip =
+                            STATISTICS_COLUMN_TOOLTIPS[header.id] ??
+                            'Click to sort the statistics table by this column.';
+                          return (
+                            <th key={header.id} className="px-2 py-2 whitespace-nowrap">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-auto px-0"
+                                    onClick={header.column.getToggleSortingHandler()}
+                                  >
+                                    {renderColumnPart(
+                                      header.column.columnDef.header,
+                                      header.getContext(),
+                                    )}
+                                    {sortDir === 'asc' ? (
+                                      <ArrowUp className="ml-1 h-3.5 w-3.5" />
+                                    ) : sortDir === 'desc' ? (
+                                      <ArrowDown className="ml-1 h-3.5 w-3.5" />
+                                    ) : (
+                                      <ArrowUpDown className="ml-1 h-3.5 w-3.5 opacity-40" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-xs">{tooltip}</TooltipContent>
+                              </Tooltip>
+                            </th>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </thead>
+                  <tbody>
+                    {table.getRowModel().rows.map((row) => (
+                      <tr key={row.id} className="border-b last:border-b-0">
+                        {row.getVisibleCells().map((cell) => (
+                          <td key={cell.id} className="px-2 py-1 whitespace-nowrap tabular-nums">
+                            {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
 
             {filteredCount === 0 ? (

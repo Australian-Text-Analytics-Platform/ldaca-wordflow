@@ -1,4 +1,5 @@
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
+import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import type { CSSProperties, ReactNode } from 'react';
 import {
   Table,
@@ -133,69 +134,73 @@ export function ConcordanceRowsTable({
   highlightL1R1,
   onRowClick,
 }: Props) {
+  // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
+  const stableTableRef = useStableTableHeight<HTMLDivElement>();
   return (
-    <Table className="min-w-180" disableContainer>
-      <TableHeader className="bg-panel sticky top-0 z-10">
-        {table.getHeaderGroups().map((headerGroup) => (
-          <TableRow key={headerGroup.id}>
-            {headerGroup.headers.map((header) => renderHeader(header))}
-          </TableRow>
-        ))}
-      </TableHeader>
-      <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
-        {loading && rows.length === 0 ? (
-          <PaginatedTableProcessingRow columnCount={tableColumns.length} />
-        ) : rows.length === 0 ? (
-          <TableRow>
-            <TableCell
-              className="h-24 text-center text-description"
-              colSpan={tableColumns.length || 1}
-            >
-              No matching rows on this page for &quot;{searchWord}&quot;. Source rows without
-              matches are omitted.
-            </TableCell>
-          </TableRow>
-        ) : (
-          table.getRowModel().rows.map((tableRow, index) => {
-            const row = tableRow.original;
-            return (
-              <TableRow
-                key={tableRow.id}
-                className={getRowClassName(row, index)}
-                style={getRowStyle?.(row, index)}
-                onClick={() => {
-                  onRowClick(row, index);
-                }}
+    <div ref={stableTableRef}>
+      <Table className="min-w-180" disableContainer>
+        <TableHeader className="bg-panel sticky top-0 z-10">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => renderHeader(header))}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
+          {loading && rows.length === 0 ? (
+            <PaginatedTableProcessingRow columnCount={tableColumns.length} />
+          ) : rows.length === 0 ? (
+            <TableRow>
+              <TableCell
+                className="h-24 text-center text-description"
+                colSpan={tableColumns.length || 1}
               >
-                {tableRow.getVisibleCells().map((cell) => {
-                  const sourceColor = getSourceColor?.(row);
-                  const presentation = concordanceCellPresentation(cell.column.id, sourceColor);
-                  const renderedCell = renderColumnPart(
-                    cell.column.columnDef.cell,
-                    cell.getContext(),
-                  );
-                  return (
-                    <TableCell
-                      key={cell.id}
-                      className={`${alignmentClassForColumn(cell.column.id)} ${presentation.className ?? ''}`}
-                      style={presentation.style}
-                    >
-                      {renderConcordanceCell(
-                        cell.column.id,
-                        row,
-                        renderedCell,
-                        sourceColor,
-                        highlightL1R1,
-                      )}
-                    </TableCell>
-                  );
-                })}
-              </TableRow>
-            );
-          })
-        )}
-      </TableBody>
-    </Table>
+                No matching rows on this page for &quot;{searchWord}&quot;. Source rows without
+                matches are omitted.
+              </TableCell>
+            </TableRow>
+          ) : (
+            table.getRowModel().rows.map((tableRow, index) => {
+              const row = tableRow.original;
+              return (
+                <TableRow
+                  key={tableRow.id}
+                  className={getRowClassName(row, index)}
+                  style={getRowStyle?.(row, index)}
+                  onClick={() => {
+                    onRowClick(row, index);
+                  }}
+                >
+                  {tableRow.getVisibleCells().map((cell) => {
+                    const sourceColor = getSourceColor?.(row);
+                    const presentation = concordanceCellPresentation(cell.column.id, sourceColor);
+                    const renderedCell = renderColumnPart(
+                      cell.column.columnDef.cell,
+                      cell.getContext(),
+                    );
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={`${alignmentClassForColumn(cell.column.id)} ${presentation.className ?? ''}`}
+                        style={presentation.style}
+                      >
+                        {renderConcordanceCell(
+                          cell.column.id,
+                          row,
+                          renderedCell,
+                          sourceColor,
+                          highlightL1R1,
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              );
+            })
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }
 

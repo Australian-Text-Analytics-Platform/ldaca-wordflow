@@ -6,6 +6,7 @@ import type {
 import { type ColumnPinningState, useTable } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
+import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -130,6 +131,8 @@ export function WorkspaceTable({
 }: WorkspaceTableProps) {
   const highlighted = useMemo(() => new Set(highlightColumns ?? []), [highlightColumns]);
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
+  const stableTableRef = useStableTableHeight<HTMLDivElement>();
   const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
   const [columnPinning, setColumnPinning] = useState<ColumnPinningState>({ start: [], end: [] });
   const sanitizedData = useMemo(() => (Array.isArray(data) ? data : []), [data]);
@@ -549,111 +552,113 @@ export function WorkspaceTable({
     <>
       <div className="flex h-full w-full flex-col min-h-0">
         <ScrollArea viewportRef={viewportRef} scrollbars="both" className="flex-1 bg-surface">
-          <Table disableContainer className="w-max table-auto">
-            <TableHeader className="sticky top-0 z-20 bg-panel">
-              {tableInstance.getHeaderGroups().map((hg) => (
-                <TableRow key={hg.id}>
-                  {hg.headers.map((header) => {
-                    const meta = header.column.columnDef.meta;
-                    return (
-                      <TableHead
-                        key={header.id}
-                        className={cn(
-                          meta?.headerClassName,
-                          'h-8 px-1 py-1 last:border-r-0',
-                          header.column.getIsPinned() ? 'bg-panel' : 'bg-panel',
-                          highlighted.has(header.column.id) && 'bg-button/20',
-                        )}
-                        data-preview-column={highlighted.has(header.column.id) || undefined}
-                        data-column-id={header.column.id}
-                        data-pinned={header.column.getIsPinned() || undefined}
-                        style={{
-                          ...(meta?.headerMinWidth
-                            ? { minWidth: `${String(meta.headerMinWidth)}px` }
-                            : {}),
-                          ...(meta?.headerMaxWidth !== undefined
-                            ? {
-                                maxWidth: `${String(meta.headerMaxWidth)}px`,
-                                width: `${String(meta.headerMaxWidth)}px`,
-                                overflow: 'hidden',
-                              }
-                            : {}),
-                          ...(meta?.headerMinWidth || meta?.headerMaxWidth !== undefined
-                            ? {
-                                transition:
-                                  'max-width 200ms ease, width 200ms ease, min-width 200ms ease',
-                              }
-                            : {}),
-                          ...getPinnedStyles(header.column, 'header'),
-                        }}
-                      >
-                        {header.isPlaceholder
-                          ? null
-                          : renderColumnPart(header.column.columnDef.header, header.getContext())}
-                      </TableHead>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody className="divide-y divide-border/60 bg-surface">
-              {tableRows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="cursor-pointer transition-colors duration-150 hover:bg-panel/40 [&>td]:px-1 [&>td]:py-1"
-                  onClick={() => {
-                    openDetailAt(row.index);
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => {
-                    const meta = cell.column.columnDef.meta;
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        className={cn(
-                          meta?.cellClassName,
-                          'last:border-r-0',
-                          cell.column.getIsPinned() ? 'bg-surface' : undefined,
-                          highlighted.has(cell.column.id) && 'bg-button/10',
-                        )}
-                        style={{
-                          ...(meta?.cellMinWidth
-                            ? { minWidth: `${String(meta.cellMinWidth)}px` }
-                            : {}),
-                          ...(meta?.cellMaxWidth !== undefined
-                            ? {
-                                maxWidth: `${String(meta.cellMaxWidth)}px`,
-                                width: `${String(meta.cellMaxWidth)}px`,
-                                overflow: 'hidden',
-                              }
-                            : {}),
-                          ...(meta?.cellMinWidth || meta?.cellMaxWidth !== undefined
-                            ? {
-                                transition:
-                                  'max-width 200ms ease, width 200ms ease, min-width 200ms ease',
-                              }
-                            : {}),
-                          ...getPinnedStyles(cell.column, 'cell'),
-                        }}
-                      >
-                        {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-              {tableRows.length === 0 && (
-                <TableRow>
-                  <TableCell
-                    colSpan={visibleColumnCount}
-                    className="px-4 py-6 text-center text-body text-description"
+          <div ref={stableTableRef}>
+            <Table disableContainer className="w-max table-auto">
+              <TableHeader className="sticky top-0 z-20 bg-panel">
+                {tableInstance.getHeaderGroups().map((hg) => (
+                  <TableRow key={hg.id}>
+                    {hg.headers.map((header) => {
+                      const meta = header.column.columnDef.meta;
+                      return (
+                        <TableHead
+                          key={header.id}
+                          className={cn(
+                            meta?.headerClassName,
+                            'h-8 px-1 py-1 last:border-r-0',
+                            header.column.getIsPinned() ? 'bg-panel' : 'bg-panel',
+                            highlighted.has(header.column.id) && 'bg-button/20',
+                          )}
+                          data-preview-column={highlighted.has(header.column.id) || undefined}
+                          data-column-id={header.column.id}
+                          data-pinned={header.column.getIsPinned() || undefined}
+                          style={{
+                            ...(meta?.headerMinWidth
+                              ? { minWidth: `${String(meta.headerMinWidth)}px` }
+                              : {}),
+                            ...(meta?.headerMaxWidth !== undefined
+                              ? {
+                                  maxWidth: `${String(meta.headerMaxWidth)}px`,
+                                  width: `${String(meta.headerMaxWidth)}px`,
+                                  overflow: 'hidden',
+                                }
+                              : {}),
+                            ...(meta?.headerMinWidth || meta?.headerMaxWidth !== undefined
+                              ? {
+                                  transition:
+                                    'max-width 200ms ease, width 200ms ease, min-width 200ms ease',
+                                }
+                              : {}),
+                            ...getPinnedStyles(header.column, 'header'),
+                          }}
+                        >
+                          {header.isPlaceholder
+                            ? null
+                            : renderColumnPart(header.column.columnDef.header, header.getContext())}
+                        </TableHead>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+              </TableHeader>
+              <TableBody className="divide-y divide-border/60 bg-surface">
+                {tableRows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="cursor-pointer transition-colors duration-150 hover:bg-panel/40 [&>td]:px-1 [&>td]:py-1"
+                    onClick={() => {
+                      openDetailAt(row.index);
+                    }}
                   >
-                    No rows to display
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                    {row.getVisibleCells().map((cell) => {
+                      const meta = cell.column.columnDef.meta;
+                      return (
+                        <TableCell
+                          key={cell.id}
+                          className={cn(
+                            meta?.cellClassName,
+                            'last:border-r-0',
+                            cell.column.getIsPinned() ? 'bg-surface' : undefined,
+                            highlighted.has(cell.column.id) && 'bg-button/10',
+                          )}
+                          style={{
+                            ...(meta?.cellMinWidth
+                              ? { minWidth: `${String(meta.cellMinWidth)}px` }
+                              : {}),
+                            ...(meta?.cellMaxWidth !== undefined
+                              ? {
+                                  maxWidth: `${String(meta.cellMaxWidth)}px`,
+                                  width: `${String(meta.cellMaxWidth)}px`,
+                                  overflow: 'hidden',
+                                }
+                              : {}),
+                            ...(meta?.cellMinWidth || meta?.cellMaxWidth !== undefined
+                              ? {
+                                  transition:
+                                    'max-width 200ms ease, width 200ms ease, min-width 200ms ease',
+                                }
+                              : {}),
+                            ...getPinnedStyles(cell.column, 'cell'),
+                          }}
+                        >
+                          {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))}
+                {tableRows.length === 0 && (
+                  <TableRow>
+                    <TableCell
+                      colSpan={visibleColumnCount}
+                      className="px-4 py-6 text-center text-body text-description"
+                    >
+                      No rows to display
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </ScrollArea>
         <ServerPaginationFooter
           table={tableInstance}

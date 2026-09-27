@@ -10,6 +10,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
+import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import { AnalysisTableFrame } from '@/features/views/common/components/AnalysisTableScrollArea';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
 import { busyTableBodyProps } from '@/features/views/common/components/paginatedTableBusy';
@@ -112,6 +113,8 @@ function QuotationNodeBlockContent({
   children,
 }: QuotationNodeBlockProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
+  const stableTableRef = useStableTableHeight<HTMLDivElement>();
   const page = pagination?.page ?? 1;
   const pageSize = pagination?.page_size ?? 50;
   const rowCount = pagination?.total_source_rows ?? 0;
@@ -221,54 +224,59 @@ function QuotationNodeBlockContent({
           </ServerPaginationFooter>
         }
       >
-        <Table className="min-w-full text-body" disableContainer>
-          <TableHeader className="bg-panel sticky top-0 z-10">
-            {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id} className="border-b border-surface-border/60">
-                {headerGroup.headers.map((header) => (
-                  <TableHead
-                    key={header.id}
-                    className="h-10 px-4 py-2 text-label-secondary font-semibold uppercase tracking-wide text-description/90 select-none whitespace-nowrap cursor-pointer"
-                  >
-                    {header.isPlaceholder
-                      ? null
-                      : renderColumnPart(header.column.columnDef.header, header.getContext())}
-                  </TableHead>
-                ))}
-              </TableRow>
-            ))}
-          </TableHeader>
-          <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
-            {loading && rows.length === 0 ? (
-              <PaginatedTableProcessingRow columnCount={cols.length} />
-            ) : rows.length === 0 ? (
-              <TableRow>
-                <TableCell className="h-24 text-center text-description" colSpan={cols.length || 1}>
-                  No quotations found on this page. Source rows without quotations are omitted.
-                </TableCell>
-              </TableRow>
-            ) : (
-              table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  className="border-b border-surface-border/60 last:border-b-0 hover:bg-panel/40 cursor-pointer"
-                  onClick={() => {
-                    onRowClick(row.index);
-                  }}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell
-                      key={cell.id}
-                      className="px-4 py-3 align-top text-body leading-relaxed"
+        <div ref={stableTableRef}>
+          <Table className="min-w-full text-body" disableContainer>
+            <TableHeader className="bg-panel sticky top-0 z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id} className="border-b border-surface-border/60">
+                  {headerGroup.headers.map((header) => (
+                    <TableHead
+                      key={header.id}
+                      className="h-10 px-4 py-2 text-label-secondary font-semibold uppercase tracking-wide text-description/90 select-none whitespace-nowrap cursor-pointer"
                     >
-                      {renderCell(cell.column.id, row.original, row.id)}
-                    </TableCell>
+                      {header.isPlaceholder
+                        ? null
+                        : renderColumnPart(header.column.columnDef.header, header.getContext())}
+                    </TableHead>
                   ))}
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ))}
+            </TableHeader>
+            <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
+              {loading && rows.length === 0 ? (
+                <PaginatedTableProcessingRow columnCount={cols.length} />
+              ) : rows.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    className="h-24 text-center text-description"
+                    colSpan={cols.length || 1}
+                  >
+                    No quotations found on this page. Source rows without quotations are omitted.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow
+                    key={row.id}
+                    className="border-b border-surface-border/60 last:border-b-0 hover:bg-panel/40 cursor-pointer"
+                    onClick={() => {
+                      onRowClick(row.index);
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell
+                        key={cell.id}
+                        className="px-4 py-3 align-top text-body leading-relaxed"
+                      >
+                        {renderCell(cell.column.id, row.original, row.id)}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </AnalysisTableFrame>
     </section>
   );

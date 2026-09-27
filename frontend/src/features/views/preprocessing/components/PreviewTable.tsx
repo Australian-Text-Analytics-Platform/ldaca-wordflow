@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
+import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import {
   Table,
   TableBody,
@@ -120,6 +121,8 @@ export function PreviewTable({
   );
 
   const columnDefs = buildColumnDefs(columnsToRender);
+  // Rows replaced by a page change must not shrink the scrolling pane (issue 209).
+  const stableTableRef = useStableTableHeight<HTMLDivElement>();
 
   const table = useServerTable<PreviewRow>({
     data,
@@ -192,79 +195,84 @@ export function PreviewTable({
             scrollbars="horizontal"
             className="rounded-lg border border-surface-border"
           >
-            <Table disableContainer>
-              <TableHeader className="bg-panel/40">
-                {columnsToRender.length > 0 ? (
-                  table.getHeaderGroups().map((headerGroup) => (
-                    <TableRow key={headerGroup.id}>
-                      {headerGroup.headers.map((header) => (
-                        <TableHead
-                          key={header.id}
-                          className="px-3 py-2 text-left text-label-secondary font-medium tracking-wide text-description"
-                        >
-                          {header.isPlaceholder
-                            ? null
-                            : renderColumnPart(header.column.columnDef.header, header.getContext())}
-                        </TableHead>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableHead className="px-3 py-2 text-left text-label-secondary font-medium tracking-wide text-description">
-                      No columns
-                    </TableHead>
-                  </TableRow>
-                )}
-              </TableHeader>
-              <TableBody>
-                {loading && data.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={tableColSpan}
-                      className="px-3 py-6 text-center text-description"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <Loader2 className="h-5 w-5 animate-spin text-link" />
-                        Loading preview…
-                      </span>
-                    </TableCell>
-                  </TableRow>
-                ) : data.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={tableColSpan}
-                      className="px-3 py-6 text-center text-description"
-                    >
-                      No rows match the current configuration.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  table.getRowModel().rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className="cursor-pointer transition-colors duration-150 hover:bg-panel/40"
-                      onClick={() => {
-                        openDetailAt(row.index);
-                      }}
-                    >
-                      {row.getVisibleCells().map((cell) => {
-                        const cellValue = cell.getValue();
-                        return (
-                          <TableCell
-                            key={cell.id}
-                            className="max-w-xs truncate px-3 py-2 font-mono text-label-secondary text-foreground"
-                            title={(cellValue ?? '') as string}
+            <div ref={stableTableRef}>
+              <Table disableContainer>
+                <TableHeader className="bg-panel/40">
+                  {columnsToRender.length > 0 ? (
+                    table.getHeaderGroups().map((headerGroup) => (
+                      <TableRow key={headerGroup.id}>
+                        {headerGroup.headers.map((header) => (
+                          <TableHead
+                            key={header.id}
+                            className="px-3 py-2 text-left text-label-secondary font-medium tracking-wide text-description"
                           >
-                            {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
-                          </TableCell>
-                        );
-                      })}
+                            {header.isPlaceholder
+                              ? null
+                              : renderColumnPart(
+                                  header.column.columnDef.header,
+                                  header.getContext(),
+                                )}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableHead className="px-3 py-2 text-left text-label-secondary font-medium tracking-wide text-description">
+                        No columns
+                      </TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                  )}
+                </TableHeader>
+                <TableBody>
+                  {loading && data.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={tableColSpan}
+                        className="px-3 py-6 text-center text-description"
+                      >
+                        <span className="inline-flex items-center gap-2">
+                          <Loader2 className="h-5 w-5 animate-spin text-link" />
+                          Loading preview…
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ) : data.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={tableColSpan}
+                        className="px-3 py-6 text-center text-description"
+                      >
+                        No rows match the current configuration.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    table.getRowModel().rows.map((row) => (
+                      <TableRow
+                        key={row.id}
+                        className="cursor-pointer transition-colors duration-150 hover:bg-panel/40"
+                        onClick={() => {
+                          openDetailAt(row.index);
+                        }}
+                      >
+                        {row.getVisibleCells().map((cell) => {
+                          const cellValue = cell.getValue();
+                          return (
+                            <TableCell
+                              key={cell.id}
+                              className="max-w-xs truncate px-3 py-2 font-mono text-label-secondary text-foreground"
+                              title={(cellValue ?? '') as string}
+                            >
+                              {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
+                            </TableCell>
+                          );
+                        })}
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </ScrollArea>
         )}
       </CardContent>
