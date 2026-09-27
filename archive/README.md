@@ -21,7 +21,7 @@ SDK Python bindings are not restored. Ignored local virtual environments and
 caches, when present, were moved alongside their sources and remain untracked.
 
 Active packages remain at the repository root: `backend`, `ldaca-rs`,
-`frontend`, and the supported `polars-text` adapter. Shared semantic rendering
+and `frontend`; the supported `polars-text` adapter is in its own repository. Shared semantic rendering
 and native libraries remain in the active frontend. Its desktop, updater and
 Quick Look entry graphs are checked by `pnpm -C frontend check:source`;
 archived imports are rejected, and test-only references do not keep retired

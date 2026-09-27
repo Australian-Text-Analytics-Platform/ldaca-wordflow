@@ -1,6 +1,7 @@
 # polars-text Development Runbook
 
-From `polars-text/`:
+From a checkout of the independent
+[polars-text repository](https://github.com/Australian-Text-Analytics-Platform/polars-text):
 
 ```bash
 make build
@@ -61,8 +62,7 @@ checks, feature matrices and installed-wheel acceptance.
 
 ## Shared native core
 
-Local builds require `../ldaca-rs`, a regular folder in the Wordflow checkout.
-Run algorithm tests and feature checks from that crate; keep Series/schema and
-Python ABI tests here. Model sources and provisioning scripts belong to the core.
-The adapter's existing script entrypoints delegate there. Standalone CI and
-publication setup for the sibling dependency are deferred.
+The adapter resolves `ldaca-rs` from its locked Wordflow Git dependency. Run
+algorithm tests and feature checks in Wordflow; keep Series/schema and Python
+ABI tests in the adapter repository. Model sources and provisioning scripts
+belong to the core. The adapter's script entrypoints delegate there.

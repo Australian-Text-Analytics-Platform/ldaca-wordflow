@@ -1,6 +1,3 @@
-[submodule "polars-text"]
-	path = polars-text
-	url = https://github.com/Australian-Text-Analytics-Platform/polars-text
 [submodule "ldaca-analytics-sample-data"]
 	path = ldaca-analytics-sample-data
 	url = https://github.com/Australian-Text-Analytics-Platform/ldaca-analytics-sample-data.git

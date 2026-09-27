@@ -2,8 +2,8 @@
 
 The repository-root Cargo workspace contains `backend`, `ldaca-rs`, and
 `frontend/src-tauri`. They share the root `Cargo.lock` and `target/`; select a
-package with `--manifest-path` or `-p` for focused checks. `polars-text` remains
-an independent Rust/Python submodule with its own lockfile and build output.
+package with `--manifest-path` or `-p` for focused checks. `polars-text` is
+maintained in an independent Rust/Python repository with its own lockfile and build output.
 
 Run application commands from the repository root:
 

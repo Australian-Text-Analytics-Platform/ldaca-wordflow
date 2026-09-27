@@ -10,7 +10,7 @@ changing that package.
 - `archive/backend/`: retired FastAPI source, retained only for reference
 - `backend/`: shared native Axum runtime, DuckDB project API, and standalone Rust server
 - `frontend/`: React 19, Vite, TypeScript, and the Tauri desktop shell
-- `polars-text/`: Polars expression plugins for text analysis
+- [polars-text](https://github.com/Australian-Text-Analytics-Platform/polars-text): independent Polars expression adapter
 - Retired serialized Polars-plan utilities are available in repository history.
 - `ldaca-rs/`: ONI data access and Arrow-based RO-Crate conversion
 - `ldaca-analytics-sample-data/`: canonical remote sample-data repository

@@ -48,9 +48,10 @@ modules. `backend/tests/projects.rs` covers project persistence and
 projects and local fixture files; do not point tests at a developer project.
 
 Native text and data tests live in `ldaca-rs`, with data fixtures under
-`tests/fixtures`. The core has no Python bindings. The supported adapter tests
-in `polars-text/tests` verify public Python calls, lazy execution, null handling
-and exact Series schemas against the compiled Polars extension.
+`tests/fixtures`. The core has no Python bindings. The independent
+[polars-text repository](https://github.com/Australian-Text-Analytics-Platform/polars-text)
+tests public Python calls, lazy execution, null handling and exact Series
+schemas against its compiled extension.
 
 Frontend Vitest tests stay beside the owning feature or component. Shared MSW
 handlers provide typed transport fixtures; scenario-specific lifecycle changes
@@ -162,7 +163,7 @@ The [development runbook](development.md) covers environment setup.
 |---|---|
 | `backend` | `cargo fmt --check`, `cargo test --locked`, `cargo clippy --all-targets --all-features --locked -- -D warnings` |
 | `frontend/src-tauri` | `cargo fmt --check`, `cargo test --locked`, `cargo clippy --all-targets --all-features --locked -- -D warnings` |
-| `polars-text` | `cargo test --locked`, `cargo clippy --all-targets --all-features --locked -- -D warnings`, `uvx ty check`, `uv run pytest -q -m 'not model and not network'` |
+| Independent `polars-text` repository | `cargo test --locked`, `cargo clippy --all-targets --all-features --locked -- -D warnings`, `uvx ty check`, `uv run pytest -q -m 'not model and not network'` |
 | `ldaca-rs` | `cargo test --locked --all-features`, minimal/data/text feature checks, `cargo clippy --all-targets --all-features --locked -- -D warnings` |
 | Repository root (frontend) | `pnpm -C frontend test`, `pnpm -C frontend lint`, `pnpm -C frontend typecheck:tooling`, `pnpm -C frontend build`, `pnpm -C frontend docs:check` |
 

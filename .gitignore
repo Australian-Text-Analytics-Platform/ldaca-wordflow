@@ -257,3 +257,6 @@ frontend/src-tauri/resources/icu/manifest.json
 
 # Retired local checkout; its pinned upstream commit is no longer fetchable.
 /archive/polars-source-utils/
+
+# Optional independent adapter checkout, no longer a Wordflow submodule.
+/polars-text/

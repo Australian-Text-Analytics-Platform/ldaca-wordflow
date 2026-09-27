@@ -71,10 +71,11 @@ Model acceptance requires `WORDFLOW_TEST_UDPIPE_MODEL` pointing to a provisioned
 UDPipe model. `scripts/download_quotation_test_model.py` provisions the pinned
 test model. Run ignored model tests explicitly with the quotation feature.
 
-`polars-text/` is the sibling Polars/PyO3 adapter and uses a Cargo path dependency.
+The independent [polars-text adapter](https://github.com/Australian-Text-Analytics-Platform/polars-text)
+uses this library through a locked Cargo Git dependency.
 Its wheel retains the public Python API and lazy expressions. The old data SDK's
 Python bindings have been removed. FastAPI's old SDK callers are not maintained
-by this extraction. CI, publication, and independent repository setup are deferred.
+by this extraction. Adapter CI and publication are maintained in that repository.
 
 UDPipe sources and licences are in `vendor/udpipe`; quotation rule attribution is
 in `src/quotation/LICENSE`. No model files or user data belong in this repository.

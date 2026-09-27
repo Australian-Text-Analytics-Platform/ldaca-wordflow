@@ -10,13 +10,13 @@ flowchart LR
     Browser["Rust browser preview"] --> Runtime
     Runtime --> Database["DuckDB .wfpj"]
     Runtime --> Data["ldaca-rs data"]
-    Adapter["polars-text adapter"] --> Core["ldaca-rs text and models"]
+    Adapter["External polars-text adapter"] --> Core["ldaca-rs text and models"]
 ```
 
 - `backend/` owns native HTTP, execution and project persistence.
 - `frontend/` owns the shared interface, native controller and Tauri host.
 - `ldaca-rs/` provides independent text, model and data-access APIs.
-- `polars-text/` remains a supported adapter with its own Python tooling.
+- [polars-text](https://github.com/Australian-Text-Analytics-Platform/polars-text) remains a supported adapter in an independent repository.
 - [archive/](../../archive/README.md) preserves the retired FastAPI backend,
   Polars plan-storage utilities, Python environment and associated CI/packaging.
 

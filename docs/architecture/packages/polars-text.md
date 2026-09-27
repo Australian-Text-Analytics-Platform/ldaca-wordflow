@@ -1,7 +1,8 @@
 # polars-text Architecture
 
-`polars-text` is the Polars/PyO3 adapter for the sibling
-[ldaca-rs library](ldaca-rs.md). It requires that sibling folder for local builds.
+[`polars-text`](https://github.com/Australian-Text-Analytics-Platform/polars-text)
+is the independent Polars/PyO3 adapter for the
+[ldaca-rs library](ldaca-rs.md). Its Cargo lockfile pins the Wordflow Git source.
 
 ```mermaid
 flowchart LR

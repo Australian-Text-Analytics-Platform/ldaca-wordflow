@@ -44,7 +44,6 @@ function isMaintainedMarkdown(path) {
     "README.md",
     "archive/README.md",
     "frontend/README.md",
-    "polars-text/README.md",
     "ldaca-rs/README.md",
 
   ]);
