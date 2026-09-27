@@ -18,10 +18,35 @@ from dataclasses import dataclass
 
 import polars as pl
 
-from ..shared.errors import AppError, InvalidInputError
+from ..shared.errors import AppError, InvalidInputError, format_exception_diagnostic
 
 
 SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical"
+
+# The Data Editor's names for each cast target (issue 205).
+_TARGET_LABELS = {
+    "string": "text",
+    "categorical": "category",
+    "integer": "whole number",
+    "float": "decimal",
+    "datetime": "date and time",
+    "date": "date",
+}
+
+_NOTHING_CHANGED = "Nothing was changed."
+
+
+def _target_label(target_type: str) -> str:
+    return _TARGET_LABELS.get(target_type.lower(), target_type)
+
+
+def _cast_failure(message: str, exc: BaseException) -> InvalidInputError:
+    """A plain reason, with the library's text kept for Details (issue 205)."""
+
+    return InvalidInputError(
+        f"{message} {_NOTHING_CHANGED}",
+        details={"diagnostic": format_exception_diagnostic(exc)},
+    )
 TIMEZONE_FORMAT_TOKENS = ("%z", "%:z", "%#z")
 
 
@@ -79,11 +104,15 @@ def _datetime_cast_expr(
             return parsed.dt.convert_time_zone("UTC").alias(column_name)
         return parsed.dt.replace_time_zone("UTC").alias(column_name)
     except Exception as exc:
-        raise InvalidInputError(
-            f"Error casting column '{column_name}' to datetime: {exc}. "
-            "This often occurs when some rows don't match the supplied format. "
-            "Note your notebook example used .head() (sampling) which may hide later malformed rows. "
-            "Either clean inconsistent rows or keep strict=False (default) to set them null."
+        format_phrase = (
+            f"the date format {datetime_format}"
+            if datetime_format
+            else "a date format Wordflow recognises"
+        )
+        raise _cast_failure(
+            f'Some values in "{column_name}" don\'t match {format_phrase}. '
+            "Check the format, or clean those values first.",
+            exc,
         ) from exc
 
 
@@ -114,8 +143,8 @@ def _date_cast_expr(
             ).alias(column_name)
         return text.str.to_date(strict=bool(strict_flag)).alias(column_name)
     raise InvalidInputError(
-        f"Column '{column_name}' is {original_type}; only text and datetime "
-        "columns can be converted to date."
+        f'Only text and date and time columns can become dates, and "{column_name}" '
+        "is neither."
     )
 
 
@@ -177,7 +206,8 @@ def _cast_expr(
         )
 
     raise InvalidInputError(
-        f"Casting to '{target_type}' is not yet supported. Supported: {SUPPORTED_CAST_TARGETS}.",
+        f"Wordflow can't convert columns to {target_type} yet. Choose text, category, "
+        "whole number, decimal, date, or date and time."
     )
 
 
@@ -218,10 +248,22 @@ def cast_lazyframe_column(
         try:
             lazyframe.head(50).with_columns(cast_expr).collect()
         except Exception as sample_err:
-            raise InvalidInputError(
-                f"Sample validation failed when casting column '{column_name}' "
-                f"to {target_type}: {sample_err}"
-            ) from sample_err
+            if target_lower in {"datetime", "date"}:
+                format_phrase = (
+                    f"the date format {datetime_format}"
+                    if datetime_format
+                    else "a date format Wordflow recognises"
+                )
+                reason = (
+                    f'Some values in "{column_name}" don\'t match {format_phrase}. '
+                    "Check the format, or clean those values first."
+                )
+            else:
+                reason = (
+                    f'Some values in "{column_name}" can\'t be read as '
+                    f"{_target_label(target_type)}. Clean them first, or choose another type."
+                )
+            raise _cast_failure(reason, sample_err) from sample_err
 
         casted_lazyframe = lazyframe.with_columns(cast_expr)
         new_type = str(casted_lazyframe.collect_schema()[column_name])
@@ -236,7 +278,8 @@ def cast_lazyframe_column(
     except AppError:
         raise
     except Exception as cast_error:
-        raise InvalidInputError(
-            f"Error casting column '{column_name}' to {target_type}: {str(cast_error)}. "
-            "Check that the target data type is valid and the data can be converted.",
+        raise _cast_failure(
+            f'"{column_name}" can\'t be converted to {_target_label(target_type)}. '
+            "Clean its values first, or choose another type.",
+            cast_error,
         ) from cast_error

@@ -40,7 +40,7 @@ def test_cast_lazyframe_column_rejects_unsupported_target() -> None:
             target_type="boolean",
         )
 
-    assert "not yet supported" in exc_info.value.message
+    assert "can't convert columns to boolean yet" in exc_info.value.message
 
 
 def test_date_columns_convert_to_datetime_without_text_parsing() -> None:
@@ -64,3 +64,25 @@ def test_date_columns_convert_to_datetime_without_text_parsing() -> None:
         datetime_format="%d/%m/%Y",
     )
     assert as_text.lazyframe.collect()["Date adopted"].to_list() == ["31/01/2020", None]
+
+
+def test_failed_cast_explains_in_plain_words_and_keeps_the_diagnostic() -> None:
+    """Issue 205: the reason and what to do; Polars' text is for Details."""
+
+    lazyframe = pl.DataFrame({"when": ["2020-01-30", "not a date"]}).lazy()
+
+    with pytest.raises(InvalidInputError) as exc_info:
+        cast_lazyframe_column(
+            lazyframe,
+            column_name="when",
+            target_type="datetime",
+            datetime_format="%d/%m/%Y",
+            strict=True,
+        )
+
+    message = exc_info.value.message
+    assert message.startswith('Some values in "when"')
+    assert "%d/%m/%Y" in message
+    assert message.endswith("Nothing was changed.")
+    assert "notebook" not in message
+    assert exc_info.value.details and "diagnostic" in exc_info.value.details
