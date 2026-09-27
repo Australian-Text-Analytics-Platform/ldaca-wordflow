@@ -340,4 +340,44 @@ describe('WorkspaceTable', () => {
     expect(viewport.scrollLeft).toBe(600);
     rect.mockRestore();
   });
+
+  it('renames a column when its name is double-clicked (issue 208)', async () => {
+    const user = userEvent.setup();
+    const onRenameColumn = vi.fn().mockResolvedValue(undefined);
+    render(
+      <WorkspaceTable
+        columns={['speaker']}
+        columnFields={{ speaker: new Field('speaker', new Utf8()) }}
+        data={[{ speaker: 'Ada' }]}
+        onRenameColumn={onRenameColumn}
+      />,
+    );
+
+    await user.dblClick(screen.getByTitle('speaker (double-click to rename)'));
+    const input = screen.getByRole('textbox', { name: 'Rename column speaker' });
+    await user.clear(input);
+    await user.type(input, 'member{Enter}');
+
+    await waitFor(() => {
+      expect(onRenameColumn).toHaveBeenCalledWith('speaker', 'member');
+    });
+  });
+
+  it('keeps cells mounted when the table re-renders, so the scroll position holds (issue 208)', () => {
+    const props = {
+      columns: ['speaker'],
+      columnFields: { speaker: new Field('speaker', new Utf8()) },
+      data: [{ speaker: 'Ada' }],
+    };
+    const { rerender } = render(<WorkspaceTable {...props} />);
+    const cell = screen.getByTitle('Ada');
+    const header = screen.getByRole('button', { name: 'Change data type for column speaker' });
+
+    rerender(<WorkspaceTable {...props} fetching />);
+
+    expect(screen.getByTitle('Ada')).toBe(cell);
+    expect(screen.getByRole('button', { name: 'Change data type for column speaker' })).toBe(
+      header,
+    );
+  });
 });

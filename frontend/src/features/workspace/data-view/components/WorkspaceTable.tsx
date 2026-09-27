@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
 import type {
   SortingState,
   PaginationState as TanstackPaginationState,
 } from '@tanstack/react-table';
-import { type ColumnPinningState, flexRender, useTable } from '@tanstack/react-table';
+import { type ColumnPinningState, useTable } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -53,6 +53,19 @@ const WIDE_COLUMN_THRESHOLD = 120;
 const COLLAPSED_COLUMN_MAX_WIDTH = 320;
 const EXPANDED_COLUMN_MAX_WIDTH = 960;
 const WIDE_COLUMN_SAMPLE_LIMIT = 25;
+
+/**
+ * Renders a header or cell definition by calling it. `flexRender` would mount
+ * each renderer as a component, and these are rebuilt on every render, so
+ * every cell remounted whenever the table re-rendered (a type change, say).
+ * WebKit then scrolled the table back to its top-left corner (issue 208).
+ */
+function renderColumnPart<TContext>(
+  part: ReactNode | ((context: TContext) => ReactNode) | undefined,
+  context: TContext,
+): ReactNode {
+  return typeof part === 'function' ? part(context) : part;
+}
 
 // --- Props ---
 export interface WorkspaceTableProps {
@@ -588,7 +601,7 @@ export function WorkspaceTable({
                       >
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : renderColumnPart(header.column.columnDef.header, header.getContext())}
                       </TableHead>
                     );
                   })}
@@ -635,7 +648,7 @@ export function WorkspaceTable({
                           ...getPinnedStyles(cell.column, 'cell'),
                         }}
                       >
-                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        {renderColumnPart(cell.column.columnDef.cell, cell.getContext())}
                       </TableCell>
                     );
                   })}

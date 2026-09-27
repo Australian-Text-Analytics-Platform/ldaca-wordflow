@@ -59,19 +59,11 @@ export const WorkspaceDataHeader = ({
 
   return (
     <div className="shrink-0 border-b border-surface-border bg-panel p-2">
-      {/* Wraps instead of squeezing: on a narrow panel the tools move to a
-          second line rather than overlapping the Data Block name. */}
+      {/* The editing tools sit on the left and Undo/Redo at the right end
+          (issue 208); on a narrow panel Undo/Redo wrap to a second line. The
+          title and renaming live in the tab strip above (issue 206). */}
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
-        {/* The title and renaming live in the tab strip above (issue 206). */}
-        {info.isEmptyTable && (
-          <span
-            className="shrink-0 text-label-secondary italic text-description"
-            aria-live="polite"
-          >
-            (empty table)
-          </span>
-        )}
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5">
           {onOpenTool ? (
             <>
               <DropdownMenu>
@@ -173,6 +165,16 @@ export const WorkspaceDataHeader = ({
               Delete columns
             </button>
           ) : null}
+          {info.isEmptyTable && (
+            <span
+              className="shrink-0 text-label-secondary italic text-description"
+              aria-live="polite"
+            >
+              (empty table)
+            </span>
+          )}
+        </div>
+        <div className="ml-auto flex items-center gap-1.5">
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"

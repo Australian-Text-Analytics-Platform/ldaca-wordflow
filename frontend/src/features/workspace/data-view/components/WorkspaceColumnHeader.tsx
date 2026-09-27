@@ -183,9 +183,18 @@ export function WorkspaceColumnHeader({
         />
       ) : (
         <div className="min-w-0">
+          {/* Double-click the name to rename the column, like a tab (issue 208). */}
           <span
             className="block max-w-[160px] truncate text-label-secondary font-medium text-foreground"
-            title={column}
+            title={canRename ? `${column} (double-click to rename)` : column}
+            onDoubleClick={
+              canRename && !isColumnBusy
+                ? (event) => {
+                    event.preventDefault();
+                    onStartRename();
+                  }
+                : undefined
+            }
           >
             {column}
           </span>

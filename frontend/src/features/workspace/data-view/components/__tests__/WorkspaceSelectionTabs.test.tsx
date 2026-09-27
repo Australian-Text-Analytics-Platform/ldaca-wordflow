@@ -90,11 +90,10 @@ describe('WorkspaceSelectionTabs', () => {
 
     await user.click(screen.getByRole('button', { name: 'All Data Block tabs' }));
     const items = await screen.findAllByRole('menuitem');
-    expect(items.map((item) => item.textContent)).toEqual([
-      'Alpha speeches',
-      'beta letters',
-      'zeta tweets',
-    ]);
+    // Long names keep their start and end (issue 208); the full name is the title.
+    expect(
+      items.map((item) => within(item).getByTestId('middle-fade-label').getAttribute('title')),
+    ).toEqual(['Alpha speeches', 'beta letters', 'zeta tweets']);
     await user.click(items[1]!);
 
     expect(onTabChange).toHaveBeenCalledWith('node-3');

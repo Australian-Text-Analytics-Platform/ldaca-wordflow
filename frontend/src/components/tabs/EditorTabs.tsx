@@ -329,10 +329,12 @@ export function EditorTabs({
 
   return (
     <TooltipProvider delayDuration={300} skipDelayDuration={100}>
-      <div className="relative">
+      {/* The class goes on the outer box so a flex parent can shrink it and the
+        strip scrolls, rather than growing to fit every tab (issue 208). */}
+      <div className={cn('relative', className)}>
         <div
           ref={scrollRef}
-          className={cn('relative overflow-x-auto overflow-y-hidden px-[8px] pt-[8px]', className)}
+          className="relative overflow-x-auto overflow-y-hidden px-[8px] pt-[8px]"
           role="tablist"
           aria-label={ariaLabel}
           onScroll={updateHiddenEdges}

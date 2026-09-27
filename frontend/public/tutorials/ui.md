@@ -126,9 +126,9 @@ To switch projects without going to the Data Loader, use **Switch Project** at t
 
 The **Data Editor** fills the bottom-right area. It shows the contents of the selected data blocks as a table, and it is where you change a data block in place: its columns and their values. Tools that make new data blocks or change which rows are present (Filter, Group, Join, Segment, Aggregate, Sample, Deduplicate, Stack) are in the [Data Builder](./preprocessing.md).
 
-- Each selected data block has a tab in the Data Editor title bar. Click a tab to show that data block; the **×** on a tab deselects it, and you can drag tabs to reorder them.
+- Each selected data block has a tab in the Data Editor title bar. Click a tab to show that data block; the **×** on a tab deselects it, and you can drag tabs to reorder them. When the tabs do not fit, scroll the strip or use the arrow buttons at its ends.
 - To rename a data block, click its tab to make it the current one, then double-click the tab name, type the new name, and press Enter (Esc cancels). Analysis tool tabs are renamed the same way.
-- With many tabs, click the arrow at the right end of the title bar for a list of every tab in alphabetical order, and choose one to switch to it.
+- With many tabs, click the arrow at the right end of the title bar for a list of every tab in alphabetical order, and choose one to switch to it. A very long name shows its start and end, with the middle faded.
 
 ![Data Editor header with two selected data blocks as tabs](tutorials/assets/ui/data_editor_header.png)
 
@@ -156,7 +156,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 
 ![Delete columns dialog with three columns ticked](tutorials/assets/ui/delete_columns.png)
 
-- **Undo** and **Redo** revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
+- **Undo** and **Redo**, at the right end of the tools row, revert or reapply the selected Data Block's most recent plan edit. The same actions are available in the graph Data Block menu. History is independent per Data Block, stores at most 50 plans, and lasts only while the Project remains open in the backend process. Closing and reopening preserves the latest data but clears both buttons.
 - Each column header shows the column name and a symbol for its data type, which keeps columns narrow. Point to the symbol to see the type's name:
 
   | Symbol | Data type |
@@ -175,7 +175,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 
 ![Column headers: pin, name, sort, data type, and settings](tutorials/assets/ui/column_header.png)
 
-- Click the settings icon (the sliders) at the right of a column header for that column's tools (**Find & replace**, **Clean text**, **Extract text**, **Split**, **Count**, **Duplicate**) and to **Rename** or **Delete** it.
+- Click the settings icon (the sliders) at the right of a column header for that column's tools (**Find & replace**, **Clean text**, **Extract text**, **Split**, **Count**, **Duplicate**) and to **Rename** or **Delete** it. You can also double-click a column name to rename it: type the new name and press Enter (Esc cancels).
 
 ![A column's settings menu](tutorials/assets/ui/column_menu.png)
 

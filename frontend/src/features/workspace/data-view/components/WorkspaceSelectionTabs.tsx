@@ -1,6 +1,7 @@
 import { Check, ChevronDown } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
+import { MiddleFadeLabel } from '@/components/layout/sidebar/MiddleFadeLabel';
 import { EditorTabs, type EditorTabItem } from '@/components/tabs';
 import {
   DropdownMenu,
@@ -69,7 +70,12 @@ export const WorkspaceSelectionTabs = ({
             <ChevronDown className="size-4" aria-hidden="true" />
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="max-h-80 w-64 overflow-y-auto">
+        {/* Sized to the names, up to a wide cap; longer names keep their start
+            and end with the middle faded (issue 208). */}
+        <DropdownMenuContent
+          align="end"
+          className="max-h-80 w-max min-w-64 max-w-[min(36rem,calc(100vw-2rem))] overflow-y-auto"
+        >
           {sortedTabs.map((tab) => (
             <DropdownMenuItem
               key={tab.id}
@@ -81,7 +87,7 @@ export const WorkspaceSelectionTabs = ({
                 className={tab.isActive ? 'size-3.5 shrink-0' : 'size-3.5 shrink-0 opacity-0'}
                 aria-hidden="true"
               />
-              <span className="truncate">{tab.label}</span>
+              <MiddleFadeLabel text={tab.label} className="flex-1" />
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
