@@ -228,7 +228,7 @@ describe('BackendBootstrapGate', () => {
     expect(reloadApplication).not.toHaveBeenCalled();
   });
 
-  it('keeps a Python initialization error instead of replacing it with refreshed status', async () => {
+  it('keeps a Python initialization error, under Details, instead of the refreshed status', async () => {
     const user = userEvent.setup();
     vi.spyOn(globalThis, 'fetch')
       .mockResolvedValueOnce(liveResponse())
@@ -257,11 +257,13 @@ describe('BackendBootstrapGate', () => {
     );
     await user.click(await screen.findByRole('button', { name: 'Use recommended location' }));
 
+    // Plain words, with the Python error kept under Details (issue 205).
     expect(
-      await screen.findByText(
-        'PermissionError: [Errno 13] Permission denied while opening SQLite (Request ID: initialization-request)',
-        { selector: 'p.text-error' },
-      ),
+      await screen.findByText(/Something went wrong in Wordflow/, { selector: 'p.text-error' }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Details' }));
+    expect(
+      screen.getByText(/PermissionError: \[Errno 13\] Permission denied while opening SQLite/),
     ).toBeInTheDocument();
   });
 

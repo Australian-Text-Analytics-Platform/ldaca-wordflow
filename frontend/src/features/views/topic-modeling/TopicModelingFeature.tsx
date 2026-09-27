@@ -49,6 +49,7 @@ import {
   filterTopicRepresentativeWords,
   sliceTopicRepresentativeWords,
 } from './topicModelingAdapters';
+import { toastError } from '@/lib/toastError';
 
 /**
  * Renders the native topic-modelling workflow and Result exploration.
@@ -351,9 +352,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Topic Modelling results to the Project.');
     } catch (cause) {
-      toast.error('Failed to add Topic Modelling results.', {
-        description: cause instanceof Error ? cause.message : String(cause),
-      });
+      toastError(cause, 'Try again.', { title: 'Failed to add Topic Modelling results.' });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -415,8 +414,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     persistSelection: (selection) =>
       host.setPresentationSettings({ projectionSelection: selection }),
     onPersistenceError: (cause) => {
-      toast.error('Topics updated, but these projection settings were not remembered.', {
-        description: cause instanceof Error ? cause.message : String(cause),
+      toastError(cause, 'Try again.', {
+        title: 'Topics updated, but these projection settings were not remembered.',
       });
     },
   });

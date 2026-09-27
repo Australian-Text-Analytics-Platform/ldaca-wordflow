@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 
+import { ErrorDetailsHost } from '@/components/errors/ErrorDetails';
 import { Toaster } from '@/components/ui/sonner';
 import { useUIStore } from '@/stores/uiStore';
 import { DocsEolBanner } from '@/tutorials/DocsEolBanner';
@@ -38,6 +39,7 @@ export function GlobalHosts() {
       </Suspense>
       <DocsEolBanner />
       <Toaster />
+      <ErrorDetailsHost />
     </>
   );
 }

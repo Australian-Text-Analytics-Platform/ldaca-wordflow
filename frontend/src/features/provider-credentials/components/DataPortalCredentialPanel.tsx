@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProviderCredentials } from '../useProviderCredentials';
+import { toastError } from '@/lib/toastError';
 
 /** Standalone Data Portal credential surface, intentionally outside LLM provider settings. */
 export function DataPortalCredentialPanel({
@@ -28,7 +29,7 @@ export function DataPortalCredentialPanel({
       toast.success('Data Portal credential updated');
       onChanged?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not update credential');
+      toastError(error, 'Could not update credential');
     } finally {
       setPending(false);
     }
@@ -41,7 +42,7 @@ export function DataPortalCredentialPanel({
       toast.success('Data Portal credential cleared');
       onChanged?.();
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not clear credential');
+      toastError(error, 'Could not clear credential');
     } finally {
       setPending(false);
     }

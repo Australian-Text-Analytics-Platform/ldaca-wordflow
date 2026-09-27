@@ -16,6 +16,8 @@ import type { TaskItem } from '@/features/workspace/task-stream/taskProjection';
 
 import { MiddleFadeLabel } from './MiddleFadeLabel';
 import { buildTaskRows, type TaskRowTarget, type TaskTab } from './taskRows';
+import { ErrorDetails } from '@/components/errors/ErrorDetails';
+import { presentFailureMessage } from '@/lib/errorPresentation';
 
 /** Task states treated as attention-worthy in the sidebar task list. */
 const PROBLEMATIC_STATES = new Set(['failed', 'cancelled']);
@@ -290,11 +292,16 @@ function SidebarTasksSection({
                           <p className="text-badge text-description">{progressPercent}%</p>
                         </div>
                       )}
-                      {task.message && (
-                        <p className="whitespace-pre-wrap wrap-break-word text-[11px] text-description">
-                          {task.message}
-                        </p>
-                      )}
+                      {task.message &&
+                        (task.state === 'failed' ? (
+                          // A Python diagnostic reads as plain words, with the
+                          // text itself under Details (issue 205).
+                          <TaskFailure message={task.message} />
+                        ) : (
+                          <p className="whitespace-pre-wrap wrap-break-word text-[11px] text-description">
+                            {task.message}
+                          </p>
+                        ))}
                       {(task.state === 'queued' || task.state === 'running') &&
                         task.progress_message &&
                         task.progress_message !== task.message && (
@@ -319,7 +326,7 @@ function SidebarTasksSection({
                                     {result.blocks.join(', ') || result.label}
                                   </span>
                                   {result.task.state === 'failed' && result.task.message
-                                    ? `: ${result.task.message}`
+                                    ? `: ${presentFailureMessage(result.task.message, result.task.message).message}`
                                     : null}
                                 </span>
                               </li>
@@ -402,3 +409,14 @@ function SidebarTasksSection({
 }
 
 export default SidebarTasksSection;
+
+/** A failed task's message in plain words, with any diagnostic under Details. */
+function TaskFailure({ message }: { message: string }) {
+  const presented = presentFailureMessage(message, message);
+  return (
+    <div className="text-[11px] text-description">
+      <p className="whitespace-pre-wrap wrap-break-word">{presented.message}</p>
+      {presented.technical ? <ErrorDetails technical={presented.technical} /> : null}
+    </div>
+  );
+}

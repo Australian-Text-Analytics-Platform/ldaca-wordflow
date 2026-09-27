@@ -63,3 +63,24 @@ def test_durable_failure_accepts_an_unbounded_multiline_diagnostic() -> None:
     failure = Failure(code="analysis_execution_failed", message=message)
 
     assert failure.message == message
+
+
+def test_validation_message_names_the_field_in_plain_words() -> None:
+    """Issue 205: one sentence, the field named, pydantic's prefix dropped."""
+
+    from ldaca_wordflow.shared.errors import validation_message
+
+    assert (
+        validation_message(
+            [
+                {
+                    "location": ["body", "parameters", "number_of_topics"],
+                    "type": "value_error",
+                    "message": "Value error, must be between 2 and 200",
+                },
+                {"location": ["body", "seed"], "type": "int_parsing", "message": "x"},
+            ]
+        )
+        == "Number of topics: must be between 2 and 200. Seed: x."
+    )
+    assert validation_message([]) == "Some settings are not valid. Check them and try again."

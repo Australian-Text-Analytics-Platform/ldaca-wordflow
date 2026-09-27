@@ -77,8 +77,10 @@ describe('useColumnMutations', () => {
     });
 
     await waitFor(() => {
+      // The heading names the column; the reason is the toast's text (issue 205).
       expect(toastMock.error).toHaveBeenCalledWith(
-        'Failed to convert column "published_at" to whole number: invalid date',
+        'Couldn\'t convert column "published_at" to whole number.',
+        expect.objectContaining({ description: expect.anything() }),
       );
       expect(result.current.loadingCast).toEqual({});
     });

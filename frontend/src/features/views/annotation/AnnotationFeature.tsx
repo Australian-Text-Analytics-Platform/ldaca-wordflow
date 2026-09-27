@@ -67,6 +67,7 @@ import { CreateStringColumnDialog } from './components/CreateStringColumnDialog'
 import { useAnnotationAiPreview } from './hooks/useAnnotationAiPreview';
 import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescriptions';
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
+import { toastError } from '@/lib/toastError';
 
 const SOURCE_NODE_CONSTRAINTS: NodeInputConstraints = {
   fieldPredicate: isArrowStringField,
@@ -509,7 +510,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     } catch (error) {
       const role = createColumnDialog.kind;
       console.warn(`[annotation] Failed to create ${role} column:`, error);
-      toast.error(error instanceof Error ? error.message : `Could not create the ${role} column.`);
+      toastError(error, `Could not create the ${role} column.`);
     } finally {
       setIsCreatingColumn(false);
     }
@@ -517,7 +518,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
 
   const setLiveCorrectionColumn = (nodeId: string, column: string | null) => {
     void host.setCorrectionColumn(nodeId, column).catch((error: unknown) => {
-      toast.error(error instanceof Error ? error.message : 'Could not save the correction column.');
+      toastError(error, 'Could not save the correction column.');
     });
   };
 
@@ -564,9 +565,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       setDescriptionColumns((current) => ({ ...current, [created.id]: 'description' }));
       toast.success('Created an empty Codebook Data Block.');
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : 'Could not create the Codebook Data Block.',
-      );
+      toastError(error, 'Could not create the Codebook Data Block.');
     } finally {
       setIsCreatingClassTable(false);
     }
@@ -811,7 +810,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         return data;
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : 'Could not run Annotation Analysis.');
+        toastError(error, 'Could not run Annotation Analysis.');
       },
     });
   };
@@ -845,7 +844,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         toast.success('Annotation Run started.');
       },
       onError: (error) => {
-        toast.error(error instanceof Error ? error.message : 'Could not start the Annotation Run.');
+        toastError(error, 'Could not start the Annotation Run.');
       },
     });
   };
@@ -872,7 +871,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         correctionColumn: aiCorrectionColumn,
       });
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the Data Block color.');
+      toastError(error, 'Could not save the Data Block color.');
     } finally {
       setIsStartingManualReview(false);
     }

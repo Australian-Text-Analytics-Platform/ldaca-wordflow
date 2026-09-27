@@ -222,9 +222,11 @@ def test_unsafe_workspace_lock_entry_exposes_storage_diagnostic(tmp_path: Path) 
 
         assert response.status_code == 500
         assert response.json()["code"] == "workspace_lock_unavailable"
-        assert response.json()["message"].startswith("OSError: ")
-        assert lock_path.name in response.json()["message"]
-        assert "Traceback" not in response.json()["message"]
+        # The diagnostic goes under Details, not into the message (issue 205).
+        diagnostic = response.json()["details"]["diagnostic"]
+        assert diagnostic.startswith("OSError: ")
+        assert lock_path.name in diagnostic
+        assert "Traceback" not in diagnostic
         assert outside.read_text(encoding="utf-8") == "do not modify"
 
 
@@ -479,7 +481,8 @@ def test_corrupt_workspace_is_catalogued_but_directly_reported_and_deletable(
         direct = client.get(f"/api/workspaces/{workspace_id}")
         assert direct.status_code == 500
         assert direct.json()["code"] == "workspace_corrupt"
-        assert direct.json()["details"] == {"workspace_id": workspace_id}
+        assert direct.json()["details"]["workspace_id"] == workspace_id
+        assert "diagnostic" in direct.json()["details"]
 
         deleted = client.delete(
             f"/api/workspaces/{workspace_id}",

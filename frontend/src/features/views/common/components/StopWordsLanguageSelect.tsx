@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
 
 import {
   Select,
@@ -18,6 +17,7 @@ import {
   loadWordflowClassicStopwords,
   WORDFLOW_CLASSIC_STOPWORD_LISTS,
 } from '@/lib/wordflowClassicStopwords';
+import { toastError } from '@/lib/toastError';
 
 const SAVED_LIST_VALUE = '__saved__';
 const CLEAR_LIST_VALUE = '__clear__';
@@ -101,9 +101,7 @@ export function StopWordsLanguageSelect({
       try {
         loaded = await load();
       } catch (cause) {
-        toast.error('Failed to load stop words.', {
-          description: cause instanceof Error ? cause.message : String(cause),
-        });
+        toastError(cause, 'Try again.', { title: 'Failed to load stop words.' });
         return;
       }
       await commit(mergeStopWordsText(formatStopWords(words), loaded));

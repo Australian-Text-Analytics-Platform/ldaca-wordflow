@@ -22,6 +22,7 @@ import {
   type DataBlockExportSelection,
 } from '../dataBlockExport';
 import { toast } from 'sonner';
+import { toastError } from '@/lib/toastError';
 
 interface DataBlockExportDialogProps {
   open: boolean;
@@ -56,7 +57,7 @@ export function DataBlockExportDialog({
       toast.success('Data Block exported');
       onOpenChange(false);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not export Data Block');
+      toastError(error, 'Could not export Data Block');
     } finally {
       setExporting(false);
     }

@@ -2,7 +2,6 @@ import HelpIcon from '@/components/help/HelpIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { toast } from 'sonner';
 import { sqlTable } from '@/api';
 import {
   Select,
@@ -53,6 +52,7 @@ import { useAnnotationRowFilter } from '../hooks/useAnnotationRowFilter';
 import { AnnotationCorrectionColumnControl } from './AnnotationCorrectionColumnControl';
 import { AnnotationTableFrame } from './AnnotationTableFrame';
 import { CurrentAnnotationValueItem } from './CurrentAnnotationValueItem';
+import { toastError } from '@/lib/toastError';
 
 const ANNOTATION_RESULT_PAGE_SIZE = 10;
 // Radix `Select` rejects an empty-string item value, so the "clear" option uses
@@ -601,11 +601,7 @@ export function AnnotationResultsPanel({
                                   });
                                 }
                               });
-                              toast.error(
-                                error instanceof Error
-                                  ? error.message
-                                  : 'Could not save the annotation.',
-                              );
+                              toastError(error, 'Could not save the annotation.');
                             })
                             .finally(() => {
                               setSavingRows((current) => {
@@ -677,11 +673,7 @@ export function AnnotationResultsPanel({
                                     }
                                     return nextSelections;
                                   });
-                                  toast.error(
-                                    error instanceof Error
-                                      ? error.message
-                                      : 'Could not save the annotation correction.',
-                                  );
+                                  toastError(error, 'Could not save the annotation correction.');
                                 })
                                 .finally(() => {
                                   setSavingCorrectionRows((current) => {

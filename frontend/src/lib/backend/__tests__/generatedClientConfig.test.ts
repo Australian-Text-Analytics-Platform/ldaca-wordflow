@@ -89,7 +89,7 @@ describe('generatedClientConfig', () => {
     } satisfies Partial<ApiError>);
   });
 
-  it('includes the backend request id in server-error messages', async () => {
+  it('keeps the backend request id for Details', async () => {
     const diagnostic = `RuntimeError: ${'x'.repeat(1_000)}`;
     const config = createClientConfig({
       baseUrl: 'http://api.test/api',
@@ -116,8 +116,10 @@ describe('generatedClientConfig', () => {
     ).rejects.toMatchObject({
       status: 500,
       code: 'internal_server_error',
-      message: `${diagnostic} (Request ID: request-500)`,
-    } satisfies Partial<ApiError>);
+      // The reference goes under Details, not into the message (issue 205).
+      message: diagnostic,
+      technical: expect.stringContaining('Reference: request-500'),
+    });
   });
 
   it('prefers canonical validation details over the summary message', async () => {

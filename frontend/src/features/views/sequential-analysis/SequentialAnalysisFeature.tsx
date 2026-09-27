@@ -48,6 +48,7 @@ import { downloadChartAs, findSvgInContainer, type ChartImageFormat } from '@/li
 import { DEFAULT_TAB_INPUT_SET_ID } from '@/features/views/common/tabs/tabStateOps';
 import type { AnalysisTabFeatureProps } from '@/features/views/common/tabs/AnalysisTabsHost';
 import type { SequentialAnalysisResponse } from '@/api';
+import { toastError } from '@/lib/toastError';
 
 const isTimeCompatibleField = (field: ArrowField): boolean =>
   isArrowTemporalField(field) || isArrowIntegerField(field) || isArrowFloatField(field);
@@ -383,9 +384,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding the Trends selection to the Project.');
     } catch (cause) {
-      toast.error('Could not add the Trends selection.', {
-        description: cause instanceof Error ? cause.message : String(cause),
-      });
+      toastError(cause, 'Try again.', { title: "Couldn't add the Trends selection." });
     } finally {
       setIsAddingToWorkspace(false);
     }

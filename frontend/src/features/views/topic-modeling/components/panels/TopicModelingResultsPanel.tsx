@@ -24,6 +24,7 @@ import { TopicModelingBubbleChartSection } from '../results/TopicModelingBubbleC
 import type { TopicColorScheme } from '../results/topicModelingGraph';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 interface Props {
   topicWaitingBanner: {
@@ -524,9 +525,7 @@ export function TopicModelingResultsPanel({
           />
         ) : null}
 
-        {isErrorState ? (
-          <p className="whitespace-pre-wrap wrap-break-word text-body text-description">{error}</p>
-        ) : null}
+        {isErrorState ? <ErrorNotice error={error} /> : null}
 
         {isSuccessfulState ? (
           <div className="relative" aria-busy={projectionPending}>

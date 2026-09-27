@@ -38,6 +38,7 @@ import {
   type DispersionDisplayBinCount,
   type ConcordanceDensitySeriesInput,
 } from '../concordanceDispersionDomain';
+import { toastError } from '@/lib/toastError';
 
 /** Soft background behind selected bins, shared with Trends (issue 191). */
 const SELECTION_BAND_COLOR = 'rgba(245, 158, 11, 0.16)';
@@ -452,8 +453,7 @@ export function ConcordanceDispersionSummary({
         legend,
       });
     } catch (error) {
-      const description = error instanceof Error ? error.message : String(error);
-      toast.error('Failed to export chart.', { description });
+      toastError(error, 'Try again.', { title: "Couldn't export the chart." });
     }
   };
 

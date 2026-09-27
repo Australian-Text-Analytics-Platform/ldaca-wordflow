@@ -4,7 +4,6 @@ import { AnnotationRowViewButton } from '@/features/views/common/components/Anno
 import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
 import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -43,6 +42,7 @@ import type { AnnotationAiPreview, AnnotationPreviewRow } from '../hooks/useAnno
 import { AnnotationCorrectionColumnControl } from './AnnotationCorrectionColumnControl';
 import { AnnotationTableFrame } from './AnnotationTableFrame';
 import { CurrentAnnotationValueItem } from './CurrentAnnotationValueItem';
+import { toastError } from '@/lib/toastError';
 
 const NO_CORRECTION_VALUE = '__no_correction__';
 
@@ -234,9 +234,7 @@ export function AnnotationAiPreviewPanel({
           else Reflect.deleteProperty(nextSelections, selectionKey);
           return nextSelections;
         });
-        toast.error(
-          error instanceof Error ? error.message : 'Could not save the annotation correction.',
-        );
+        toastError(error, 'Could not save the annotation correction.');
       })
       .finally(() => {
         setSavingRows((current) => {

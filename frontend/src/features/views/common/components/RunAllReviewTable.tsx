@@ -4,7 +4,6 @@ import { AnnotationRowViewButton } from './AnnotationRowViewer';
 import { buildAnnotationRowDetailPayload } from './annotationRowDetail';
 import { useAnnotationRowViewer } from '../hooks/useAnnotationRowViewer';
 import { useState } from 'react';
-import { toast } from 'sonner';
 import {
   Select,
   SelectContent,
@@ -44,6 +43,7 @@ import { CurrentAnnotationValueItem } from '@/features/views/annotation/componen
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { isArrowDictionaryField, isArrowStringField } from '@/lib/arrow/arrowTable';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
+import { toastError } from '@/lib/toastError';
 
 const DEFAULT_PAGE_SIZE = 10;
 const NO_CORRECTION_VALUE = '__no_correction__';
@@ -556,11 +556,7 @@ export function RunAllReviewTable({
                                     }
                                     return nextSelections;
                                   });
-                                  toast.error(
-                                    error instanceof Error
-                                      ? error.message
-                                      : 'Could not save the annotation correction.',
-                                  );
+                                  toastError(error, 'Could not save the annotation correction.');
                                 })
                                 .finally(() => {
                                   setSavingCorrectionRows((current) => {

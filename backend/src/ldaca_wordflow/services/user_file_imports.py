@@ -563,7 +563,7 @@ class UserFileImportService:
             )
             failure = Failure(
                 code="user_file_import_execution_failed",
-                message=format_exception_diagnostic(exc),
+                message=exc.user_message or format_exception_diagnostic(exc),
             )
         except Exception as exc:
             logger.exception(

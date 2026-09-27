@@ -40,6 +40,7 @@ import { useFolderCreation } from './hooks/useFolderCreation';
 import { useLdacaImport } from './hooks/useLdacaImport';
 import { useUploadState } from './hooks/useUploadState';
 import { countFilesInNode, findDirectory, tableFilesInDirectory } from './utils/fileTreeHelpers';
+import { toastError } from '@/lib/toastError';
 
 interface FileListShellProps {
   children: ReactNode;
@@ -169,7 +170,8 @@ function DataLoaderFeature() {
     if (type === 'success') {
       toast.success(message, options);
     } else if (type === 'error') {
-      toast.error(message, options);
+      // Messages that are Python diagnostics go under Details (issue 205).
+      toastError(message, message, options);
     } else {
       toast(message, options);
     }

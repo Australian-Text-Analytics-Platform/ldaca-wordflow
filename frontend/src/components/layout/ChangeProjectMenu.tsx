@@ -30,6 +30,7 @@ import {
   isRunningTaskState,
 } from '@/features/workspace/task-stream/taskProjection';
 import { useTaskResources } from '@/features/workspace/task-stream/useWorkspaceTaskInbox';
+import { toastError } from '@/lib/toastError';
 
 /**
  * Switches the open Project from the Project Graph title bar (issue 192).
@@ -74,7 +75,7 @@ export function ChangeProjectMenu() {
       await setCurrentWorkspace(target.id);
       toast.success(`Switched to “${target.name}”.`);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : `Could not open “${target.name}”.`);
+      toastError(error, `Could not open “${target.name}”.`);
     } finally {
       setSwitching(false);
       setTarget(null);

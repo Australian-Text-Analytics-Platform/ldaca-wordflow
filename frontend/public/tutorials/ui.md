@@ -247,6 +247,7 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 
 - **Help** opens the built-in written guides in a floating window (the one you are currently reading). Clicking any **?** icon scrolls Help to the relevant section.
 - **Feedback** opens a form where you can report bugs, request features, or ask questions. Your feedback goes directly to the developer team. Please do not include any confidential information.
+- When something goes wrong, the message says what happened in plain words. Many messages also have **Details**: technical text that helps the developers find the problem. Use **Copy details**, then **Send feedback**, and paste the details into the form. If the same error keeps happening, please report it this way.
 - In the title bar, the icons beside the **Wordflow** name open **About Wordflow** (i) and **Cite LDaCA Wordflow** (quote mark). Select the **Wordflow** name to open the [Wordflow website](https://sih.tools/wordflow), where the desktop app can be downloaded, or the LDaCA logo to open the [LDaCA website](https://www.ldaca.edu.au/). Both open in a new tab (in the desktop app, in your web browser).
 
 ![Wordflow name, About and Cite icons, and the LDaCA logo in the title bar](tutorials/assets/ui/title_bar.png)

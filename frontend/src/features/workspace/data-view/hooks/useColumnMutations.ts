@@ -15,6 +15,7 @@ import {
   type DatetimeModalState,
 } from './columnMutationState';
 import type { ColumnCastType } from '../services/schemaMutations';
+import { toastError } from '@/lib/toastError';
 
 interface UseColumnMutationsArgs {
   /** Current workspace id; enables schema bootstrap when paired with a node id. */
@@ -122,10 +123,9 @@ export const useColumnMutations = ({
           applySchema(schema);
         }
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        toast.error(
-          `Failed to convert column "${column}" to ${castTypeLabel(targetType)}: ${message}`,
-        );
+        toastError(error, 'Try again.', {
+          title: `Couldn't convert column "${column}" to ${castTypeLabel(targetType)}.`,
+        });
       } finally {
         dispatch({ type: 'castLoadingChanged', column, active: false });
       }
@@ -212,8 +212,7 @@ export const useColumnMutations = ({
         }
         dispatch({ type: 'renameClosed' });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        toast.error(`Failed to rename column "${column}": ${message}`);
+        toastError(error, 'Try again.', { title: `Couldn't rename column "${column}".` });
       } finally {
         setColumnBusy(column, false);
       }
@@ -245,8 +244,7 @@ export const useColumnMutations = ({
         dispatch({ type: 'columnFieldRemoved', column });
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      toast.error(`Failed to delete column "${column}": ${message}`);
+      toastError(error, 'Try again.', { title: `Couldn't delete column "${column}".` });
     } finally {
       setColumnBusy(column, false);
     }

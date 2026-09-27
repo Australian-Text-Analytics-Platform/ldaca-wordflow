@@ -9,6 +9,7 @@ import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspac
 import { ANALYSIS_TAB_GROUPS } from '../../common/analysisIds';
 import { useWorkspaceTabs } from '../../common/tabs/useWorkspaceTabs';
 import type { ViewType } from '@/features/views/viewIds';
+import { toastError } from '@/lib/toastError';
 
 interface AnalysisState {
   currentWorkspaceId: string | null;
@@ -222,7 +223,7 @@ export const useTokenFrequencyTaskFlow = ({
               console.warn('Failed to remove empty Concordance tab:', cleanupError);
             }
           }
-          toast.error(error instanceof Error ? error.message : 'Failed to open Concordance.');
+          toastError(error, 'Failed to open Concordance.');
         }
       })();
     },

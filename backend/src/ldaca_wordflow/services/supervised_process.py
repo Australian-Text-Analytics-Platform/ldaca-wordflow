@@ -18,6 +18,7 @@ import anyio
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
 from ..infrastructure.storage.safe_paths import logical_tree_usage
+from ..shared.errors import AppError
 
 ProgressReporter = Callable[[object], Awaitable[None]]
 
@@ -54,10 +55,13 @@ class SupervisedProcessError(RuntimeError):
         diagnostic_type: str | None = None,
         diagnostic_message: str | None = None,
         child_traceback: list[str] | None = None,
+        user_message: str | None = None,
     ) -> None:
         super().__init__(message)
         self.diagnostic_type = diagnostic_type
         self.diagnostic_message = diagnostic_message
+        # The child's own written message for users, when it raised one.
+        self.user_message = user_message
         if child_traceback:
             self.add_note(f"Child traceback:\n{''.join(child_traceback)}")
 
@@ -105,10 +109,24 @@ def _run_process(
                 type(exc).__name__,
                 str(exc),
                 traceback.format_tb(exc.__traceback__),
+                _user_message(exc),
             )
         )
     finally:
         result_connection.close()
+
+
+def _user_message(exc: BaseException) -> str | None:
+    """A child's failure message written for users, or None (issue 205).
+
+    Only an ``AppError`` below 500 carries a message meant for users; every
+    other failure reaches them as a generic message with the diagnostic under
+    Details.
+    """
+
+    if isinstance(exc, AppError) and exc.status_code < 500 and exc.message != exc.code:
+        return exc.message
+    return None
 
 
 class SupervisedProcessRunner[K: Hashable]:
@@ -328,10 +346,15 @@ class SupervisedProcessRunner[K: Hashable]:
         )
         if envelope[0] == "ok" and len(envelope) == 2:
             return envelope[1]
-        if envelope[0] == "error" and len(envelope) == 4:
+        if envelope[0] == "error" and len(envelope) == 5:
             error_type = envelope[1]
             error_message = envelope[2]
             traceback_lines = envelope[3]
+            user_message = envelope[4]
+            if user_message is not None and not isinstance(user_message, str):
+                raise SupervisedProcessError(
+                    f"{self._resource_name} returned an invalid error envelope"
+                )
             if not isinstance(error_type, str) or not isinstance(error_message, str):
                 raise SupervisedProcessError(
                     f"{self._resource_name} returned an invalid error envelope"
@@ -347,6 +370,7 @@ class SupervisedProcessRunner[K: Hashable]:
                 diagnostic_type=error_type,
                 diagnostic_message=error_message,
                 child_traceback=traceback_lines,
+                user_message=user_message,
             )
         raise SupervisedProcessError(
             f"{self._resource_name} returned an invalid envelope"

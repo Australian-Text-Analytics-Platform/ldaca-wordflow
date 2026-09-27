@@ -14,7 +14,6 @@ import type {
   TopicModelingProjectionSelection,
   UpdateTabData,
 } from '@/api';
-import { toast } from 'sonner';
 import { queryKeys } from '@/lib/queryKeys';
 import { useAuthStore } from '@/stores/authStore';
 import {
@@ -31,6 +30,7 @@ import {
   useAnalysisTabsPresentationStore,
 } from './analysisTabsPresentationStore';
 import { useWorkspaceTabResources } from './workspaceTabsQuery';
+import { toastError } from '@/lib/toastError';
 
 export interface UseWorkspaceTabsResult {
   tabs: AnalysisTab[];
@@ -454,8 +454,8 @@ export function useWorkspaceTabs(
     },
     onError: (cause, variables, context) => {
       if (context?.previous) queryClient.setQueryData(queryKey, context.previous);
-      toast.error('Failed to save Tab settings.', {
-        description: cause instanceof Error ? cause.message : String(cause),
+      toastError(cause, 'Try again.', {
+        title: 'Failed to save Tab settings.',
         action: {
           label: 'Retry',
           onClick: () => {

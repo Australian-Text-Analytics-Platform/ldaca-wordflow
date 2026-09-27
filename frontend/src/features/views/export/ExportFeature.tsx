@@ -26,6 +26,7 @@ import {
 } from '@/features/workspace/common/dataBlockExport';
 import { safeDownloadStem, saveBackendDownload } from '@/lib/download';
 import { toast } from 'sonner';
+import { toastError } from '@/lib/toastError';
 
 const EXPORT_CONSTRAINTS = {};
 
@@ -75,7 +76,7 @@ function ExportFeature() {
           : `${String(selectedIds.length)} Data Blocks exported`,
       );
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not export Data Blocks');
+      toastError(error, 'Could not export Data Blocks');
     } finally {
       setExportingDataBlocks(false);
     }
@@ -102,7 +103,7 @@ function ExportFeature() {
       reachContextualHint(CONTEXTUAL_HINT_IDS.export.workspaceSuccess);
       toast.success('Project archive exported');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not export project archive');
+      toastError(error, 'Could not export project archive');
     } finally {
       setExportingWorkspace(false);
     }

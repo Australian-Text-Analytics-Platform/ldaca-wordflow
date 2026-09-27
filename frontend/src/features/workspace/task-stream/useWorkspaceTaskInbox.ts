@@ -5,7 +5,6 @@ import {
   useQueryClient,
 } from '@tanstack/react-query';
 import { useCallback, useEffect } from 'react';
-import { toast } from 'sonner';
 import type { UserFileImport, UserFileImportPage, WorkspaceCatalogueItem } from '@/api';
 import {
   cancelUserFileImport,
@@ -25,6 +24,7 @@ import {
   useWorkspaceTaskStreamClient,
   type WorkspaceTaskStreamClientState,
 } from './useWorkspaceTaskStreamClient';
+import { toastError } from '@/lib/toastError';
 
 const IMPORT_PAGE_SIZE = 100;
 
@@ -137,7 +137,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Could not stop the file import.');
+      toastError(error, 'Could not stop the file import.');
     },
   });
 
@@ -154,7 +154,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.userFileImports });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Could not clear the file import.');
+      toastError(error, 'Could not clear the file import.');
     },
   });
 
@@ -171,7 +171,7 @@ export const useWorkspaceTaskInbox = (workspaceId: string | null): WorkspaceTask
       void queryClient.invalidateQueries({ queryKey: queryKeys.workspaceTabs(workspaceId) });
     },
     onError: (error) => {
-      toast.error(error instanceof Error ? error.message : 'Could not clear the analysis.');
+      toastError(error, 'Could not clear the analysis.');
     },
   });
 

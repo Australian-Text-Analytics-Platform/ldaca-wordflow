@@ -19,6 +19,7 @@ import { useProviderCredentials } from '@/features/provider-credentials/useProvi
 import { providerConfigurationSecondaryText } from '../aiProviders';
 import { AddAnnotationProviderDialog } from './AddAnnotationProviderDialog';
 import { EditAnnotationProviderDialog } from './EditAnnotationProviderDialog';
+import { toastError } from '@/lib/toastError';
 
 /** Ordered management UI for named Annotation provider configurations. */
 export function AiProvidersPreferencesPanel() {
@@ -39,7 +40,7 @@ export function AiProvidersPreferencesPanel() {
       setDeleteTarget(null);
       toast.success('Provider deleted');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not delete provider');
+      toastError(error, 'Could not delete provider');
     } finally {
       setPending(false);
     }
@@ -52,7 +53,7 @@ export function AiProvidersPreferencesPanel() {
       setClearOpen(false);
       toast.success('Annotation providers cleared');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not clear providers');
+      toastError(error, 'Could not clear providers');
     } finally {
       setPending(false);
     }

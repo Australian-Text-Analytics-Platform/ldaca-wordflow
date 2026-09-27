@@ -114,6 +114,6 @@ describe('user preferences hooks', () => {
           ?.contextual_hints_enabled,
       ).toBe(true),
     );
-    expect(fixture.toastError).toHaveBeenCalledWith('save failed');
+    expect(fixture.toastError).toHaveBeenCalledWith('save failed', expect.any(Object));
   });
 });

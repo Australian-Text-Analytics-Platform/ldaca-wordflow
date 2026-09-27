@@ -8,14 +8,20 @@ export class ApiError extends Error {
   status?: number;
   code?: string;
   detail?: unknown;
+  /** Text for the developers, shown under "Details" (issue 205). */
+  technical?: string;
 
   /** Preserves backend response metadata alongside the user-facing message. */
-  constructor(message: string, opts: { status?: number; code?: string; detail?: unknown } = {}) {
+  constructor(
+    message: string,
+    opts: { status?: number; code?: string; detail?: unknown; technical?: string } = {},
+  ) {
     super(message);
     this.name = 'ApiError';
     this.status = opts.status;
     this.code = opts.code;
     this.detail = opts.detail;
+    this.technical = opts.technical;
   }
 }
 
@@ -55,13 +61,9 @@ function formatErrorDetail(detail: unknown): string | null {
     return joined || null;
   }
   if (typeof detail === 'object') {
+    // Never show a JSON object as the message (issue 205); it goes under Details.
     const obj = detail as Record<string, unknown>;
-    if (typeof obj.message === 'string') return obj.message;
-    try {
-      return JSON.stringify(obj);
-    } catch {
-      return null;
-    }
+    return typeof obj.message === 'string' ? obj.message : null;
   }
   // eslint-disable-next-line @typescript-eslint/no-base-to-string -- detail is a non-object primitive here (string/array/object handled above); String() is the safe fallback
   return String(detail);
@@ -69,9 +71,20 @@ function formatErrorDetail(detail: unknown): string | null {
 
 interface ParseApiErrorOptions {
   fallbackMessage?: string;
-  includeRequestId?: boolean;
   includeResponseText?: boolean;
 }
+
+/** Pretty JSON for Details, or null for nothing worth showing. */
+const describeDetails = (value: unknown): string | null => {
+  if (value == null) return null;
+  if (typeof value === 'string') return value;
+  try {
+    const text = JSON.stringify(value, null, 2);
+    return text === '{}' || text === '[]' ? null : text;
+  } catch {
+    return null;
+  }
+};
 
 /** Parse one backend error envelope without discarding its diagnostic message. */
 export async function parseApiErrorResponse(
@@ -97,24 +110,45 @@ export async function parseApiErrorResponse(
     parsed?.error && typeof parsed.error === 'object'
       ? (parsed.error as Record<string, unknown>)
       : null;
+  const code = typeof parsed?.code === 'string' ? parsed.code : undefined;
+  // Older backends sent a bare summary for validation errors; their listed
+  // messages say more.
+  const writtenMessage =
+    typeof parsed?.message === 'string' &&
+    parsed.message &&
+    parsed.message !== code &&
+    parsed.message !== 'Request validation failed'
+      ? parsed.message
+      : null;
+  // The written message comes first; `details` are for the developers (issue 205).
   const backendMessage =
     /* eslint-disable @typescript-eslint/prefer-nullish-coalescing -- empty messages deliberately fall through */
-    formatErrorDetail(parsed?.details) ||
-    (typeof parsed?.message === 'string' && parsed.message) ||
+    writtenMessage ||
     (typeof nestedError?.message === 'string' && nestedError.message) ||
+    (Array.isArray(parsed?.details) ? formatErrorDetail(parsed.details) : null) ||
     formatErrorDetail(parsed?.detail) ||
-    formatErrorDetail(fallbackDetail) ||
+    (parsed ? null : formatErrorDetail(fallbackDetail)) ||
     options.fallbackMessage ||
     `HTTP ${String(response.status)}`;
   /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
-  const code = typeof parsed?.code === 'string' ? parsed.code : undefined;
   const requestId =
     (typeof parsed?.request_id === 'string' && parsed.request_id) ||
     response.headers.get('X-Request-ID');
-  const message =
-    response.status >= 500 && requestId && options.includeRequestId !== false
-      ? `${backendMessage} (Request ID: ${requestId})`
-      : backendMessage;
-  return new ApiError(message, { status: response.status, code, detail });
+  const details =
+    parsed?.details && typeof parsed.details === 'object' && !Array.isArray(parsed.details)
+      ? (parsed.details as Record<string, unknown>)
+      : null;
+  const diagnostic = typeof details?.diagnostic === 'string' ? details.diagnostic : null;
+  const { diagnostic: _diagnostic, ...otherDetails } = details ?? {};
+  const technical = [
+    diagnostic,
+    describeDetails(details ? otherDetails : parsed?.details),
+    code ? `Error code: ${code}` : null,
+    `HTTP status: ${String(response.status)}`,
+    requestId ? `Reference: ${requestId}` : null,
+  ]
+    .filter(Boolean)
+    .join('\n');
+  return new ApiError(backendMessage, { status: response.status, code, detail, technical });
 }

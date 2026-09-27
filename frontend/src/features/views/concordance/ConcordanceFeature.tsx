@@ -55,6 +55,8 @@ import {
 } from '@/features/workspace/common/workspaceNodeMetadata';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import { CONCORDANCE_COMBINED_NODE_KEY } from './concordanceTableDomain';
+import { toastError } from '@/lib/toastError';
+import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
 /** Orchestrates the full Concordance Preview and Run All lifecycle. */
 /**
@@ -662,9 +664,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       action: 'run_all',
       submit: () => runConcordanceAll(host.tabId, { source }, tabTaskId ? [tabTaskId] : []),
       onError: (error) => {
-        toast.error(
-          error instanceof Error ? error.message : 'Could not start the Concordance Run.',
-        );
+        toastError(error, 'Could not start the Concordance Run.');
       },
     });
   };
@@ -709,9 +709,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Concordance Results to the Project.');
     } catch (cause) {
-      toast.error('Could not add Concordance Results.', {
-        description: cause instanceof Error ? cause.message : String(cause),
-      });
+      toastError(cause, 'Try again.', { title: 'Could not add Concordance Results.' });
     } finally {
       setIsAddingToWorkspace(false);
     }
@@ -949,9 +947,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {analysisError && (
         <Card>
           <CardContent>
-            <div className="whitespace-pre-wrap wrap-break-word rounded-md border border-error/30 bg-error/10 px-4 py-3 text-body text-error">
-              {analysisError}
-            </div>
+            <ErrorNotice error={analysisError} />
           </CardContent>
         </Card>
       )}

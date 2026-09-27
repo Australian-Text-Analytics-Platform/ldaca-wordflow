@@ -246,9 +246,11 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
                 item.key.analysis_id,
                 item.key.user_id,
             )
+            # A written message reaches users as is; anything else keeps the
+            # "Type: text" diagnostic, which the UI shows under Details.
             await service.fail_execution(
                 item.key,
-                message=format_exception_diagnostic(exc),
+                message=exc.user_message or format_exception_diagnostic(exc),
             )
         except Exception as exc:
             logger.exception(

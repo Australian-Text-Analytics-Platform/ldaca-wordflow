@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { invalidateFileListQuery } from '../hooks/fileCache';
+import { toastError } from '@/lib/toastError';
 
 const TOOL_LABELS: Record<string, string> = {
   concordance: 'Concordance',
@@ -217,7 +218,7 @@ export function SampleDataPanel() {
       setOpen(false);
     } catch (err) {
       toast.dismiss(loadingToastId);
-      toast.error((err as Error).message || 'Failed to import sample data.');
+      toastError(err, 'Failed to import sample data.');
     } finally {
       setImporting(false);
     }

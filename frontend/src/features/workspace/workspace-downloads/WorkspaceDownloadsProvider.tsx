@@ -7,6 +7,7 @@ import {
   type PendingWorkspaceDownload,
   type WorkspaceDownloadsHandle,
 } from './WorkspaceDownloadsContext';
+import { toastError } from '@/lib/toastError';
 
 /**
  * Converts a workspace label into the ZIP filename used by browser and Tauri
@@ -83,7 +84,7 @@ export function WorkspaceDownloadsProvider({ children }: { children: ReactNode }
         });
       }
     } catch (error) {
-      toast.error((error as Error).message || 'Failed to start project download.', {
+      toastError(error, 'Failed to start project download.', {
         duration: 6000,
       });
     } finally {

@@ -502,7 +502,8 @@ def test_failed_http_initialization_exposes_the_python_error_in_response_and_sta
 
     assert response.status_code == 500
     assert response.json()["code"] == "data_root_initialization_failed"
-    assert response.json()["message"] == (
+    assert response.json()["message"] == "Data Root initialization failed"
+    assert response.json()["details"]["diagnostic"] == (
         "PermissionError: [Errno 13] Permission denied while opening SQLite"
     )
     assert refreshed.json()["error"] == {

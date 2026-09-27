@@ -4,6 +4,7 @@ import type { Analysis, SequentialAnalysisRequest } from '@/api';
 import type { RunAnalysis } from '../../common/hooks/useAnalysisFeature';
 import type { ArrowField } from '@/lib/arrow/arrowTable';
 import type { ChartTypeOption } from './sequentialChartModel';
+import { toastError } from '@/lib/toastError';
 
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
@@ -156,9 +157,7 @@ export function useSequentialAnalysisTaskFlow({
       },
       onError: (error) => {
         console.error('Sequential analysis error:', error);
-        toast.error(
-          `Error performing sequential analysis: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
+        toastError(error, 'Try again.', { title: "Couldn't run Trends Analysis." });
       },
     });
   };

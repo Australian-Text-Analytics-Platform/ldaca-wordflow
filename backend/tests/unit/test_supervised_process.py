@@ -45,6 +45,13 @@ def _report_then_write(*, destination: str, progress_queue: Any) -> str:
     return "result"
 
 
+def _user_error_worker(*, message: str, progress_queue: object) -> object:
+    del progress_queue
+    from ldaca_wordflow.shared.errors import InvalidInputError
+
+    raise InvalidInputError(message)
+
+
 def _failing_worker(*, message: str, progress_queue: Any) -> str:
     del progress_queue
     raise ValueError(message)
@@ -232,3 +239,46 @@ async def test_supervised_runner_dispatches_the_typed_analysis_entrypoint() -> N
 
 async def _ignore(_payload: object) -> None:
     return
+
+
+@pytest.mark.anyio
+async def test_child_user_error_keeps_its_written_message() -> None:
+    """Issue 205: an AppError below 500 reaches users without its class name."""
+
+    runner = SupervisedProcessRunner[str]("test worker")
+
+    with pytest.raises(SupervisedProcessError) as captured:
+        await runner.execute(
+            "user-failure",
+            _user_error_worker,
+            {"message": "Choose a text column first."},
+            _ignore,
+            storage_roots=(),
+            max_storage_bytes=1024 * 1024,
+            max_storage_files=10,
+        )
+
+    assert captured.value.user_message == "Choose a text column first."
+    assert format_exception_diagnostic(captured.value) == (
+        "InvalidInputError: Choose a text column first."
+    )
+    await runner.close(anyio.current_time() + 1)
+
+
+@pytest.mark.anyio
+async def test_child_unexpected_error_has_no_user_message() -> None:
+    runner = SupervisedProcessRunner[str]("test worker")
+
+    with pytest.raises(SupervisedProcessError) as captured:
+        await runner.execute(
+            "failure-2",
+            _failing_worker,
+            {"message": "boom"},
+            _ignore,
+            storage_roots=(),
+            max_storage_bytes=1024 * 1024,
+            max_storage_files=10,
+        )
+
+    assert captured.value.user_message is None
+    await runner.close(anyio.current_time() + 1)

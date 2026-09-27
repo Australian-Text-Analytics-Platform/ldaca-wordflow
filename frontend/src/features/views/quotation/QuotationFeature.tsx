@@ -58,6 +58,7 @@ import type { QuotationReviewRowUnit } from './quotationArrowPage';
 import { filterQuotationRowsWithQuotes } from './quotationResultsModel';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
+import { toastError } from '@/lib/toastError';
 
 /** Renders the Quotation Preview and Run All workflow. */
 /**
@@ -464,9 +465,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Quotation Results to the Project.');
     } catch (cause) {
-      toast.error('Could not add Quotation Results.', {
-        description: cause instanceof Error ? cause.message : String(cause),
-      });
+      toastError(cause, 'Try again.', { title: "Couldn't add Quotation Results." });
     } finally {
       setIsAddingToWorkspace(false);
     }

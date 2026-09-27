@@ -52,9 +52,11 @@ from .api.tokenizers import router as tokenizers_router
 from .api.user_file_imports import router as user_file_imports_router
 from .api.workspaces import router as workspaces_router
 from .shared.errors import (
+    UNEXPECTED_ERROR_MESSAGE,
     AnnotationProviderError,
     AppError,
     format_exception_diagnostic,
+    validation_message,
 )
 from .shared.json_data import JsonData
 from .runtime import (
@@ -109,8 +111,15 @@ def _request_id(request: Request) -> str:
 
 
 async def _app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    """Map framework-neutral domain failures into the public error contract."""
+    """Map framework-neutral domain failures into the public error contract.
 
+    The message is what users read; for 5xx failures the exception type and
+    text travel separately as ``details.diagnostic`` (issue 205), so the UI can
+    show them under "Details" instead of in the message.
+    """
+
+    details = exc.details
+    message = exc.message
     if exc.status_code >= 500:
         if isinstance(exc, AnnotationProviderError):
             logger.error(
@@ -128,15 +137,19 @@ async def _app_error_handler(request: Request, exc: AppError) -> JSONResponse:
                 _request_id(request),
                 exc_info=exc,
             )
-        message = format_exception_diagnostic(exc)
-    else:
-        message = exc.message
+        if message == exc.code:
+            message = UNEXPECTED_ERROR_MESSAGE
+        # Only an underlying cause says more than the written message.
+        if message == UNEXPECTED_ERROR_MESSAGE or exc.__cause__ is not None or (
+            exc.__context__ is not None and not exc.__suppress_context__
+        ):
+            details = {**(details or {}), "diagnostic": format_exception_diagnostic(exc)}
     return api_error_response(
         request_id=_request_id(request),
         status_code=exc.status_code,
         code=exc.code,
         message=message,
-        details=exc.details,
+        details=details,
         headers=exc.headers,
     )
 
@@ -163,13 +176,13 @@ async def _validation_error_handler(
         request_id=_request_id(request),
         status_code=422,
         code="request_validation_failed",
-        message="Request validation failed",
+        message=validation_message(details),
         details=details,
     )
 
 
 async def _unexpected_error_handler(request: Request, exc: Exception) -> JSONResponse:
-    """Log unexpected exceptions and expose their type and message."""
+    """Log unexpected exceptions; their type and text go under ``details.diagnostic``."""
 
     logger.exception(
         "Unhandled request failure request_id=%s",
@@ -180,7 +193,8 @@ async def _unexpected_error_handler(request: Request, exc: Exception) -> JSONRes
         request_id=_request_id(request),
         status_code=500,
         code="internal_server_error",
-        message=format_exception_diagnostic(exc),
+        message=UNEXPECTED_ERROR_MESSAGE,
+        details={"diagnostic": format_exception_diagnostic(exc)},
     )
 
 
@@ -270,13 +284,16 @@ async def _http_error_handler(
         413: ("request_body_too_large", "Request body is too large"),
         415: ("unsupported_media_type", "Unsupported media type"),
     }.get(exc.status_code, ("http_error", "Request failed"))
+    details: dict[str, JsonData] | None = None
     if exc.status_code >= 500:
-        message = format_exception_diagnostic(exc)
+        message = UNEXPECTED_ERROR_MESSAGE
+        details = {"diagnostic": format_exception_diagnostic(exc)}
     return api_error_response(
         request_id=_request_id(request),
         status_code=exc.status_code,
         code=code,
         message=message,
+        details=details,
         headers=exc.headers,
     )
 

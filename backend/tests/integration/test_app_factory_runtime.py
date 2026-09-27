@@ -24,6 +24,8 @@ import anyio
 import pytest
 from fastapi import APIRouter, Depends, Request
 from fastapi.testclient import TestClient
+
+from ldaca_wordflow.shared.errors import UNEXPECTED_ERROR_MESSAGE
 from pydantic import ValidationError
 
 from ldaca_wordflow.runtime import RuntimeReadiness, _RuntimeTaskGroupOwner, get_runtime
@@ -380,7 +382,8 @@ def test_request_id_and_sanitized_validation_error_contract(tmp_path: Path) -> N
     assert response.headers["X-Request-ID"] == "client-request-42"
     assert response.json() == {
         "code": "request_validation_failed",
-        "message": "Request validation failed",
+        # One plain sentence naming the field (issue 205).
+        "message": "Secret: Input should be a valid integer, unable to parse string as an integer.",
         "details": [
             {
                 "location": ["query", "secret"],
@@ -437,9 +440,8 @@ def test_annotation_provider_errors_log_safe_request_context(
     assert response.status_code == 502
     assert response.json() == {
         "code": "annotation_provider_request_rejected",
-        "message": (
-            "AnnotationProviderError: Annotation provider rejected the request."
-        ),
+        # The written message for users, without the class name (issue 205).
+        "message": "Annotation provider rejected the request.",
         "request_id": "annotation-provider-probe",
     }
     assert (
@@ -504,7 +506,8 @@ def test_unexpected_api_errors_cross_the_complete_http_boundary(tmp_path: Path) 
     assert response.headers["cache-control"] == "private, no-store"
     assert response.json() == {
         "code": "internal_server_error",
-        "message": "RuntimeError: private backend details",
+        "message": UNEXPECTED_ERROR_MESSAGE,
+        "details": {"diagnostic": "RuntimeError: private backend details"},
         "request_id": "unexpected-probe",
     }
     assert "Traceback" not in response.text
@@ -512,7 +515,8 @@ def test_unexpected_api_errors_cross_the_complete_http_boundary(tmp_path: Path) 
     assert chained.status_code == 500
     assert chained.json() == {
         "code": "internal_service_error",
-        "message": "OSError: disk full",
+        "message": "Workspace save failed",
+        "details": {"diagnostic": "OSError: disk full"},
         "request_id": "chained-probe",
     }
 

@@ -22,6 +22,7 @@ import {
   normalizeClassDescriptionRows,
   useAnnotationClassDescriptions,
 } from '../hooks/useAnnotationClassDescriptions';
+import { toastError } from '@/lib/toastError';
 
 // Compact card shows class-name badges; extras collapse into a "+N more" badge
 // so the card stays tight while the full list lives in the Edit dialog.
@@ -122,7 +123,7 @@ export function AnnotationClassDescriptionsEditor({
       setDraftRows(null);
       toast.success('Codebook saved.');
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not save the codebook.');
+      toastError(error, 'Could not save the codebook.');
     } finally {
       setIsSaving(false);
     }

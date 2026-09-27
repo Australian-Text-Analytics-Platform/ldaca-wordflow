@@ -40,6 +40,7 @@ import { CombineTemplateField } from './CombineTemplateField';
 import { DelimiterChips } from './DelimiterChips';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
 import { focusDataEditorTool } from '../focusDataEditorTool';
+import { toastError } from '@/lib/toastError';
 
 function ColumnSelect({
   label,
@@ -317,7 +318,7 @@ export function DataEditorToolPanel() {
       toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`);
       close();
     } catch (error) {
-      toast.error((error as Error).message || 'The edit could not be applied.');
+      toastError(error, 'The edit could not be applied.');
     } finally {
       setApplying(false);
     }

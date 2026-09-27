@@ -75,6 +75,53 @@ def format_exception_diagnostic(exc: BaseException) -> str:
     return f"{error_type}: {message}" if message else error_type
 
 
+# What users read for a failure nobody wrote a message for (issue 205). The
+# exception type and text go separately under ``details.diagnostic``.
+UNEXPECTED_ERROR_MESSAGE = (
+    "Something went wrong in Wordflow. Try again. "
+    "If it keeps happening, please send feedback with the details."
+)
+
+
+def _field_label(location: object) -> str | None:
+    """Name the last named part of a validation location in plain words."""
+
+    if not isinstance(location, list):
+        return None
+    for part in reversed(location):
+        if isinstance(part, str) and part not in {"body", "query", "path"}:
+            words = part.replace("_", " ").strip()
+            return words[:1].upper() + words[1:] if words else None
+    return None
+
+
+def validation_message(details: list[dict[str, JsonData]]) -> str:
+    """Plain sentences for request validation failures (issue 205).
+
+    Names each field and drops pydantic's "Value error, " prefix, for example
+    "Number of topics: must be between 2 and 200." Shows up to three problems.
+    """
+
+    if not details:
+        return "Some settings are not valid. Check them and try again."
+    sentences: list[str] = []
+    for entry in details[:3]:
+        raw = str(entry.get("message", "")).strip()
+        for prefix in ("Value error, ", "Assertion failed, "):
+            if raw.startswith(prefix):
+                raw = raw[len(prefix) :]
+        label = _field_label(entry.get("location"))
+        sentence = f"{label}: {raw}" if label and raw else raw or "A setting is not valid"
+        if not sentence.endswith((".", "!", "?")):
+            sentence += "."
+        if sentence not in sentences:
+            sentences.append(sentence)
+    if len(details) > 3:
+        extra = len(details) - 3
+        sentences.append(f"({extra} more setting{'s' if extra > 1 else ''} to check.)")
+    return " ".join(sentences)
+
+
 # ── 400 Bad Request ──────────────────────────────────────────────────────────
 
 

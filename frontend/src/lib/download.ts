@@ -9,6 +9,7 @@
 import { toast } from 'sonner';
 import { getCsrfToken } from '@/lib/backend/csrfToken';
 import { isTauri } from '@/lib/isTauri';
+import { toastError } from '@/lib/toastError';
 
 /**
  * CSV text as a UTF-8 Blob with a byte-order mark, so Excel reads it as UTF-8
@@ -118,9 +119,7 @@ const showNativeDownloadSuccess = (fullPath: string, silent: boolean) => {
 
 const reportDownloadFailure = (filename: string, error: unknown, silent: boolean) => {
   if (silent) return;
-  const message =
-    error instanceof Error ? error.message : typeof error === 'string' ? error : 'Unknown error';
-  toast.error(`Failed to download ${toBasename(filename)}`, { description: message });
+  toastError(error, 'Try again.', { title: `Couldn't download ${toBasename(filename)}.` });
 };
 
 const saveNativeDownload = async (

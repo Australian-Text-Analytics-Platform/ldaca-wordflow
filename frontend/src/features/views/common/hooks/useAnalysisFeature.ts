@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { toast } from 'sonner';
 import type { Analysis } from '@/api';
 import { cancelAnalysis, clearTabAnalysis } from '@/api';
 import type { TaskItem } from '@/features/workspace/task-stream/taskProjection';
@@ -12,6 +11,7 @@ import type {
 } from '../tasks/types';
 import { getAnalysisResource } from '../analysisApi';
 import { useAnalysisSession } from './useAnalysisSession';
+import { toastError } from '@/lib/toastError';
 
 type AnalysisSubmissionAction = 'preview' | 'run_all';
 
@@ -294,7 +294,7 @@ export function useAnalysisFeature<
       cfg.onCleared(clearedIds);
       return true;
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not clear the analysis.');
+      toastError(error, 'Could not clear the analysis.');
       return false;
     }
   };
@@ -311,7 +311,7 @@ export function useAnalysisFeature<
       });
       queryClient.setQueryData(queryKeys.analysis(cfg.workspaceId, controlledAnalysisId), data);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Could not stop the analysis.');
+      toastError(error, 'Could not stop the analysis.');
     } finally {
       setIsStopping(false);
     }

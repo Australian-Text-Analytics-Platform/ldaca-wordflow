@@ -6,6 +6,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { isTauri } from '@/lib/isTauri';
 import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
+import { ErrorDetails } from '@/components/errors/ErrorDetails';
+import { presentError } from '@/lib/errorPresentation';
 
 interface DataRootSetupFormProps {
   currentPath?: string | null;
@@ -23,7 +25,7 @@ export function DataRootSetupForm({
   const desktopRuntime = isTauri();
   const [path, setPath] = useState(currentPath ?? '');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<unknown>(null);
 
   const submit = async (selectedPath: string) => {
     const nextPath = selectedPath.trim();
@@ -34,7 +36,7 @@ export function DataRootSetupForm({
       await onSubmit(nextPath);
       setPath(nextPath);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'The Data Root could not be opened');
+      setError(cause ?? new Error('The Data Root could not be opened'));
     } finally {
       setSubmitting(false);
     }
@@ -121,7 +123,15 @@ export function DataRootSetupForm({
           Use recommended location
         </Button>
       )}
-      {error && <p className="text-body text-error">{error}</p>}
+      {error ? (
+        // Plain words, with any technical text under Details (issue 205).
+        <p className="text-body text-error">
+          {presentError(error, 'The Data Root could not be opened').message}
+        </p>
+      ) : null}
+      {error && presentError(error, '').technical ? (
+        <ErrorDetails technical={presentError(error, '').technical ?? ''} />
+      ) : null}
     </div>
   );
 }

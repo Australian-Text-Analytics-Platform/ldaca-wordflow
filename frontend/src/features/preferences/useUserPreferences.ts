@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
 
 import {
   getPreferences,
@@ -9,6 +8,7 @@ import {
 } from '@/api';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { queryKeys } from '@/lib/queryKeys';
+import { toastError } from '@/lib/toastError';
 
 const DEFAULT_PREFERENCES: Required<UserPreferences> = {
   hidden_views: [],
@@ -61,7 +61,7 @@ export function useUpdateUserPreferences() {
       if (context?.previous) {
         queryClient.setQueryData(queryKey, context.previous);
       }
-      toast.error(error instanceof Error ? error.message : 'Could not save preferences');
+      toastError(error, 'Could not save preferences');
     },
     onSuccess: (preferences) => {
       queryClient.setQueryData(queryKey, preferences);

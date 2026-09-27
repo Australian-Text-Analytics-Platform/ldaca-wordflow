@@ -278,7 +278,8 @@ describe('Arrow table transport', () => {
     await expect(fetchArrowTable('/api/result/table')).rejects.toMatchObject({
       code: 'internal_server_error',
       status: 500,
-      message: 'PolarsError: failed to read parquet metadata (Request ID: arrow-request)',
+      message: 'PolarsError: failed to read parquet metadata',
+      technical: expect.stringContaining('Reference: arrow-request'),
     });
   });
 

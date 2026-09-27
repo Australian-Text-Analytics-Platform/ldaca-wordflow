@@ -14,6 +14,7 @@ import { buildTopicsCSV } from './topicModelingCsv';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { buildTopicBubbleModels, type TopicColorScheme } from './topicModelingGraph';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
+import { toastError } from '@/lib/toastError';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -178,9 +179,7 @@ export function TopicModelingBubbleChartSection({
         await saveBlob(blob, filename);
       }
     } catch (error) {
-      toast.error('Failed to export chart.', {
-        description: error instanceof Error ? error.message : String(error),
-      });
+      toastError(error, 'Try again.', { title: 'Failed to export chart.' });
     }
   };
 
