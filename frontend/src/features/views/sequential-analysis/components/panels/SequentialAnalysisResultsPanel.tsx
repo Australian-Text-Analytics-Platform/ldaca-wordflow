@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
 import { Download, Info } from 'lucide-react';
 
@@ -96,45 +97,49 @@ export function SequentialAnalysisResultsPanel({
           containerRef={containerRef}
           toolbarStart={
             <>
-              <span className="shrink-0 text-body text-description">Chart Type</span>
+              <span className="shrink-0 text-body text-description">Chart</span>
               <Select
                 value={model.chartType}
                 onValueChange={(value) => {
                   onChartTypeChange(value as ChartTypeOption);
                 }}
               >
-                <SelectTrigger className="w-35 shrink-0 text-body">
+                <SelectTrigger className="w-28 shrink-0 text-body" aria-label="Chart">
                   <SelectValue placeholder="Select chart" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="line">Line Chart</SelectItem>
-                  <SelectItem value="bar">Bar Chart</SelectItem>
-                  <SelectItem value="area">Area Chart</SelectItem>
+                  <SelectItem value="line">Line</SelectItem>
+                  <SelectItem value="bar">Bars</SelectItem>
+                  <SelectItem value="area">Area</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="flex shrink-0 items-center gap-1 text-body text-description">
-                X-axis
-                <Info className="h-3.5 w-3.5 cursor-help text-description/70" aria-hidden="true" />
-              </span>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex shrink-0 cursor-help items-center gap-1 text-body text-description">
+                      Spacing
+                      <Info className="h-3.5 w-3.5 text-description/70" aria-hidden="true" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent className="max-w-80">
+                    Even gives every period with data the same width and hides empty periods, which
+                    is easier to read. To scale places periods by their real time, so empty periods
+                    show as gaps.
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <Select
                 value={model.xAxisType}
                 onValueChange={(value) => {
                   onXAxisTypeChange(value as SequentialXAxisType);
                 }}
               >
-                <SelectTrigger
-                  className="w-35 shrink-0 text-body"
-                  title={
-                    model.xAxisType === 'number'
-                      ? 'Linear axis: time positions are spaced proportionally. Periods with no data appear as visible gaps — accurate but can look sparse for irregular series.'
-                      : 'Categorical axis: every recorded period is given equal width. Missing periods are hidden, which makes dense series easier to read but can mask gaps in time.'
-                  }
-                >
-                  <SelectValue placeholder="X-axis type" />
+                <SelectTrigger className="w-56 shrink-0 text-body" aria-label="Spacing">
+                  <SelectValue placeholder="Spacing" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="category">Categorical</SelectItem>
-                  <SelectItem value="number">Linear</SelectItem>
+                  <SelectItem value="category">Even (hide empty periods)</SelectItem>
+                  <SelectItem value="number">To scale (show gaps)</SelectItem>
                 </SelectContent>
               </Select>
               <Button

@@ -156,6 +156,8 @@ export interface BuildSequentialChartModelInput {
   uncased: boolean;
   excludedGroupIndices: Set<number>;
   selectedPeriodIndices: Set<number>;
+  /** Series name when nothing is grouped: the Data Block's name (#205 item 21). */
+  ungroupedLabel?: string;
 }
 
 export interface SequentialChartModel {
@@ -464,6 +466,7 @@ export function buildSequentialChartModel({
   uncased,
   excludedGroupIndices,
   selectedPeriodIndices,
+  ungroupedLabel,
 }: BuildSequentialChartModelInput): SequentialChartModel {
   const diagnostics: SequentialChartDiagnostic[] = [];
   const summary = buildSummary(parameters, fallbacks, diagnostics);
@@ -477,7 +480,7 @@ export function buildSequentialChartModel({
     groupsById.set(row.groupId, {
       id: row.groupId,
       index: row.groupIndex,
-      label: row.groupLabel,
+      label: summary.groupBy.length === 0 && ungroupedLabel ? ungroupedLabel : row.groupLabel,
       values: row.groupValues,
     });
   });

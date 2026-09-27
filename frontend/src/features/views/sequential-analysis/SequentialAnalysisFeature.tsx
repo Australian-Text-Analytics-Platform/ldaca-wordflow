@@ -361,6 +361,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     uncased: uncasedGroups,
     excludedGroupIndices,
     selectedPeriodIndices,
+    ungroupedLabel: resultNodeInfo?.name,
   });
   const { summary } = chartModel;
 

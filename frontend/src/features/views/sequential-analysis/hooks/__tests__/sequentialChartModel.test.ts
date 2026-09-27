@@ -72,6 +72,7 @@ const build = (
     uncased: overrides.uncased ?? false,
     excludedGroupIndices: overrides.excludedGroupIndices ?? new Set(),
     selectedPeriodIndices: overrides.selectedPeriodIndices ?? new Set(),
+    ungroupedLabel: overrides.ungroupedLabel,
   });
 };
 
@@ -108,6 +109,27 @@ describe('buildSequentialChartModel', () => {
     );
     expect(model.tooltip.labelFormatter(0)).toBe('0');
     expect(model.series[0]).toEqual(expect.objectContaining({ key: 'group:0', label: 'Count' }));
+  });
+
+  it('names the ungrouped series after the Data Block when given one', () => {
+    const model = build(
+      {
+        data: [
+          {
+            time_period: 0,
+            time_period_formatted: 'Zero bucket',
+            period_start: -5,
+            period_end: 5,
+            sequential_count: 4,
+          },
+        ],
+        analysis_params: { column_type: 'numeric', numeric_interval: 10 },
+      },
+      { ungroupedLabel: 'Speeches' },
+    );
+
+    expect(model.groups.map((group) => group.label)).toEqual(['Speeches']);
+    expect(model.groups[0]?.legendText).toBe('Speeches (4 · 100.0%)');
   });
 
   it('sorts numeric buckets by raw time_period and backfills sparse group cells', () => {

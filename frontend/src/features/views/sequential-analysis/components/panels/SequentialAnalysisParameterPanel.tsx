@@ -154,10 +154,10 @@ export function SequentialAnalysisParameterPanel({
           {derivedColumnType === 'datetime' ? (
             <div className={frequency === 'custom' ? 'md:col-span-2' : 'md:col-span-1'}>
               <div className="mb-1 flex items-center gap-2">
-                <label className="block text-body font-medium text-foreground">Frequency</label>
+                <label className="block text-body font-medium text-foreground">Period</label>
                 <HelpIcon
                   targetKey="analysis.sequential-analysis.frequency"
-                  label="Frequency selector"
+                  label="Period selector"
                 />
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">

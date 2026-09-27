@@ -21,6 +21,8 @@ interface SequentialChartProps {
 }
 
 const CHART_HEIGHT_PX = 400;
+const TRENDS_LEGEND_HELP =
+  'Each entry shows the number of rows in that series and its share of all shown rows, for example (40 · 30.0%). When periods are selected, the count reads selected/total, for example (12/40 · 30.0%). Click an entry to hide or show it.';
 
 /**
  * Renders the chart and interaction controls from a canonical Sequential model.
@@ -116,6 +118,7 @@ export function SequentialChart({
             marker: model.chartType === 'bar' ? 'bar' : model.chartType,
           }))}
           ariaLabel="Trends groups"
+          legendHelp={TRENDS_LEGEND_HELP}
           uncased={model.uncased}
           onUncasedChange={model.supportsUncased ? onUncasedChange : undefined}
           controlsAfterUncased={

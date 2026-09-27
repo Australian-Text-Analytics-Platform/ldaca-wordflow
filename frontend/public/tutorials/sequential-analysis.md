@@ -20,18 +20,18 @@ Use the data-block selector to pick the corpus you want to analyse. Only one dat
 
 The **Time or number column** dropdown lists every column in the selected data block that holds a date and time, date, whole number, or decimal value. Pick the column that represents the order or time axis you want to plot along.
 
-- **Date and time columns** are bucketed by a calendar frequency (hourly, daily, weekly, etc.). A **date** column (no time of day) offers daily and longer periods only.
+- **Date and time columns** are grouped by a calendar period (hourly, daily, weekly, and so on). A **date** column (no time of day) offers daily and longer periods only.
 - **Number columns** (whole number or decimal) are grouped by a fixed width you specify (the **Step**).
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
-![Selected data block with its Time or number column, and the Frequency setting](tutorials/assets/sequential_analysis/parameters.png)
+![Selected Data Block with its time or number column, and the Period setting](tutorials/assets/sequential_analysis/parameters.png)
 
-<h3 id="help-sequential-frequency">Step 3 — Set the frequency (date and time columns)</h3>
+<h3 id="help-sequential-frequency">Step 3: Set the period (date and time columns)</h3>
 
-When a date and time column is selected, choose how to group records into time buckets.
+When a date and time column is selected, choose a **Period**: how records are grouped into time periods.
 
-**Standard frequencies**
+**Standard periods**
 
 | Option | Groups records by |
 |---|---|
@@ -44,13 +44,13 @@ When a date and time column is selected, choose how to group records into time b
 | Quarterly | Each quarter (Q1–Q4) |
 | Yearly | Each calendar year |
 
-![The Frequency list](tutorials/assets/sequential_analysis/frequency_menu.png)
+![The Period list](tutorials/assets/sequential_analysis/frequency_menu.png)
 
 **Customised interval**
 
 Select **Customised** to bucket by a fixed duration you define: enter a positive whole number and choose a unit (seconds, minutes, hours, days, or weeks). For example, *Every 30 minutes* groups records into half-hour windows.
 
-![Customised frequency: Every 1 minutes](tutorials/assets/sequential_analysis/custom_interval.png)
+![Customised period: Every 1 minute](tutorials/assets/sequential_analysis/custom_interval.png)
 
 - Smaller intervals show more detail but may produce many sparse buckets.
 - Larger intervals smooth the trend and reduce noise.
@@ -93,11 +93,11 @@ or filtering.
 The result panel follows the Concordance dispersion layout: result actions in
 the header, chart presentation controls directly above the plot, then the chart
 and its legend card. The legend card keeps Ignore capitals, minimum group count, and
-period-selection controls together. Time column, frequency or interval, and
+period-selection controls together. Time column, period or interval, and
 Group By settings remain visible in the parameter panel instead of being
 repeated in the result.
 
-![Chart controls: Chart Type, X-axis, download, Select range, and zoom](tutorials/assets/sequential_analysis/chart_toolbar.png)
+![Chart controls: Chart, Spacing, download, Select range, and zoom](tutorials/assets/sequential_analysis/chart_toolbar.png)
 
 <h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
 
@@ -117,34 +117,37 @@ with the threshold.
 
 <h3 id="help-sequential-chart-type">Chart type</h3>
 
-Three plot modes are available in the **Chart Type** dropdown:
+Three plot modes are available in the **Chart** list:
 
-- **Line Chart** — best for displaying continuous trends across time, especially when groups overlap or you want to compare rates of change.
-- **Bar Chart** — best for highlighting contrast between categories at each time step.
-- **Area Chart** — stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
+- **Line**: best for continuous trends across time, especially when groups overlap or you want to compare rates of change.
+- **Bars**: best for highlighting contrast between groups at each period.
+- **Area**: stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
 
-<h3 id="help-sequential-x-axis">X-axis: Categorical vs Linear</h3>
+<h3 id="help-sequential-x-axis">Spacing: Even or To scale</h3>
 
-The **X-axis** dropdown next to the chart type selector switches the horizontal axis between two modes:
+The **Spacing** list next to **Chart** sets how periods are placed along the horizontal axis. Hover the information icon beside it for a short reminder.
 
-- **Categorical** *(default)* — every time bucket gets an equal slot on the axis, regardless of the real gap between them. Best when buckets are dense and you want a clean, evenly-spaced view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
-- **Linear** — the axis is a true number/date line and bucket positions are proportional to their values. Gaps in the data become visible as visible gaps on the axis. Useful for spotting unevenly-spaced events or comparing rates of change across long time spans.
+- **Even (hide empty periods)** *(default)*: every period with data gets the same width, whatever the real time between periods. Periods with no data are left out. Best when periods are dense and you want a clean view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
+- **To scale (show gaps)**: periods are placed by their real time or value, so empty periods show as gaps. Useful for spotting uneven events or comparing rates of change across long spans.
 
-In Linear mode with a date and time column, axis ticks render as date labels (e.g. *Apr 2018*) rather than raw epoch numbers. The tool aims for about ten ticks across the visible range, dropping labels automatically if the chart is too narrow.
+In To scale mode with a date and time column, axis labels show dates (for example *Apr 2018*). The tool aims for about ten labels across the visible range, dropping labels automatically if the chart is too narrow.
 
-**Missing buckets are shown as zero.** When a group has no documents in a given bucket, the line stays connected and dips to zero rather than breaking. This matches the analytical intent — "no occurrences" is genuinely zero, not unknown — and is most visible in Linear mode where the gap distance is proportional to time.
+**Empty periods count as zero.** When a group has no rows in a period, the line stays connected and dips to zero rather than breaking, because "no occurrences" is genuinely zero, not unknown. This is most visible in To scale mode, where gaps are proportional to time.
+
+The vertical axis shows counts of rows and has no title. When nothing is grouped, the single series is named after the Data Block.
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the data block name, time column, frequency, and document counts, plus a legend.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the data block name, time column, period, and row counts, plus a legend.
 
 <h3 id="help-sequential-legend">Legend and group visibility</h3>
 
 The legend below the chart lists groups that meet the minimum group count, with
 their colours, full-result count, and share of the counts among currently
-visible groups. Percentages use one decimal place and do not change when periods
-are selected. When periods are selected, each visible label shows *selected /
-total* before the percentage. Click any legend item to hide or show that group.
+visible groups, for example *Speeches (40 · 30.0%)*. Hover the information icon
+at the start of the legend for a reminder of this format. Percentages use one decimal place and do not change when periods
+are selected. When periods are selected, each visible label shows *selected/total*
+before the percentage, for example *(12/40 · 30.0%)*. Click any legend item to hide or show that group.
 Hidden groups retain their count detail, show **Hidden**, and use a strikethrough
 label with reduced opacity.
 
@@ -209,7 +212,7 @@ visibility.
 
 | Symptom | Likely cause | What to try |
 |---|---|---|
-| Chart shows only one bar / point | Frequency too coarse for the date range | Try a finer frequency (e.g. daily instead of yearly) |
+| Chart shows only one bar or point | Period too coarse for the date range | Try a finer period (for example Daily instead of Yearly) |
 | Too many series, chart is unreadable | Too many distinct values in group-by column(s) | Remove a group-by column, or filter the data block first |
 | No groups meet the minimum group count | Every grouped total is below the filter | Lower Minimum group count, or enter 0 to show all groups |
 | "No Trends data available" | Column type or interval is incompatible with the data | Check the column contains valid dates or numbers; check the interval is > 0 |
@@ -218,22 +221,22 @@ visibility.
 
 | Setting | Default | Notes |
 |---|---|---|
-| Frequency (date and time) | Monthly | Any standard or custom interval works |
-| Custom interval | 1 day | Enter a positive number and choose a unit |
+| Period (date and time) | Monthly | Any standard or custom interval works |
+| Custom interval | 1 minute | Enter a positive number and choose a unit |
 | Start | Smallest value | Leave blank unless you need a specific start |
 | Step | 1 | Required; must be > 0 |
 | Group By | None | Up to 3 columns |
 | Ignore capitals | Off | Beside the legend of a grouped result; merges case variants of a group |
 | Minimum group count | 10 | Grouped results only; enter 0 to show all groups |
-| Chart Type | Line Chart | — |
-| X-axis | Categorical | Switch to Linear for time-proportional spacing |
+| Chart | Line | |
+| Spacing | Even (hide empty periods) | Switch to To scale to show gaps in time |
 | Zoom | Full range | Use Reset zoom to restore the complete result |
 | Select range | Off | Turn on before dragging across periods |
 
 ## Practice exercise
 
 1. Select a data block that has a date and time column.
-2. Run the analysis with **Monthly** frequency to see the overall trend.
+2. Run the analysis with the **Monthly** period to see the overall trend.
 3. Switch to **Weekly** and compare the granularity.
 4. Add a category or text column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.
 5. Zoom into a period of high activity, turn on **Select range**, and drag across several periods.
