@@ -38,10 +38,10 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Layers className="h-5 w-5" />
-                Concatenate Datasets
+                Stack Data Blocks
                 <HelpIcon
                   targetKey="preprocessing.concat.tab"
-                  label="Concat sub-tab overview"
+                  label="About Stack"
                   tooltip="Stack compatible data blocks vertically into a single data block."
                 />
               </CardTitle>
@@ -82,22 +82,6 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
               {statusMessage}
             </div>
           </div>
-
-          <label className="flex items-center gap-2 text-body">
-            <Checkbox
-              id="concat-deduplicate"
-              checked={form.deduplicate}
-              onCheckedChange={(checked) => {
-                form.setDeduplicate(checked === true);
-              }}
-            />
-            <span>Drop duplicate rows after stacking</span>
-            <HelpIcon
-              targetKey="preprocessing.concat.deduplicate"
-              label="Deduplicate stacked rows"
-              tooltip="Run polars .unique() across all columns so identical rows from different inputs collapse into one."
-            />
-          </label>
         </CardContent>
         <CardFooter className="flex items-center gap-3 border-t pt-4">
           <div className="flex flex-1 items-center gap-2">
@@ -118,6 +102,22 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
               className="min-w-0 flex-1"
             />
           </div>
+          {/* Same operation as the Deduplicate tool on all columns (issue 201). */}
+          <label className="flex shrink-0 items-center gap-2 text-body">
+            <Checkbox
+              id="concat-deduplicate"
+              checked={form.deduplicate}
+              onCheckedChange={(checked) => {
+                form.setDeduplicate(checked === true);
+              }}
+            />
+            <span>Deduplicate</span>
+            <HelpIcon
+              targetKey="preprocessing.concat.deduplicate"
+              label="About Deduplicate"
+              tooltip="Keep one copy of rows that are the same in every column, as the Deduplicate tool does."
+            />
+          </label>
           <DisabledReasonTooltip reason={apply.disabledReason}>
             <Button
               type="button"

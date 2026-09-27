@@ -631,7 +631,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
         {runAllSource || showPreviewTable ? (
           <QuotationResultsPanel
-            title={runAllSource ? 'Review' : 'Search Results'}
+            title={runAllSource ? 'Review' : 'Quotation Results'}
             guidanceTarget={
               runAllSource ? 'quotation-run-all-results' : 'quotation-preview-results'
             }

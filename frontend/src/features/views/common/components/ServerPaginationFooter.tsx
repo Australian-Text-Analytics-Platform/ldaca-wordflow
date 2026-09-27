@@ -131,88 +131,93 @@ export function ServerPaginationFooter({
   };
 
   if (compact) {
+    // Lay out by the footer's own width, not the screen's: the Data Editor
+    // column can be narrow on a wide screen, which squeezed "Rows per page"
+    // onto three lines (issue 201).
     return (
-      <div
-        className={cn(
-          'flex flex-col gap-1.5 border-t border-surface-border bg-panel/40 px-3 py-1.5 sm:flex-row sm:items-center sm:justify-between',
-          className,
-        )}
-      >
-        {showPageSize ? (
-          <div className="flex items-center gap-2 text-label-secondary text-description">
-            <span>{pageSizeLabel}</span>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                table.setPageSize(Number(e.target.value));
-              }}
-              className="h-7 rounded-md border border-input-border bg-editor px-2 py-0.5 text-label-secondary text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
-            >
-              {normalizedOptions.map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : (
-          <span />
-        )}
+      <div className="@container/pager">
+        <div
+          className={cn(
+            'flex flex-col gap-1.5 border-t border-surface-border bg-panel/40 px-3 py-1.5 @min-[28rem]/pager:flex-row @min-[28rem]/pager:items-center @min-[28rem]/pager:justify-between',
+            className,
+          )}
+        >
+          {showPageSize ? (
+            <div className="flex items-center gap-2 text-label-secondary text-description">
+              <span className="whitespace-nowrap">{pageSizeLabel}</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  table.setPageSize(Number(e.target.value));
+                }}
+                className="h-7 rounded-md border border-input-border bg-editor px-2 py-0.5 text-label-secondary text-foreground focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
+              >
+                {normalizedOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <span />
+          )}
 
-        <Pagination className="w-full justify-center sm:w-auto sm:justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (canPrev) table.setPageIndex(pageIndex - 1);
-                }}
-                className={cn(!canPrev && 'pointer-events-none opacity-50')}
-                aria-disabled={!canPrev}
-                tabIndex={!canPrev ? -1 : undefined}
-              />
-            </PaginationItem>
-            {paginationRange.map((item, index) => (
-              <PaginationItem key={`${String(item)}-${String(index)}`}>
-                {item === 'dots' && totalPages !== undefined ? (
-                  <PaginationJump
-                    totalPages={safeTotalPages}
-                    onPageChange={goToPage}
-                    triggerClassName="size-8"
-                    showPageLabel={false}
-                  />
-                ) : item === 'dots' ? (
-                  <PaginationEllipsis className="size-8" />
-                ) : (
-                  <PaginationLink
-                    href="#"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (item !== currentPage) goToPage(item);
-                    }}
-                    isActive={item === currentPage}
-                    size="default"
-                  >
-                    {item}
-                  </PaginationLink>
-                )}
+          <Pagination className="w-full justify-center @min-[28rem]/pager:w-auto @min-[28rem]/pager:justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canPrev) table.setPageIndex(pageIndex - 1);
+                  }}
+                  className={cn(!canPrev && 'pointer-events-none opacity-50')}
+                  aria-disabled={!canPrev}
+                  tabIndex={!canPrev ? -1 : undefined}
+                />
               </PaginationItem>
-            ))}
-            <PaginationItem>
-              <PaginationNext
-                href="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (canNext) table.setPageIndex(pageIndex + 1);
-                }}
-                className={cn(!canNext && 'pointer-events-none opacity-50')}
-                aria-disabled={!canNext}
-                tabIndex={!canNext ? -1 : undefined}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
+              {paginationRange.map((item, index) => (
+                <PaginationItem key={`${String(item)}-${String(index)}`}>
+                  {item === 'dots' && totalPages !== undefined ? (
+                    <PaginationJump
+                      totalPages={safeTotalPages}
+                      onPageChange={goToPage}
+                      triggerClassName="size-8"
+                      showPageLabel={false}
+                    />
+                  ) : item === 'dots' ? (
+                    <PaginationEllipsis className="size-8" />
+                  ) : (
+                    <PaginationLink
+                      href="#"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (item !== currentPage) goToPage(item);
+                      }}
+                      isActive={item === currentPage}
+                      size="default"
+                    >
+                      {item}
+                    </PaginationLink>
+                  )}
+                </PaginationItem>
+              ))}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (canNext) table.setPageIndex(pageIndex + 1);
+                  }}
+                  className={cn(!canNext && 'pointer-events-none opacity-50')}
+                  aria-disabled={!canNext}
+                  tabIndex={!canNext ? -1 : undefined}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       </div>
     );
   }

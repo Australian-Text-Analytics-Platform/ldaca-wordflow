@@ -113,7 +113,8 @@ export function SplitByGroupSubTab({
             ? `More than ${String(MAX_GROUPS)} groups: narrow the data first, for example with Filter.`
             : 'Tick at least one group.'
       }
-      nameLabel="Name prefix"
+      nameLabel="New data block names"
+      nameHint={`Each block is named after this and its group, for example ${groupBlockName(prefix, ticked[0]?.label ?? 'group')}.`}
       name={name}
       namePlaceholder={input?.name ?? ''}
       onNameChange={setName}

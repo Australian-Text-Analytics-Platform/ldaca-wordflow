@@ -839,7 +839,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {/* Results */}
       {results ? (
         <ConcordanceResultsPanel
-          title={isReview ? 'Review' : 'Search Results'}
+          title={isReview ? 'Review' : 'Concordance Results'}
           guidanceTarget={isReview ? 'concordance-run-all-results' : 'concordance-preview-results'}
           isReview={isReview}
           headerAction={

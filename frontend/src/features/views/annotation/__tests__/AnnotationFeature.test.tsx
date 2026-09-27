@@ -459,8 +459,8 @@ describe('AnnotationFeature', () => {
     await user.click(
       screen.getByRole('button', { name: 'Change Selected Data Blocks text column' }),
     );
-    expect(screen.getByText('Example Data Block')).toBeVisible();
-    await user.click(screen.getByRole('button', { name: 'Change Example Node text column' }));
+    expect(screen.getAllByText('Example Data Block')[0]).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Change Example Data Block text column' }));
 
     expect(mocks.setSourceColumn).toHaveBeenCalledWith('source-1', 'body');
     expect(mocks.setExampleColumn).toHaveBeenCalledWith('example-1', 'body');

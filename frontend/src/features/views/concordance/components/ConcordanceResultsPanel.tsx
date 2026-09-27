@@ -191,7 +191,7 @@ export interface ConcordanceResultsPanelProps {
  * table or dispersion blocks without changing Analysis inputs.
  */
 export function ConcordanceResultsPanel({
-  title = 'Search Results',
+  title = 'Concordance Results',
   guidanceTarget,
   isReview,
   headerAction,

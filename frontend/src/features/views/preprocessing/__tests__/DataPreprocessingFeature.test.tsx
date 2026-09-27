@@ -612,7 +612,8 @@ describe('DataPreprocessingFeature replace tab', () => {
     renderPreprocessingFeature();
 
     const applyBar = screen.getByRole('group', { name: 'Apply result' });
-    expect(applyBar).toHaveTextContent('Result: New Data Block');
+    expect(applyBar).toHaveTextContent('New data block name');
+    expect(applyBar).not.toHaveTextContent('Result:');
     expect(within(applyBar).queryByRole('combobox')).not.toBeInTheDocument();
     expect(within(applyBar).getByRole('button', { name: 'Create Data Block' })).toBeInTheDocument();
 

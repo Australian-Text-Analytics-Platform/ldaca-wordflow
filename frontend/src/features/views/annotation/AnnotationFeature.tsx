@@ -1197,7 +1197,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                             <span className="ml-1 font-normal">(optional)</span>
                           </Label>
                           <NodeInputsPanel
-                            title="Example Node"
+                            title="Example Data Block"
                             resolvedNodes={exampleNodeInputs.resolvedNodes}
                             availableNodes={exampleNodeInputs.availableNodes}
                             canAddMore={exampleNodeInputs.canAddMore}

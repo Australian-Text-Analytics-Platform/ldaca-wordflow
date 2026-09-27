@@ -23,11 +23,11 @@ import { invalidateFileListQuery } from '../hooks/fileCache';
 
 const TOOL_LABELS: Record<string, string> = {
   concordance: 'Concordance',
-  'token-frequency': 'Token Frequency',
+  'token-frequency': 'Frequency',
   preprocessing: 'Data Builder',
   'data-loader': 'Data Loader',
   'topic-modeling': 'Topic Modelling',
-  'sequential-analysis': 'Sequential Analysis',
+  'sequential-analysis': 'Trends',
 };
 
 /**

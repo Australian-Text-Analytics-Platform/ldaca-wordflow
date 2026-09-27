@@ -31,6 +31,8 @@ export interface BuilderToolCardProps {
   /** Shown in place of the preview while the form is incomplete. */
   incompleteMessage: string;
   nameLabel?: string;
+  /** How the new blocks are named, for tools that create several (issue 201). */
+  nameHint?: string;
   name: string;
   namePlaceholder: string;
   onNameChange: (name: string) => void;
@@ -64,6 +66,7 @@ export function BuilderToolCard({
   previewBody,
   incompleteMessage,
   nameLabel = 'New data block name',
+  nameHint,
   name,
   namePlaceholder,
   onNameChange,
@@ -152,6 +155,11 @@ export function BuilderToolCard({
               className="min-w-0 flex-1"
             />
           </div>
+          {nameHint ? (
+            <p className="order-last basis-full text-label-secondary text-description">
+              {nameHint}
+            </p>
+          ) : null}
           <DisabledReasonTooltip reason={creating ? undefined : disabledReason}>
             <Button
               type="button"

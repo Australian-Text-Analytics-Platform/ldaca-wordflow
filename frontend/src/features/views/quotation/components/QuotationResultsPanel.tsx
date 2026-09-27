@@ -56,7 +56,7 @@ interface QuotationResultsPanelProps {
  * the feature hooks.
  */
 export function QuotationResultsPanel({
-  title = 'Search Results',
+  title = 'Quotation Results',
   guidanceTarget,
   headerAction,
   displayedNodes,

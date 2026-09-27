@@ -21,7 +21,7 @@ There are currently eight sub-tabs:
 | Aggregate | One row per group, such as one document per speaker, with a summary of each column | New Data Block |
 | Sample | Extract a contiguous slice or a random subset of rows | New Data Block |
 | Deduplicate | Keep the first of each duplicate, and save the duplicate groups separately | Two new Data Blocks |
-| Stack | Vertically concatenate two data blocks that share the same columns | New Data Block |
+| Stack | Put two or more data blocks that share the same columns one below the other | New Data Block |
 
 The general workflow for any sub-tab is:
 
@@ -175,7 +175,7 @@ Give the joined output a clear name. Leave it blank to use the auto-generated su
 
 ![Stack screenshot](tutorials/assets/preprocessing/concat.png)
 
-The Stack sub-tab vertically concatenates two or more data blocks. Use it when you want to merge data blocks with identical column structures into one longer block.
+The Stack sub-tab puts two or more data blocks one below the other. Use it when you want to merge data blocks with identical column structures into one longer block.
 
 <h3 id="help-preprocessing-concat-schema-status">Schema status</h3>
 
@@ -183,9 +183,9 @@ The Stack sub-tab vertically concatenates two or more data blocks. Use it when y
 
 The schema status panel tells you whether all selected data blocks share the same column structure and highlights any mismatches. Resolve mismatches (e.g. by renaming or removing columns) before stacking.
 
-<h3 id="help-preprocessing-concat-deduplicate">Drop duplicate rows after stacking</h3>
+<h3 id="help-preprocessing-concat-deduplicate">Deduplicate</h3>
 
-Tick **Drop duplicate rows after stacking** to remove exact duplicate rows from the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset). To compare only some columns, or to keep a record of the duplicates, use [Deduplicate](#help-preprocessing-dedupe-section) on the stacked result instead.
+Tick **Deduplicate**, beside **Create Data Block**, to keep one copy of rows that are the same in every column of the stacked result. Two rows count as duplicates only when every column matches. Useful when stacking sources that may share overlapping records (e.g. partial dumps of the same dataset). To compare only some columns, or to keep a record of the duplicates, use [Deduplicate](#help-preprocessing-dedupe-section) on the stacked result instead.
 
 <h3 id="help-preprocessing-concat-new-node-name">New data block name</h3>
 

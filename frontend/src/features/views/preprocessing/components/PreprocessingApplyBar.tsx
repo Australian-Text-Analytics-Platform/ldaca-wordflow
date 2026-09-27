@@ -17,9 +17,13 @@ export function PreprocessingApplyBar({ mode, children }: PreprocessingApplyBarP
       aria-label="Apply result"
       className="gap-x-3 gap-y-2 border-t border-surface-border bg-panel/20 py-4"
     >
-      <p className="shrink-0 text-body font-medium text-description">
-        {mode === 'create' ? 'Result: New Data Block' : 'Result: Updates the selected Data Block'}
-      </p>
+      {/* A new block is already named by the "New data block name" field
+          (issue 201); only an in-place update needs saying. */}
+      {mode === 'create' ? null : (
+        <p className="shrink-0 text-body font-medium text-description">
+          Updates the selected Data Block
+        </p>
+      )}
       <div
         className={cn(
           'flex min-w-0 items-center gap-3',
