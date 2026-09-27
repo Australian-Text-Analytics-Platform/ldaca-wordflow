@@ -230,7 +230,7 @@ Choose the column under **Split by**; the choices below it depend on the column'
 
 ![Group by a date column, one data block per year and month](tutorials/assets/preprocessing/group_dates.png)
 
-Every group starts ticked; untick any you don't need, or use **Tick all** and **Untick all**. The button shows how many data blocks will be made. Each data block is a Filter of the source, named like `speeches · Labor`, with a name prefix you can change. At most 50 data blocks are made at a time. If a column has more groups, narrow the data first, for example with Filter.
+Every group starts ticked; untick any you don't need, or use **Tick all** and **Untick all**. The button shows how many data blocks will be made. Each data block is a Filter of the source, named like `speeches · Labor`; change the first part of the names under **New data block names**. At most 50 data blocks are made at a time. If a column has more groups, narrow the data first, for example with Filter.
 
 <h2 id="help-preprocessing-summarise-section">Aggregate</h2>
 
