@@ -43,6 +43,8 @@ Stop words are terms you want to exclude from the frequency count: commonly word
 
 ![The stop words dropdown, with lists from other tabs, the classic lists, and the detected language](tutorials/assets/token_frequency/stop_words_menu.png)
 
+The sources and licences of the ready-made lists are listed under **Stop-word lists** in the References.
+
 - Lists picked under **From other tabs** (for example _Topic Modelling · 1_) are copied into this tab's list; later edits in either tab do not affect the other.
 - Click **Sort** to sort the current stop-word list alphabetically.
 - Edits to the list apply when you leave the text box. Removing stop words does not change the statistical measures of remaining tokens: they are excluded as a post-processing step.

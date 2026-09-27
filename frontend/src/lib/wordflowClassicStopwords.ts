@@ -7,9 +7,12 @@ export interface WordflowClassicStopwordList {
   wordCount: number;
 }
 
-/** Languages covered by Wordflow's classic built-in lists, in display order. */
+/**
+ * Languages covered by Wordflow's classic built-in lists, in display order.
+ * The classic Chinese list (goto456/stopwords) was dropped because it has no
+ * licence; the stopword package's Chinese list remains (issue 119).
+ */
 export const WORDFLOW_CLASSIC_STOPWORD_LISTS: readonly WordflowClassicStopwordList[] = [
-  { iso6391: 'zh', name: 'Chinese', wordCount: 746 },
   { iso6391: 'en', name: 'English', wordCount: 231 },
   { iso6391: 'fr', name: 'French', wordCount: 146 },
   { iso6391: 'de', name: 'German', wordCount: 131 },

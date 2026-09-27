@@ -53,6 +53,29 @@ These contributions have been essential in ensuring that LDaCA Wordflow meets th
 
 ---
 
+<h2 id="ref-stop-word-lists">Stop-word lists: sources and licences</h2>
+
+Frequency and Topic Modelling offer ready-made stop-word lists. Their sources and licences are listed here.
+
+**Wordflow classic lists**
+
+| List | Source | Licence |
+|---|---|---|
+| English (231 words) | Wordflow's own list, revised by Monika Bednarek (Sydney Corpus Lab) | Part of Wordflow |
+| French (146 words) | Subset of the [Snowball](https://snowballstem.org/) French stop list, as distributed with [NLTK](https://www.nltk.org/) | Snowball: BSD 3-Clause |
+| Spanish (151 words) | Subset of the Snowball Spanish stop list, as distributed with NLTK | Snowball: BSD 3-Clause |
+| German (131 words) | 104 words from the Snowball German stop list (via NLTK); the source of the other 27 words was not recorded | Snowball: BSD 3-Clause |
+| Japanese (310 words) | The SlothLib stop-word list (Tanaka Laboratory, Kyoto University), as republished on [Kaggle](https://www.kaggle.com/datasets/lazon282/japanese-stop-words) | SlothLib: Modified BSD |
+| Korean (679 words) | [stopwords-iso/stopwords-ko](https://github.com/stopwords-iso/stopwords-ko) | MIT, Copyright (c) 2016 Gene Diaz |
+
+Earlier versions also offered a classic Chinese list from goto456/stopwords. It was removed in 0.7 because that list carries no licence. The library's Chinese list below is still available.
+
+**Languages (stopword library)**
+
+The lists for about 60 languages come from the open-source [`stopword`](https://github.com/fergiemcdowall/stopword) package (MIT, Copyright (c) 2015 to 2022 Fergus McDowall). Each language list keeps its own copyright notice, under the MIT or Apache 2.0 licence; the package ships them in its `dist/3rd-party.txt` file.
+
+---
+
 © Language Data Commons of Australia (LDaCA)
 
 Version {{VERSION}} - released on {{BUILD_DATE}}.

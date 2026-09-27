@@ -592,6 +592,11 @@ const reference = {
     anchor: 'ref-general-platform',
     label: 'Cite LDaCA Wordflow',
   },
+  'general.stop-word-lists': {
+    file: 'references/general.md',
+    anchor: 'ref-stop-word-lists',
+    label: 'Stop-word lists: sources and licences',
+  },
 } as const satisfies Record<string, DocTarget>;
 
 /** Bundled docs registry consumed before or instead of the remote docs registry. */
