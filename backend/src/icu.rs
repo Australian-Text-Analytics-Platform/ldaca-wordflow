@@ -67,6 +67,8 @@ impl Cache {
                 ));
             }
             staged.flush()?;
+            // Windows cannot load the extension while its writer handle remains open.
+            drop(staged);
             // LOAD checks DuckDB's own version, platform and cryptographic signature.
             // Validate before publishing; never enable allow_unsigned_extensions.
             let connection = duckdb::Connection::open_in_memory()?;
@@ -75,7 +77,6 @@ impl Cache {
                 staged_path.to_string_lossy().replace('\'', "''")
             ))?;
             drop(connection);
-            drop(staged);
             match std::fs::hard_link(&staged_path, &path) {
                 Ok(_) => (),
                 Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => (),
