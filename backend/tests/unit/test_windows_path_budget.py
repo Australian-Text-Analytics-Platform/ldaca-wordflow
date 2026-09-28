@@ -51,3 +51,23 @@ def test_a_staged_data_block_write_fits_the_windows_limit(tmp_path: Path) -> Non
     )
     assert len(str(staged)) < 200
     assert len(str(published)) <= WINDOWS_MAX_PATH
+
+
+def test_an_analysis_input_snapshot_fits_the_windows_limit() -> None:
+    # The Topic Modelling path from the second report (issue 233): a Data
+    # Block's source file staged for an Analysis run.
+    from hashlib import sha256
+
+    digest = sha256(b"any source path").hexdigest()[:16]
+    staged = (
+        DATA_ROOT
+        / "workspaces"
+        / "ea4517ac-9ac3-4ae2-b41c-279c5d8b21d7"
+        / "analyses"
+        / "cddd36b4-8b48-439e-8584-703a6bb3ddc7"
+        / ".execution"
+        / ".s-u4ssrajm.tmp"
+        / "sources"
+        / f"{digest}.parquet"
+    )
+    assert len(str(staged)) <= WINDOWS_MAX_PATH - 30

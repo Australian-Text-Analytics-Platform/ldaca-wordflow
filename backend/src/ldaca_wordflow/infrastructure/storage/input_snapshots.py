@@ -338,7 +338,10 @@ def _snapshot_plan_sources(
     mapping: dict[str, str] = {}
     for raw_source in raw_sources:
         source = _require_contained_regular(source_root, raw_source)
-        digest = sha256(str(source).encode("utf-8")).hexdigest()
+        # 16 hex characters name each staged source uniquely within one Analysis
+        # and keep Windows paths under 260 characters (issue 233); the full
+        # 64-character digest pushed Topic Modelling staging to 265.
+        digest = sha256(str(source).encode("utf-8")).hexdigest()[:16]
         suffix = source.suffix if len(source.suffix) <= 16 else ""
         filename = f"{digest}{suffix}"
         staging_destination = staging_sources / filename

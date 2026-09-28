@@ -94,6 +94,9 @@ def test_snapshot_pins_sources_after_workspace_data_is_deleted(tmp_path: Path) -
     assert collected.to_dicts() == [{"value": "retained"}]
     plan_sources = list_source_paths(snapshot / "data" / f"{_NODE_ID}.plbin")
     assert all(Path(path).is_relative_to(snapshot / "sources") for path in plan_sources)
+    # Short staged names keep Windows paths under 260 characters (issue 233).
+    staged_names = [path.name for path in (snapshot / "sources").iterdir()]
+    assert staged_names and all(len(name) <= 16 + len(".parquet") for name in staged_names)
 
 
 def test_relocated_snapshot_rebases_sources_and_workspace_identity(
