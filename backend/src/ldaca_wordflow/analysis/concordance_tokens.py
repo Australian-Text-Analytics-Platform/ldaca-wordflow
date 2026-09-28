@@ -3,8 +3,9 @@
 Implements the second concordance mode:
 
 - **Regex mode (default)** — unchanged. Polars-text concordance engine walks
-  raw text; ``num_left_tokens`` means "characters" for CJK because there's
-    no whitespace, but partial-word patterns like ``equ\\w*`` survive.
+  raw text; ``num_left_tokens`` counts runs between whitespace or punctuation,
+  so for CJK text one "token" can be a whole clause (issue 221), but
+  partial-word patterns like ``equ\\w*`` survive.
 - **Tokens mode** — walks the tokenization column
   for exact-token matches with N-**actual-token** left/right context. The
   word-aware semantics CJK users want once Tokenise has been run.

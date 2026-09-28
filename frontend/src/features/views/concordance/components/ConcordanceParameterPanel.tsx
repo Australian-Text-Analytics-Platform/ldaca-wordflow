@@ -177,7 +177,7 @@ export function ConcordanceParameterPanel({
                   }}
                   placeholder={
                     searchMode === 'tokens'
-                      ? 'One or more tokens, separated by space, comma, or |'
+                      ? 'Whole tokens; a space, comma or | means any of them'
                       : 'Enter word or phrase to search for'
                   }
                   className="w-full rounded-md border border-input-border bg-editor px-3 py-2 text-body focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:opacity-60"
@@ -238,7 +238,7 @@ export function ConcordanceParameterPanel({
                     <DisabledReasonTooltip
                       reason={
                         tokensModeAvailable
-                          ? 'Each alternative is an exact-token match. Example: 猫|犬|魚 or cat dog fish finds every hit of any of them.'
+                          ? 'Finds each term as one whole token, exactly as written. A space, comma or | means any of them, not a phrase: 猫|犬 or cat dog finds every hit of either. For a phrase or other word forms, use Text with a regular expression.'
                           : 'Select a source text column for every Data Block first.'
                       }
                     >

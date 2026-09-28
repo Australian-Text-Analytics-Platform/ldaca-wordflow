@@ -28,8 +28,11 @@ choose to display.
 
 - **Text** searches the original text column. Whole-word, regular-expression,
   and case-sensitive options apply in this mode.
-- **Tokens** performs exact-token matching. Separate alternatives with spaces,
-  commas, or `|`.
+- **Tokens** finds each term as one whole token, exactly as the tokeniser wrote
+  it. A space, comma, or `|` between terms means *any of them*, not a phrase:
+  `cat dog` finds every *cat* and every *dog*. A different word form is a
+  different token (*went* does not find *go*). For a phrase or several word
+  forms, use Text mode with a regular expression.
 
 Running Tokens mode requires a tokeniser model for every selected Data Block.
 The selector saves each model as that Data Block's Tokeniser Preference,
@@ -56,7 +59,26 @@ In Text mode, tick **Use regular expression** to search for a pattern instead of
 
 Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test unfamiliar patterns. **Whole
 word** excludes partial-word matches, and **Case sensitive** keeps letter case
-distinct.
+distinct. Whole word relies on spaces between words, so it does not apply to
+Japanese, Chinese, Thai, or other text written without them: there it matches
+anywhere, as if it were off.
+
+<h5 id="help-concordance-unspaced-text">Japanese, Chinese, and other text without spaces</h5>
+
+In Tokens mode, a tokeniser such as UniDic for Japanese splits an expression
+into several short tokens. For example, *発表させていただきます* becomes
+発表 / さ / せ / て / いただき / ます, so *させていただく* typed as one term
+finds nothing, and *いただく* does not find *いただき*.
+
+To find an expression with all its spellings and forms, use Text mode, tick
+**Use regular expression**, and list the variants separated by `|`. For
+example, `せていただ|せて頂|していただ|して頂` finds the expression written in
+kana or with kanji, including the して variant. Check a few results by hand to
+make sure the pattern finds nothing unrelated.
+
+In Text mode, the context and **L1** / **R1** count stretches of text between
+spaces or punctuation, and Japanese and Chinese have no spaces, so one "token"
+can be a whole clause. For context counted in words, use Tokens mode.
 
 <h3 id="help-concordance-context">Step 3: Set the context window</h3>
 
@@ -269,7 +291,8 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 |---|---|---|
 | No results on one page | The current source-document batch has no match | Continue to the next page |
 | Tokens mode is unavailable | At least one selected Data Block has no source column | Select a source text column for every input |
-| Too many partial matches | Whole word is off in Text mode | Tick **Whole word** |
+| Too many partial matches | Whole word is off in Text mode | Tick **Whole word** (not for Japanese or Chinese, which have no spaces between words) |
+| Tokens mode finds nothing for a phrase, or finds unrelated hits | Tokens mode matches one token at a time, and a space means *any of* | Use Text mode with a regular expression; see [text without spaces](#help-concordance-unspaced-text) |
 | A regular expression fails | Invalid pattern syntax | Test the pattern on regex101.com with the Rust flavour |
 | A generated Preview header does not sort | Sorting generated columns needs every match, which only Run processes | Run, then sort the separated table |
 | Run is disabled | Inputs are incomplete or another Run is active | Complete the inputs or wait for the active Analysis |
