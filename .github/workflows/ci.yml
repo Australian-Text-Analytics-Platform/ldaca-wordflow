@@ -37,7 +37,7 @@ jobs:
 
   native-backend:
     name: Backend and server package (${{ matrix.target }})
-    needs: frontend
+    needs: frontend-assets
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -203,6 +203,19 @@ jobs:
 
       - name: Check engineering documentation links
         run: pnpm docs:links
+
+  frontend-assets:
+    name: Production frontend assets
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          submodules: recursive
+      - uses: actions/setup-node@v7.0.0
+        with:
+          node-version: 24
+      - run: corepack enable && pnpm install --frozen-lockfile
+      - run: pnpm -C frontend build
 
       - name: Upload compiled frontend
         uses: actions/upload-artifact@v7.0.1
