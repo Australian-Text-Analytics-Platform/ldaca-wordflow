@@ -4,7 +4,11 @@ import { cn } from '@/lib/utils';
 
 export interface ResizeHandleProps extends ComponentProps<'div'> {
   orientation: 'horizontal' | 'vertical';
-  variant?: 'grip' | 'line';
+  /**
+   * 'grip': three faint dots that fade on hover; 'bar': a short visible bar
+   * for splits people must find (issue 227); 'line': highlight only.
+   */
+  variant?: 'grip' | 'bar' | 'line';
   isDragging?: boolean;
   disabled?: boolean;
 }
@@ -76,6 +80,18 @@ export function ResizeHandle({
               ? 'shadow-[0_-4px_currentColor,0_4px_currentColor]'
               : 'shadow-[-4px_0_currentColor,4px_0_currentColor]',
             disabled || isDragging ? 'opacity-0 delay-0' : inactiveGripClasses,
+          )}
+        />
+      ) : null}
+      {variant === 'bar' ? (
+        <span
+          data-slot="resize-handle-bar"
+          data-testid="resize-handle-bar"
+          aria-hidden="true"
+          className={cn(
+            'pointer-events-none absolute top-1/2 left-1/2 -translate-1/2 rounded-full bg-foreground/25 transition-colors duration-100 group-hover/resize-handle:bg-foreground/50 group-focus-visible/resize-handle:bg-foreground/50 motion-reduce:transition-none forced-colors:bg-[CanvasText]',
+            isVertical ? 'h-8 w-1' : 'h-1 w-8',
+            disabled && 'opacity-0',
           )}
         />
       ) : null}

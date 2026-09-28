@@ -73,6 +73,9 @@ export interface ResultFrameProps {
  * takes it out of the sharing; double-clicking the grip returns it to
  * filling. The grip sits above the content so charts cannot cover it.
  */
+/** Space kept free at the bottom of the frame for the resize grip (issue 227). */
+const GRIP_STRIP_PX = 10;
+
 export function ResultFrame({
   storageKey,
   fill = true,
@@ -150,11 +153,15 @@ export function ResultFrame({
       ref={setFrame}
       data-testid={testId}
       data-result-size={userHeight !== null ? 'user' : fillHeight !== null ? 'fill' : 'default'}
-      className={cn('relative w-full overflow-hidden', className)}
+      className={cn('relative w-full overflow-hidden pb-2.5', className)}
       style={{ height: cssHeight, minHeight }}
     >
       {typeof children === 'function'
-        ? children(cssHeight !== undefined ? measuredHeight : null)
+        ? children(
+            cssHeight !== undefined && measuredHeight !== null
+              ? Math.max(0, measuredHeight - GRIP_STRIP_PX)
+              : null,
+          )
         : children}
       {/* Our own grip, drawn above the content: charts and canvases cover
           the browser's native resize corner and take its pointer events. */}
@@ -167,7 +174,7 @@ export function ResultFrame({
         tabIndex={0}
         title="Drag to resize. Double-click to fit the space again."
         data-testid="result-frame-grip"
-        className="nodrag nopan nowheel absolute right-0 bottom-0 z-30 flex size-4 cursor-ns-resize touch-none items-end justify-end rounded-tl-sm text-description/70 hover:text-foreground focus-visible:outline-1 focus-visible:outline-focus"
+        className="group/result-grip nodrag nopan nowheel absolute bottom-0 left-1/2 z-30 flex h-2.5 w-12 -translate-x-1/2 cursor-ns-resize touch-none items-center justify-center rounded-sm focus-visible:outline-1 focus-visible:outline-focus"
         onPointerDown={(event) => {
           if (event.button !== 0) return;
           event.preventDefault();
@@ -211,9 +218,11 @@ export function ResultFrame({
           );
         }}
       >
-        <svg viewBox="0 0 10 10" className="m-0.5 size-2.5" aria-hidden="true">
-          <path d="M9 3 3 9M9 6 6 9" stroke="currentColor" strokeWidth="1.2" fill="none" />
-        </svg>
+        {/* A visible bar along the bottom edge (issue 227), like the split handle. */}
+        <span
+          aria-hidden="true"
+          className="h-1 w-8 rounded-full bg-foreground/25 transition-colors duration-100 group-hover/result-grip:bg-foreground/50 group-focus-visible/result-grip:bg-foreground/50 motion-reduce:transition-none forced-colors:bg-[CanvasText]"
+        />
       </div>
     </div>
   );

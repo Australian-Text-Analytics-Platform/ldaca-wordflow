@@ -146,6 +146,7 @@ export function AnalysisSplitLayout({
         <div className="relative my-1.5 shrink-0">
           <ResizeHandle
             orientation="horizontal"
+            variant="bar"
             isDragging={drag !== null}
             role="separator"
             aria-label="Resize parameters and results"
