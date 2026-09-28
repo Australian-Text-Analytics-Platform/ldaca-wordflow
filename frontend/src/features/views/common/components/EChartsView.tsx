@@ -19,6 +19,7 @@ import {
 import { SVGRenderer } from 'echarts/renderers';
 
 import { Button } from '@/components/ui/button';
+import { fitBars } from '@/lib/barFit';
 import { ECHARTS_WHEEL_ZOOM_MODIFIER, isChartZoomWheel } from '@/lib/chartZoom';
 
 registerEChartsModules([
@@ -71,6 +72,12 @@ interface EChartsViewProps {
    * between" (issue 224).
    */
   selectionHint?: string;
+  /**
+   * Fit bar series to the chart's width (issue 225): stack them when the groups
+   * don't fit side by side, and cap the zoom when even stacked bars would be too
+   * thin. The value names the points in messages, for example "periods".
+   */
+  fitBarsLabel?: string;
   className?: string;
   testId?: string;
   toolbarStart?: ReactNode;
@@ -85,9 +92,16 @@ const clampZoomRange = (start: number, end: number): EChartsZoomRange => {
   return { start: safeStart, end: safeEnd };
 };
 
-const zoomAroundCenter = (current: EChartsZoomRange, factor: number): EChartsZoomRange => {
+const zoomAroundCenter = (
+  current: EChartsZoomRange,
+  factor: number,
+  maxSpan = 100,
+): EChartsZoomRange => {
   const center = (current.start + current.end) / 2;
-  const width = Math.max(MIN_ZOOM_SPAN, Math.min(100, (current.end - current.start) * factor));
+  const width = Math.max(
+    Math.min(MIN_ZOOM_SPAN, maxSpan),
+    Math.min(maxSpan, (current.end - current.start) * factor),
+  );
   let start = center - width / 2;
   let end = center + width / 2;
   if (start < 0) {
@@ -107,6 +121,29 @@ const zoomFromEvent = (event: EChartsDataZoomEvent): EChartsZoomRange | null => 
   return clampZoomRange(payload.start, payload.end);
 };
 
+const PLOT_WIDTH_ALLOWANCE = 90;
+
+type SeriesOption = Record<string, unknown>;
+
+const countBarSeries = (option: EChartsCoreOption): number =>
+  Array.isArray(option.series)
+    ? (option.series as SeriesOption[]).filter((series) => series.type === 'bar').length
+    : 0;
+
+/** One bar per point with the groups on top of each other (issue 225). */
+const stackBarSeries = (series: unknown): unknown =>
+  Array.isArray(series)
+    ? (series as SeriesOption[]).map((item) =>
+        item.type === 'bar'
+          ? {
+              ...item,
+              stack: 'wordflow-bars',
+              itemStyle: { ...(item.itemStyle as SeriesOption | undefined), borderRadius: 0 },
+            }
+          : item,
+      )
+    : series;
+
 /**
  * Owns the imperative ECharts lifecycle for analysis charts.
  *
@@ -123,6 +160,7 @@ function EChartsInstance({
   onSelect,
   getPointSummary,
   selectionHint,
+  fitBarsLabel,
   className,
   testId,
   toolbarStart,
@@ -136,6 +174,7 @@ function EChartsInstance({
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomRange, setZoomRange] = useState<EChartsZoomRange>(FULL_ZOOM);
   const [liveText, setLiveText] = useState('');
+  const [plotWidth, setPlotWidth] = useState(0);
 
   useEffect(() => {
     selectRef.current = onSelect;
@@ -205,7 +244,9 @@ function EChartsInstance({
 
     const resizeObserver = new ResizeObserver(() => {
       chart.resize();
+      setPlotWidth(element.clientWidth);
     });
+    setPlotWidth(element.clientWidth);
     resizeObserver.observe(element);
 
     return () => {
@@ -220,13 +261,39 @@ function EChartsInstance({
     };
   }, []);
 
+  // Bars fit the chart's width (issue 225). The axis labels and margins take
+  // about PLOT_WIDTH_ALLOWANCE pixels of the element's width.
+  const barSeriesCount = fitBarsLabel ? countBarSeries(option) : 0;
+  const barFit =
+    barSeriesCount > 0 && plotWidth > 0
+      ? fitBars({
+          plotWidth: plotWidth - PLOT_WIDTH_ALLOWANCE,
+          pointCount,
+          seriesCount: barSeriesCount,
+          visiblePercent: zoomRange.end - zoomRange.start,
+        })
+      : null;
+  const stackBars = barFit?.stacked ?? false;
+  const maxSpan = barFit?.maxSpanPercent ?? 100;
+
   useEffect(() => {
     const chart = chartRef.current;
     if (!chart) return;
-    const currentZoom = zoomRangeRef.current;
+    let currentZoom = zoomRangeRef.current;
+    if (currentZoom.end - currentZoom.start > maxSpan + 0.001) {
+      // Too many points for bars: show the first ones that fit (issue 225).
+      currentZoom = clampZoomRange(currentZoom.start, currentZoom.start + maxSpan);
+      if (currentZoom.end - currentZoom.start < maxSpan) {
+        currentZoom = { start: Math.max(0, 100 - maxSpan), end: 100 };
+      }
+      zoomRangeRef.current = currentZoom;
+      setZoomRange(currentZoom);
+    }
+    const series = stackBars ? stackBarSeries(option.series) : option.series;
     chart.setOption(
       {
         ...option,
+        ...(series === undefined ? {} : { series }),
         aria: {
           enabled: true,
           decal: { show: true },
@@ -239,6 +306,7 @@ function EChartsInstance({
             xAxisIndex: 0,
             start: currentZoom.start,
             end: currentZoom.end,
+            maxSpan,
             filterMode: 'none',
             // Scrolling the page must not zoom the chart (issue 213); Cmd
             // (Ctrl elsewhere) + scroll zooms, as in every chart (issue 215).
@@ -252,6 +320,7 @@ function EChartsInstance({
             xAxisIndex: 0,
             start: currentZoom.start,
             end: currentZoom.end,
+            maxSpan,
             filterMode: 'none',
             bottom: 4,
             height: 20,
@@ -283,7 +352,7 @@ function EChartsInstance({
       },
       { notMerge: true, lazyUpdate: false },
     );
-  }, [ariaLabel, option]);
+  }, [ariaLabel, option, stackBars, maxSpan]);
 
   const moveActivePoint = (nextIndex: number) => {
     if (pointCount <= 0) return;
@@ -326,7 +395,10 @@ function EChartsInstance({
     });
   };
 
-  const isFullZoom = zoomRange.start === 0 && zoomRange.end === 100;
+  // With a zoom cap (issue 225), "full" is the widest window allowed.
+  const zoomSpan = zoomRange.end - zoomRange.start;
+  const isWidestZoom = zoomSpan >= maxSpan - 0.001;
+  const isFullZoom = zoomRange.start === 0 && isWidestZoom;
 
   return (
     <div className={className} data-testid={testId}>
@@ -342,7 +414,7 @@ function EChartsInstance({
           className="size-control-sm"
           aria-label="Zoom in"
           onClick={() => {
-            setZoom(zoomAroundCenter(zoomRange, 0.75), 'Chart zoomed in');
+            setZoom(zoomAroundCenter(zoomRange, 0.75, maxSpan), 'Chart zoomed in');
           }}
         >
           <ZoomIn className="h-4 w-4" aria-hidden="true" />
@@ -353,9 +425,9 @@ function EChartsInstance({
           size="icon"
           className="size-control-sm"
           aria-label="Zoom out"
-          disabled={isFullZoom}
+          disabled={isWidestZoom}
           onClick={() => {
-            setZoom(zoomAroundCenter(zoomRange, 4 / 3), 'Chart zoomed out');
+            setZoom(zoomAroundCenter(zoomRange, 4 / 3, maxSpan), 'Chart zoomed out');
           }}
         >
           <ZoomOut className="h-4 w-4" aria-hidden="true" />
@@ -368,7 +440,7 @@ function EChartsInstance({
           aria-label="Reset zoom"
           disabled={isFullZoom}
           onClick={() => {
-            setZoom(FULL_ZOOM, 'Chart zoom reset');
+            setZoom({ start: 0, end: maxSpan }, 'Chart zoom reset');
           }}
         >
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
@@ -385,6 +457,18 @@ function EChartsInstance({
         style={{ height: `${String(height)}px` }}
         className="w-full cursor-crosshair focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-border"
       />
+      {barFit?.maxVisiblePoints ? (
+        <p className="mt-1 text-label-secondary text-description">
+          Too many {fitBarsLabel} to show as bars at once, so the chart shows up to{' '}
+          {barFit.maxVisiblePoints.toLocaleString()} of {pointCount.toLocaleString()}. Drag the
+          slider under the chart to see the others, or choose Line or Area to see them all.
+        </p>
+      ) : stackBars ? (
+        <p className="mt-1 text-label-secondary text-description">
+          The groups are stacked because they don&apos;t fit side by side at this width. Zoom in to
+          see them side by side.
+        </p>
+      ) : null}
       {/* Clicking and Shift-clicking replace the Select range button (issue 224). */}
       {onSelect && selectionHint ? (
         <p className="mt-1 text-label-secondary text-description">{selectionHint}</p>

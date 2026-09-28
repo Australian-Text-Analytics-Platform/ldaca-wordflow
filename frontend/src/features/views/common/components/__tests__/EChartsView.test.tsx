@@ -268,4 +268,49 @@ describe('EChartsView', () => {
     expect(inside?.zoomOnMouseWheel).toBe('ctrl');
     expect(slider?.fillerColor).toContain('--vscode-focusBorder');
   });
+
+  it('stacks bars that do not fit side by side and caps the zoom when there are too many (issue 225)', () => {
+    // A 490 px element leaves 400 px to plot: room for 100 stacked bars.
+    const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(490);
+    const bars = { series: ['a', 'b', 'c'].map((id) => ({ id, type: 'bar', itemStyle: {} })) };
+    interface SetOptionArg {
+      series: { stack?: string; itemStyle?: { borderRadius?: number } }[];
+      dataZoom: { maxSpan?: number; start?: number; end?: number }[];
+    }
+    const lastOption = () => mocks.chart.setOption.mock.calls.at(-1)?.[0] as SetOptionArg;
+
+    const { unmount } = render(
+      <EChartsView
+        height={200}
+        pointCount={250}
+        dataResetKey="many"
+        ariaLabel="Trends chart"
+        option={bars}
+        fitBarsLabel="periods"
+      />,
+    );
+    expect(lastOption().series.every((series) => series.stack === 'wordflow-bars')).toBe(true);
+    expect(lastOption().series[0]?.itemStyle?.borderRadius).toBe(0);
+    expect(lastOption().dataZoom[0]).toMatchObject({ maxSpan: 40, start: 0, end: 40 });
+    expect(screen.getByText(/Too many periods to show as bars at once/)).toHaveTextContent(
+      'shows up to 100 of 250',
+    );
+    unmount();
+
+    render(
+      <EChartsView
+        height={200}
+        pointCount={20}
+        dataResetKey="few"
+        ariaLabel="Trends chart"
+        option={bars}
+        fitBarsLabel="periods"
+      />,
+    );
+    expect(lastOption().series.some((series) => series.stack)).toBe(false);
+    expect(lastOption().dataZoom[0]?.maxSpan).toBe(100);
+    expect(screen.queryByText(/Too many periods/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/groups are stacked/)).not.toBeInTheDocument();
+    width.mockRestore();
+  });
 });

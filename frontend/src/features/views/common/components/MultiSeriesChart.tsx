@@ -48,6 +48,8 @@ export interface MultiSeriesChartProps {
   ariaLabel?: string;
   dataResetKey?: string;
   toolbarStart?: ReactNode;
+  /** Fit bars to the width, naming the points in messages (issue 225). */
+  fitBarsLabel?: string;
 }
 
 const SELECTION_DIMENSION = '__wordflow_selected__';
@@ -311,6 +313,7 @@ export function MultiSeriesChart(props: MultiSeriesChartProps) {
     ariaLabel = 'Interactive analysis chart',
     dataResetKey = JSON.stringify(data),
     toolbarStart,
+    fitBarsLabel,
   } = props;
   const option = buildMultiSeriesChartOption(props);
   const getPointSummary = (index: number) => {
@@ -338,6 +341,7 @@ export function MultiSeriesChart(props: MultiSeriesChartProps) {
           selectedIndices={selection?.selectedIndices}
           onSelect={selection?.onSelect}
           selectionHint={selection?.hint}
+          fitBarsLabel={fitBarsLabel}
           getPointSummary={getPointSummary}
           className={className}
           testId="multi-series-chart"

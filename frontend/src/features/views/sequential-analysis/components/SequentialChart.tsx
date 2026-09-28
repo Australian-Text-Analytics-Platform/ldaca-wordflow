@@ -104,6 +104,7 @@ export function SequentialChart({
                     hint: 'Click a period to select it, click it again to deselect it, and Shift-click another period to select every period in between.',
                   }}
                   ariaLabel="Trends chart"
+                  fitBarsLabel="periods"
                   dataResetKey={`${dataResetKey}:${model.chartData
                     .map((row) =>
                       typeof row.__period_key__ === 'string' ? row.__period_key__ : '',

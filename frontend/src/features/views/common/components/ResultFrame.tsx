@@ -246,10 +246,20 @@ export function ResultChartFit({
 
   useLayoutEffect(() => {
     const wrapper = wrapperRef.current;
-    if (!wrapper) return;
-    const next = Math.max(0, Math.round(wrapper.getBoundingClientRect().height - chartHeight));
-    if (Math.abs(next - chrome) >= 1) setChrome(next);
-  }, [chartHeight, chrome]);
+    if (!wrapper) return undefined;
+    const measure = () => {
+      const next = Math.max(0, Math.round(wrapper.getBoundingClientRect().height - chartHeight));
+      setChrome((current) => (Math.abs(next - current) >= 1 ? next : current));
+    };
+    measure();
+    // A note that appears inside the chart later (for example the bar-fit
+    // message, issue 225) changes the space around it without a new height.
+    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure);
+    observer?.observe(wrapper);
+    return () => {
+      observer?.disconnect();
+    };
+  }, [chartHeight]);
 
   return <div ref={wrapperRef}>{children(chartHeight)}</div>;
 }

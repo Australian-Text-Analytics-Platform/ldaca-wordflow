@@ -119,7 +119,7 @@ with the threshold.
 Three plot modes are available in the **Chart** list:
 
 - **Line**: best for continuous trends across time, especially when groups overlap or you want to compare rates of change.
-- **Bars**: best for highlighting contrast between groups at each period.
+- **Bars**: best for highlighting contrast between groups at each period. Groups sit side by side while every bar can be drawn at a readable width. When they don't fit, each period's groups are stacked into one bar, with a note under the chart; zoom in to see them side by side again. When there are too many periods even for stacked bars, the chart shows only as many periods as fit and says so: drag the slider under the chart to move through the rest, or choose **Line** or **Area** to see every period at once.
 - **Area**: stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
 
 <h3 id="help-sequential-x-axis">Spacing: Even or To scale</h3>
