@@ -40,7 +40,12 @@ if (target.endsWith('apple-darwin')) {
 } else {
   // ORT can be supplied dynamically by its build; retain runtime DLLs when present.
   for (const entry of await readdir(path.join('target',target,'release'))) if(entry.toLowerCase().endsWith('.dll')) await cp(path.join('target',target,'release',entry),path.join(stage,entry));
-  const listing=execFileSync('dumpbin',['/dependents',path.join(stage,exe)],{encoding:'utf8'});
+  const vswhere=path.join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)','Microsoft Visual Studio','Installer','vswhere.exe');
+  const installation=execFileSync(vswhere,['-latest','-products','*','-requires','Microsoft.VisualStudio.Component.VC.Tools.x86.x64','-property','installationPath'],{encoding:'utf8'}).trim();
+  if(!installation) throw new Error('Visual C++ tools are required to audit Windows server dependencies');
+  const version=(await readFile(path.join(installation,'VC','Auxiliary','Build','Microsoft.VCToolsVersion.default.txt'),'utf8')).trim();
+  const dumpbin=path.join(installation,'VC','Tools','MSVC',version,'bin','Hostx64','x64','dumpbin.exe');
+  const listing=execFileSync(dumpbin,['/dependents',path.join(stage,exe)],{encoding:'utf8'});
   await writeFile(path.join(stage,'native-dependencies.txt'),listing.replaceAll(stage,'.'));
 }
 await writeFile(path.join(stage,'README.txt'),`Wordflow ${version}\nRun ./${exe} and open http://127.0.0.1:8002/\nUse --help for DATA_DIR, public prefix and origin options.\nOptional ICU and language/model assets download only when first requested. Cached resources work offline.\n`);

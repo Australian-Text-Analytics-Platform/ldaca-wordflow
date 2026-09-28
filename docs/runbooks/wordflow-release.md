@@ -64,7 +64,10 @@ tag to identify that exact commit and match the version registry.
 ## Sign and publish
 
 Desktop builds retain the existing updater signing keys, Apple Developer ID and
-notarization credentials. Server macOS packages use the configured Developer ID.
+notarization credentials. The macOS server executable uses the same Developer ID
+and is submitted to Apple in a temporary ZIP before its tar.gz is published.
+Apple serves a standalone executable's notarization ticket online; it cannot be
+stapled to the executable.
 Secrets are supplied only through GitHub Actions secrets. CI uses local/ad-hoc
 signing where needed and requires no release credentials.
 
@@ -111,6 +114,9 @@ local cache remains versioned even though filenames are stable.
   server archives and `server-SHA256SUMS` are present.
 - Verify update/restart from a previous signed desktop version on macOS and Windows.
 - Download and verify the server archive/checksum on each supported platform.
+- On macOS, assess the extracted server executable with
+  `spctl --assess --type execute <binary>` while online, then start it outside
+  the checkout.
 - Verify the tools repository launcher against the actual Binder site, reporting
   its result separately from local or CI package tests.
 

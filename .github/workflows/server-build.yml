@@ -44,6 +44,26 @@ jobs:
         run: node scripts/package-server.mjs ${{ matrix.target }}
         env:
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+      - name: Notarize macOS server executable
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -Eeuo pipefail
+          package="target/server-packages/wordflow-server-aarch64-apple-darwin"
+          archive="$RUNNER_TEMP/wordflow-server-notary.zip"
+          report="$RUNNER_TEMP/wordflow-server-notary.json"
+          ditto -c -k --keepParent "$package" "$archive"
+          xcrun notarytool submit "$archive" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait --output-format json > "$report"
+          jq -e '.status == "Accepted"' "$report" >/dev/null
+          spctl --assess --verbose=4 --type execute "$package/wordflow-server"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: wordflow-server-${{ matrix.target }}
