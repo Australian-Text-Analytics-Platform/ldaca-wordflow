@@ -34,7 +34,7 @@ if (target.endsWith('apple-darwin')) {
   await writeFile(path.join(stage,'native-dependencies.txt'),listing);
   for(const line of listing.split('\n')) {
     const dependency=line.trim().split(/\s/)[0];
-    if(dependency && !/^(linux-vdso|lib(c|m|pthread|dl|rt|gcc_s|stdc\+\+)\.|\/.*ld-linux)/.test(dependency)) throw new Error(`Unbundled native library: ${line.trim()}`);
+    if(dependency && !/^(linux-vdso|lib(c|m|mvec|pthread|dl|rt|gcc_s|stdc\+\+)\.|\/.*ld-linux)/.test(dependency)) throw new Error(`Unbundled native library: ${line.trim()}\n${listing}`);
     if(line.includes('not found')) throw new Error(`Missing native library: ${line}`);
   }
 } else {
