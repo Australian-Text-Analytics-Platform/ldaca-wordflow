@@ -44,7 +44,7 @@ class _Processes:
 
 class _Service:
     def __init__(self) -> None:
-        self.failures: list[tuple[str, str]] = []
+        self.failures: list[tuple[str, str, str | None]] = []
         self.completed = False
 
     async def admit_execution(self, _key, **_kwargs):
