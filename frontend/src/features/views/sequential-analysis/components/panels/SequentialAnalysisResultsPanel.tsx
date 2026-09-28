@@ -104,12 +104,13 @@ export function SequentialAnalysisResultsPanel({
                   onChartTypeChange(value as ChartTypeOption);
                 }}
               >
-                <SelectTrigger className="w-28 shrink-0 text-body" aria-label="Chart">
+                <SelectTrigger className="w-36 shrink-0 text-body" aria-label="Chart">
                   <SelectValue placeholder="Select chart" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="line">Line</SelectItem>
                   <SelectItem value="bar">Bars</SelectItem>
+                  <SelectItem value="stacked-bar">Stacked bars</SelectItem>
                   <SelectItem value="area">Area</SelectItem>
                 </SelectContent>
               </Select>

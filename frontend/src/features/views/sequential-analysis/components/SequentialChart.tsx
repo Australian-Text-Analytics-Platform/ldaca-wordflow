@@ -92,8 +92,10 @@ export function SequentialChart({
                     model.normalised
                       ? {
                           min: 0,
-                          // A stacked area of every group reaches 100%.
-                          ...(model.chartType === 'area' ? { max: 100 } : {}),
+                          // Stacked areas and bars of every group reach 100%.
+                          ...(model.chartType === 'area' || model.chartType === 'stacked-bar'
+                            ? { max: 100 }
+                            : {}),
                           axisLabel: { formatter: (value: number) => `${String(value)}%` },
                         }
                       : undefined
@@ -131,7 +133,8 @@ export function SequentialChart({
             text: group.legendText,
             label: group.label,
             hidden: group.hidden,
-            marker: model.chartType === 'bar' ? 'bar' : model.chartType,
+            marker:
+              model.chartType === 'line' || model.chartType === 'area' ? model.chartType : 'bar',
           }))}
           ariaLabel="Trends groups"
           legendHelp={TRENDS_LEGEND_HELP}

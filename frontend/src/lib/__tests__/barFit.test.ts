@@ -2,38 +2,28 @@ import { describe, expect, it } from 'vitest';
 
 import { fitBars } from '../barFit';
 
-describe('fitBars (issue 225)', () => {
-  it('keeps bars side by side while every bar is at least 6 px wide', () => {
+describe('fitBars (issues 225, 226)', () => {
+  it('fits side-by-side bars while every bar can be 6 px wide', () => {
     // 20 periods × 5 groups × 6 px = 600 px.
-    expect(
-      fitBars({ plotWidth: 600, pointCount: 20, seriesCount: 5, visiblePercent: 100 }),
-    ).toEqual({
-      stacked: false,
+    expect(fitBars({ plotWidth: 600, pointCount: 20, seriesCount: 5, stacked: false })).toEqual({
       maxVisiblePoints: null,
       maxSpanPercent: 100,
     });
   });
 
-  it('stacks when the groups no longer fit side by side, and unstacks when zoomed in', () => {
-    expect(
-      fitBars({ plotWidth: 600, pointCount: 40, seriesCount: 5, visiblePercent: 100 }).stacked,
-    ).toBe(true);
-    expect(
-      fitBars({ plotWidth: 600, pointCount: 40, seriesCount: 5, visiblePercent: 50 }).stacked,
-    ).toBe(false);
+  it('caps side-by-side bars to the periods whose groups fit', () => {
+    // 600 px / (5 groups × 6 px) = 20 periods of 40, so half the axis.
+    const fit = fitBars({ plotWidth: 600, pointCount: 40, seriesCount: 5, stacked: false });
+    expect(fit.maxVisiblePoints).toBe(20);
+    expect(fit.maxSpanPercent).toBeCloseTo(50);
   });
 
-  it('never stacks a single series', () => {
+  it('lets stacked bars show more periods: 4 px each, whatever the groups', () => {
     expect(
-      fitBars({ plotWidth: 100, pointCount: 25, seriesCount: 1, visiblePercent: 100 }).stacked,
-    ).toBe(false);
-  });
-
-  it('caps the zoom when even stacked bars would be under 4 px', () => {
-    // 400 px fits 100 stacked bars; 250 periods are capped to 40% of the axis.
-    const fit = fitBars({ plotWidth: 400, pointCount: 250, seriesCount: 3, visiblePercent: 100 });
+      fitBars({ plotWidth: 600, pointCount: 40, seriesCount: 5, stacked: true }).maxVisiblePoints,
+    ).toBeNull();
+    const fit = fitBars({ plotWidth: 400, pointCount: 250, seriesCount: 3, stacked: true });
     expect(fit.maxVisiblePoints).toBe(100);
     expect(fit.maxSpanPercent).toBeCloseTo(40);
-    expect(fit.stacked).toBe(true);
   });
 });

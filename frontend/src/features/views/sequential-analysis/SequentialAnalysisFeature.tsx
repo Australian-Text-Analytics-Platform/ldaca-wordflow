@@ -113,7 +113,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   } = sequentialParameters;
   const savedChartType = host.settings['sequential.chartType'];
   const [chartType, setChartTypeState] = useState<ChartTypeOption>(
-    savedChartType === 'bar' || savedChartType === 'area' ? savedChartType : 'line',
+    savedChartType === 'bar' || savedChartType === 'stacked-bar' || savedChartType === 'area'
+      ? savedChartType
+      : 'line',
   );
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);

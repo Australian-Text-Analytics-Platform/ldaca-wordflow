@@ -25,6 +25,61 @@ describe('buildMultiSeriesChartOption', () => {
     expect(formatter([{ value: data[0] }])).toBe('2024-01\nAlpha: 2 rows\nBeta: 1 rows');
   });
 
+  it('stacks Stacked bars and stripes every other period behind side-by-side Bars (issue 226)', () => {
+    const three = [...data, { period: '2024-03', alpha: 1, beta: 2 }];
+    interface Series {
+      id: string;
+      type: string;
+      stack?: string;
+      markArea?: { data: unknown[] };
+    }
+    const seriesOf = (option: ReturnType<typeof buildMultiSeriesChartOption>) =>
+      option.series as Series[];
+
+    const stacked = seriesOf(
+      buildMultiSeriesChartOption({
+        data: three,
+        xKey: 'period',
+        series,
+        chartType: 'stacked-bar',
+      }),
+    );
+    expect(stacked.filter((item) => item.type === 'bar').every((item) => item.stack)).toBe(true);
+    expect(stacked.some((item) => item.id === '__wordflow_period_stripes__')).toBe(false);
+
+    const sideBySide = seriesOf(
+      buildMultiSeriesChartOption({ data: three, xKey: 'period', series, chartType: 'bar' }),
+    );
+    expect(sideBySide.filter((item) => item.type === 'bar').some((item) => item.stack)).toBe(false);
+    // Even spacing: the category axis shades every other period's slot.
+    const sideOption = buildMultiSeriesChartOption({
+      data: three,
+      xKey: 'period',
+      series,
+      chartType: 'bar',
+    });
+    expect((sideOption.xAxis as { splitArea?: unknown }).splitArea).toMatchObject({
+      show: true,
+      interval: 0,
+    });
+
+    const numeric = seriesOf(
+      buildMultiSeriesChartOption({
+        data: [
+          { x: 0, alpha: 1 },
+          { x: 10, alpha: 2 },
+          { x: 30, alpha: 3 },
+        ],
+        xKey: 'x',
+        series,
+        chartType: 'bar',
+        xAxis: { type: 'value' },
+      }),
+    ).find((item) => item.id === '__wordflow_period_stripes__');
+    // Halfway to each neighbour: 5 to 20 around x = 10.
+    expect(numeric?.markArea?.data).toEqual([[{ xAxis: 5 }, { xAxis: 20 }]]);
+  });
+
   it('uses an ECharts dataset and explicit dimension encoding', () => {
     const option = buildMultiSeriesChartOption({ data, xKey: 'period', series });
     expect(option.dataset).toMatchObject({

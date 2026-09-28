@@ -269,48 +269,65 @@ describe('EChartsView', () => {
     expect(slider?.fillerColor).toContain('--vscode-focusBorder');
   });
 
-  it('stacks bars that do not fit side by side and caps the zoom when there are too many (issue 225)', () => {
-    // A 490 px element leaves 400 px to plot: room for 100 stacked bars.
+  it('caps the zoom when bars would be too thin, by chart type (issues 225, 226)', () => {
+    // A 490 px element leaves 400 px to plot.
     const width = vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(490);
-    const bars = { series: ['a', 'b', 'c'].map((id) => ({ id, type: 'bar', itemStyle: {} })) };
+    const bars = (stack?: string) => ({
+      series: ['a', 'b', 'c'].map((id) => ({ id, type: 'bar', ...(stack ? { stack } : {}) })),
+    });
     interface SetOptionArg {
-      series: { stack?: string; itemStyle?: { borderRadius?: number } }[];
+      series: { stack?: string }[];
       dataZoom: { maxSpan?: number; start?: number; end?: number }[];
     }
     const lastOption = () => mocks.chart.setOption.mock.calls.at(-1)?.[0] as SetOptionArg;
 
+    // Stacked: 4 px per period, so 100 of 250 fit (40% of the axis).
     const { unmount } = render(
       <EChartsView
         height={200}
         pointCount={250}
-        dataResetKey="many"
+        dataResetKey="stacked"
         ariaLabel="Trends chart"
-        option={bars}
+        option={bars('total')}
         fitBarsLabel="periods"
       />,
     );
-    expect(lastOption().series.every((series) => series.stack === 'wordflow-bars')).toBe(true);
-    expect(lastOption().series[0]?.itemStyle?.borderRadius).toBe(0);
+    expect(lastOption().series.every((series) => series.stack === 'total')).toBe(true);
     expect(lastOption().dataZoom[0]).toMatchObject({ maxSpan: 40, start: 0, end: 40 });
     expect(screen.getByText(/Too many periods to show as bars at once/)).toHaveTextContent(
       'shows up to 100 of 250',
     );
     unmount();
 
+    // Side by side: 3 groups × 6 px = 18 px per period, so 22 of 50 fit; never stacked.
+    const { unmount: unmountSide } = render(
+      <EChartsView
+        height={200}
+        pointCount={50}
+        dataResetKey="side"
+        ariaLabel="Trends chart"
+        option={bars()}
+        fitBarsLabel="periods"
+      />,
+    );
+    expect(lastOption().series.some((series) => series.stack)).toBe(false);
+    expect(lastOption().dataZoom[0]?.maxSpan).toBeCloseTo(44);
+    expect(screen.getByText(/Too many periods/)).toHaveTextContent('shows up to 22 of 50');
+    unmountSide();
+
+    // Few periods: no cap, no message.
     render(
       <EChartsView
         height={200}
         pointCount={20}
         dataResetKey="few"
         ariaLabel="Trends chart"
-        option={bars}
+        option={bars()}
         fitBarsLabel="periods"
       />,
     );
-    expect(lastOption().series.some((series) => series.stack)).toBe(false);
     expect(lastOption().dataZoom[0]?.maxSpan).toBe(100);
     expect(screen.queryByText(/Too many periods/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/groups are stacked/)).not.toBeInTheDocument();
     width.mockRestore();
   });
 });

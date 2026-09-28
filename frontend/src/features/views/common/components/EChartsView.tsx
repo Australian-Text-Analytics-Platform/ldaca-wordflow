@@ -73,9 +73,9 @@ interface EChartsViewProps {
    */
   selectionHint?: string;
   /**
-   * Fit bar series to the chart's width (issue 225): stack them when the groups
-   * don't fit side by side, and cap the zoom when even stacked bars would be too
-   * thin. The value names the points in messages, for example "periods".
+   * Cap the zoom when bar series would be too thin for the chart's width
+   * (issues 225, 226). The value names the points in messages, for example
+   * "periods".
    */
   fitBarsLabel?: string;
   className?: string;
@@ -125,24 +125,13 @@ const PLOT_WIDTH_ALLOWANCE = 90;
 
 type SeriesOption = Record<string, unknown>;
 
-const countBarSeries = (option: EChartsCoreOption): number =>
+const barSeries = (option: EChartsCoreOption): SeriesOption[] =>
   Array.isArray(option.series)
-    ? (option.series as SeriesOption[]).filter((series) => series.type === 'bar').length
-    : 0;
-
-/** One bar per point with the groups on top of each other (issue 225). */
-const stackBarSeries = (series: unknown): unknown =>
-  Array.isArray(series)
-    ? (series as SeriesOption[]).map((item) =>
-        item.type === 'bar'
-          ? {
-              ...item,
-              stack: 'wordflow-bars',
-              itemStyle: { ...(item.itemStyle as SeriesOption | undefined), borderRadius: 0 },
-            }
-          : item,
+    ? (option.series as SeriesOption[]).filter(
+        // Helper series (the selection band) are not data bars.
+        (series) => series.type === 'bar' && !String(series.id).startsWith('__wordflow'),
       )
-    : series;
+    : [];
 
 /**
  * Owns the imperative ECharts lifecycle for analysis charts.
@@ -261,19 +250,18 @@ function EChartsInstance({
     };
   }, []);
 
-  // Bars fit the chart's width (issue 225). The axis labels and margins take
-  // about PLOT_WIDTH_ALLOWANCE pixels of the element's width.
-  const barSeriesCount = fitBarsLabel ? countBarSeries(option) : 0;
+  // Bars fit the chart's width (issues 225, 226). The axis labels and margins
+  // take about PLOT_WIDTH_ALLOWANCE pixels of the element's width.
+  const bars = fitBarsLabel ? barSeries(option) : [];
   const barFit =
-    barSeriesCount > 0 && plotWidth > 0
+    bars.length > 0 && plotWidth > 0
       ? fitBars({
           plotWidth: plotWidth - PLOT_WIDTH_ALLOWANCE,
           pointCount,
-          seriesCount: barSeriesCount,
-          visiblePercent: zoomRange.end - zoomRange.start,
+          seriesCount: bars.length,
+          stacked: bars.some((series) => series.stack !== undefined),
         })
       : null;
-  const stackBars = barFit?.stacked ?? false;
   const maxSpan = barFit?.maxSpanPercent ?? 100;
 
   useEffect(() => {
@@ -289,11 +277,9 @@ function EChartsInstance({
       zoomRangeRef.current = currentZoom;
       setZoomRange(currentZoom);
     }
-    const series = stackBars ? stackBarSeries(option.series) : option.series;
     chart.setOption(
       {
         ...option,
-        ...(series === undefined ? {} : { series }),
         aria: {
           enabled: true,
           decal: { show: true },
@@ -352,7 +338,7 @@ function EChartsInstance({
       },
       { notMerge: true, lazyUpdate: false },
     );
-  }, [ariaLabel, option, stackBars, maxSpan]);
+  }, [ariaLabel, option, maxSpan]);
 
   const moveActivePoint = (nextIndex: number) => {
     if (pointCount <= 0) return;
@@ -462,11 +448,6 @@ function EChartsInstance({
           Too many {fitBarsLabel} to show as bars at once, so the chart shows up to{' '}
           {barFit.maxVisiblePoints.toLocaleString()} of {pointCount.toLocaleString()}. Drag the
           slider under the chart to see the others, or choose Line or Area to see them all.
-        </p>
-      ) : stackBars ? (
-        <p className="mt-1 text-label-secondary text-description">
-          The groups are stacked because they don&apos;t fit side by side at this width. Zoom in to
-          see them side by side.
         </p>
       ) : null}
       {/* Clicking and Shift-clicking replace the Select range button (issue 224). */}

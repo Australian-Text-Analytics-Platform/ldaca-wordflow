@@ -5,7 +5,7 @@ import type { XAxisComponentOption, YAxisComponentOption } from 'echarts/types/d
 import { buildEChartsSeriesStates } from '../echartsSeriesStates';
 import { EChartsView } from './EChartsView';
 
-type MultiSeriesChartType = 'line' | 'bar' | 'area';
+type MultiSeriesChartType = 'line' | 'bar' | 'stacked-bar' | 'area';
 
 export interface MultiSeriesChartSeries {
   /** Data key in each row of `data`. */
@@ -93,9 +93,10 @@ export const buildMultiSeriesChartOption = ({
 >): EChartsCoreOption => {
   const hasSelection = !!selection && selection.selectedIndices.size > 0;
   const areaOpacity = hasSelection ? 0.2 : 0.35;
-  const usesSelectionVisual = hasSelection && chartType === 'bar';
+  const isBar = chartType === 'bar' || chartType === 'stacked-bar';
+  const usesSelectionVisual = hasSelection && isBar;
   const xAxisType = xAxis?.type ?? 'category';
-  const shadeSelection = hasSelection && chartType !== 'bar';
+  const shadeSelection = hasSelection && !isBar;
   const bandOnCategories = shadeSelection && xAxisType !== 'value';
   const source =
     usesSelectionVisual || bandOnCategories
@@ -115,12 +116,22 @@ export const buildMultiSeriesChartOption = ({
       name: item.label ?? item.key,
       encode: { x: xKey, y: item.key, tooltip: [item.key] },
     };
-    if (chartType === 'bar') {
+    if (chartType === 'bar' || chartType === 'stacked-bar') {
       return {
         ...common,
         ...buildEChartsSeriesStates({ chartType: 'bar' }),
         type: 'bar' as const,
-        itemStyle: { color: item.color, borderRadius: [6, 6, 0, 0] },
+        // Narrow gaps so bars use the space they have (issue 226); ECharts'
+        // defaults (30% between a period's bars, 20% between periods) left
+        // them thin, most of all when a period holds only one group.
+        barGap: '8%',
+        barCategoryGap: '12%',
+        // Stacked bars are their own chart type (issue 226).
+        ...(chartType === 'stacked-bar' ? { stack: 'wordflow-total' } : {}),
+        itemStyle: {
+          color: item.color,
+          borderRadius: chartType === 'stacked-bar' ? 0 : [6, 6, 0, 0],
+        },
       };
     }
     return {
@@ -188,7 +199,7 @@ export const buildMultiSeriesChartOption = ({
           trigger: 'axis',
           renderMode: 'richText',
           confine: true,
-          axisPointer: { type: chartType === 'bar' ? 'shadow' : 'line' },
+          axisPointer: { type: isBar ? 'shadow' : 'line' },
           formatter: (rawParams: unknown) => {
             const params = Array.isArray(rawParams) ? (rawParams as TooltipParam[]) : [];
             const firstValue = Array.isArray(params[0]?.value) ? undefined : params[0]?.value;
@@ -223,6 +234,17 @@ export const buildMultiSeriesChartOption = ({
         ...xAxis?.axisLabel,
       },
       axisTick: { alignWithLabel: xAxisType === 'category', ...xAxis?.axisTick },
+      // Side-by-side bars: every other period shaded (issue 226). On a
+      // category axis the axis's own split areas fill each period's slot.
+      ...(chartType === 'bar' && xAxisType !== 'value'
+        ? {
+            splitArea: {
+              show: true,
+              interval: 0,
+              areaStyle: { color: ['transparent', PERIOD_STRIPE_COLOR] },
+            },
+          }
+        : {}),
     },
     // A hidden second axis carries the selection band (issue 190).
     yAxis: bandOnCategories ? [builtYAxis, SELECTION_BAND_Y_AXIS] : builtYAxis,
@@ -242,17 +264,61 @@ export const buildMultiSeriesChartOption = ({
           },
         }
       : {}),
-    series: bandOnCategories
-      ? [...chartSeries, categorySelectionBand(xKey)]
-      : shadeSelection
-        ? chartSeries.map((item, index) =>
-            index === 0
-              ? { ...item, markArea: numericSelectionAreas(data, xKey, selection.selectedIndices) }
-              : item,
-          )
-        : chartSeries,
+    series: [
+      ...(bandOnCategories
+        ? [...chartSeries, categorySelectionBand(xKey)]
+        : shadeSelection
+          ? chartSeries.map((item, index) =>
+              index === 0
+                ? {
+                    ...item,
+                    markArea: numericSelectionAreas(data, xKey, selection.selectedIndices),
+                  }
+                : item,
+            )
+          : chartSeries),
+      // Side-by-side bars: a light band behind every other period (issue 226).
+      ...(chartType === 'bar' && xAxisType === 'value' && data.length > 1
+        ? [numericPeriodStripes(data, xKey)]
+        : []),
+    ],
   };
 };
+
+const PERIOD_STRIPE_COLOR = 'color-mix(in srgb, var(--vscode-charts-lines) 14%, transparent)';
+
+/**
+ * Numeric axis ("To scale"): a data-free helper series whose mark areas shade
+ * every other period, reaching halfway to the neighbouring points.
+ */
+const numericPeriodStripes = (data: readonly Record<string, unknown>[], xKey: string) => {
+  const xs = data.map((row) => Number(row[xKey]));
+  const areas: [{ xAxis: number }, { xAxis: number }][] = [];
+  xs.forEach((x, index) => {
+    if (index % 2 === 0 || !Number.isFinite(x)) return;
+    const before = xs[index - 1];
+    const after = xs[index + 1];
+    const start = before !== undefined && Number.isFinite(before) ? (before + x) / 2 : x;
+    const end = after !== undefined && Number.isFinite(after) ? (x + after) / 2 : x;
+    areas.push([{ xAxis: start }, { xAxis: end }]);
+  });
+  return {
+    id: PERIOD_STRIPES_ID,
+    type: 'line' as const,
+    data: [],
+    silent: true,
+    tooltip: { show: false },
+    z: -1,
+    markArea: {
+      silent: true,
+      // No accessibility hatch pattern: the stripes are a background, not data.
+      itemStyle: { color: PERIOD_STRIPE_COLOR, decal: { symbol: 'none' } },
+      data: areas,
+    },
+  };
+};
+
+const PERIOD_STRIPES_ID = '__wordflow_period_stripes__';
 
 /** Soft background behind selected periods (issue 190). */
 const SELECTION_BAND_COLOR = 'rgba(245, 158, 11, 0.16)';

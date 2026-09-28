@@ -5,7 +5,7 @@ import type { ChartExportLegendItem } from '@/lib/chartExport';
 import type { XAxisComponentOption } from 'echarts/types/dist/option';
 
 type SequentialAnalysisDatum = Record<string, unknown>;
-export type ChartTypeOption = 'line' | 'bar' | 'area';
+export type ChartTypeOption = 'line' | 'bar' | 'stacked-bar' | 'area';
 export type SequentialXAxisType = 'category' | 'number';
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
@@ -770,7 +770,7 @@ export function buildSequentialChartModel({
     color: group.color,
     label: group.label,
   }));
-  const legendType = chartType === 'line' ? 'line' : chartType === 'bar' ? 'bar' : 'area';
+  const legendType = chartType === 'line' ? 'line' : chartType === 'area' ? 'area' : 'bar';
   const legend: ChartExportLegendItem[] = groups.map((group) => ({
     label: group.legendText,
     color: group.color,

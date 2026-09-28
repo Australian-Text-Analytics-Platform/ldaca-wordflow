@@ -116,10 +116,13 @@ with the threshold.
 
 <h3 id="help-sequential-chart-type">Chart type</h3>
 
-Three plot modes are available in the **Chart** list:
+Four plot modes are available in the **Chart** list:
 
 - **Line**: best for continuous trends across time, especially when groups overlap or you want to compare rates of change.
-- **Bars**: best for highlighting contrast between groups at each period. Groups sit side by side while every bar can be drawn at a readable width. When they don't fit, each period's groups are stacked into one bar, with a note under the chart; zoom in to see them side by side again. When there are too many periods even for stacked bars, the chart shows only as many periods as fit and says so: drag the slider under the chart to move through the rest, or choose **Line** or **Area** to see every period at once.
+- **Bars**: best for highlighting contrast between groups at each period. Each period's groups sit side by side, and every other period has a light background so its bars read as one group.
+- **Stacked bars**: stacks each period's groups into one bar. Shows the total per period and its make-up, and fits many more periods than side-by-side bars. With **Normalise to 100%** every bar reaches 100%.
+
+When there are too many periods to draw bars at a readable width (side-by-side bars need more room than stacked ones), the chart shows only as many periods as fit and says so: drag the slider under the chart to move through the rest, or choose **Line** or **Area** to see every period at once.
 - **Area**: stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
 
 <h3 id="help-sequential-x-axis">Spacing: Even or To scale</h3>
