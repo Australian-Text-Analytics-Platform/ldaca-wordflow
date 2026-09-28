@@ -42,6 +42,10 @@ export function buildSequentialChartExportMetadata({
       value: `${String(counts.chosenPointCount)}/${String(counts.chosenDocumentCount)}`,
     },
     { label: 'Groups', value: summary.groupBy.length ? summary.groupBy.join(', ') : 'None' },
+    // Normalise to 100% (issue 219) plots shares, not counts.
+    ...(model.normalised
+      ? [{ label: 'Values', value: 'Percentage of all rows in each period' }]
+      : []),
   ];
   return { header, legend: model.legend };
 }

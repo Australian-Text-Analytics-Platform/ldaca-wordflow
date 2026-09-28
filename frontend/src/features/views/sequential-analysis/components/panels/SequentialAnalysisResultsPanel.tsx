@@ -4,6 +4,7 @@ import { Download, Info } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -27,6 +28,7 @@ export interface SequentialAnalysisResultsPanelProps {
   onMinimumGroupCountChange: (value: number) => void;
   onChartTypeChange: (value: ChartTypeOption) => void;
   onXAxisTypeChange: (value: SequentialXAxisType) => void;
+  onNormaliseChange: (value: boolean) => void;
   onDownloadClick: () => void;
   onAddToWorkspace: () => void;
   addToWorkspaceDisabled: boolean;
@@ -53,6 +55,7 @@ export function SequentialAnalysisResultsPanel({
   onMinimumGroupCountChange,
   onChartTypeChange,
   onXAxisTypeChange,
+  onNormaliseChange,
   onDownloadClick,
   onAddToWorkspace,
   addToWorkspaceDisabled,
@@ -142,6 +145,32 @@ export function SequentialAnalysisResultsPanel({
                   <SelectItem value="number">To scale (show gaps)</SelectItem>
                 </SelectContent>
               </Select>
+              {/* Only when two or more groups meet the minimum group count (issue 219). */}
+              {model.canNormalise ? (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <label
+                        htmlFor="trends-normalise"
+                        className="flex shrink-0 items-center gap-2 text-body text-foreground"
+                      >
+                        <Checkbox
+                          id="trends-normalise"
+                          checked={model.normalised}
+                          onCheckedChange={(checked) => {
+                            onNormaliseChange(checked === true);
+                          }}
+                        />
+                        Normalise to 100%
+                      </label>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-80">
+                      Show each group as a percentage of all rows in the same period, so periods
+                      with very different amounts of data can be compared. The counts do not change.
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              ) : null}
               <Button
                 variant="outline"
                 size="icon"

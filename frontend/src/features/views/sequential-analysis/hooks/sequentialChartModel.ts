@@ -13,6 +13,8 @@ type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custo
 export const DEFAULT_MINIMUM_GROUP_COUNT = 10;
 
 const NUMERIC_X_KEY = '__x_numeric__';
+/** Raw count kept beside a normalised value, for the tooltip (issue 219). */
+const COUNT_KEY_PREFIX = '__count__:';
 const CATEGORY_X_KEY = '__period_key__';
 
 const SEQUENTIAL_ANALYSIS_PALETTE = [
@@ -179,6 +181,8 @@ export interface BuildSequentialChartModelInput {
   selectedPeriodIndices: Set<number>;
   /** Series name when nothing is grouped: the Data Block's name (#205 item 21). */
   ungroupedLabel?: string;
+  /** Show each group as a share of its period's rows (issue 219). */
+  normalise?: boolean;
 }
 
 export interface SequentialChartModel {
@@ -194,7 +198,15 @@ export interface SequentialChartModel {
   xAxis: XAxisComponentOption;
   tooltip: {
     labelFormatter: (value: string | number) => string;
+    /** Tooltip text for one group in one period: the count, and its share when normalised. */
+    valueFormatter: (seriesKey: string, row: Record<string, unknown>) => string;
   };
+  /**
+   * Normalise to 100% (issue 219): offered when at least two groups meet the
+   * minimum group count; `normalised` is whether the chart shows percentages.
+   */
+  canNormalise: boolean;
+  normalised: boolean;
   groups: SequentialChartGroup[];
   groupFilter: {
     minimumCount: number;
@@ -488,6 +500,7 @@ export function buildSequentialChartModel({
   excludedGroupIndices,
   selectedPeriodIndices,
   ungroupedLabel,
+  normalise = false,
 }: BuildSequentialChartModelInput): SequentialChartModel {
   const diagnostics: SequentialChartDiagnostic[] = [];
   const summary = buildSummary(parameters, fallbacks, diagnostics);
@@ -611,6 +624,28 @@ export function buildSequentialChartModel({
       if (row[group.id] === undefined) row[group.id] = 0;
     });
   });
+  // Normalise to 100% (issue 219, as v0.8): a period's total adds up every
+  // group that meets the minimum group count, hidden ones included, so hiding
+  // a group never changes a percentage. A period with no rows has none.
+  const canNormalise = filterEligibleGroupBases.length >= 2;
+  const normalised = normalise && canNormalise;
+  if (normalised) {
+    const periodTotals = new Map<string, number>();
+    canonicalRows.forEach((row) => {
+      const displayId = displayIdByExactId.get(row.groupId) ?? row.groupId;
+      if (countFilteredGroupIds.has(displayId)) return;
+      periodTotals.set(row.periodKey, (periodTotals.get(row.periodKey) ?? 0) + row.count);
+    });
+    chartData.forEach((row) => {
+      const total = periodTotals.get(String(row[CATEGORY_X_KEY])) ?? 0;
+      filterEligibleGroupBases.forEach((group) => {
+        const count = row[group.id];
+        if (typeof count !== 'number') return;
+        row[`${COUNT_KEY_PREFIX}${group.id}`] = count;
+        row[group.id] = total > 0 ? (count / total) * 100 : null;
+      });
+    });
+  }
   // Dates read the same in both spacings and in the tooltip, whatever the
   // browser's locale (issue 213). Period labels come from the backend in the
   // time column's own zone; the offset between a label and its instant lets
@@ -664,11 +699,10 @@ export function buildSequentialChartModel({
       selectedGroupTotals.set(displayId, (selectedGroupTotals.get(displayId) ?? 0) + row.count);
     }
   });
-  const visibleTotal = filterEligibleGroupBases.reduce(
-    (total, group) =>
-      group.memberGroupIndices.every((index) => excludedGroupIndices.has(index))
-        ? total
-        : total + (groupTotals.get(group.id) ?? 0),
+  // Shares count hidden groups too, so hiding a group changes no percentage
+  // (issue 219, Chao's decision).
+  const eligibleTotal = filterEligibleGroupBases.reduce(
+    (total, group) => total + (groupTotals.get(group.id) ?? 0),
     0,
   );
   const groupColorById = new Map(
@@ -685,9 +719,8 @@ export function buildSequentialChartModel({
       validSelectedIndices.size > 0
         ? `${String(selectedCount)}/${String(totalCount)}`
         : String(totalCount);
-    const detail = hidden
-      ? `${countText} · Hidden`
-      : `${countText} · ${visibleTotal > 0 ? ((totalCount / visibleTotal) * 100).toFixed(1) : '0.0'}%`;
+    const share = `${eligibleTotal > 0 ? ((totalCount / eligibleTotal) * 100).toFixed(1) : '0.0'}%`;
+    const detail = hidden ? `${countText} · ${share} · Hidden` : `${countText} · ${share}`;
     return {
       ...group,
       color,
@@ -773,7 +806,21 @@ export function buildSequentialChartModel({
         xAxisType === 'number'
           ? (value) => formatSequentialAxisTick(value, summary.columnType, formatInstant)
           : (value) => String(categoryLabelFor(value)),
+      valueFormatter: (seriesKey, row) => {
+        if (!normalised) {
+          const count = row[seriesKey];
+          return typeof count === 'number' ? count.toLocaleString() : '—';
+        }
+        const count = row[`${COUNT_KEY_PREFIX}${seriesKey}`];
+        const share = row[seriesKey];
+        const countText = typeof count === 'number' ? count.toLocaleString() : '—';
+        return typeof share === 'number'
+          ? `${countText} (${share.toFixed(1)}%)`
+          : `${countText} (no rows in this period)`;
+      },
     },
+    canNormalise,
+    normalised,
     groups,
     groupFilter: {
       minimumCount: normalizedMinimumGroupCount,

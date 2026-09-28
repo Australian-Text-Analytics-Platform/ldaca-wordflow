@@ -18,6 +18,8 @@ export interface MultiSeriesChartSeries {
 
 interface MultiSeriesChartTooltipConfig {
   labelFormatter?: (label: string | number) => unknown;
+  /** One series' text for the hovered row; defaults to the raw value. */
+  valueFormatter?: (seriesKey: string, row: Record<string, unknown>) => string;
 }
 
 interface MultiSeriesChartSelectionConfig {
@@ -194,7 +196,11 @@ export const buildMultiSeriesChartOption = ({
             const lines = [displayChartValue(label, '')];
             for (const item of series) {
               const value = tooltipValue(firstValue, item.key);
-              lines.push(`${item.label ?? item.key}: ${displayChartValue(value)}`);
+              const text =
+                tooltip.valueFormatter && firstValue
+                  ? tooltip.valueFormatter(item.key, firstValue)
+                  : displayChartValue(value);
+              lines.push(`${item.label ?? item.key}: ${text}`);
             }
             return lines.join('\n');
           },

@@ -12,6 +12,19 @@ const series = [
 ];
 
 describe('buildMultiSeriesChartOption', () => {
+  it('lets the caller write each tooltip value (issue 219)', () => {
+    const option = buildMultiSeriesChartOption({
+      data,
+      xKey: 'period',
+      series,
+      tooltip: {
+        valueFormatter: (key, row) => `${String(row[key])} rows`,
+      },
+    });
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter;
+    expect(formatter([{ value: data[0] }])).toBe('2024-01\nAlpha: 2 rows\nBeta: 1 rows');
+  });
+
   it('uses an ECharts dataset and explicit dimension encoding', () => {
     const option = buildMultiSeriesChartOption({ data, xKey: 'period', series });
     expect(option.dataset).toMatchObject({

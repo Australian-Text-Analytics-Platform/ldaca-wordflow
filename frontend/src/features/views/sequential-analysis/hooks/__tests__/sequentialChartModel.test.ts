@@ -73,6 +73,7 @@ const build = (
     excludedGroupIndices: overrides.excludedGroupIndices ?? new Set(),
     selectedPeriodIndices: overrides.selectedPeriodIndices ?? new Set(),
     ungroupedLabel: overrides.ungroupedLabel,
+    normalise: overrides.normalise,
   });
 };
 
@@ -488,6 +489,88 @@ describe('buildSequentialChartModel', () => {
     expect(ungrouped.excludedGroupIndices).toEqual([]);
   });
 
+  describe('Normalise to 100% (issue 219)', () => {
+    const row = (period: string, group: string, count: number) => ({
+      time_period: period,
+      period_start: `${period}-01`,
+      period_end: `${period}-28`,
+      group,
+      sequential_count: count,
+    });
+    // A 3+2, B 1+2, C 1 (below a minimum group count of 2); 2024-03 has only C.
+    const results = {
+      data: [
+        row('2024-01', 'A', 3),
+        row('2024-01', 'B', 1),
+        row('2024-02', 'A', 2),
+        row('2024-02', 'B', 2),
+        row('2024-03', 'C', 1),
+      ],
+      analysis_params: { column_type: 'datetime' as const, group_by_columns: ['group'] },
+    };
+    const groupId = (model: ReturnType<typeof build>, label: string) =>
+      model.groups.find((group) => group.label === label)?.id ?? '';
+
+    it('shows each group as a share of the groups that meet the minimum group count', () => {
+      const model = build(results, { minimumGroupCount: 2, normalise: true });
+      const a = groupId(model, 'A');
+      const b = groupId(model, 'B');
+
+      expect(model.canNormalise).toBe(true);
+      expect(model.normalised).toBe(true);
+      expect(model.chartData.map((period) => [period[a], period[b]])).toEqual([
+        [75, 25],
+        [50, 50],
+        // Only C (filtered out) has rows here: no percentage.
+        [null, null],
+      ]);
+      expect(model.tooltip.valueFormatter(a, model.chartData[0] ?? {})).toBe('3 (75.0%)');
+      expect(model.tooltip.valueFormatter(a, model.chartData[2] ?? {})).toBe(
+        '0 (no rows in this period)',
+      );
+    });
+
+    it('keeps every percentage when a group is hidden, in the chart and the legend', () => {
+      const shown = build(results, { minimumGroupCount: 2, normalise: true });
+      const bIndex = shown.groups.find((group) => group.label === 'B')?.memberGroupIndices[0];
+      const hidden = build(results, {
+        minimumGroupCount: 2,
+        normalise: true,
+        excludedGroupIndices: new Set([bIndex ?? -1]),
+      });
+      const a = groupId(hidden, 'A');
+
+      expect(hidden.chartData[0]?.[a]).toBe(75);
+      expect(hidden.series.map((series) => series.label)).toEqual(['A']);
+      expect(shown.groups.map((group) => group.legendText)).toEqual([
+        'A (5 · 62.5%)',
+        'B (3 · 37.5%)',
+      ]);
+      expect(hidden.groups.map((group) => group.legendText)).toEqual([
+        'A (5 · 62.5%)',
+        'B (3 · 37.5% · Hidden)',
+      ]);
+    });
+
+    it('shows counts when off, and offers the toggle only with two groups that meet the minimum', () => {
+      const off = build(results, { minimumGroupCount: 2 });
+      expect(off.normalised).toBe(false);
+      expect(off.chartData[0]?.[groupId(off, 'A')]).toBe(3);
+      expect(off.tooltip.valueFormatter(groupId(off, 'A'), off.chartData[0] ?? {})).toBe('3');
+
+      const oneGroup = build(results, { minimumGroupCount: 5, normalise: true });
+      expect(oneGroup.canNormalise).toBe(false);
+      expect(oneGroup.normalised).toBe(false);
+      expect(oneGroup.chartData[0]?.[groupId(oneGroup, 'A')]).toBe(3);
+
+      const ungrouped = build(
+        { data: [row('2024-01', 'A', 3)], analysis_params: { column_type: 'datetime' } },
+        { normalise: true },
+      );
+      expect(ungrouped.canNormalise).toBe(false);
+    });
+  });
+
   it('derives visibility, selection, and counts from canonical rows', () => {
     const initial = build({
       data: [
@@ -563,8 +646,9 @@ describe('buildSequentialChartModel', () => {
     expect(model.excludedGroupIndices).toEqual([1]);
     expect(model.eligibleDocumentCount).toBe(4);
     expect(model.groups.map((group) => group.legendText)).toEqual([
-      'A (4/6 · 100.0%)',
-      'B (0/3 · Hidden)',
+      // Shares include hidden groups, so hiding B leaves A at 66.7% (issue 219).
+      'A (4/6 · 66.7%)',
+      'B (0/3 · 33.3% · Hidden)',
     ]);
   });
 

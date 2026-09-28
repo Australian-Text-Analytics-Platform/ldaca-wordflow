@@ -81,8 +81,8 @@ capitalisation should be displayed and filtered as one group.
 
 Choose **Run** to start. Settings are locked while it works. After it finishes,
 Run turns on again only when you change a setting that affects the counts.
-Minimum group count, Chart, Spacing, selection, visibility, and Ignore capitals
-only change what is shown, so they do not turn Run on. See
+Minimum group count, Chart, Spacing, Normalise to 100%, selection, visibility, and
+Ignore capitals only change what is shown, so they do not turn Run on. See
 [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-sequential-results">Result panel</h2>
@@ -133,21 +133,34 @@ Dates on the chart and in its tooltip read the same in both spacings, in the tim
 
 **Empty periods.** A period with no rows at all is hidden in Even spacing and leaves a gap on the axis in To scale spacing. Within a period that is shown, a group with no rows counts as zero, so its line dips to zero rather than breaking: "no occurrences" is genuinely zero, not unknown.
 
-The vertical axis shows counts of rows and has no title. When nothing is grouped, the single series is named after the Data Block.
+The vertical axis shows counts of rows and has no title (percentages when **Normalise to 100%** is on). When nothing is grouped, the single series is named after the Data Block.
+
+<h3 id="help-sequential-normalise">Normalise to 100%</h3>
+
+Periods often hold very different amounts of data, for example many more tweets in an election week than in the month before. Select **Normalise to 100%** next to **Spacing** to show each group as a percentage of all rows in the same period instead of as a count. The groups in each period then add up to 100%, so you can compare how the mix of groups changes over time whatever the amount of data. Hover the checkbox for a short reminder.
+
+- The option appears when at least two groups meet the [minimum group count](#help-sequential-minimum-group-count). With one group every period would read 100%.
+- Each period's total counts every group listed in the legend, including hidden groups. Hiding a group therefore does not change the other percentages. Groups below the minimum group count are not counted, so changing that number can change the percentages.
+- A period whose listed groups have no rows at all has no percentage: the line breaks and no bar is drawn.
+- The tooltip shows each group's count with its percentage, for example *412 (37.5%)*.
+- In **Area** charts the stacked groups fill the chart up to 100% when none are hidden. **Bars** stay side by side.
+- The counts themselves do not change: the legend, **Add to Project** and selected periods still use counts of rows. A downloaded chart notes that its values are percentages.
+
+The setting is kept for the tab while the Project is open, like **Chart**, and is off by default.
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the Data Block name, time column, period, and row counts, plus a legend.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the Data Block name, time column, period, and row counts, plus a legend. When **Normalise to 100%** is on, the header also says the values are percentages of all rows in each period.
 
 <h3 id="help-sequential-legend">Legend and group visibility</h3>
 
 The legend below the chart lists groups that meet the minimum group count, with
-their colours, full-result count, and share of the counts among currently
-visible groups, for example *Speeches (40 · 30.0%)*. Hover the information icon
+their colours, full-result count, and share of the counts across every listed
+group, hidden ones included, for example *Speeches (40 · 30.0%)*. Hover the information icon
 at the start of the legend for a reminder of this format. Percentages use one decimal place and do not change when periods
-are selected. When periods are selected, each visible label shows *selected/total*
+are selected or groups are hidden. When periods are selected, each visible label shows *selected/total*
 before the percentage, for example *(12/40 · 30.0%)*. Click any legend item to hide or show that group.
-Hidden groups retain their count detail, show **Hidden**, and use a strikethrough
+Hidden groups retain their count and share, show **Hidden**, and use a strikethrough
 label with reduced opacity.
 
 Use this to focus on a subset of groups. Hidden groups are not plotted and are

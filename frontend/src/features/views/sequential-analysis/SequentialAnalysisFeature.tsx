@@ -121,6 +121,12 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     setChartTypeState(value);
     host.setSetting('sequential.chartType', value);
   };
+  // Kept per tab like the chart type; off by default (issue 219).
+  const [normalise, setNormaliseState] = useState(host.settings['sequential.normalise'] === 'true');
+  const setNormalise = (value: boolean) => {
+    setNormaliseState(value);
+    host.setSetting('sequential.normalise', value ? 'true' : 'false');
+  };
   const chartControls = useSequentialChartControls(tabTaskId);
   const {
     xAxisType,
@@ -362,6 +368,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     excludedGroupIndices,
     selectedPeriodIndices,
     ungroupedLabel: resultNodeInfo?.name,
+    normalise,
   });
   const { summary } = chartModel;
 
@@ -539,6 +546,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             handleChartTypeChange(value);
           }}
           onXAxisTypeChange={setXAxisType}
+          onNormaliseChange={setNormalise}
           onDownloadClick={() => {
             setDownloadDialogOpen(true);
           }}

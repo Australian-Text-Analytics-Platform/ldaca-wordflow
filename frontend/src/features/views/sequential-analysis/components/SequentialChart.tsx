@@ -22,7 +22,7 @@ interface SequentialChartProps {
 
 const CHART_HEIGHT_PX = 400;
 const TRENDS_LEGEND_HELP =
-  'Each entry shows the number of rows in that series and its share of all shown rows, for example (40 · 30.0%). When periods are selected, the count reads selected/total, for example (12/40 · 30.0%). Click an entry to hide or show it.';
+  'Each entry shows the number of rows in that group and its share of the rows in all groups listed here, hidden ones included, for example (40 · 30.0%). Hiding a group does not change the shares. When periods are selected, the count reads selected/total, for example (12/40 · 30.0%). Click an entry to hide or show it.';
 
 /**
  * Renders the chart and interaction controls from a canonical Sequential model.
@@ -88,7 +88,18 @@ export function SequentialChart({
                   height={chartHeight}
                   tooltip={{
                     labelFormatter: model.tooltip.labelFormatter,
+                    valueFormatter: model.tooltip.valueFormatter,
                   }}
+                  yAxis={
+                    model.normalised
+                      ? {
+                          min: 0,
+                          // A stacked area of every group reaches 100%.
+                          ...(model.chartType === 'area' ? { max: 100 } : {}),
+                          axisLabel: { formatter: (value: number) => `${String(value)}%` },
+                        }
+                      : undefined
+                  }
                   selection={{
                     selectedIndices: model.selection.selectedIndices,
                     onSelect: onPeriodClick,
@@ -107,6 +118,12 @@ export function SequentialChart({
           )}
         </ResultFrame>
       )}
+      {model.normalised && !allGroupsFiltered ? (
+        <p className="mt-2 text-label-secondary text-description">
+          Each period adds up to 100% across the groups listed below, hidden ones included, so
+          hiding a group does not change the others. A period with no rows is left blank.
+        </p>
+      ) : null}
       <div className="mt-4">
         <FilterableSeriesControls
           items={model.groups.map((group) => ({
