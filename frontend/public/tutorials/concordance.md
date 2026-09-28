@@ -48,10 +48,11 @@ started with, even if you later change a Data Block's tokeniser preference.
 
 <h5 id="help-concordance-regex-toggle">Regular expressions</h5>
 
-In Text mode, tick **Use regular expression** to search for a pattern instead of the exact text. [Regular expressions](./ui.md#help-ui-regular-expressions) explains what a pattern is, with more examples and a cheat sheet.
+In Text mode, tick **Use regular expression** to search for a pattern instead of the exact text. This lets you find word variants, several terms at once, or more complex patterns. For example, `child\w*` finds any word starting with *child* followed by **zero** or more characters, such as *child*, *children*, and *childhood*. To find all the hashtags in your data, use `#\w+`: a hashtag followed by **one** or more characters. [Regular expressions](./ui.md#help-ui-regular-expressions) explains what a pattern is, with more examples and a cheat sheet.
 
 | Pattern | What it matches |
 |---|---|
+| `child\w*` | Any word starting with *child* followed by zero or more characters |
 | `child(ren)?` | *child* or *children* |
 | `tax\|budget\|welfare` | Any one of the three words |
 | `#\w+` | Any hashtag |
@@ -59,7 +60,9 @@ In Text mode, tick **Use regular expression** to search for a pattern instead of
 
 Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test unfamiliar patterns. **Whole
 word** excludes partial-word matches, and **Case sensitive** keeps letter case
-distinct. Whole word relies on spaces between words, so it does not apply to
+distinct: with it ticked, *Apple* finds *Apple* but not *apple*. You can also
+ask a generative AI tool to write a pattern for you, but carefully review and
+test it before relying on the results. Whole word relies on spaces between words, so it does not apply to
 Japanese, Chinese, Thai, or other text written without them: there it matches
 anywhere, as if it were off.
 

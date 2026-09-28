@@ -2,10 +2,10 @@
 
 <h2 id="info-token-frequency-overview">About Frequency Analysis</h2>
 
-- What is this?
+- **What is this?**
   This tool retrieves each token (~word) in your text / text collection. It creates a word cloud visualisation as well as a frequency list (= a list of each word and the raw/absolute frequency with which it occurs). You can download both to your Downloads folder.
 
-- What do I need to know before using this?
+- **What do I need to know before using this?**
   Your textual data should be consistently encoded (UTF8) and should not contain any xml tags. If necessary, you can use the Data Editor (Clean text, Remove HTML tags or Remove XML tags and markup) to remove any content within angle brackets. Alternatively, use Find & replace with **Use regular expression** ticked: search for the pattern _'<[^>]+>'_ in the ‘document’ text column of your collection and replace it with nothing.
 
 The word cloud currently displays the top 50 tokens by default. Because of known limitations of such visualisations and critiques of how they represent frequency, it is recommended to use the frequency list for analysis rather than relying on the word cloud visualisation.
@@ -16,17 +16,17 @@ The frequency list shows, and its download includes, both the raw (absolute) fre
 
 **Q&A**
 
-- Can I change any of the settings/parameters?
+- **Can I change any of the settings/parameters?**
   Yes. You can change the word cloud so that it displays more or fewer than the top 50 tokens (from 10 up to 100 tokens).
   You can also adjust the frequency list by using stop words: words that will not be included. You can do this manually (by writing your own stop words or by right-clicking a word in the list to add it as a stop word) or by picking a list from the stop words dropdown: a default list for the language detected in the selected column, a Wordflow classic list, or the list from another Frequency or Topic Modelling tab.
   Use the result-level token filter to narrow every cloud, frequency list, and the Keyword Analysis result for two Data Blocks with wildcard patterns. The same filter is applied to result downloads.
   When doing a keywords analysis, you can change the order in which keywords appear by sorting on any column, including **Significance**.
 
-- Where can I read more about this method?
+- **Where can I read more about this method?**
   Token frequency and keywords: see the ATAP text analysis methods page, https://www.atap.edu.au/text-analysis/methods/
 
-- Is there a notebook version?
+- **Is there a notebook version?**
   Yes, there is a legacy notebook for keywords analysis. You can access this here: https://github.com/Australian-Text-Analytics-Platform/keywords-analysis
 
-- Where can I get help?
+- **Where can I get help?**
   Please use the embedded feedback button at the bottom left of the interface to get in touch with the developer team in the Sydney Informatics Hub.
