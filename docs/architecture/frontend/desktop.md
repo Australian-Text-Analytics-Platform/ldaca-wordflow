@@ -150,9 +150,10 @@ other property. The overlay keeps native traffic lights within Wordflow's
 35-pixel React header. Before React renders, the main entry initializes the
 macOS-only plugin with zero corner radius and no tint. A success-only document
 marker makes the HTML, React root, application frame, titlebar, Workspace
-wrapper, and startup or login backdrop transparent. Text and icons directly on
-the glass titlebar use a header-only white foreground contract that is not
-inherited by the application frame or sidebar. The sidebar interior, content
+wrapper, and startup or login backdrop transparent. The titlebar strip alone
+(`app-glass-titlebar`) takes an 88% tint of the theme's titlebar background
+over the glass, so its text and icons keep the theme's titlebar foreground and
+stay readable over any desktop (issue 214). The sidebar interior, content
 cards, tabbed analysis panels, graph, data table, and startup or login card
 remain opaque. Initialization failures leave the marker unset and therefore
 retain the existing solid theme backgrounds. Browser, Windows, Linux, and the

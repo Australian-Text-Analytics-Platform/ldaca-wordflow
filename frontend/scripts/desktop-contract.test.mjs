@@ -192,7 +192,7 @@ describe('desktop configuration contracts', () => {
     expect(desktopFrame).toContain("['--desktop-titlebar-height' as string]: '35px'");
     expect(workspaceShell).toContain('<DesktopNavigationHeader />');
     expect(desktopHeader).toContain('data-tauri-drag-region="deep"');
-    expect(desktopHeader).toContain('app-glass-titlebar-foreground app-titlebar-backplane');
+    expect(desktopHeader).toContain('app-titlebar-backplane app-glass-titlebar');
     expect(desktopHeader).toContain('hasNativeTrafficLights={isMacOSDesktop()}');
     expect(desktopHeader).toContain('data-tauri-drag-region="false"');
     expect(desktopHeader).toContain('h-[22px] w-[38vw] max-w-[600px]');

@@ -15,9 +15,7 @@ describe('DesktopWindowFrame', () => {
       '--desktop-titlebar-height': '35px',
     });
     expect(screen.getByTestId('application-window-frame')).toHaveClass('app-titlebar-backplane');
-    expect(screen.getByTestId('application-window-frame')).not.toHaveClass(
-      'app-glass-titlebar-foreground',
-    );
+    expect(screen.getByTestId('application-window-frame')).not.toHaveClass('app-glass-titlebar');
     expect(screen.getByTestId('application-header-spacer')).toHaveAttribute(
       'data-tauri-drag-region',
       'deep',

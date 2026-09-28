@@ -35,9 +35,15 @@ corner radius and no tint. Only a successful request adds the
 `data-native-glass="active"` document marker.
 Semantic window and title-bar backplanes become transparent under that marker,
 while the sidebar interior, content cards, analysis panels, graph, data table,
-and startup or login card retain their existing opaque theme surfaces. Text and
-icons placed directly on the titlebar glass use a white foreground; opaque
-controls retain their own surface foreground tokens.
+and startup or login card retain their existing opaque theme surfaces.
+
+Amended 2026-09-28 (issue 214): the first version put white text and icons
+directly on the Clear glass titlebar, which became almost invisible over a
+light desktop. The titlebar strip now carries an 88% CSS tint of the theme's
+titlebar background over the glass, and its items use the theme's titlebar
+foreground. The tint is in CSS rather than the plugin's `tintColor` so it
+follows a theme change without reinitialising the native effect. The gutters
+around the cards stay untinted glass.
 
 Initialization failure is fail-opaque: Wordflow logs a warning, leaves the
 marker unset, and retains the browser-equivalent solid backgrounds. Browser,

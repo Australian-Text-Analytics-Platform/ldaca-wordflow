@@ -196,11 +196,12 @@ saved selected directory is restored.
 
 On macOS 26 or later, visually verify the Clear Liquid Glass backplane in light
 and dark Wordflow themes over light, dark, and colorful desktop content.
-The titlebar and gutters around the application cards must show native glass,
-while the sidebar interior, middle content card, tabbed analysis panels, graph,
-data table, and startup or login card remain opaque. Text and icons directly on
-the glass titlebar must use the white glass foreground, while opaque controls
-retain their normal theme foreground. Exercise resize, sidebar collapse,
+The gutters around the application cards must show native glass and the
+titlebar strip a lightly tinted glass, while the sidebar interior, middle
+content card, tabbed analysis panels, graph, data table, and startup or login
+card remain opaque. Titlebar text and icons use the theme's titlebar
+foreground and must stay readable over a white desktop and a dark one, with
+the window active and inactive (issue 214). Exercise resize, sidebar collapse,
 traffic-light controls, titlebar dragging, inactive-window state, reload, and
 fullscreen. On an older supported macOS release, repeat the surface checks
 against the plugin's vibrancy fallback. A forced plugin initialization failure
