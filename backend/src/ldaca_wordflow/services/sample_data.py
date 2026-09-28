@@ -259,7 +259,8 @@ def _publish_download(temporary: Path, destination: Path) -> None:
 
 def _new_download_path(destination: Path) -> Path:
     descriptor, raw_temporary = tempfile.mkstemp(
-        prefix=f".{destination.name}.",
+        # Short names keep Windows paths under 260 characters (issue 232).
+        prefix=".d-",
         suffix=".download",
         dir=destination.parent,
     )

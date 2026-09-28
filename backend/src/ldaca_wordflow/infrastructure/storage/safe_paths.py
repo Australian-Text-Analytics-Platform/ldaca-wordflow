@@ -238,7 +238,8 @@ class SafePathResolver:
         if os.open in os.supports_dir_fd:
             with self._parent_descriptor(checked) as (parent, _name):
                 for _ in range(128):
-                    temporary_name = f".{checked.name}.{secrets.token_hex(16)}.upload"
+                    # Short names keep Windows paths under 260 characters (issue 232).
+                    temporary_name = f".u-{secrets.token_hex(6)}.upload"
                     try:
                         descriptor = os.open(
                             temporary_name,
@@ -256,7 +257,7 @@ class SafePathResolver:
         import tempfile
 
         descriptor, raw_path = tempfile.mkstemp(
-            prefix=f".{checked.name}.", suffix=".upload", dir=checked.parent
+            prefix=".u-", suffix=".upload", dir=checked.parent
         )
         return descriptor, Path(raw_path)
 

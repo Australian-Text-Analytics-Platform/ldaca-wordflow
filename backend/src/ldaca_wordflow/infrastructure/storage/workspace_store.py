@@ -1287,7 +1287,8 @@ def _read_workspace(
             try:
                 if validation_mapping:
                     temporary_validation_plan = absolute_data_path.with_name(
-                        f".{absolute_data_path.name}.validate-{uuid.uuid4().hex}"
+                        # Short names keep Windows paths under 260 characters (issue 232).
+                        f".v-{uuid.uuid4().hex[:12]}.validate"
                     )
                     shutil.copyfile(absolute_data_path, temporary_validation_plan)
                     rewritten = replace_source_paths(

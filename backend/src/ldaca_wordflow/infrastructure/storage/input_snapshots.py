@@ -100,11 +100,8 @@ def _node_snapshot_payload(node: Node, rel_data_path: Path) -> _SnapshotNodeMani
 @contextmanager
 def _snapshot_staging(destination: Path) -> Iterator[Path]:
     staging = Path(
-        tempfile.mkdtemp(
-            prefix=f".{destination.name}.",
-            suffix=".tmp",
-            dir=destination.parent,
-        )
+        # Short names keep Windows paths under 260 characters (issue 232).
+        tempfile.mkdtemp(prefix=".s-", suffix=".tmp", dir=destination.parent)
     )
     try:
         yield staging

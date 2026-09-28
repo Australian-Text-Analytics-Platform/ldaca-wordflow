@@ -66,11 +66,9 @@ def atomic_output_path(target: Path) -> Iterator[Path]:
     """Yield a same-directory temporary path and publish it on clean exit."""
 
     mkdir_durable(target.parent)
-    descriptor, raw_path = tempfile.mkstemp(
-        prefix=f".{target.name}.",
-        suffix=".tmp",
-        dir=target.parent,
-    )
+    # Short names keep Windows paths under 260 characters (issue 232): the
+    # target's own name made each temporary name twice as long as the file.
+    descriptor, raw_path = tempfile.mkstemp(prefix=".t-", suffix=".tmp", dir=target.parent)
     os.close(descriptor)
     temporary = Path(raw_path)
     try:

@@ -557,7 +557,8 @@ class _WorkspaceMutationCommitter:
         next_revision = lease.revision + 1
         lease.workspace.modified_at = datetime.now(UTC)
         staging = workspace_staging_root(self._settings) / (
-            f".snapshot-{lease.workspace.id}-{uuid.uuid4().hex}"
+            # Short names keep Windows paths under 260 characters (issue 232).
+            f".snapshot-{uuid.uuid4().hex[:12]}"
         )
         transient = await self._storage_admission.acquire_transient(
             self._settings.max_workspace_snapshot_bytes
