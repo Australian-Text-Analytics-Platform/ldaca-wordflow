@@ -13,7 +13,7 @@ checks remain part of producing valid release artifacts.
 | --- | --- | --- | --- |
 | macOS Apple Silicon | `macos-15` | Notarized DMG and signed updater archive | `aarch64-apple-darwin` tar.gz |
 | Windows x86-64 | `windows-2022` | MSI and updater signature | `x86_64-pc-windows-msvc` zip |
-| Linux x86-64 | `ubuntu-22.04` | Not currently supported | `x86_64-unknown-linux-gnu` tar.gz |
+| Linux x86-64 | `ubuntu-24.04` (glibc 2.39, matching the current Binder host) | Not currently supported | `x86_64-unknown-linux-gnu` tar.gz |
 
 The reusable [desktop build](../../.github/workflows/desktop-build.yml) and
 [server build](../../.github/workflows/server-build.yml) are build-only workflows.
@@ -114,9 +114,10 @@ local cache remains versioned even though filenames are stable.
   server archives and `server-SHA256SUMS` are present.
 - Verify update/restart from a previous signed desktop version on macOS and Windows.
 - Download and verify the server archive/checksum on each supported platform.
-- On macOS, assess the extracted server executable with
-  `spctl --assess --type execute <binary>` while online, then start it outside
-  the checkout.
+- On macOS, verify the extracted server executable with
+  `codesign -vvvv -R='notarized' --check-notarization <binary>` while online,
+  then start it outside the checkout. `spctl --type execute` assesses apps and
+  can reject a notarized command-line binary as "not an app".
 - Verify the tools repository launcher against the actual Binder site, reporting
   its result separately from local or CI package tests.
 

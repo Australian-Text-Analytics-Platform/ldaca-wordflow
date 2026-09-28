@@ -14,7 +14,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-22.04
+          - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
           - os: macos-15
             target: aarch64-apple-darwin
@@ -63,7 +63,7 @@ jobs:
             --team-id "$APPLE_TEAM_ID" \
             --wait --output-format json > "$report"
           jq -e '.status == "Accepted"' "$report" >/dev/null
-          spctl --assess --verbose=4 --type execute "$package/wordflow-server"
+          codesign -vvvv -R='notarized' --check-notarization "$package/wordflow-server"
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: wordflow-server-${{ matrix.target }}
