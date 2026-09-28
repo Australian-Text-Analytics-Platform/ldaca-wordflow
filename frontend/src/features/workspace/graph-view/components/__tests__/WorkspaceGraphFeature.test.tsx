@@ -225,6 +225,8 @@ describe('WorkspaceGraphFeature', () => {
       selectionOnDrag: false,
       selectionMode: 'partial',
       panOnScroll: true,
+      // The same zoom key as every chart (issue 215); jsdom is not macOS.
+      zoomActivationKeyCode: 'Control',
       onSelectionStart: graphState.handleSelectionStart,
       onSelectionEnd: graphState.handleSelectionEnd,
     });

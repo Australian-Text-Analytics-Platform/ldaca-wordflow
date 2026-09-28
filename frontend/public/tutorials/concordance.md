@@ -165,7 +165,7 @@ sections, because the old ones no longer line up with the new boundaries.
 After Run, click anywhere inside the plot to select the bin nearest the vertical
 axis pointer; Shift-click another bin to extend
 the range. As in Trends, you can also turn on **Select range** and drag across
-the bins, and use the zoom buttons beside it. Selected bins are shaded with a soft band across the chart, as in
+the bins, and use the zoom buttons beside it or hold ⌘ on a Mac (Ctrl elsewhere) while scrolling over the chart. A plain scroll scrolls the page. Selected bins are shaded with a soft band across the chart, as in
 Trends: in Line and Area charts their points become large solid dots while the
 other points stay small hollow circles, and in Bar charts the unselected bars
 are dimmed. **Clear selection** removes the bin filter. Click a legend term to

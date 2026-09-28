@@ -10,6 +10,8 @@ import {
 } from '../TopicModelingFlowChart';
 import type { TopicBubbleModel } from '../topicModelingGraph';
 
+const flowProps = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
+
 vi.mock('@xyflow/react', async (importOriginal) => {
   const original = await importOriginal<typeof XYFlowReact>();
   return {
@@ -19,11 +21,13 @@ vi.mock('@xyflow/react', async (importOriginal) => {
       children,
       nodes,
       nodeTypes,
+      ...rest
     }: {
       children: ReactNode;
       nodes: TopicFlowNode[];
       nodeTypes?: XYFlowReact.NodeTypes;
     }) => {
+      flowProps.current = rest;
       const node = nodes[0];
       const NodeComponent = node ? nodeTypes?.[node.type ?? 'default'] : undefined;
       const nodeProps = node
@@ -206,6 +210,43 @@ describe('TopicModelingFlowChart', () => {
         'disabled:!opacity-40',
       );
     }
+  });
+
+  it('lets the pane scroll and zooms only with the zoom key held (issue 215)', () => {
+    render(
+      <TopicModelingFlowChart
+        bubbles={[bubble]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+      />,
+    );
+
+    // jsdom is not macOS, so the zoom key is Ctrl.
+    expect(flowProps.current).toMatchObject({
+      zoomOnScroll: false,
+      panOnScroll: false,
+      zoomOnPinch: true,
+      zoomActivationKeyCode: 'Control',
+      preventScrolling: false,
+    });
+    fireEvent.keyDown(document, { key: 'Control' });
+    expect(flowProps.current).toMatchObject({ preventScrolling: true });
+    fireEvent.keyUp(document, { key: 'Control' });
+    expect(flowProps.current).toMatchObject({ preventScrolling: false });
   });
 
   it('places a fixed-width vertical control rail in the upper-left corner', () => {

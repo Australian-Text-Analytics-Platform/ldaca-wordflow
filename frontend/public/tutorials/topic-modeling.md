@@ -252,7 +252,7 @@ distinctiveness, while word size reflects occurrences in assigned Topic
 Segments. Because segments do not overlap, source tokens are not counted twice. These are
 not source-document frequencies.
 
-Drag empty graph space to pan and scroll or pinch to zoom. The graph initially
+Drag empty graph space to pan. To zoom, pinch on a trackpad, or hold ⌘ on a Mac (Ctrl elsewhere) while scrolling; a plain scroll scrolls the page, even over the graph. The graph initially
 fits every bubble; use **Fit view** to restore that complete view after moving
 around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the

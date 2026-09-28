@@ -21,6 +21,7 @@ import {
 import { SVGRenderer } from 'echarts/renderers';
 
 import { Button } from '@/components/ui/button';
+import { ECHARTS_WHEEL_ZOOM_MODIFIER, isChartZoomWheel } from '@/lib/chartZoom';
 
 registerEChartsModules([
   LineChart,
@@ -227,6 +228,13 @@ function EChartsInstance({
       }
     };
     chart.on('rendered', refreshClipPaths);
+    // ECharts cancels every wheel over an inside dataZoom, even one it then
+    // ignores, so the pane could not scroll past the chart (issue 215). Only a
+    // wheel with the zoom key held reaches ECharts.
+    const keepPageScroll = (event: WheelEvent) => {
+      if (!isChartZoomWheel(event)) event.stopPropagation();
+    };
+    element.addEventListener('wheel', keepPageScroll, { capture: true });
     chart.on('showtip', handleShowTip as never);
     chart.on('brushselected', handleBrushSelected as never);
     chart.on('datazoom', handleDataZoom as never);
@@ -241,6 +249,7 @@ function EChartsInstance({
     return () => {
       resizeObserver.disconnect();
       chart.off('rendered', refreshClipPaths);
+      element.removeEventListener('wheel', keepPageScroll, { capture: true });
       chart.off('showtip', handleShowTip);
       chart.off('brushselected', handleBrushSelected);
       chart.off('datazoom', handleDataZoom);
@@ -271,9 +280,9 @@ function EChartsInstance({
             start: currentZoom.start,
             end: currentZoom.end,
             filterMode: 'none',
-            // Scrolling the page must not zoom the chart (issue 213); the
-            // slider below and the zoom buttons do the same job.
-            zoomOnMouseWheel: false,
+            // Scrolling the page must not zoom the chart (issue 213); Cmd
+            // (Ctrl elsewhere) + scroll zooms, as in every chart (issue 215).
+            zoomOnMouseWheel: ECHARTS_WHEEL_ZOOM_MODIFIER,
             moveOnMouseMove: false,
             moveOnMouseWheel: false,
           },

@@ -40,6 +40,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
+import { CHART_ZOOM_KEY } from '@/lib/chartZoom';
 import { cn } from '@/lib/utils';
 
 import { useWorkspaceGraph } from '../hooks/useWorkspaceGraph';
@@ -448,6 +449,7 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
         selectionOnDrag={dragMode === 'select'}
         selectionMode={SelectionMode.Partial}
         panOnScroll
+        zoomActivationKeyCode={CHART_ZOOM_KEY}
         connectOnClick={false}
         nodesDraggable
         nodesConnectable={false}

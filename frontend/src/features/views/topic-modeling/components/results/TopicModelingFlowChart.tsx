@@ -9,6 +9,7 @@ import {
   Position,
   ReactFlow,
   ReactFlowProvider,
+  useKeyPress,
   useReactFlow,
   type Viewport,
 } from '@xyflow/react';
@@ -17,6 +18,7 @@ import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { NodeTooltip, NodeTooltipContent, NodeTooltipTrigger } from '@/components/node-tooltip';
 import { ResponsiveWordCloud } from '@/features/views/common/components/ResponsiveWordCloud';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { CHART_ZOOM_KEY } from '@/lib/chartZoom';
 import { cn } from '@/lib/utils';
 import { type TopicCorpusPresentation, TopicSizeComposition } from './TopicSizeComposition';
 import {
@@ -437,6 +439,10 @@ function TopicModelingFlowChartInner({
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
   const [paneSize, setPaneSize] = useState({ width: 1, height: 1 });
   const { fitView, getViewport, zoomIn, zoomOut } = useReactFlow<TopicFlowNode>();
+  // A plain scroll scrolls the pane; the chart takes the wheel only while the
+  // zoom key is held (issue 215). React Flow ignores the zoom key when page
+  // scrolling is allowed, so scroll capture follows the key.
+  const zoomKeyPressed = useKeyPress(CHART_ZOOM_KEY);
   const nodes: TopicFlowNode[] = bubbles.map((bubble) => {
     const diameter = (bubble.radius + 7) * 2;
     return {
@@ -527,10 +533,11 @@ function TopicModelingFlowChartInner({
         deleteKeyCode={null}
         panOnDrag={!lassoMode}
         panOnScroll={false}
-        zoomOnScroll
+        zoomOnScroll={false}
+        zoomActivationKeyCode={CHART_ZOOM_KEY}
         zoomOnPinch
         zoomOnDoubleClick
-        preventScrolling
+        preventScrolling={zoomKeyPressed}
         onNodeClick={(_event, node) => {
           if (!lassoMode && !node.data.bubble.filteredOut) {
             onToggleTopicSelection(node.data.bubble.id);

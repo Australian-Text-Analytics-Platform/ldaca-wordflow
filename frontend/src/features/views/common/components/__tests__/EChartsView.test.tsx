@@ -237,7 +237,31 @@ describe('EChartsView', () => {
     expect(defs.contains(clip)).toBe(true);
   });
 
-  it('does not zoom on the mouse wheel and styles the zoom slider (issue 213)', () => {
+  it('keeps plain wheel events away from ECharts so the pane scrolls (issue 215)', () => {
+    render(
+      <EChartsView
+        height={200}
+        pointCount={3}
+        dataResetKey="result-1"
+        ariaLabel="Trends chart"
+        option={{ series: [] }}
+      />,
+    );
+    const plot = mocks.init.mock.calls[0]?.[0] as unknown as HTMLElement;
+    const surface = document.createElement('div');
+    plot.append(surface);
+    const reached = vi.fn();
+    surface.addEventListener('wheel', reached);
+
+    fireEvent.wheel(surface, { deltaY: 100 });
+    expect(reached).not.toHaveBeenCalled();
+
+    // jsdom is not macOS, so Ctrl is the zoom key.
+    fireEvent.wheel(surface, { deltaY: 100, ctrlKey: true });
+    expect(reached).toHaveBeenCalledTimes(1);
+  });
+
+  it('zooms on the wheel only with Ctrl or Cmd held and styles the zoom slider (issues 213, 215)', () => {
     render(
       <EChartsView
         height={200}
@@ -248,11 +272,12 @@ describe('EChartsView', () => {
       />,
     );
     const option = mocks.chart.setOption.mock.calls.at(-1)?.[0] as {
-      dataZoom: { id: string; zoomOnMouseWheel?: boolean; fillerColor?: string }[];
+      dataZoom: { id: string; zoomOnMouseWheel?: boolean | string; fillerColor?: string }[];
     };
     const inside = option.dataZoom.find((zoom) => zoom.id === 'wordflow-inside-zoom');
     const slider = option.dataZoom.find((zoom) => zoom.id === 'wordflow-slider-zoom');
-    expect(inside?.zoomOnMouseWheel).toBe(false);
+    // jsdom is not macOS, so the modifier is Ctrl; macOS uses 'meta' (Cmd).
+    expect(inside?.zoomOnMouseWheel).toBe('ctrl');
     expect(slider?.fillerColor).toContain('--vscode-focusBorder');
   });
 });
