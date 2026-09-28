@@ -131,8 +131,39 @@ def build_concordance_search_pattern(
     if not whole_word:
         return search_word, regex
 
-    base_pattern = search_word if regex else re.escape(search_word)
-    return rf"\b(?:{base_pattern})\b", True
+    if regex:
+        return rf"\b(?:{search_word})\b", True
+    # Japanese, Chinese, Thai and similar scripts put no spaces between words,
+    # so a word boundary next to them almost never exists and Whole word found
+    # nothing (issue 220). Keep the boundary only at an edge that is not in
+    # such a script; spaced languages behave as before.
+    start = "" if _is_unspaced_script(search_word[:1]) else r"\b"
+    end = "" if _is_unspaced_script(search_word[-1:]) else r"\b"
+    return rf"{start}(?:{re.escape(search_word)}){end}", True
+
+
+# Scripts written without spaces between words: Thai, Lao, Myanmar, Khmer,
+# kana (with the iteration marks and halfwidth katakana) and CJK ideographs.
+# Korean separates words with spaces, so Hangul keeps its word boundary.
+_UNSPACED_SCRIPT_RE = re.compile(
+    "["
+    "\u0e00-\u0eff"  # Thai, Lao
+    "\u1000-\u109f"  # Myanmar
+    "\u1780-\u17ff"  # Khmer
+    "\u3005-\u3007"  # 々 〆 〇
+    "\u3040-\u30ff"  # Hiragana, Katakana
+    "\u31f0-\u31ff"  # Katakana phonetic extensions
+    "\u3400-\u4dbf"  # CJK Extension A
+    "\u4e00-\u9fff"  # CJK Unified Ideographs
+    "\uf900-\ufaff"  # CJK Compatibility Ideographs
+    "\uff66-\uff9f"  # Halfwidth Katakana
+    "\U00020000-\U0003ffff"  # CJK Extensions B and later
+    "]"
+)
+
+
+def _is_unspaced_script(character: str) -> bool:
+    return bool(character) and _UNSPACED_SCRIPT_RE.match(character) is not None
 
 
 def _project_concordance_hit(

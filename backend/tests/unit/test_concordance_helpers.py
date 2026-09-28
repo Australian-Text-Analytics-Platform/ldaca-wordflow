@@ -33,6 +33,32 @@ def test_build_concordance_search_pattern_wraps_whole_word_literals():
     assert use_regex is True
 
 
+@pytest.mark.parametrize(
+    ("term", "text", "expected"),
+    [
+        # Japanese and Chinese have no spaces, so Whole word must still match (issue 220).
+        ("いただ", "発表させていただきます。", True),
+        ("頂く", "ご確認して頂くようお願いします。", True),
+        ("经济", "中国经济发展很快", True),
+        # Spaced languages keep whole-word behaviour.
+        ("cat", "the cat sat", True),
+        ("cat", "concatenate", False),
+        # A mixed term keeps the boundary on its Latin edge only, so it needs a
+        # space or punctuation there (Rust regex has no lookbehind to allow kana).
+        ("AI技術", "「AI技術」を紹介", True),
+        ("AI技術", "BRAI技術", False),
+        ("AI技術", "最新のAI技術", False),
+        # Korean separates words with spaces, so its boundary stays.
+        ("학교", "학교에", False),
+    ],
+)
+def test_whole_word_skips_boundaries_next_to_unspaced_scripts(term, text, expected):
+    pattern, use_regex = build_concordance_search_pattern(term, regex=False, whole_word=True)
+
+    assert use_regex is True
+    assert pl.Series([text]).str.contains(pattern).item() is expected
+
+
 def test_compute_concordance_page_groups_matches_by_source_row():
     request = {
         "search_word": "alpha",
