@@ -50,7 +50,7 @@ vi.mock('@/api', async (importOriginal) => {
 });
 
 vi.mock('sonner', () => ({
-  toast: { warning: mockToastWarning },
+  toast: { warning: mockToastWarning, error: vi.fn(), success: vi.fn() },
 }));
 
 vi.mock('@/features/auth/hooks/useAuth', () => ({
