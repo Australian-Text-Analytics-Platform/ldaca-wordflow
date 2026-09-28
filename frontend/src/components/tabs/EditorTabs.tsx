@@ -111,6 +111,9 @@ function edgeMask(hidden: { left: boolean; right: boolean }): React.CSSPropertie
 }
 
 /** Scrolls most of a strip's width, keeping one tab of context. */
+/** The strip's `px-[8px]` side padding, around the tab row. */
+const STRIP_SIDE_PADDING = 8;
+
 function scrollStep(element: HTMLElement | null): number {
   return element ? Math.max(element.clientWidth * 0.8, TAB_MIN_WIDTH) : 0;
 }
@@ -206,6 +209,25 @@ export function EditorTabs({
   const widths = computeContentTabWidths(orderedNatural);
   const positions = computeTabPositions(widths);
   const totalWidth = computeTotalWidth(widths);
+
+  // Keep the active tab in view (issue 218): a remount starts at the left end,
+  // and the active tab is usually the newest, on the right. Runs when the
+  // active tab, its slot or the strip width changes, never on a manual scroll.
+  const activeIndex = activeTabId ? orderIds.indexOf(activeTabId) : -1;
+  const activeLeft = activeIndex >= 0 ? (positions[activeIndex] ?? null) : null;
+  const activeWidth = activeIndex >= 0 ? (widths[activeIndex] ?? 0) : 0;
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || activeLeft === null || dragTabId) return;
+    const start = activeLeft;
+    const end = activeLeft + activeWidth + 2 * STRIP_SIDE_PADDING;
+    if (start < element.scrollLeft) {
+      element.scrollLeft = start;
+    } else if (end > element.scrollLeft + element.clientWidth) {
+      element.scrollLeft = end - element.clientWidth;
+    }
+    updateHiddenEdges();
+  }, [activeTabId, activeLeft, activeWidth, containerWidth, dragTabId]);
 
   const titlesKey = tabs.map((tab) => `${tab.id}:${tab.title}`).join('|');
   const widthsKey = widths.join(',');

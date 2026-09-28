@@ -266,4 +266,22 @@ describe('EditorTabs', () => {
     width.mockRestore();
     client.mockRestore();
   });
+
+  it('scrolls to show the active tab when it mounts and when it changes (issue 218)', () => {
+    // jsdom has no layout: a 100px strip, narrower than the three tabs.
+    const client = vi
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockImplementation(function (this: HTMLElement) {
+        return this.getAttribute('role') === 'tablist' ? 100 : 0;
+      });
+    const props = { tabs, onActivate: vi.fn(), onClose: vi.fn() };
+    const { rerender } = render(<EditorTabs {...props} activeTabId="tab-3" />);
+    const strip = screen.getByRole('tablist');
+    // The last tab is active, so the strip starts scrolled towards the right end.
+    expect(strip.scrollLeft).toBeGreaterThan(0);
+
+    rerender(<EditorTabs {...props} activeTabId="tab-1" />);
+    expect(strip.scrollLeft).toBe(0);
+    client.mockRestore();
+  });
 });
