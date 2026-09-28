@@ -318,8 +318,10 @@ export function DataEditorToolPanel() {
       await applyEdit(nodeId, request);
       toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`);
       // Stay open on the same column for the next edit (issue 217); the fresh
-      // form stops the applied edit from being previewed a second time.
-      resetForm(column);
+      // form stops the applied edit from being previewed a second time. Clean
+      // text keeps the operation just applied (issue 230): cleaning twice
+      // changes nothing.
+      resetForm(column, tool === 'clean_text' ? operation : undefined);
     } catch (error) {
       toastError(error, 'The edit could not be applied.');
       setApplying(false);

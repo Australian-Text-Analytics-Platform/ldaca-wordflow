@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useDataEditorToolStore } from '../../dataEditorToolStore';
 import { DataEditorToolPanel } from '../DataEditorToolPanel';
@@ -27,6 +27,13 @@ const open = (
 };
 
 describe('DataEditorToolPanel (issue 143)', () => {
+  // Radix Select needs pointer capture, which jsdom lacks.
+  beforeAll(() => {
+    Element.prototype.hasPointerCapture = vi.fn(() => false);
+    Element.prototype.setPointerCapture = vi.fn();
+    Element.prototype.releasePointerCapture = vi.fn();
+  });
+
   beforeEach(() => {
     mocks.applyEdit.mockReset().mockResolvedValue({});
     act(() => {
@@ -114,11 +121,43 @@ describe('DataEditorToolPanel (issue 143)', () => {
     expect(useDataEditorToolStore.getState()).toMatchObject({
       tool: 'clean_text',
       initialColumn: 'text',
+      initialOperation: 'remove_digits',
       dirty: false,
     });
 
     await user.click(screen.getByRole('button', { name: 'Close' }));
     expect(useDataEditorToolStore.getState().tool).toBeNull();
+  });
+
+  it('keeps the Clean text operation just applied rather than the starting one (issue 230)', async () => {
+    const user = userEvent.setup();
+    act(() => {
+      useDataEditorToolStore.getState().open('clean_text', 'node-1', {
+        nodeName: 'speeches',
+        columns: ['id', 'text', 'party'],
+        column: 'text',
+        operation: 'title_case',
+      });
+    });
+    function KeyedPanel() {
+      const tool = useDataEditorToolStore((state) => state.tool);
+      const formKey = useDataEditorToolStore((state) => state.formKey);
+      return tool ? <DataEditorToolPanel key={`${tool}-${String(formKey)}`} /> : null;
+    }
+    render(<KeyedPanel />, { wrapper: TooltipProvider });
+
+    await user.click(screen.getByRole('combobox', { name: 'Cleaning' }));
+    await user.click(screen.getByRole('option', { name: 'lowercase' }));
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(mocks.applyEdit).toHaveBeenCalledWith(
+      'node-1',
+      expect.objectContaining({ operation: 'lowercase' }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Cleaning' })).toHaveTextContent('lowercase');
+    });
+    expect(useDataEditorToolStore.getState().dirty).toBe(false);
   });
 
   it('marks the tool unfinished once the user edits it and waits for a complete form', async () => {

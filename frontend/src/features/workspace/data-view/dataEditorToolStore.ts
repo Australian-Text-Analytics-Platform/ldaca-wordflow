@@ -71,8 +71,12 @@ interface DataEditorToolState {
     },
   ) => void;
   close: () => void;
-  /** Starts a fresh form on `column`, keeping the tool open (issue 217). */
-  resetForm: (column: string) => void;
+  /**
+   * Starts a fresh form on `column`, keeping the tool open (issue 217). A given
+   * `operation` becomes the Clean text starting operation, so the list keeps
+   * the one just applied (issue 230).
+   */
+  resetForm: (column: string, operation?: string) => void;
   /** Follows the Data Block's columns while the tool stays open (issue 217). */
   setColumns: (columns: string[]) => void;
   setDraft: (
@@ -120,10 +124,11 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
   close: () => {
     set(CLOSED);
   },
-  resetForm: (column) => {
+  resetForm: (column, operation) => {
     set((state) => ({
       formKey: state.formKey + 1,
       initialColumn: column || null,
+      ...(operation === undefined ? {} : { initialOperation: operation }),
       request: null,
       highlightColumns: [],
       scrollAnchor: null,
