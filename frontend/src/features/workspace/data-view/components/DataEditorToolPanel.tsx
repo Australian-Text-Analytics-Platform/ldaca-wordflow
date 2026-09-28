@@ -214,6 +214,7 @@ export function DataEditorToolPanel() {
   const previewSample = useDataEditorToolStore((state) => state.previewSample);
   const setDraft = useDataEditorToolStore((state) => state.setDraft);
   const close = useDataEditorToolStore((state) => state.close);
+  const resetForm = useDataEditorToolStore((state) => state.resetForm);
   const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
   const { applyEdit } = useWorkspaceActions();
 
@@ -316,10 +317,11 @@ export function DataEditorToolPanel() {
     try {
       await applyEdit(nodeId, request);
       toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`);
-      close();
+      // Stay open on the same column for the next edit (issue 217); the fresh
+      // form stops the applied edit from being previewed a second time.
+      resetForm(column);
     } catch (error) {
       toastError(error, 'The edit could not be applied.');
-    } finally {
       setApplying(false);
     }
   };
@@ -651,8 +653,21 @@ export function DataEditorToolPanel() {
         <p role="status" className="min-w-0 flex-1 text-label-secondary text-description">
           {status}
         </p>
-        <Button type="button" variant="outline" size="sm" onClick={close} disabled={applying}>
+        {/* Cancel discards unapplied settings and keeps the tool open; Close
+            sits here so the pointer need not travel to the header (issue 217). */}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            resetForm(column);
+          }}
+          disabled={applying || !touched}
+        >
           Cancel
+        </Button>
+        <Button type="button" variant="outline" size="sm" onClick={close} disabled={applying}>
+          Close
         </Button>
         <Button
           type="button"

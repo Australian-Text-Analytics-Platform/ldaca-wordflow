@@ -34,6 +34,7 @@ vi.mock('sonner', () => ({
   toast: { warning: toastWarningMock, error: vi.fn(), success: vi.fn() },
 }));
 
+import { useDataEditorToolStore } from '../../dataEditorToolStore';
 import { useWorkspaceDataTable } from '../useWorkspaceDataTable';
 
 const activateNode = vi.fn();
@@ -168,6 +169,31 @@ describe('useWorkspaceDataTable', () => {
             ]),
         ),
     ).toBe(true);
+  });
+
+  it("keeps an open tool's columns in step with the Data Block after Apply (issue 217)", async () => {
+    act(() => {
+      useDataEditorToolStore.getState().open('clean_text', 'node-b', {
+        nodeName: 'B',
+        columns: ['text'],
+        column: 'text',
+      });
+    });
+    queryWorkspaceSqlTableMock.mockResolvedValue(
+      makeArrowPage([
+        { name: 'text', field: new Field('text', new Utf8()) },
+        { name: 'text cleaned', field: new Field('text cleaned', new Utf8()) },
+      ]),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    renderHook(() => useWorkspaceDataTable(), { wrapper: createWrapper(queryClient) });
+
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().columns).toEqual(['text', 'text cleaned']);
+    });
+    act(() => {
+      useDataEditorToolStore.getState().close();
+    });
   });
 
   it('projects a raw Project SQL page already cached by Annotation', () => {

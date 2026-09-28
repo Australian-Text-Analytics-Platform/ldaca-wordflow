@@ -57,9 +57,68 @@ describe('DataEditorToolPanel (issue 143)', () => {
       kind: 'duplicate_column',
       column: 'text',
     });
+    // The tool stays open on the same column for the next edit (issue 217).
     await waitFor(() => {
-      expect(useDataEditorToolStore.getState().tool).toBeNull();
+      expect(useDataEditorToolStore.getState().initialColumn).toBe('text');
     });
+    expect(useDataEditorToolStore.getState().tool).toBe('duplicate');
+    expect(useDataEditorToolStore.getState().dirty).toBe(false);
+  });
+
+  it('stays open after Apply on the same column; Cancel starts over and Close closes (issue 217)', async () => {
+    const user = userEvent.setup();
+    act(() => {
+      useDataEditorToolStore.getState().open('clean_text', 'node-1', {
+        nodeName: 'speeches',
+        columns: ['id', 'text', 'party'],
+        column: 'text',
+        operation: 'remove_digits',
+      });
+    });
+    // Mounted like WorkspaceView: a new form key remounts a fresh form.
+    function KeyedPanel() {
+      const tool = useDataEditorToolStore((state) => state.tool);
+      const formKey = useDataEditorToolStore((state) => state.formKey);
+      return tool ? <DataEditorToolPanel key={`${tool}-${String(formKey)}`} /> : null;
+    }
+    render(<KeyedPanel />, { wrapper: TooltipProvider });
+
+    await user.click(screen.getByLabelText('A new column, right of it'));
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toMatchObject({
+        output_column: 'text cleaned',
+      });
+    });
+    await user.click(screen.getByRole('button', { name: 'Cancel' }));
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).toEqual({
+        kind: 'clean_text',
+        column: 'text',
+        operation: 'remove_digits',
+        output_column: null,
+      });
+    });
+    expect(useDataEditorToolStore.getState().tool).toBe('clean_text');
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Apply' }));
+    expect(mocks.applyEdit).toHaveBeenCalledWith('node-1', {
+      kind: 'clean_text',
+      column: 'text',
+      operation: 'remove_digits',
+      output_column: null,
+    });
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled();
+    });
+    expect(useDataEditorToolStore.getState()).toMatchObject({
+      tool: 'clean_text',
+      initialColumn: 'text',
+      dirty: false,
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(useDataEditorToolStore.getState().tool).toBeNull();
   });
 
   it('marks the tool unfinished once the user edits it and waits for a complete form', async () => {

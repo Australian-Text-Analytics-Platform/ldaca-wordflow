@@ -139,6 +139,12 @@ const resolveNodeDisplayLabel = (
  * requests and their query, then adapt tabs, request controls, and mutations
  * into table props.
  */
+/** Columns a Data Editor tool can use: topic coverage can be copied but not read as text (issue 200). */
+const toolColumns = (tool: DataEditorTool, nodeData: NodeDataResponse): string[] =>
+  tool === 'duplicate'
+    ? nodeData.columns
+    : nodeData.columns.filter((column) => isSupportedColumnField(nodeData.columnFields[column]));
+
 export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   const { currentWorkspaceId } = useWorkspaceData();
   const { activeNodeId, selectedNode, selectedNodes, selectedNodeIds } = useWorkspaceSelection();
@@ -373,6 +379,21 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
         }
       : nodeData;
 
+  // The tool stays open after Apply (issue 217), so its column choices
+  // follow the Data Block's committed columns, never the preview's.
+  const setToolColumns = toolState.setColumns;
+  const openToolKind = toolState.tool;
+  const toolOnActiveBlock = openToolKind !== null && toolState.nodeId === activeNodeId;
+  const committedColumns =
+    toolOnActiveBlock && nodeDataQuery.data && !nodeDataQuery.isPlaceholderData
+      ? toolColumns(openToolKind, nodeData)
+      : null;
+  const committedColumnsKey = committedColumns ? JSON.stringify(committedColumns) : '';
+  useEffect(() => {
+    if (committedColumns) setToolColumns(committedColumns);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures the columns
+  }, [committedColumnsKey, setToolColumns]);
+
   // Switching blocks: close an untouched tool, or ask before discarding.
   const toolNodeId = toolState.tool ? toolState.nodeId : null;
   const switchedAway = toolNodeId !== null && activeNodeId !== toolNodeId;
@@ -424,13 +445,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       ? (tool, options = {}) => {
           toolState.open(tool, selectedNode.id, {
             nodeName: header.nodeLabel,
-            // Topic coverage can be duplicated but not read as text (issue 200).
-            columns:
-              tool === 'duplicate'
-                ? nodeData.columns
-                : nodeData.columns.filter((column) =>
-                    isSupportedColumnField(nodeData.columnFields[column]),
-                  ),
+            columns: toolColumns(tool, nodeData),
             column: options.column ?? null,
             operation: options.operation ?? null,
           });

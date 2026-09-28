@@ -55,6 +55,11 @@ interface DataEditorToolState {
   dirty: boolean;
   /** The Project Graph can be shown again without closing the tool. */
   graphVisible: boolean;
+  /**
+   * Remounts the tool form: a new tool, or a fresh form after Apply or Cancel
+   * (issue 217), which keeps the tool open on the same column.
+   */
+  formKey: number;
   open: (
     tool: DataEditorTool,
     nodeId: string,
@@ -66,6 +71,10 @@ interface DataEditorToolState {
     },
   ) => void;
   close: () => void;
+  /** Starts a fresh form on `column`, keeping the tool open (issue 217). */
+  resetForm: (column: string) => void;
+  /** Follows the Data Block's columns while the tool stays open (issue 217). */
+  setColumns: (columns: string[]) => void;
   setDraft: (
     request: DataEditorEdit | null,
     highlightColumns: string[],
@@ -95,19 +104,41 @@ const CLOSED = {
 
 export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
   ...CLOSED,
+  formKey: 0,
   open: (tool, nodeId, options) => {
-    set({
+    set((state) => ({
       ...CLOSED,
+      formKey: state.formKey + 1,
       tool,
       nodeId,
       nodeName: options.nodeName,
       columns: options.columns,
       initialColumn: options.column ?? null,
       initialOperation: options.operation ?? null,
-    });
+    }));
   },
   close: () => {
     set(CLOSED);
+  },
+  resetForm: (column) => {
+    set((state) => ({
+      formKey: state.formKey + 1,
+      initialColumn: column || null,
+      request: null,
+      highlightColumns: [],
+      scrollAnchor: null,
+      changedRows: null,
+      previewSample: undefined,
+      dirty: false,
+    }));
+  },
+  setColumns: (columns) => {
+    set((state) =>
+      state.columns.length === columns.length &&
+      state.columns.every((name, index) => name === columns[index])
+        ? state
+        : { columns },
+    );
   },
   setDraft: (request, highlightColumns, dirty, scrollAnchor = null) => {
     set({

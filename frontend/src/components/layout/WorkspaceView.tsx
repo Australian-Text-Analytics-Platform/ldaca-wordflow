@@ -33,6 +33,7 @@ function WorkspaceView({
   const topRef = useRef<HTMLDivElement | null>(null);
   // An open Data Editor tool takes the Project Graph's place (issue 143).
   const tool = useDataEditorToolStore((state) => state.tool);
+  const formKey = useDataEditorToolStore((state) => state.formKey);
   const graphVisible = useDataEditorToolStore((state) => state.graphVisible);
   const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
   const showingTool = tool !== null && !graphVisible;
@@ -79,7 +80,7 @@ function WorkspaceView({
       >
         {tool ? (
           <div className={showingTool ? 'flex-1 min-h-0' : 'hidden'}>
-            <DataEditorToolPanel key={tool} />
+            <DataEditorToolPanel key={`${tool}-${String(formKey)}`} />
           </div>
         ) : null}
         <div className={showingTool ? 'hidden' : 'contents'}>
