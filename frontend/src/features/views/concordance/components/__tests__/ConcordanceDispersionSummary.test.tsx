@@ -6,7 +6,7 @@ import { ConcordanceDispersionSummary } from '../ConcordanceDispersionSummary';
 interface CapturedChart {
   option: Record<string, unknown>;
   onSelect?: (index: number, shiftHeld: boolean) => void;
-  onSelectRange?: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
+  selectionHint?: string;
 }
 
 const { charts } = vi.hoisted(() => ({ charts: [] as CapturedChart[] }));
@@ -144,7 +144,6 @@ describe('ConcordanceDispersionSummary', () => {
         selection={{
           selectedIndices: new Set([1]),
           onSelect: vi.fn(),
-          onSelectRange: vi.fn(),
           onClear: vi.fn(),
         }}
       />,
@@ -257,7 +256,6 @@ describe('ConcordanceDispersionSummary', () => {
         selection={{
           selectedIndices: new Set([0]),
           onSelect: vi.fn(),
-          onSelectRange: vi.fn(),
           onClear,
         }}
         excludedMatchedTexts={new Set(['alpha'])}
@@ -347,9 +345,8 @@ describe('ConcordanceDispersionSummary', () => {
     });
   });
 
-  it('forwards point and brush-range selection callbacks to the ECharts boundary', () => {
+  it('forwards click selection and the Shift-click hint to the ECharts boundary (issue 224)', () => {
     const onSelect = vi.fn();
-    const onSelectRange = vi.fn();
     render(
       <ConcordanceDispersionSummary
         rows={baseRows}
@@ -358,13 +355,12 @@ describe('ConcordanceDispersionSummary', () => {
         splitBySource={false}
         dataBlockLabel="Corpus"
         searchWord="alpha"
-        selection={{ selectedIndices: new Set(), onSelect, onSelectRange, onClear: vi.fn() }}
+        selection={{ selectedIndices: new Set(), onSelect, onClear: vi.fn() }}
       />,
     );
 
     charts.at(-1)?.onSelect?.(3, true);
-    charts.at(-1)?.onSelectRange?.(1, 4, false);
     expect(onSelect).toHaveBeenCalledWith(3, true);
-    expect(onSelectRange).toHaveBeenCalledWith(1, 4, false);
+    expect(charts.at(-1)?.selectionHint).toMatch(/Shift-click another section/);
   });
 });

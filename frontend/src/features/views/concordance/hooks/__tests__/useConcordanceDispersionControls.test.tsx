@@ -101,20 +101,4 @@ describe('useConcordanceDispersionControls', () => {
 
     expect(Array.from(result.current.selectedBinIndices['node-a'] ?? [])).toEqual([10]);
   });
-
-  it('replaces the active selection with a dragged bin range and supports shift extension', () => {
-    const { result } = renderHook(() => useConcordanceDispersionControls());
-
-    act(() => {
-      result.current.handleBinRangeSelect('node-a', 4, 2, false);
-    });
-
-    expect(Array.from(result.current.selectedBinIndices['node-a'] ?? [])).toEqual([2, 3, 4]);
-
-    act(() => {
-      result.current.handleBinRangeSelect('node-a', 7, 8, true);
-    });
-
-    expect(Array.from(result.current.selectedBinIndices['node-a'] ?? [])).toEqual([2, 3, 4, 7, 8]);
-  });
 });

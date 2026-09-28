@@ -1,14 +1,12 @@
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
-import { MousePointer2, RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
+import { RotateCcw, ZoomIn, ZoomOut } from 'lucide-react';
 import { BarChart, LineChart } from 'echarts/charts';
 import {
   AriaComponent,
-  BrushComponent,
   DataZoomComponent,
   DatasetComponent,
   GridComponent,
   MarkAreaComponent,
-  ToolboxComponent,
   TooltipComponent,
   VisualMapComponent,
 } from 'echarts/components';
@@ -27,13 +25,11 @@ registerEChartsModules([
   LineChart,
   BarChart,
   AriaComponent,
-  BrushComponent,
   DataZoomComponent,
   DatasetComponent,
   GridComponent,
   // Shades selected periods on numeric Trends axes (issue 190).
   MarkAreaComponent,
-  ToolboxComponent,
   TooltipComponent,
   VisualMapComponent,
   SVGRenderer,
@@ -54,12 +50,6 @@ interface EChartsPointerEvent {
   event?: { shiftKey?: boolean };
 }
 
-interface EChartsBrushSelectedEvent {
-  batch?: {
-    selected?: { dataIndex?: number[] }[];
-  }[];
-}
-
 interface EChartsDataZoomEvent {
   start?: number;
   end?: number;
@@ -74,8 +64,13 @@ interface EChartsViewProps {
   ariaLabel: string;
   selectedIndices?: ReadonlySet<number>;
   onSelect?: (index: number, shiftHeld: boolean) => void;
-  onSelectRange?: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
   getPointSummary?: (index: number) => string;
+  /**
+   * Reminder shown under the chart when points can be selected, for example
+   * "Click a period to select it; Shift-click another to select the periods
+   * between" (issue 224).
+   */
+  selectionHint?: string;
   className?: string;
   testId?: string;
   toolbarStart?: ReactNode;
@@ -126,8 +121,8 @@ function EChartsInstance({
   ariaLabel,
   selectedIndices,
   onSelect,
-  onSelectRange,
   getPointSummary,
+  selectionHint,
   className,
   testId,
   toolbarStart,
@@ -135,25 +130,17 @@ function EChartsInstance({
   const plotRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<EChartsType | null>(null);
   const selectRef = useRef(onSelect);
-  const selectRangeRef = useRef(onSelectRange);
   const summaryRef = useRef(getPointSummary);
-  const selectionModeRef = useRef<'point' | 'range'>('point');
-  const shiftHeldRef = useRef(false);
   const nearestPointIndexRef = useRef<number | null>(null);
-  const suppressBrushEventRef = useRef(false);
   const zoomRangeRef = useRef<EChartsZoomRange>(FULL_ZOOM);
-  const [selectionMode, setSelectionMode] = useState<'point' | 'range'>('point');
   const [activeIndex, setActiveIndex] = useState(0);
   const [zoomRange, setZoomRange] = useState<EChartsZoomRange>(FULL_ZOOM);
   const [liveText, setLiveText] = useState('');
-  const rangeSelectionEnabled = onSelectRange !== undefined;
 
   useEffect(() => {
     selectRef.current = onSelect;
-    selectRangeRef.current = onSelectRange;
     summaryRef.current = getPointSummary;
-    selectionModeRef.current = selectionMode;
-  }, [getPointSummary, onSelect, onSelectRange, selectionMode]);
+  }, [getPointSummary, onSelect]);
 
   useEffect(() => {
     const element = plotRef.current;
@@ -166,7 +153,7 @@ function EChartsInstance({
       if (typeof event.dataIndex === 'number') nearestPointIndexRef.current = event.dataIndex;
     };
     const handlePlotClick = (event: EChartsPointerEvent) => {
-      if (selectionModeRef.current !== 'point' || !selectRef.current) return;
+      if (!selectRef.current) return;
       if (typeof event.offsetX !== 'number' || typeof event.offsetY !== 'number') return;
       const pixel: [number, number] = [event.offsetX, event.offsetY];
       if (!chart.containPixel({ gridIndex: 0 }, pixel)) return;
@@ -181,35 +168,12 @@ function EChartsInstance({
       setLiveText(summaryRef.current?.(index) ?? `Point ${String(index + 1)}`);
       selectRef.current(index, !!event.event?.shiftKey);
     };
-    const handleBrushSelected = (event: EChartsBrushSelectedEvent) => {
-      if (suppressBrushEventRef.current || selectionModeRef.current !== 'range') return;
-      const selected = new Set<number>();
-      for (const batch of event.batch ?? []) {
-        for (const series of batch.selected ?? []) {
-          for (const index of series.dataIndex ?? []) selected.add(index);
-        }
-      }
-      if (selected.size === 0) return;
-      const indices = Array.from(selected).sort((left, right) => left - right);
-      const first = indices[0];
-      const last = indices.at(-1);
-      if (first == null || last == null) return;
-      selectRangeRef.current?.(first, last, shiftHeldRef.current);
-      setActiveIndex(last);
-      setLiveText(`Selected points ${String(first + 1)} through ${String(last + 1)}`);
-      suppressBrushEventRef.current = true;
-      chart.dispatchAction({ type: 'brush', areas: [] });
-      suppressBrushEventRef.current = false;
-    };
     const handleDataZoom = (event: EChartsDataZoomEvent) => {
       const next = zoomFromEvent(event);
       if (next) {
         zoomRangeRef.current = next;
         setZoomRange(next);
       }
-    };
-    const handlePointerDown = (event: { event?: { shiftKey?: boolean } }) => {
-      shiftHeldRef.current = !!event.event?.shiftKey;
     };
 
     // Safari keeps painting a clipped line or area with a stale clip when the
@@ -236,9 +200,7 @@ function EChartsInstance({
     };
     element.addEventListener('wheel', keepPageScroll, { capture: true });
     chart.on('showtip', handleShowTip as never);
-    chart.on('brushselected', handleBrushSelected as never);
     chart.on('datazoom', handleDataZoom as never);
-    chart.getZr().on('mousedown', handlePointerDown);
     chart.getZr().on('click', handlePlotClick);
 
     const resizeObserver = new ResizeObserver(() => {
@@ -251,9 +213,7 @@ function EChartsInstance({
       chart.off('rendered', refreshClipPaths);
       element.removeEventListener('wheel', keepPageScroll, { capture: true });
       chart.off('showtip', handleShowTip);
-      chart.off('brushselected', handleBrushSelected);
       chart.off('datazoom', handleDataZoom);
-      chart.getZr().off('mousedown', handlePointerDown);
       chart.getZr().off('click', handlePlotClick);
       chart.dispose();
       chartRef.current = null;
@@ -320,33 +280,10 @@ function EChartsInstance({
             },
           },
         ],
-        toolbox: { show: false },
-        brush: rangeSelectionEnabled
-          ? {
-              id: 'wordflow-range-brush',
-              xAxisIndex: 0,
-              brushType: 'lineX',
-              brushMode: 'single',
-              throttleType: 'debounce',
-              throttleDelay: 80,
-            }
-          : undefined,
       },
       { notMerge: true, lazyUpdate: false },
     );
-  }, [ariaLabel, option, rangeSelectionEnabled]);
-
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-    chart.dispatchAction({
-      type: 'takeGlobalCursor',
-      key: 'brush',
-      brushOption: {
-        brushType: selectionMode === 'range' && rangeSelectionEnabled ? 'lineX' : false,
-      },
-    });
-  }, [rangeSelectionEnabled, selectionMode]);
+  }, [ariaLabel, option]);
 
   const moveActivePoint = (nextIndex: number) => {
     if (pointCount <= 0) return;
@@ -373,7 +310,6 @@ function EChartsInstance({
       event.preventDefault();
       if (pointCount > 0) selectRef.current?.(activeIndex, event.shiftKey);
     } else if (event.key === 'Escape') {
-      setSelectionMode('point');
       chartRef.current?.dispatchAction({ type: 'hideTip' });
     }
   };
@@ -399,20 +335,6 @@ function EChartsInstance({
         aria-label="Chart controls"
       >
         {toolbarStart}
-        {onSelectRange ? (
-          <Button
-            type="button"
-            variant={selectionMode === 'range' ? 'default' : 'outline'}
-            size="sm"
-            aria-pressed={selectionMode === 'range'}
-            onClick={() => {
-              setSelectionMode((current) => (current === 'range' ? 'point' : 'range'));
-            }}
-          >
-            <MousePointer2 className="h-4 w-4" aria-hidden="true" />
-            Select range
-          </Button>
-        ) : null}
         <Button
           type="button"
           variant="outline"
@@ -457,12 +379,16 @@ function EChartsInstance({
         role="group"
         aria-roledescription="interactive chart"
         aria-label={ariaLabel}
-        aria-description="Use Left and Right Arrow to inspect points, Enter or Space to select, and Escape to leave range-selection mode."
+        aria-description="Use Left and Right Arrow to inspect points, Enter or Space to select one, and Shift+Enter to select the points between it and the last one selected."
         tabIndex={0}
         onKeyDown={handleKeyDown}
         style={{ height: `${String(height)}px` }}
         className="w-full cursor-crosshair focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus-border"
       />
+      {/* Clicking and Shift-clicking replace the Select range button (issue 224). */}
+      {onSelect && selectionHint ? (
+        <p className="mt-1 text-label-secondary text-description">{selectionHint}</p>
+      ) : null}
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {liveText}
       </div>

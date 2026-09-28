@@ -31,12 +31,10 @@ vi.mock('echarts/core', () => ({ init: mocks.init, use: mocks.use }));
 vi.mock('echarts/charts', () => ({ BarChart: {}, LineChart: {} }));
 vi.mock('echarts/components', () => ({
   AriaComponent: {},
-  BrushComponent: {},
   DataZoomComponent: {},
   DatasetComponent: {},
   GridComponent: {},
   MarkAreaComponent: {},
-  ToolboxComponent: {},
   TooltipComponent: {},
   VisualMapComponent: {},
 }));
@@ -104,7 +102,6 @@ describe('EChartsView', () => {
           expect.objectContaining({ type: 'inside', moveOnMouseMove: false }),
           expect.objectContaining({ type: 'slider' }),
         ]),
-        toolbox: { show: false },
       }),
       { notMerge: true, lazyUpdate: false },
     );
@@ -133,9 +130,8 @@ describe('EChartsView', () => {
     expect(mocks.chart.dispose).toHaveBeenCalledOnce();
   });
 
-  it('maps plot clicks and brush selections to complete dataset indices', () => {
+  it('maps plot clicks, with Shift, to complete dataset indices and shows the hint (issue 224)', () => {
     const onSelect = vi.fn();
-    const onSelectRange = vi.fn();
     render(
       <EChartsView
         option={{ series: [{ type: 'line' }] }}
@@ -144,8 +140,8 @@ describe('EChartsView', () => {
         dataResetKey="result-a"
         ariaLabel="Selectable chart"
         onSelect={onSelect}
-        onSelectRange={onSelectRange}
         getPointSummary={(index) => `Point summary ${String(index)}`}
+        selectionHint="Shift-click another point to select the points between."
       />,
     );
 
@@ -161,20 +157,12 @@ describe('EChartsView', () => {
       x: 120,
       y: 80,
     });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Select range' }));
-    act(() => {
-      mocks.zrHandlers.get('mousedown')?.({ event: { shiftKey: true } });
-      mocks.handlers.get('brushselected')?.({
-        batch: [
-          {
-            selected: [{ dataIndex: [4, 2] }, { dataIndex: [2, 3] }],
-          },
-        ],
-      });
-    });
-    expect(onSelectRange).toHaveBeenCalledWith(2, 4, true);
-    expect(mocks.chart.dispatchAction).toHaveBeenCalledWith({ type: 'brush', areas: [] });
+    // The Select range button and its brush are gone (issue 224).
+    expect(screen.queryByRole('button', { name: 'Select range' })).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Shift-click another point to select the points between.'),
+    ).toBeInTheDocument();
+    expect(mocks.handlers.has('brushselected')).toBe(false);
   });
 
   it('supports keyboard point navigation and accessible zoom controls', () => {

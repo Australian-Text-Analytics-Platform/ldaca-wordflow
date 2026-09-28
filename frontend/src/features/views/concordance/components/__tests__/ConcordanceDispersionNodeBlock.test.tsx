@@ -154,7 +154,6 @@ const baseProps: ConcordanceDispersionNodeBlockProps = {
   onDispersionChartModeChange: vi.fn(),
   selectedBinIndices: {},
   onBinSelect: vi.fn(),
-  onBinRangeSelect: vi.fn(),
   onClearBinSelection: vi.fn(),
   handlePageChange: vi.fn(),
   setCombinedPage: vi.fn(),

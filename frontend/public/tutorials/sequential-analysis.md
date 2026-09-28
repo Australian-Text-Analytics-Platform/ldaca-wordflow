@@ -96,7 +96,7 @@ period-selection controls together. Time column, period or interval, and
 Group By settings remain visible in the parameter panel instead of being
 repeated in the result.
 
-![Chart controls: Chart, Spacing, download, Select range, and zoom](tutorials/assets/sequential_analysis/chart_toolbar.png)
+![Chart controls: Chart, Spacing, download, and zoom](tutorials/assets/sequential_analysis/chart_toolbar.png)
 
 <h3 id="help-sequential-minimum-group-count">Minimum group count</h3>
 
@@ -181,11 +181,9 @@ Drag the ends of the slider under the chart to zoom along the horizontal axis, o
 
 Click anywhere inside the plot to select the time period nearest the vertical axis pointer. You do not need to target a line point, bar, or area segment. Selected periods are shaded with a soft band across the chart, and in line and area charts their points become large solid dots while the other points stay small hollow circles; in bar charts, unselected bars are dimmed to 25 % opacity.
 
-To select a range, click one period then **Shift-click** another: all periods between them are selected.
+Click a selected period again to deselect it. To select a range, click one period then **Shift-click** another: all periods between them are selected. A reminder of this sits under the chart.
 
-For drag selection, turn on **Select range** and drag across the periods you want. A new drag replaces the current selection; **Shift-drag** adds the brushed range. Turn the mode off, or press **Escape** while the chart is focused, to return to point selection.
-
-With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**, and **End** to inspect points. Press **Enter** or **Space** to select the focused point; hold **Shift** to extend the existing selection semantics.
+With keyboard focus on the chart, use **Left Arrow**, **Right Arrow**, **Home**, and **End** to inspect points. Press **Enter** or **Space** to select the focused point, or **Shift+Enter** to select every period between it and the last one you selected.
 
 Use **Clear selection** to deselect all periods without losing any other settings.
 
@@ -243,7 +241,6 @@ visibility.
 | Chart | Line | |
 | Spacing | Even (hide empty periods) | Switch to To scale to show gaps in time |
 | Zoom | Full range | Use Reset zoom to restore the complete result |
-| Select range | Off | Turn on before dragging across periods |
 
 ## Practice exercise
 
@@ -251,7 +248,7 @@ visibility.
 2. Run the analysis with the **Monthly** period to see the overall trend.
 3. Switch to **Weekly** and compare the granularity.
 4. Add a category or text column (e.g. author, genre, or platform) as a Group By column and choose **Run** again.
-5. Zoom into a period of high activity, turn on **Select range**, and drag across several periods.
+5. Zoom into a period of high activity, click one period, then **Shift-click** another to select every period between them.
 6. Download the chart in the format you need and compare it with the monthly view.
 
 [← Back to tutorial index](./index.md)

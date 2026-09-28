@@ -72,7 +72,6 @@ interface Props {
   selection?: {
     selectedIndices: ReadonlySet<number>;
     onSelect: (index: number, shiftHeld: boolean) => void;
-    onSelectRange: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
     onClear: () => void;
   };
   densitySeries?: ConcordanceDensitySeriesInput[];
@@ -591,7 +590,7 @@ export function ConcordanceDispersionSummary({
                       ariaLabel={`${chartTitle}. ${titleText}`}
                       selectedIndices={selection?.selectedIndices}
                       onSelect={selection?.onSelect}
-                      onSelectRange={selection?.onSelectRange}
+                      selectionHint="Click a section to select it, click it again to deselect it, and Shift-click another section to select every section in between."
                       getPointSummary={getPointSummary}
                       testId="concordance-echarts"
                     />

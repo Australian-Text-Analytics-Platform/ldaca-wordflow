@@ -50,12 +50,6 @@ interface ConcordanceResultsDisplay {
   onUncasedMatchedTextsChange: (value: boolean) => void;
   onToggleMatchedTexts: (matchedTexts: readonly string[]) => void;
   onBinSelect: (blockKey: string, index: number, shiftHeld: boolean) => void;
-  onBinRangeSelect: (
-    blockKey: string,
-    startIndex: number,
-    endIndex: number,
-    shiftHeld: boolean,
-  ) => void;
   onClearBinSelection: (blockKey: string) => void;
   binCount: DispersionDisplayBinCount;
   setBinCount: (value: DispersionDisplayBinCount) => void;
@@ -218,7 +212,6 @@ export function ConcordanceResultsPanel({
     onUncasedMatchedTextsChange,
     onToggleMatchedTexts,
     onBinSelect,
-    onBinRangeSelect,
     onClearBinSelection,
     binCount,
     setBinCount,
@@ -491,7 +484,6 @@ export function ConcordanceResultsPanel({
                       onDispersionChartModeChange={setDispersionChartMode}
                       selectedBinIndices={selectedBinIndices}
                       onBinSelect={onBinSelect}
-                      onBinRangeSelect={onBinRangeSelect}
                       onClearBinSelection={onClearBinSelection}
                     />
                   ) : (

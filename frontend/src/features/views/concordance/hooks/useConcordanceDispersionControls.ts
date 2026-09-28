@@ -25,12 +25,6 @@ export interface UseConcordanceDispersionControlsResult {
   setUncasedMatchedTexts: (value: boolean) => void;
   toggleMatchedTexts: (matchedTexts: readonly string[]) => void;
   handleBinSelect: (blockKey: string, index: number, shiftHeld: boolean) => void;
-  handleBinRangeSelect: (
-    blockKey: string,
-    startIndex: number,
-    endIndex: number,
-    shiftHeld: boolean,
-  ) => void;
   handleClearBinSelection: (blockKey: string) => void;
   resetDispersionFilters: () => void;
 }
@@ -79,23 +73,6 @@ export function useConcordanceDispersionControls(): UseConcordanceDispersionCont
       return { ...prev, [blockKey]: next };
     });
     lastSelectedBinRef.current[blockKey] = index;
-  };
-
-  /** Replaces or extends a block's bin set from a chart drag-selection range. */
-  // Called by: ConcordanceDispersionSummary drag gestures because chart drag-selection should select every bin between the pointer-down and pointer-up locations in one state update.
-  const handleBinRangeSelect = (
-    blockKey: string,
-    startIndex: number,
-    endIndex: number,
-    shiftHeld: boolean,
-  ) => {
-    const [from, to] = startIndex < endIndex ? [startIndex, endIndex] : [endIndex, startIndex];
-    setSelectedBinIndices((prev) => {
-      const next = shiftHeld ? new Set(prev[blockKey] ?? []) : new Set<number>();
-      for (let index = from; index <= to; index++) next.add(index);
-      return { ...prev, [blockKey]: next };
-    });
-    lastSelectedBinRef.current[blockKey] = endIndex;
   };
 
   /** Clears one block's selected bins while preserving other block selections. */
@@ -161,7 +138,6 @@ export function useConcordanceDispersionControls(): UseConcordanceDispersionCont
     setUncasedMatchedTexts,
     toggleMatchedTexts,
     handleBinSelect,
-    handleBinRangeSelect,
     handleClearBinSelection,
     resetDispersionFilters,
   };

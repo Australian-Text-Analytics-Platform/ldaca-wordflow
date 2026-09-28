@@ -90,12 +90,6 @@ export interface ConcordanceDispersionNodeBlockProps {
   onDispersionChartModeChange: (value: ConcordanceDispersionChartMode) => void;
   selectedBinIndices: Record<string, Set<number>>;
   onBinSelect: (blockKey: string, index: number, shiftHeld: boolean) => void;
-  onBinRangeSelect: (
-    blockKey: string,
-    startIndex: number,
-    endIndex: number,
-    shiftHeld: boolean,
-  ) => void;
   onClearBinSelection: (blockKey: string) => void;
   // Handlers
   handlePageChange: (newPage: number, paginationKey: string, requestNodeId: string) => void;
@@ -131,7 +125,6 @@ export function ConcordanceDispersionNodeBlock({
   onDispersionChartModeChange,
   selectedBinIndices,
   onBinSelect,
-  onBinRangeSelect,
   onClearBinSelection,
   handlePageChange,
   setCombinedPage,
@@ -337,15 +330,6 @@ export function ConcordanceDispersionNodeBlock({
                         onSelect: (index, shiftHeld) => {
                           onBinSelect(CONCORDANCE_COMBINED_NODE_KEY, index, shiftHeld);
                         },
-                        /** Used by: ConcordanceDispersionSummary selection prop to route combined chart drag ranges because callers need one state update for the full selected bin span. */
-                        onSelectRange: (startIndex, endIndex, shiftHeld) => {
-                          onBinRangeSelect(
-                            CONCORDANCE_COMBINED_NODE_KEY,
-                            startIndex,
-                            endIndex,
-                            shiftHeld,
-                          );
-                        },
                         /** Used by: ConcordanceDispersionSummary selection prop to clear combined transient bin selection. */
                         onClear: () => {
                           onClearBinSelection(CONCORDANCE_COMBINED_NODE_KEY);
@@ -494,10 +478,6 @@ export function ConcordanceDispersionNodeBlock({
                       /** Used by: ConcordanceDispersionSummary selection prop to route per-node chart bin selection. */
                       onSelect: (index, shiftHeld) => {
                         onBinSelect(nodeKey, index, shiftHeld);
-                      },
-                      /** Used by: ConcordanceDispersionSummary selection prop to route per-node chart drag ranges because callers need one state update for the full selected bin span. */
-                      onSelectRange: (startIndex, endIndex, shiftHeld) => {
-                        onBinRangeSelect(nodeKey, startIndex, endIndex, shiftHeld);
                       },
                       /** Used by: ConcordanceDispersionSummary selection prop to clear the active node's bin selection. */
                       onClear: () => {

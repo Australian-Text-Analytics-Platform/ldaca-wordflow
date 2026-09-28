@@ -25,7 +25,8 @@ interface MultiSeriesChartTooltipConfig {
 interface MultiSeriesChartSelectionConfig {
   selectedIndices: ReadonlySet<number>;
   onSelect: (index: number, shiftHeld: boolean) => void;
-  onSelectRange?: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
+  /** Reminder under the chart about clicking and Shift-clicking (issue 224). */
+  hint?: string;
 }
 
 export interface MultiSeriesChartProps {
@@ -336,7 +337,7 @@ export function MultiSeriesChart(props: MultiSeriesChartProps) {
           ariaLabel={ariaLabel}
           selectedIndices={selection?.selectedIndices}
           onSelect={selection?.onSelect}
-          onSelectRange={selection?.onSelectRange}
+          selectionHint={selection?.hint}
           getPointSummary={getPointSummary}
           className={className}
           testId="multi-series-chart"

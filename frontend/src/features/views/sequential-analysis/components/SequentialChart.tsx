@@ -13,7 +13,6 @@ interface SequentialChartProps {
   minimumGroupCount: number;
   onMinimumGroupCountChange: (value: number) => void;
   onPeriodClick: (index: number, shiftHeld: boolean) => void;
-  onPeriodRangeSelect: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
   onClearSelection: () => void;
   dataResetKey: string;
   toolbarStart?: React.ReactNode;
@@ -38,7 +37,6 @@ export function SequentialChart({
   minimumGroupCount,
   onMinimumGroupCountChange,
   onPeriodClick,
-  onPeriodRangeSelect,
   onClearSelection,
   dataResetKey,
   toolbarStart,
@@ -103,7 +101,7 @@ export function SequentialChart({
                   selection={{
                     selectedIndices: model.selection.selectedIndices,
                     onSelect: onPeriodClick,
-                    onSelectRange: onPeriodRangeSelect,
+                    hint: 'Click a period to select it, click it again to deselect it, and Shift-click another period to select every period in between.',
                   }}
                   ariaLabel="Trends chart"
                   dataResetKey={`${dataResetKey}:${model.chartData

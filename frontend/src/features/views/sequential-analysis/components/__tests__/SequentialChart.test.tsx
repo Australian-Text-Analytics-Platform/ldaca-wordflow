@@ -61,7 +61,6 @@ describe('SequentialChart', () => {
         onToggleGroupIndices={vi.fn()}
         onUncasedChange={vi.fn()}
         onPeriodClick={vi.fn()}
-        onPeriodRangeSelect={vi.fn()}
         onClearSelection={vi.fn()}
         dataResetKey="task-1"
         containerRef={containerRef}
@@ -131,7 +130,6 @@ describe('SequentialChart', () => {
         onToggleGroupIndices={onToggleGroupIndices}
         onUncasedChange={vi.fn()}
         onPeriodClick={vi.fn()}
-        onPeriodRangeSelect={vi.fn()}
         onClearSelection={vi.fn()}
         dataResetKey="task-2"
       />,
@@ -193,7 +191,6 @@ describe('SequentialChart', () => {
         onToggleGroupIndices={vi.fn()}
         onUncasedChange={vi.fn()}
         onPeriodClick={vi.fn()}
-        onPeriodRangeSelect={vi.fn()}
         onClearSelection={vi.fn()}
         dataResetKey="task-filtered"
       />,

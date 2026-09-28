@@ -259,7 +259,6 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     setUncasedMatchedTexts,
     toggleMatchedTexts,
     handleBinSelect,
-    handleBinRangeSelect,
     handleClearBinSelection,
     resetDispersionFilters,
   } = useConcordanceDispersionControls();
@@ -887,10 +886,6 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             onBinSelect: (blockKey, index, shiftHeld) => {
               if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
               handleBinSelect(blockKey, index, shiftHeld);
-            },
-            onBinRangeSelect: (blockKey, startIndex, endIndex, shiftHeld) => {
-              if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);
-              handleBinRangeSelect(blockKey, startIndex, endIndex, shiftHeld);
             },
             onClearBinSelection: (blockKey) => {
               if (blockKey === CONCORDANCE_COMBINED_NODE_KEY) setCombinedPage(1);

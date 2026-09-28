@@ -37,7 +37,6 @@ export interface SequentialAnalysisResultsPanelProps {
   onToggleGroupIndices: (groupIndices: readonly number[]) => void;
   onUncasedChange: (value: boolean) => void;
   onPeriodClick: (index: number, shiftHeld: boolean) => void;
-  onPeriodRangeSelect: (startIndex: number, endIndex: number, shiftHeld: boolean) => void;
   onClearSelection: () => void;
   containerRef: React.RefObject<HTMLDivElement | null>;
 }
@@ -63,7 +62,6 @@ export function SequentialAnalysisResultsPanel({
   onToggleGroupIndices,
   onUncasedChange,
   onPeriodClick,
-  onPeriodRangeSelect,
   onClearSelection,
   containerRef,
 }: SequentialAnalysisResultsPanelProps) {
@@ -94,7 +92,6 @@ export function SequentialAnalysisResultsPanel({
           onToggleGroupIndices={onToggleGroupIndices}
           onUncasedChange={onUncasedChange}
           onPeriodClick={onPeriodClick}
-          onPeriodRangeSelect={onPeriodRangeSelect}
           onClearSelection={onClearSelection}
           dataResetKey={dataResetKey}
           containerRef={containerRef}
