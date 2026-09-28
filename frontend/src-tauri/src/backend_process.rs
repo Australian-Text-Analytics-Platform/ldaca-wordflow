@@ -10,7 +10,10 @@ use std::time::{Duration, Instant};
 
 pub(crate) const BACKEND_HOST: &str = "127.0.0.1";
 const SHUTDOWN_TIMEOUT: Duration = Duration::from_secs(7);
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+// A first start on a slow computer imports every library cold, with each file
+// scanned by antivirus; 30 s was too short on a 2-CPU Windows VM (issue 231).
+// A crashed backend still fails at once through the exit check.
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 
 #[derive(Debug, Deserialize)]
 struct StartupRecord {
@@ -149,7 +152,7 @@ impl BackendProcess {
             if Instant::now() >= deadline {
                 return Err(io::Error::new(
                     io::ErrorKind::TimedOut,
-                    "Backend did not complete startup before the deadline",
+                    "Wordflow took too long to start. This can happen the first time on a slow computer.",
                 ));
             }
             std::thread::sleep(Duration::from_millis(25));

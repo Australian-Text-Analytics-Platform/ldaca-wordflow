@@ -162,10 +162,10 @@ fn show_startup_error(app: &AppHandle, detail: &str) {
     let handle = app.clone();
     app.dialog()
         .message(format!(
-            "The local Wordflow backend could not start.\n\n{detail}\n\nResolve the reported startup error, then reopen the application."
+            "Wordflow couldn't start.\n\n{detail}\n\nClose this message and open Wordflow again. If it keeps happening, please send feedback."
         ))
         .kind(MessageDialogKind::Error)
-        .title("Wordflow startup failed")
+        .title("Wordflow couldn't start")
         .show(move |_| handle.exit(1));
 }
 

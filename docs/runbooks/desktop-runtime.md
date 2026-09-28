@@ -220,7 +220,7 @@ documented split web development default.
 
 Also exercise lifecycle interruption before accepting a desktop build. Close
 the hidden/startup application while Python is still launching and confirm the
-application exits without waiting for the 30-second readiness deadline, no
+application exits without waiting for the 180-second readiness deadline, no
 startup-error dialog appears after the close, and the child process tree is
 gone. Repeat with a normal live application close and with application Quit;
 each path must terminate only its owned backend process and leave no orphan.
