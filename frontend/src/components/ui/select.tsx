@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { Select as SelectPrimitive } from 'radix-ui';
 import { cn } from '@/lib/utils';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, ChevronDown } from 'lucide-react';
 
 /** Select root primitive used by settings, filters, and data-loader forms. */
 const Select = SelectPrimitive.Root;
@@ -31,36 +31,6 @@ const SelectTrigger = ({ className, children, ref, ...props }: SelectTriggerProp
   </SelectPrimitive.Trigger>
 );
 
-/** Scroll-up affordance shown by long select option lists. */
-const SelectScrollUpButton = ({
-  className,
-  ref,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.ScrollUpButton>) => (
-  <SelectPrimitive.ScrollUpButton
-    ref={ref}
-    className={cn('flex cursor-default items-center justify-center py-1', className)}
-    {...props}
-  >
-    <ChevronUp className="h-4 w-4" />
-  </SelectPrimitive.ScrollUpButton>
-);
-
-/** Scroll-down affordance shown by long select option lists. */
-const SelectScrollDownButton = ({
-  className,
-  ref,
-  ...props
-}: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) => (
-  <SelectPrimitive.ScrollDownButton
-    ref={ref}
-    className={cn('flex cursor-default items-center justify-center py-1', className)}
-    {...props}
-  >
-    <ChevronDown className="h-4 w-4" />
-  </SelectPrimitive.ScrollDownButton>
-);
-
 type SelectContentProps = React.ComponentProps<typeof SelectPrimitive.Content>;
 
 /** Portal-backed select content panel used by dropdown option lists. */
@@ -83,7 +53,8 @@ const SelectContent = ({
       position={position}
       {...props}
     >
-      <SelectScrollUpButton />
+      {/* No scroll arrows: WebKit's fractional heights made them show on lists
+          that fit (issue 228). Long lists scroll with the wheel or scrollbar. */}
       <SelectPrimitive.Viewport
         className={cn(
           'p-1',
@@ -92,7 +63,6 @@ const SelectContent = ({
       >
         {children}
       </SelectPrimitive.Viewport>
-      <SelectScrollDownButton />
     </SelectPrimitive.Content>
   </SelectPrimitive.Portal>
 );
