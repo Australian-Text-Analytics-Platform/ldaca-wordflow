@@ -51,7 +51,11 @@ def _collect_quotation_source_from_snapshot(
 
     from ..shared.unsupported_columns import supported_metadata_columns
 
-    node_data = snapshot_node.data
+    from ..analysis.generated_columns import without_previous_quotation_columns
+
+    # A Data Block made from a Quotation Result: this run replaces its QUOTE_
+    # columns instead of carrying them as metadata (issue 245).
+    node_data = without_previous_quotation_columns(snapshot_node.data, document_column)
     schema = node_data.collect_schema()
     if SOURCE_ROW_ID_COLUMN in schema:
         raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")

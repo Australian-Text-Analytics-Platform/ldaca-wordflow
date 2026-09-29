@@ -98,7 +98,10 @@ show the Preview page summary.
 
 Use **Add to Project** to publish selected Result columns as a new Data
 Block. The document column is required, metadata columns start unselected, and
-analysis columns start selected.
+analysis columns start selected. You can run Quotation on that Data Block again:
+the new run replaces its `QUOTE_` columns with its own, so it keeps one set. The
+text column cannot itself be a `QUOTE_` column; rename it first in the Data
+Editor.
 
 <h3 id="help-quotation-quote-types">Quote types</h3>
 

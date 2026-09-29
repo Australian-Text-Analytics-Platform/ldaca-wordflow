@@ -40,32 +40,41 @@ CONCORDANCE_GENERATED_COLUMNS = frozenset(
 )
 
 
-def without_previous_concordance_columns(
-    frame: pl.LazyFrame, document_column: str
+def _without_previous_generated_columns(
+    frame: pl.LazyFrame,
+    document_column: str,
+    generated: frozenset[str],
+    tool: str,
 ) -> pl.LazyFrame:
-    """Drop the columns an earlier Concordance added (issue 244).
+    """Drop the columns an earlier run of the same tool added (issues 244, 245).
 
-    A Data Block made from a Concordance Result already has these columns.
-    Searching it again replaces them, so the rows keep one set, in the usual
-    order, instead of failing on duplicate names. The text column cannot be
-    one of them, because this Concordance adds a column of the same name.
-
-    Called by the Concordance Preview page and the Run worker.
+    A Data Block made from a Result already has these columns. Running the tool
+    on it again replaces them, so the new Result keeps one set, in the usual
+    order, instead of failing on duplicate names. The text column cannot be one
+    of them, because the new Result adds a column of the same name.
     """
     from ..shared.errors import InvalidInputError
 
-    if document_column in CONCORDANCE_GENERATED_COLUMNS:
+    if document_column in generated:
         raise InvalidInputError(
             f"The text column {document_column} has the same name as a column "
-            "Concordance adds. Rename it in the Data Editor, for example to "
-            "text, then search again."
+            f"{tool} adds. Rename it in the Data Editor, for example to text, "
+            "then try again."
         )
     previous = [
-        column
-        for column in frame.collect_schema().names()
-        if column in CONCORDANCE_GENERATED_COLUMNS
+        column for column in frame.collect_schema().names() if column in generated
     ]
     return frame.drop(previous) if previous else frame
+
+
+def without_previous_concordance_columns(
+    frame: pl.LazyFrame, document_column: str
+) -> pl.LazyFrame:
+    """Called by the Concordance Preview page and the Run worker (issue 244)."""
+
+    return _without_previous_generated_columns(
+        frame, document_column, CONCORDANCE_GENERATED_COLUMNS, "Concordance"
+    )
 
 
 def concordance_extraction_expr(
@@ -156,6 +165,19 @@ TOPIC_COVERAGE_OUTPUT_COLUMN = "TOPIC_coverage"
 TOPIC_SHARE_COLUMN = "TOPIC_share"
 TOPIC_SEGMENT_COUNT_COLUMN = "TOPIC_segment_count"
 
+# Every column Topic Modelling adds to the Data Blocks made from its Result.
+TOPIC_MODELING_GENERATED_COLUMNS = frozenset(
+    (
+        TOPIC_COLUMN,
+        TOPIC_MEANING_COLUMN,
+        TOPIC_COVERAGE_COLUMN,
+        TOPIC_TOP1_COLUMN,
+        TOPIC_COVERAGE_OUTPUT_COLUMN,
+        TOPIC_SHARE_COLUMN,
+        TOPIC_SEGMENT_COUNT_COLUMN,
+    )
+)
+
 QUOTE_EXTRACTION_COLUMN = "QUOTE_extraction"
 QUOTE_SPEAKER_COLUMN = "QUOTE_speaker"
 QUOTE_SPEAKER_START_IDX_COLUMN = "QUOTE_speaker_start_idx"
@@ -186,6 +208,21 @@ QUOTE_COLUMN_NAMES = (
     QUOTE_IS_FLOATING_COLUMN,
     QUOTE_ROW_IDX_COLUMN,
 )
+
+
+# Every column a Quotation adds to its rows and to the Data Blocks made from
+# its Result.
+QUOTATION_GENERATED_COLUMNS = frozenset((QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_NAMES))
+
+
+def without_previous_quotation_columns(
+    frame: pl.LazyFrame, document_column: str
+) -> pl.LazyFrame:
+    """Called by the Quotation Preview page and the Run worker (issue 245)."""
+
+    return _without_previous_generated_columns(
+        frame, document_column, QUOTATION_GENERATED_COLUMNS, "Quotation"
+    )
 
 
 # ----------------------------------------------------------------------------
