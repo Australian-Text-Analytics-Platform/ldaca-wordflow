@@ -25,6 +25,33 @@ describe('buildMultiSeriesChartOption', () => {
     expect(formatter([{ value: data[0] }])).toBe('2024-01\nAlpha: 2 rows\nBeta: 1 rows');
   });
 
+  it('starts each tooltip line with its colour dot (issue 243)', () => {
+    const option = buildMultiSeriesChartOption({ data, xKey: 'period', series, tooltip: {} });
+    const formatter = (option.tooltip as { formatter: (params: unknown) => string }).formatter;
+    expect(
+      formatter([
+        { value: data[0], seriesId: 'beta', marker: '{marker1|}' },
+        { value: data[0], seriesId: 'alpha', marker: '{marker0|}' },
+      ]),
+    ).toBe('2024-01\n{marker0|}Alpha: 2\n{marker1|}Beta: 1');
+  });
+
+  it('draws stacked charts with the first legend group on top (issue 243)', () => {
+    const ids = (chartType: 'stacked-bar' | 'area' | 'bar' | 'line') =>
+      (
+        buildMultiSeriesChartOption({ data, xKey: 'period', series, chartType }).series as {
+          id: string;
+        }[]
+      )
+        .map((item) => item.id)
+        .filter((id) => !id.startsWith('__wordflow'));
+    // ECharts stacks the first series at the bottom, so the first group comes last.
+    expect(ids('stacked-bar')).toEqual(['beta', 'alpha']);
+    expect(ids('area')).toEqual(['beta', 'alpha']);
+    expect(ids('bar')).toEqual(['alpha', 'beta']);
+    expect(ids('line')).toEqual(['alpha', 'beta']);
+  });
+
   it('stacks Stacked bars and stripes every other period behind side-by-side Bars (issue 226)', () => {
     const three = [...data, { period: '2024-03', alpha: 1, beta: 2 }];
     interface Series {

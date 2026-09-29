@@ -267,7 +267,12 @@ export function ConcordanceDispersionSummary({
         [SELECTION_DIMENSION]: selection.selectedIndices.has(index) ? 1 : 0,
       }))
     : chartData;
-  const seriesOptions = series.map((item) => {
+  // Stacks draw their first series at the bottom: build stacked modes in
+  // reverse so the first source sits on top, and the stack and the tooltip read
+  // top to bottom in the same order (issue 243).
+  const stacked = usesStackedBars || chartMode === 'density-area';
+  const drawOrder = stacked ? [...series].reverse() : series;
+  const seriesOptions = drawOrder.map((item) => {
     const common = {
       id: item.key,
       name: item.label ?? item.key,
@@ -357,12 +362,16 @@ export function ConcordanceDispersionSummary({
       axisPointer: { type: 'line' },
       formatter: (rawParams: unknown) => {
         const params = Array.isArray(rawParams)
-          ? (rawParams as { value?: Record<string, unknown> }[])
+          ? (rawParams as { value?: Record<string, unknown>; seriesId?: string; marker?: string }[])
           : [];
         const row = params[0]?.value;
         const lines = [formatBinRange(Number(row?.binCenter), binCount)];
+        // Each line starts with its source's colour dot (issue 243).
+        const markers = new Map(params.map((param) => [param.seriesId, param.marker ?? '']));
         for (const item of series) {
-          lines.push(`${item.label ?? item.key}: ${displayChartValue(row?.[item.key])}`);
+          lines.push(
+            `${markers.get(item.key) ?? ''}${item.label ?? item.key}: ${displayChartValue(row?.[item.key])}`,
+          );
         }
         return lines.join('\n');
       },

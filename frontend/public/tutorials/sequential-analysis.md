@@ -120,7 +120,7 @@ Four plot modes are available in the **Chart** list:
 
 - **Line**: best for continuous trends across time, especially when groups overlap or you want to compare rates of change.
 - **Bars**: best for highlighting contrast between groups at each period. Each period's groups sit side by side, and every other period has a light background so its bars read as one group.
-- **Stacked bars**: stacks each period's groups into one bar. Shows the total per period and its make-up, and fits many more periods than side-by-side bars. With **Normalise to 100%** every bar reaches 100%.
+- **Stacked bars**: stacks each period's groups into one bar. Shows the total per period and its make-up, and fits many more periods than side-by-side bars. With **Normalise to 100%** every bar reaches 100%. The first group in the legend is at the top of each bar, so the bar, the legend and the tooltip read in the same order.
 
 When there are too many periods to draw bars at a readable width (side-by-side bars need more room than stacked ones), the chart shows only as many periods as fit and says so: drag the slider under the chart to move through the rest, or choose **Line** or **Area** to see every period at once.
 - **Area**: stacks all groups on top of each other. Works best when groups emerge or disappear over time and you want to see total volume alongside composition.
@@ -145,7 +145,7 @@ Periods often hold very different amounts of data, for example many more tweets 
 - The option appears when at least two groups meet the [minimum group count](#help-sequential-minimum-group-count). With one group every period would read 100%.
 - Each period's total counts every group listed in the legend, including hidden groups. Hiding a group therefore does not change the other percentages. Groups below the minimum group count are not counted, so changing that number can change the percentages.
 - A period whose listed groups have no rows at all has no percentage: the line breaks and no bar is drawn.
-- The tooltip shows each group's count with its percentage, for example *412 (37.5%)*.
+- The tooltip shows each group's colour, and its count with its percentage, for example *412 (37.5%)*.
 - In **Area** charts the stacked groups fill the chart up to 100% when none are hidden. **Bars** stay side by side.
 - The counts themselves do not change: the legend, **Add to Project** and selected periods still use counts of rows. A downloaded chart notes that its values are percentages.
 

@@ -131,6 +131,46 @@ describe('ConcordanceDispersionSummary', () => {
     });
   });
 
+  it('stacks the first term on top and marks tooltip lines with colour dots (issue 243)', () => {
+    const props = {
+      rows: [],
+      textColumn: 'text',
+      binCount: 20 as const,
+      splitBySource: false,
+      dataBlockLabel: 'Corpus',
+      searchWord: 'jobs',
+      densitySeries: [
+        { label: 'jobs', counts: Array.from({ length: 100 }, () => 1) },
+        { label: 'work', counts: Array.from({ length: 100 }, () => 2) },
+      ],
+      termColors: { jobs: '#123456', work: '#abcdef' },
+    };
+    const ids = () => optionSeries().map((item) => String(item.id));
+    const { rerender } = render(
+      <ConcordanceDispersionSummary {...props} chartMode="density-line" />,
+    );
+    const legendOrder = ids();
+    expect(legendOrder.length).toBeGreaterThan(1);
+
+    rerender(<ConcordanceDispersionSummary {...props} chartMode="density-area" />);
+    expect(ids()).toEqual([...legendOrder].reverse());
+
+    const formatter = (lastOption()?.tooltip as { formatter: (params: unknown) => string })
+      .formatter;
+    const row = optionSource()[0];
+    const text = formatter(
+      [...legendOrder].reverse().map((id, index) => ({
+        value: row,
+        seriesId: id,
+        marker: `{marker${String(index)}|}`,
+      })),
+    );
+    const lines = text.split('\n').slice(1);
+    expect(lines.map((line) => line.slice(0, line.indexOf('|}') + 2))).toEqual(
+      legendOrder.map((_id, index) => `{marker${String(legendOrder.length - 1 - index)}|}`),
+    );
+  });
+
   it('shows selected bins in the Trends selection style (issue 191)', () => {
     render(
       <ConcordanceDispersionSummary

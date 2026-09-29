@@ -56,6 +56,9 @@ const SELECTION_DIMENSION = '__wordflow_selected__';
 
 interface TooltipParam {
   value?: Record<string, unknown> | unknown[];
+  seriesId?: string;
+  /** In richText mode, a style token such as `{marker0|}` that ECharts draws as the colour dot. */
+  marker?: string;
 }
 
 const tooltipValue = (value: Record<string, unknown> | unknown[] | undefined, key: string) => {
@@ -110,7 +113,12 @@ export const buildMultiSeriesChartOption = ({
             : {}),
         }))
       : data;
-  const chartSeries = series.map((item) => {
+  // Stacks draw their first series at the bottom. Build stacked charts in
+  // reverse so the first legend group sits on top, and the stack, the legend
+  // and the tooltip all read top to bottom in the same order (issue 243).
+  const stacked = chartType === 'stacked-bar' || chartType === 'area';
+  const drawOrder = stacked ? [...series].reverse() : series;
+  const chartSeries = drawOrder.map((item) => {
     const common = {
       id: item.key,
       name: item.label ?? item.key,
@@ -208,13 +216,15 @@ export const buildMultiSeriesChartOption = ({
               ? tooltip.labelFormatter(rawLabel as string | number)
               : rawLabel;
             const lines = [displayChartValue(label, '')];
+            // Each line starts with its group's colour dot (issue 243).
+            const markers = new Map(params.map((param) => [param.seriesId, param.marker ?? '']));
             for (const item of series) {
               const value = tooltipValue(firstValue, item.key);
               const text =
                 tooltip.valueFormatter && firstValue
                   ? tooltip.valueFormatter(item.key, firstValue)
                   : displayChartValue(value);
-              lines.push(`${item.label ?? item.key}: ${text}`);
+              lines.push(`${markers.get(item.key) ?? ''}${item.label ?? item.key}: ${text}`);
             }
             return lines.join('\n');
           },
