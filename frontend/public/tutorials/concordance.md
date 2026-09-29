@@ -127,22 +127,23 @@ Table view shows one row per match. Click a row to inspect the full source
 document and its metadata. Use the metadata selector to add source columns to
 the table.
 
-![Table view after Run: the matched text is strongly highlighted, and L1 and R1 softly](tutorials/assets/concordance/table_view.png)
+![Table view after Run: the matched text is highlighted, and L1 and R1 are in the source colour](tutorials/assets/concordance/table_view.png)
 
 **L1** (`CONC_l1`) is the token immediately left of the match and **R1**
 (`CONC_r1`) is the token immediately right. Their frequency columns count each
 value across the complete Run Result. The matched-text cell always uses
 strong source-colour emphasis. The last exact, case-sensitive L1 occurrence in
-the left context and the first R1 occurrence in the right context use a softer
-source-colour tint. Empty or unmatched anchors remain plain. The direct L1/R1
+the left context and the first R1 occurrence in the right context are shown in
+bold text in the source colour. Empty or unmatched anchors remain plain. The direct L1/R1
 cells remain plain and available for sorting, frequencies, export, and
 **Add to Project**.
 
 **Highlight L1/R1 for sorting** is on by default and sets two things for the
-current tab session: the inline L1/R1 tints, and how the context headers sort.
+current tab session: the L1/R1 colouring in the contexts, and how the context
+headers sort.
 While it is on, clicking the left context header sorts by L1 and clicking the
 right context header sorts by R1, the usual way to read a concordance; each
-header's tooltip says so. Turn it off to hide the tints and sort each context
+header's tooltip says so. Turn it off to show the contexts in plain text and sort each context
 alphabetically by its own text. With **Ignore punctuation** on, R1 can differ
 from the first word of the right context, so the two sorts can give different
 orders.
@@ -327,7 +328,7 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |
-| Highlight L1/R1 for sorting | On | Local table-display state: L1/R1 tints, and context headers sort by L1/R1; off, the tints are hidden (matched text stays emphasised) and contexts sort by their text |
+| Highlight L1/R1 for sorting | On | Local table-display state: L1/R1 shown in the source colour, and context headers sort by L1/R1; off, the contexts are plain text (matched text stays emphasised) and sort by their text |
 | Sections | 20 | 4, 5, 10, 20, 25, 50, or 100 |
 | Chart | Line | Line, Bars, Area, or Running total |
 | Term visibility after Run | All terms | Exact, case-sensitive labels |

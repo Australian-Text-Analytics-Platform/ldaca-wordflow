@@ -39,7 +39,7 @@ interface Props {
 /**
  * Returns direct-cell emphasis for Concordance matched text.
  * Used by: ConcordanceRowsTable in every table mode. L1/R1 columns remain
- * plain because their softer emphasis is rendered within the context columns.
+ * plain because their coloured emphasis is rendered within the context columns.
  */
 function concordanceCellPresentation(
   columnId: string,
@@ -76,8 +76,8 @@ function renderContextWithAnchor(
       <mark
         data-concordance-context-anchor={occurrence}
         data-match-index={matchIndex}
-        className="rounded-sm px-0 font-medium"
-        style={{ backgroundColor: toBgColor(sourceColor ?? GREY, 0.12), color: '#111827' }}
+        className="concordance-context-anchor font-semibold"
+        style={{ '--concordance-anchor-color': sourceColor ?? GREY } as CSSProperties}
       >
         {contextText.slice(matchIndex, matchIndex + anchorText.length)}
       </mark>

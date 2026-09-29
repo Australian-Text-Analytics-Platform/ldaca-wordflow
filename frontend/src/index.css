@@ -231,3 +231,11 @@
     outline-color: transparent;
   }
 }
+
+/* Concordance L1/R1 inside the contexts (issue 242): the word takes the
+   source colour, mixed with the surrounding text colour so it stays readable in
+   light and dark themes and for pale custom colours. No background tint. */
+.concordance-context-anchor {
+  background-color: transparent;
+  color: color-mix(in srgb, var(--concordance-anchor-color) 55%, currentColor);
+}

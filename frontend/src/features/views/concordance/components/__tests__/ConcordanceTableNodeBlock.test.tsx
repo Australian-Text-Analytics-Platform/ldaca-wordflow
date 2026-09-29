@@ -271,6 +271,12 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(leftMark).toHaveAttribute('data-match-index', '9');
     expect(rightMark).toHaveTextContent('after');
     expect(rightMark).toHaveAttribute('data-match-index', '0');
+    // The word takes the source colour; no background tint (issue 242).
+    for (const mark of [leftMark, rightMark]) {
+      expect(mark).toHaveClass('concordance-context-anchor');
+      expect(mark.style.getPropertyValue('--concordance-anchor-color')).toBe('#2563eb');
+      expect(mark.style.backgroundColor).toBe('');
+    }
     expect(cellFor('CONC_l1')).not.toHaveStyle({
       backgroundColor: toBgColor('#2563eb', 0.12),
     });
@@ -282,9 +288,9 @@ describe('ConcordanceTableNodeBlock', () => {
   it('removes inline anchor highlights when toggled off but keeps matched text emphasized', () => {
     const { rerender } = render(<ConcordanceTableNodeBlock {...buildProps(vi.fn())} />);
 
-    expect(screen.getByText('before', { selector: 'mark' })).toHaveStyle({
-      backgroundColor: toBgColor('#2563eb', 0.12),
-    });
+    expect(screen.getByText('before', { selector: 'mark' })).toHaveClass(
+      'concordance-context-anchor',
+    );
     expect(screen.getByText('alpha', { selector: 'td' })).toHaveStyle({
       backgroundColor: toBgColor('#2563eb', 0.24),
     });
@@ -351,9 +357,11 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(screen.getByText('alpha', { selector: 'td' })).toHaveStyle({
       backgroundColor: toBgColor('#dc2626', 0.24),
     });
-    expect(screen.getByText('before', { selector: 'mark' })).toHaveStyle({
-      backgroundColor: toBgColor('#dc2626', 0.12),
-    });
+    expect(
+      screen
+        .getByText('before', { selector: 'mark' })
+        .style.getPropertyValue('--concordance-anchor-color'),
+    ).toBe('#dc2626');
     expect(
       screen
         .getAllByRole('columnheader')
