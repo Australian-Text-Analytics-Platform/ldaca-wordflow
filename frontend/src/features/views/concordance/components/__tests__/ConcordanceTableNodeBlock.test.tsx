@@ -184,16 +184,25 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Run to enable sorting');
   });
 
+  it('leaves the match offsets out of the table but keeps them on the rows (issue 239)', () => {
+    render(<ConcordanceTableNodeBlock {...buildProps(vi.fn())} />);
+
+    const headers = screen.getAllByRole('columnheader').map((header) => header.textContent);
+    expect(headers.some((text) => text?.startsWith('CONC_start_idx'))).toBe(false);
+    expect(headers.some((text) => text?.startsWith('CONC_end_idx'))).toBe(false);
+    expect(headers.some((text) => text?.startsWith('CONC_matched_text'))).toBe(true);
+  });
+
   it('sorts generated scalar columns in separated Review but not full contexts', () => {
     const handleSort = vi.fn();
     render(<ConcordanceTableNodeBlock {...buildProps(handleSort)} reviewRowUnit="matches" />);
 
     fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_l1▲▼' }));
-    fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_start_idx▲▼' }));
+    fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_l1_freq▲▼' }));
     fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_left_context' }));
 
     expect(handleSort).toHaveBeenNthCalledWith(1, 'CONC_l1', 'node-1', 'node-1');
-    expect(handleSort).toHaveBeenNthCalledWith(2, 'CONC_start_idx', 'node-1', 'node-1');
+    expect(handleSort).toHaveBeenNthCalledWith(2, 'CONC_l1_freq', 'node-1', 'node-1');
     expect(handleSort).toHaveBeenCalledTimes(2);
   });
 

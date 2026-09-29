@@ -115,7 +115,7 @@ when you open it, from the data as it was when you chose Preview. See
 <h2 id="help-concordance-results">Result panel</h2>
 
 In separated Preview tables, selected source metadata headers are sortable.
-Generated scalar headers such as matched text, L1/R1, frequencies, and offsets
+Generated scalar headers such as matched text, L1/R1 and frequencies
 show **Run to enable sorting** because Preview has not processed the
 whole Result. Full document and left/right context strings stay unsorted.
 
@@ -138,6 +138,10 @@ source-colour tint. Empty or unmatched anchors remain plain. Turn off
 **Highlight L1/R1 in context** to hide only those inline tints for the current
 tab session. The direct L1/R1 cells remain plain and available for sorting,
 frequencies, export, and **Add to Project**.
+
+The table leaves out where each match starts and ends in the document
+(`CONC_start_idx` and `CONC_end_idx`, character positions). A Data Block made
+with **Add to Project** from Table view still includes both columns.
 
 <h4 id="help-concordance-dispersion-view">Dispersion view</h4>
 
@@ -253,8 +257,8 @@ to each source. After Run, there is no page-local Found summary.
 
 ![Concordance Results footer after Run: Matches per page and the whole-Result summary](tutorials/assets/concordance/review_footer.png)
 
-After Run, separated Table view can sort selected metadata, matched text, L1/R1,
-their frequencies, and start/end offsets across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
+After Run, separated Table view can sort selected metadata, matched text, L1/R1
+and their frequencies across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
 values have no guaranteed secondary order. The document and full context
 headers remain plain, and the combined table remains unsorted.
 

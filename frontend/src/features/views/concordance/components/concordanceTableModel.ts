@@ -13,6 +13,13 @@ export type ConcordanceRow = Record<string, unknown>;
 const CORE_COLS = [...CONCORDANCE_CORE_COLUMNS];
 const FREQ_COLS = [...CONCORDANCE_FREQ_COLUMNS];
 const ALL_CONC_COLS_SET = new Set<string>([...CORE_COLS, ...FREQ_COLS]);
+// Character offsets of the match: the table leaves them out (issue 239), but
+// rows keep them for highlighting and dispersion, and a Data Block made from
+// the Result keeps them as columns.
+const TABLE_HIDDEN_COLS = new Set<string>([
+  CONCORDANCE_COLUMN_KEYS.startIdx,
+  CONCORDANCE_COLUMN_KEYS.endIdx,
+]);
 
 /**
  * Returns the KWIC alignment class for a concordance column.
@@ -65,11 +72,13 @@ export function buildConcordanceTableModel({
   const rows = flattenConcordanceGroups(nodeData.data);
   const allColumns = nodeData.columns;
   const metadataColumns = nodeData.metadata.metadata_columns;
-  const concordanceColumns = nodeData.metadata.concordance_columns.length
-    ? nodeData.metadata.concordance_columns.filter((columnName) =>
-        ALL_CONC_COLS_SET.has(columnName),
-      )
-    : CORE_COLS;
+  const concordanceColumns = (
+    nodeData.metadata.concordance_columns.length
+      ? nodeData.metadata.concordance_columns.filter((columnName) =>
+          ALL_CONC_COLS_SET.has(columnName),
+        )
+      : CORE_COLS
+  ).filter((columnName) => !TABLE_HIDDEN_COLS.has(columnName));
   const visibleMetadataColumns = selectedMetadataColumns.filter((columnName) =>
     metadataColumns.includes(columnName),
   );
