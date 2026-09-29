@@ -13,7 +13,11 @@ import { batchProcessedCount } from '../concordanceDispersionDomain';
 import { findConcordanceSourceNode, getConcordanceSourceColor } from '../concordanceSourceDomain';
 import { CONCORDANCE_COMBINED_NODE_KEY } from '../concordanceTableDomain';
 import type { PaginationState } from '../hooks/useConcordanceTaskFlow';
-import { concordanceHeaderMode } from '../concordanceTablePresentation';
+import {
+  concordanceHeaderMode,
+  concordanceSortColumn,
+  concordanceSortHint,
+} from '../concordanceTablePresentation';
 import { GREY } from '../../common/vizPalette';
 import { normalizeNodeColor } from '@/lib/nodeColor';
 import { ConcordancePlainHeader, ConcordanceRowsTable } from './ConcordanceRowsTable';
@@ -309,7 +313,6 @@ function PerNodeConcordanceTable({
       isReview,
     });
   const handleEligibleSort = (columnKey: string) => {
-    if (headerMode(columnKey) !== 'sortable') return;
     handleSort(columnKey, paginationKey, requestNodeId);
   };
 
@@ -419,6 +422,8 @@ function PerNodeConcordanceTable({
                       key={header.id}
                       columnKey={header.column.id}
                       label={header.column.id}
+                      sortKey={concordanceSortColumn(header.column.id, highlightL1R1)}
+                      hint={concordanceSortHint(header.column.id, highlightL1R1)}
                       paginationKey={paginationKey}
                       requestNodeId={requestNodeId}
                       nodePagination={nodePagination}

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { concordanceHeaderMode } from '../concordanceTablePresentation';
+import {
+  concordanceHeaderMode,
+  concordanceSortColumn,
+  concordanceSortHint,
+} from '../concordanceTablePresentation';
 
 const modeFor = (
   columnKey: string,
@@ -36,15 +40,37 @@ describe('concordanceHeaderMode', () => {
     }
   });
 
-  it('keeps document and full context strings plain in both phases', () => {
-    for (const column of ['text', 'CONC_left_context', 'CONC_right_context']) {
-      expect(modeFor(column)).toBe('plain');
-      expect(modeFor(column, { isReview: true })).toBe('plain');
+  it('keeps the document column plain in both phases', () => {
+    expect(modeFor('text')).toBe('plain');
+    expect(modeFor('text', { isReview: true })).toBe('plain');
+  });
+
+  it('sorts the contexts in separated Review and hints in Preview (issue 241)', () => {
+    for (const column of ['CONC_left_context', 'CONC_right_context']) {
+      expect(modeFor(column)).toBe('preview-review-hint');
+      expect(modeFor(column, { isReview: true })).toBe('sortable');
     }
   });
 
   it('keeps every combined header plain', () => {
     expect(modeFor('speaker', { isCombined: true, isReview: true })).toBe('plain');
     expect(modeFor('CONC_l1', { isCombined: true, isReview: true })).toBe('plain');
+  });
+});
+
+describe('concordanceSortColumn', () => {
+  it('sorts the contexts by L1 and R1 only while highlighting for sorting is on', () => {
+    expect(concordanceSortColumn('CONC_left_context', true)).toBe('CONC_l1');
+    expect(concordanceSortColumn('CONC_right_context', true)).toBe('CONC_r1');
+    expect(concordanceSortColumn('CONC_left_context', false)).toBe('CONC_left_context');
+    expect(concordanceSortColumn('CONC_right_context', false)).toBe('CONC_right_context');
+    expect(concordanceSortColumn('CONC_l1_freq', true)).toBe('CONC_l1_freq');
+  });
+
+  it('explains the redirected sorts only', () => {
+    expect(concordanceSortHint('CONC_left_context', true)).toMatch(/^Sorts by L1/);
+    expect(concordanceSortHint('CONC_right_context', true)).toMatch(/^Sorts by R1/);
+    expect(concordanceSortHint('CONC_left_context', false)).toBeUndefined();
+    expect(concordanceSortHint('speaker', true)).toBeUndefined();
   });
 });

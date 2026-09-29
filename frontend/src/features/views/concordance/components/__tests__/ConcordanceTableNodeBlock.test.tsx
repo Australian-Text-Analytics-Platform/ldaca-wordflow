@@ -193,17 +193,61 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(headers.some((text) => text?.startsWith('CONC_matched_text'))).toBe(true);
   });
 
-  it('sorts generated scalar columns in separated Review but not full contexts', () => {
+  it('sorts generated scalar columns in separated Review', () => {
     const handleSort = vi.fn();
     render(<ConcordanceTableNodeBlock {...buildProps(handleSort)} reviewRowUnit="matches" />);
 
     fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_l1▲▼' }));
     fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_l1_freq▲▼' }));
-    fireEvent.click(screen.getByRole('columnheader', { name: 'CONC_left_context' }));
 
     expect(handleSort).toHaveBeenNthCalledWith(1, 'CONC_l1', 'node-1', 'node-1');
     expect(handleSort).toHaveBeenNthCalledWith(2, 'CONC_l1_freq', 'node-1', 'node-1');
-    expect(handleSort).toHaveBeenCalledTimes(2);
+  });
+
+  it('sorts the contexts by L1 and R1 while Highlight L1/R1 for sorting is on (issue 241)', () => {
+    const handleSort = vi.fn();
+    render(<ConcordanceTableNodeBlock {...buildProps(handleSort)} reviewRowUnit="matches" />);
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /^CONC_left_context/ }));
+    fireEvent.click(screen.getByRole('columnheader', { name: /^CONC_right_context/ }));
+
+    expect(handleSort).toHaveBeenNthCalledWith(1, 'CONC_l1', 'node-1', 'node-1');
+    expect(handleSort).toHaveBeenNthCalledWith(2, 'CONC_r1', 'node-1', 'node-1');
+  });
+
+  it('sorts the contexts by their own text while Highlight L1/R1 for sorting is off', () => {
+    const handleSort = vi.fn();
+    render(
+      <ConcordanceTableNodeBlock
+        {...buildProps(handleSort)}
+        reviewRowUnit="matches"
+        highlightL1R1={false}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /^CONC_left_context/ }));
+    fireEvent.click(screen.getByRole('columnheader', { name: /^CONC_right_context/ }));
+
+    expect(handleSort).toHaveBeenNthCalledWith(1, 'CONC_left_context', 'node-1', 'node-1');
+    expect(handleSort).toHaveBeenNthCalledWith(2, 'CONC_right_context', 'node-1', 'node-1');
+  });
+
+  it('shows a context header as sorted while its L1 or R1 sort is active', () => {
+    render(
+      <ConcordanceTableNodeBlock
+        {...buildProps(vi.fn())}
+        reviewRowUnit="matches"
+        nodePagination={{
+          'node-1': { currentPage: 1, pageSize: 20, sortBy: 'CONC_l1', descending: true },
+        }}
+      />,
+    );
+
+    expect(screen.getByRole('columnheader', { name: /^CONC_left_context/ })).toHaveTextContent('▼');
+    expect(screen.getByRole('columnheader', { name: /^CONC_l1▼/ })).toBeInTheDocument();
+    expect(screen.getByRole('columnheader', { name: /^CONC_right_context/ })).toHaveTextContent(
+      '▲▼',
+    );
   });
 
   it('highlights left-last and right-first anchors while direct L1/R1 cells stay plain', () => {

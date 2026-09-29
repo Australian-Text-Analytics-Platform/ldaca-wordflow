@@ -739,7 +739,7 @@ describe('ConcordanceFeature', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Table view' }));
     const highlightToggle = screen.getByRole('checkbox', {
-      name: 'Highlight L1/R1 in context',
+      name: 'Highlight L1/R1 for sorting',
     });
     expect(highlightToggle).toBeChecked();
     fireEvent.click(highlightToggle);

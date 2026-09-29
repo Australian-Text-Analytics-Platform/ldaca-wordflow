@@ -1,6 +1,8 @@
+import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { TableHead } from '@/components/ui/table';
 import type { PaginationState } from '../hooks/useConcordanceTaskFlow';
 import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
+import { alignmentClassForColumn } from './concordanceTableModel';
 
 interface Props {
   columnKey: string;
@@ -9,6 +11,10 @@ interface Props {
   requestNodeId: string;
   nodePagination: PaginationState;
   onSort: (columnKey: string, paginationKey: string, requestNodeId: string) => void;
+  /** The column the click sorts by, when not the header's own (issue 241). */
+  sortKey?: string;
+  /** Tooltip saying what the header sorts by. */
+  hint?: string;
 }
 
 /**
@@ -21,24 +27,30 @@ export function SortableHeader({
   requestNodeId,
   nodePagination,
   onSort,
+  sortKey = columnKey,
+  hint,
 }: Props) {
   const nodeState = nodePagination[paginationKey] ?? { sortBy: '', descending: false };
-  const isSorted = nodeState.sortBy === columnKey;
+  // A context header also shows as sorted while its own text is the sort key
+  // (sorted with Highlight L1/R1 for sorting off, then switched on).
+  const isSorted = nodeState.sortBy === sortKey || nodeState.sortBy === columnKey;
   const sortIcon = isSorted ? (nodeState.descending ? '▼' : '▲') : '▲▼';
 
   return (
     <TableHead
-      className={`px-3 py-2 text-left text-label-secondary font-medium uppercase tracking-wider cursor-pointer hover:bg-panel ${isSorted ? 'text-link' : 'text-description'}`}
+      className={`px-3 py-2 ${alignmentClassForColumn(columnKey) || 'text-left'} text-label-secondary font-medium uppercase tracking-wider cursor-pointer hover:bg-panel ${isSorted ? 'text-link' : 'text-description'}`}
       onClick={() => {
-        onSort(columnKey, paginationKey, requestNodeId);
+        onSort(sortKey, paginationKey, requestNodeId);
       }}
     >
-      <div className="flex items-center space-x-1">
-        <GeneratedColumnLabel name={label} />
-        <span className={`text-label-secondary ${isSorted ? 'text-link' : 'text-description'}`}>
-          {sortIcon}
-        </span>
-      </div>
+      <DisabledReasonTooltip reason={hint} side="bottom">
+        <div className="inline-flex items-center space-x-1">
+          <GeneratedColumnLabel name={label} />
+          <span className={`text-label-secondary ${isSorted ? 'text-link' : 'text-description'}`}>
+            {sortIcon}
+          </span>
+        </div>
+      </DisabledReasonTooltip>
     </TableHead>
   );
 }

@@ -115,9 +115,9 @@ when you open it, from the data as it was when you chose Preview. See
 <h2 id="help-concordance-results">Result panel</h2>
 
 In separated Preview tables, selected source metadata headers are sortable.
-Generated scalar headers such as matched text, L1/R1 and frequencies
-show **Run to enable sorting** because Preview has not processed the
-whole Result. Full document and left/right context strings stay unsorted.
+Generated scalar headers such as the left and right contexts, matched text,
+L1/R1 and frequencies show **Run to enable sorting** because Preview has not
+processed the whole Result. The full document stays unsorted.
 
 <h3 id="help-concordance-views">Table and dispersion views</h3>
 
@@ -134,10 +134,18 @@ the table.
 value across the complete Run Result. The matched-text cell always uses
 strong source-colour emphasis. The last exact, case-sensitive L1 occurrence in
 the left context and the first R1 occurrence in the right context use a softer
-source-colour tint. Empty or unmatched anchors remain plain. Turn off
-**Highlight L1/R1 in context** to hide only those inline tints for the current
-tab session. The direct L1/R1 cells remain plain and available for sorting,
-frequencies, export, and **Add to Project**.
+source-colour tint. Empty or unmatched anchors remain plain. The direct L1/R1
+cells remain plain and available for sorting, frequencies, export, and
+**Add to Project**.
+
+**Highlight L1/R1 for sorting** is on by default and sets two things for the
+current tab session: the inline L1/R1 tints, and how the context headers sort.
+While it is on, clicking the left context header sorts by L1 and clicking the
+right context header sorts by R1, the usual way to read a concordance; each
+header's tooltip says so. Turn it off to hide the tints and sort each context
+alphabetically by its own text. With **Ignore punctuation** on, R1 can differ
+from the first word of the right context, so the two sorts can give different
+orders.
 
 The table leaves out where each match starts and ends in the document
 (`CONC_start_idx` and `CONC_end_idx`, character positions). A Data Block made
@@ -257,10 +265,12 @@ to each source. After Run, there is no page-local Found summary.
 
 ![Concordance Results footer after Run: Matches per page and the whole-Result summary](tutorials/assets/concordance/review_footer.png)
 
-After Run, separated Table view can sort selected metadata, matched text, L1/R1
-and their frequencies across the complete Result. Sorting is case-sensitive, and empty values come first in either direction. Equal
-values have no guaranteed secondary order. The document and full context
-headers remain plain, and the combined table remains unsorted.
+After Run, separated Table view can sort selected metadata, the left and right
+contexts (by L1 and R1 while **Highlight L1/R1 for sorting** is on), matched
+text, L1/R1 and their frequencies across the complete Result. Sorting is
+case-sensitive, and empty values come first in either direction. Equal values
+have no guaranteed secondary order. The document header remains plain, and the
+combined table remains unsorted.
 
 After Run, the density chart always summarises the complete result, not only
 the visible page.
@@ -317,7 +327,7 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |
-| Highlight L1/R1 in context | On | Local table-display state; matched text remains emphasised when off |
+| Highlight L1/R1 for sorting | On | Local table-display state: L1/R1 tints, and context headers sort by L1/R1; off, the tints are hidden (matched text stays emphasised) and contexts sort by their text |
 | Sections | 20 | 4, 5, 10, 20, 25, 50, or 100 |
 | Chart | Line | Line, Bars, Area, or Running total |
 | Term visibility after Run | All terms | Exact, case-sensitive labels |
