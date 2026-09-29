@@ -85,6 +85,17 @@ export const displayTabTitle = (name: string, kind: AnalysisKind): string => {
   return number === null ? name : `${analysisNavigationForKind(kind).tabPrefix}-${String(number)}`;
 };
 
+/**
+ * A task's name in the Tasks panel always starts with its tool's prefix
+ * (issue 235): a default name stays "C-2"; any other name reads "C - yeah".
+ */
+export const taskTabName = (name: string, kind: AnalysisKind): string => {
+  const shown = displayTabTitle(name, kind);
+  return defaultTabNumber(name, kind) === null
+    ? `${analysisNavigationForKind(kind).tabPrefix} - ${shown}`
+    : shown;
+};
+
 /** Next free default tab name: one more than the largest numbered tab. */
 export const nextTabTitle = (names: readonly string[], kind: AnalysisKind): string => {
   const numbers = names

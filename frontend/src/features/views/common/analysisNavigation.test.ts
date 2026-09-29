@@ -7,6 +7,7 @@ import {
   analysisNavigationForView,
   analysisTabQuickAccessLabel,
   filterAnalysisTabs,
+  taskTabName,
 } from './analysisNavigation';
 
 const tab = (kind: Tab['kind'], name: string): Tab => ({
@@ -59,5 +60,12 @@ describe('analysis navigation metadata', () => {
     expect(filterAnalysisTabs(tabs, 'timeline')).toEqual([tabs[1]]);
     expect(filterAnalysisTabs(tabs, '  review ')).toEqual([tabs[2]]);
     expect(filterAnalysisTabs(tabs, '')).toEqual(tabs);
+  });
+
+  it('starts every task name with the tool prefix (issue 235)', () => {
+    expect(taskTabName('C-2', 'concordance')).toBe('C-2');
+    expect(taskTabName('3', 'token_frequency')).toBe('F-3');
+    expect(taskTabName('yeah', 'concordance')).toBe('C - yeah');
+    expect(taskTabName('JP vs AUS', 'topic_modeling')).toBe('TM - JP vs AUS');
   });
 });

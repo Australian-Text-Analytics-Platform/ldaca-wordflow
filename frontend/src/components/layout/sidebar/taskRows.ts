@@ -1,16 +1,14 @@
 import type { AnalysisKind } from '@/api';
-import {
-  analysisNavigationForKind,
-  displayTabTitle,
-} from '@/features/views/common/analysisNavigation';
+import { analysisNavigationForKind, taskTabName } from '@/features/views/common/analysisNavigation';
 import type { TaskItem } from '@/features/workspace/task-stream/taskProjection';
 
 /**
  * Turns the task list into Tasks panel rows (issue 199).
- * Flow: file imports stay one row each. Analysis tasks are named after their
- * tool and tab ("Freq - 1"); a tab's successful tasks share one row whose
- * details list each step, while failed, cancelled, queued, and running tasks
- * keep their own row labelled with their step ("Conc - 2 · Run"). Rows
+ * Flow: file imports stay one row each ("L - Sample data import"). Analysis
+ * tasks always start with their tool's prefix (issue 235): "C-2", or "C - yeah"
+ * for a named tab; a tab's successful tasks share one row whose details list
+ * each step, while failed, cancelled, queued, and running tasks keep their own
+ * row labelled with their step ("C-2 · Run"). Rows
  * sort with problems first, then work in progress, then finished work, newest
  * first within each group.
  */
@@ -22,7 +20,8 @@ export interface TaskTab {
 
 export type TaskRowTarget =
   | { kind: 'tab'; tabKind: AnalysisKind; tabId: string }
-  | { kind: 'data-loader' };
+  /** A finished import names the folder its files went to (issue 235). */
+  | { kind: 'data-loader'; folder?: string };
 
 interface TaskRowStep {
   task: TaskItem;
@@ -86,11 +85,18 @@ const IMPORT_LABELS: Record<string, string> = {
   sample_import: 'Sample data import',
 };
 
+/**
+ * Prefixes for tasks that don't belong to an analysis tab (issue 235), like
+ * the tool prefixes F, C, T, TM, Q and A: L for Loader. E is reserved for
+ * Export, which has no background tasks yet.
+ */
+const LOADER_TASK_PREFIX = 'L';
+
 const importLabel = (task: TaskItem): string => {
   const typeLabel = task.task_type.replace(/_/g, ' ') || 'task';
   const label =
     IMPORT_LABELS[task.task_type] ?? typeLabel.charAt(0).toUpperCase() + typeLabel.slice(1);
-  return task.name ? `${label}: ${task.name}` : label;
+  return `${LOADER_TASK_PREFIX} - ${task.name ? `${label}: ${task.name}` : label}`;
 };
 
 export function buildTaskRows(
@@ -125,8 +131,8 @@ export function buildTaskRows(
     const kind = tab?.kind ?? kindFromRequest(task.request_kind ?? task.task_type);
     const tool = kind ? analysisNavigationForKind(kind).shortLabel : 'Analysis';
     return {
-      // The tab's own name, as on the tab (issue 211): F-1, or a renamed tab's name.
-      name: tab ? displayTabTitle(tab.name, tab.kind) : tool,
+      // Always with the tool's prefix (issue 235): F-1, or "C - yeah" for a named tab.
+      name: tab ? taskTabName(tab.name, tab.kind) : tool,
       target: kind ? ({ kind: 'tab', tabKind: kind, tabId: task.tab_id } as const) : null,
     };
   };
@@ -150,7 +156,10 @@ export function buildTaskRows(
         primary: task,
         steps: [step(task)],
         blockResults: [],
-        target: { kind: 'data-loader' },
+        // A finished import opens the folder its files went to (issue 235).
+        target: task.outcome
+          ? { kind: 'data-loader', folder: task.outcome.destination_path }
+          : { kind: 'data-loader' },
       });
       continue;
     }

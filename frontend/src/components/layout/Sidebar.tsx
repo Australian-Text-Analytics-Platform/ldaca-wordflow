@@ -40,6 +40,7 @@ import {
 } from '@/stores/nodeInputRequestsStore';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
 import { usePinnedNodesStore } from '@/stores/pinnedNodesStore';
+import { useFileRevealStore } from '@/stores/fileRevealStore';
 import type { WorkspaceGraphNode } from '@/api';
 import { useStackedSplits } from '@/components/layout/sidebar/useStackedSplits';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -154,8 +155,10 @@ function Sidebar() {
   );
   const sessionUserId = useAuthStore((state) => state.session?.user?.id ?? '__anonymous__');
   const rememberActiveTab = useAnalysisTabsPresentationStore((state) => state.rememberActiveTab);
+  const requestFolderReveal = useFileRevealStore((state) => state.requestReveal);
   const openTaskTarget = (target: TaskRowTarget) => {
     if (target.kind === 'data-loader') {
+      if (target.folder) requestFolderReveal(target.folder);
       setCurrentView('data-loader');
       return;
     }

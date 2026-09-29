@@ -47,6 +47,7 @@ import {
   getVisibleDirectoryChildren,
   selectionRoots,
 } from '../utils/fileTreeHelpers';
+import { useFileRevealStore } from '@/stores/fileRevealStore';
 import { formatBytes } from '../utils/format';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 
@@ -221,6 +222,56 @@ function FileTreeContent({
       // Device-local presentation persistence is best effort.
     }
   }, [collapsedPaths, collapsedStorageKey, storedCollapsedPaths.size]);
+
+  // Show a folder asked for by a finished import's go-to button (issue 235):
+  // open it and its parents, select it, scroll to it, then clear the request.
+  const revealPath = useFileRevealStore((state) => state.path);
+  const revealRequestId = useFileRevealStore((state) => state.requestId);
+  const clearReveal = useFileRevealStore((state) => state.clearReveal);
+  useEffect(() => {
+    if (!revealPath) return;
+    if (!authoritativeDirectoryPaths.has(revealPath)) {
+      // Wait for the tree to load; a folder that no longer exists is dropped.
+      if (nodes.length > 0) clearReveal();
+      return;
+    }
+    const path = revealPath;
+    const parts = path.split('/');
+    const opened = new Set(parts.map((_part, index) => parts.slice(0, index + 1).join('/')));
+    let scrollFrame = 0;
+    // State changes run in a frame callback, not in the effect body (React
+    // Compiler rule); the scroll waits one more frame for the opened rows.
+    const frame = requestAnimationFrame(() => {
+      setStoredCollapsedPaths((previous) => {
+        const next = new Set([...previous].filter((candidate) => !opened.has(candidate)));
+        try {
+          localStorage.setItem(collapsedStorageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          // Device-local presentation persistence is best effort.
+        }
+        return next;
+      });
+      setSelectedPaths(new Set([path]));
+      setSelectionAnchor(path);
+      clearReveal();
+      scrollFrame = requestAnimationFrame(() => {
+        document
+          .querySelector(`[data-folder-path="${CSS.escape(path)}"]`)
+          ?.scrollIntoView({ block: 'center' });
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+      cancelAnimationFrame(scrollFrame);
+    };
+  }, [
+    authoritativeDirectoryPaths,
+    clearReveal,
+    collapsedStorageKey,
+    nodes.length,
+    revealPath,
+    revealRequestId,
+  ]);
 
   const handleToggleCollapse = (path: string, isOpen: boolean) => {
     setStoredCollapsedPaths((previous) => {

@@ -4,6 +4,7 @@ import type {
   UnavailableUserFileImport,
   UserFileImport,
 } from '@/api';
+import { formatBytes } from '@/features/views/data-loader/utils/format';
 
 type TaskState = 'queued' | 'running' | 'successful' | 'failed' | 'cancelled';
 
@@ -38,6 +39,8 @@ interface AnalysisTaskItem extends TaskItemBase {
 
 interface UserFileImportTaskItem extends TaskItemBase {
   resource_type: 'user_file_import';
+  /** Where a finished import put its files, and how many (issue 235). */
+  outcome?: { destination_path: string; file_count: number; bytes_written: number } | null;
 }
 
 export type TaskItem = AnalysisTaskItem | UserFileImportTaskItem;
@@ -126,6 +129,17 @@ export const analysisToTask = (
   };
 };
 
+const plural = (count: number, one: string) =>
+  `${count.toLocaleString()} ${one}${count === 1 ? '' : 's'}`;
+
+/** "Imported 12 files (48 MB) to sample_data/ADO/reddit" (issue 235). */
+export const importOutcomeMessage = (outcome: {
+  destination_path: string;
+  file_count: number;
+  bytes_written: number;
+}): string =>
+  `Imported ${plural(outcome.file_count, 'file')} (${formatBytes(outcome.bytes_written)}) to ${outcome.destination_path}`;
+
 export const importToTask = (resource: UserFileImport | UnavailableUserFileImport): TaskItem => {
   if (resource.availability === 'unavailable') {
     return {
@@ -138,6 +152,14 @@ export const importToTask = (resource: UserFileImport | UnavailableUserFileImpor
     };
   }
   const progress = resource.progress;
+  const outcome =
+    resource.state === 'succeeded' && resource.result
+      ? {
+          destination_path: resource.result.destination_path,
+          file_count: resource.result.file_count,
+          bytes_written: resource.result.bytes_written,
+        }
+      : null;
   return {
     resource_type: 'user_file_import',
     task_id: resource.id,
@@ -145,7 +167,13 @@ export const importToTask = (resource: UserFileImport | UnavailableUserFileImpor
     state: toTaskState(resource.state),
     progress: progress.fraction ?? undefined,
     progress_message: progress.message ?? undefined,
-    message: failureMessage(resource.error) ?? progress.message ?? undefined,
+    // A finished import says what it did, in plain words (issue 235).
+    message:
+      failureMessage(resource.error) ??
+      (outcome ? importOutcomeMessage(outcome) : undefined) ??
+      progress.message ??
+      undefined,
+    outcome,
     created_at: resource.created_at,
     started_at: resource.started_at,
     finished_at: resource.finished_at,

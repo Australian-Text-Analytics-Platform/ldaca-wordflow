@@ -72,7 +72,8 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['F-1', 'JP vs AUS']);
+    // A named tab keeps the tool prefix in its task name (issue 235).
+    expect(rowLabels()).toEqual(['F-1', 'TM - JP vs AUS']);
   });
 
   it('keeps successful tasks visible until the user clears them', () => {
@@ -106,7 +107,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    expect(rowLabels()).toEqual(['C-2 · Run', 'JP vs AUS · Run', 'F-1']);
+    expect(rowLabels()).toEqual(['C-2 · Run', 'TM - JP vs AUS · Run', 'F-1']);
   });
 
   it("combines a tab's successful tasks into one row that lists each step", async () => {
@@ -184,7 +185,7 @@ describe('SidebarTasksSection', () => {
       }),
     ]);
 
-    await user.click(screen.getByRole('button', { name: /^Task: JP vs AUS · Run/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: TM - JP vs AUS · Run/ }));
 
     expect(screen.getByText(/save failed/i)).toBeInTheDocument();
     expect(screen.queryByText('40%')).not.toBeInTheDocument();
@@ -223,7 +224,7 @@ describe('SidebarTasksSection', () => {
       analysisTask({ task_id: 'ok', tab_id: 'freq-tab', created_at: '2026-01-01T00:00:00Z' }),
     ]);
 
-    await user.click(screen.getByRole('button', { name: /^Task: JP vs AUS/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: TM - JP vs AUS/ }));
     await user.click(screen.getByRole('button', { name: /^Task: F-1/ }));
 
     expect(screen.queryByRole('button', { name: /^stop$/i })).not.toBeInTheDocument();
@@ -271,7 +272,7 @@ describe('SidebarTasksSection', () => {
       { onStopUserFileImport },
     );
 
-    await user.click(screen.getByRole('button', { name: /^Task: Sample data import/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: L - Sample data import/ }));
     await user.click(screen.getByRole('button', { name: /^stop$/i }));
 
     expect(onStopUserFileImport).toHaveBeenCalledWith('import-running');
@@ -293,7 +294,7 @@ describe('SidebarTasksSection', () => {
       { onClearUserFileImport, clearingImportId: 'import-failed' },
     );
 
-    await user.click(screen.getByRole('button', { name: /^Task: LDaCA collection import/ }));
+    await user.click(screen.getByRole('button', { name: /^Task: L - LDaCA collection import/ }));
 
     expect(screen.getByRole('button', { name: /clearing/i })).toBeDisabled();
     expect(screen.queryByRole('button', { name: /^stop$/i })).not.toBeInTheDocument();

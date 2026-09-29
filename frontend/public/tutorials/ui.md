@@ -54,12 +54,16 @@ Below the tool list, the **Data Blocks** panel shows every Data Block in the act
 The **Tasks** panel sits below data selection and projects background Analyses
 from the active Project together with your retained User File Imports.
 
-- Each analysis task has the same name as its tab, for example **F-1** or
-  **JP vs AUS**, and follows the tab when you rename it. New tabs are named
+- Each analysis task is named after its tab and always starts with the tool's
+  letter: **F-1**, or **TM - JP vs AUS** for a tab you renamed "JP vs AUS"
+  (a Concordance opened from a word in Frequency reads, for example,
+  **C - yeah**). The name follows the tab when you rename it. New tabs are named
   with the tool's letter and a number: **F-1** for Frequency, **C-1** for
   Concordance, **T-1** for Trends, **TM-1** for Topic Modelling, **Q-1** for
   Quotation and **A-1** for Annotation. Numbering continues from the highest
   number used.
+- File imports start with **L** for the Data Loader, for example
+  **L - Sample data import**.
 - The finished steps of one tab share a row: click the row to see each step
   (**Preview**, **Run**, or **Add to Project**), the Data Blocks it
   used, and when it finished. A step that failed or is still running has its
@@ -72,8 +76,10 @@ from the active Project together with your retained User File Imports.
 
 - Failed and cancelled tasks are listed first, then running ones, then
   finished ones.
-- The arrow button at the right end of a row opens that task's tab (or the
-  Data Loader for a file import). Clicking anywhere else on the row shows or
+- The arrow button at the right end of a row opens that task's tab. For a file
+  import it opens the Data Loader; once the import has finished, it opens the
+  folder the files went to, and the row's details say what was imported, for
+  example "Imported 12 files (48 MB) to sample_data/ADO/reddit". Clicking anywhere else on the row shows or
   hides its details.
 - When a name is too long for the panel, its beginning and end stay visible
   and the middle fades out; rest the pointer on it to read the full name.

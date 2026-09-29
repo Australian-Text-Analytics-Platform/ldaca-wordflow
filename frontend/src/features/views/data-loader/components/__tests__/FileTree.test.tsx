@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useFileRevealStore } from '@/stores/fileRevealStore';
 import { FileTree } from '../FileTree';
 
 // The help icon needs the app's TooltipProvider; these tests do not cover it.
@@ -48,6 +49,57 @@ describe('FileTree project routing', () => {
     expect(screen.getByTestId('file-name-viewport')).not.toHaveAttribute('title');
     fireEvent.click(addButton);
     expect(onAddFile).not.toHaveBeenCalled();
+  });
+
+  it('opens, selects and clears a folder a finished import asks to show (issue 235)', async () => {
+    const tree = [
+      {
+        type: 'directory' as const,
+        name: 'sample_data',
+        path: 'sample_data',
+        children: [
+          {
+            type: 'directory' as const,
+            name: 'ADO',
+            path: 'sample_data/ADO',
+            children: [
+              {
+                type: 'file' as const,
+                name: 'a.parquet',
+                path: 'sample_data/ADO/a.parquet',
+                size: 5,
+              },
+            ],
+          },
+        ],
+      },
+    ];
+    render(
+      <FileTree
+        nodes={tree}
+        selectedFile={null}
+        loadingFiles={false}
+        hasWorkspaceSelected
+        workspaceId="workspace-1"
+        onPreviewFile={vi.fn()}
+        onAddFile={vi.fn()}
+        onSelectFile={vi.fn()}
+        onDownloadFile={vi.fn()}
+        onDeleteFile={vi.fn()}
+        onCreateFolderInside={vi.fn()}
+        onOpenCitation={vi.fn()}
+        onMoveFile={vi.fn()}
+      />,
+    );
+    useFileRevealStore.getState().requestReveal('sample_data/ADO');
+
+    await waitFor(() => {
+      expect(screen.getByTestId('folder-row-sample_data/ADO')).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+    expect(useFileRevealStore.getState().path).toBeNull();
   });
 
   it('adds a whole folder as one Data Block', () => {
