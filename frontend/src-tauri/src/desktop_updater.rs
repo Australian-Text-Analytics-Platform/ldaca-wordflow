@@ -462,10 +462,17 @@ fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
     .map_err(|error| error.to_string())
 }
 
+/// Open the updater window for Help > Check for Updates (issue 247).
+///
+/// Called from the menu event handler. On Windows, creating a window inside an
+/// event handler deadlocks WebView2, so the window is created from an async
+/// task, as the automatic check does.
 pub(crate) fn show_manual_check(app: AppHandle) {
-    if let Err(error) = open_updater_window(&app, true) {
-        eprintln!("Failed to open the updater window: {error}");
-    }
+    tauri::async_runtime::spawn(async move {
+        if let Err(error) = open_updater_window(&app, true) {
+            eprintln!("Failed to open the updater window: {error}");
+        }
+    });
 }
 
 pub(crate) fn schedule_automatic_check(app: AppHandle) {
