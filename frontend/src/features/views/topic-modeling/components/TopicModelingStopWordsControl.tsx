@@ -85,6 +85,9 @@ export function TopicModelingStopWordsControl({
           column={column}
           sources={sources}
           disabled={isSavingEditor}
+          onListAdded={() => {
+            if (!enabled) onEnabledChange(true);
+          }}
         />
         <Tooltip>
           <TooltipTrigger asChild>

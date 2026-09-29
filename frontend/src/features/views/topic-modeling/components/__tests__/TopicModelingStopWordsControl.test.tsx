@@ -93,7 +93,7 @@ describe('TopicModelingStopWordsControl', () => {
     );
   });
 
-  it('appends a language to an empty list and leaves the filter switch unchanged', async () => {
+  it('appends a language to an empty list and switches the filter on (#238)', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<Harness onSave={onSave} />);
@@ -120,7 +120,7 @@ describe('TopicModelingStopWordsControl', () => {
     expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
       'Saved list (3 words)',
     );
-    expect(screen.getByRole('switch', { name: 'Filter stop words' })).not.toBeChecked();
+    expect(screen.getByRole('switch', { name: 'Filter stop words' })).toBeChecked();
   });
 
   it('appends language defaults to custom words without duplicates', async () => {

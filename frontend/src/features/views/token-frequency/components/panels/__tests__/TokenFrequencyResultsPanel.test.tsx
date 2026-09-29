@@ -89,6 +89,33 @@ describe('TokenFrequencyResultsPanel stop words', () => {
     expect(onStopWordsEnabledChange).toHaveBeenCalledWith(true);
   });
 
+  it('switches the filter on after a list is picked while it is off (#238)', async () => {
+    window.HTMLElement.prototype.hasPointerCapture = vi.fn();
+    window.HTMLElement.prototype.setPointerCapture = vi.fn();
+    window.HTMLElement.prototype.releasePointerCapture = vi.fn();
+    window.HTMLElement.prototype.scrollIntoView = vi.fn();
+    const user = userEvent.setup();
+    const onStopWordsEnabledChange = vi.fn();
+    const onStopWordsListChange = vi.fn();
+    render(
+      <TooltipProvider>
+        <TokenFrequencyResultsPanel
+          {...baseProps}
+          onStopWordsEnabledChange={onStopWordsEnabledChange}
+          onStopWordsListChange={onStopWordsListChange}
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(screen.getByRole('option', { name: /^English \(\d+ words\)$/ }));
+
+    await waitFor(() => {
+      expect(onStopWordsEnabledChange).toHaveBeenCalledWith(true);
+    });
+    expect(onStopWordsListChange).toHaveBeenCalled();
+  });
+
   it('places one persistent result-level filter before the Cloud/List selector', async () => {
     const user = userEvent.setup();
     const { rerender } = render(

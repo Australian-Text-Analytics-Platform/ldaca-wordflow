@@ -353,12 +353,10 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     applyStopSetFromText(stopWords);
   };
 
-  // Applies a list picked from the language dropdown. Adding words switches the
-  // filter on, matching right-click, so a pick is never silently ignored.
+  // Applies a list picked from the language dropdown. The results panel then
+  // switches the filter on (issue 238), matching right-click, so a pick is never
+  // silently ignored.
   const handleStopWordsListChange = (words: string[]) => {
-    if (words.length > 0 && !stopWordsEnabled) {
-      host.setSetting(STOP_WORDS_ENABLED_SETTINGS.tokenFrequency, 'true');
-    }
     applyStopSetFromText(formatStopWords(words));
   };
 

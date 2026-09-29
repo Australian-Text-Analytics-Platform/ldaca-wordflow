@@ -222,8 +222,9 @@ Without **Colour by**, every bubble uses the same opacity.
 
 **Words per topic** controls how many representative words appear in the topic
 list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
-the stopword filter to apply the Tab's saved list. You can choose a language or
-edit that list while filtering is off; the switch controls filtering only.
+the stopword filter to apply the Tab's saved list. Choosing a list from the
+dropdown switches the filter on if it was off. You can edit the list while
+filtering is off.
 The dropdown's **From other tabs** group lists stop words saved in your other
 Frequency or Topic Modelling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers

@@ -15,20 +15,28 @@ vi.mock('@/features/views/common/hooks/useDetectedColumnLanguage', () => ({
 function Harness({
   initialWords = [],
   sources = [],
+  onListAdded,
+  onWordsChange,
 }: {
   initialWords?: string[];
   sources?: StopWordListSource[];
+  onListAdded?: () => void;
+  onWordsChange?: (words: string[]) => Promise<void>;
 }) {
   const [words, setWords] = useState(initialWords);
   return (
     <>
       <StopWordsLanguageSelect
         words={words}
-        onWordsChange={setWords}
+        onWordsChange={async (next) => {
+          await onWordsChange?.(next);
+          setWords(next);
+        }}
         workspaceId="workspace-1"
         nodeId="node-1"
         column="text"
         sources={sources}
+        onListAdded={onListAdded}
       />
       <output data-testid="words">{words.join('|')}</output>
     </>
@@ -70,6 +78,38 @@ describe('StopWordsLanguageSelect', () => {
     expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
       `Saved list (${String(words.length)} words)`,
     );
+  });
+
+  it('reports a saved pick so the caller can switch its filter on, but not a clear (#238)', async () => {
+    const user = userEvent.setup();
+    const onListAdded = vi.fn();
+    render(<Harness initialWords={['the']} onListAdded={onListAdded} />);
+
+    await pickOption(user, 'English (Detected)');
+    await waitFor(() => {
+      expect(onListAdded).toHaveBeenCalledTimes(1);
+    });
+
+    await pickOption(user, 'Clear stop words');
+    expect(screen.getByTestId('words')).toHaveTextContent('');
+    expect(onListAdded).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not report a pick whose save failed', async () => {
+    const user = userEvent.setup();
+    const onListAdded = vi.fn();
+    render(
+      <Harness
+        onListAdded={onListAdded}
+        onWordsChange={() => Promise.reject(new Error('offline'))}
+      />,
+    );
+
+    await pickOption(user, 'English (Detected)');
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: 'Stop words language' })).toBeEnabled();
+    });
+    expect(onListAdded).not.toHaveBeenCalled();
   });
 
   it('clears the list back to the language prompt', async () => {

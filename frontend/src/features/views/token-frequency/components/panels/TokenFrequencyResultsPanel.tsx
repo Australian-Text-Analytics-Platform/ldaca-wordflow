@@ -181,6 +181,9 @@ export const TokenFrequencyResultsPanel = ({
                     nodeId={stopWordsLanguageSource.nodeId}
                     column={stopWordsLanguageSource.column}
                     sources={stopWordListSources}
+                    onListAdded={() => {
+                      if (!stopWordsEnabled) onStopWordsEnabledChange(true);
+                    }}
                   />
                   <Button
                     type="button"

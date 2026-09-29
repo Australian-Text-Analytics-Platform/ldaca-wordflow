@@ -39,6 +39,11 @@ interface StopWordsLanguageSelectProps {
   /** Other tabs' saved lists offered under "From other tabs". */
   sources?: StopWordListSource[];
   disabled?: boolean;
+  /**
+   * Called after a picked list is saved, so the caller can switch its stop
+   * words filter on (issue 238). Not called for "Clear stop words".
+   */
+  onListAdded?: () => void;
 }
 
 /**
@@ -50,7 +55,8 @@ interface StopWordsLanguageSelectProps {
  * "Show all languages"). Every pick appends its
  * words to the current list with duplicates skipped, so custom words and
  * several lists can be combined; copied tab lists stay independent afterwards.
- * "Clear stop words" starts again from an empty list.
+ * "Clear stop words" starts again from an empty list. After a pick is saved,
+ * `onListAdded` lets the caller switch its filter on.
  *
  * Rendered by: TokenFrequencyResultsPanel and TopicModelingStopWordsControl
  * beside their stop-words switches.
@@ -63,6 +69,7 @@ export function StopWordsLanguageSelect({
   column,
   sources = [],
   disabled = false,
+  onListAdded,
 }: StopWordsLanguageSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -85,11 +92,14 @@ export function StopWordsLanguageSelect({
     .sort((left, right) => left.name.localeCompare(right.name));
   const hasWords = words.length > 0;
 
-  const commit = async (next: string[]) => {
+  // Resolves true when the list was saved.
+  const commit = async (next: string[]): Promise<boolean> => {
     try {
       await onWordsChange(next);
+      return true;
     } catch {
       // The caller's persistence owns rollback, error messaging, and retry.
+      return false;
     }
   };
 
@@ -104,7 +114,7 @@ export function StopWordsLanguageSelect({
         toastError(cause, 'Try again.', { title: "Couldn't load stop words." });
         return;
       }
-      await commit(mergeStopWordsText(formatStopWords(words), loaded));
+      if (await commit(mergeStopWordsText(formatStopWords(words), loaded))) onListAdded?.();
     } finally {
       setIsPending(false);
     }
