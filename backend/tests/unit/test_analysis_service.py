@@ -1065,7 +1065,6 @@ async def test_active_analysis_reservation_blocks_input_and_ancestor_mutation(
         cast(Any, None),
         storage_admission=unlimited_storage_admission(tmp_path, limiter=limiter),
         io_limiter=limiter,
-        max_source_bytes=settings.max_preview_source_bytes,
         max_storage_bytes=settings.max_node_storage_bytes,
     )
 

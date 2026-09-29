@@ -88,14 +88,12 @@ class NodeService:
         *,
         storage_admission: StorageAdmissionService,
         io_limiter: anyio.CapacityLimiter,
-        max_source_bytes: int,
         max_storage_bytes: int,
     ) -> None:
         self._workspaces = workspaces
         self._files = files
         self._storage_admission = storage_admission
         self._io_limiter = io_limiter
-        self._max_source_bytes = max_source_bytes
         self._max_storage_bytes = max_storage_bytes
 
     async def create(
@@ -153,20 +151,16 @@ class NodeService:
             user_id, request.file_path, allow_directory=True
         ) as source_path:
             is_folder = await self._run_io(source_path.is_dir)
-            metadata = await self._run_io(source_path.stat)
-            if (
-                not is_folder
-                and request.zip_member is None
-                and metadata.st_size > self._max_source_bytes
-            ):
-                raise ResourceTooLargeError("The file is too large to add as a Data Block")
+            # A single file is added whatever its size (issue 236). A folder of
+            # texts and a ZIP member expand into new bytes, so the Data Block
+            # storage limit bounds what they read.
             try:
                 if request.zip_member is not None:
                     dataframe, dtype_changes = await self._run_io(
                         _load_zip_member_dataframe,
                         source_path,
                         request.zip_member,
-                        self._max_source_bytes,
+                        self._max_storage_bytes,
                     )
                     skipped: list[dict[str, str | int]] = []
                 else:
@@ -174,7 +168,7 @@ class NodeService:
                         _load_dataframe,
                         source_path,
                         request.sheet_name,
-                        self._max_source_bytes,
+                        self._max_storage_bytes,
                     )
             except DataFileLoadError as exc:
                 if isinstance(exc.__cause__, DirectoryTooLargeError):
@@ -552,7 +546,7 @@ class NodeService:
 
 
 def _load_dataframe(
-    path: Path, sheet_name: str | None, max_source_bytes: int
+    path: Path, sheet_name: str | None, max_folder_bytes: int
 ) -> tuple[pl.DataFrame, list[dict[str, str]], list[dict[str, str | int]]]:
     """Fully infer and materialize one source before canonical normalization.
 
@@ -560,8 +554,8 @@ def _load_dataframe(
     I/O boundary. Inference establishes the source schema; only subsequent
     canonical casts belong in the returned normalization change log.
     """
-    # A folder's documents together share the single-file source limit.
-    documents = read_documents(path, max_total_bytes=max_source_bytes)
+    # A folder's documents together are bounded by the Data Block storage limit.
+    documents = read_documents(path, max_total_bytes=max_folder_bytes)
     if documents is not None:
         data, skipped = documents
         frame, changes = normalize_dtypes(data)
@@ -572,14 +566,14 @@ def _load_dataframe(
 
 
 def _load_zip_member_dataframe(
-    zip_path: Path, member: str, max_source_bytes: int
+    zip_path: Path, member: str, max_member_bytes: int
 ) -> tuple[pl.DataFrame, list[dict[str, str]]]:
     """Load one table member of a ZIP (first sheet for spreadsheets)."""
 
     with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
         try:
             extracted = extract_zip_table_member(
-                zip_path, member, Path(scratch), max_bytes=max_source_bytes
+                zip_path, member, Path(scratch), max_bytes=max_member_bytes
             )
         except DirectoryTooLargeError as exc:
             raise ResourceTooLargeError("That file in the ZIP is too large to add as a Data Block") from exc

@@ -40,19 +40,24 @@ from .user_files import UserFileStore
 
 
 class FileReadService:
-    """Own bounded previews, worksheet discovery, and UTF-8 reads."""
+    """Own previews, worksheet discovery, and bounded UTF-8 reads.
+
+    A single file is previewed whatever its size: previews read one page
+    lazily. Folders of texts and ZIP members expand into new bytes, so their
+    total stays bounded by ``max_expanded_bytes`` (issue 236).
+    """
 
     def __init__(
         self,
         file_store: UserFileStore,
         *,
         limiter: anyio.CapacityLimiter,
-        max_preview_bytes: int,
+        max_expanded_bytes: int,
         max_text_bytes: int,
     ) -> None:
         self._file_store = file_store
         self._limiter = limiter
-        self._max_preview_bytes = max_preview_bytes
+        self._max_expanded_bytes = max_expanded_bytes
         self._max_text_bytes = max_text_bytes
 
     async def preview(
@@ -76,16 +81,15 @@ class FileReadService:
                     member,
                     page,
                     page_size,
-                    self._max_preview_bytes,
+                    self._max_expanded_bytes,
                 )
-            await self._ensure_preview_size(path)
             return await self._run_sync(
                 _materialize_file_page,
                 path,
                 page,
                 page_size,
                 sheet_name,
-                self._max_preview_bytes,
+                self._max_expanded_bytes,
             )
 
     async def zip_tables(self, user_id: str, relative_path: str) -> ZipTableMembersResource:
@@ -112,9 +116,8 @@ class FileReadService:
         async with self._file_store.read_path(
             user_id, relative_path, allow_directory=True
         ) as path:
-            await self._ensure_preview_size(path)
             return await self._run_sync(
-                _file_schema, path, sheet_name, self._max_preview_bytes
+                _file_schema, path, sheet_name, self._max_expanded_bytes
             )
 
     async def worksheets(
@@ -123,7 +126,6 @@ class FileReadService:
         relative_path: str,
     ) -> FileWorksheetsResource:
         async with self._file_store.read_path(user_id, relative_path) as path:
-            await self._ensure_preview_size(path)
             sheets = await self._run_sync(_excel_worksheets, path)
             return FileWorksheetsResource(
                 sheets=sheets,
@@ -142,13 +144,6 @@ class FileReadService:
                 "text/markdown" if path.suffix.lower() == ".md" else "text/plain"
             )
             return content, media_type
-
-    async def _ensure_preview_size(self, path: Path) -> None:
-        # A folder's total is enforced while its files are listed.
-        if await self._run_sync(path.is_dir):
-            return
-        if (await self._stat(path)).st_size > self._max_preview_bytes:
-            raise ResourceTooLargeError("File is too large to preview")
 
     async def _stat(self, path: Path):
         return await self._run_sync(path.stat)

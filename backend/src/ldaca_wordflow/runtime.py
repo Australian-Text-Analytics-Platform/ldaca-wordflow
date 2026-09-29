@@ -905,7 +905,7 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
         file_read_service = FileReadService(
             user_file_store,
             limiter=io_limiter,
-            max_preview_bytes=settings.max_preview_source_bytes,
+            max_expanded_bytes=settings.max_node_storage_bytes,
             max_text_bytes=settings.max_text_response_bytes,
         )
         node_service = NodeService(
@@ -913,7 +913,6 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             user_file_store,
             storage_admission=storage_admission,
             io_limiter=io_limiter,
-            max_source_bytes=settings.max_preview_source_bytes,
             max_storage_bytes=settings.max_node_storage_bytes,
         )
         data_block_export_service = DataBlockExportService(

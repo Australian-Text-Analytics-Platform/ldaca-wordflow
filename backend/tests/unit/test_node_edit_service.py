@@ -49,7 +49,6 @@ def _service(workspace: Workspace) -> NodeService:
         cast(Any, None),
         storage_admission=cast(Any, None),
         io_limiter=anyio.CapacityLimiter(2),
-        max_source_bytes=1,
         max_storage_bytes=1,
     )
 

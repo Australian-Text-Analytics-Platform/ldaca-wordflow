@@ -75,11 +75,6 @@ class Settings(BaseSettings):
         ge=1,
         description="Global request body limit outside explicit upload routes",
     )
-    max_preview_source_bytes: int = Field(
-        default=64 * 1024 * 1024,
-        ge=1,
-        description="Largest stored file accepted by preview or node ingestion",
-    )
     max_node_storage_bytes: int = Field(
         default=1024 * 1024 * 1024,
         ge=1,

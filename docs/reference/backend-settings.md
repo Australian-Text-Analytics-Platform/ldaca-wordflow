@@ -15,7 +15,6 @@ Unknown settings are rejected.
 | `MAX_WORKSPACE_ARCHIVE_BYTES` | Compressed import limit |
 | `MAX_WORKSPACE_EXPORT_BYTES` | Export expanded/compressed limit |
 | `MAX_DEFAULT_REQUEST_BODY_BYTES` | Default non-upload request limit |
-| `MAX_PREVIEW_SOURCE_BYTES` | Largest source accepted by preview/ingestion |
 | `MAX_NODE_STORAGE_BYTES` | Per-Data-Block durable output limit |
 | `MAX_TEXT_RESPONSE_BYTES` | Raw-text response limit |
 | `MAX_USER_FILE_TREE_RESPONSE_BYTES` | Complete serialized User File tree response limit |
