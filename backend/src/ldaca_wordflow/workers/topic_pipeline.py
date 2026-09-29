@@ -64,19 +64,11 @@ def _sample_corpus(
     return [docs[i] for i in indices], indices
 
 
-def sample_seed_for_fraction(fraction: float) -> int:
-    """The seed of a Topic Modelling sample: its whole-number percentage (#237).
-
-    A 20% sample uses seed 20, whatever the Seed field says, so the same
-    percentage always picks the same documents.
-    """
-    return round(fraction * 100)
-
-
 def _sample_corpora_for_topic_modeling(
     *,
     corpora: list[list[str]],
     sample_fractions: list[float | None] | None,
+    random_seed: int,
 ) -> _SampledTopicCorpora:
     """Sample each corpus according to ``sample_fractions`` and flatten into
     a single document list for the Rust pipeline.
@@ -99,8 +91,10 @@ def _sample_corpora_for_topic_modeling(
                 sample_fractions[index] if index < len(sample_fractions) else None
             )
             if fraction is not None and 0.0 < fraction < 1.0:
+                # Every Data Block's sample uses the Seed as given, not offset
+                # by the Data Block's position (issue 237).
                 sampled_docs, sampled_indices = _sample_corpus(
-                    corpus, fraction, sample_seed_for_fraction(fraction)
+                    corpus, fraction, random_seed
                 )
                 active_corpora.append(sampled_docs)
                 active_corpora_indices.append(sampled_indices)

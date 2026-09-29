@@ -26,7 +26,6 @@ from ldaca_wordflow.workers import topic_modeling, topic_pipeline, topic_result
 from ldaca_wordflow.workers.topic_pipeline import (
     _sample_corpora_for_topic_modeling,
     _sample_corpus,
-    sample_seed_for_fraction,
 )
 
 
@@ -121,25 +120,15 @@ def test_sample_corpus_fraction_at_or_above_one_returns_original():
     assert result_docs2 is docs
 
 
-def test_sample_seed_is_the_whole_number_percentage():
-    # 29% as a float is 0.29, and 0.29 * 100 is 28.999...; the seed is still 29.
-    assert [sample_seed_for_fraction(f) for f in (0.01, 0.2, 0.29, 0.5, 0.99)] == [
-        1,
-        20,
-        29,
-        50,
-        99,
-    ]
-
-
-def test_each_sample_is_seeded_by_its_percentage_not_its_position():
-    """A 20% sample uses seed 20 in either corpus, whatever the Seed field (#237)."""
+def test_each_sample_uses_the_seed_as_given_not_its_position():
+    """Both Data Blocks' samples use the Seed itself, with no position offset (#237)."""
     corpus = [f"doc {i}" for i in range(200)]
     sampled = _sample_corpora_for_topic_modeling(
         corpora=[corpus, list(corpus), list(corpus)],
         sample_fractions=[0.2, 0.2, None],
+        random_seed=5,
     )
-    expected_docs, expected_indices = _sample_corpus(corpus, 0.2, seed=20)
+    expected_docs, expected_indices = _sample_corpus(corpus, 0.2, seed=5)
     assert sampled.active_corpora[0] == expected_docs
     assert sampled.active_corpora[1] == expected_docs
     assert sampled.active_corpora_indices[0] == expected_indices

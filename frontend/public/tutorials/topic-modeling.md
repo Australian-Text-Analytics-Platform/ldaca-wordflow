@@ -23,9 +23,9 @@ two corpora.
 Each Data Block has an independent sampling percentage. The default is 100%.
 Lower sampling makes exploratory runs faster but can hide rare themes or make
 small topics less stable. The label reports the effective document count, for
-example **Sampling (1,380 documents)**. A sample is the same every time you run
-with the same percentage: a 20% sample always uses the random seed 20, whatever
-the **Seed** setting. The **Colour** square sets the Data
+example **Sampling (1,380 documents)**. The sample uses the **Seed** setting, so
+the same Seed and percentage always pick the same documents, whichever order the
+Data Blocks are in. The **Colour** square sets the Data
 Block's colour in the bubble chart and topic lists.
 
 ![Two Data Block cards with sampling, and the model settings below them](tutorials/assets/topic_modelling/parameters.png)
@@ -96,8 +96,7 @@ you choose a fixed value.
 
 Controls stochastic dimensionality reduction. The default is 0. Keep the same
 seed to reproduce a configuration, or compare several seeds to assess topic
-stability. It does not change which documents a sample picks: the sample's own
-seed is its percentage.
+stability. The same seed also picks each Data Block's sample.
 
 <h2 id="help-topic-modeling-run">Step 4: Run the analysis</h2>
 

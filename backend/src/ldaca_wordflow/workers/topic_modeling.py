@@ -533,6 +533,7 @@ def _compute_topic_payload(
     sampled = _sample_corpora_for_topic_modeling(
         corpora=corpora,
         sample_fractions=sample_fractions,
+        random_seed=random_seed,
     )
     if not sampled.all_docs:
         return _build_empty_topic_payload(
