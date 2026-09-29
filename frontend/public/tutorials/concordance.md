@@ -295,6 +295,11 @@ remain checked, Sync columns turns off automatically.
 Submitting the checked sources is atomic, including when a source has no
 qualifying rows and therefore creates a schema-only Data Block.
 
+You can search a Data Block made this way again. The new search replaces its
+`CONC_` columns with its own, in the usual order, so the Data Block keeps one
+set however many times you repeat this. The text column cannot itself be a
+`CONC_` column; rename it first in the Data Editor.
+
 ![Add Concordance Documents to Project, from Dispersion view](tutorials/assets/concordance/add_to_project.png)
 
 <h3 id="help-concordance-clear-results">Clear results</h3>

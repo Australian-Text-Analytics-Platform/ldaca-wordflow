@@ -33,6 +33,7 @@ from ..analysis.generated_columns import (
     CONC_RIGHT_CONTEXT_COLUMN,
     CONC_START_IDX_COLUMN,
     CORE_CONCORDANCE_COLUMNS,
+    without_previous_concordance_columns,
     CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS,
     concordance_extraction_expr,
     concordance_struct_projection,
@@ -100,7 +101,9 @@ def _collect_source_input_from_snapshot(
     from ..shared.unsupported_columns import supported_metadata_columns
 
     snapshot_node = load_snapshot_node(input_snapshot_dir, node_id)
-    node_data = snapshot_node.data
+    node_data = without_previous_concordance_columns(
+        snapshot_node.data, document_column
+    )
     tokenization_column: str | None = None
     if search_mode == "tokens":
         if tokenizer_model is None:

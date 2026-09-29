@@ -893,3 +893,105 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
                 ).status_code
                 == 200
             )
+
+
+def test_concordance_runs_again_on_a_data_block_made_from_its_result(
+    tmp_path: Path,
+) -> None:
+    """Search, add the matches to the Project, and search that Data Block (issue 244)."""
+    from ldaca_wordflow.analysis.generated_columns import (
+        CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS,
+    )
+
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        assert (
+            client.post(
+                "/api/user-files/uploads",
+                params={"path": "speeches.csv"},
+                content=(
+                    b"text,speaker\n"
+                    b"the housing crisis needs housing affordability,A\n"
+                    b"an affordability crisis in rental housing,B\n"
+                ),
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            ).status_code
+            == 201
+        )
+        workspace_id = client.post(
+            "/api/workspaces", json={"name": "Loop"}, headers=unsafe
+        ).json()["id"]
+        assert (
+            client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe).status_code
+            == 200
+        )
+        node_id = client.post(
+            f"/api/workspaces/{workspace_id}/nodes",
+            json={"kind": "file", "file_path": "speeches.csv", "name": "Speeches"},
+            headers=unsafe,
+        ).json()["id"]
+
+        for word in ("crisis", "affordability", "housing"):
+            tab_id = client.post(
+                f"/api/workspaces/{workspace_id}/tabs",
+                json={"kind": "concordance", "name": word},
+                headers=unsafe,
+            ).json()["id"]
+            request = {
+                "kind": "concordance",
+                "node_ids": [node_id],
+                "node_columns": {node_id: "text"},
+                "search_word": word,
+            }
+            run = client.post(
+                f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",
+                json={
+                    "execution_scope": "run_all",
+                    "request": {"kind": "concordance_run_all", "source": request},
+                },
+                headers=unsafe,
+            )
+            assert run.status_code == 201, run.text
+            terminal = _wait_analysis(client, workspace_id, run.json()["id"])
+            assert terminal["state"] == "succeeded", (word, terminal)
+
+            added = client.post(
+                f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",
+                json={
+                    "execution_scope": "supporting",
+                    "parent_analysis_id": run.json()["id"],
+                    "request": {
+                        "kind": "concordance_match_data_block_creation",
+                        "sources": [
+                            {
+                                "source_node_id": node_id,
+                                "selected_columns": [
+                                    "text",
+                                    "speaker",
+                                    *CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS,
+                                ],
+                                "new_node_name": f"{word} matches",
+                            }
+                        ],
+                    },
+                },
+                headers=unsafe,
+            )
+            assert added.status_code == 201, added.text
+            published = _wait_analysis(client, workspace_id, added.json()["id"])
+            assert published["state"] == "succeeded", (word, published)
+            node_id = cast(list[str], published["output_node_ids"])[0]
+            info = client.get(f"/api/workspaces/{workspace_id}/nodes/{node_id}").json()
+            # One set of Concordance columns, however many times it runs.
+            assert info["shape"][1] == 2 + len(CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS)

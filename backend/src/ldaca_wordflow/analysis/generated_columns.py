@@ -33,6 +33,40 @@ CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS = CORE_CONCORDANCE_COLUMNS + (
     CONC_R1_FREQ_COLUMN,
 )
 
+# Every column a Concordance adds to its rows and to the Data Blocks made from
+# its Result.
+CONCORDANCE_GENERATED_COLUMNS = frozenset(
+    (*CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS, CONC_EXTRACTION_COLUMN)
+)
+
+
+def without_previous_concordance_columns(
+    frame: pl.LazyFrame, document_column: str
+) -> pl.LazyFrame:
+    """Drop the columns an earlier Concordance added (issue 244).
+
+    A Data Block made from a Concordance Result already has these columns.
+    Searching it again replaces them, so the rows keep one set, in the usual
+    order, instead of failing on duplicate names. The text column cannot be
+    one of them, because this Concordance adds a column of the same name.
+
+    Called by the Concordance Preview page and the Run worker.
+    """
+    from ..shared.errors import InvalidInputError
+
+    if document_column in CONCORDANCE_GENERATED_COLUMNS:
+        raise InvalidInputError(
+            f"The text column {document_column} has the same name as a column "
+            "Concordance adds. Rename it in the Data Editor, for example to "
+            "text, then search again."
+        )
+    previous = [
+        column
+        for column in frame.collect_schema().names()
+        if column in CONCORDANCE_GENERATED_COLUMNS
+    ]
+    return frame.drop(previous) if previous else frame
+
 
 def concordance_extraction_expr(
     document_column: str,

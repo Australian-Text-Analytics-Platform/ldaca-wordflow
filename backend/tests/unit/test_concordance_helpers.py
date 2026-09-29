@@ -207,3 +207,78 @@ def test_compute_concordance_page_rejects_a_generated_sort_column() -> None:
             sort_by="CONC_matched_text",
             descending=False,
         )
+
+
+_PREVIOUS_CONCORDANCE_COLUMNS = [
+    "CONC_left_context",
+    "CONC_matched_text",
+    "CONC_right_context",
+    "CONC_start_idx",
+    "CONC_end_idx",
+    "CONC_l1",
+    "CONC_r1",
+    "CONC_l1_freq",
+    "CONC_r1_freq",
+    "CONC_extraction",
+]
+
+
+def _data_block_from_a_previous_concordance() -> pl.LazyFrame:
+    return pl.LazyFrame(
+        {
+            "text": ["the housing crisis and affordability"],
+            "speaker": ["A"],
+            **{
+                column: [1] if column.endswith(("idx", "freq")) else ["old"]
+                for column in _PREVIOUS_CONCORDANCE_COLUMNS
+            },
+        }
+    )
+
+
+def test_a_concordance_replaces_the_columns_of_a_previous_one():
+    """Searching a Data Block made from a Concordance Result (issue 244)."""
+    from ldaca_wordflow.analysis.concordance_core import compute_node_concordance_page
+
+    page = compute_node_concordance_page(
+        {"lf": _data_block_from_a_previous_concordance(), "column": "text"},
+        {
+            "search_word": "affordability",
+            "regex": False,
+            "num_left_tokens": 5,
+            "num_right_tokens": 5,
+            "case_sensitive": False,
+        },
+        page=1,
+        page_size=10,
+        sort_by=None,
+        descending=False,
+    )
+
+    assert page["columns"] == [
+        "text",
+        "speaker",
+        "CONC_left_context",
+        "CONC_matched_text",
+        "CONC_right_context",
+        "CONC_start_idx",
+        "CONC_end_idx",
+        "CONC_l1",
+        "CONC_r1",
+        "CONC_extraction",
+    ]
+    hit = page["data"][0][0]
+    assert hit["CONC_matched_text"] == "affordability"
+    assert hit["CONC_l1"] == "and"
+
+
+def test_a_text_column_named_like_a_concordance_column_is_explained():
+    from ldaca_wordflow.analysis.generated_columns import (
+        without_previous_concordance_columns,
+    )
+    from ldaca_wordflow.shared.errors import InvalidInputError
+
+    with pytest.raises(InvalidInputError, match="Rename it in the Data Editor"):
+        without_previous_concordance_columns(
+            _data_block_from_a_previous_concordance(), "CONC_extraction"
+        )

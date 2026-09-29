@@ -37,6 +37,7 @@ from .generated_columns import (
     CONC_RIGHT_CONTEXT_COLUMN,
     CONC_START_IDX_COLUMN,
     CORE_CONCORDANCE_COLUMNS,
+    without_previous_concordance_columns,
     compute_concordance_extraction_string,
 )
 from .page_size import DEFAULT_PAGE_SIZE_CANDIDATES, estimate_page_size
@@ -384,6 +385,7 @@ def compute_node_concordance_page(
     tokenization_column = src.get("tokenization_column")
     # Topic Coverage is not shown as Concordance metadata (issue 200).
     base_lf = without_unsupported_columns(src["lf"], keep=(column, tokenization_column))
+    base_lf = without_previous_concordance_columns(base_lf, column)
     search_mode = str(request.get("search_mode") or "regex")
 
     node_request: dict[str, Any] = dict(request)
