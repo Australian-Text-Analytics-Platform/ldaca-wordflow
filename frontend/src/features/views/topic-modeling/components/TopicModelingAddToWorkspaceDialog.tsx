@@ -34,6 +34,17 @@ interface Props {
 }
 
 const PER_TOPIC_COLUMNS = ['TOPIC_topic', 'TOPIC_share', 'TOPIC_segment_count'];
+// Columns an earlier Topic Modelling added. The new ones replace them, so the
+// dialog does not offer the old copies (issue 246).
+const PREVIOUS_TOPIC_COLUMNS: ReadonlySet<string> = new Set([
+  ...PER_TOPIC_COLUMNS,
+  'TOPIC_top1',
+  'TOPIC_coverage',
+  'TOPIC_topic_meaning',
+  'TOPIC_topic_coverage',
+]);
+const sourceColumns = (source: TopicModelingAddToWorkspaceSource): string[] =>
+  source.columns.filter((column) => !PREVIOUS_TOPIC_COLUMNS.has(column));
 
 /** Topic numbers listed in a default block name before it falls back to a count. */
 const MAX_TOPICS_IN_NAME = 3;
@@ -69,7 +80,7 @@ const createDialogSource = (
           includeInSubmission: false,
           title: 'The topic, its share of the document and its segment count are always included.',
         })),
-        ...source.columns.map((column) =>
+        ...sourceColumns(source).map((column) =>
           column === source.documentColumn
             ? {
                 name: column,
@@ -92,7 +103,7 @@ const createDialogSource = (
         includeInSubmission: false,
         title: 'The dominant topic assignment is always included.',
       },
-      ...source.columns.map((column) => ({
+      ...sourceColumns(source).map((column) => ({
         name: column,
         defaultSelected: column === source.documentColumn,
       })),

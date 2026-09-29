@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 from io import BytesIO
 from pathlib import Path
+from typing import Literal
 
 import polars as pl
 import pytest
@@ -41,6 +42,8 @@ def _data_block_creation_fixture(
     invalid_meanings_count: bool = False,
     invalid_top_n_provenance: bool = False,
     output_color: str | None = None,
+    source_document: str | None = "text",
+    row_unit: Literal["documents", "topics"] = "documents",
 ) -> tuple[Workspace, AnalysisRecord, TopicModelingDataBlockCreationWorkerResult, uuid.UUID]:
     source_id = uuid.uuid4()
     workspace = Workspace(name="topic Data Block Creation")
@@ -50,7 +53,7 @@ def _data_block_creation_fixture(
             name="Source",
             data=pl.DataFrame({"text": ["first", "second"]}).lazy(),
             provenance=SourceProvenance(),
-            document="text",
+            document=source_document,
             color="#112233",
         )
     )
@@ -81,6 +84,7 @@ def _data_block_creation_fixture(
         new_node_names={source_id: "Topic data"},
         cluster_count=2,
         top_n_topics=2,
+        row_unit=row_unit,
     )
     child = AnalysisRecord.create(
         request,
@@ -122,6 +126,7 @@ def _data_block_creation_fixture(
             role="topic_data",
             cluster_count=2,
             top_n_topics=1 if invalid_top_n_provenance else 2,
+            row_unit=row_unit,
         ),
         inputs=[
             DerivationInput(role="source", value=node_reference(source_id))
@@ -277,3 +282,21 @@ def test_topic_modeling_data_block_creation_rejects_inherited_source_color(
             result,
             10_000_000,
         )
+
+
+def test_per_topic_data_block_takes_the_text_column_as_its_document(
+    tmp_path: Path,
+) -> None:
+    """The source has no document column; one row per topic still publishes (issue 246)."""
+    workspace, child, result, _source_id = _data_block_creation_fixture(
+        tmp_path, source_document=None, row_unit="topics"
+    )
+
+    _publish_topic_modeling_data_blocks(
+        tmp_path / "analyses" / str(child.id),
+        workspace,
+        tmp_path,
+        child,
+        result,
+        10_000_000,
+    )

@@ -275,7 +275,9 @@ currently selected shared names; individual choices and **Select all** or
 **Select none** then update both sources. Source-only columns are disabled while
 sync is active, and an unchecked source keeps its independent selection.
 `TOPIC_top1` remains required and is not synchronised. If fewer than two sources
-remain checked, Sync columns turns off automatically.
+remain checked, Sync columns turns off automatically. When the source Data Block
+was itself made by Topic Modelling, its old `TOPIC_` columns are not offered: the
+new ones replace them.
 
 ![Add Topic Modelling results to Project, with the Rows choice at the top](tutorials/assets/topic_modelling/add_to_project.png)
 

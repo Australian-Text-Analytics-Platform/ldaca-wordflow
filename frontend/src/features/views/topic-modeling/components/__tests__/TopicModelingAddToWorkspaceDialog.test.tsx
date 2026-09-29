@@ -124,6 +124,31 @@ describe('TopicModelingAddToWorkspaceDialog', () => {
     );
   });
 
+  it('does not offer the TOPIC_ columns of a previous run (issue 246)', () => {
+    render(
+      <TopicModelingAddToWorkspaceDialog
+        open
+        onOpenChange={vi.fn()}
+        sources={[
+          {
+            id: 'node-1',
+            name: 'Corpus topics',
+            columns: ['text', 'speaker', 'TOPIC_top1', 'TOPIC_coverage', 'TOPIC_topic'],
+            documentColumn: 'text',
+          },
+        ]}
+        selectedTopicIds={null}
+        isSubmitting={false}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByRole('checkbox', { name: /^TOPIC_top1/ })).toHaveLength(1);
+    expect(screen.queryByRole('checkbox', { name: /^TOPIC_coverage/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('checkbox', { name: /^TOPIC_topic/ })).not.toBeInTheDocument();
+    expect(screen.getByRole('checkbox', { name: 'speaker' })).toBeInTheDocument();
+  });
+
   it('detaches per topic with the document column always included', () => {
     const onSubmit = vi.fn();
     render(

@@ -163,7 +163,11 @@ def test_topic_modeling_data_block_creation_publishes_ordered_data_and_meanings(
 
 
 def _topic_segments_fixture(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, segments: object
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    segments: object,
+    extra_columns: dict[str, list[object]] | None = None,
+    documents: list[dict[str, object]] | None = None,
 ) -> tuple[uuid.UUID, Path, Path]:
     node_id = uuid.uuid4()
     workspace = Workspace(name="topics")
@@ -176,6 +180,7 @@ def _topic_segments_fixture(
                     # Non-ASCII text proves spans are character offsets.
                     "text": ["Café au lait. Noël arrive. Rain again.", "Solo line."],
                     "year": [2021, 2022],
+                    **(extra_columns or {}),
                 }
             ).lazy(),
             provenance=SourceProvenance(),
@@ -197,7 +202,7 @@ def _topic_segments_fixture(
     monkeypatch.setattr(
         "ldaca_wordflow.workers.topic_pipeline._project_rust_topic_modeling",
         lambda **_kwargs: {
-            "documents": [{"doc_index": 0}, {"doc_index": 1}],
+            "documents": documents or [{"doc_index": 0}, {"doc_index": 1}],
             "topics": [
                 {"id": 0, "representative_words": [{"word": "coffee"}]},
                 {"id": 1, "representative_words": [{"word": "weather"}]},
@@ -330,3 +335,97 @@ def test_per_topic_detach_asks_for_a_rerun_without_segment_spans(
                 }
             },
         )
+
+
+# Columns an earlier Topic Modelling added, with values the new run must replace.
+_PREVIOUS_TOPIC_COLUMNS: dict[str, list[object]] = {
+    TOPIC_COLUMN: [9, 9],
+    TOPIC_TOP1_COLUMN: [9, 9],
+    TOPIC_SHARE_COLUMN: [0.5, 0.5],
+    TOPIC_SEGMENT_COUNT_COLUMN: [7, 7],
+}
+
+
+def test_per_topic_rows_replace_the_topic_columns_of_a_previous_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Topic Modelling on a Data Block made from a Topic Modelling Result (issue 246)."""
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [(0, 0, 13, 0), (0, 14, 26, 0), (0, 27, 38, 1), (1, 0, 10, -1)],
+        extra_columns=_PREVIOUS_TOPIC_COLUMNS,
+    )
+    request = _topic_request(node_id)
+    # The old columns are ticked too, as the Add to Project dialog allowed.
+    request["selected_columns"] = {
+        str(node_id): ["text", "year", TOPIC_COLUMN, TOPIC_SHARE_COLUMN]
+    }
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection={
+            node_id: {"row_indices": [0, 1], "offset": 0, "size": 2, "text_column": "text"}
+        },
+    )
+
+    data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
+    assert data.columns == [
+        "text",
+        "year",
+        TOPIC_COLUMN,
+        TOPIC_SHARE_COLUMN,
+        TOPIC_SEGMENT_COUNT_COLUMN,
+    ]
+    assert data[TOPIC_COLUMN].to_list() == [0, 1]
+    assert data[TOPIC_SEGMENT_COUNT_COLUMN].to_list() == [2, 1]
+
+
+def test_document_rows_replace_the_topic_columns_of_a_previous_run(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The old TOPIC_topic must not shadow the new assignment in the join (issue 246)."""
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [],
+        extra_columns=_PREVIOUS_TOPIC_COLUMNS,
+        documents=[
+            {
+                "doc_index": 0,
+                "dominant_topic": 1,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 0.0},
+                    {"topic_id": 0, "coverage": 0.0},
+                    {"topic_id": 1, "coverage": 1.0},
+                ],
+            },
+            {
+                "doc_index": 1,
+                "dominant_topic": 0,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 0.0},
+                    {"topic_id": 0, "coverage": 1.0},
+                    {"topic_id": 1, "coverage": 0.0},
+                ],
+            },
+        ],
+    )
+    request = _topic_request(node_id)
+    request["row_unit"] = "documents"
+    request["selected_columns"] = {str(node_id): ["text", "year", TOPIC_TOP1_COLUMN]}
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection={node_id: {"row_indices": [0, 1], "offset": 0, "size": 2}},
+    )
+
+    data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
+    assert data.columns == ["text", "year", TOPIC_TOP1_COLUMN, TOPIC_COVERAGE_OUTPUT_COLUMN]
+    assert data[TOPIC_TOP1_COLUMN].to_list() == [1, 0]

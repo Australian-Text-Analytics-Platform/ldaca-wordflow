@@ -651,10 +651,16 @@ def _validate_published_data_block_identity(
             if source is None or source_id not in request.node_ids:
                 raise ValueError("Topic Modeling source Data Block is unavailable")
             selected = request.selected_columns[source_id]
+            # One row per topic holds only each topic's segments of the text
+            # column, which becomes the new Data Block's document column.
+            expected_document = (
+                parent_request.node_columns.get(source_id)
+                if operation_value.row_unit == "topics"
+                else (source.document if source.document in selected else None)
+            )
             if (
                 metadata.name != request.new_node_names[source_id]
-                or metadata.document
-                != (source.document if source.document in selected else None)
+                or metadata.document != expected_document
                 or metadata.color is not None
                 or metadata.id in workspace.nodes
             ):

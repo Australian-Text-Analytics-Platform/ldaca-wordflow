@@ -75,6 +75,7 @@ def run_topic_modeling_data_block_creation(
         TOPIC_COVERAGE_COLUMN,
         TOPIC_COVERAGE_OUTPUT_COLUMN,
         TOPIC_MEANING_COLUMN,
+        TOPIC_MODELING_GENERATED_COLUMNS,
         TOPIC_TOP1_COLUMN,
     )
     from ..analysis.topic_inclusion import top_topic_ids
@@ -123,8 +124,21 @@ def run_topic_modeling_data_block_creation(
     for index, source_uuid in enumerate(request.node_ids):
         source_id = source_uuid
         source = load_snapshot_node(input_snapshot_dir, source_id)
-        selected_columns = list(request.selected_columns[source_uuid])
-        schema = source.data.collect_schema()
+        # A Data Block made from a Topic Modelling Result: the new TOPIC_
+        # columns replace its old ones, which are neither carried nor joined
+        # (issue 246).
+        previous_topic_columns = [
+            column
+            for column in source.data.collect_schema().names()
+            if column in TOPIC_MODELING_GENERATED_COLUMNS
+        ]
+        source_data = source.data.drop(previous_topic_columns)
+        selected_columns = [
+            column
+            for column in request.selected_columns[source_uuid]
+            if column not in TOPIC_MODELING_GENERATED_COLUMNS
+        ]
+        schema = source_data.collect_schema()
         missing = [column for column in selected_columns if column not in schema]
         if missing:
             raise ValueError(f"Topic Modelling Data Block Creation columns not found: {missing}")
@@ -142,7 +156,7 @@ def run_topic_modeling_data_block_creation(
         if request.row_unit == "topics":
             text_column = str(source_context["text_column"])
             joined, included_top_topics = _topic_segment_rows(
-                source_data=source.data,
+                source_data=source_data,
                 text_column=text_column,
                 selected_columns=selected_columns,
                 segment_assignments=segment_assignments,
@@ -199,7 +213,7 @@ def run_topic_modeling_data_block_creation(
                 }
             ).lazy()
             joined = (
-                source.data.with_row_index("__row_nr__")
+                source_data.with_row_index("__row_nr__")
                 .with_columns(pl.col("__row_nr__").cast(pl.Int64))
                 .join(assignments, on="__row_nr__", how="inner", maintain_order="left")
                 .select(
