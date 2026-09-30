@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { sqlTypes } from '../../../api';
 import { SqlTypeDialog } from '../SqlTypeDialog';
 

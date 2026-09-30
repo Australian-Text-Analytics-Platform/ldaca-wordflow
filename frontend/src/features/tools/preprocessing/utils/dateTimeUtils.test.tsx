@@ -8,7 +8,7 @@ import {
   TimeMicrosecond,
   TimestampMicrosecond,
 } from 'apache-arrow';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { DateTimePickerField } from './dateTimeUtils';
 import { replaceCalendarDate, replaceClockTime } from './dateTimeHelpers';
 import { columnCastIdentity } from '@/features/project/data-view/services/schemaMutations';

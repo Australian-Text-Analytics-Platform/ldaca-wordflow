@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { inputNode } from '@/test/nodeMetadata';
 import { useFilterSubTabSections } from '../../filter/hooks/useFilterSubTabSections';
 import { useReplaceSubTab } from '../../replace/hooks/useReplaceSubTab';

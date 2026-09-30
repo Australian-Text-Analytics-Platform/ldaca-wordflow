@@ -1,4 +1,4 @@
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it } from 'vite-plus/test';
 import { getFrequencyDraft, orderedFrequencyRequest, useFrequencyState } from './frequencyState';
 
 const inputs = ['A', 'B'].map((name) => ({

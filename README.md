@@ -17,11 +17,15 @@ file.
 
 ## Development
 
+Install [Vite+ 1.0.0](https://viteplus.dev/guide/env) with Node and package-manager
+management enabled. The repository pins Node 24.15.0 and pnpm 11.24.0; see the
+[setup procedure](docs/runbooks/development.md#toolchain-setup).
+
 ```sh
-pnpm install
-pnpm dev                 # Rust backend and browser preview
-pnpm dev:desktop         # Tauri desktop application
-pnpm build:desktop:mac   # Regular macOS application bundle
+vp install --frozen-lockfile
+vp run dev                 # Rust backend and browser preview
+vp run dev:desktop         # Tauri desktop application
+vp run build:desktop:mac   # Regular macOS application bundle
 ```
 
 Rust/Cargo is required. The active application does not need a Python environment

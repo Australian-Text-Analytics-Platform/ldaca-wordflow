@@ -86,11 +86,11 @@ export function AnnotationAi({
   const busy = run.isPending || Boolean(running);
   const ready = Boolean(
     request.setup.source.name &&
-      request.setup.document &&
-      request.setup.codebook?.code &&
-      request.setup.codebook.description &&
-      request.inference.provider &&
-      request.inference.model.trim(),
+    request.setup.document &&
+    request.setup.codebook?.code &&
+    request.setup.codebook.description &&
+    request.inference.provider &&
+    request.inference.model.trim(),
   );
   const partial = (result.data?.report.failed ?? 0) > 0;
   const unchanged =
@@ -427,7 +427,7 @@ export function AnnotationAi({
               Boolean(preview.state?.outdated) ||
               Boolean(
                 preview.state &&
-                  !matchesAnalysisRequest('annotation', request, preview.state.request),
+                !matchesAnalysisRequest('annotation', request, preview.state.request),
               )
             }
             page={preview.state?.page}

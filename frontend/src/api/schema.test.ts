@@ -1,5 +1,5 @@
 import Ajv2020 from 'ajv/dist/2020';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import contract from '../../../backend/openapi.json';
 
 const ajv = new Ajv2020({ strict: false, validateFormats: false });
@@ -20,7 +20,11 @@ describe('native OpenAPI contracts', () => {
           .filter((p) => p.in === 'path')
           .map((p) => p.name)
           .sort();
-        expect(actual).toEqual([...path.matchAll(/\{([^}]+)\}/g)].map((m) => m[1]).sort());
+        expect(actual).toEqual(
+          [...path.matchAll(/\{([^}]+)\}/g)]
+            .map((m) => m[1])
+            .sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)),
+        );
       }
     }
     // This guards accidental route omission during the initial cutover.

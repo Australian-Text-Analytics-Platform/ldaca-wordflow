@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import type { Quote } from './quotationRows';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { QuotationText } from './QuotationText';

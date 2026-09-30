@@ -26,14 +26,17 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive
-      - uses: actions/setup-node@v7.0.0
+      - uses: voidzero-dev/setup-vp@v1.21.1
         with:
-          node-version: 24
+          version: 1.0.0
+          node-version-file: .node-version
+          run-install: false
+          cache: true
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - run: corepack enable && pnpm install --frozen-lockfile
-      - run: pnpm -C frontend build
+      - run: vp install --frozen-lockfile
+      - run: vp -C frontend run build
       - run: cargo build -p wordflow-server --bin wordflow-server --release --locked --target ${{ matrix.target }}
       - if: runner.os == 'macOS'
         uses: Apple-Actions/import-codesign-certs@v7.0.0

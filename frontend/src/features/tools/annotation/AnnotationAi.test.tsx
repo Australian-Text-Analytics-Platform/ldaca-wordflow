@@ -3,7 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { tableFromArrays, vectorFromArray, Utf8 } from 'apache-arrow';
 import { useState } from 'react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import * as api from '@/features/project/api';
 import { createProjectQueryClient } from '@/features/project/projectErrors';

@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { DesktopUpdateSettings } from './DesktopUpdateSettings';
 import { getUpdatePreferences, setAutomaticUpdateChecks } from './desktopUpdater';
 vi.mock('./desktopUpdater', () => ({

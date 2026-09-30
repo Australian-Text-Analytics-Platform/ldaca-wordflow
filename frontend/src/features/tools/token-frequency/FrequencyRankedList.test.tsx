@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { tableFromArrays } from 'apache-arrow';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import { FrequencyRankedList, FREQUENCY_LIST_CHUNK_SIZE } from './FrequencyRankedList';
 

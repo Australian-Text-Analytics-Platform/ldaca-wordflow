@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import type { NodeInput } from '../nodeInputsCore';
 import { useNodeInputs } from '../useNodeInputs';

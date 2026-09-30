@@ -142,7 +142,6 @@ export function NodeInputsPanel({
     if (!ids.length) return false;
     const rejections = onAddNodes(ids);
     if (rejections.length === 1) {
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- length===1 guarantees index 0 exists
       toast.warning(`Couldn't add node: ${rejections[0]!.reason}`);
     } else if (rejections.length > 1) {
       toast.warning(`Couldn't add ${String(rejections.length)} nodes (already added or full).`);

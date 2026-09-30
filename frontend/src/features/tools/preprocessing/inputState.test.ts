@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { usePreprocessingInputs } from './inputState';
 it('keeps self-join roles independent and reconciles both on rename and deletion', () => {
   const state = usePreprocessingInputs.getState();

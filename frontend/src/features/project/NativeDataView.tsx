@@ -44,7 +44,6 @@ export default function NativeDataView({
     schema.data?.some((field) => field.name === sort.id),
   );
   // Both route forms identify the same object through this schema/name tuple.
-  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   const rows = useQuery({
     queryKey: [
       'native',

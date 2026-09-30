@@ -6,7 +6,7 @@ const needsFormat = () =>
   );
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { Field, Int64, TimestampMillisecond, Utf8 } from 'apache-arrow';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const toastMock = vi.hoisted(() => ({ error: vi.fn() }));
 
@@ -56,8 +56,8 @@ describe('useColumnMutations', () => {
     expect(onCast).toHaveBeenCalledWith('published_at', 'datetime', undefined);
     expect(toastMock.error).not.toHaveBeenCalled();
 
-    act(() => {
-      result.current.handleDatetimeFormatConfirm('%Y-%m-%d');
+    await act(async () => {
+      await result.current.handleDatetimeFormatConfirm('%Y-%m-%d');
     });
 
     await waitFor(() => {

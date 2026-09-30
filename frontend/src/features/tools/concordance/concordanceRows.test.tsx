@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { HighlightedDocument } from './ConcordanceResults';
 import { interleave, type Match } from './concordanceRows';
 it('highlights Unicode character offsets rather than UTF-16 positions', () => {

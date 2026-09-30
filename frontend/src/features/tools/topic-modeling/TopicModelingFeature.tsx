@@ -473,10 +473,10 @@ function TopicTab({
             editing={editing}
             outdated={Boolean(
               Boolean(live?.outdated) ||
-                Boolean(live?.error) ||
-                (temporary &&
-                  live &&
-                  !matchesAnalysisRequest('topic-modeling', captured, live.request)),
+              Boolean(live?.error) ||
+              (temporary &&
+                live &&
+                !matchesAnalysisRequest('topic-modeling', captured, live.request)),
             )}
           />
         </AnalysisResultBoundary>

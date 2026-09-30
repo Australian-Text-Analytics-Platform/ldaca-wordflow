@@ -130,8 +130,8 @@ function QuotationTab({
   };
   const ready = Boolean(
     captured.input.source.schema &&
-      captured.input.column &&
-      nodes.some((node) => node.table_name === captured.input.source.name),
+    captured.input.column &&
+    nodes.some((node) => node.table_name === captured.input.source.name),
   );
   const running = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({

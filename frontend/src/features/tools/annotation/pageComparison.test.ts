@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { pageComparison } from './pageComparison';
 it('matches native nominal agreement with missing, invalid and failed predictions excluded', () => {
   const predictions = ['A', 'A', 'B', 'B', null, 'obsolete'].map((label) => ({

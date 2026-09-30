@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
 import { plotExportContext, plotPublicationScope } from './plotContext';
 import type { PlotDisplay } from './plotModel';

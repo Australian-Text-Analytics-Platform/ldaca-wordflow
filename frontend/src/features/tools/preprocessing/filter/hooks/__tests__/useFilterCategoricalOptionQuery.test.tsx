@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { Dictionary, Field, Uint8, Utf8 } from 'apache-arrow';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 const preview = vi.hoisted(() => vi.fn());
 vi.mock('../../../projectPreprocessing', () => ({ previewSql: preview }));
 import { useFilterCategoricalOptionQuery } from '../useFilterCategoricalOptionQuery';

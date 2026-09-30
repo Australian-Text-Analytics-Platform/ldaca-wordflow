@@ -5,7 +5,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { tableFromArrays } from 'apache-arrow';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import type { FrequencyAnalysisResult, Tab, FrequencyQuery } from '@/features/project/api';
 import { FrequencyResults } from './FrequencyResults';

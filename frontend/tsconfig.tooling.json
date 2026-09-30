@@ -1,5 +1,5 @@
 {
-  "extends": "./tsconfig.json",
+  "extends": "./tsconfig.app.json",
   "compilerOptions": {
     "lib": [
       "ESNext",
@@ -7,8 +7,8 @@
     ],
     "types": [
       "node",
-      "vite/client",
-      "vitest/config",
+      "vite-plus/client",
+      "vite-plus/test/config",
       "expect-webdriverio"
     ]
   },

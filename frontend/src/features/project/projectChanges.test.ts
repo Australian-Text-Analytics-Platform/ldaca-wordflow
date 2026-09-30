@@ -1,5 +1,5 @@
 import { QueryClient, QueryObserver } from '@tanstack/react-query';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { objectDependencies, refreshProjectQueries } from './projectChanges';
 
 it('refreshes only live dependencies, preserving independent and immutable results', async () => {

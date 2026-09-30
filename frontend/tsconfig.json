@@ -1,40 +1,16 @@
 {
-  "compilerOptions": {
-    "target": "ESNext",
-    "lib": ["DOM", "DOM.Iterable", "ESNext"],
-    "strict": true,
-    "skipLibCheck": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "noUncheckedSideEffectImports": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "moduleDetection": "force",
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "erasableSyntaxOnly": true,
-    "verbatimModuleSyntax": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    "types": ["vite/client", "vitest", "node"],
-    "paths": {
-      "@/*": ["./src/*"]
+  "extends": "./tsconfig.app.json",
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.test.json"
+    },
+    {
+      "path": "./tsconfig.tooling.json"
     }
-  },
-  "include": ["src"],
-  "exclude": [
-    "dist",
-    "build",
-    "node_modules",
-    "src/**/*.test.*",
-    "src/**/*.spec.*",
-    "src/**/__tests__/**",
-    "src/test/**"
-  ]
+  ],
+  "include": []
 }

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { Field, Int64, Utf8 } from 'apache-arrow';
 import { inputNode } from '@/test/nodeMetadata';
 import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';

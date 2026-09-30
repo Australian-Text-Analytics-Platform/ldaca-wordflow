@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import { useStopwords } from './useStopwords';
 vi.mock('@/features/project/api', async (original) => ({

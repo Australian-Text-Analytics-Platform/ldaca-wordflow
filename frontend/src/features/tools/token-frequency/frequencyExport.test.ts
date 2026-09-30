@@ -1,6 +1,6 @@
 import { Blob as NodeBlob } from 'node:buffer';
 import JSZip from 'jszip';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { buildFrequencyBundle } from './frequencyExport';
 import { buildChartExport, saveGeneratedExport } from '../common/chartExport';
 
@@ -71,6 +71,7 @@ it.each([
       format === 'jpeg' ? 0.92 : undefined,
     );
     expect(result.type).toBe(`image/${format}`);
+    // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:frequency-export');
   },
 );
@@ -93,8 +94,10 @@ it('downloads generated browser files with a temporary anchor and deferred URL c
   });
   await expect(saveGeneratedExport(new Blob(['svg']), '日本.svg')).resolves.toBe('日本.svg');
   expect(attached).toBe(true);
+  // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
   expect(URL.revokeObjectURL).not.toHaveBeenCalled();
   vi.runAllTimers();
+  // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
   expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:frequency-export');
 });
 

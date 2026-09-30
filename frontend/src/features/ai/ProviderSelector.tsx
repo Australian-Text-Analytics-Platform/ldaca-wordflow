@@ -46,7 +46,7 @@ export function ProviderSelector({
     queryFn: ({ signal }) => api.aiModels(base, provider, signal),
     enabled: Boolean(
       chosen &&
-        (chosen.has_credential || chosen.provider === 'custom' || chosen.provider === 'apple'),
+      (chosen.has_credential || chosen.provider === 'custom' || chosen.provider === 'apple'),
     ),
     staleTime: Infinity,
     retry: false,

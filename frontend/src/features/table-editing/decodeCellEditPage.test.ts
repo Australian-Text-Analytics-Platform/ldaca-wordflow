@@ -12,7 +12,7 @@ import {
   tableToIPC,
   vectorFromArray,
 } from 'apache-arrow';
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { decodeCellEditPage } from './decodeCellEditPage';
 
 it('uses exact Arrow editing values and strips transport fields even for unusual names', () => {
@@ -68,8 +68,10 @@ it('uses exact Arrow editing values and strips transport fields even for unusual
     __wordflow_edit_0: 'original',
   });
   expect(decoded.rows[1]).toEqual({ big: null, stamp: 'infinity', __wordflow_edit_0: '' });
+  // oxlint-disable-next-line typescript/no-base-to-string -- Arrow DataType implements its own string representation.
   expect(decoded.schema[1]?.field.type.toString()).toBe(new TimestampNanosecond().toString());
   // Valid SQL column names must not inherit fake categorical choices from Object.prototype.
   expect(decoded.options.constructor).toBeUndefined();
+  // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
   expect(decoded.options.toString).toBeUndefined();
 });

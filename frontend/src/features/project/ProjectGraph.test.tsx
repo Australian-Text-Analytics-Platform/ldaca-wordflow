@@ -1,5 +1,5 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import ProjectGraph from './ProjectGraph';
 import type { ProjectGraphView } from './graph-view/components/ProjectGraphView';
 import type { CustomNodeData } from './graph-view/components/CustomNodeView';
@@ -39,6 +39,7 @@ vi.mock('@xyflow/react', () => ({
   Position: { Left: 'left', Right: 'right' },
   useStore: vi.fn(),
 }));
+// oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
 const originalElementFromPoint = document.elementFromPoint;
 beforeEach(() => {
   vi.clearAllMocks();
@@ -100,7 +101,7 @@ function renderGraph(onDrop = vi.fn(), onAdd = vi.fn()) {
 it('routes double-click to the same input action with its pointer position', () => {
   const add = vi.fn();
   renderGraph(vi.fn(), add);
-  const { graph } = native.graph.mock.calls.at(-1)?.[0] as {
+  const { graph } = native.graph.mock.calls.at(-1)![0] as {
     graph: { handleNodeDoubleClick: (event: MouseEvent, node: { id: string }) => void };
   };
   const event = new MouseEvent('dblclick', { clientX: 120, clientY: 180, cancelable: true });
@@ -191,7 +192,7 @@ it('distinguishes directed SQL dependencies from virtual relationships without c
     ],
   };
   render(<DropGraph graph={graph} onDrop={vi.fn()} onAdd={vi.fn()} />);
-  const { graph: model } = native.graph.mock.calls.at(-1)?.[0] as {
+  const { graph: model } = native.graph.mock.calls.at(-1)![0] as {
     graph: {
       edges: {
         source: string;
@@ -256,7 +257,7 @@ function connectionGraph(overrides: Partial<React.ComponentProps<typeof ProjectG
   return { ...callbacks, ...view, props };
 }
 type GraphModel = React.ComponentProps<typeof ProjectGraphView>['graph'];
-const model = () => (native.graph.mock.calls.at(-1)?.[0] as { graph: GraphModel }).graph;
+const model = () => (native.graph.mock.calls.at(-1)![0] as { graph: GraphModel }).graph;
 const nodeData = (id: string) =>
   model().nodes.find((node) => node.id === id)!.data as CustomNodeData;
 
@@ -287,7 +288,9 @@ it.each(['parent', 'child'] as const)(
 it('cancels picking on Escape and when the anchor disappears', () => {
   const view = connectionGraph();
   act(() => nodeData('source').onAddLogicalChild!('source'));
-  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  });
   expect(nodeData('other').onConnectionPick).toBeUndefined();
   act(() => nodeData('source').onAddLogicalChild!('source'));
   view.rerender(
@@ -334,7 +337,9 @@ it('reconnects only the selected source and honours cancellation of a retained d
   // Server owns the graph: submitting a reconnect never changes it optimistically.
   expect(model().edges[0].source).toBe('source');
   act(() => model().handleReconnectStart!(new MouseEvent('mousedown'), edge, 'target'));
-  act(() => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })));
+  act(() => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  });
   act(() =>
     reconnect(edge, { source: 'other', target: 'view', sourceHandle: null, targetHandle: null }),
   );

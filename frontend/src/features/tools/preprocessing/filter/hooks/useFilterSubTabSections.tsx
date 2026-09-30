@@ -203,7 +203,6 @@ export const useFilterSubTabSections = (
 
   const autoNodeName = buildFilterAutoNodeName({
     // Empty node name should fall back to the id, so keep `||`.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     baseName: selectedNode?.name || selectedNodeId,
     conditions,
     logic,
@@ -438,7 +437,6 @@ export const useFilterSubTabSections = (
 
           // describeData stats come from the API; empty/falsy values should fall
           // back to '', so keep `||` here.
-          /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
           switch (operator) {
             case 'eq':
               newValue = describeData.median || describeData.min || '';
@@ -458,7 +456,6 @@ export const useFilterSubTabSections = (
             default:
               newValue = '';
           }
-          /* eslint-enable @typescript-eslint/prefer-nullish-coalescing */
 
           return { ...c, value: newValue };
         }),

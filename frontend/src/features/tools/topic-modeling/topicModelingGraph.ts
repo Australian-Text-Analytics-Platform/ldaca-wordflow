@@ -49,7 +49,6 @@ export function resolveTopicCorpusColor(
   const nodeId = panelNodeIds[index];
   if (nodeId) {
     // An empty persisted colour deliberately falls through to the palette.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
     return nodeColors[nodeId] || defaultPalette[index] || fallback;
   }
   return defaultPalette[index] ?? fallback;

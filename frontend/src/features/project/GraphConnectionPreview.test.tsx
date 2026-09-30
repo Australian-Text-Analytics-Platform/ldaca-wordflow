@@ -1,5 +1,5 @@
 import { act, render } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { GraphConnectionPreview } from './GraphConnectionPreview';
 
 const flow = vi.hoisted(() => ({
@@ -19,7 +19,9 @@ vi.mock('@xyflow/react', () => ({
 }));
 it('reprojects the pointer when the viewport changes without a new pointer event', () => {
   const view = render(<GraphConnectionPreview anchor="source" outgoing />);
-  act(() => window.dispatchEvent(new MouseEvent('pointermove', { clientX: 100, clientY: 80 })));
+  act(() => {
+    window.dispatchEvent(new MouseEvent('pointermove', { clientX: 100, clientY: 80 }));
+  });
   expect(flow.screenToFlowPosition).toHaveBeenCalledExactlyOnceWith({ x: 100, y: 80 });
   flow.viewport = { x: 10, y: 20, zoom: 2 };
   view.rerender(<GraphConnectionPreview anchor="source" outgoing />);

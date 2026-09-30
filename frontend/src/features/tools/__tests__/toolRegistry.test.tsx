@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { ALL_TOOLS } from '../toolIds';
 import { TOOL_DEFINITIONS } from '../toolRegistry';
 it('keeps every sidebar tool in declared order with a label and icon', () => {

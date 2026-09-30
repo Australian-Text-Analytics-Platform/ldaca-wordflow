@@ -1,6 +1,5 @@
-/* eslint-disable testing-library/no-node-access, testing-library/no-container -- Assert the actual SVG renderer output. */
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { setPlatformAPI } from 'echarts/core';
 import { captureChart } from '../common/captureChart';
 import { PlotChart } from './PlotChart';

@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const previewNodeCreationTableMock = vi.hoisted(() => vi.fn());
 const usePreprocessingPreviewMock = vi.hoisted(() => vi.fn());

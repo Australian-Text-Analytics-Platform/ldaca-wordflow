@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { useAnalysisRecovery } from './useAnalysisRecovery';
 import { AnalysisResultBoundary } from './components/AnalysisResultBoundary';
 

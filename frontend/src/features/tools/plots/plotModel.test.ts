@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vite-plus/test';
 import { buildPlot, categoryLabel, type PlotDisplay } from './plotModel';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
 import type { PlotSelection, CompareRequest, TrendsRequest } from '@/features/project/api';

@@ -9,12 +9,12 @@ Annotation provider; build with the macOS 26 SDK or newer to include Foundation
 Models support. Older SDKs build an unavailable-provider stub.
 
 ```sh
-pnpm dev:desktop
-pnpm build:desktop:mac
-pnpm build:desktop:windows
+vp run dev:desktop
+vp run build:desktop:mac
+vp run build:desktop:windows
 ```
 
-`pnpm dev:desktop` explicitly loads `frontend/src-tauri/tauri.dev.conf.json`.
+`vp run dev:desktop` explicitly loads `frontend/src-tauri/tauri.dev.conf.json`.
 It runs **LDaCA Wordflow Dev** (`au.edu.ldaca.wordflow.dev`), separately from
 **LDaCA Wordflow** (`au.edu.ldaca.wordflow`). Local production bundles and CI
 releases keep the production identity. Raw `tauri dev` does not load this
@@ -33,8 +33,8 @@ Final visual, performance and packaging acceptance uses a **release build withou
 WebDriver instrumentation**, retaining the production identity. On macOS:
 
 ```sh
-pnpm build:qa:mac
-pnpm verify:qa:mac
+vp run build:qa:mac
+vp run verify:qa:mac
 open "target/release/bundle/macos/LDaCA Wordflow.app"
 ```
 
@@ -50,14 +50,14 @@ For a faster local macOS debug bundle with the inspector available (not final
 performance or release acceptance):
 
 ```sh
-pnpm -C frontend tauri build --debug --config src-tauri/tauri.local-build.conf.json --bundles app
+vp -C frontend exec tauri build --debug --config src-tauri/tauri.local-build.conf.json --bundles app
 ```
 
 For a packaged Dev app when testing requires one, explicitly pass the same
 override, for example on macOS:
 
 ```sh
-pnpm -C frontend tauri build --debug --config src-tauri/tauri.dev.conf.json --bundles app
+vp -C frontend exec tauri build --debug --config src-tauri/tauri.dev.conf.json --bundles app
 ```
 
 Dev disables updater endpoints and updater artifacts, file associations, and
@@ -80,7 +80,7 @@ Disabling artifact creation alone does not disable the runtime updater; local
 production bundles retain it to exercise the release configuration.
 Routine packaging copies the committed Icon Composer `Assets.car`; regenerate
 it only after changing the icon source with
-`pnpm -C frontend compile:desktop:mac-icon`.
+`vp -C frontend run compile:desktop:mac-icon`.
 
 To run only the Rust HTTP backend:
 
@@ -90,10 +90,10 @@ cargo run --manifest-path backend/Cargo.toml --bin wordflow-api-dev
 
 `WORDFLOW_BIND_ADDR` overrides the default `127.0.0.1:8002`. See the
 [native backend reference](../reference/native-backend.md) for HTTP and IPC.
-`pnpm dev` initializes a temporary Untitled project and starts Rust on port 8002 and Vite's project interface on port 3000.
-The project interface is also the default for `pnpm -C frontend dev` and builds;
+`vp run dev` initializes a temporary Untitled project and starts Rust on port 8002 and Vite's project interface on port 3000.
+The project interface is also the default for `vp -C frontend run dev` and builds;
 no `--mode rust` flag or saved backend selection is needed.
-Vite binds loopback and proxies project and health requests. `pnpm dev:desktop` runs the actual
+Vite binds loopback and proxies project and health requests. `vp run dev:desktop` runs the actual
 Tauri application. The Python server tooling is archived.
 `FRONTEND_PORT` and `VITE_BACKEND_PORT` override the browser development ports.
 
@@ -105,8 +105,8 @@ WebdriverIO drives the actual Tauri webview on macOS and Windows using its
 uses an unbundled debug executable:
 
 ```sh
-pnpm -C frontend build:e2e:native
-pnpm -C frontend test:e2e:native
+vp -C frontend run build:e2e:native
+vp -C frontend run test:e2e:native
 ```
 
 The build compiles frontend assets and a debug executable with the opt-in Cargo
@@ -122,7 +122,7 @@ an empty temporary Untitled project. It can coexist with Wordflow Dev. Close a
 running production-identity Wordflow before testing; do not disable the
 single-instance plugin. Tests restore any theme preference they change. Reuse
 the built binary for test-only changes; rebuild after Rust or frontend changes.
-Use `pnpm -C frontend test:e2e:native --spec ./e2e-native/project.spec.ts` to
+Use `vp -C frontend run test:e2e:native --spec ./e2e-native/project.spec.ts` to
 select a spec. Logs, failure screenshots and theme captures live in
 `frontend/.tmp/wdio/native-debug/` and are uploaded by macOS/Windows CI.
 
@@ -132,7 +132,7 @@ in a temporary test directory. On an eligible Mac with Apple Intelligence enable
 and the system model downloaded, include real on-device inference with:
 
 ```sh
-WORDFLOW_TEST_APPLE_AI=1 pnpm -C frontend test:e2e:native --spec ./e2e-native/annotation.spec.ts
+WORDFLOW_TEST_APPLE_AI=1 vp -C frontend run test:e2e:native --spec ./e2e-native/annotation.spec.ts
 ```
 
 This opt-in scenario exercises Preview, correction editing and Run without a
@@ -144,8 +144,8 @@ the macOS 26+ framework; the `fm` CLI is not a runtime dependency. See the
 Run the optimized, still-instrumented lane for release-profile regressions:
 
 ```sh
-pnpm build:e2e:native:release
-pnpm test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts
+vp run build:e2e:native:release
+vp run test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts
 ```
 
 Both commands use the same scenario runner and production identity. The release
@@ -214,11 +214,11 @@ cargo clippy --manifest-path backend/Cargo.toml --all-targets --all-features --l
 cargo fmt --manifest-path frontend/src-tauri/Cargo.toml --check
 cargo test --manifest-path frontend/src-tauri/Cargo.toml --locked
 cargo clippy --manifest-path frontend/src-tauri/Cargo.toml --all-targets --all-features --locked -- -D warnings
-pnpm -C frontend check
-pnpm -C frontend test:e2e
-pnpm -C frontend build:e2e:native
-pnpm -C frontend test:e2e:native
-pnpm docs:links
+vp -C frontend run check
+vp -C frontend run test:e2e
+vp -C frontend run build:e2e:native
+vp -C frontend run test:e2e:native
+vp run docs:links
 ```
 
 On macOS, launch the built application and confirm Untitled opens
@@ -272,11 +272,11 @@ and cancellation preserve the destination correctly. Analysis remains deferred.
 macOS packaging builds the Quick Look extension automatically before bundling:
 
 ```sh
-pnpm build:desktop:mac
+vp run build:desktop:mac
 ```
 
-For focused extension development, run `pnpm -C frontend build:quicklook`, then
-`pnpm -C frontend test:quicklook`. These commands use Xcode and put the extension,
+For focused extension development, run `vp -C frontend run build:quicklook`, then
+`vp -C frontend run test:quicklook`. These commands use Xcode and put the extension,
 verified DuckDB download, renderer, and native test executable beneath
 `frontend/src-tauri/target/quicklook`. The pinned download in
 `frontend/src-tauri/quicklook/duckdb.json` must match the Rust backend's DuckDB
@@ -293,7 +293,7 @@ keep a successful preview visible and open the file in Wordflow: Quick Look
 must already have released its database lock. Test empty, moved, unsupported,
 and damaged files as well as a project whose source file no longer exists.
 
-Use the regular bundle for Finder verification; `pnpm dev:desktop` does not
+Use the regular bundle for Finder verification; `vp run dev:desktop` does not
 install an extension. If macOS selects an older Wordflow build, check Finder's
 Open With association and `pluginkit -m -v -i au.edu.ldaca.wordflow.preview`
 before diagnosing the reader. Do not change users' default associations as

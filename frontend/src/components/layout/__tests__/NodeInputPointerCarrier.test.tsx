@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vite-plus/test';
 
 import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
 import { NodeInputPointerCarrier } from '../NodeInputPointerCarrier';

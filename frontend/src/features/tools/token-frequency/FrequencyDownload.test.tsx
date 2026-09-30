@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { FrequencyDownload } from './FrequencyDownload';
 
 it('waits for confirmation and retains options after a failed or cancelled export', async () => {

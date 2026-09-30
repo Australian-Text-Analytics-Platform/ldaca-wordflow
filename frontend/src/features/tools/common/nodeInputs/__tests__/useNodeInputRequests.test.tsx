@@ -1,7 +1,7 @@
 import { StrictMode, useState } from 'react';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it } from 'vite-plus/test';
 import { NodeInputPointerCarrier } from '@/components/layout/NodeInputPointerCarrier';
 import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
 import { NodeInputsPanel } from '../../components/NodeInputsPanel';
