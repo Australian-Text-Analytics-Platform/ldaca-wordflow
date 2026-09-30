@@ -123,3 +123,64 @@ def test_a_folder_is_bounded_by_the_data_block_storage_limit(tmp_path: Path) -> 
             created.json()["message"]
             == "The folder is too large to add as a Data Block"
         )
+
+
+def test_the_upload_limit_is_none_on_the_desktop_and_512_mb_on_a_server(
+    tmp_path: Path,
+) -> None:
+    """Issue 248: single-user (desktop) has no upload limit; multi-user keeps one."""
+    desktop = Settings(data_root=tmp_path, multi_user=False)
+    server = Settings(
+        data_root=tmp_path,
+        multi_user=True,
+        google_client_id="google-client",
+        cors_allowed_origins=(),
+        trusted_hosts=("wordflow.example",),
+    )
+    assert desktop.effective_max_file_upload_bytes() is None
+    assert server.effective_max_file_upload_bytes() == 512 * 1024 * 1024
+    assert (
+        Settings(
+            data_root=tmp_path, multi_user=False, max_file_upload_bytes=1_000
+        ).effective_max_file_upload_bytes()
+        == 1_000
+    )
+
+
+def test_an_upload_over_a_set_limit_is_refused_in_plain_words(tmp_path: Path) -> None:
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+        max_file_upload_bytes=1024 * 1024,
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False), base_url="http://testserver"
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        refused = client.post(
+            "/api/user-files/uploads",
+            params={"path": "big.csv"},
+            content=b"x" * (1024 * 1024 + 1),
+            headers={**unsafe, "Content-Type": "application/octet-stream"},
+        )
+        assert refused.status_code == 413, refused.text
+        assert refused.json()["message"] == (
+            "This file is larger than the 1 MB upload limit on this server."
+        )
+
+
+def test_the_desktop_uploads_a_file_bigger_than_the_server_limit(tmp_path: Path) -> None:
+    with _client(tmp_path) as (client, unsafe):
+        content = b"x" * (2 * 1024 * 1024)
+        uploaded = client.post(
+            "/api/user-files/uploads",
+            params={"path": "big.csv"},
+            content=content,
+            headers={**unsafe, "Content-Type": "application/octet-stream"},
+        )
+        assert uploaded.status_code == 201, uploaded.text
+        assert uploaded.json()["size_bytes"] == len(content)

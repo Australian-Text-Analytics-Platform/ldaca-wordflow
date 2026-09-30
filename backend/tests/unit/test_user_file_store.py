@@ -61,7 +61,7 @@ class BlockingSource:
 def _store(
     tmp_path: Path,
     *,
-    max_upload_bytes: int = 64,
+    max_upload_bytes: int | None = 64,
     max_tree_response_bytes: int = 1024 * 1024,
 ) -> UserFileStore:
     def user_root(user_id: str) -> Path:
@@ -115,6 +115,33 @@ async def test_upload_enforces_actual_streamed_size_and_cleans_temp(
 
     user_root = tmp_path / "alice"
     assert not (user_root / "data.csv").exists()
+    assert list(user_root.glob(".*.upload")) == []
+
+
+async def test_an_upload_over_the_limit_says_so_in_plain_words(tmp_path: Path) -> None:
+    store = _store(tmp_path, max_upload_bytes=1024 * 1024)
+
+    with pytest.raises(UploadTooLargeError, match="larger than the 1 MB upload limit"):
+        await store.upload("alice", "big.csv", ByteSource(b"x" * (1024 * 1024 + 1)))
+
+
+async def test_without_a_limit_an_upload_is_bounded_by_its_declared_size(
+    tmp_path: Path,
+) -> None:
+    """The desktop app has no upload limit (issue 248)."""
+    store = _store(tmp_path, max_upload_bytes=None)
+
+    stored = await store.upload(
+        "alice", "data.csv", ByteSource(b"123456"), declared_bytes=6
+    )
+    assert stored["size_bytes"] == 6
+
+    with pytest.raises(InvalidInputError, match="larger than it said"):
+        await store.upload("alice", "more.csv", ByteSource(b"123456"), declared_bytes=3)
+    with pytest.raises(InvalidInputError, match="did not say how large"):
+        await store.upload("alice", "unsized.csv", ByteSource(b"123456"))
+    user_root = tmp_path / "alice"
+    assert not (user_root / "more.csv").exists()
     assert list(user_root.glob(".*.upload")) == []
 
 

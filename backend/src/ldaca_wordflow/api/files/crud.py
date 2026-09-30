@@ -147,10 +147,15 @@ async def upload_file(
         != "application/octet-stream"
     ):
         raise UnsupportedMediaTypeError("File uploads require application/octet-stream")
+    try:
+        declared_bytes = int(request.headers.get("content-length", ""))
+    except ValueError:
+        declared_bytes = None
     stored = await file_store.upload(
         principal.user.id,
         path,
         RequestByteStream(request),
+        declared_bytes=declared_bytes,
     )
     resource = FileResource.model_validate(stored)
     response.headers["Location"] = route_path_with_query(

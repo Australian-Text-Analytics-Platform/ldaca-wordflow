@@ -11,7 +11,7 @@ Unknown settings are rejected.
 | Setting | Meaning |
 |---|---|
 | `DATA_ROOT` | Optional canonical operator-owned storage root; non-empty values are immutable at runtime |
-| `MAX_FILE_UPLOAD_BYTES` | Per-upload byte limit |
+| `MAX_FILE_UPLOAD_BYTES` | Per-upload byte limit. Empty (default): 512 MiB when `MULTI_USER` is on, no limit in single-user mode (desktop, local runs) |
 | `MAX_WORKSPACE_ARCHIVE_BYTES` | Compressed import limit |
 | `MAX_WORKSPACE_EXPORT_BYTES` | Export expanded/compressed limit |
 | `MAX_DEFAULT_REQUEST_BODY_BYTES` | Default non-upload request limit |

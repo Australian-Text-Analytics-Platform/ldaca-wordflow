@@ -28,6 +28,8 @@ from collections.abc import Callable, MutableMapping
 from starlette.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from .shared.errors import upload_too_large_message
+
 logger = logging.getLogger("ldaca_wordflow.request")
 
 REQUEST_ID_HEADER = b"x-request-id"
@@ -178,7 +180,7 @@ class RequestBodyLimitMiddleware:
         self,
         app: ASGIApp,
         *,
-        limits: Mapping[tuple[str, str], int],
+        limits: Mapping[tuple[str, str], int | None],
         default_limit: int,
     ) -> None:
         self.app = app
@@ -196,13 +198,17 @@ class RequestBodyLimitMiddleware:
             normalized_scope_path(scope),
         )
         limit = self.limits.get(key, self.default_limit)
+        if limit is None:
+            # No limit for this route (desktop uploads, issue 248).
+            await self.app(scope, receive, send)
+            return
 
         for name, value in scope.get("headers", []):
             if name.lower() != b"content-length":
                 continue
             try:
                 if int(value) > limit:
-                    await self._reject(scope, receive, send)
+                    await self._reject(scope, receive, send, key, limit)
                     return
             except ValueError:
                 pass
@@ -222,10 +228,16 @@ class RequestBodyLimitMiddleware:
         try:
             await self.app(scope, limited_receive, send)
         except _RequestBodyTooLarge:
-            await self._reject(scope, receive, send)
+            await self._reject(scope, receive, send, key, limit)
 
     @staticmethod
-    async def _reject(scope: Scope, receive: Receive, send: Send) -> None:
+    async def _reject(
+        scope: Scope,
+        receive: Receive,
+        send: Send,
+        key: tuple[str, str],
+        limit: int,
+    ) -> None:
         state = scope.get("state", {})
         request_id = (
             str(state.get("request_id", "missing-request-id"))
@@ -236,7 +248,11 @@ class RequestBodyLimitMiddleware:
             status_code=413,
             content={
                 "code": "request_body_too_large",
-                "message": "Request body exceeds the configured limit",
+                "message": (
+                    upload_too_large_message(limit)
+                    if key == ("POST", "/api/user-files/uploads")
+                    else "Request body exceeds the configured limit"
+                ),
                 "request_id": request_id,
             },
             headers={"Connection": "close", "X-Request-ID": request_id},

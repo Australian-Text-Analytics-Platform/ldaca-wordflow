@@ -376,7 +376,9 @@ def create_app(
         cast(Any, RequestBodyLimitMiddleware),
         default_limit=settings.max_default_request_body_bytes,
         limits={
-            ("POST", "/api/user-files/uploads"): (settings.max_file_upload_bytes),
+            ("POST", "/api/user-files/uploads"): (
+                settings.effective_max_file_upload_bytes()
+            ),
             ("POST", "/api/workspaces/imports"): (settings.max_workspace_archive_bytes),
         },
     )

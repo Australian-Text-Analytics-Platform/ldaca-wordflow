@@ -896,7 +896,7 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
         user_file_store = UserFileStore(
             lambda user_id: user_files_root(settings, user_id),
             storage_admission=storage_admission,
-            max_upload_bytes=settings.max_file_upload_bytes,
+            max_upload_bytes=settings.effective_max_file_upload_bytes(),
             max_tree_response_bytes=settings.max_user_file_tree_response_bytes,
             limiter=io_limiter,
             all_users_root=settings.get_users_root_folder(),

@@ -77,6 +77,9 @@ duplicate destinations, and conflicts with existing User Files. If any path
 conflicts, nothing is uploaded and the dialog lists every path to resolve.
 Existing folders can be reused, but existing files are never overwritten.
 
+The desktop app accepts files of any size. On a shared Wordflow server, each
+file can be up to 512 MB; a larger file is refused with a message saying so.
+
 During a large upload, the panel shows whether it is preparing, creating
 folders, or uploading files. **Cancel** finishes the current request and stops
 before the next one. Files and folders already created are retained if an

@@ -163,6 +163,14 @@ class UploadTooLargeError(AppError):
     code = "upload_too_large"
 
 
+def upload_too_large_message(limit_bytes: int) -> str:
+    """Plain words for an upload over the server's limit (issue 248)."""
+
+    mebibytes = limit_bytes / (1024 * 1024)
+    size = f"{mebibytes:.0f} MB" if mebibytes >= 1 else f"{limit_bytes} bytes"
+    return f"This file is larger than the {size} upload limit on this server."
+
+
 class ResourceTooLargeError(AppError):
     """A stored resource is too large for the requested eager operation."""
 

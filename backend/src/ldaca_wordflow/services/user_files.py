@@ -54,6 +54,7 @@ from ..shared.errors import (
     UnsafePathError,
     UserFileTreeTooLargeError,
     UploadTooLargeError,
+    upload_too_large_message,
 )
 from ..infrastructure.storage.layout import (
     USER_FILE_IMPORT_STAGING_DIRECTORY,
@@ -100,12 +101,12 @@ class UserFileStore:
         limiter: anyio.CapacityLimiter,
         all_users_root: Path,
         response_snapshots: ResponseSnapshotService,
-        max_upload_bytes: int = 512 * 1024 * 1024,
+        max_upload_bytes: int | None = 512 * 1024 * 1024,
         max_tree_response_bytes: int = 8 * 1024 * 1024,
         upload_chunk_size: int = 1024 * 1024,
     ) -> None:
         if (
-            max_upload_bytes < 1
+            (max_upload_bytes is not None and max_upload_bytes < 1)
             or max_tree_response_bytes < 1
             or upload_chunk_size < 1
         ):
@@ -298,12 +299,25 @@ class UserFileStore:
         user_id: str,
         relative_path: str,
         source: AsyncUploadSource,
+        *,
+        declared_bytes: int | None = None,
     ) -> dict[str, int | str]:
-        """Reserve quota, then stream through a same-filesystem atomic boundary."""
+        """Reserve quota, then stream through a same-filesystem atomic boundary.
 
+        With an upload limit, the reservation is the limit. Without one (the
+        desktop app, issue 248), it is the size the request declares, which the
+        upload may not exceed, so the free-disk check stays truthful.
+        """
+
+        if self._max_upload_bytes is not None:
+            byte_limit = self._max_upload_bytes
+        elif declared_bytes is not None and declared_bytes >= 0:
+            byte_limit = declared_bytes
+        else:
+            raise InvalidInputError("The upload did not say how large the file is. Try again.")
         reservation = await self._storage_admission.acquire(
             user_id,
-            self._max_upload_bytes,
+            byte_limit,
             requested_entries=1,
         )
         try:
@@ -312,6 +326,7 @@ class UserFileStore:
                 relative_path,
                 source,
                 reservation,
+                byte_limit,
             )
         finally:
             with anyio.CancelScope(shield=True):
@@ -323,6 +338,7 @@ class UserFileStore:
         relative_path: str,
         source: AsyncUploadSource,
         reservation: StorageReservation,
+        byte_limit: int,
     ) -> dict[str, int | str]:
         """Write one upload after central storage admission has succeeded."""
 
@@ -347,9 +363,13 @@ class UserFileStore:
                     if not chunk:
                         break
                     total += len(chunk)
-                    if total > self._max_upload_bytes:
+                    if total > byte_limit:
+                        if self._max_upload_bytes is None:
+                            raise InvalidInputError(
+                                "The upload was larger than it said. Try again."
+                            )
                         raise UploadTooLargeError(
-                            f"Upload exceeds {self._max_upload_bytes} bytes"
+                            upload_too_large_message(self._max_upload_bytes)
                         )
                     await self._run_sync(_write_all, descriptor, chunk)
 

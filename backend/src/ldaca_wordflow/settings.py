@@ -17,6 +17,11 @@ from pydantic import (
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+
+# The upload limit of a multi-user server unless MAX_FILE_UPLOAD_BYTES says
+# otherwise (issue 248).
+DEFAULT_SERVER_MAX_FILE_UPLOAD_BYTES = 512 * 1024 * 1024
+
 class RemoteQuotationEngineSetting(BaseModel):
     """One operator-owned remote quotation v2 origin."""
 
@@ -55,10 +60,12 @@ class Settings(BaseSettings):
         description="Operator-provided root data folder",
     )
 
-    max_file_upload_bytes: int = Field(
-        default=512 * 1024 * 1024,
+    # Empty: 512 MiB on a multi-user server, no limit on the desktop and other
+    # single-user runs (issue 248). See ``effective_max_file_upload_bytes``.
+    max_file_upload_bytes: int | None = Field(
+        default=None,
         ge=1,
-        description="Maximum bytes in one user file upload",
+        description="Maximum bytes in one user file upload; empty uses the mode default",
     )
     max_workspace_archive_bytes: int = Field(
         default=512 * 1024 * 1024,
@@ -502,6 +509,17 @@ class Settings(BaseSettings):
     def get_users_root_folder(self) -> Path:
         """Return the canonical parent directory for all per-user storage."""
         return self.get_data_root() / "users"
+
+    def effective_max_file_upload_bytes(self) -> int | None:
+        """The upload limit: the setting, else 512 MiB multi-user, else none (issue 248).
+
+        The desktop app and other single-user runs keep files on the user's own
+        machine, so they have no upload limit; a shared server keeps one.
+        """
+
+        if self.max_file_upload_bytes is not None:
+            return self.max_file_upload_bytes
+        return DEFAULT_SERVER_MAX_FILE_UPLOAD_BYTES if self.multi_user else None
 
     def get_trusted_hosts(self) -> tuple[str, ...]:
         """Return the explicit API Host allowlist without conflating CORS clients."""
