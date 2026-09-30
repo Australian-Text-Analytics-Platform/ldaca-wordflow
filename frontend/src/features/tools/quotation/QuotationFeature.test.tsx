@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Utf8, Float64, Struct, List, vectorFromArray, tableFromArrays } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { refreshProjectQueries } from '@/features/project/projectChanges';
@@ -145,7 +145,7 @@ it('creates the initial tab only on entry, not after closing the last one', asyn
   const { client } = mount();
   await screen.findByRole('tab', { name: /Quotation 1/ });
   expect(api.createTab).toHaveBeenCalledOnce();
-  await act(() => {
+  await act(async () => {
     client.setQueryData(['native', base, 'tabs', 'quotation'], []);
   });
   await screen.findByRole('button', { name: 'New Quotation analysis' });
@@ -250,7 +250,7 @@ it.each([0, 1])(
     expect(run).toHaveAttribute('aria-disabled', 'true');
     fireEvent.click(screen.getByRole('button', { name: 'Clear results' }));
     await waitFor(() => expect(api.clearTab).toHaveBeenCalled());
-    await act(() => {
+    await act(async () => {
       client.setQueryData(['native', base, 'tabs', 'quotation'], [tab]);
     });
     await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'false'));

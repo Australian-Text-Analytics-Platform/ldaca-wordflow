@@ -25,7 +25,7 @@
     }
   },
   "build": {
-    "beforeBuildCommand": "pnpm exec tsc --noEmit && pnpm exec vite build --mode e2e --outDir .tmp/e2e-build",
+    "beforeBuildCommand": "pnpm exec tsc -p tsconfig.app.json --noEmit && pnpm exec vp build --mode e2e --outDir .tmp/e2e-build",
     "frontendDist": "../.tmp/e2e-build"
   }
 }

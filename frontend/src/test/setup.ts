@@ -1,10 +1,9 @@
 import '@testing-library/jest-dom/vitest';
-import { afterAll, afterEach, beforeAll } from 'vitest';
+import { afterAll, afterEach, beforeAll } from 'vite-plus/test';
 import { JSDOM } from 'jsdom';
 // Vitest is configured without globals, so Testing Library cannot register its
 // automatic cleanup hook. Keep the explicit teardown to prevent DOM leakage
 // between tests.
-// eslint-disable-next-line testing-library/no-manual-cleanup
 import { cleanup } from '@testing-library/react';
 import { enableMapSet } from 'immer';
 

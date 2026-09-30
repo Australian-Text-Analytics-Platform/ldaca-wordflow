@@ -10,8 +10,7 @@ const labelVariants = cva(
 );
 
 interface LabelProps
-  extends React.LabelHTMLAttributes<HTMLLabelElement>,
-    VariantProps<typeof labelVariants> {
+  extends React.LabelHTMLAttributes<HTMLLabelElement>, VariantProps<typeof labelVariants> {
   ref?: React.Ref<HTMLLabelElement>;
 }
 

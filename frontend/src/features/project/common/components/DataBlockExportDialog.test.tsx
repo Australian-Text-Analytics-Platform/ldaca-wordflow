@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useState } from 'react';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { DataBlockExportDialog } from './DataBlockExportDialog';
 
 it('dismisses a running export while its completion and error owner stay alive', async () => {

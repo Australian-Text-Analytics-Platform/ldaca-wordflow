@@ -1,5 +1,5 @@
 import { renderHook } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 // Capture the options each call passes to usePreprocessingPreview so we can
 // assert on the structured identity and fetcher routing without firing timers.

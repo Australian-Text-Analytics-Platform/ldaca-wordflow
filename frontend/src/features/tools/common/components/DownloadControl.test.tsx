@@ -1,6 +1,6 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { ChartDownload } from './DownloadControl';
 
 it('defaults to PNG, blocks duplicate submissions and retains cancelled saves', async () => {

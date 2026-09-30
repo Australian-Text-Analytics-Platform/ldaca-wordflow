@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import * as api from './api';
 import { schemaQuery } from './projectQueries';
 import { refreshProjectQueries } from './projectChanges';

@@ -9,7 +9,7 @@ import {
   TimestampMillisecond,
   Utf8,
 } from 'apache-arrow';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { arrowTypeName } from '@/lib/arrow/decodeArrowTable';
 import { TOPIC_COVERAGE_EXTENSION } from '@/lib/arrow/semanticTypes';
 import { applyFilterConditionFieldChange, createFilterCondition } from '../conditionState';

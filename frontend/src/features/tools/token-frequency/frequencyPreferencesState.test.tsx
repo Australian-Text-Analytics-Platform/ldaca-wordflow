@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import { useFrequencySettings } from './frequencySettings';
 import { useFrequencyState } from './frequencyState';
@@ -48,7 +48,9 @@ it('preserves pending choices over commit refreshes and restores saved settings 
     b = result.current.persist({ stopwordsEnabled: true });
   });
   await waitFor(() => expect(result.current.settings.stopwordsEnabled).toBe(true));
-  act(() => cache.setQueryData(key, [tab]));
+  act(() => {
+    cache.setQueryData(key, [tab]);
+  });
   expect(result.current.settings.colors).toEqual({ corpus: '#ff0000' });
   expect(api.updateTab).toHaveBeenCalledTimes(1);
   await act(async () => {

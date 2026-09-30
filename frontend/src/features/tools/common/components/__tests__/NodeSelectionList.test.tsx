@@ -1,5 +1,5 @@
 import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { NodeSelectionList, type NodeSelectionItem } from '../NodeSelectionList';
 import { NodeColumnSelector } from '../NodeColumnSelector';
 

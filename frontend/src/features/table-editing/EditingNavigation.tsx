@@ -20,7 +20,7 @@ export function EditingNavigation({ children }: { children: ReactNode }) {
       pending.current = true;
       void (async () => {
         try {
-          for (const [id, guard] of [...guards.current])
+          for (const [id, guard] of Array.from(guards.current))
             if ((!only || id === only) && !(await guard())) return;
           action();
         } finally {

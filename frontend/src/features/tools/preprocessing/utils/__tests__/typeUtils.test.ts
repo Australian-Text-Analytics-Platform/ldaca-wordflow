@@ -1,5 +1,5 @@
 import { Field, FixedSizeList, Float64, Int64, LargeList, Struct, Utf8View } from 'apache-arrow';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { TOPIC_COVERAGE_EXTENSION } from '@/lib/arrow/semanticTypes';
 import { getOperatorsForField } from '../typeUtils';

@@ -75,7 +75,6 @@ function DefaultErrorFallback({ error, resetError }: { error?: Error; resetError
       <div className="text-error text-heading-2 font-semibold mb-4">Something went wrong</div>
 
       <div className="text-error text-body mb-6 max-w-md text-center">
-        {/* eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- fall back to generic copy when message is an empty string, not only null/undefined */}
         {error?.message || 'An unexpected error occurred. Please try again.'}
       </div>
 

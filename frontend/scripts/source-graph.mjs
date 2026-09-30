@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const config = ts.readConfigFile(path.join(root, 'tsconfig.json'), ts.sys.readFile);
+const config = ts.readConfigFile(path.join(root, 'tsconfig.app.json'), ts.sys.readFile);
 const { options } = ts.parseJsonConfigFileContent(config.config, ts.sys, root);
 export const entries = ['src/index.tsx', 'src/updater/index.tsx', 'src/features/quicklook/render.ts'];
 export function dependencies(file) {

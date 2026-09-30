@@ -9,7 +9,7 @@ changing that package.
 
 - `archive/backend/`: retired FastAPI source, retained only for reference
 - `backend/`: shared native Axum runtime, DuckDB project API, and standalone Rust server
-- `frontend/`: React 19, Vite, TypeScript, and the Tauri desktop shell
+- `frontend/`: React 19, Vite+, TypeScript, and the Tauri desktop shell
 - [polars-text](https://github.com/Australian-Text-Analytics-Platform/polars-text): independent Polars expression adapter
 - Retired serialized Polars-plan utilities are available in repository history.
 - `ldaca-rs/`: ONI data access and Arrow-based RO-Crate conversion
@@ -86,7 +86,7 @@ When a substantial change finishes, update the durable docs first and then
 move the complete change folder to `specs/archive/`. Do not create forwarding
 stubs or duplicate an explanation across document classes.
 
-Run `pnpm docs:links` after changing engineering Markdown. Follow
+Run `vp run docs:links` after changing engineering Markdown. Follow
 [the issue-tracker guide](docs/agents/issue-tracker.md) when a change is
 coordinated through GitHub Issues.
 
@@ -128,7 +128,7 @@ managed.
 5. Run the nearest package checks plus `pnpm docs:links` when Markdown changed.
 
 Do not set `PYTHONPATH` for normal development. Run Python commands through
-`uv` from the affected package directory. Use `pnpm -C frontend ...` for
+`uv` from the affected package directory. Use `vp -C frontend run ...` for
 frontend commands from the repository root.
 
 ## Definition of done

@@ -1,6 +1,6 @@
 # Frontend Overview
 
-The React 19, Vite, and TypeScript application renders the same project interface
+The React 19, Vite+, and TypeScript application renders the same project interface
 in Tauri, the browser preview and the packaged server. `src/index.tsx` loads
 `features/server/ServerApp` when the host injects deployment configuration,
 otherwise `features/desktop/DesktopApp`. There is no backend selector. Tauri discovers the owning window's backend through IPC. Browser

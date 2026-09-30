@@ -32,7 +32,6 @@ function main() {
   if (!['build', 'test'].includes(action)) throw new Error('Expected build or test, followed by debug or release');
   if (action === 'build' && extra.length) throw new Error('Build overrides are not supported; use the named test profiles');
   if (action === 'test') assertGuiTestEnvironment();
-  if (!process.env.npm_execpath) throw new Error('Run through pnpm build:e2e:native or test:e2e:native (optionally :release)');
   const plan = nativeTestBuild(profile);
   const manifestPath = resolve(plan.output, 'build.json');
   const hash = () => createHash('sha256').update(readFileSync(plan.binary)).digest('hex');
@@ -53,7 +52,7 @@ function main() {
     console.log('Test-owned browser store:', env.WORDFLOW_E2E_STORE_ID);
   }
   const args = action === 'build' ? plan.args : ['exec', 'wdio', 'run', 'wdio.conf.ts', ...extra];
-  const child = spawnSync(process.execPath, [process.env.npm_execpath, ...args], { cwd: root, env, stdio: 'inherit' });
+  const child = spawnSync('vp', args, { cwd: root, env, stdio: 'inherit' });
   if (profileDirectory) {
     const cleanup = process.platform === 'darwin'
       ? spawnSync(plan.binary, [], { env: { ...env, WORDFLOW_E2E_CLEANUP_STORE: '1' }, stdio: 'inherit', timeout: 15000 })

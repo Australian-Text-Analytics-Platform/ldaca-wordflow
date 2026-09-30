@@ -1,7 +1,7 @@
 import { act, render, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Utf8 } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import NativeDataView from './NativeDataView';
 import type { ProjectDataTableViewModel } from './data-view/components/projectTableModel';
 import { objectRef, targetKey, type DataTarget, type ProjectNode } from './api';

@@ -1,5 +1,5 @@
 import { Field, Int64, Utf8 } from 'apache-arrow';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 
 import { mapArrowColumnsToInfo } from '../columnTypes';
 

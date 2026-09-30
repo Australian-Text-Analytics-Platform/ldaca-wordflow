@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "include": [
+    "src/**/*.test.*",
+    "src/**/*.spec.*",
+    "src/**/__tests__/*",
+    "src/test/**/*",
+    "src/**/*.d.ts"
+  ],
+  "exclude": [],
+  "compilerOptions": {
+    "noCheck": true
+  }
+}

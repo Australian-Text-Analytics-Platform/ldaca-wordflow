@@ -1,4 +1,4 @@
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it } from 'vite-plus/test';
 import { useProjectPreview } from './previewState';
 import { useSelectionStore } from '@/stores/selectionStore';
 

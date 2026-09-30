@@ -352,7 +352,6 @@ export function StopwordEditor({
                 setEntry(event.target.value);
               }}
               onKeyDown={(event) => {
-                // eslint-disable-next-line @typescript-eslint/no-deprecated -- WebKit can end composition before delivering its legacy IME Enter (229).
                 if (event.nativeEvent.isComposing || event.keyCode === 229) return;
                 if (event.key === 'Enter' || event.key === ',') {
                   event.preventDefault();

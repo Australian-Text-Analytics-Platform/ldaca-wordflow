@@ -151,7 +151,6 @@ export function FilterConditionValueInput({
           step={1}
           aria-label="Proportion percentage"
           // current.threshold comes from form state and may be missing at runtime.
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
           value={Math.round((current.threshold ?? 0) * 100)}
           onChange={(event) => {
             const percentage = Math.min(100, Math.max(0, Number(event.target.value) || 0));

@@ -168,7 +168,7 @@ it('every Build operation creates a new View through the pinned DuckDB engine', 
     const parsedScalar = parsedBuildExpression(await api.parseExpression(base, scalarSql), columns);
     expect(parsedScalar.kind).not.toBe('sql');
     expect(await read(compile({ mode: 'visual', roots: [parsedScalar] }, columns))).toEqual(value);
-    if (kind === 'list_distinct') expect([...(value as number[])].sort()).toEqual(expected);
+    if (kind === 'list_distinct') expect([...(value as number[])].sort((a, b) => String(a).localeCompare(String(b)))).toEqual(expected);
     else if (typeof expected === 'number') expect(Number(value)).toBeCloseTo(expected, 10);
     else expect(value).toEqual(expected);
     const name = `built_${kind}`;

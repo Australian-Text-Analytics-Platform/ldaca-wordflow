@@ -7,7 +7,7 @@ before changing an unfamiliar state or desktop boundary.
 ## Ownership and state
 
 - Rust DTOs and annotated handlers own native HTTP contracts. Run root
-  `pnpm api:generate` after changing them; `pnpm api:check` detects drift.
+  `vp run api:generate` after changing them; `vp run api:check` detects drift.
   Consume `src/api/generated/native.ts` through the existing transport/adapters;
   never edit generated declarations or duplicate wire fields. Retired FastAPI
   contracts under `archive/` remain excluded from the active build.
@@ -42,7 +42,7 @@ before changing an unfamiliar state or desktop boundary.
   production-identity test build from the current source. WebdriverIO can drive
   the unbundled test executable; use a bundle for OS automation or packaging
   checks that require one. A separate QA
-  identity is not required. Use `pnpm dev:desktop` for the separate Dev identity;
+  identity is not required. Use `vp run dev:desktop` for the separate Dev identity;
   raw `tauri dev` does not load the Dev override. Check the effective app
   identifiers before assuming two processes can coexist; a shared identifier
   can trigger the single-instance lock.
@@ -59,7 +59,7 @@ before changing an unfamiliar state or desktop boundary.
 - Keep `public/tutorials/`, `public/information/`, `public/references/`, and
   `src/tutorials/bundledRegistry.ts` complete and aligned with observable UI
   behavior. They are the documentation source of truth. Run
-  `pnpm -C frontend docs:sync-publish` to copy a validated publication mirror
+  `vp -C frontend run docs:sync-publish` to copy a validated publication mirror
   into `ldaca-wordflow-docs`; never edit published content first. Engineering
   architecture remains in the repository-level `docs/` taxonomy.
 
@@ -68,12 +68,12 @@ before changing an unfamiliar state or desktop boundary.
 Run from the repository root:
 
 ```sh
-pnpm -C frontend build
-pnpm -C frontend test -- --run
-pnpm -C frontend test:e2e
-pnpm -C frontend lint
-pnpm -C frontend knip
-pnpm -C frontend docs:check
+vp -C frontend run build
+vp -C frontend run test
+vp -C frontend run test:e2e
+vp -C frontend run lint
+vp -C frontend run knip
+vp -C frontend run docs:check
 ```
 
 `test:e2e` (or `test:e2e:browser`) runs WebdriverIO/Chrome against the Rust

@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import type { PointerEvent } from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { useBuildBuilderDrag } from '../useBuildBuilderDrag';
 import type { BuildBuilderToken } from '../buildExpressionModel';
 import { findExpression, moveExpression } from '../../expressionTree';

@@ -29,6 +29,9 @@
     "api:check": "node frontend/scripts/generate-api.mjs --check"
   },
   "devDependencies": {
-    "concurrently": "^10.0.5"
-  }
+    "concurrently": "^10.0.5",
+    "vite-plus": "catalog:",
+    "@types/node": "^24.13.3"
+  },
+  "type": "module"
 }

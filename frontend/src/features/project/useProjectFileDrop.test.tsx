@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { useProjectFileDrop } from './useProjectFileDrop';
 const native = vi.hoisted(() => ({
   listen: vi.fn(),

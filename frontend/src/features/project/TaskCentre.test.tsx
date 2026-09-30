@@ -1,7 +1,7 @@
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { TaskCentre } from './TaskCentre';
 import { useNativeTasks } from './useNativeTasks';
 import * as api from './api';
@@ -147,13 +147,13 @@ it('refreshes commits and resets independently of task completion', async () => 
   stream.send(1, [task()]);
   stream.send(2, [task('succeeded')]);
   expect(client.getQueryState(key)?.isInvalidated).toBe(false);
-  act(() =>
+  act(() => {
     stream.dispatchEvent(
       new MessageEvent('change', {
         data: JSON.stringify({ objects: [{ schema: 'main', name: 'words' }] }),
       }),
-    ),
-  );
+    );
+  });
   await waitFor(() => expect(client.getQueryState(key)?.isInvalidated).toBe(true));
   client.setQueryData(key, []);
   act(() => {
@@ -177,11 +177,11 @@ it('accepts analysis publication changes without needing a task summary', async 
   const { stream, client } = mount();
   client.setQueryData(['native', 'http://project', 'tabs', 'frequency'], []);
   client.setQueryData(['native', 'http://project', 'graph', 'logical'], {});
-  act(() =>
+  act(() => {
     stream.dispatchEvent(
       new MessageEvent('change', { data: JSON.stringify({ resources: ['tabs'] }) }),
-    ),
-  );
+    );
+  });
   await waitFor(() =>
     expect(
       client.getQueryState(['native', 'http://project', 'tabs', 'frequency'])?.isInvalidated,

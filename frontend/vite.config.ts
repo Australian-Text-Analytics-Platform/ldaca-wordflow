@@ -2,7 +2,8 @@ import { execFileSync, execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { configDefaults, defineConfig } from 'vitest/config';
+import { defineConfig } from 'vite-plus';
+import { configDefaults } from 'vite-plus/test/config';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/postcss';
@@ -118,6 +119,10 @@ export default defineConfig(({ mode }) => {
     port: Number(process.env.FRONTEND_PORT ?? 3002),
   },
   test: {
+    // Vitest v4 compatibility: preserve setup mock history and separate project servers.
+    // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
+    clearMocks: false,
+    sharedViteServer: false,
     environment: 'jsdom',
     exclude: [...configDefaults.exclude, 'e2e/**', 'e2e-browser/**', 'e2e-native/**', 'e2e-server/**'],
     setupFiles: ['./src/test/setup.ts'],

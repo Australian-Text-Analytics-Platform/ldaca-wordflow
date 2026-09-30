@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { RequestCompatibilityWarning } from './RequestCompatibilityWarning';
 it('escapes originals and retains complete large values behind bounded disclosure', () => {
   const text = '<script>unsafe()</script>';

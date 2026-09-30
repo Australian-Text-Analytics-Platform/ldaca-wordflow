@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Int64 } from 'apache-arrow';
 import type { ReactNode } from 'react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { useBuildSubTab } from '../useBuildSubTab';
 import * as api from '@/features/project/api';
 import { inputNode } from '@/test/nodeMetadata';

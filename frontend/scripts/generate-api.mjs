@@ -2,7 +2,8 @@ import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createRequire } from 'node:module';
+import { format } from 'vite-plus/fmt';
+import toolingConfig from '../../vite.config.ts';
 import openapiTS, { astToString } from 'openapi-typescript';
 
 const frontend = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -28,9 +29,10 @@ function ordered(value) {
 }
 const json = `${JSON.stringify(ordered(schema), null, 2)}\n`;
 const types = astToString(await openapiTS(JSON.parse(json), { arrayLength: true, defaultNonNullable: false }));
-const require = createRequire(import.meta.url);
 const notice = '/** Generated from backend/openapi.json. Run pnpm api:generate; do not edit. */\n';
-const generated = run(process.execPath, [require.resolve('@biomejs/biome/bin/biome'), 'format', '--stdin-file-path=src/api/generated/native.ts'], notice + types);
+const formatted = await format('native.ts', notice + types, toolingConfig.fmt);
+if (formatted.errors.length) throw new Error(JSON.stringify(formatted.errors));
+const generated = formatted.code;
 const outputs = [[path.join(root, 'backend/openapi.json'), json],
   [path.join(frontend, 'src/api/generated/native.ts'), generated]];
 let changed = false;

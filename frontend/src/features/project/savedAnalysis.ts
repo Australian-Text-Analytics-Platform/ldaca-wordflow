@@ -30,7 +30,6 @@ export function savedAnalysisQuery<T>(
 ) {
   const id = tab.analysis?.has_result ? tab.analysis.id : null;
   // Analysis identity owns the data; the cache and tab are live ownership guards.
-  // eslint-disable-next-line @tanstack/query/exhaustive-deps
   return queryOptions({
     queryKey: outputKey(base, id),
     staleTime: Infinity,

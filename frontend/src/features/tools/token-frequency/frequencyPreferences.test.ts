@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import type { FrequencyAnalysisResult } from '@/features/project/api';
 import { corpusColor, corpusColorKey, frequencySettings } from './frequencySettings';
 

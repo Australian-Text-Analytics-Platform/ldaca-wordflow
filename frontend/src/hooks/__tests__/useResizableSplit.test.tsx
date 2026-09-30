@@ -1,6 +1,6 @@
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import type React from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { useResizableSplit } from '../useResizableSplit';
 
 describe('useResizableSplit pointer dragging', () => {
@@ -48,6 +48,7 @@ describe('useResizableSplit pointer dragging', () => {
 
     expect(result.current.value).toBe(180);
     expect(result.current.isDragging).toBe(false);
+    // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(7);
 
     act(() => {
@@ -73,6 +74,7 @@ describe('useResizableSplit pointer dragging', () => {
     });
 
     expect(result.current.isDragging).toBe(false);
+    // oxlint-disable-next-line typescript/unbound-method -- Inspect the method without calling it unbound.
     expect(handle.releasePointerCapture).toHaveBeenCalledWith(11);
   });
 });
@@ -154,7 +156,7 @@ describe('useResizableSplit sizing', () => {
     } as typeof ResizeObserver;
     localStorage.setItem('test.capped', '0.8');
     function Split() {
-      const split = useResizableSplit({
+      const { containerRef, splitterProps } = useResizableSplit({
         orientation: 'vertical',
         anchor: 'end',
         defaultValue: 0.3,
@@ -164,8 +166,8 @@ describe('useResizableSplit sizing', () => {
         persistKey: 'test.capped',
       });
       return (
-        <div ref={split.containerRef}>
-          <div {...split.splitterProps} />
+        <div ref={containerRef}>
+          <div {...splitterProps} />
         </div>
       );
     }

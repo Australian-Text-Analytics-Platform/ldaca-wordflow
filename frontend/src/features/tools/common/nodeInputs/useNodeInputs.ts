@@ -104,7 +104,6 @@ export function useNodeInputs(config: UseNodeInputsConfig): UseNodeInputsResult 
           rejections.push({ nodeId: id, reason });
           continue;
         }
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- validateAdd already confirmed the node exists in nodeMap
         const node = nodeMap.get(id)!;
         next.push({ node_id: id, column: defaultColumnForNode(node, constraints, getColumnInfos) });
       }
@@ -136,7 +135,6 @@ export function useNodeInputs(config: UseNodeInputsConfig): UseNodeInputsResult 
         }
         return i;
       });
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- `changed` is mutated inside the map callback; TS control-flow analysis does not track the closure mutation
       if (changed) onChange(next);
     },
     [value, onChange],

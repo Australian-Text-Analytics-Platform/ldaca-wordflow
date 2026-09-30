@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vite-plus/test';
 import { NodeActionsToolbar } from '../NodeActionsToolbar';
 
 const longName = 'qldelection2020_candidate_tweets_filtered_by_username_in_MarkBaileyMP';

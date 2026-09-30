@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
 import { TopicSamplingDialog } from './TopicSamplingDialog';
 it('captures both current sample sizes on confirmation without requiring blur', async () => {

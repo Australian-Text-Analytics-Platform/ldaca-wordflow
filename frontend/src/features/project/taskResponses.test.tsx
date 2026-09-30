@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { toast } from 'sonner';
 import * as api from './api';
 import { createProjectQueryClient, reportProjectError } from './projectErrors';

@@ -360,12 +360,12 @@ export default function ProjectGraph({
               for (const change of changes)
                 if (change.type === 'position' && change.position) {
                   nodes.set(change.id, {
-                    ...(nodes.get(change.id) ?? {}),
+                    ...nodes.get(change.id),
                     position: change.position,
                   });
                 } else if (change.type === 'dimensions' && change.dimensions) {
                   nodes.set(change.id, {
-                    ...(nodes.get(change.id) ?? {}),
+                    ...nodes.get(change.id),
                     measured: change.dimensions,
                   });
                 }

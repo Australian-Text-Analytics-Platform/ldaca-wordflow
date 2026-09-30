@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { assertGuiTestEnvironment } from './gui-test-environment.mjs';
 
 describe('GUI test execution boundary', () => {

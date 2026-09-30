@@ -1,5 +1,5 @@
 import { QueryCache, QueryClient, QueryObserver } from '@tanstack/react-query';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import * as api from './api';
 import { refreshProjectQueries } from './projectChanges';
 import { clearSavedAnalysis, savedAnalysisQuery } from './savedAnalysis';

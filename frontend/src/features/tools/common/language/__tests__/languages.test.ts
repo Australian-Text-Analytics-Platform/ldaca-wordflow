@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vite-plus/test';
 import { normaliseIso6391LanguageCode, partitionTokenizerModelsForLanguage } from '../languages';
 
 describe('native catalogue recommendations', () => {

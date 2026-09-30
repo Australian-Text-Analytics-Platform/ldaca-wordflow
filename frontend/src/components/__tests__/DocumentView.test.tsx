@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { render, screen, waitFor } from '@testing-library/react';
 import DocumentView from '@/components/DocumentView';
 
@@ -44,7 +44,7 @@ describe('DocumentView (docType="tutorial")', () => {
 
     expect(await screen.findByRole('heading', { name: 'Remote tutorial' })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(String(vi.mocked(global.fetch).mock.calls[0]?.[0])).toBe(
+    expect(vi.mocked(global.fetch).mock.calls[0]?.[0]).toBe(
       'https://docs.example.com/wordflow/v0.7/tutorials/index.md',
     );
 
@@ -67,7 +67,7 @@ describe('DocumentView (docType="tutorial")', () => {
 
     expect(await screen.findByRole('heading', { name: 'Bundled tutorial' })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
-    expect(String(vi.mocked(global.fetch).mock.calls[1]?.[0])).not.toContain('docs.example.com');
+    expect(vi.mocked(global.fetch).mock.calls[1]?.[0]).not.toContain('docs.example.com');
   });
 
   it('uses bundled Markdown directly when no docs origin is configured', async () => {
@@ -81,7 +81,7 @@ describe('DocumentView (docType="tutorial")', () => {
 
     expect(await screen.findByRole('heading', { name: 'Offline tutorial' })).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(1);
-    expect(String(vi.mocked(global.fetch).mock.calls[0]?.[0])).not.toContain('docs.example.com');
+    expect(vi.mocked(global.fetch).mock.calls[0]?.[0]).not.toContain('docs.example.com');
   });
 
   it('resolves documentation assets from the source that supplied the Markdown', async () => {

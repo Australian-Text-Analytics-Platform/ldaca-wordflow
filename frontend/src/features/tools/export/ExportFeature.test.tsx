@@ -1,7 +1,7 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import ExportFeature from './ExportFeature';
 
@@ -11,17 +11,15 @@ vi.mock('@/features/project/api', async (original) => ({
   inspectExport: vi.fn(),
   dependencyGraph: vi.fn(),
 }));
-const nodes = ['visible', 'hidden', 'Unicode 数据'].map(
-  (table_name): api.ProjectNode => ({
-    table_name,
-    visible: table_name !== 'hidden',
-    color: null,
-    document_column: null,
-    kind: 'table',
-    column_count: 2,
-    can_undo: false,
-  }),
-);
+const nodes = ['visible', 'hidden', 'Unicode 数据'].map((table_name): api.ProjectNode => ({
+  table_name,
+  visible: table_name !== 'hidden',
+  color: null,
+  document_column: null,
+  kind: 'table',
+  column_count: 2,
+  can_undo: false,
+}));
 beforeEach(() => {
   HTMLElement.prototype.hasPointerCapture = vi.fn(() => false);
   HTMLElement.prototype.scrollIntoView = vi.fn();

@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { suggestColumnName, suggestDataBlockName, suggestDataBlockNames } from './automaticNames';
 
 it('bounds source prefixes, preserves Unicode and never includes execution parameters', () => {

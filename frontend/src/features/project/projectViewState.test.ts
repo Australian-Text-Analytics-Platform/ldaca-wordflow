@@ -1,4 +1,4 @@
-import { beforeEach, expect, it } from 'vitest';
+import { beforeEach, expect, it } from 'vite-plus/test';
 import { defaultNodeView, useProjectViewState } from './projectViewState';
 
 beforeEach(() => useProjectViewState.setState({ nodes: new Map() }));

@@ -1,4 +1,4 @@
-import { expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vite-plus/test';
 import { prepareStopwords } from '@/features/project/api';
 import { frequencySettings } from '../../token-frequency/frequencySettings';
 

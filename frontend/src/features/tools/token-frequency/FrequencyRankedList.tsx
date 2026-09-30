@@ -38,7 +38,7 @@ export function FrequencyRankedList({
   const scrollRef = useRef<HTMLDivElement>(null);
   const count = Math.min(firstPage?.totalRows ?? 0, query.limit ?? Infinity);
   // TanStack Virtual's imperative methods must observe its current scroll state.
-  // eslint-disable-next-line react-hooks/incompatible-library
+  // oxlint-disable-next-line react/incompatible-library -- React Compiler skips this imperative virtualizer hook.
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => scrollRef.current,

@@ -217,15 +217,15 @@ export function useRowDetailDialog<T>({
   const selectionOnCurrentPage = selection?.page === page;
   const canPrevious = Boolean(
     selection &&
-      !pending &&
-      !exhausted.previous &&
-      ((selectionOnCurrentPage && selection.index > 0) || selection.page > 1),
+    !pending &&
+    !exhausted.previous &&
+    ((selectionOnCurrentPage && selection.index > 0) || selection.page > 1),
   );
   const canNext = Boolean(
     selection &&
-      !pending &&
-      !exhausted.next &&
-      ((selectionOnCurrentPage && selection.index < items.length - 1) || hasNextPage),
+    !pending &&
+    !exhausted.next &&
+    ((selectionOnCurrentPage && selection.index < items.length - 1) || hasNextPage),
   );
 
   const navigation: RowDetailNavigation = {

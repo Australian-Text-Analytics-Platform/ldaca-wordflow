@@ -1,6 +1,6 @@
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "./styles/vscode-2026.generated.css";
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import './styles/vscode-2026.generated.css';
 
 @custom-variant dark (&:where([data-theme="dark-2026"], [data-theme="dark-2026"] *));
 
@@ -102,7 +102,7 @@
 @layer base {
   html {
     background: var(--vscode-titleBar-activeBackground);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     font-size: var(--vscode-fontSize-body1);
     font-weight: var(--vscode-fontWeight-regular);
   }
@@ -162,11 +162,11 @@
     background: var(--vscode-titleBar-activeBackground);
   }
 
-  section[aria-label="Annotation Review"] tbody > tr:nth-child(odd) {
+  section[aria-label='Annotation Review'] tbody > tr:nth-child(odd) {
     background-color: var(--vscode-surface-background) !important;
   }
 
-  section[aria-label="Annotation Review"] tbody > tr:nth-child(even) {
+  section[aria-label='Annotation Review'] tbody > tr:nth-child(even) {
     background-color: var(--vscode-list-hoverBackground) !important;
   }
 

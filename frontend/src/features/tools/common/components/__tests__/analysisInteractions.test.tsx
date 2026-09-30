@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vitest';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { toast } from 'sonner';
 import { AnalysisAction } from '../AnalysisAction';
 import { AnalysisNumberInput } from '../AnalysisNumberInput';

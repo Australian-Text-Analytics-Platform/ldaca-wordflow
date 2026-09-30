@@ -4,7 +4,7 @@ vi.mock('../common/captureChart', () => ({
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Utf8, Float64, Struct, List, vectorFromArray, tableFromArrays } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import * as api from '@/features/project/api';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { ConcordanceResults } from './ConcordanceResults';

@@ -1,4 +1,4 @@
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import { useUIStore } from '@/stores/uiStore';
 import { buildSurveyUrl, SURVEY_BASE_URL } from './feedbackContext';
 it('captures the invoking feature once and keeps survey metadata anonymous', () => {

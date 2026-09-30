@@ -260,3 +260,4 @@ frontend/src-tauri/resources/icu/manifest.json
 
 # Optional independent adapter checkout, no longer a Wordflow submodule.
 /polars-text/
+.vitest/

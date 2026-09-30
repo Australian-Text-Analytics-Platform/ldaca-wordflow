@@ -217,7 +217,6 @@ export function ProjectTable({
       let maxLen = col.length;
       for (const row of sampleRows) {
         // DataRow is typed non-null, but rows arrive from API/JSON so guard malformed (null) rows.
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         if (!row || typeof row !== 'object') continue;
         const raw = row[col];
         if (raw == null) continue;

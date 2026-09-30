@@ -34,8 +34,7 @@ const buttonVariants = cva(
 );
 
 interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>, VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   ref?: React.Ref<HTMLButtonElement>;
 }
@@ -50,5 +49,4 @@ function Button({ className, variant, size, asChild = false, ref, ...props }: Bu
   return <Comp className={cn(buttonVariants({ variant, size, className }))} ref={ref} {...props} />;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components -- CVA variants are shared with composed controls.
 export { Button, buttonVariants };

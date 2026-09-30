@@ -9,7 +9,7 @@ import {
   Table,
   vectorFromArray,
 } from 'apache-arrow';
-import { expect, it } from 'vitest';
+import { expect, it } from 'vite-plus/test';
 import {
   arrowTypeDisplayName,
   arrowTypeName,
