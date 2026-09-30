@@ -38,6 +38,8 @@ export async function plotsScenario(base: string, prefix: string) {
   const createdTabs = new Map<api.PlotMode, string>();
   for (const mode of ['trends', 'compare', 'scatter', 'heatmap', 'sankey'] as const) {
     const tab = await api.createTab(base, mode);
+    const codes = { trends: 'TR', compare: 'CP', scatter: 'SC', heatmap: 'HM', sankey: 'SK' };
+    expect(tab.name).toBe(`${codes[mode]}-1`);
     createdTabs.set(mode, tab.name);
     await api.runPlot(base, tab.id, mode, requests[mode]);
   }
@@ -118,6 +120,7 @@ export async function plotsScenario(base: string, prefix: string) {
       await browser.keys(Key.Enter);
       await panel.$('button=Add to Project').click();
       const dialog = $('[role="dialog"]');
+      await expect(dialog.$('input')).toHaveValue('plot_fixture_sc_1');
       await dialog.$('input').setValue('plot_selected_row');
       await dialog.$('button=Add').click();
       await dialog.waitForExist({ reverse: true });

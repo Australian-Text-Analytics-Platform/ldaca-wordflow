@@ -5,7 +5,7 @@
 <h1 id="help-concordance-section">Concordance tutorial</h1>
 
 Concordance finds words and phrases in one or two Data Blocks and shows their
-contexts and positions. Entering the tool with no tabs creates **Concordance 1**.
+contexts and positions. Entering the tool with no tabs creates **CC-1**.
 Use **+** to create another numbered tab, or rename and reorder existing tabs.
 Closing the last tab leaves an empty state until you create one or leave and return.
 

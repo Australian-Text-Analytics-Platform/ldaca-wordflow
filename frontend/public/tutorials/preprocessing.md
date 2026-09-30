@@ -57,7 +57,7 @@ validates it. Date, time and interval columns show controls appropriate to their
 
 <h3 id="help-preprocessing-common-apply-button">Create Data Block</h3>
 
-For Filter, Sample, Join, Stack and Build, choose an unused Data Block name and
+For Filter, Sample, Join, Stack and Build, accept the short numbered suggestion or choose an unused Data Block name and
 click **Create Data Block**. The result is
 always a View: it stores the query and follows changes to its sources. Its inputs
 appear as SQL dependencies in the graph. Existing names are never silently overwritten.
@@ -90,7 +90,7 @@ and decimal precision.
 
 <h3 id="help-preprocessing-filter-new-node-name">New Data Block name</h3>
 
-The suggested name describes the conditions. Change it to any unused name. The
+The short suggested name uses the source and `flt`, for example `speeches_flt_1`. Change it to any unused name. The
 result reads the selected input, producing a SQL-dependency arrow.
 
 <h2 id="help-preprocessing-slice-section">Sample</h2>
@@ -122,7 +122,7 @@ The preview is illustrative. See [DuckDB sampling](https://duckdb.org/docs/stabl
 
 <h3 id="help-preprocessing-slice-new-node-name">Sample output name</h3>
 
-Sample always creates a new View. The name suggestion includes the options.
+Sample always creates a new View. The short name uses `slc` for slices, `smp` for random samples and `shf` for shuffles; parameters are not included.
 
 <h2 id="help-preprocessing-join-section">Join</h2>
 
@@ -421,3 +421,7 @@ in cells because the project owns the shared connection.
 [← Back to tutorial index](./index.md)
 
 New Stack requests preserve duplicate rows. **Remove identical complete rows after stacking** is optional and compares whole rows. A Join can produce multiple output rows when a key has multiple matches.
+
+Build suggests an unused `col`, `col_2`, etc. for a new column. You can enter a
+meaningful name instead; entering an existing column name deliberately replaces it.
+Automatic names never rename existing Data Blocks or imported columns.

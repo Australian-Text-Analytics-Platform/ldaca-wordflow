@@ -1,3 +1,4 @@
+import { useNodePreferences } from '../common/useNodePreferences';
 import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
 import { useState } from 'react';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -72,6 +73,7 @@ function TopicTab({
   tab,
 }: Props & { tab: api.Tab }) {
   const cache = useQueryClient();
+  const savePreference = useNodePreferences(base);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) => api.getTopicResult(base, id, signal)),
@@ -103,6 +105,12 @@ function TopicTab({
     onChange: (next) => {
       update({
         ...draft,
+        tokenizer:
+          !stored && !tab.analysis && !draft.inputs.length
+            ? (nodes.find((node) => node.table_name === next[0]?.node_id)?.tokenizer_models?.[
+                next[0]?.column ?? ''
+              ] ?? draft.tokenizer)
+            : draft.tokenizer,
         inputs: next.map((input) => ({
           source: draft.inputs.find((old) => old.source.name === input.node_id)?.source ?? {
             schema: 'data',
@@ -221,18 +229,21 @@ function TopicTab({
           onAddNodes={picker.addNodes}
           onRemoveNode={picker.removeNode}
           onClear={picker.clear}
-          onColumnChange={picker.setColumn}
+          onColumnChange={(name, column) => {
+            picker.setColumn(name, column);
+            savePreference(name, { preference: 'document_column', value: column || null });
+          }}
           nodeColors={Object.fromEntries(
             draft.inputs.map((input, i) => [
               input.source.name,
-              colors[api.targetKey(input.source)] ??
-                nodes.find((node) => node.table_name === input.source.name)?.color ??
+              nodes.find((node) => node.table_name === input.source.name)?.color ??
+                colors[api.targetKey(input.source)] ??
                 VIZ_PALETTE[i] ??
                 GREY,
             ]),
           )}
           onNodeColorChange={(name, color) => {
-            changeSettings({ colors: { ...colors, [api.targetKey(name)]: color } });
+            savePreference(name, { preference: 'color', value: color });
           }}
           unavailableNodes={draft.inputs
             .filter((input) => !nodes.some((node) => node.table_name === input.source.name))
@@ -248,7 +259,14 @@ function TopicTab({
               source={{ schema: 'data', name: node.id }}
               column={column}
               models={tokenizers.data ?? []}
+              preferredModel={
+                nodes.find((n) => n.table_name === node.id)?.tokenizer_models?.[column]
+              }
               value={draft.tokenizer}
+              preferenceTargets={captured.inputs.map((input) => ({
+                name: input.source.name,
+                column: input.column,
+              }))}
               onChange={(tokenizer) => {
                 update({ ...captured, tokenizer });
               }}

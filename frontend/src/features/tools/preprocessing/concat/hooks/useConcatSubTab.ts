@@ -1,3 +1,4 @@
+import { suggestDataBlockName } from '@/features/project/automaticNames';
 import { useState } from 'react';
 import type { ArrowColumn } from '@/lib/arrow/decodeArrowTable';
 import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
@@ -55,9 +56,11 @@ export function useConcatSubTab(props: ConcatSubTabProps) {
       : !ready
         ? 'Loading input columns…'
         : 'Columns align by name. Missing columns become NULL; DuckDB resolves compatible types.';
-  const placeholder = names.length
-    ? `Stack(${names.slice(0, 3).join(', ')}${names.length > 3 ? ', …' : ''})`
-    : 'Stacked data';
+  const placeholder = suggestDataBlockName(
+    names,
+    'stk',
+    projectNodes.map((node) => node.id),
+  );
   const request =
     projectBase !== null && ready ? { projectBase, nodeIds: names, deduplicate } : null;
   const preview = usePreprocessingPreview({

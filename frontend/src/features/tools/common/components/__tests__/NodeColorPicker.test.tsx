@@ -1,3 +1,4 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -22,12 +23,14 @@ describe('NodeColorPicker', () => {
     const onChange = vi.fn();
 
     render(
-      <NodeColorPicker
-        nodeName="Corpus A"
-        color="#2563eb"
-        presets={['#2563eb', '#dc2626']}
-        onChange={onChange}
-      />,
+      <TooltipProvider>
+        <NodeColorPicker
+          nodeName="Corpus A"
+          color="#2563eb"
+          presets={['#2563eb', '#dc2626']}
+          onChange={onChange}
+        />
+      </TooltipProvider>,
     );
 
     expect(screen.queryByLabelText(/hex color for corpus a/i)).not.toBeInTheDocument();

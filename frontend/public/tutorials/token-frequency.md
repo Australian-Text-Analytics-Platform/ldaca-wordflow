@@ -6,7 +6,7 @@
 
 Frequency counts the tokens in one or two text corpora. A single corpus produces a ranked list and word cloud. Comparing two corpora also produces a **Juxtorpus** cloud and **Keyness statistics** table.
 
-Open Frequency to start: if no analyses exist, an empty **Frequency 1** tab is created automatically. Use **+** on the tab strip to add another analysis. New tabs use the first available number: **Frequency 1**, **Frequency 2**, and so on. You can rename them; existing names stay unchanged. The titlebar shows your location, for example **Untitled ▸ Frequency ▸ Frequency 1**, and follows the selected tab and its name. Closing the last tab leaves an empty state; use **New Frequency analysis** to create another, or leave Frequency and return to start a fresh tab automatically. Each named tab keeps its latest successful result inside the project. Tabs are independent: another tab can run while this one is working. Concordance and Quotation are also available; the other analysis tools remain unavailable.
+Open Frequency to start: if no analyses exist, an empty **FR-1** tab is created automatically. Use **+** on the tab strip to add another analysis. New tabs use the first available number: **FR-1**, **FR-2**, and so on. You can rename them; existing names stay unchanged. The titlebar shows your location, for example **Untitled ▸ Frequency ▸ FR-1**, and follows the selected tab and its name. Closing the last tab leaves an empty state; use **New Frequency analysis** to create another, or leave Frequency and return to start a fresh tab automatically. Each named tab keeps its latest successful result inside the project. Tabs are independent: another tab can run while this one is working. Concordance and Quotation are also available; the other analysis tools remain unavailable.
 
 The named tabs stay at the top of the pane while the content scrolls. Each tab contains two cards: **Token Frequency Analysis** for its inputs and Run controls, followed by **Token Frequency Results** for saved output. Both share the same scroll area, so you can move between settings and results without changing tabs.
 
@@ -37,24 +37,23 @@ or choose **Create empty** to create a visible Table with a `word` column. Impor
 an existing list through Data Loader first. The same list filters both corpora
 and can be reused by other analysis tabs.
 
-- Selecting or creating a list turns filtering on. Turn the switch off to keep
-  the selection without filtering. The card's **×** or **Clear all** removes the
+- Turn the switch on to choose or create a list. Turn it off to hide the section’s
+  contents and keep the selection without filtering. The card's **×** or **Clear all** removes the
   selection, leaving the Data Block intact. Remove the selection before choosing
   a different list.
-- **Edit words…** opens removable bubbles in the Table's row order, keeping the
+- The word list appears beside the selector (below it in narrow panes), in the Table's row order, keeping the
   first occurrence of each word. Click the input area, type a word and press
   **Enter** to add it immediately. Paste comma- or newline-separated words to add
   a batch; use a bubble's **×** to remove it immediately.
-  **Add language preset…** lists sampled recommendations first. **Add to list**
+  **Add language preset…** expands inline with sampled recommendations first. **Add to list**
   commits the selected presets together. **Sort** sorts the complete Table rows
   alphabetically by the selected word column; related column values stay together.
-  **Clear** asks for confirmation before removing the displayed words.
-  **Close** leaves committed changes in place; typing alone does not save a word.
+  **Clear words** asks for confirmation before removing the displayed words.
+  Changes save immediately for all analyses using this list; typing alone does not save a word.
 - For the ordinary table editor, use **Edit Table** in the Data Block's node menu.
   Its Save and Cancel controls retain their usual atomic behavior.
-- **Edit words…** on a View first copies the selected column to a new
-  Table and selects it. The original View is unchanged. Closing leaves that
-  new Table available in the graph.
+- Views show their words read-only. **Create editable copy** copies the selected
+  column to a new Table and selects it. The original View is unchanged.
 - Right-click a word in a cloud, list or comparison to add it. Wordflow creates a
   list when necessary or copies a selected View before adding the word.
 - Keep domain-specific terms you want to compare, even if a general preset

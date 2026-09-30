@@ -21,6 +21,17 @@ Use a Data Block's menu to [export its data](./export.md).
 
 The edit icon next to the heading lets you customise which tools appear.
 
+New analysis tabs have short numbered names: **FR** (Frequency), **CC** (Concordance),
+**QT** (Quotation), **TM** (Topic Modelling), **AN** (Annotation), **TR** (Trends),
+**CP** (Compare), **SC** (Scatter), **HM** (Heatmap), and **SK** (Sankey), such as
+**FR-1**. Full tool names remain visible in navigation. You can rename tabs freely;
+existing names are preserved.
+
+Generated Data Blocks receive short source-based names such as `speeches_flt_1`.
+One source contributes up to 16 characters; multiple sources contribute up to seven
+each from the first two. A number distinguishes repeated outputs. Imported names
+and names you enter yourself stay unchanged.
+
 <h2 id="help-ui-data-selection">2. Data Selection</h2>
 
 Below the tool list, the **Data Blocks** panel shows the visible Data Blocks in the project.
@@ -31,6 +42,14 @@ and is independent of opened data previews and preprocessing inputs.
 - The total count and selected count appear above the list. **Clear selection** leaves previews open.
 - Selected Data Blocks can be deleted together through the graph controls.
 - Use the **+** action or double-click a graph card to add preprocessing inputs.
+
+Selected Data Blocks use compact cards with a distinct name header and a remove
+action at the right. Where source color applies, the header is tinted and contains
+the color picker; otherwise it stays neutral. Labelled choices wrap below. Cards
+sit side by side when space permits and wrap in narrow panes. Hover over or focus
+a shortened name or choice to read its full text immediately, without a delay.
+Fully visible names and choices do not show a tooltip. Extra selections scroll
+horizontally; removing a selection does not delete the Data Block.
 
 <h2 id="help-ui-task-centre">3. Task Centre</h2>
 
@@ -51,6 +70,11 @@ Automatic previews, page navigation, searches and SQL-cell saves do not add task
 Completed work refreshes your project even after you leave its original panel.
 Reloading keeps task summaries but does not restore SQL result tables.
 Frequency results are saved separately from the task list.
+
+Choosing a document column, tokenizer or source color in an analysis saves that
+Data Block preference immediately—even before **Run** or **Preview**. Other tools
+use these choices as defaults. Tokenizers are remembered per column. Existing
+analysis drafts and saved execution requests retain their own parameters.
 
 <h2 id="help-ui-project-graph-view">4. Project Graph</h2>
 
@@ -98,7 +122,7 @@ replacement does not add an Undo layer.
 - Double-click a card, or choose **+**, to add it to the active preprocessing inputs. When several input areas are available, the Data Block follows the pointer until you choose an area.
 - Hover a Data Block and open its menu to **Rename**, **Clone**, **Export**, or **Delete** it. Views also offer **Materialize** and **More → Edit SQL Definition**; Tables offer **More → Edit Table**. **Undo** removes a View query layer; Redo is unavailable.
 - Expanded cards show the table name, type and column count. Graph interactions do not count data rows. An unavailable object shows a diagnostic on its card.
-- Pan and zoom the graph with your mouse to navigate large projects. A vertical control panel sits at the top-left corner of the graph. Its collapsed form shows the selected/total Data Block count (for example, **0/2**); hover over or focus the panel to expand its button labels and the word **selected**.
+- Pan and zoom the graph with your mouse to navigate large projects. A vertical control panel sits at the top-left corner of the graph. It stays compact and shows the selected/total Data Block count (for example, **0/2**). Hover over or focus an icon to see its name immediately in a tooltip; the panel does not expand. Focus or hover the count for its full description.
   The panel provides the following actions:
   - <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="13" height="13" style="display:inline;vertical-align:text-bottom"><path d="M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z"/></svg> **Zoom in** — increases the zoom level.
   - <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 5" width="13" height="2" style="display:inline;vertical-align:middle"><path d="M0 0h32v4.2H0z"/></svg> **Zoom out** — decreases the zoom level.

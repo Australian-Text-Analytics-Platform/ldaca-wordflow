@@ -23,8 +23,7 @@ export function frequencySettings(
   corpora: Corpus[] = [],
 ): FrequencySettings {
   return {
-    stopwordsEnabled:
-      value.stopwordsEnabled === true && stopwordSource(value.stopwordSource) !== null,
+    stopwordsEnabled: value.stopwordsEnabled === true,
     stopwordSource: stopwordSource(value.stopwordSource),
     colors: Object.fromEntries(
       (Array.isArray(value.colors)
@@ -47,8 +46,8 @@ export function corpusColor(
   index: number,
 ) {
   return (
-    settings.colors[corpusColorKey(source)] ??
     fallback ??
+    settings.colors[corpusColorKey(source)] ??
     VIZ_PALETTE[index % VIZ_PALETTE.length] ??
     GREY
   );

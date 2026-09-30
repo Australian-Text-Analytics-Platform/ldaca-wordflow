@@ -142,7 +142,7 @@ function BuildSubTabContent(props: Props) {
                 build.setColumn(event.target.value);
               }}
               disabled={!activeNode}
-              placeholder="new_column"
+              placeholder="col"
             />
           </label>
           <DisabledReasonTooltip reason={apply.disabledReason}>

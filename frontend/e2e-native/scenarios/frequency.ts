@@ -1,3 +1,4 @@
+import { suggestDataBlockName } from '../../src/features/project/automaticNames';
 import { decodeAnalysisRequest } from '../../src/features/tools/common/analysisRequest';
 import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
@@ -127,7 +128,7 @@ async function createTab(base: string, name: string) {
   const existing = new Set(tabs.map((tab) => tab.id));
   // Use the initial empty tab; subsequent named analyses use the ordinary + action.
   let created =
-    tabs.length === 1 && tabs[0]?.name === 'Frequency 1' && !outputAnalysisId(tabs[0])
+    tabs.length === 1 && tabs[0]?.name === 'FR-1' && !outputAnalysisId(tabs[0])
       ? tabs[0]
       : undefined;
   if (!created) {
@@ -163,6 +164,11 @@ async function addInput(base: string, name: string, chooseTokenizer = true) {
     await browser.keys('ArrowDown');
     await $(`[role="option"]=${plain.label}`).click();
     await expect(tokenizer).toHaveText(plain.label);
+    // Explicit choices are durable before Run, including across tool changes.
+    await browser.waitUntil(async () => {
+      const node = (await api.graph(base)).nodes.find((entry) => entry.table_name === name);
+      return Object.values(node?.tokenizer_models ?? {}).includes(plain.model_id);
+    }, { timeoutMsg: 'Tokenizer preference was not saved before Run' });
   }
 }
 
@@ -261,9 +267,9 @@ export async function frequencyInitialTabScenario(base: string) {
   await expect(tools.$('button[aria-label="Edit visible tools"]')).toBeDisplayed();
   await openFrequency();
   const [initial] = await api.listTabs(base, undefined, 'frequency');
-  expect(initial?.name).toBe('Frequency 1');
+  expect(initial?.name).toBe('FR-1');
   const location = $('nav[aria-label="Current location"]');
-  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ Frequency 1');
+  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-1');
   expect(outputAnalysisId(initial)).toBeNull();
   await expect($('h1=Token Frequency Analysis')).toBeDisplayed();
   await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
@@ -278,13 +284,13 @@ export async function frequencyInitialTabScenario(base: string) {
   await browser.waitUntil(async () => (await api.listTabs(base, undefined, 'frequency')).length === 2);
   await expect(tablist().$$('[role="tab"]')).toBeElementsArrayOfSize(2);
   expect((await api.listTabs(base, undefined, 'frequency')).map((tab) => tab.name)).toEqual([
-    'Frequency 1',
-    'Frequency 2',
+    'FR-1',
+    'FR-2',
   ]);
-  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ Frequency 2');
+  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-2');
   if (!initial) throw new Error('Initial Frequency tab is missing');
   await selectTab(base, initial.id);
-  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ Frequency 1');
+  await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-1');
   // The embedded driver emits mouse events, not the tab strip's pointer events.
   // Verify persisted names through the same API/reopen path as createTab above.
   await api.updateTab(base, initial.id, { name: 'Corpus comparison' });
@@ -946,14 +952,16 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await expect(list()).toHaveText(expect.stringContaining('apple'));
     await showFrequencyContent('[aria-label="Stopwords"]');
     const control = () => $('[aria-label="Stopwords"]');
+    await control().$('[role="switch"]').click();
     await captureState('empty');
+    const expectedCreatedName = suggestDataBlockName([names.reference], 'sw', (await api.graph(base)).nodes.map((node) => node.table_name));
     await control().$('button=Create empty').click();
     await expect(control()).toHaveText(expect.stringContaining('0 words'));
     const selection = async () =>
       (await api.listTabs(base, undefined, 'frequency')).find((t) => t.id === tab.id)?.settings
         .stopwordSource as ReturnType<typeof source>;
     const created = await selection();
-    expect(created.source.name).toBe(`${names.reference}_stopwords`);
+    expect(created.source.name).toBe(expectedCreatedName);
     expect(await $('[aria-label="Data View"]').isExisting()).toBe(false);
 
     // Wait for commit delivery, then prove unrelated known writes leave saved projections alone.
@@ -1090,9 +1098,14 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await showFrequencyContent('[aria-label="Frequency results"]');
     await results().$('button=Ranked lists').click();
     await showFrequencyContent('[aria-label="Stopwords"]');
-    await control().$('button=Edit words…').click();
-    const dialog = () => $('[role="dialog"][aria-labelledby]');
+    const toggle = control().$('[role="switch"]');
+    await toggle.click();
+    await expect(control().$('[aria-label="Stopword editor"]')).not.toExist();
+    await expect(control().$('button=Create empty')).not.toExist();
+    await toggle.click();
+    const dialog = () => control().$('[aria-label="Stopword editor"]');
     const draft = () => dialog().$('input[aria-label="Add stopword"]');
+    await draft().waitForEnabled();
     await draft().setValue('banana');
     await browser.keys(Key.Enter);
     await expect(dialog().$('button[aria-label="Remove stopword banana"]')).toExist();
@@ -1104,24 +1117,18 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await draft().setValue('apple');
     await browser.keys(Key.Enter);
     await expect(dialog()).toHaveText(expect.stringContaining('2 words'));
-    await dialog().$('button=Close').waitForEnabled();
-    await dialog().$('button=Close').click();
-    await dialog().waitForExist({ reverse: true });
     await expect(list()).not.toHaveText(expect.stringContaining('apple'));
     await expect(list()).toHaveText(expect.stringContaining('carrot'));
     expect(await readStopwords(base, created)).toEqual(['banana', 'apple']);
-    await control().$('button=Edit words…').click();
     expect(
       await dialog()
         .$$('button[aria-label^="Remove stopword "]')
         .map((bubble) => bubble.getAttribute('aria-label')),
     ).toEqual(['Remove stopword banana', 'Remove stopword apple']);
+    await dialog().$('button=Sort').waitForEnabled();
     await dialog().$('button=Sort').click();
     await browser.waitUntil(async () => JSON.stringify(await readStopwords(base, created)) === JSON.stringify(['apple', 'banana']));
     await expect(dialog().$$('button[aria-label^="Remove stopword "]')[0]).toHaveAttribute('aria-label', 'Remove stopword apple');
-    await dialog().$('button=Close').waitForEnabled();
-    await dialog().$('button=Close').click();
-    await dialog().waitForExist({ reverse: true });
     // A direct SQL edit triggers the same data refresh as the Table editor and shared analyses.
     await api.runSqlScript(
       base,
@@ -1190,16 +1197,24 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       await showFrequencyContent('[aria-label="Stopwords"]');
       await assertNoHorizontalOverflow();
       await captureState(`narrow-${theme}`);
-      await control().$('button=Edit words…').click();
       await $('input[aria-label="Add stopword"]').waitForDisplayed();
       await $('input[aria-label="Add stopword"]').setValue('example');
       await browser.keys(Key.Enter);
       await expect($('button[aria-label="Remove stopword example"]')).toExist();
-      await captureState(`dialog-${theme}`);
-      await $('[role="dialog"]').$('button=Add language preset…').click();
-      const presets = $('//div[@role="dialog"][.//h2[text()="Add language preset"]]');
-      await expect(presets.$('fieldset label')).toHaveText(expect.stringContaining('Recommended'));
-      await expect(presets.$('[role="checkbox"]')).toHaveAttribute('aria-checked', 'true');
+      await captureState(`inline-editor-${theme}`);
+      await control().$('button=Add language preset…').waitForEnabled();
+      await control().$('button=Add language preset…').click();
+      const presets = control().$('section[aria-label="Add language preset"]');
+      await presets.waitForDisplayed();
+      await browser.waitUntil(async () => !(await presets.getText()).includes('Detecting input languages'));
+      if ((await presets.getText()).includes('Recommended')) {
+        await expect(presets.$('fieldset label')).toHaveText(expect.stringContaining('Recommended'));
+        await expect(presets.$('[role="checkbox"]')).toHaveAttribute('aria-checked', 'true');
+      } else {
+        await expect(presets).toHaveText(expect.stringContaining('Language recommendation unavailable'));
+        await presets.$('input[aria-label="Search stopword languages"]').setValue('English');
+        await presets.$('[role="checkbox"]').click();
+      }
       await captureState(`presets-${theme}`);
       await presets.$('button=Add to list').click();
       await presets.waitForExist({ reverse: true });
@@ -1207,8 +1222,6 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
         async () => (await $$('button[aria-label^="Remove stopword "]').length) > 10,
       );
       await captureState(`preset-bubbles-${theme}`);
-      await $('[role="dialog"]').$('button=Close').waitForEnabled();
-      await $('[role="dialog"]').$('button=Close').click();
       await setAnalysisPaneSize('normal');
     }
     // Preset confirmation now writes immediately; verify it before resetting this fixture.
@@ -1233,16 +1246,16 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       await $('[role="dialog"]').waitForExist({ reverse: true });
     };
     await selectList(view.source.name, 'code');
-    await expect(control()).toHaveText(expect.stringContaining('Editing copies this column'));
-    await control().$('button=Edit words…').click();
+    await expect(control()).toHaveText(expect.stringContaining('Read-only list.'));
+    const expectedCopyName = suggestDataBlockName([view.source.name], 'sw', (await api.graph(base)).nodes.map((node) => node.table_name));
+    await control().$('button=Create editable copy').click();
     await $('input[aria-label="Add stopword"]').waitForDisplayed();
     await expect($('button[aria-label="Remove stopword 123"]')).toExist();
     await expect($('button[aria-label="Remove stopword 456"]')).toExist();
-    await $('[role="dialog"]').$('button=Close').click();
     await $('[role="dialog"]').waitForExist({ reverse: true });
     const copySelection = (await api.listTabs(base, undefined, 'frequency')).find((t) => t.id === other.id)
       ?.settings.stopwordSource as ReturnType<typeof source>;
-    expect(copySelection.source.name).toBe(`${view.source.name}_stopwords_2`);
+    expect(copySelection.source.name).toBe(expectedCopyName);
     expect(await readStopwords(base, view)).toEqual(['456', '123']);
     await selectTab(base, tab.id);
     await showLoadedResults();
@@ -1284,6 +1297,74 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     )) {
       await api.deleteNode(base, node.table_name);
     }
+    await cleanup(base, prefix);
+  }
+}
+
+export async function nodePreferencesScenario(base: string, prefix: string) {
+  const names = await fixture(base, prefix);
+  try {
+    await api.executeSql(base, [{ sql: `ALTER TABLE ${api.objectSql(names.study)} ADD COLUMN alternative VARCHAR` }], { all: true });
+    const tab = await createTab(base, `${prefix} preferences`);
+    await addInput(base, names.study);
+    await workspace().$('[role="combobox"]=text').click();
+    await $('[role="option"]=alternative').click();
+    await workspace().$(`[aria-label="Change color for ${names.study}"]`).click();
+    await $(`[aria-label="Use #dc2626 for ${names.study}"]`).click();
+    await browser.keys('Escape');
+    await browser.waitUntil(async () => {
+      const node = (await api.graph(base)).nodes.find((entry) => entry.table_name === names.study);
+      return node?.document_column === 'alternative' && node.color === '#dc2626';
+    });
+    expect((await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)?.analysis).toBeNull();
+    await browser.refresh();
+    await openFrequency();
+    await createTab(base, `${prefix} restored defaults`);
+    await addInput(base, names.study, false);
+    await expect(workspace().$('[role="combobox"]=alternative')).toBeDisplayed();
+    expect((await api.graph(base)).nodes.find((entry) => entry.table_name === names.study)?.color).toBe('#dc2626');
+  } finally {
+    await cleanup(base, prefix);
+  }
+}
+
+export async function compactSelectorsScenario(base: string, prefix: string) {
+  const names = await fixture(base, prefix);
+  const cards = () => workspace().$$('[data-testid="node-input-card-content"]');
+  try {
+    const tab = await createTab(base, `${prefix} compact`);
+    await addInput(base, names.reference);
+    await addInput(base, names.study);
+    await setAnalysisPaneSize('normal');
+    const firstCard = cards()[0];
+    const secondCard = cards()[1];
+    if (!firstCard || !secondCard) throw new Error('Expected two selected input cards');
+    const first = await firstCard.getLocation();
+    const second = await secondCard.getLocation();
+    expect(Math.abs(first.y - second.y)).toBeLessThan(2);
+    expect(second.x).toBeGreaterThan(first.x);
+    await browser.saveScreenshot(`.tmp/wdio/${prefix}-headers.png`);
+    await expect(workspace().$('[data-testid="node-input-card-header"] [aria-label^="Change color"]')).toBeDisplayed();
+    await setAnalysisPaneSize('narrow');
+    expect((await secondCard.getLocation('y'))).toBeGreaterThan(await firstCard.getLocation('y'));
+    await assertNoHorizontalOverflow();
+    await setAnalysisPaneSize('normal');
+    await run(base, tab);
+    await showFrequencyContent('[aria-label="Stopwords"]');
+    const control = $('[aria-label="Stopwords"]');
+    await control.$('[role="switch"]').click();
+    await control.$('button=Create empty').click();
+    const content = control.$('[data-testid="node-input-card-content"]');
+    const field = content.$('[data-node-input-field]');
+    await field.waitForDisplayed();
+    expect(Math.abs((await field.getLocation('y')) - (await content.getLocation('y')))).toBeLessThan(10);
+    const picker = control.$('[role="combobox"]');
+    await picker.click();
+    await $('[role="option"]=word').waitForDisplayed();
+    await browser.keys('Escape');
+    await setAnalysisPaneSize('narrow');
+    await assertNoHorizontalOverflow();
+  } finally {
     await cleanup(base, prefix);
   }
 }

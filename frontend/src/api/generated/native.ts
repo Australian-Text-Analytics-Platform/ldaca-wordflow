@@ -689,6 +689,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/nodes/{table_name}/preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['api_set_node_preference'];
+    trace?: never;
+  };
   '/api/project/nodes/{table_name}/rename': {
     parameters: {
       query?: never;
@@ -2338,6 +2354,9 @@ export interface components {
       /** @enum {string} */
       kind: 'table' | 'view' | 'missing';
       table_name: string;
+      tokenizer_models?: {
+        [key: string]: string;
+      };
       visible: boolean;
     };
     NodeExportRequest: {
@@ -2350,6 +2369,23 @@ export interface components {
       page_size: number;
       sorting?: components['schemas']['CellEditSort'][];
     };
+    NodePreference:
+      | {
+          /** @enum {string} */
+          preference: 'document_column';
+          value?: string | null;
+        }
+      | {
+          /** @enum {string} */
+          preference: 'color';
+          value?: string | null;
+        }
+      | {
+          column: string;
+          /** @enum {string} */
+          preference: 'tokenizer';
+          value?: string | null;
+        };
     ObjectTarget: {
       /** @description Canonical name. Input also accepts the legacy `table_name` spelling. */
       name: string;
@@ -6701,6 +6737,84 @@ export interface operations {
         };
       };
       /** @description Internal operation error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Backend stopping */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  api_set_node_preference: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        table_name: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NodePreference'];
+      };
+    };
+    responses: {
+      /** @description Preference saved */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Invalid preference */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Origin not allowed */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Data Block unavailable */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Project conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Operation failed */
       500: {
         headers: {
           [name: string]: unknown;

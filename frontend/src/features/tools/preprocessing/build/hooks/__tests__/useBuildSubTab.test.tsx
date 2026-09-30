@@ -12,6 +12,49 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
+it('updates automatic columns after schema loading but preserves explicit replacements and edits', async () => {
+  const apply = vi.fn().mockResolvedValue({ table_name: 'built' });
+  const preview = vi.fn().mockResolvedValue({ data: [], columns: [], pagination: null });
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { result, rerender } = renderHook(
+    ({ names }: { names: string[] }) =>
+      useBuildSubTab({
+        projectBase: '',
+        selectedNodes: [inputNode({ id: 'source', name: 'source' })],
+        getColumnInfos: () =>
+          names.map((name) => ({ name, typeName: 'Int64', field: new Field(name, new Int64()) })),
+        isLoading: { operations: false },
+        onAlert: vi.fn(),
+        buildColumnPreview: preview,
+        buildColumnApply: apply,
+      }),
+    {
+      initialProps: { names: [] },
+      wrapper: ({ children }: { children: ReactNode }) => (
+        <QueryClientProvider client={cache}>{children}</QueryClientProvider>
+      ),
+    },
+  );
+  expect(result.current.draft.column).toBe('col');
+  rerender({ names: ['COL', 'col_2', 'n'] });
+  expect(result.current.draft.column).toBe('col_3');
+  act(() => result.current.addPart({ id: 'n', kind: 'column', column: 'n', operations: [] }));
+  await waitFor(() =>
+    expect(preview).toHaveBeenCalledWith(
+      expect.objectContaining({ payload: expect.objectContaining({ column: 'col_3' }) }),
+    ),
+  );
+  await act(() => result.current.apply.handleApply());
+  expect(apply).toHaveBeenLastCalledWith('source', expect.objectContaining({ column: 'col_3' }));
+  act(() => result.current.setColumn('n'));
+  rerender({ names: ['COL', 'col_2', 'col_3', 'n'] });
+  expect(result.current.draft.column).toBe('n');
+  await act(() => result.current.apply.handleApply());
+  expect(apply).toHaveBeenLastCalledWith('source', expect.objectContaining({ column: 'n' }));
+  act(() => result.current.setColumn('my new column'));
+  rerender({ names: ['n'] });
+  expect(result.current.draft.column).toBe('my new column');
+});
 it('uses one 350ms debounce and applies the current draft before preview completes', async () => {
   vi.useFakeTimers();
   const preview = vi.fn().mockReturnValue(

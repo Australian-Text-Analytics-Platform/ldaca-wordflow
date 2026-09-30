@@ -2791,6 +2791,15 @@
           "table_name": {
             "type": "string"
           },
+          "tokenizer_models": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
           "visible": {
             "type": "boolean"
           }
@@ -2843,6 +2852,74 @@
           "page_size"
         ],
         "type": "object"
+      },
+      "NodePreference": {
+        "oneOf": [
+          {
+            "properties": {
+              "preference": {
+                "enum": [
+                  "document_column"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "preference"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "preference": {
+                "enum": [
+                  "color"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "preference"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "column": {
+                "type": "string"
+              },
+              "preference": {
+                "enum": [
+                  "tokenizer"
+                ],
+                "type": "string"
+              },
+              "value": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "column",
+              "preference"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "ObjectTarget": {
         "properties": {
@@ -10572,6 +10649,99 @@
               }
             },
             "description": "Internal operation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/api/project/nodes/{table_name}/preferences": {
+      "patch": {
+        "operationId": "api_set_node_preference",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "table_name",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NodePreference"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Preference saved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid preference"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Origin not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Data Block unavailable"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Project conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Operation failed"
           },
           "503": {
             "content": {

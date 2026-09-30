@@ -1,5 +1,6 @@
+import { cachedDataBlockNames, suggestDataBlockNames } from '@/features/project/automaticNames';
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Dialog,
   DialogContent,
@@ -37,17 +38,25 @@ export function ConcordancePublishDialog({
   filters: api.ConcordanceFilter[];
   onClose: () => void;
 }) {
+  const cache = useQueryClient();
   const [result] = useState(initialResult);
   const [selected, setSelected] = useState(result.result.payload.corpora.map(() => true));
-  const [outputs, setOutputs] = useState<api.ConcordancePublishSource[]>(() =>
-    result.result.payload.corpora.map((corpus, index) => ({
+  const [outputs, setOutputs] = useState<api.ConcordancePublishSource[]>(() => {
+    const names = suggestDataBlockNames(
+      result.result.payload.corpora.map((corpus) => ({
+        sources: [corpus.input.source.name],
+        operation: projection === 'documents' ? 'cc_doc' : 'cc',
+      })),
+      cachedDataBlockNames(cache, base),
+    );
+    return names.map(({ name }, index) => ({
       source_index: index,
-      name: `${corpus.input.source.name}_concordance${projection === 'documents' ? '_documents' : ''}`,
+      name,
       metadata: [],
       fields: generated.map(([field]) => field),
       filter: filters[index] ?? { excluded_terms: [], uncased: false, bins: [], bin_count: 20 },
-    })),
-  );
+    }));
+  });
   const [sync, setSync] = useState(false);
   const mutation = useMutation({
     mutationFn: (captured: api.ConcordancePublishSource[]) =>

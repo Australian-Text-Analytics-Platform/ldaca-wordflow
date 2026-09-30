@@ -1,3 +1,4 @@
+import { suggestDataBlockName } from '@/features/project/automaticNames';
 import { useState } from 'react';
 import type { NodeInput } from '@/features/tools/common/nodeInputs/nodeInputsCore';
 import { previewSql } from '../../projectPreprocessing';
@@ -6,6 +7,7 @@ import { usePreprocessingPreview } from '../../hooks/usePreprocessingPreview';
 import type { JoinType } from '../../types';
 
 export interface JoinSubTabProps {
+  existingNames?: string[];
   previewEnabled?: boolean;
   left: NodeInput | null;
   right: NodeInput | null;
@@ -24,6 +26,7 @@ export interface JoinSubTabProps {
 
 /** Left/right inputs are independent roles, including when both use the same Data Block. */
 export function useJoinSubTab({
+  existingNames = [],
   left,
   right,
   projectBase,
@@ -62,8 +65,11 @@ export function useJoinSubTab({
         signal,
       ),
   });
-  const defaultName =
-    left && right ? `${left.node_id}_${joinType}_join_${right.node_id}`.replace(/\s+/g, '_') : '';
+  const defaultName = suggestDataBlockName(
+    [left?.node_id, right?.node_id].filter((name): name is string => name !== undefined),
+    'join',
+    existingNames,
+  );
   const disabledReason =
     !left || !right
       ? 'Choose a left and right Data Block.'
@@ -75,7 +81,7 @@ export function useJoinSubTab({
     setJoinType,
     joinNewNodeName,
     setJoinNewNodeName,
-    joinNamePlaceholder: defaultName || 'joined_data',
+    joinNamePlaceholder: defaultName,
     showActivityTag: isLoading.operations || result.loading,
     preview: {
       ...result,

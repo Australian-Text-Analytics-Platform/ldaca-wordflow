@@ -1,3 +1,5 @@
+import { suggestDataBlockName } from '@/features/project/automaticNames';
+import { useNodePreferences } from '../common/useNodePreferences';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -69,6 +71,7 @@ function AnnotationTab({
   },
 }: Props & { tab: api.Tab }) {
   const cache = useQueryClient();
+  const savePreference = useNodePreferences(base);
   const navigate = useEditingNavigation();
   const local = useAnnotationState((s) => s.drafts[analysisDraftKey(base, tab.id)]);
   const manual = tab.settings.manual;
@@ -175,7 +178,7 @@ function AnnotationTab({
     },
   });
   const color =
-    typeof settings.color === 'string' ? settings.color : (node?.color ?? VIZ_PALETTE[0]);
+    node?.color ?? (typeof settings.color === 'string' ? settings.color : VIZ_PALETTE[0]);
   return (
     <>
       <section
@@ -210,10 +213,13 @@ function AnnotationTab({
             onAddNodes={picker.addNodes}
             onRemoveNode={picker.removeNode}
             onClear={picker.clear}
-            onColumnChange={picker.setColumn}
+            onColumnChange={(name, column) => {
+              picker.setColumn(name, column);
+              savePreference(name, { preference: 'document_column', value: column || null });
+            }}
             nodeColors={{ [setup.source.name]: color ?? '' }}
-            onNodeColorChange={(_, value) => {
-              change({ color: value });
+            onNodeColorChange={(name, color) => {
+              savePreference(name, { preference: 'color', value: color });
             }}
             unavailableNodes={
               setup.source.name && !node
@@ -321,7 +327,13 @@ function AnnotationTab({
             <Button
               variant="outline"
               onClick={() => {
-                setName('Codebook');
+                setName(
+                  suggestDataBlockName(
+                    [setup.source.name],
+                    'cb',
+                    nodes.map((node) => node.table_name),
+                  ),
+                );
                 setCreate({ kind: 'codebook' });
               }}
             >

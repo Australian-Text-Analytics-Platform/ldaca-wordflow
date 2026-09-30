@@ -5,7 +5,7 @@ import { frequencySettings } from '../../token-frequency/frequencySettings';
 it('ignores legacy stopword arrays instead of creating an alternative word store', () => {
   expect(frequencySettings({ stopwords: ['cat'], stopwordsEnabled: true })).toMatchObject({
     stopwordSource: null,
-    stopwordsEnabled: false,
+    stopwordsEnabled: true,
   });
 });
 

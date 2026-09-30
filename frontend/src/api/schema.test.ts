@@ -24,7 +24,7 @@ describe('native OpenAPI contracts', () => {
       }
     }
     // This guards accidental route omission during the initial cutover.
-    expect(ids.size).toBe(110);
+    expect(ids.size).toBe(111);
     const refs = JSON.stringify(contract).matchAll(/"\$ref":"([^"]+)"/g);
     for (const [, ref] of refs) {
       expect(ref?.startsWith('#/components/schemas/')).toBe(true);

@@ -90,12 +90,12 @@ it('one toggled preview switches data without changing selection or graph positi
   await hover(row);
   await role('button', { name: 'Actions for renamed' }, row).click();
   await role('menuitem', { name: 'Clone', exact: true }).click();
-  await expect(role('button', { name: 'Select renamed_copy', exact: true })).toBeDisplayed();
+  await expect(role('button', { name: 'Select renamed_cpy_1', exact: true })).toBeDisplayed();
   await expect(title()).toHaveText('renamed');
   await expect(role('cell', { name: '20', exact: true })).toBeDisplayed();
 
   // Failed deletion retains the displayed node; successful deletion closes it.
-  await role('button', { name: 'Select renamed_copy', exact: true }).click();
+  await role('button', { name: 'Select renamed_cpy_1', exact: true }).click();
   await keyboardPreview('beta');
   const constraint = await post('/api/project/sql', {
     script:
@@ -105,7 +105,7 @@ it('one toggled preview switches data without changing selection or graph positi
   expectAppError(/Could not drop the table.*main key table.*beta_guard/i);
   await role('button', { name: 'Delete (2)', exact: true }).click();
   await role('button', { name: /Delete/ }, role('alertdialog')).click();
-  await expect(role('button', { name: 'Select renamed_copy', exact: true })).not.toExist();
+  await expect(role('button', { name: 'Select renamed_cpy_1', exact: true })).not.toExist();
   await expect(title()).toHaveText('beta');
   await role('button', { name: 'Close preview' }).click();
   await expect(overlay()).not.toExist();

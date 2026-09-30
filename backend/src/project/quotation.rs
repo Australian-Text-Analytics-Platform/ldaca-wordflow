@@ -613,10 +613,7 @@ mod tests {
     #[test]
     fn quotation_tabs_are_numbered_without_registration_or_artifacts() {
         let (mut project, tab, _) = setup();
-        assert_eq!(
-            project.database.analysis_tab(tab).unwrap().name,
-            "Quotation 1"
-        );
+        assert_eq!(project.database.analysis_tab(tab).unwrap().name, "QT-1");
         let second = project
             .database
             .create_analysis_tab(CreateTab {
@@ -624,7 +621,7 @@ mod tests {
                 name: None,
             })
             .unwrap();
-        assert_eq!(second.name, "Quotation 2");
+        assert_eq!(second.name, "QT-2");
         assert_eq!(
             project
                 .database

@@ -1168,20 +1168,17 @@ mod tests {
     #[test]
     fn default_tab_names_use_the_first_available_number_without_renaming_existing_tabs() {
         let (mut project, first) = setup();
-        assert_eq!(
-            project.database.analysis_tab(first).unwrap().name,
-            "Frequency 1"
-        );
+        assert_eq!(project.database.analysis_tab(first).unwrap().name, "FR-1");
         let second = project
             .database
             .create_analysis_tab(CreateTab::default())
             .unwrap();
-        assert_eq!(second.name, "Frequency 2");
+        assert_eq!(second.name, "FR-2");
         let custom = project
             .database
             .create_analysis_tab(CreateTab {
                 kind: "frequency".into(),
-                name: Some("Frequency 3".into()),
+                name: Some("FR-3".into()),
             })
             .unwrap();
         let legacy = project
@@ -1197,7 +1194,7 @@ mod tests {
                 .create_analysis_tab(CreateTab::default())
                 .unwrap()
                 .name,
-            "Frequency 4"
+            "FR-4"
         );
         project.database.delete_analysis_tab(second.id).unwrap();
         assert_eq!(
@@ -1206,11 +1203,11 @@ mod tests {
                 .create_analysis_tab(CreateTab::default())
                 .unwrap()
                 .name,
-            "Frequency 2"
+            "FR-2"
         );
         assert_eq!(
             project.database.analysis_tab(custom.id).unwrap().name,
-            "Frequency 3"
+            "FR-3"
         );
         assert_eq!(
             project.database.analysis_tab(legacy.id).unwrap().name,

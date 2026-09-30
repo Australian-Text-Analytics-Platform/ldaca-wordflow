@@ -110,7 +110,7 @@ it('restored native controls retain selection, pagination and SQL editing', asyn
   await hover(row);
   await role('button', { name: 'Actions for renamed_pages' }, row).click();
   await role('menuitem', { name: 'Clone', exact: true }).click();
-  await expect(role('button', { name: 'Select renamed_pages_copy', exact: true })).toBeDisplayed();
+  await expect(role('button', { name: 'Select renamed_pages_cpy_1', exact: true })).toBeDisplayed();
   await expect(testId('project-data-node-label')).toHaveText('renamed_pages');
   await role('button', { name: 'Help', exact: true }).click();
   await expect(role('dialog')).toBeDisplayed();

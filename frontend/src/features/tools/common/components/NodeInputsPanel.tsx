@@ -69,8 +69,6 @@ export interface NodeInputsPanelProps {
   disabled?: boolean;
   /** Optional control rendered after each node's column picker (e.g. tokenizer model). */
   renderColumnAddon?: (args: NodeInputColumnAddonArgs) => React.ReactNode;
-  /** Whether a column add-on should fill its grid track or keep its intrinsic width. */
-  columnAddonWidth?: 'fill' | 'auto';
 }
 
 /**
@@ -110,14 +108,13 @@ export function NodeInputsPanel({
   nodeColors,
   onNodeColorChange,
   showColumnPicker = true,
-  columnLabel = 'Text Column:',
+  columnLabel = 'Column',
   title = 'Selected Data Blocks',
   guidanceTarget,
   emptyMessage,
   renderExtraNodeContent,
   disabled = false,
   renderColumnAddon,
-  columnAddonWidth = 'fill',
 }: NodeInputsPanelProps) {
   const nodeIds = resolvedNodes.map((r) => r.id);
   const selectionItemById = new Map<string, NodeSelectionItem>([
@@ -180,52 +177,15 @@ export function NodeInputsPanel({
       />
     );
     const addon = renderColumnAddon?.({ ...args, column: resolved?.column ?? '', columns });
-    const colorControl = onNodeColorChange ? (
-      <NodeColorPicker
-        key="color"
-        nodeName={args.node.name}
-        color={args.color}
-        presets={defaultPalette}
-        disabled={disabled}
-        onChange={(nextColor) => {
-          onNodeColorChange(nodeId, nextColor);
-        }}
-      />
-    ) : null;
-    const controls = [
-      selector,
-      ...(addon
-        ? [
-            <div
-              key="addon"
-              className={cn('min-w-0', columnAddonWidth === 'auto' && 'w-max max-w-full')}
-              data-testid="node-inputs-column-addon"
-            >
-              {addon}
-            </div>,
-          ]
-        : []),
-      ...(colorControl ? [colorControl] : []),
-    ];
-    if (controls.length === 1) return selector;
-    let columnLayout = '@min-[400px]/input-card:grid-cols-3';
-    if (colorControl) {
-      columnLayout =
-        controls.length === 2
-          ? '@min-[400px]/input-card:grid-cols-[minmax(0,1fr)_auto]'
-          : columnAddonWidth === 'auto'
-            ? '@min-[400px]/input-card:grid-cols-[minmax(0,1fr)_auto_auto]'
-            : '@min-[400px]/input-card:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]';
-    } else if (controls.length === 2) {
-      columnLayout =
-        columnAddonWidth === 'auto'
-          ? '@min-[400px]/input-card:grid-cols-[minmax(0,1fr)_auto]'
-          : '@min-[400px]/input-card:grid-cols-2';
-    }
     return (
-      <div className={cn('grid items-end gap-2', columnLayout)} data-testid="node-inputs-controls">
-        {controls}
-      </div>
+      <>
+        {selector}
+        {addon && (
+          <div className="contents" data-testid="node-inputs-column-addon">
+            {addon}
+          </div>
+        )}
+      </>
     );
   };
 
@@ -373,6 +333,21 @@ export function NodeInputsPanel({
         </div>
       ) : (
         <NodeSelectionList
+          renderHeaderControl={
+            onNodeColorChange
+              ? (args) => (
+                  <NodeColorPicker
+                    nodeName={args.node.name}
+                    color={args.color}
+                    presets={defaultPalette}
+                    disabled={disabled}
+                    onChange={(nextColor) => {
+                      onNodeColorChange(args.nodeId, nextColor);
+                    }}
+                  />
+                )
+              : undefined
+          }
           items={selectionItems}
           palette={defaultPalette}
           nodeColors={nodeColors}

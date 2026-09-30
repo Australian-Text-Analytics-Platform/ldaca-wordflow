@@ -169,8 +169,9 @@ creates a tab explicitly. Leaving and returning checks for an initial tab again.
 A keyed creation mutation avoids
 duplicates during Strict Mode or a pending remount; failed creation requires an
 explicit Retry. Hidden panels do not create tabs. The tab strip's + action creates
-additional analyses. Default names use the first available **Frequency 1**,
-**Frequency 2**, etc.; existing and custom names remain unchanged. Reopening a saved tab initializes its draft from the last accepted Run
+additional analyses. Default names follow the shared
+[automatic naming rules](../../domain/native-projects.md#automatic-names), such as **FR-1**,
+**FR-2**; existing and custom names remain unchanged. Reopening a saved tab initializes its draft from the last accepted Run
 request from the child analysis. A run completing must not overwrite edits made after submission.
 
 Run captures the ordered sources, corpus roles, columns and tokenizers. Native
@@ -258,20 +259,27 @@ rerun tokenization or replace saved artifacts.
 
 Creation submits captured inputs to the backend preparation operation, which owns
 the Table, registration, unique name and additional logical links in one transaction. Names use
-`<first-input>_stopwords` with numeric suffixes; an input-free list uses
-`analysis_stopwords`. Edit words on a View first copies its selected column into a new
+short source-based names under the [automatic naming rules](../../domain/native-projects.md#automatic-names); an input-free list starts at
+`data_sw_1`. Create editable copy on a View copies its selected column into a new
 one-column Table, preserving the column's name/type and recording the original
-View as another logical parent. The copy remains selected after closing the editor.
+View as another logical parent. Merely displaying a View never creates a copy.
 Existing Table selections do not change logical edges, graph selection or the
 shared preview. The ordinary Table editor remains available from the node menu;
-the stopword panel only opens its word-list editor.
+the stopword panel edits words inline.
 
-The word-list editor reads live bubbles from the ordinary stopword query in Table order. Enter/comma, delimited paste, individual removal, confirmed Clear and preset additions commit immediately through the existing membership operation. Only unfinished entry text and preset choices are local. Close leaves successful changes in place; failed writes retain unsubmitted text and use the existing error owner. Sort reorders complete database rows rather than just rearranging bubbles. Sampled language recommendations remain first without replacing manual language choices.
+The enabled section places the selector on the left and a bounded word editor on the right, stacking at narrow container widths. Language presets expand inline; only clearing words needs confirmation. Turning filtering off hides all content below the heading and switch while retaining the selected list. The switch can enable an empty section before selecting a source. Incomplete replacement choices keep the previous applied list visible and labelled.
+
+The word-list editor reads live bubbles from the ordinary stopword query in Table order. Enter/comma, delimited paste, individual removal, confirmed Clear and preset additions commit immediately through the existing membership operation. Only unfinished entry text and preset choices are local. Successful changes remain saved; failed writes retain unsubmitted text and use the existing error owner. Sort reorders complete database rows rather than just rearranging bubbles. Sampled language recommendations remain first without replacing manual language choices.
 
 Membership deltas preserve unchanged values and unrelated columns. Additions supply only the selected column; removals delete single-column rows or clear that cell in multi-column Tables. DuckDB enforces types, defaults and constraints. Context-menu additions send only the new token through the same writable-target preparation. Application-driven object and column renames
 reconcile saved references in the same mutation transaction; deletion leaves an
 unresolved selection until replacement or Disconnect. Disabling filtering retains
 the selected list, while Disconnect leaves its data untouched.
+
+`useNodePreferences` serializes immediate document-column, tokenizer and color
+writes from text-analysis inputs. Success refreshes graph preferences only; it
+neither invalidates source projections nor changes saved analysis requests.
+Legacy tab colors remain a fallback where no Data Block color is available.
 
 The tokenizer catalogue comes from the native library. MediaPipe samples selected
 text through cancellable read-only requests and performs language detection
@@ -404,7 +412,7 @@ position. Proportional document widths hide the density chart, not its legend.
 The shared row-detail controller handles cross-page inspection. Unicode
 code-point offsets are converted before highlighting.
 
-Source colors and Table/Dispersion preferences belong to the analysis tab. Local
+Source colors belong to the Data Block registration; Table/Dispersion preferences belong to the analysis tab. Local
 state owns Separated/Combined layout, pagination, selection and chart interactions. Frequency token clicks
 create a new Concordance tab with all saved inputs in their original order, capture
 its temporary whole-word Text Preview request and submit it for each source. Individual clouds and ranked lists
@@ -621,3 +629,23 @@ from unavailable files; history removal is explicit. Annotation context is
 rendered as bounded readable tables, with raw JSON in a disclosure. Export
 inspection summarizes Data Blocks, saved analyses and SQL cells from catalogue
 metadata. Backing storage is disclosed separately; blockers remain visible.
+
+### Selected Data Block cards
+
+`NodeSelectionList` and `NodeInputsPanel` share selected-card headers across
+analysis, stopword, preprocessing and export inputs. The truncated name, optional
+color swatch and remove action occupy a dedicated header. Only inputs with a
+color control use a source-tinted header; others use a neutral surface. Inline
+`NodeInputField` controls wrap below it. Cards sit side by side when the container
+permits, with overflow selections respecting the configured visible-card limit.
+Diagnostics appear beneath controls only when present. Name and value tooltips appear immediately on hover or keyboard focus only when
+the rendered text is clipped. The shared `TruncatedTooltip` measures overflow at
+interaction time and dismisses an open tooltip when resizing reveals the text.
+Icon-action tooltips retain their accessible descriptions.
+Name-only cards have no empty body. Standalone fields retain their existing layout.
+This presentation does not change selection, draft or immediate Data Block
+preference ownership.
+
+### Graph control rails
+
+Project Graph and Topic Modelling share `GraphControlButton`: fixed-width icons with immediate, portalled hover/focus tooltips. Disabled actions expose their labels through a focusable wrapper without becoming clickable. The Project Graph selection count uses the same tooltip behavior. Hover and focus never expand either rail or shift its drawing area.

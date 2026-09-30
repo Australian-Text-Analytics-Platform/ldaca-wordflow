@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
-import { StopwordDialog } from './StopwordControl';
+import { StopwordEditor } from './StopwordControl';
 import { saveStopwords } from './stopwordData';
 import type * as StopwordData from './stopwordData';
 vi.mock('./stopwordData', async (original) => ({
@@ -65,20 +65,14 @@ beforeEach(() => {
 function setup(value = ['hello']) {
   mocks.words = [...value];
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
-  const onClose = vi.fn();
+  client.setQueryData(['words', '', sources[0]], value);
   const content = () => (
     <QueryClientProvider client={client}>
-      <StopwordDialog
-        base=""
-        target={sources[0]!}
-        words={value}
-        inputs={[...sources]}
-        onClose={onClose}
-      />
+      <StopwordEditor base="" target={sources[0]!} inputs={[...sources]} />
     </QueryClientProvider>
   );
   const { rerender } = render(content());
-  return { onChange: vi.mocked(saveStopwords), onClose, rerender: () => rerender(content()) };
+  return { onChange: vi.mocked(saveStopwords), rerender: () => rerender(content()) };
 }
 
 it('keeps database order and persists complete-row sorting through the shared operation', async () => {
@@ -102,8 +96,8 @@ it('keeps database order and persists complete-row sorting through the shared op
   );
   expect(onChange).toHaveBeenCalledWith('', sources[0], [], [], true);
 });
-it('writes small membership deltas immediately and closes without another write', async () => {
-  const { onChange, onClose } = setup();
+it('writes small membership deltas immediately inline', async () => {
+  const { onChange } = setup();
   fireEvent.click(screen.getByRole('button', { name: 'Remove stopword hello' }));
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: 'Remove stopword hello' })).not.toBeInTheDocument(),
@@ -118,8 +112,6 @@ it('writes small membership deltas immediately and closes without another write'
     ['', sources[0], ['hello'], [], false],
     ['', sources[0], [], ['Cat'], false],
   ]);
-  fireEvent.click(screen.getAllByRole('button', { name: 'Close', exact: true })[0]!);
-  expect(onClose).toHaveBeenCalledOnce();
   expect(onChange).toHaveBeenCalledTimes(2);
 });
 it('pastes a deduplicated batch and requires confirmation to clear the shared list', async () => {
@@ -131,10 +123,10 @@ it('pastes a deduplicated batch and requires confirmation to clear the shared li
   await user.paste('Apple, banana\nAPPLE\n中文');
   await screen.findByRole('button', { name: 'Remove stopword 中文' });
   expect(onChange).toHaveBeenCalledWith('', sources[0], [], ['Apple', 'banana', '中文'], false);
-  fireEvent.click(screen.getByRole('button', { name: 'Clear', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear words', exact: true }));
   fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
   expect(onChange).toHaveBeenCalledOnce();
-  fireEvent.click(screen.getByRole('button', { name: 'Clear', exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Clear words', exact: true }));
   fireEvent.click(screen.getByRole('button', { name: 'Clear all', exact: true }));
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: /^Remove stopword/ })).not.toBeInTheDocument(),
@@ -173,7 +165,7 @@ it('preserves a manual multilingual selection when a later recommendation arrive
   expect(mocks.load).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Add to list' }));
   await waitFor(() =>
-    expect(screen.queryByRole('dialog', { name: 'Add language preset' })).not.toBeInTheDocument(),
+    expect(screen.queryByRole('region', { name: 'Add language preset' })).not.toBeInTheDocument(),
   );
   expect(mocks.load).toHaveBeenCalledWith({ languages: ['en', 'fr'] });
   expect(onChange).toHaveBeenCalledWith('', sources[0], [], ['the', 'and'], false);
@@ -200,13 +192,13 @@ it('preselects an available recommendation and keeps load errors inline with ret
   expect(await screen.findByRole('alert')).toHaveTextContent('The words were not added');
   fireEvent.click(screen.getByRole('button', { name: 'Retry', exact: true }));
   await waitFor(() =>
-    expect(screen.queryByRole('dialog', { name: 'Add language preset' })).not.toBeInTheDocument(),
+    expect(screen.queryByRole('region', { name: 'Add language preset' })).not.toBeInTheDocument(),
   );
   expect(screen.getByRole('button', { name: 'Remove stopword 的' })).toBeInTheDocument();
 });
 
 it('retains unsubmitted input after a failed write without optimistic bubbles', async () => {
-  const { onClose } = setup();
+  setup();
   vi.mocked(saveStopwords).mockRejectedValueOnce(new Error('Constraint'));
   const input = screen.getByRole('textbox', { name: 'Add stopword' });
   fireEvent.change(input, { target: { value: 'replacement' } });
@@ -216,8 +208,5 @@ it('retains unsubmitted input after a failed write without optimistic bubbles', 
   expect(
     screen.queryByRole('button', { name: 'Remove stopword replacement' }),
   ).not.toBeInTheDocument();
-  expect(onClose).not.toHaveBeenCalled();
-  fireEvent.click(screen.getAllByRole('button', { name: 'Close', exact: true })[0]!);
-  expect(onClose).toHaveBeenCalledOnce();
   expect(saveStopwords).toHaveBeenCalledOnce();
 });

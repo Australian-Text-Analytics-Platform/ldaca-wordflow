@@ -1,3 +1,4 @@
+import { useNodePreferences } from '../common/useNodePreferences';
 import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
@@ -60,6 +61,7 @@ function QuotationTab({
   tab,
 }: Props & { tab: api.Tab }) {
   const cache = useQueryClient();
+  const savePreference = useNodePreferences(base);
   const key = analysisDraftKey(base, tab.id);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
@@ -120,11 +122,8 @@ function QuotationTab({
   });
   const { settings, change } = useTabSettings(base, tab);
   const color =
-    typeof settings.color === 'string'
-      ? settings.color
-      : (nodes.find((node) => node.table_name === draft.input.source.name)?.color ??
-        VIZ_PALETTE[0] ??
-        GREY);
+    nodes.find((node) => node.table_name === draft.input.source.name)?.color ??
+    (typeof settings.color === 'string' ? settings.color : (VIZ_PALETTE[0] ?? GREY));
   const captured = {
     input: { ...draft.input, column: picker.nodeColumnSelections[0]?.column ?? draft.input.column },
   };
@@ -169,10 +168,13 @@ function QuotationTab({
               onAddNodes={picker.addNodes}
               onRemoveNode={picker.removeNode}
               onClear={picker.clear}
-              onColumnChange={picker.setColumn}
+              onColumnChange={(name, column) => {
+                picker.setColumn(name, column);
+                savePreference(name, { preference: 'document_column', value: column || null });
+              }}
               nodeColors={{ [draft.input.source.name]: color }}
-              onNodeColorChange={(_, value) => {
-                change({ color: value });
+              onNodeColorChange={(name, color) => {
+                savePreference(name, { preference: 'color', value: color });
               }}
               unavailableNodes={
                 draft.input.source.name &&

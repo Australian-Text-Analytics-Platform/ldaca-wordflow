@@ -98,6 +98,8 @@ pub(crate) struct Node {
     pub color: Option<String>,
     #[schema(required = true)]
     pub document_column: Option<String>,
+    #[serde(skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub tokenizer_models: std::collections::BTreeMap<String, String>,
     #[schema(schema_with = object_kind_schema)]
     pub kind: String,
     #[schema(required = true)]
@@ -631,13 +633,8 @@ impl Database {
         let object = target.resolve(&tx)?;
         let source = object.relation;
         let id = source.name.as_str();
-        let name = unique_object_name(
-            &tx,
-            &source.schema,
-            &format!("{id}_copy"),
-            target.schema.is_none(),
-            &[],
-        )?;
+        let name =
+            naming::data_block_name(&tx, &source.schema, &[id], "cpy", target.schema.is_none())?;
         let relation = Relation {
             schema: source.schema.clone(),
             name: name.clone(),
@@ -677,7 +674,28 @@ impl Database {
             .filter(|n| n.object.schema.eq_ignore_ascii_case("data"))
             .map(|n| (n.object.name.to_ascii_lowercase(), n))
             .collect();
+        let mut tokenizer_models =
+            std::collections::HashMap::<String, std::collections::BTreeMap<String, String>>::new();
+        let mut preferences = self.conn.prepare(
+            "SELECT table_name,column_name,tokenizer_model FROM wordflow.tokenizer_models",
+        )?;
+        for preference in preferences.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+            ))
+        })? {
+            let (name, column, model) = preference?;
+            tokenizer_models
+                .entry(name)
+                .or_default()
+                .insert(column, model);
+        }
         for item in &mut nodes {
+            item.tokenizer_models = tokenizer_models
+                .remove(&item.table_name)
+                .unwrap_or_default();
             if let Some(object) = inspected.remove(&item.table_name.to_ascii_lowercase()) {
                 item.kind = object.kind;
                 item.column_count = object.column_count;
@@ -829,6 +847,7 @@ fn read_node(r: &duckdb::Row<'_>) -> duckdb::Result<Node> {
         visible: r.get(1)?,
         color: r.get(2)?,
         document_column: r.get(3)?,
+        tokenizer_models: Default::default(),
         kind: "missing".into(),
         column_count: None,
         can_undo: false,
@@ -839,15 +858,12 @@ fn node(conn: &Connection, name: &str) -> Result<Node> {
     conn.query_row("SELECT table_name,visible,color,document_column FROM wordflow.nodes WHERE translate(table_name,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')=translate(?,'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz')", [name], read_node)
         .optional()?.ok_or_else(|| Error::new("node_not_found", "Data Block is not registered"))
 }
-fn unique_object_name(
+fn occupied_object_names(
     conn: &Connection,
     schema: &str,
-    base: &str,
     registered: bool,
-    reserved: &[String],
-) -> Result<String> {
-    let catalogue = objects::catalogue_relations(conn)?;
-    let mut names: Vec<String> = catalogue
+) -> Result<std::collections::HashSet<String>> {
+    let mut names: Vec<String> = objects::catalogue_relations(conn)?
         .into_iter()
         .filter(|r| r.schema.eq_ignore_ascii_case(schema))
         .map(|r| r.name)
@@ -859,11 +875,20 @@ fn unique_object_name(
                 .collect::<duckdb::Result<Vec<_>>>()?,
         );
     }
-    names.extend_from_slice(reserved);
-    let names: std::collections::HashSet<_> = names
+    Ok(names
         .into_iter()
         .map(|name| name.to_ascii_lowercase())
-        .collect();
+        .collect())
+}
+fn unique_object_name(
+    conn: &Connection,
+    schema: &str,
+    base: &str,
+    registered: bool,
+    reserved: &[String],
+) -> Result<String> {
+    let mut names = occupied_object_names(conn, schema, registered)?;
+    names.extend(reserved.iter().map(|name| name.to_ascii_lowercase()));
     let mut name = base.to_owned();
     let mut suffix = 2;
     while names.contains(&name.to_ascii_lowercase()) {
@@ -968,6 +993,7 @@ mod datetime_cast;
 mod lifecycle;
 mod metadata;
 pub(crate) mod mutations;
+mod naming;
 pub(crate) mod objects;
 mod protection;
 mod renames;
@@ -980,3 +1006,5 @@ pub use runtime::Operation;
 pub use runtime::{CloseAttempt, ProjectRuntime};
 
 pub(crate) use runtime::topic_preview::Update as TopicPreviewUpdate;
+
+pub(crate) mod node_preferences;

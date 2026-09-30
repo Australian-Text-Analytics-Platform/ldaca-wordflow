@@ -42,7 +42,14 @@ SQL objects remain queryable and appear in dependency mode, but not in the logic
 Tokenizer preferences live in `wordflow.tokenizer_models`, keyed by the pair
 `(table_name, column_name)`, with one model per column. Separate columns may use
 different models. Keeping the key in two columns avoids ambiguity from dots in
-SQL identifiers. SQL changes do not automatically propagate these preferences.
+SQL identifiers. Explicit document-column, tokenizer and color selections save
+immediately through the node-preference endpoint, independently of Preview, Run,
+Clear or analysis success. New inputs use these shared defaults. Restoring a
+saved request or an existing local draft does not replace its execution settings
+with newer defaults. Topic Modelling keeps its joint tokenizer synchronized and
+saves an explicit selection for both input columns. Automatic language
+recommendations do not write preferences. SQL changes do not automatically
+propagate these preferences.
 
 `wordflow.edges` stores virtual relationships between registered Data Blocks,
 independently of current SQL. The normal graph combines those rows with direct
@@ -143,7 +150,7 @@ case-insensitive name order, with the original name breaking ties.
 | `nodes` | Case-insensitively unique registered name, visibility, color and document column |
 | `edges` | Logical source/target relationships; SQL dependencies remain derived |
 | `arrow_metadata` | Qualified relation and field-path extension annotations |
-| `tokenizer_models` | Per-column model preferences, retained for future defaults but not automatically selected |
+| `tokenizer_models` | Per-column tokenizer defaults, saved immediately on explicit selection |
 | `tabs` | Identity, tool kind, name, position and display settings |
 | `analyses` | One submitted request per owning tab, optionally with completed output |
 | `artifacts` | Named relation or BLOB outputs owned by one analysis |
@@ -238,7 +245,7 @@ dependent view definitions; DuckDB does not rename those references itself. A
 failed rename preserves the previous committed state. SQL string literals and
 CTE-shadowed names are not rewritten.
 
-Clone creates a unique `_copy` name. A table clone copies stored rows; a view
+Clone creates a unique short name using the [automatic naming rules](#automatic-names). A table clone copies stored rows; a view
 clone copies the current query definition. Both copy column/node preferences
 and copy the original's incoming virtual links once in logical mode. Dependency-mode
 Clone copies only the SQL object into the same schema, with no registration,
@@ -331,3 +338,48 @@ one run per tab may be active, while independent tabs and project windows overla
 Progress and execution state are not persisted with results. Reload reconnects to
 runtime-owned work; reopening a project restores completed results but does not
 resume interrupted tasks.
+
+## Automatic names
+
+Only new application-generated defaults use this policy. Existing objects, explicit
+user names, import filenames and imported column headers remain unchanged.
+
+Analysis tabs use the first available positive number with these prefixes:
+Frequency `FR`, Concordance `CC`, Quotation `QT`, Topic Modelling `TM`, Annotation
+`AN`, Trends `TR`, Compare `CP`, Scatter `SC`, Heatmap `HM`, Sankey `SK`.
+For example, `FR-1`, `FR-2`. Deleted numbers may be reused; no existing tab is renamed.
+Full tool labels remain in navigation and headings.
+
+Generated Data Blocks use `<source-prefix>_<operation>_<number>`, starting at `1`.
+One source contributes at most 16 Unicode characters; multiple sources contribute
+at most seven characters each from the first two inputs, in order. Whitespace and
+punctuation become collapsed underscores; Unicode letters and numbers are retained.
+Leading/trailing underscores are removed and an empty prefix becomes `data`.
+The same bounds apply to subsequent operations, without interpreting old suffixes.
+
+| Operation | Token |
+| --- | --- |
+| Filter | `flt` |
+| Slice, random sample, shuffle | `slc`, `smp`, `shf` |
+| Join, Stack, Build | `join`, `stk`, `bld` |
+| Clone, stopwords, Codebook | `cpy`, `sw`, `cb` |
+| Concordance matches, documents | `cc`, `cc_doc` |
+| Quotation matches, documents | `qt`, `qt_doc` |
+| Topic documents, shared dictionary | `tm`, `tm_dict` |
+| Trends, Compare, Scatter, Heatmap, Sankey publication | `tr`, `cp`, `sc`, `hm`, `sk` |
+
+Per-source outputs use their own source prefix; shared outputs use the multi-source
+prefix. Frontend suggestions avoid known registered names and reserve names within
+multi-output publication. Backend-created defaults also check catalogue relations
+and applicable registered names in their creation transaction. Comparison follows
+DuckDB's ASCII case-insensitive identifier rules. Imports keep their existing
+allocator. Explicit-name creation retains strict transactional collision errors;
+a concurrent collision never overwrites an object or silently changes the draft.
+Naming reads metadata only, never source rows.
+
+Build suggests `col`, then the first available `col_2`, `col_3`, etc. A missing
+schema can update this automatic suggestion when it loads; user edits always win.
+Preview and Apply use the same resolved name. An explicitly entered existing
+column still invokes intentional replacement. Find/Join column behavior, semantic
+`CONC_*`, `QUOTE_*`, `TOPIC_*` fields, private artifacts, SQL aliases and download
+filename rules are unchanged.

@@ -12,6 +12,8 @@ import { useStopwords } from './useStopwords';
 vi.mock('@/features/project/api', async (original) => ({
   ...(await original<typeof api>()),
   nodeSchema: vi.fn(),
+  readStopwords: vi.fn().mockResolvedValue(['the', 'and']),
+  prepareStopwords: vi.fn(),
 }));
 const words: StopwordSource = {
   source: { schema: 'data', name: 'Shared words' },
@@ -31,9 +33,15 @@ const nodes: api.ProjectNode[] = [
 const changed = vi.fn();
 const consumed = vi.fn();
 
-function mount(initial: StopwordSource | null = null, carried = false) {
+function mount(
+  initial: StopwordSource | null = null,
+  carried = false,
+  initiallyEnabled = true,
+  kind: api.ProjectNode['kind'] = 'table',
+) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Harness() {
+    const [enabled, setEnabled] = useState(initiallyEnabled);
     const [selected, setSelected] = useState(initial);
     const onSelect = async (next: StopwordSource | null) => {
       changed(next);
@@ -49,13 +57,13 @@ function mount(initial: StopwordSource | null = null, carried = false) {
     return (
       <StopwordControl
         base="http://project"
-        nodes={nodes}
+        nodes={nodes.map((node) => ({ ...node, kind }))}
         selected={selected}
-        enabled={selected !== null}
+        enabled={enabled}
         disabled={false}
         controller={controller}
         onSelect={onSelect}
-        onEnabledChange={vi.fn()}
+        onEnabledChange={setEnabled}
         inputRequests={
           carried
             ? {
@@ -88,9 +96,14 @@ it('uses the shared searchable Add control, selected card and unrestricted colum
   await user.type(screen.getByPlaceholderText('Search data blocks…'), 'shared');
   await user.click(screen.getByRole('button', { name: 'Shared words' }));
   expect(changed).not.toHaveBeenCalled();
-  expect(screen.getByRole('status')).toHaveTextContent('Choose the stopword column');
+  expect(screen.getByText(/previous applied words are unchanged/)).toHaveTextContent(
+    'Choose the stopword column',
+  );
   expect(screen.getByRole('button', { name: 'Remove Shared words' })).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Add data block' })).toBeDisabled();
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: 'Stopword column' })).toBeEnabled(),
+  );
   await user.click(screen.getByRole('combobox', { name: 'Stopword column' }));
   await user.click(await screen.findByRole('option', { name: 'code', exact: true }));
   await waitFor(() => expect(changed).toHaveBeenLastCalledWith(words));
@@ -123,9 +136,12 @@ it('places a carried Data Block only after its stopword target is selected', asy
 
 it('keeps an incomplete legacy choice local until its column is chosen', async () => {
   mount({ ...words, column: '' });
-  expect(screen.getByRole('switch', { name: 'Filter stopwords from results' })).toBeDisabled();
+  expect(screen.getByRole('switch', { name: 'Filter stopwords from results' })).toBeEnabled();
   expect(changed).not.toHaveBeenCalled();
   const user = userEvent.setup();
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: 'Stopword column' })).toBeEnabled(),
+  );
   await user.click(screen.getByRole('combobox', { name: 'Stopword column' }));
   await user.click(await screen.findByRole('option', { name: 'code', exact: true }));
   await waitFor(() => expect(changed).toHaveBeenCalledWith(words));
@@ -138,8 +154,44 @@ it('retains applied words while a replacement awaits its column', async () => {
   await user.click(screen.getByRole('button', { name: 'Add data block' }));
   await user.click(screen.getByRole('button', { name: 'Shared words' }));
   expect(changed).not.toHaveBeenCalled();
-  expect(screen.getByRole('status')).toHaveTextContent('previous applied words are unchanged');
+  expect(screen.getByText(/previous applied words are unchanged/)).toHaveTextContent(
+    'previous applied words are unchanged',
+  );
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: 'Stopword column' })).toBeEnabled(),
+  );
   await user.click(screen.getByRole('combobox', { name: 'Stopword column' }));
   await user.click(await screen.findByRole('option', { name: 'code', exact: true }));
   await waitFor(() => expect(changed).toHaveBeenCalledWith(words));
+});
+
+it('hides all content when off and restores the selected list without rewriting it', async () => {
+  mount(words, false, false);
+  const toggle = screen.getByRole('switch', { name: 'Filter stopwords from results' });
+  expect(screen.queryByRole('button', { name: 'Add data block' })).not.toBeInTheDocument();
+  expect(screen.queryByLabelText('Stopword editor')).not.toBeInTheDocument();
+  fireEvent.click(toggle);
+  await screen.findByRole('button', { name: 'Remove stopword the' });
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  fireEvent.click(toggle);
+  expect(screen.queryByLabelText('Stopword editor')).not.toBeInTheDocument();
+  expect(changed).not.toHaveBeenCalled();
+  fireEvent.click(toggle);
+  await screen.findByRole('button', { name: 'Remove stopword the' });
+  expect(changed).not.toHaveBeenCalled();
+});
+
+it('shows View words read-only without implicitly creating an editable Table', async () => {
+  mount(words, false, true, 'view');
+  await screen.findByText('the');
+  expect(screen.queryByRole('textbox', { name: 'Add stopword' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Remove stopword the' })).not.toBeInTheDocument();
+  expect(api.prepareStopwords).not.toHaveBeenCalled();
+  const copied = { ...words, source: { schema: 'data', name: 'Editable words' } };
+  vi.mocked(api.prepareStopwords).mockResolvedValue(copied);
+  fireEvent.click(screen.getByRole('button', { name: 'Create editable copy' }));
+  await waitFor(() =>
+    expect(api.prepareStopwords).toHaveBeenCalledWith('http://project', words, []),
+  );
+  await waitFor(() => expect(changed).toHaveBeenCalledWith(copied));
 });

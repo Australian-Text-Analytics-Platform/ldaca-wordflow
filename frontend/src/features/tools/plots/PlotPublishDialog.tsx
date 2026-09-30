@@ -1,5 +1,6 @@
+import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as api from '@/features/project/api';
 import {
   Dialog,
@@ -40,9 +41,16 @@ export function PlotPublishDialog({
   scope: { summary: string; details: string[] };
   onClose: () => void;
 }) {
+  const cache = useQueryClient();
   const [captured] = useState({ result, query, selection, scope });
   const required = requiredPlotColumns(request);
-  const [name, setName] = useState(`${result.result.payload.source.name}_${mode}`);
+  const [name, setName] = useState(() =>
+    suggestDataBlockName(
+      [result.result.payload.source.name],
+      ({ trends: 'tr', compare: 'cp', scatter: 'sc', heatmap: 'hm', sankey: 'sk' } as const)[mode],
+      cachedDataBlockNames(cache, base),
+    ),
+  );
   const [columns, setColumns] = useState([
     ...required,
     ...(result.result.payload.document_column ? [result.result.payload.document_column] : []),

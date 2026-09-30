@@ -1,8 +1,9 @@
-import { buildSamplingAutoNodeName } from '@/features/tools/common/samplingAutoNodeName';
+import { suggestDataBlockName } from '@/features/project/automaticNames';
 
 export type SamplingMode = 'slice' | 'random_sample';
 
 export interface SliceFormModelInput {
+  existingNames?: string[];
   selectedNodeId: string | null;
   selectedNodeLabel: string;
   nodeRowCount: number | null;
@@ -103,6 +104,7 @@ export const buildSlicePayload = ({
  * readiness, then build the preview payload only when the operation is runnable.
  */
 export const deriveSliceFormModel = ({
+  existingNames = [],
   selectedNodeId,
   selectedNodeLabel,
   nodeRowCount,
@@ -178,16 +180,11 @@ export const deriveSliceFormModel = ({
   ].join('\0');
   const resultSignature = [selectedNodeId ?? '', selectedNodeLabel, mode].join('\0');
 
-  const autoNodeName = buildSamplingAutoNodeName({
-    baseName: selectedNodeLabel || selectedNodeId,
-    mode,
-    offset: offsetValid ? offsetNumber : undefined,
-    length: lengthValid ? lengthValue : undefined,
-    sampleSize: sampleSizeValid ? sampleSizeValue : undefined,
-    randomSeed: randomSeedValid ? randomSeedValue : undefined,
-    noRandomSeed,
-    isFullShuffle,
-  });
+  const autoNodeName = suggestDataBlockName(
+    [selectedNodeLabel || (selectedNodeId ?? '')],
+    mode === 'slice' ? 'slc' : isFullShuffle ? 'shf' : 'smp',
+    existingNames,
+  );
 
   const rangeSummary = (() => {
     if (!hasSelection) {

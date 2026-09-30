@@ -106,17 +106,15 @@ impl Database {
         } else {
             None
         };
-        let stem = copy
-            .as_ref()
-            .map(|(object, _)| object.name.as_str())
-            .or_else(|| {
-                request
-                    .inputs
-                    .first()
-                    .map(|input| input.source.name.as_str())
-            })
-            .unwrap_or("analysis");
-        let name = unique_object_name(&tx, "data", &format!("{stem}_stopwords"), true, &[])?;
+        let sources: Vec<&str> = match &copy {
+            Some((object, _)) => vec![object.name.as_str()],
+            None => request
+                .inputs
+                .iter()
+                .map(|input| input.source.name.as_str())
+                .collect(),
+        };
+        let name = naming::data_block_name(&tx, "data", &sources, "sw", true)?;
         let relation = Relation {
             schema: "data".into(),
             name: name.clone(),

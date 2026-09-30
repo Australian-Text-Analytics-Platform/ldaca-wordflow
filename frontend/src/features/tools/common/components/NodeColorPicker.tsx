@@ -1,3 +1,4 @@
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -58,8 +59,7 @@ export function NodeColorPicker({
   };
 
   return (
-    <div className="space-y-1">
-      <span className="block text-label-secondary font-medium text-description">Color</span>
+    <div className="shrink-0">
       <Popover
         open={open}
         onOpenChange={(nextOpen) => {
@@ -71,21 +71,26 @@ export function NodeColorPicker({
           }
         }}
       >
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={disabled}
-            className="size-9 rounded-md p-1"
-            aria-label={`Change color for ${nodeName}`}
-          >
-            <span
-              aria-hidden="true"
-              className="block size-full rounded-sm"
-              style={{ backgroundColor: normalizedColor }}
-            />
-          </Button>
-        </PopoverTrigger>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={disabled}
+                className="size-9 rounded-md p-1"
+                aria-label={`Change color for ${nodeName}`}
+              >
+                <span
+                  aria-hidden="true"
+                  className="block size-full rounded-sm"
+                  style={{ backgroundColor: normalizedColor }}
+                />
+              </Button>
+            </PopoverTrigger>
+          </TooltipTrigger>
+          <TooltipContent>Change color for {nodeName}</TooltipContent>
+        </Tooltip>
         <PopoverContent align="start" className="w-64 p-3">
           <PopoverHeader className="gap-0.5">
             <PopoverTitle>Color</PopoverTitle>

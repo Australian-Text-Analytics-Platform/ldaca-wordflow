@@ -240,7 +240,7 @@ async fn concordance_preview_saved_queries_and_publication_have_distinct_ownersh
         .await,
     )
     .await;
-    assert_eq!(tab["name"], "Concordance 1");
+    assert_eq!(tab["name"], "CC-1");
     let id = tab["id"].as_str().unwrap();
     let source =
         json!({"source":{"schema":"data","name":"documents"},"column":"text","tokenizer":null});

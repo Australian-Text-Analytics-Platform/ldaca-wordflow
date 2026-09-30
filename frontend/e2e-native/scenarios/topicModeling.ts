@@ -1,3 +1,4 @@
+import { suggestDataBlockNames } from '../../src/features/project/automaticNames';
 import { $, expect } from '@wdio/globals';
 import * as api from '../../src/features/project/api';
 import {
@@ -25,7 +26,7 @@ export async function topicModelingScenario(
       const panel = $('[data-testid="topic-modeling-workspace"]');
       for (const [index, name] of [first, second].entries()) {
         await addResearchInput(panel, name);
-        const column = panel.$$('[role="combobox"][aria-label="Text Column:"]')[index];
+        const column = panel.$$('[role="combobox"][aria-label="Column"]')[index];
         if (!column) throw new Error('Text column selector missing');
         await column.waitForEnabled();
         await column.click();
@@ -92,16 +93,22 @@ export async function topicModelingScenario(
       await expect(bubble).toHaveAttribute('aria-pressed', 'true');
       await expect(results.$('button=Clear all')).toBeEnabled();
       await results.$('button=Clear all').click();
+      const published = suggestDataBlockNames([first, second].map((source) => ({ source, sources: [source], operation: 'tm' })), (await api.graph(base)).nodes.map((node) => node.table_name));
+      const publishedName = (source: string) => {
+        const output = published.find((output) => output.source === source);
+        if (!output) throw new Error(`No expected publication for ${source}`);
+        return output.name;
+      };
       await results.$('button=Add to Project').click();
       await $('[role="dialog"]').$('button=Select all columns').click();
       await $('[role="dialog"]').$('button=Add').click();
       await $('[role="dialog"]').waitForExist({ reverse: true, timeout: 30000 });
       const counts = await api.querySql(base, [
-        { sql: `SELECT count(*) AS n FROM data.${api.identifier(first + '_topics')}` },
+        { sql: `SELECT count(*) AS n FROM data.${api.identifier(publishedName(first))}` },
       ]);
       expect(Number(counts.getChild('n')?.get(0))).toBe(96);
       const shape = await api.querySql(base, [
-        { sql: `DESCRIBE data.${api.identifier(first + '_topics')}` },
+        { sql: `DESCRIBE data.${api.identifier(publishedName(first))}` },
       ]);
       expect(shape.toArray().map((r: Record<string, unknown>) => r.column_name)).toContain(
         'TOPIC_top1_2',
@@ -116,7 +123,7 @@ export async function topicModelingScenario(
           const original = await readResearchData(`topic-consultation-${file}.json`);
           const rows = await api.querySql(base, [
             {
-              sql: `SELECT to_json(original) AS document FROM (SELECT document_id,text,source,participant,tags,TOPIC_top1 FROM data.${api.identifier(source + '_topics')} ORDER BY document_id) original`,
+              sql: `SELECT to_json(original) AS document FROM (SELECT document_id,text,source,participant,tags,TOPIC_top1 FROM data.${api.identifier(publishedName(source))} ORDER BY document_id) original`,
             },
           ]);
           expect(
@@ -126,7 +133,7 @@ export async function topicModelingScenario(
           ).toEqual(original);
           const assignments = await api.querySql(base, [
             {
-              sql: `SELECT DISTINCT TOPIC_top1_2 AS topic FROM data.${api.identifier(source + '_topics')}`,
+              sql: `SELECT DISTINCT TOPIC_top1_2 AS topic FROM data.${api.identifier(publishedName(source))}`,
             },
           ]);
           for (const row of assignments.toArray() as Record<string, unknown>[]) {
@@ -145,7 +152,7 @@ export async function topicModelingScenario(
         false,
       );
       const retained = await api.querySql(base, [
-        { sql: `SELECT count(*) AS n FROM data.${api.identifier(first + '_topics')}` },
+        { sql: `SELECT count(*) AS n FROM data.${api.identifier(publishedName(first))}` },
       ]);
       expect(Number(retained.getChild('n')?.get(0))).toBe(96);
       await verifyPublished();

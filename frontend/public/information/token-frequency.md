@@ -8,7 +8,7 @@ Word clouds provide a quick visual impression. Ranked lists retain exact counts 
 
 Raw counts depend on corpus size. With two collections, the reference/study comparison supplies relative frequencies and keyword statistics to help distinguish unusually frequent tokens. Juxtorpus combines both frequencies into word sizes and uses colour to show their relative association with each corpus.
 
-Select a reusable stopword Data Block and column in Results, or create an empty Table. Edit words opens removable word bubbles: type and press Enter, or paste a list. Language presets put recommendations first. Editing a View's words copies its selected column into a new Table. The ordinary Table editor is available from the node menu. Shared-list changes update displays without rerunning Frequency.
+Select a reusable stopword Data Block and column in Results, or create an empty Table. The inline editor shows removable word bubbles beside the selector: type and press Enter, or paste a list. Language presets expand inline with recommendations first. Views remain read-only until Create editable copy is selected. Turning filtering off hides the contents and retains the selected list. The ordinary Table editor is available from the node menu. Shared-list changes update displays without rerunning Frequency.
 
 Stopwords and wildcard filters control which saved tokens you see. They do not change the stored counts or recompute the statistics. The filter applies before display limits and also applies to table downloads, which include all matching rows rather than just the visible page.
 

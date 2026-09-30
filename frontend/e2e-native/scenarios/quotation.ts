@@ -1,3 +1,4 @@
+import { suggestDataBlockName } from '../../src/features/project/automaticNames';
 import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { browser, $, expect } from '@wdio/globals';
@@ -134,7 +135,7 @@ export async function quotationScenario(base: string, prefix: string) {
   await dialog.$('button=Add').click();
   await dialog.waitForExist({ reverse: true });
   await browser.waitUntil(async () =>
-    (await api.graph(base)).nodes.some((n) => n.table_name === `${name}_quotations`),
+    (await api.graph(base)).nodes.some((n) => n.table_name === suggestDataBlockName([name], 'qt', [])),
   );
   for (const theme of ['light', 'dark']) {
     await $('button[aria-label="Open settings"]').click();

@@ -53,9 +53,9 @@ it('switches graph projections, retains preview and canvas state, and clones wit
   await expect(testId('project-data-overlay')).not.toExist();
   await toolbar('other', 'extra', 'Data Block actions');
   await role('menuitem', { name: 'Clone', exact: true }).click();
-  await expect(objectCard('other', 'extra_copy')).toExist();
+  await expect(objectCard('other', 'extra_cpy_1')).toExist();
   await expect(testId('project-data-overlay')).not.toExist();
-  await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.nodes)=2 AND (SELECT n FROM other.extra_copy)=42 THEN true ELSE error('Clone registered or changed data') END");
+  await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.nodes)=2 AND (SELECT n FROM other.extra_cpy_1)=42 THEN true ELSE error('Clone registered or changed data') END");
   await role('button', { name: 'Fit view', exact: true }).click();
   await browser.$('.react-flow__viewport').waitForStable();
   for (const dark of [false, true]) {
@@ -64,10 +64,10 @@ it('switches graph projections, retains preview and canvas state, and clones wit
     await role('button', { name: 'Close', exact: true }, role('dialog')).click();
     await screenshot(`dependencies-${dark ? 'dark' : 'light'}.png`);
   }
-  await toolbar('other', 'extra_copy', 'Data Block actions');
+  await toolbar('other', 'extra_cpy_1', 'Data Block actions');
   await role('menuitem', { name: 'Rename', exact: true }).click();
   const rename = role('alertdialog');
-  await expect(role('textbox', {}, rename)).toHaveValue('extra_copy');
+  await expect(role('textbox', {}, rename)).toHaveValue('extra_cpy_1');
   await press('ControlOrMeta+a', role('textbox', {}, rename));
   await role('textbox', {}, rename).addValue('renamed');
   await role('button', { name: 'Rename', exact: true }, rename).click();

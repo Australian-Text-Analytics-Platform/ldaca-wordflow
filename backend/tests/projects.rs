@@ -862,8 +862,8 @@ async fn native_rename_clone_cast_and_export() {
         let result = app.post(&format!("/nodes/{id}/clone"), json!({})).await;
         assert_eq!(result.status(), 200, "{}", result.text().await.unwrap());
     }
-    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE target_name='b_copy' AND source_name='renamed source'").await, 1);
-    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE source_name='b_copy' OR source_name='renamed source_copy' OR target_name='renamed source_copy'").await, 0);
+    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE target_name='b_cpy_1' AND source_name='renamed source'").await, 1);
+    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE source_name='b_cpy_1' OR source_name='renamed_source_cpy_1' OR target_name='renamed_source_cpy_1'").await, 0);
     app.action(
         "b",
         "edit",
@@ -871,18 +871,18 @@ async fn native_rename_clone_cast_and_export() {
     )
     .await;
     assert_eq!(
-        app.number("SELECT sum(x)::BIGINT FROM data.b_copy").await,
+        app.number("SELECT sum(x)::BIGINT FROM data.b_cpy_1").await,
         3
     );
     app.sql(&["UPDATE data.\"renamed source\" SET x=x+100"])
         .await;
     assert_eq!(
-        app.number("SELECT sum(x)::BIGINT FROM data.\"renamed source_copy\"")
+        app.number("SELECT sum(x)::BIGINT FROM data.\"renamed_source_cpy_1\"")
             .await,
         3
     );
     assert_eq!(
-        app.number("SELECT sum(x)::BIGINT FROM data.b_copy").await,
+        app.number("SELECT sum(x)::BIGINT FROM data.b_cpy_1").await,
         203
     );
     app.action("b", "undo", json!({})).await;
@@ -1205,14 +1205,14 @@ async fn imports_preserve_raw_rows_and_materialized_tables_edit_without_backings
     app.sql(&["UPDATE data.test_raw SET value=50"]).await;
     // The view clone still needs raw data, while the materialized original is fixed.
     assert_eq!(
-        app.number("SELECT min(value) FROM data.test_copy").await,
+        app.number("SELECT min(value) FROM data.test_cpy_1").await,
         51
     );
     assert_eq!(
         app.number("SELECT min(value::BIGINT) FROM data.test").await,
         13
     );
-    app.action("test_copy", "materialize", json!({})).await;
+    app.action("test_cpy_1", "materialize", json!({})).await;
     app.reopen().await;
     assert_eq!(
         app.number("SELECT min(value::BIGINT) FROM data.test").await,
@@ -1828,7 +1828,7 @@ async fn production_workloads_return_one_task_and_preserve_responses() {
         } else if path.ends_with("clone") {
             assert_eq!(
                 response.json::<Value>().await.unwrap()["table_name"],
-                "a_copy"
+                "a_cpy_1"
             );
         } else if path == "/sql" {
             assert_eq!(response.headers()["x-wordflow-statements-completed"], "1");
@@ -2286,12 +2286,12 @@ async fn object_routes_share_mutations_without_registering_or_crossing_schemas()
         assert!(response.headers().contains_key("X-Wordflow-Task-Id"));
         assert_eq!(
             response.json::<Value>().await.unwrap()["table_name"],
-            format!("{name}_copy")
+            format!("{name}_cpy_1")
         );
     }
     assert_eq!(app.number("SELECT count(*) FROM wordflow.nodes").await, 1);
     assert_eq!(app.number("SELECT count(*) FROM wordflow.edges").await, 0);
-    assert_eq!(app.number("SELECT number FROM other.v_copy").await, 10);
+    assert_eq!(app.number("SELECT number FROM other.v_cpy_1").await, 10);
     // The editing session retains the schema throughout page and Save.
     let session: Value = app
         .post("/objects/other/renamed/cell-edit", json!({}))
@@ -2351,7 +2351,7 @@ async fn object_routes_share_mutations_without_registering_or_crossing_schemas()
     );
     assert_eq!(
         app.number(
-            "SELECT count(*) FROM duckdb_views() WHERE schema_name='other' AND view_name='v_copy'"
+            "SELECT count(*) FROM duckdb_views() WHERE schema_name='other' AND view_name='v_cpy_1'"
         )
         .await,
         1
@@ -2414,11 +2414,11 @@ async fn graph_unions_sql_dependencies_and_virtual_links_without_persisting_insp
     assert_eq!(clone.status(), 200);
     let graph = app.graph().await;
     assert!(graph["edges"].as_array().unwrap().contains(
-        &json!({"source_name":"replacement","target_name":"live_copy","dependency":true})
+        &json!({"source_name":"replacement","target_name":"live_cpy_1","dependency":true})
     ));
     assert!(
         graph["edges"].as_array().unwrap().contains(
-            &json!({"source_name":"source","target_name":"live_copy","dependency":false})
+            &json!({"source_name":"source","target_name":"live_cpy_1","dependency":false})
         )
     );
 
@@ -3014,8 +3014,8 @@ async fn stopword_preparation_allocates_names_and_logical_parents_in_one_transac
     app.sql(&[
         "CREATE TABLE corpus(text VARCHAR)",
         "CREATE VIEW words AS SELECT 123::INTEGER AS word",
-        "INSERT INTO wordflow.nodes(table_name) VALUES ('corpus'),('words'),('CORPUS_STOPWORDS')",
-        "CREATE TABLE corpus_stopwords_2(word VARCHAR)",
+        "INSERT INTO wordflow.nodes(table_name) VALUES ('corpus'),('words'),('CORPUS_CORPUS_SW_1')",
+        "CREATE TABLE corpus_corpus_sw_2(word VARCHAR)",
     ])
     .await;
     let input = json!({"source":{"schema":"data","name":"CORPUS"},"column":"text"});
@@ -3027,8 +3027,8 @@ async fn stopword_preparation_allocates_names_and_logical_parents_in_one_transac
         .await;
     assert_eq!(response.status(), 200);
     let list = response.json::<Value>().await.unwrap();
-    assert_eq!(list["source"]["name"], "CORPUS_stopwords_3");
-    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE source_name='corpus' AND target_name='CORPUS_stopwords_3'").await,1);
+    assert_eq!(list["source"]["name"], "CORPUS_CORPUS_sw_3");
+    assert_eq!(app.number("SELECT count(*) FROM wordflow.edges WHERE source_name='corpus' AND target_name='CORPUS_CORPUS_sw_3'").await,1);
     let view = json!({"source":{"schema":"data","name":"words"},"column":"word"});
     let response = app
         .post(
@@ -3038,10 +3038,10 @@ async fn stopword_preparation_allocates_names_and_logical_parents_in_one_transac
         .await;
     assert_eq!(response.status(), 200);
     let copy = response.json::<Value>().await.unwrap();
-    assert_eq!(copy["source"]["name"], "words_stopwords");
-    assert_eq!(app.number("SELECT count(*) FROM duckdb_columns() WHERE table_name='words_stopwords' AND data_type='INTEGER'").await,1);
+    assert_eq!(copy["source"]["name"], "words_sw_1");
+    assert_eq!(app.number("SELECT count(*) FROM duckdb_columns() WHERE table_name='words_sw_1' AND data_type='INTEGER'").await,1);
     assert_eq!(
-        app.number("SELECT count(*) FROM wordflow.edges WHERE target_name='words_stopwords'")
+        app.number("SELECT count(*) FROM wordflow.edges WHERE target_name='words_sw_1'")
             .await,
         2
     );
@@ -3055,13 +3055,13 @@ async fn stopword_preparation_allocates_names_and_logical_parents_in_one_transac
     );
     // A plain database clone uses the same allocator without adding registration or lineage.
     assert_eq!(
-        app.post("/objects/data/words_stopwords/clone", json!({}))
+        app.post("/objects/data/words_sw_1/clone", json!({}))
             .await
             .status(),
         200
     );
     assert_eq!(
-        app.number("SELECT count(*) FROM wordflow.nodes WHERE table_name='words_stopwords_copy'")
+        app.number("SELECT count(*) FROM wordflow.nodes WHERE table_name='words_sw_1_cpy_1'")
             .await,
         0
     );
@@ -3134,7 +3134,7 @@ async fn annotation_manual_reuses_protected_editor_and_live_codebook() {
         .json()
         .await
         .unwrap();
-    assert_eq!(tab["name"], "Annotation 1");
+    assert_eq!(tab["name"], "AN-1");
     let id = tab["id"].as_str().unwrap();
     let codebook = json!({"source":{"schema":"data","name":"Codes"},"code":"code","description":"description"});
     let book_edit: Value = app
@@ -3504,4 +3504,40 @@ async fn export_service_inspects_captures_and_streams_portable_projects() {
     app.close().await;
     app.shutdown.cancel();
     app.task.await.unwrap().unwrap();
+}
+
+#[tokio::test]
+async fn node_preferences_are_immediate_and_survive_reopen_without_run() {
+    let mut app = App::start().await;
+    app.fixture().await;
+    for body in [
+        json!({"preference":"document_column","value":"label"}),
+        json!({"preference":"color","value":"#abcdef"}),
+        json!({"preference":"tokenizer","column":"label","value":"native:plain_words_en"}),
+    ] {
+        let response = app
+            .client
+            .patch(format!("{}/api/project/nodes/a/preferences", app.url))
+            .json(&body)
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(response.status(), 204, "{}", response.text().await.unwrap());
+    }
+    app.reopen().await;
+    let graph = app.graph().await;
+    let node = graph["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["table_name"] == "a")
+        .unwrap();
+    assert_eq!(node["color"], "#abcdef");
+    assert_eq!(node["document_column"], "label");
+    assert_eq!(node["tokenizer_models"]["label"], "native:plain_words_en");
+    assert_eq!(
+        app.number("SELECT count(*) FROM wordflow.analyses").await,
+        0
+    );
+    app.finish().await;
 }

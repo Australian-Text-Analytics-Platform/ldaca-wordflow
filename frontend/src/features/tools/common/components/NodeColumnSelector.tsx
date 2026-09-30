@@ -1,3 +1,4 @@
+import { NodeInputField } from './NodeInputField';
 import React from 'react';
 import { SearchableSelect, type SearchableSelectOption } from '@/components/ui/searchable-select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
@@ -18,7 +19,6 @@ export interface NodeColumnSelectorProps {
   preserveValue?: string;
   className?: string;
   triggerClassName?: string;
-  labelClassName?: string;
 }
 
 /**
@@ -44,20 +44,12 @@ export function NodeColumnSelector({
   preserveValue,
   className,
   triggerClassName,
-  labelClassName,
 }: NodeColumnSelectorProps) {
   const triggerAriaLabel = typeof label === 'string' ? label : undefined;
 
-  const heading = label && (
-    <span className={cn('block text-label-secondary font-medium text-description', labelClassName)}>
-      {label}
-    </span>
-  );
-
   if (!columns.length) {
     return (
-      <div className={cn('space-y-1', className)}>
-        {heading}
+      <NodeInputField label={label} className={className}>
         <DisabledReasonTooltip reason={disabledReason} className="w-full">
           <SearchableSelect
             options={[]}
@@ -68,7 +60,7 @@ export function NodeColumnSelector({
             triggerClassName={cn('text-body', triggerClassName)}
           />
         </DisabledReasonTooltip>
-      </div>
+      </NodeInputField>
     );
   }
 
@@ -81,8 +73,11 @@ export function NodeColumnSelector({
   const options: SearchableSelectOption[] = optionValues.map((column) => ({ value: column }));
 
   return (
-    <div className={cn('space-y-1', className)}>
-      {heading}
+    <NodeInputField
+      label={label}
+      value={value === clearOptionValue ? clearOptionLabel : value}
+      className={className}
+    >
       <DisabledReasonTooltip reason={disabled ? disabledReason : undefined} className="w-full">
         <SearchableSelect
           options={options}
@@ -99,6 +94,6 @@ export function NodeColumnSelector({
           triggerClassName={cn('text-body', triggerClassName)}
         />
       </DisabledReasonTooltip>
-    </div>
+    </NodeInputField>
   );
 }

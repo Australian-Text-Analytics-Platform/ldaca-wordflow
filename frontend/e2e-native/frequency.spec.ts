@@ -1,6 +1,8 @@
 import { browser } from '@wdio/globals';
 import { it } from 'mocha';
 import {
+  compactSelectorsScenario,
+  nodePreferencesScenario,
   frequencyRecoveryScenario,
   frequencyInitialTabScenario,
   frequencyStopwordsScenario,
@@ -44,4 +46,13 @@ it('native Frequency uses reusable stopword Data Blocks with atomic edits and li
 
 it('native Frequency recovers broken saved results through Retry and Rerun', async () => {
   await frequencyRecoveryScenario(await backendUrl(), 'native_recovery');
+});
+
+it('Data Block preferences persist before Run and become defaults after reload', async () => {
+  await nodePreferencesScenario(await backendUrl(), 'native_preferences');
+});
+
+it('Compact selectors wrap without overlap and keep simple stopwords on one row', async () => {
+  await browser.refresh();
+  await compactSelectorsScenario(await backendUrl(), 'native_compact');
 });

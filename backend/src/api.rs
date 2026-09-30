@@ -123,6 +123,7 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(save))
         .routes(utoipa_axum::routes!(delete_node))
         .routes(utoipa_axum::routes!(rename_node))
+        .routes(utoipa_axum::routes!(set_node_preference))
         .routes(utoipa_axum::routes!(clone_node))
         .routes(utoipa_axum::routes!(export_node))
         .routes(utoipa_axum::routes!(inspect_export))
@@ -1162,4 +1163,25 @@ async fn begin_cell_edit_registered(
 
 fn flattened_schema() -> utoipa::openapi::RefOr<utoipa::openapi::Schema> {
     crate::openapi::flattened::<SqlBatch>()
+}
+
+#[utoipa::path(
+    patch, path = "/api/project/nodes/{table_name}/preferences", operation_id = "api_set_node_preference",
+    tag = "api", params(("table_name" = String, Path)),
+    request_body = crate::project::node_preferences::NodePreference,
+    responses((status = 204, description = "Preference saved"),
+      (status = 400, description = "Invalid preference", body = crate::error::ErrorEnvelope),
+      (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope),
+      (status = 404, description = "Data Block unavailable", body = crate::error::ErrorEnvelope),
+      (status = 409, description = "Project conflict", body = crate::error::ErrorEnvelope),
+      (status = 500, description = "Operation failed", body = crate::error::ErrorEnvelope),
+      (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+)]
+async fn set_node_preference(
+    State(project): State<ProjectRuntime>,
+    Path(name): Path<String>,
+    InputJson(input): InputJson<crate::project::node_preferences::NodePreference>,
+) -> Result<impl IntoResponse> {
+    project.set_node_preference(name, input).await?;
+    Ok(StatusCode::NO_CONTENT)
 }

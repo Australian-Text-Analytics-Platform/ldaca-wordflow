@@ -46,7 +46,7 @@ it('uses schema-qualified controls in the native dependency graph without regist
   await expect($('[data-testid="project-data-overlay"]')).not.toExist();
   await actions('source');
   await $('[role="menuitem"]=Clone').click();
-  await expect(card('source_copy')).toExist();
+  await expect(card('source_cpy_1')).toExist();
   await expect($('[data-testid="project-data-overlay"]')).not.toExist();
   await actions('result');
   await $('[role="menuitem"]=Materialize').click();
@@ -54,11 +54,11 @@ it('uses schema-qualified controls in the native dependency graph without regist
   await actions('result');
   await expect($('[role="menuitem"]=Materialize')).not.toExist();
   await browser.keys('Escape');
-  await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.nodes WHERE table_name IN ('source','result','source_copy'))=0 AND (SELECT count(*) FROM duckdb_tables() WHERE schema_name='native_dependencies' AND table_name='result')=1 AND (SELECT n FROM native_dependencies.source_copy)=17 THEN true ELSE error('Native dependency controls changed registration or wrong object') END");
-  await actions('source_copy');
+  await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.nodes WHERE table_name IN ('source','result','source_cpy_1'))=0 AND (SELECT count(*) FROM duckdb_tables() WHERE schema_name='native_dependencies' AND table_name='result')=1 AND (SELECT n FROM native_dependencies.source_cpy_1)=17 THEN true ELSE error('Native dependency controls changed registration or wrong object') END");
+  await actions('source_cpy_1');
   await $('[role="menuitem"]=Delete').click();
   await $('//div[@role="alertdialog"]//button[normalize-space(.)="Delete"]').click();
-  await expect(card('source_copy')).not.toExist();
+  await expect(card('source_cpy_1')).not.toExist();
   if ((await $('html').getAttribute('data-theme')) !== originalTheme) {
     await $('button[aria-label="Open settings"]').click();
     await $('[role="switch"][aria-label="Use Dark 2026 theme"]').click();

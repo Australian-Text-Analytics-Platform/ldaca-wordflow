@@ -10,7 +10,7 @@ news-style text. Its rules are adapted from the
 They were developed for Canadian news; review a representative sample when
 working with social media, fiction or other genres and English varieties.
 
-Open **Quotation** to create **Quotation 1** if there are no tabs. Each named tab
+Open **Quotation** to create **QT-1** if there are no tabs. Each named tab
 keeps its latest successful result. Closing the last tab leaves the empty state;
 use **New Quotation analysis** to create another.
 

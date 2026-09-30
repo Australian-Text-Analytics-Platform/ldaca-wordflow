@@ -65,7 +65,7 @@ pub fn router(
         .layer(
             CorsLayer::new()
                 .allow_origin(origins)
-                .allow_methods([Method::GET, Method::POST, Method::DELETE])
+                .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
                 .allow_headers([header::CONTENT_TYPE])
                 .expose_headers([
                     header::CONTENT_DISPOSITION,
@@ -293,6 +293,38 @@ mod tests {
             .unwrap()
             .unwrap()
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn preference_preflight_allows_patch_for_the_desktop_origin() {
+        let response = router(
+            vec![HeaderValue::from_static("tauri://localhost")],
+            CancellationToken::new(),
+            project::ProjectRuntime::new(CancellationToken::new()),
+        )
+        .oneshot(
+            Request::builder()
+                .method("OPTIONS")
+                .uri("/api/project/nodes/corpus/preferences")
+                .header("origin", "tauri://localhost")
+                .header("access-control-request-method", "PATCH")
+                .header("access-control-request-headers", "content-type")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+        assert_eq!(
+            response.headers()["access-control-allow-origin"],
+            "tauri://localhost"
+        );
+        assert!(
+            response.headers()["access-control-allow-methods"]
+                .to_str()
+                .unwrap()
+                .split(',')
+                .any(|method| method.trim() == "PATCH")
+        );
     }
 
     #[tokio::test]

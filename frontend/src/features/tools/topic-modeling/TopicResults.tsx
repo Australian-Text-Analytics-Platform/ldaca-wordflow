@@ -1,3 +1,4 @@
+import { suggestDataBlockName, suggestDataBlockNames } from '@/features/project/automaticNames';
 import { useRef, useState } from 'react';
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
 import * as api from '@/features/project/api';
@@ -80,7 +81,10 @@ export function TopicResults({
   const stopwordsEnabled = settings.stopwords_enabled === true;
   const appliedStopwords = stopwordsEnabled ? completeStopwordSource(stopwordSource) : null;
   const selectStopwords = (selected: api.StopwordSource | null) => {
-    onSettings({ stopword_source: selected, stopwords_enabled: selected !== null });
+    onSettings({
+      stopword_source: selected,
+      stopwords_enabled: selected !== null || stopwordsEnabled,
+    });
     return Promise.resolve();
   };
   const stopwords = useStopwords({
@@ -149,8 +153,8 @@ export function TopicResults({
   const nodeColors = Object.fromEntries(
     summary.sources.map((s, i) => [
       sourceIds[i] ?? '',
-      colors[api.targetKey(s.input.source)] ??
-        nodes.find((node) => node.table_name === s.input.source.name)?.color ??
+      nodes.find((node) => node.table_name === s.input.source.name)?.color ??
+        colors[api.targetKey(s.input.source)] ??
         VIZ_PALETTE[i] ??
         GREY,
     ]),
@@ -295,17 +299,32 @@ export function TopicResults({
               variant="outline"
               disabled={editing || unresolved}
               onClick={() => {
+                const existingNames = nodes.map((node) => node.table_name);
+                const outputs = suggestDataBlockNames(
+                  summary.sources.map((s, i) => ({
+                    sources: [s.input.source.name],
+                    operation: 'tm',
+                    source: i,
+                    columns: [s.input.column],
+                    coverage: true,
+                  })),
+                  existingNames,
+                );
                 setPublication({
                   topic_count: applied.count,
                   top_n: topN,
                   selected_topics: [...selection],
-                  sources: summary.sources.map((s, i) => ({
-                    source: i,
-                    name: `${s.input.source.name}_topics`,
-                    columns: [s.input.column],
-                    coverage: true,
+                  sources: outputs.map(({ name, source, columns, coverage }) => ({
+                    name,
+                    source,
+                    columns,
+                    coverage,
                   })),
-                  dictionary_name: `${tab.name}_dictionary`,
+                  dictionary_name: suggestDataBlockName(
+                    summary.sources.map((s) => s.input.source.name),
+                    'tm_dict',
+                    [...existingNames, ...outputs.map((output) => output.name)],
+                  ),
                   words: allTopics.map((topic) =>
                     topic.representative_words.map((word) => word.word),
                   ),

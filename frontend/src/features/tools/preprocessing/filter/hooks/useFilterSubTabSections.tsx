@@ -12,7 +12,7 @@ import {
 } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
 import { getOperatorsForField } from '../../utils/typeUtils';
-import { buildFilterAutoNodeName } from '../../utils/autoNodeNames';
+import { suggestDataBlockName } from '@/features/project/automaticNames';
 import {
   useNodePreviewWithRawFallback,
   type OperationPreviewFetcher,
@@ -32,6 +32,7 @@ import type {
 } from '../../types';
 
 export interface FilterSubTabProps {
+  existingNames?: string[];
   previewEnabled?: boolean;
   selectedNodeId: string | null;
   selectedNode: NodeMetadata | null;
@@ -201,13 +202,11 @@ export const useFilterSubTabSections = (
     setNewNodeNameState({ nodeId: selectedNodeId, value });
   };
 
-  const autoNodeName = buildFilterAutoNodeName({
-    // Empty node name should fall back to the id, so keep `||`.
-    // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-    baseName: selectedNode?.name || selectedNodeId,
-    conditions,
-    logic,
-  });
+  const autoNodeName = suggestDataBlockName(
+    [selectedNode?.name.trim() ? selectedNode.name : (selectedNodeId ?? '')],
+    'flt',
+    props.existingNames ?? [],
+  );
 
   const previewRequest = (() => {
     if (!conditions.length) return null;

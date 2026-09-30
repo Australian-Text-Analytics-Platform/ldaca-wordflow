@@ -97,7 +97,7 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
         await dialog.$('[aria-label="Chart download format"]').click();
         await $(`[role="option"]=${format}`).click();
       }
-      const path = resolve(outputDir, 'downloads', `Topic Modelling 1.${format.toLowerCase()}`);
+      const path = resolve(outputDir, 'downloads', `TM-1.${format.toLowerCase()}`);
       await rm(path, { force: true });
       await dialog.$('button=Download').click();
       await browser.waitUntil(
@@ -120,7 +120,7 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
       else if (format === 'JPEG') expect([...bytes.subarray(0, 2)]).toEqual([255, 216]);
       else {
         const zip = await JSZip.loadAsync(bytes);
-        const csv = await zip.file('Topic Modelling 1_topics.csv')?.async('string');
+        const csv = await zip.file('TM-1_topics.csv')?.async('string');
         expect(csv).toContain('Representative words');
         expect(csv?.split('\r\n')).toHaveLength(topicCount + 1);
       }

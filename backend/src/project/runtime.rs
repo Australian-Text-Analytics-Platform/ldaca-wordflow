@@ -882,6 +882,14 @@ impl ProjectRuntime {
         .await
     }
 
+    pub(crate) async fn set_node_preference(
+        &self,
+        name: String,
+        input: super::node_preferences::NodePreference,
+    ) -> Result<()> {
+        self.with_writable_project(move |p| p.set_node_preference(&name, input))
+            .await
+    }
     pub(crate) async fn tabs(&self, kind: Option<String>) -> Result<Vec<Tab>> {
         self.with_project(move |p| p.tabs(kind.as_deref())).await
     }

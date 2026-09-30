@@ -1,3 +1,4 @@
+import { suggestDataBlockName, type DataBlockOperation } from '@/features/project/automaticNames';
 import { schemaQuery } from '@/features/project/projectQueries';
 import { lazy, Suspense, useState } from 'react';
 import { useQueries, useMutation, useIsMutating } from '@tanstack/react-query';
@@ -240,7 +241,18 @@ function ToolPane({
         title="Preprocessing Inputs"
       />
     );
+  const existingNames = nodes.map((node) => node.table_name);
+  const operation: Record<Exclude<Tool, 'sql'>, DataBlockOperation> = {
+    filter: 'flt',
+    slice: 'slc',
+    join: 'join',
+    concat: 'stk',
+    build: 'bld',
+    find: 'bld',
+  };
+  const suggestedName = suggestDataBlockName(selected, operation[tool], existingNames);
   const baseProps = {
+    existingNames,
     projectBase: base,
     isLoading,
     onAlert,
@@ -250,7 +262,7 @@ function ToolPane({
   const outputNameInput = (
     <Input
       aria-label="New Data Block name"
-      placeholder={id ? `${id}_${tool}` : 'result'}
+      placeholder={suggestedName}
       value={name}
       onChange={(event) => {
         setName(event.target.value);
@@ -333,8 +345,7 @@ function ToolPane({
     operation: Transformation | (() => Promise<Transformation>),
     requestedName?: string,
   ) {
-    const outputName =
-      [requestedName?.trim(), name.trim()].find(Boolean) ?? `${id ?? 'result'}_${tool}`;
+    const outputName = [requestedName?.trim(), name.trim()].find(Boolean) ?? suggestedName;
     return submit({ operation, outputName });
   }
   if (tool === 'filter')

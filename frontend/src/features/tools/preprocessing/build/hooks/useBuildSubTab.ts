@@ -1,3 +1,4 @@
+import { suggestColumnName } from '@/features/project/automaticNames';
 import { useEffect, useRef, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { parseExpression } from '@/features/project/api';
@@ -39,7 +40,7 @@ export interface BuildSubTabProps {
 interface Draft {
   visual: BuildVisualDefinition;
   sql: { expression: string } | null;
-  column: string;
+  column: string | null;
 }
 
 /** One expression with visual and SQL representations. Apply captures the complete draft. */
@@ -49,8 +50,10 @@ export function useBuildSubTab(props: BuildSubTabProps) {
   const [draft, setDraft] = useState<Draft>(() => ({
     visual: emptyVisualBuild(),
     sql: null,
-    column: 'new_column',
+    column: null,
   }));
+  const suggestedColumn = suggestColumnName(columns.map((column) => column.name));
+  const column = draft.column ?? suggestedColumn;
   const latest = useRef(draft);
   const update = (change: (value: Draft) => Draft) => {
     const next = change(latest.current);
@@ -64,11 +67,11 @@ export function useBuildSubTab(props: BuildSubTabProps) {
     ? { mode: 'sql', expression: draft.sql.expression }
     : draft.visual;
   const validation = validateBuild(definition, columns);
-  const payload = buildColumnRequest(definition, draft.column);
+  const payload = buildColumnRequest(definition, column);
   const configured = draft.sql !== null || draft.visual.roots.length > 0;
   const disabledReason = !activeNode
     ? 'Select an input Data Block'
-    : !draft.column.trim()
+    : !column.trim()
       ? 'Enter a column name'
       : (validation.error ?? undefined);
   const request =
@@ -135,8 +138,9 @@ export function useBuildSubTab(props: BuildSubTabProps) {
     const definition: BuildDefinition = captured.sql
       ? { mode: 'sql', expression: captured.sql.expression }
       : captured.visual;
-    if (!captured.column.trim() || validateBuild(definition, columns).error) return;
-    const request = buildColumnRequest(definition, captured.column);
+    const capturedColumn = captured.column ?? suggestedColumn;
+    if (!capturedColumn.trim() || validateBuild(definition, columns).error) return;
+    const request = buildColumnRequest(definition, capturedColumn);
     const target = activeNode.id;
     try {
       await props.buildColumnApply(target, request);
@@ -148,7 +152,7 @@ export function useBuildSubTab(props: BuildSubTabProps) {
   return {
     activeNode,
     columns,
-    draft,
+    draft: { ...draft, column },
     updateVisual,
     updatePart,
     addPart,

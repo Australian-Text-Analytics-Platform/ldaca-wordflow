@@ -1,3 +1,4 @@
+import { useNodePreferences } from '../common/useNodePreferences';
 import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
@@ -64,6 +65,7 @@ function ConcordanceTab({
   tab,
 }: Props & { tab: api.Tab }) {
   const cache = useQueryClient();
+  const savePreference = useNodePreferences(base);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
@@ -100,7 +102,13 @@ function ConcordanceTab({
           source: { schema: 'data', name: input.node_id },
           column: input.column ?? '',
           tokenizer:
-            draft.inputs.find((item) => item.source.name === input.node_id)?.tokenizer ?? null,
+            draft.inputs.find(
+              (item) => item.source.name === input.node_id && item.column === input.column,
+            )?.tokenizer ??
+            nodes.find((node) => node.table_name === input.node_id)?.tokenizer_models?.[
+              input.column ?? ''
+            ] ??
+            null,
         })),
       });
     },
@@ -194,18 +202,21 @@ function ConcordanceTab({
               onAddNodes={picker.addNodes}
               onRemoveNode={picker.removeNode}
               onClear={picker.clear}
-              onColumnChange={picker.setColumn}
+              onColumnChange={(name, column) => {
+                picker.setColumn(name, column);
+                savePreference(name, { preference: 'document_column', value: column || null });
+              }}
               nodeColors={Object.fromEntries(
                 draft.inputs.map((input, index) => [
                   input.source.name,
-                  colors[api.targetKey(input.source)] ??
-                    nodes.find((node) => node.table_name === input.source.name)?.color ??
+                  nodes.find((node) => node.table_name === input.source.name)?.color ??
+                    colors[api.targetKey(input.source)] ??
                     VIZ_PALETTE[index] ??
                     GREY,
                 ]),
               )}
               onNodeColorChange={(name, color) => {
-                changeSettings({ colors: { ...colors, [api.targetKey(name)]: color } });
+                savePreference(name, { preference: 'color', value: color });
               }}
               unavailableNodes={draft.inputs
                 .filter((input) => !nodes.some((node) => node.table_name === input.source.name))
@@ -223,6 +234,9 @@ function ConcordanceTab({
                         source={{ schema: 'data', name: nodeId }}
                         column={column}
                         models={tokenizers.data ?? []}
+                        preferredModel={
+                          nodes.find((n) => n.table_name === nodeId)?.tokenizer_models?.[column]
+                        }
                         value={
                           draft.inputs.find((input) => input.source.name === nodeId)?.tokenizer ??
                           ''
@@ -439,7 +453,14 @@ function ConcordanceTab({
             active={active}
             stopped={false}
             view={view}
-            colors={colors}
+            colors={{
+              ...colors,
+              ...Object.fromEntries(
+                nodes.flatMap((node) =>
+                  node.color ? [[api.targetKey(node.table_name), node.color]] : [],
+                ),
+              ),
+            }}
             onCancelPreview={clearPreview}
             editing={editing}
             onSettings={changeSettings}

@@ -55,5 +55,5 @@ export function useStopwords({
       await onSelect(target);
     },
   });
-  return { words, create, edit, add };
+  return { words, create, edit, add, inputs };
 }

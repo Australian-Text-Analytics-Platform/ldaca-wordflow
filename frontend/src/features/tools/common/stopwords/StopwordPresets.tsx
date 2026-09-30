@@ -3,13 +3,6 @@ import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
-import {
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import { listSupportedStopwordLanguages, loadMergedStopwords } from '../language/stopwords';
 import { useDetectedColumnLanguage } from '../language/useDetectedColumnLanguage';
 import type { StopwordSource } from './stopwordData';
@@ -19,7 +12,9 @@ export function StopwordPresets({
   sources,
   onClose,
   onAdd,
+  disabled = false,
 }: {
+  disabled?: boolean;
   base: string;
   sources: StopwordSource[];
   onClose: () => void;
@@ -52,14 +47,17 @@ export function StopwordPresets({
   const detecting = first.isFetching || second.isFetching;
   const detectionFailed = first.isError || second.isError;
   return (
-    <DialogContent>
-      <DialogHeader>
-        <DialogTitle>Add language preset</DialogTitle>
-        <DialogDescription>
+    <section
+      aria-label="Add language preset"
+      className="space-y-2 rounded-md border border-surface-border p-3"
+    >
+      <div>
+        <h4 className="font-semibold">Add language preset</h4>
+        <p className="text-description text-body-secondary">
           Choose one or more languages. Lists are added to the shared Table immediately. Language
           recommendations use a sample of the input text.
-        </DialogDescription>
-      </DialogHeader>
+        </p>
+      </div>
       {detecting && <p role="status">Detecting input languages…</p>}
       {detectionFailed && (
         <div className="flex flex-wrap items-center gap-2">
@@ -84,7 +82,7 @@ export function StopwordPresets({
           setSearch(event.target.value);
         }}
       />
-      <fieldset className="max-h-64 overflow-y-auto" disabled={loading.isPending}>
+      <fieldset className="max-h-64 overflow-y-auto" disabled={disabled || loading.isPending}>
         <legend className="sr-only">Stopword languages</legend>
         {languages
           .filter((language) =>
@@ -117,19 +115,19 @@ export function StopwordPresets({
       {loading.isError && (
         <p role="alert">The words were not added. Your selection is retained; try again.</p>
       )}
-      <DialogFooter>
-        <Button variant="outline" disabled={loading.isPending} onClick={onClose}>
+      <div className="flex flex-wrap justify-end gap-2">
+        <Button variant="outline" disabled={disabled || loading.isPending} onClick={onClose}>
           Cancel
         </Button>
         <Button
-          disabled={selected.length === 0 || loading.isPending}
+          disabled={disabled || selected.length === 0 || loading.isPending}
           onClick={() => {
             loading.mutate(selected);
           }}
         >
           {loading.isPending ? 'Adding…' : loading.isError ? 'Retry' : 'Add to list'}
         </Button>
-      </DialogFooter>
-    </DialogContent>
+      </div>
+    </section>
   );
 }

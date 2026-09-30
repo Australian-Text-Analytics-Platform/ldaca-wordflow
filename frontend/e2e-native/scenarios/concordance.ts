@@ -1,3 +1,4 @@
+import { suggestDataBlockName } from '../../src/features/project/automaticNames';
 import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { browser, $, expect } from '@wdio/globals';
@@ -194,7 +195,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   await dialog.waitForExist({ reverse: true });
   await browser.waitUntil(async () =>
     (await api.graph(base)).nodes.some(
-      (node) => node.table_name === `${name}_concordance_documents`,
+      (node) => node.table_name === suggestDataBlockName([name], 'cc_doc', []),
     ),
   );
   for (const theme of ['light', 'dark']) {

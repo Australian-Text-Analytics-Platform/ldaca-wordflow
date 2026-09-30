@@ -207,7 +207,7 @@ snapshot or second persistent store.
 | `GET /api/project/nodes/{table_name}/definition` | None | 200 `{"sql":"<current SELECT>"}` for a View |
 | `POST /api/project/nodes/{table_name}/definition` | `{"sql":"<complete SELECT>"}` | 204 |
 | `POST /api/project/nodes/{table_name}/rename` | `{"name":"new_table_name"}` | 200 `{"table_name":"new_table_name"}` |
-| `POST /api/project/nodes/{table_name}/clone` | `{}` | 200 `{"table_name":"unique_copy_name"}` |
+| `POST /api/project/nodes/{table_name}/clone` | `{}` | 200 `{"table_name":"source_cpy_1"}` |
 | `POST /api/project/nodes/{table_name}/export` | `{"format":"csv"}` | 200 full-object bytes |
 | `POST /api/project/nodes/{table_name}/undo` | `{}` | 204 |
 | `POST /api/project/nodes/{table_name}/replace-source` | `{"old_source_name":"<table_name>","new_source_name":"<table_name>"}` | 204 |
@@ -851,3 +851,14 @@ numbers unless Rust explicitly serializes exact decimal strings. JSON Schema
 composition needs special care with closed flattened objects: their fields are
 derived from the existing serializer while allowing sibling fields in that
 flattened context. Contract tests cover this exception and recursive expressions.
+
+## Data Block defaults
+
+`PATCH /api/project/nodes/{table_name}/preferences` saves one shared preference
+and returns 204. Its tagged `NodePreference` body selects `document_column`,
+`color`, or `tokenizer`; `value: null` clears that preference. Tokenizer changes
+also specify `column`. Columns must be existing text columns; tokenizer IDs must
+belong to the native catalogue and colors use `#RRGGBB`. This transaction writes
+only registration metadata and emits a Graph resource change. It does not submit
+an analysis or modify saved requests. Graph nodes expose per-column
+`tokenizer_models` when present. See the generated OpenAPI for exact contracts.

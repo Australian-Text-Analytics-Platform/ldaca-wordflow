@@ -108,3 +108,18 @@ it('desktop keeps the three panes, imports inline, and reopens embedded data', a
     await rm(source, { force: true });
   }
 });
+
+it('graph controls show tooltips without expanding the rail', async () => {
+  await browser.url('/');
+  const rail = browser.$('[aria-label="Project graph controls"]');
+  await rail.waitForDisplayed();
+  const width = await rail.getSize('width');
+  const zoom = rail.$('button[aria-label="Zoom in"]');
+  await hover(zoom);
+  await expect(browser.$('[role="tooltip"]')).toHaveText('Zoom in');
+  expect(await rail.getSize('width')).toBe(width);
+  const summary = rail.$('[role="status"]');
+  await hover(summary);
+  await expect(browser.$('[role="tooltip"]')).toHaveText(/\d+ of \d+ selected/);
+  expect(await rail.getSize('width')).toBe(width);
+});

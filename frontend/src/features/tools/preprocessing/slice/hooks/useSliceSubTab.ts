@@ -14,6 +14,7 @@ import {
 } from './sliceFormModel';
 
 export interface SliceSubTabProps {
+  existingNames?: string[];
   previewEnabled?: boolean;
   projectBase: string | null;
   selectedNodeId: string | null;
@@ -219,6 +220,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
   })();
 
   const sliceModel = deriveSliceFormModel({
+    existingNames: props.existingNames,
     selectedNodeId,
     selectedNodeLabel,
     nodeRowCount: null,
@@ -370,10 +372,7 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
     setCurrentInlineError(null);
     try {
       const response = await sliceNode(selectedNodeId, payload);
-      const responseName =
-        response.table_name.trim() ||
-        requestedName ||
-        `${selectedNodeLabel || selectedNodeId}_${mode === 'slice' ? 'sliced' : isFullShuffle ? 'shuffled' : 'sampled'}`;
+      const responseName = response.table_name.trim() || requestedName;
       const resultNodeId = response.table_name;
       setLastResultState({
         signature: resultSignature,

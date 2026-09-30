@@ -331,9 +331,7 @@ export function FrequencyResults({
         enabled={settings.stopwordsEnabled}
         disabled={editing}
         controller={stopwordController}
-        onSelect={(selected) =>
-          persist({ stopwordSource: selected, stopwordsEnabled: selected !== null })
-        }
+        onSelect={(selected) => persist({ stopwordSource: selected })}
         onEnabledChange={(stopwordsEnabled) => {
           change({ stopwordsEnabled });
         }}

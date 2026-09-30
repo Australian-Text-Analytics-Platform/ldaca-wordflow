@@ -1,3 +1,5 @@
+import { NodeInputField } from '../common/components/NodeInputField';
+import { useNodePreferences } from '../common/useNodePreferences';
 import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
@@ -34,7 +36,7 @@ import {
 } from './frequencyState';
 import { TokenizerChoice } from '../common/language/TokenizerChoice';
 import { FrequencyResults } from './FrequencyResults';
-import { corpusColor, corpusColorKey, useFrequencySettings } from './frequencySettings';
+import { corpusColor, useFrequencySettings } from './frequencySettings';
 
 export default function TokenFrequencyFeature({
   base,
@@ -247,6 +249,7 @@ function FrequencyTab({
   onOpenConcordance?: () => void;
 }) {
   const cache = useQueryClient();
+  const savePreference = useNodePreferences(base);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
@@ -281,7 +284,13 @@ function FrequencyTab({
           source: { schema: 'data', name: input.node_id },
           column: input.column ?? '',
           tokenizer:
-            draft.inputs.find((item) => item.source.name === input.node_id)?.tokenizer ?? '',
+            draft.inputs.find(
+              (item) => item.source.name === input.node_id && item.column === input.column,
+            )?.tokenizer ??
+            nodes.find((node) => node.table_name === input.node_id)?.tokenizer_models?.[
+              input.column ?? ''
+            ] ??
+            '',
         })),
       });
     },
@@ -308,11 +317,12 @@ function FrequencyTab({
     queryFn: ({ signal }) => api.getTokenizers(base, signal),
     staleTime: Infinity,
   });
-  const {
-    settings,
-    change: changeSettings,
-    persist: persistSettings,
-  } = useFrequencySettings(base, tab, editing, result.data?.result.payload.corpora ?? []);
+  const { settings, persist: persistSettings } = useFrequencySettings(
+    base,
+    tab,
+    editing,
+    result.data?.result.payload.corpora ?? [],
+  );
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
     mutationFn: async (request: api.FrequencyRequest) => {
@@ -392,17 +402,15 @@ function FrequencyTab({
                 ]),
               )}
               onNodeColorChange={(name, color) => {
-                changeSettings({
-                  colors: {
-                    ...settings.colors,
-                    [corpusColorKey({ schema: 'data', name })]: color,
-                  },
-                });
+                savePreference(name, { preference: 'color', value: color });
               }}
               onAddNodes={picker.addNodes}
               onRemoveNode={picker.removeNode}
               onClear={picker.clear}
-              onColumnChange={picker.setColumn}
+              onColumnChange={(name, column) => {
+                picker.setColumn(name, column);
+                savePreference(name, { preference: 'document_column', value: column || null });
+              }}
               unavailableNodes={draft.inputs
                 .filter((input) => !nodes.some((node) => node.table_name === input.source.name))
                 .map((input) => ({
@@ -411,13 +419,16 @@ function FrequencyTab({
                   column: input.column,
                 }))}
               renderColumnAddon={({ nodeId, column }) => (
-                <div className="min-w-0">
+                <>
                   <TokenizerChoice
                     active={active}
                     base={base}
                     source={{ schema: 'data', name: nodeId }}
                     column={column}
                     models={tokenizers.data ?? []}
+                    preferredModel={
+                      nodes.find((n) => n.table_name === nodeId)?.tokenizer_models?.[column]
+                    }
                     value={
                       draft.inputs.find((input) => input.source.name === nodeId)?.tokenizer ?? ''
                     }
@@ -425,43 +436,55 @@ function FrequencyTab({
                       changeTokenizer(nodeId, column, value);
                     }}
                   />
-                </div>
+                </>
               )}
               renderExtraNodeContent={({ nodeId }) => (
-                <div className="min-w-0">
+                <>
                   {schemas[selectedNames.indexOf(nodeId)]?.isError && (
-                    <p role="alert" className="text-label-secondary text-description">
+                    <p
+                      role="alert"
+                      className="order-last basis-full text-label-secondary text-description"
+                    >
                       This input is unavailable. Check its source or select another Data Block.
                     </p>
                   )}
                   {draft.inputs.length === 2 && (
-                    <Select
+                    <NodeInputField
+                      label="Role"
                       value={
                         (draft.study ?? draft.inputs[1]?.source.name) === nodeId
-                          ? 'study'
-                          : 'reference'
+                          ? 'Study corpus'
+                          : 'Reference corpus'
                       }
-                      onValueChange={(role) => {
-                        update({
-                          ...draft,
-                          study:
-                            role === 'study'
-                              ? nodeId
-                              : (draft.inputs.find((input) => input.source.name !== nodeId)?.source
-                                  .name ?? null),
-                        });
-                      }}
                     >
-                      <SelectTrigger aria-label={`${nodeId} corpus role`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="study">Study corpus</SelectItem>
-                        <SelectItem value="reference">Reference corpus</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <Select
+                        value={
+                          (draft.study ?? draft.inputs[1]?.source.name) === nodeId
+                            ? 'study'
+                            : 'reference'
+                        }
+                        onValueChange={(role) => {
+                          update({
+                            ...draft,
+                            study:
+                              role === 'study'
+                                ? nodeId
+                                : (draft.inputs.find((input) => input.source.name !== nodeId)
+                                    ?.source.name ?? null),
+                          });
+                        }}
+                      >
+                        <SelectTrigger aria-label={`${nodeId} corpus role`}>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="study">Study corpus</SelectItem>
+                          <SelectItem value="reference">Reference corpus</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </NodeInputField>
                   )}
-                </div>
+                </>
               )}
             />
             {tokenizers.isError && (

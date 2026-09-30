@@ -240,3 +240,7 @@ available for the next run.
 [← Back to tutorial index](./index.md)
 
 Use **View documents** beside a topic to inspect its saved or sampled documents. Select a source, optional metadata and a page. Coverage is ordered highest first and Top-N cutoff ties are included. Expand text to read it in full. This dialog is read-only and never retrains the model. Downloads include a topic ID/word/count key.
+
+The shared Stopwords section places its selector beside an inline word editor, stacking them in narrow panes. Add/remove words, paste lists, sort and add language presets directly there. Changes save immediately to the shared Table. Views require **Create editable copy** before editing. Turning stopwords off hides the content but retains the selected list.
+
+The map’s icon toolbar stays compact. Hover or focus a control to see its name immediately in a tooltip, without expanding the toolbar.

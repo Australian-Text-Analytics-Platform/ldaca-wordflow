@@ -38,6 +38,13 @@ it('native preprocessing creates live Views without destination selectors or inp
   expect(
     (await api.querySql(url, [{ sql: 'SELECT * FROM data.native_built' }])).numRows,
   ).toBe(2);
+  await pane.$('[aria-label="New Data Block name"]').setValue('');
+  for (const number of [1, 2]) {
+    await expect(pane.$('[aria-label="New Data Block name"]')).toHaveAttribute('placeholder', `native_input_bld_${String(number)}`);
+    await pane.$('button=Create Data Block').click();
+    await browser.waitUntil(async () => (await api.graph(url)).nodes.some((node) => node.table_name === `native_input_bld_${String(number)}`));
+    expect((await api.nodeSchema(url, `native_input_bld_${String(number)}`)).map((column) => column.name)).toEqual(['n', 'col']);
+  }
   await browser.saveScreenshot('.tmp/wdio/preprocessing-view-only-native.png');
 });
 

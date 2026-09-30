@@ -1,3 +1,4 @@
+import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { AnalysisPublishMenu } from '../common/components/AnalysisPublishMenu';
@@ -592,9 +593,14 @@ function QuotationPublishDialog({
   projection: 'documents' | 'matches';
   onClose: () => void;
 }) {
+  const cache = useQueryClient();
   const [result] = useState(initialResult);
-  const [name, setName] = useState(
-    `${result.result.payload.input.source.name}_quotations${projection === 'documents' ? '_documents' : ''}`,
+  const [name, setName] = useState(() =>
+    suggestDataBlockName(
+      [result.result.payload.input.source.name],
+      projection === 'documents' ? 'qt_doc' : 'qt',
+      cachedDataBlockNames(cache, base),
+    ),
   );
   const [metadata, setMetadata] = useState<string[]>([]);
   const [fields, setFields] = useState<string[]>([...quotationFields]);

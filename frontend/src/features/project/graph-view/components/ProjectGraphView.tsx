@@ -6,7 +6,6 @@ import '@xyflow/react/dist/style.css';
 import {
   Background,
   BackgroundVariant,
-  ControlButton,
   Controls,
   MiniMap,
   ReactFlow,
@@ -27,7 +26,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { cn } from '@/lib/utils';
+import { GraphControlButton as ProjectGraphControlButton } from '@/components/GraphControlButton';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ProjectGraphModel {
   nodes: NonNullable<ReactFlowProps['nodes']>;
@@ -57,78 +57,25 @@ interface ProjectGraphModel {
   pickingConnection?: boolean;
 }
 
-interface ProjectGraphControlButtonProps {
-  accessibleLabel: string;
-  label: string;
-  children: ReactNode;
-  disabled?: boolean;
-  active?: boolean;
-  destructive?: boolean;
-  onClick: () => void;
-}
-
-/**
- * Expandable action used in the Project Graph View control rail.
- * Flow: keep the icon visible in the collapsed rail and reveal its text label on rail hover or focus.
- */
-function ProjectGraphControlButton({
-  accessibleLabel,
-  label,
-  children,
-  disabled,
-  active,
-  destructive,
-  onClick,
-}: ProjectGraphControlButtonProps) {
-  return (
-    <ControlButton
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={accessibleLabel}
-      aria-pressed={active}
-      className={cn(
-        '!h-10 !w-10 !min-w-10 !justify-start !gap-3 !overflow-hidden !px-3',
-        'transition-[width,background-color,color] duration-150 ease-out',
-        'group-hover/project-controls:!w-48 group-focus-within/project-controls:!w-48',
-        'disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
-        active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
-        destructive && !disabled && '!text-error hover:!bg-error/10',
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
-        {children}
-      </span>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none whitespace-nowrap text-label-secondary font-medium opacity-0 transition-opacity duration-100 group-hover/project-controls:opacity-100 group-focus-within/project-controls:opacity-100"
-      >
-        {label}
-      </span>
-    </ControlButton>
-  );
-}
-
-/**
- * Selection summary at the start of the graph control rail.
- * Flow: always show the compact selected/total value and reveal its descriptive label with the other controls.
- */
+/** Compact selection summary with the full count available on hover and focus. */
 const GraphSelectionControl = ({ selected, total }: { selected: number; total: number }) => (
-  <div
-    role="status"
-    aria-label={`${String(selected)} of ${String(total)} selected`}
-    className="flex h-10 w-10 min-w-10 items-center justify-start gap-3 overflow-hidden px-2 text-label-secondary font-semibold text-foreground tabular-nums transition-[width,padding] duration-150 ease-out group-hover/project-controls:w-48 group-hover/project-controls:px-3 group-focus-within/project-controls:w-48 group-focus-within/project-controls:px-3"
-  >
-    <span className="shrink-0">
-      {selected}/{total}
-    </span>
-    <span
-      aria-hidden="true"
-      className="pointer-events-none whitespace-nowrap font-medium opacity-0 transition-opacity duration-100 group-hover/project-controls:opacity-100 group-focus-within/project-controls:opacity-100"
-    >
-      selected
-    </span>
-  </div>
+  <Tooltip delayDuration={0} disableHoverableContent>
+    <TooltipTrigger asChild>
+      <div
+        role="status"
+        tabIndex={0}
+        aria-label={`${String(selected)} of ${String(total)} selected`}
+        className="flex h-10 w-10 min-w-10 items-center justify-center overflow-hidden px-1 text-label-secondary font-semibold text-foreground tabular-nums"
+      >
+        <span className="truncate">
+          {selected}/{total}
+        </span>
+      </div>
+    </TooltipTrigger>
+    <TooltipContent side="right">
+      {selected} of {total} selected
+    </TooltipContent>
+  </Tooltip>
 );
 
 /**
@@ -260,7 +207,7 @@ function ProjectGraphControls({
       showZoom={false}
       showFitView={false}
       showInteractive={false}
-      className="group/project-controls overflow-hidden rounded-md border border-surface-border bg-editor"
+      className="overflow-hidden rounded-md border border-surface-border bg-editor"
       style={{ zIndex: 20 }}
       aria-label="Project graph controls"
     >

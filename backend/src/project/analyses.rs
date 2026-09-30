@@ -82,16 +82,16 @@ impl Database {
     pub(super) fn create_analysis_tab(&mut self, request: CreateTab) -> Result<Tab> {
         let tx = self.conn.transaction()?;
         let label = match request.kind.as_str() {
-            "annotation" => "Annotation",
-            "frequency" => "Frequency",
-            "concordance" => "Concordance",
-            "quotation" => "Quotation",
-            "topic-modeling" => "Topic Modelling",
-            "trends" => "Trends",
-            "compare" => "Compare",
-            "scatter" => "Scatter",
-            "heatmap" => "Heatmap",
-            "sankey" => "Sankey",
+            "annotation" => "AN",
+            "frequency" => "FR",
+            "concordance" => "CC",
+            "quotation" => "QT",
+            "topic-modeling" => "TM",
+            "trends" => "TR",
+            "compare" => "CP",
+            "scatter" => "SC",
+            "heatmap" => "HM",
+            "sankey" => "SK",
             _ => return Err(Error::invalid("Unsupported analysis kind")),
         };
         let name = match request.name {
@@ -102,10 +102,10 @@ impl Database {
                     .query_map([&request.kind], |row| row.get::<_, String>(0))?
                     .collect::<duckdb::Result<HashSet<_>>>()?;
                 let mut number = 1;
-                while names.contains(&format!("{label} {number}")) {
+                while names.contains(&format!("{label}-{number}")) {
                     number += 1;
                 }
-                format!("{label} {number}")
+                format!("{label}-{number}")
             }
         };
         let id = Uuid::new_v4();

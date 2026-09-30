@@ -506,6 +506,14 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
           );
           expect(created).toHaveLength(1);
           expect(created[0]?.kind).toBe('view');
+          const expectedNames: Record<string, string> = {
+            Filter: 'source_s_table_flt_1', Sample: 'source_s_table_slc_1',
+            Join: 'source_live_join_1', Stack: 'source_live_stk_1', Build: 'source_s_table_bld_1',
+          };
+          expect(created[0]?.table_name).toBe(expectedNames[title]);
+          if (title === 'Build') {
+            expect((await api.nodeSchema(base, expectedNames[title] ?? '')).map((column) => column.name)).toContain('col');
+          }
         }
         expect(
           await scalar(`SELECT count(*)::INTEGER AS n FROM data."source's table"`),

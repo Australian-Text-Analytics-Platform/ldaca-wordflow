@@ -57,7 +57,7 @@ describe('deriveSliceFormModel', () => {
 
     expect(model.isFullShuffle).toBe(true);
     expect(model.operationPayload).toEqual({ mode: 'shuffle', random_seed: 7 });
-    expect(model.autoNodeName).toContain('shuffle');
+    expect(model.autoNodeName).toBe('Source_Rows_shf_1');
     expect(model.applyDisabled).toBe(false);
   });
 

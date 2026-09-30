@@ -2,7 +2,6 @@ import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import '@xyflow/react/dist/style.css';
 
 import {
-  ControlButton,
   Controls,
   type Node,
   type NodeProps,
@@ -15,9 +14,10 @@ import {
   type Viewport,
 } from '@xyflow/react';
 import { FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react';
-import { type ReactNode, useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { GraphControlButton as TopicGraphControlButton } from '@/components/GraphControlButton';
 import { FrequencyCorpusCloud } from '../token-frequency/FrequencyCharts';
 import { type TopicCorpusPresentation, TopicSizeComposition } from './TopicSizeComposition';
 import {
@@ -59,53 +59,6 @@ const FIT_VIEW_OPTIONS = {
   maxZoom: 1.5,
   duration: 0,
 } as const;
-
-interface TopicGraphControlButtonProps {
-  accessibleLabel: string;
-  label: string;
-  children: ReactNode;
-  disabled?: boolean;
-  pressed?: boolean;
-  active?: boolean;
-  onClick: () => void;
-}
-
-function TopicGraphControlButton({
-  accessibleLabel,
-  label,
-  children,
-  disabled,
-  pressed,
-  active,
-  onClick,
-}: TopicGraphControlButtonProps) {
-  return (
-    <ControlButton
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={accessibleLabel}
-      aria-pressed={pressed}
-      className={cn(
-        '!h-10 !w-10 !min-w-10 !justify-start !gap-3 !overflow-hidden !px-3',
-        'transition-[width,background-color,color] duration-150 ease-out',
-        'group-hover/topic-controls:!w-40 group-focus-within/topic-controls:!w-40',
-        'disabled:!bg-editor disabled:!text-[var(--vscode-icon-foreground)] disabled:!opacity-40',
-        active && '!bg-list-active !text-[var(--vscode-list-activeSelectionForeground)]',
-      )}
-    >
-      <span className="flex size-4 shrink-0 items-center justify-center [&_svg]:!size-4 [&_svg]:!max-h-none [&_svg]:!max-w-none [&_svg]:!fill-none">
-        {children}
-      </span>
-      <span
-        aria-hidden="true"
-        className="pointer-events-none whitespace-nowrap text-label-secondary font-medium opacity-0 transition-opacity duration-100 group-hover/topic-controls:opacity-100 group-focus-within/topic-controls:opacity-100"
-      >
-        {label}
-      </span>
-    </ControlButton>
-  );
-}
 
 /** Renders one measured React Flow node using the shared Topic bubble model. */
 function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
@@ -590,7 +543,7 @@ function TopicModelingFlowChartInner({
           showZoom={false}
           showFitView={false}
           showInteractive={false}
-          className="group/topic-controls overflow-hidden rounded-md border border-surface-border bg-editor"
+          className="overflow-hidden rounded-md border border-surface-border bg-editor"
           style={{ zIndex: 20 }}
           aria-label="Topic graph controls"
         >
