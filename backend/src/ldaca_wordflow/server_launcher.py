@@ -15,19 +15,19 @@ import os
 import socket
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 import uvicorn
 
 from .main import __version__, create_app
+from .runtime import RuntimeManager, RuntimeUnavailableError
 from .infrastructure.storage.durable_fs import atomic_output_path
 from .settings import Settings, load_settings
 
 logger = logging.getLogger(__name__)
 
-# Open connections get this long to finish after a stop is requested. Browser
-# event streams (/api/events) never finish on their own, and the lifespan
-# shutdown that would end them runs only after this wait, so without a bound a
-# stop waits until the process is killed (issue 252).
+# Open connections get this long to finish after a stop is requested; whatever
+# is still running is then cancelled and the lifespan shutdown runs (issue 252).
 CONNECTION_DRAIN_SECONDS = 5
 
 
@@ -55,6 +55,31 @@ class ServerHandle:
         """Wait until the server exits or fails."""
 
         await self.task
+
+
+def _stream_closing_server(base: type[uvicorn.Server]) -> type[uvicorn.Server]:
+    """Return a server class that ends browser event streams when a stop begins.
+
+    Uvicorn waits for open connections before the lifespan shutdown, which is
+    what closes the event hub, and /api/events streams never finish on their
+    own. Closing the hub first lets every stream return normally, so the drain
+    ends at once instead of cancelling them at CONNECTION_DRAIN_SECONDS
+    (issue 252).
+    """
+
+    parent: Any = base  # the launcher tests substitute Uvicorn's class
+
+    class StreamClosingServer(parent):
+        async def shutdown(self, sockets: list[socket.socket] | None = None) -> None:
+            manager = self.lifespan.state.get("runtime_manager")
+            if isinstance(manager, RuntimeManager):
+                try:
+                    await manager.current_runtime().event_hub.close()
+                except RuntimeUnavailableError:
+                    pass
+            await super().shutdown(sockets=sockets)
+
+    return StreamClosingServer
 
 
 def _bind_socket(host: str, port: int, backlog: int) -> socket.socket:
@@ -205,7 +230,7 @@ def _prepare_server(
             log_level="info",
             timeout_graceful_shutdown=CONNECTION_DRAIN_SECONDS,
         )
-        server = uvicorn.Server(config)
+        server = _stream_closing_server(uvicorn.Server)(config)
         return server, listener, current, startup_path
     except BaseException:
         listener.close()

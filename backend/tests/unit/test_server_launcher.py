@@ -255,9 +255,12 @@ def test_parent_watchdog_rejects_malformed_desktop_contract(
 
 
 @pytest.mark.anyio
-async def test_open_event_stream_does_not_block_a_stop(tmp_path: Path) -> None:
-    """A browser tab keeps /api/events open; a stop must still finish (issue 252)."""
+async def test_open_event_stream_ends_cleanly_when_the_server_stops(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A browser tab keeps /api/events open; a stop must end it at once (issue 252)."""
 
+    import logging
     import time
 
     import httpx
@@ -281,9 +284,13 @@ async def test_open_event_stream_does_not_block_a_stop(tmp_path: Path) -> None:
             lines = stream.aiter_lines()
             assert (await anext(lines)) == "event: stream_ready"
 
+            caplog.set_level(logging.INFO)
             started = time.monotonic()
             await handle.close(timeout=CONNECTION_DRAIN_SECONDS + 10)
             elapsed = time.monotonic() - started
+            remaining = [line async for line in lines]
 
-    assert elapsed < CONNECTION_DRAIN_SECONDS + 5
+    assert elapsed < CONNECTION_DRAIN_SECONDS
     assert handle.task.done()
+    assert "event: stream_ready" not in remaining
+    assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
