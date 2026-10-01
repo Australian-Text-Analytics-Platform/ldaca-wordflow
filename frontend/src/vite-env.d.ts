@@ -14,8 +14,6 @@ interface ImportMetaEnv {
   readonly VITE_DOCS_ORIGIN?: string;
   /** Deployment identifier surfaced in the feedback panel, injected at build time. */
   readonly VITE_DEPLOYMENT_ID?: string;
-  /** Sentry DSN for error monitoring; when unset, Sentry stays disabled. */
-  readonly VITE_SENTRY_DSN?: string;
 }
 interface ImportMeta {
   readonly env: ImportMetaEnv;

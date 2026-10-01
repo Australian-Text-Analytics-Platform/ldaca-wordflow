@@ -12,7 +12,6 @@ import { SessionErrors } from './SessionErrorHistory';
 import { listenForSessionErrors, recordSessionError, useSessionErrors } from './sessionErrors';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
-vi.mock('@/lib/sentry', () => ({ captureException: vi.fn() }));
 beforeEach(() => {
   useSessionErrors.getState().clear();
   vi.clearAllMocks();

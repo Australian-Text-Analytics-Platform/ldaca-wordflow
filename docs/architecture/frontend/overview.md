@@ -308,6 +308,8 @@ Request bodies and headers are not recorded. Accepted task errors retain their
 native diagnostic and task ID without fabricating HTTP context or a Rust backtrace.
 Settings exposes a diagnostics disclosure with copy and clear controls. Reload
 clears the history. This store is a diagnostic record, not a task or query cache.
+React render failures also go to the browser or webview console. The native host
+writes Rust diagnostics to standard error.
 Build's SQL-to-bubble parsing errors belong to
 its inline draft feedback and do not also produce a toast.
 

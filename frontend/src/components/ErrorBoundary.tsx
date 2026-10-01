@@ -1,5 +1,4 @@
 import { Component, type ReactNode, type ComponentType } from 'react';
-import { captureException } from '@/lib/sentry';
 import { Button } from '@/components/ui/button';
 import { recordSessionError } from '@/features/diagnostics/sessionErrors';
 
@@ -35,14 +34,11 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return { hasError: true, error };
   }
 
-  /** Called by: React error recovery to expose stack details for developers and send to Sentry for production monitoring. */
+  /** Called by: React error recovery to record the failure locally and expose stack details in the console. */
   override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.props.onError?.(error);
     recordSessionError(error, 'Could not render this screen', 'react');
     console.error('Error Boundary caught an error:', error, errorInfo);
-    captureException(error, {
-      contexts: { react: errorInfo as unknown as Record<string, unknown> },
-    });
   }
 
   /** Lets fallback UIs retry the child tree without forcing a full page reload. */

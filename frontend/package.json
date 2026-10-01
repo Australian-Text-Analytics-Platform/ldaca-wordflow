@@ -24,7 +24,6 @@
     "@codemirror/view": "^6.43.9",
     "@dagrejs/dagre": "^3.1.1",
     "@mediapipe/tasks-text": "1.0.1",
-    "@sentry/react": "^10.71.0",
     "@tanstack/react-query": "^5.102.2",
     "@tanstack/react-table": "^9.1.2",
     "@tanstack/react-virtual": "^3.14.13",
