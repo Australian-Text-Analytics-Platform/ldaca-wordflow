@@ -249,7 +249,14 @@ class WorkspaceService:
 
         path = await self._path(user_id, workspace_id)
         if path is None:
-            if slot.workspace is not None:
+            # No path also means "not this user's Project". Slots are shared by
+            # Project ID, so unload only a Project whose folder is really gone;
+            # another user's request must not close the owner's (issue 253).
+            if (
+                slot.workspace is not None
+                and slot.path is not None
+                and not await self._residency.run_io(slot.path.exists)
+            ):
                 await self._residency.clear(slot)
             raise WorkspaceNotFoundError("Project not found")
         if slot.workspace is None or slot.path is None:
