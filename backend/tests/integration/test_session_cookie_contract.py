@@ -396,3 +396,25 @@ def test_google_callback_rejects_unsafe_redirect_before_issuing_session(
         )
         assert response.status_code == 400
         assert "wordflow_session=" not in response.headers.get("set-cookie", "")
+
+
+@pytest.mark.parametrize(
+    ("base_url", "expected_close_code"),
+    [("ws://localhost:8001", 1000), ("ws://evil.example", 1008)],
+)
+def test_websocket_request_is_refused_without_a_server_error(
+    tmp_path: Path, base_url: str, expected_close_code: int
+) -> None:
+    """Scanners send WebSocket upgrades; Wordflow has no WebSocket routes (issue 251)."""
+
+    from starlette.websockets import WebSocketDisconnect
+
+    app = create_app(
+        Settings(data_root=tmp_path, multi_user=False), serve_frontend=False
+    )
+    with TestClient(app) as client:
+        with pytest.raises(WebSocketDisconnect) as disconnect:
+            with client.websocket_connect(f"{base_url}/"):
+                pass
+
+    assert disconnect.value.code == expected_close_code

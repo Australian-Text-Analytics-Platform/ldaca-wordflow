@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from fastapi import Depends, Request, Security
 from fastapi.security import APIKeyCookie
 from starlette.datastructures import Headers
+from starlette.requests import HTTPConnection
 from starlette.requests import Request as StarletteRequest
 from starlette.types import ASGIApp, Receive, Scope, Send
 
@@ -210,10 +211,14 @@ class ExactHostMiddleware:
         if scope["type"] not in {"http", "websocket"}:
             await self.app(scope, receive, send)
             return
-        request = StarletteRequest(scope)
-        host = (request.url.hostname or "").casefold().rstrip(".")
+        # HTTPConnection reads both scope types; Request accepts only HTTP (issue 251).
+        connection = HTTPConnection(scope)
+        host = (connection.url.hostname or "").casefold().rstrip(".")
         if host in self.trusted_hosts:
             await self.app(scope, receive, send)
+            return
+        if scope["type"] == "websocket":
+            await send({"type": "websocket.close", "code": 1008})
             return
         state = cast(dict[str, object], scope.get("state", {}))
         request_id = str(state.get("request_id", "missing-request-id"))
