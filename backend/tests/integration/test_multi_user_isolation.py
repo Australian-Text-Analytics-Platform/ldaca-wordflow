@@ -58,8 +58,10 @@ class Users:
         return Identity(issued.session_token, issued.csrf_token)
 
     def request(self, who: Identity, method: str, path: str, **kwargs):
-        self.client.cookies.set(SESSION_COOKIE_NAME, who.cookie)
+        # Per-request cookie header, so concurrent threads never share one.
+        self.client.cookies.clear()
         headers = {
+            "Cookie": f"{SESSION_COOKIE_NAME}={who.cookie}",
             "Origin": ORIGIN,
             "X-CSRF-Token": who.csrf,
             **kwargs.pop("headers", {}),
