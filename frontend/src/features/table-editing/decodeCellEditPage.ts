@@ -1,6 +1,6 @@
-import type { AnnotationReviewSummary } from '@/features/project/api';
-import { DataType, tableFromIPC, type Field } from 'apache-arrow';
+import type { AnnotationReviewSummary } from '@/features/tools/annotation/api';
 import { normalizeArrowValue } from '@/lib/arrow/decodeArrowTable';
+import { DataType, tableFromIPC, type Field } from 'apache-arrow';
 
 /** Transport fields are indexed by schema metadata and never enter the visible table schema. */
 export function decodeCellEditPage(buffer: ArrayBuffer, pageSize: number) {

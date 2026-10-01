@@ -1,9 +1,9 @@
-import { identifier, relation } from '@/features/project/api';
+import { identifier, relation } from '@/features/project/objects';
 import { isArrowStringListField } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import type { FilterRequest, JoinType } from './types';
-import type { SliceRequestPayload } from './slice/hooks/sliceFormModel';
 import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
+import type { SliceRequestPayload } from './slice/hooks/sliceFormModel';
+import type { FilterRequest, JoinType } from './types';
 
 export const literal = (value: string | number | boolean | null): string => {
   if (value === null) return 'NULL';

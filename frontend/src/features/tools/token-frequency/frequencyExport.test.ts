@@ -1,8 +1,9 @@
-import { Blob as NodeBlob } from 'node:buffer';
+import { saveGeneratedExport } from '@/lib/download';
 import JSZip from 'jszip';
+import { Blob as NodeBlob } from 'node:buffer';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
+import { buildChartExport } from '../common/chartExport';
 import { buildFrequencyBundle } from './frequencyExport';
-import { buildChartExport, saveGeneratedExport } from '../common/chartExport';
 
 const native = vi.hoisted(() => ({ active: false, invoke: vi.fn() }));
 vi.mock('@/lib/isTauri', () => ({ isTauri: () => native.active }));

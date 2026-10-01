@@ -1,10 +1,10 @@
-import { DataType } from 'apache-arrow';
+import type { ColumnCastType } from '@/features/project/api';
 import {
   arrowExtensionName,
   arrowTypeDisplayName,
   type ArrowField,
 } from '@/lib/arrow/decodeArrowTable';
-import type { ColumnCastType } from '../../api';
+import { DataType } from 'apache-arrow';
 export type { ColumnCastType } from '../../api';
 
 export const DATA_TYPES = [

@@ -1,11 +1,11 @@
 import type { ColumnInfo } from '@/features/project/data-view/utils/columnTypes';
-import { identifier } from '@/features/project/api';
+import { identifier } from '@/features/project/objects';
 import { literal } from '../../sql';
 import {
   applyBuildOperation,
-  renderBuildOperation,
-  operationDefinition,
   columnChain,
+  operationDefinition,
+  renderBuildOperation,
   type BuildChain,
   type BuildOperation,
   type BuildType,

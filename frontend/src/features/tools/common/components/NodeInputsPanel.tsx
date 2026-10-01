@@ -1,11 +1,12 @@
-import { OctagonX, Plus, Search, Trash2, X } from 'lucide-react';
-import { type ReactNode, useState } from 'react';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import type { ObjectRef } from '@/features/project/objects';
 import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
-import { cn } from '@/lib/utils';
+import { Plus, Search, Trash2 } from 'lucide-react';
+import { useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
+import { useInputDestination } from '../inputDestinations';
 import type { NodeAddRejection, ResolvedNodeInput } from '../nodeInputs/nodeInputsCore';
 import { VIZ_PALETTE } from '../vizPalette';
 import { NodeColorPicker } from './NodeColorPicker';
@@ -26,8 +27,7 @@ interface NodeInputColumnAddonArgs extends NodeSelectionRenderArgs {
 }
 
 export interface NodeInputsPanelProps {
-  pendingInputRequest?: { id: number; nodeId: string };
-  consumeInputRequest?: (id: number) => void;
+  identifyInput?: (target: ObjectRef) => string;
   /** Resolved (live, stale-dropped) inputs from useNodeInputs. */
   resolvedNodes: ResolvedNodeInput[];
   /** Saved inputs whose Data Blocks no longer exist in the live Project. */
@@ -85,14 +85,11 @@ export interface NodeInputsPanelProps {
  * via toast), then render each resolved node as a removable card with its
  * column picker fed by the node's resolved ``columnOptions``; when a feature's
  * type filter leaves no options, the node stays selected and the picker renders
- * empty. Single-selector tools consume graph/sidebar additions immediately;
- * in multi-selector tools each panel renders a dashed placement target for the
- * shared carried stack.
+ * empty. Graph/sidebar additions select among the active input destinations.
  */
 export function NodeInputsPanel({
   resolvedNodes,
-  pendingInputRequest,
-  consumeInputRequest,
+  identifyInput = (target) => target.name,
   unavailableNodes = [],
   inputOrder,
   availableNodes,
@@ -203,9 +200,7 @@ export function NodeInputsPanel({
 
   const count = selectionItems.length;
   const countLabel = maxNodes != null ? `${String(count)}/${String(maxNodes)}` : String(count);
-  const showInputRequestTarget = pendingInputRequest !== undefined;
-  const inputRequestTargetFilled = !canAddMore;
-  const inputRequestTargetDisabled = disabled || !canAddMore;
+  useInputDestination(title, (targets) => onAddNodes(targets.map(identifyInput)), disabled);
 
   return (
     <div className="@container/node-inputs relative flex flex-col gap-2">
@@ -325,8 +320,8 @@ export function NodeInputsPanel({
           {emptyMessage ?? (
             <>
               No data blocks selected. Use{' '}
-              <span className="font-medium not-italic">Add data block</span>, or carry one here from
-              a Data Block&apos;s <span className="not-italic">+</span> button.
+              <span className="font-medium not-italic">Add data block</span> or a Data Block&apos;s{' '}
+              <span className="not-italic">+</span> button to add an input.
             </>
           )}
         </div>
@@ -362,61 +357,6 @@ export function NodeInputsPanel({
           selected.
         </div>
       )}
-      {showInputRequestTarget ? (
-        <div className="absolute inset-0 z-10 rounded-lg bg-editor/75 p-1">
-          <button
-            type="button"
-            aria-label={inputRequestTargetFilled ? `${title} is already filled` : `Add to ${title}`}
-            disabled={inputRequestTargetDisabled}
-            className={cn(
-              'flex h-full min-h-24 w-full items-center justify-center gap-5 rounded-lg border-2 border-dashed border-surface-border-foreground/35 bg-surface/95 px-7 text-left transition-colors',
-              'focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed',
-              inputRequestTargetFilled
-                ? 'border-error/60 bg-error/5'
-                : 'hover:border-button/70 hover:bg-surface disabled:opacity-60',
-            )}
-            onClick={() => {
-              if (handleAdd([pendingInputRequest.nodeId])) {
-                consumeInputRequest?.(pendingInputRequest.id);
-              }
-            }}
-          >
-            {inputRequestTargetFilled ? (
-              <OctagonX
-                className="size-10 stroke-[1.7] text-error"
-                data-testid="filled-selector-stop-icon"
-                aria-hidden="true"
-              />
-            ) : (
-              <Plus className="size-10 stroke-[1.7] text-description" aria-hidden="true" />
-            )}
-            <span className="flex min-w-0 flex-col gap-1">
-              <span className="truncate text-body font-semibold text-foreground">{title}</span>
-              <span
-                className={cn(
-                  'text-label-secondary',
-                  inputRequestTargetFilled ? 'text-error' : 'text-description',
-                )}
-              >
-                {inputRequestTargetFilled
-                  ? 'This selector is already filled. Choose another selector.'
-                  : 'Place the latest carried Data Block here'}
-              </span>
-            </span>
-          </button>
-          <button
-            type="button"
-            aria-label="Discard latest carried Data Block"
-            className="absolute right-3 top-3 inline-flex h-7 items-center gap-1 rounded-md bg-editor/90 px-2 text-label-secondary text-description hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-focus"
-            onClick={() => {
-              consumeInputRequest?.(pendingInputRequest.id);
-            }}
-          >
-            <X className="size-3.5" aria-hidden="true" />
-            Discard top
-          </button>
-        </div>
-      ) : null}
     </div>
   );
 }

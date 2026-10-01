@@ -1,24 +1,13 @@
 # Project preprocessing
 
-The current project application enables Data Loader and Preprocessing while
-analysis execution remains disabled. Both native windows and the Rust browser
+The current project application enables Data Loader, Preprocessing and the native analysis tools. Both native windows and the Rust browser
 preview use the same six visual preprocessing panels and SQL console and project connection.
 
 `features/tools/preprocessing/DataPreprocessingFeature.tsx` connects the retained
 forms to small SQL builders in `sql.ts`. `projectPreprocessing.ts` owns preview,
 schema inspection, result registration and execution. No generated FastAPI request
 model, authentication state, project UUID or Polars expression crosses this path.
-The shared input picker receives explicit presentation props. Join owns separate left
-and right roles, including independent columns for self-joins. Graph additions stay
-carried until the user chooses a role; rename/deletion reconciles both references.
-
-Graph double-click and graph/sidebar add buttons share the scoped input-request
-bridge. The active tool's sole input area consumes additions immediately through
-the same validation as its picker. Multi-area owners defer consumption and expose
-the shared pointer carrier and placement targets. Right-click discards the latest
-carried block and Escape clears the stack. Native scopes use the window's backend
-connection and active tool, with no server project provider or project UUID. Renaming
-or deleting a node reconciles pending additions as well as selected inputs.
+The shared input picker receives explicit presentation props. Join owns separate left and right roles, including independent columns for self-joins. Graph/sidebar additions use the active tool's registered input destinations. One area receives an addition immediately; multiple areas open a labelled chooser. Duplicate and capacity checks stay with the picker. No pending stack or pointer carrier remains. Rename/deletion reconciles selected inputs.
 
 ## State and preview ownership
 
@@ -114,33 +103,13 @@ function settings, operations and Add function. A direct × removes an entire
 expression. Only the last operation can be removed; every operation retains
 parameter editing, including edits that invalidate later steps.
 
-Each independent branch may contain a summary, but a visual summary cannot wrap
-another summary. New visual summaries use window expressions. SQL-to-bubble
-conversion preserves explicit scalar-subquery summaries and never rewrites their
-meaning; both forms execute as part of the new View.
+Each independent branch may contain a summary, but a visual summary cannot wrap another summary. New visual summaries use window expressions. Handwritten SQL retains its explicit casts, scalar subqueries and other expression semantics.
 
-SQL and bubbles represent the same expression. Draft rendering uses the same
-operation catalogue as validated SQL, retaining unfinished subtrees and explicit
-missing-input/function markers. Neutral labels distinguish missing inputs from
-invalid operations, which expose the step and reason. Incomplete visual trees
-cannot preview or Apply, but their displayed Draft SQL can be opened for editing.
-Entering SQL mode copies the displayed expression;
-returning uses the read-only [expression parsing endpoint](../../reference/native-project-api.md#expression-parsing).
-DuckDB serializes a SELECT containing exactly one expression without executing or
-binding it. Its internal AST stays native. The transport carries syntax nodes,
-faithful SQL, and string-valued literals; it never transports decimal constants as
-JavaScript numbers. The frontend catalogue recognizes operation shapes and
-parameters. Unsupported subtrees retain DuckDB-rendered SQL in editable bubbles.
-Arithmetic grouping and explicit casts retain their meaning; formatting and
-comments need not survive conversion. Unknown SQL result families do not enable
-guessed type-specific menu entries. Unsupported physical/semantic Arrow fields
-remain restricted to their applicable NULL checks and counts.
+Draft rendering uses the same operation catalogue as validated SQL, retaining unfinished subtrees and explicit missing-input/function markers. Incomplete visual trees cannot preview or Apply, but their displayed Draft SQL can be opened for editing. Entering SQL mode copies the displayed expression once. **New visual expression** confirms discarding edited SQL and starts an empty builder, retaining the output column name. No frontend SQL reconstruction runs.
 
-Invalid SQL stays in the editor with an inline diagnostic and leaves the last
-valid tree intact. Obsolete parse requests are aborted and cannot replace a newer
-draft. There is no restoration prompt or arbitrary-SQL expression parser in the
-frontend. Insert column uses the CodeMirror cursor and central identifier quoting.
-Local drafts survive tab switches, but reloading may discard them.
+The read-only [expression parsing endpoint](../../reference/native-project-api.md#expression-parsing) remains public. DuckDB serializes a SELECT containing exactly one expression without executing or binding it. Backend expression validation and exact cast handling remain independent of the UI transition.
+
+Invalid SQL stays in the editor with an inline preview diagnostic. The last successful preview remains visibly outdated, and a failed Apply preserves the draft.
 
 The shared preview hook owns one 350 ms debounce, AbortSignal propagation,
 request-key isolation and pagination reset. Build retains only its last successful

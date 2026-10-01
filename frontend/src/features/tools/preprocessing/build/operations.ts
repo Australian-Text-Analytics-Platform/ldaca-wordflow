@@ -1,10 +1,10 @@
-import { DataType } from 'apache-arrow';
+import { identifier } from '@/features/project/objects';
 import {
   arrowExtensionName,
   isArrowStringField,
   type ArrowField,
 } from '@/lib/arrow/decodeArrowTable';
-import { identifier } from '@/features/project/api';
+import { DataType } from 'apache-arrow';
 import { literal } from '../sql';
 
 export type BuildType =

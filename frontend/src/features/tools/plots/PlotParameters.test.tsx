@@ -1,12 +1,12 @@
-import { useState } from 'react';
+import type { PlotRequest } from '@/features/tools/plots/api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Utf8 } from 'apache-arrow';
+import { useState } from 'react';
 import { expect, it } from 'vite-plus/test';
-import { PlotParameters } from './PlotParameters';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
-import type { PlotRequest } from '@/features/project/api';
+import { PlotParameters } from './PlotParameters';
 
 function Harness() {
   const [draft, setDraft] = useState<PlotRequest>({

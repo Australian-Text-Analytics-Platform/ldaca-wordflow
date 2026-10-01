@@ -1,5 +1,3 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -18,10 +16,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import * as api from '@/features/project/api';
+import * as aiApi from '@/features/ai/api';
 import { reportProjectError } from '@/features/project/projectErrors';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 
-const providers: api.AiProvider[] = ['openai', 'openrouter', 'anthropic', 'google', 'custom'];
+const providers: aiApi.AiProvider[] = ['openai', 'openrouter', 'anthropic', 'google', 'custom'];
 export function ProviderSelector({
   base,
   provider,
@@ -37,13 +37,13 @@ export function ProviderSelector({
 }) {
   const connections = useQuery({
     queryKey: ['host', base, 'ai-providers'],
-    queryFn: ({ signal }) => api.aiConnections(base, signal),
+    queryFn: ({ signal }) => aiApi.aiConnections(base, signal),
   });
   const chosen = connections.data?.find((c) => c.id === provider);
-  const [dialog, setDialog] = useState<api.AiConnection | 'new' | null>(null);
+  const [dialog, setDialog] = useState<aiApi.AiConnection | 'new' | null>(null);
   const models = useQuery({
     queryKey: ['host', base, 'ai-models', provider, chosen?.revision],
-    queryFn: ({ signal }) => api.aiModels(base, provider, signal),
+    queryFn: ({ signal }) => aiApi.aiModels(base, provider, signal),
     enabled: Boolean(
       chosen &&
       (chosen.has_credential || chosen.provider === 'custom' || chosen.provider === 'apple'),
@@ -159,13 +159,13 @@ function ConnectionDialog({
   onSaved,
 }: {
   base: string;
-  connection: api.AiConnection | null;
+  connection: aiApi.AiConnection | null;
   onClose: () => void;
   onSaved: (id: string) => void;
 }) {
   const cache = useQueryClient();
   const [name, setName] = useState(connection?.name ?? '');
-  const [provider, setProvider] = useState<api.AiProvider>(connection?.provider ?? 'openai');
+  const [provider, setProvider] = useState<aiApi.AiProvider>(connection?.provider ?? 'openai');
   const [endpoint, setEndpoint] = useState(connection?.endpoint ?? 'http://localhost:1234/v1');
   const [credential, setCredential] = useState<'keep' | 'session' | 'remember' | 'remove'>(
     connection ? 'keep' : 'session',
@@ -176,11 +176,11 @@ function ConnectionDialog({
     if (pending) return;
     setPending(true);
     try {
-      const update: api.CredentialUpdate =
+      const update: aiApi.CredentialUpdate =
         credential === 'session' || credential === 'remember'
           ? { action: credential, key }
           : { action: credential };
-      const result = await api.saveAiConnection(base, connection?.id ?? null, {
+      const result = await aiApi.saveAiConnection(base, connection?.id ?? null, {
         name,
         ...(connection ? {} : { provider, endpoint: provider === 'custom' ? endpoint : null }),
         credential: update,
@@ -198,7 +198,7 @@ function ConnectionDialog({
     if (!connection || pending) return;
     setPending(true);
     try {
-      await api.deleteAiConnection(base, connection.id);
+      await aiApi.deleteAiConnection(base, connection.id);
       await cache.invalidateQueries({ queryKey: ['host', base, 'ai-providers'] });
       onSaved('');
     } catch (error) {
@@ -239,7 +239,7 @@ function ConnectionDialog({
             value={provider}
             disabled={Boolean(connection) || pending}
             onValueChange={(v) => {
-              setProvider(v as api.AiProvider);
+              setProvider(v as aiApi.AiProvider);
             }}
           >
             <SelectTrigger aria-label="Provider">

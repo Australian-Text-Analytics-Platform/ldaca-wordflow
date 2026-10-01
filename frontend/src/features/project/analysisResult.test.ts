@@ -1,12 +1,10 @@
+import { getAnnotationResult } from '@/features/tools/annotation/api';
+import { getConcordanceResult } from '@/features/tools/concordance/api';
+import { getPlotResult } from '@/features/tools/plots/api';
+import { getQuotationResult } from '@/features/tools/quotation/api';
+import { getFrequencyResult } from '@/features/tools/token-frequency/api';
+import { getTopicResult } from '@/features/tools/topic-modeling/api';
 import { afterEach, expect, it, vi } from 'vite-plus/test';
-import {
-  getAnnotationResult,
-  getConcordanceResult,
-  getFrequencyResult,
-  getPlotResult,
-  getQuotationResult,
-  getTopicResult,
-} from './api';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -62,6 +60,10 @@ it.each([null, {}, { corpora: [null] }, { corpora: [{ source: null }] }])(
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
+            request_status: {
+              status: 'supported',
+              request: { kind: 'frequency', request: null },
+            },
             kind: 'frequency',
             request: null,
             result: { version: 1, payload: result, finished_at: '' },

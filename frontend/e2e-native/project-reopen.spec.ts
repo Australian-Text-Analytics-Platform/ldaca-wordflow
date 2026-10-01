@@ -6,7 +6,9 @@ import { promisify } from 'node:util';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import * as api from '../src/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import * as tasksApi from '@/features/project/tasksApi';
 import {
   withResearchFile,
   addResearchInput,
@@ -30,7 +32,7 @@ it('closes and reopens a saved project through native file opening, deduplicatin
   const anchor = await browser.getWindowHandle();
   const initial = await base();
   const savedTabs = async (url: string) =>
-    (await api.listTabs(url)).map((tab) => ({
+    (await analysesApi.listTabs(url)).map((tab) => ({
       ...tab,
       analysis: tab.analysis && {
         ...tab.analysis,
@@ -86,7 +88,7 @@ it('closes and reopens a saved project through native file opening, deduplicatin
         const url = await base();
         expect(url).not.toBe(initial);
         expect(await savedTabs(url)).toEqual(tabs);
-        const counts = await api.queryFrequency(url, id, {
+        const counts = await frequencyApi.queryFrequency(url, id, {
           view: 'corpus',
           corpus_index: 0,
           filter: 'policy',
@@ -96,7 +98,7 @@ it('closes and reopens a saved project through native file opening, deduplicatin
             .toArray()
             .map((r: Record<string, unknown>) => [r.token, Number(r.frequency)]),
         ).toEqual([['policy', 333]]);
-        expect((await api.getTasks(url)).tasks).toEqual([]);
+        expect((await tasksApi.getTasks(url)).tasks).toEqual([]);
         await openFile();
         expect(await browser.getWindowHandles()).toHaveLength(2);
         await closeChild();

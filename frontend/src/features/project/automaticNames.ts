@@ -1,5 +1,5 @@
+import type { Graph } from '@/features/project/api';
 import type { QueryClient } from '@tanstack/react-query';
-import type { Graph } from './api';
 
 export type DataBlockOperation =
   | 'flt'

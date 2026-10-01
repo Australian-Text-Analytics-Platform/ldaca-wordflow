@@ -1,7 +1,9 @@
 import { outputAnalysisId } from './analysisState';
 import { browser, $, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import {
   emptyConcordance,
   decodeAnalysisRequest,
@@ -28,11 +30,11 @@ export async function requestCompatibilityScenario(
   kind: (typeof compatibilityKinds)[number],
 ) {
   const name = `${prefix}_compatibility`;
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
-      { sql: `CREATE TABLE ${api.identifier(name)} (text VARCHAR)` },
-      { sql: `INSERT INTO ${api.identifier(name)} VALUES ('cat dog')` },
+      { sql: `CREATE TABLE ${ objectsApi.identifier(name)} (text VARCHAR)` },
+      { sql: `INSERT INTO ${ objectsApi.identifier(name)} VALUES ('cat dog')` },
       {
         sql: 'INSERT INTO wordflow.nodes(table_name,document_column) VALUES (?, ?)',
         parameters: [name, 'text'],
@@ -44,7 +46,7 @@ export async function requestCompatibilityScenario(
   const title =
     kind === 'topic-modeling' ? 'Topic Modelling' : kind.charAt(0).toUpperCase() + kind.slice(1);
   const plot = ['trends', 'compare', 'scatter', 'heatmap', 'sankey'].includes(kind);
-  const tab = await api.createTab(base, kind, `${title} compatibility`);
+  const tab = await analysesApi.createTab(base, kind, `${title} compatibility`);
   const supported =
     kind === 'quotation'
       ? { input }
@@ -65,7 +67,7 @@ export async function requestCompatibilityScenario(
       long_value: 'future '.repeat(100),
     },
   };
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
       {
@@ -112,7 +114,7 @@ export async function requestCompatibilityScenario(
   await setAnalysisPaneSize('normal');
   await setResearchTheme(false);
   expect(
-    (await api.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
+    (await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
   ).toEqual(original);
   // Run uses only decoded settings, and the normal accepted-run transaction replaces the original.
   if (kind === 'frequency') {
@@ -121,12 +123,12 @@ export async function requestCompatibilityScenario(
     await run.click();
     await browser.waitUntil(async () =>
       Boolean(
-        outputAnalysisId((await api.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)),
+        outputAnalysisId((await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)),
       ),
     );
     await warning.waitForExist({ reverse: true });
     expect(
-      (await api.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
+      (await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
     ).toEqual(supported);
   }
 }

@@ -1,6 +1,6 @@
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-export function useTabSettings(base: string, tab: api.Tab) {
+export function useTabSettings(base: string, tab: analysesApi.Tab) {
   const cache = useQueryClient();
   const key = ['native', base, 'tab-settings', tab.id];
   const pending = useMutationState({
@@ -10,9 +10,10 @@ export function useTabSettings(base: string, tab: api.Tab) {
   const mutation = useMutation({
     mutationKey: key,
     scope: { id: `tab-settings-${tab.id}` },
-    mutationFn: (settings: Record<string, unknown>) => api.updateTab(base, tab.id, { settings }),
+    mutationFn: (settings: Record<string, unknown>) =>
+      analysesApi.updateTab(base, tab.id, { settings }),
     onSuccess: (updated) =>
-      cache.setQueryData<api.Tab[]>(['native', base, 'tabs', tab.kind], (old) =>
+      cache.setQueryData<analysesApi.Tab[]>(['native', base, 'tabs', tab.kind], (old) =>
         old?.map((item) =>
           item.id === updated.id ? { ...item, settings: updated.settings } : item,
         ),

@@ -1,5 +1,9 @@
 import { browser, $, expect } from '@wdio/globals';
-import * as api from '../../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as annotationApi from '@/features/tools/annotation/api';
 import { expectAppError } from '../../e2e-browser/diagnostics';
 import type { AnnotationProvider } from './annotationProvider';
 import { readResearchData } from './researchData';
@@ -25,8 +29,8 @@ interface AnnotationRow {
 }
 async function sourceRows(base: string, source: string) {
   return (
-    await api.querySql(base, [
-      { sql: `SELECT * FROM data.${api.identifier(source)} ORDER BY count` },
+    await projectApi.querySql(base, [
+      { sql: `SELECT * FROM data.${ objectsApi.identifier(source)} ORDER BY count` },
     ])
   )
     .toArray()
@@ -208,17 +212,17 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         await parameters.$('button=Run').click();
         await browser.waitUntil(() => provider.requests() > partialStart);
         await browser.waitUntil(async () =>
-          (await api.getTasks(base)).tasks.every((t) => t.finished_at !== null),
+          (await tasksApi.getTasks(base)).tasks.every((t) => t.finished_at !== null),
         );
         const completed = corrected.map((r) => (r.text?.trim() ? { ...r, label: predict(r) } : r));
         expect(await sourceRows(base, sourceName)).toEqual(
           completed.map((r, i) => (i === 11 ? { ...r, label: original[i]?.label } : r)),
         );
-        const partial = (await api.listTabs(base, undefined, 'annotation')).find(
+        const partial = (await analysesApi.listTabs(base, undefined, 'annotation')).find(
           (t) => t.analysis?.has_result,
         )?.analysis;
         if (!partial) throw new Error('Missing partial report');
-        const partialResult = await api.getAnnotationResult(base, partial.id);
+        const partialResult = await annotationApi.getAnnotationResult(base, partial.id);
         if (!partialResult) throw new Error('Partial Annotation report has no saved output');
         const partialReport = partialResult.report;
         expect([partialReport.processed, partialReport.skipped, partialReport.failed]).toEqual([
@@ -230,7 +234,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         await parameters.$('button=Rerun').click();
         await browser.waitUntil(() => provider.calls.length > before);
         await browser.waitUntil(async () =>
-          (await api.getTasks(base)).tasks.every((t) => t.finished_at !== null),
+          (await tasksApi.getTasks(base)).tasks.every((t) => t.finished_at !== null),
         );
         expect(await sourceRows(base, sourceName)).toEqual(completed);
         expect(provider.calls.slice(before).flat().sort()).toEqual(
@@ -238,11 +242,11 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         );
         expect(provider.calls.every((batch) => batch.length <= 7)).toBe(true);
         expect(provider.peak()).toBeLessThanOrEqual(2);
-        const tab = (await api.listTabs(base, undefined, 'annotation')).find(
+        const tab = (await analysesApi.listTabs(base, undefined, 'annotation')).find(
           (t) => t.analysis?.has_result,
         );
         if (!tab?.analysis) throw new Error('Missing completed Annotation');
-        const saved = await api.getAnnotationResult(base, tab.analysis.id);
+        const saved = await annotationApi.getAnnotationResult(base, tab.analysis.id);
         if (!saved) throw new Error('Completed Annotation analysis has no saved output');
         const report = saved.report;
         expect([report.processed, report.skipped, report.failed]).toEqual([36, 3, 0]);
@@ -268,13 +272,13 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         await parameters.$('button=Run').click();
         await browser.waitUntil(() => provider.requests() > before);
         await browser.waitUntil(async () =>
-          (await api.getTasks(base)).tasks.some(
+          (await tasksApi.getTasks(base)).tasks.some(
             (t) => t.error?.code === 'annotation_provider_authentication_failed',
           ),
         );
         expect(provider.requests() - before).toBeLessThanOrEqual(2);
         expect(await sourceRows(base, sourceName)).toEqual(savedRows);
-        const failed = (await api.listTabs(base, undefined, 'annotation')).find((t) => t.analysis);
+        const failed = (await analysesApi.listTabs(base, undefined, 'annotation')).find((t) => t.analysis);
         expect(failed?.analysis?.has_result).toBe(false);
         expect(failed?.analysis?.request).toHaveProperty('processing', 'all');
         await expect(results).not.toExist();
@@ -284,17 +288,17 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         await parameters.$('button=Run').click();
         await browser.waitUntil(() => provider.requests() > start);
         await expect(parameters.$('button=Run')).toHaveAttribute('aria-disabled', 'true');
-        const active = (await api.getTasks(base)).tasks.find((t) => t.finished_at === null);
+        const active = (await tasksApi.getTasks(base)).tasks.find((t) => t.finished_at === null);
         if (!active) throw new Error('Held Annotation task is not active');
         await $('[aria-label="Analysis progress"]').$('button=Cancel').click();
         await browser.waitUntil(async () =>
-          (await api.getTasks(base)).tasks.some(
+          (await tasksApi.getTasks(base)).tasks.some(
             (t) => t.id === active.id && ['cancelling', 'cancelled'].includes(t.state),
           ),
         );
         provider.release();
         await browser.waitUntil(async () =>
-          (await api.getTasks(base)).tasks.some(
+          (await tasksApi.getTasks(base)).tasks.some(
             (t) => t.id === active.id && t.state === 'cancelled',
           ),
         );

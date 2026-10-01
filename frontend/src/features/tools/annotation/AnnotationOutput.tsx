@@ -1,17 +1,18 @@
-import { ReviewViewport } from './ReviewViewport';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import * as api from '@/features/project/api';
 import { ProjectTable } from '@/features/project/data-view/components/ProjectTable';
 import { objectDependencies } from '@/features/project/projectChanges';
+import * as editingApi from '@/features/table-editing/api';
+import * as annotationApi from '@/features/tools/annotation/api';
 import { decodeArrowData, isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { ColumnChoices, ReviewFilter, Score } from './AnnotationEditor';
 import { AnnotationLabelCell } from './AnnotationLabelCell';
 import { CorrectionDraft, type CorrectionEditor, type CorrectionSession } from './CorrectionDraft';
 import { pageComparison } from './pageComparison';
+import { ReviewViewport } from './ReviewViewport';
 export function AnnotationOutput({
   base,
   tab,
@@ -39,15 +40,15 @@ export function AnnotationOutput({
   onRetryPreview?: () => void;
   base: string;
   tab: string;
-  setup: api.AnnotationSetup;
-  result?: api.AnnotationResult;
-  preview?: api.AnnotationPreview;
+  setup: annotationApi.AnnotationSetup;
+  result?: annotationApi.AnnotationResult;
+  preview?: annotationApi.AnnotationPreview;
   outdated?: boolean;
   page?: number;
   size?: number;
   onPage?: (page: number, size: number) => void;
   onUseExamples: () => void;
-  onEdit: (session: api.CellEditSession, setup: api.AnnotationSetup) => void;
+  onEdit: (session: editingApi.CellEditSession, setup: annotationApi.AnnotationSetup) => void;
 }) {
   const [page, setPage] = useState(1),
     [size, setSize] = useState(10);
@@ -58,12 +59,12 @@ export function AnnotationOutput({
   const [diagnosticPage, setDiagnosticPage] = useState(1);
   const [diagnosticsOpen, setDiagnosticsOpen] = useState(false);
   const [contextOpen, setContextOpen] = useState(false);
-  const [filter, setFilter] = useState<api.AnnotationFilter | null>(null);
+  const [filter, setFilter] = useState<annotationApi.AnnotationFilter | null>(null);
   const book = useQuery({
     queryKey: ['native', base, 'annotation-codebook', setup.codebook],
     queryFn: ({ signal }) => {
       if (!setup.codebook) throw new Error('Choose a Codebook');
-      return api.annotationCodebook(base, setup.codebook, signal);
+      return annotationApi.annotationCodebook(base, setup.codebook, signal);
     },
     enabled: Boolean(setup.codebook),
     meta: setup.codebook ? objectDependencies(setup.codebook.source) : undefined,
@@ -82,7 +83,7 @@ export function AnnotationOutput({
       setup.correction,
     ],
     queryFn: ({ signal }) =>
-      api.annotationRows(
+      annotationApi.annotationRows(
         base,
         result?.id ?? '',
         page,
@@ -98,14 +99,14 @@ export function AnnotationOutput({
   });
   const context = useQuery({
     queryKey: ['native', base, 'analyses', result?.id, 'annotation-context'],
-    queryFn: ({ signal }) => api.annotationContext(base, result?.id ?? '', signal),
+    queryFn: ({ signal }) => annotationApi.annotationContext(base, result?.id ?? '', signal),
     enabled: contextOpen && Boolean(result),
     staleTime: Infinity,
   });
   const diagnostics = useQuery({
     queryKey: ['native', base, 'analyses', result?.id, 'annotation-diagnostics', diagnosticPage],
     queryFn: ({ signal }) =>
-      api.annotationDiagnostics(base, result?.id ?? '', diagnosticPage, signal),
+      annotationApi.annotationDiagnostics(base, result?.id ?? '', diagnosticPage, signal),
     enabled: diagnosticsOpen && Boolean(result),
     staleTime: Infinity,
   });
@@ -113,7 +114,11 @@ export function AnnotationOutput({
     mutationFn: () => {
       const stamp = preview?.mutation_stamp ?? rows.data?.live.mutation_stamp;
       if (!stamp) throw new Error('Refresh the displayed rows before editing corrections');
-      return api.beginAnnotationEdit(base, tab, { mode: 'corrections', setup, expected: stamp });
+      return annotationApi.beginAnnotationEdit(base, tab, {
+        mode: 'corrections',
+        setup,
+        expected: stamp,
+      });
     },
     onSuccess: (session) => {
       onEdit(session, structuredClone(setup));

@@ -2,7 +2,7 @@ import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, text, texts, testId, press, screenshot } from './fixtures';
 
-import * as api from '../src/features/project/api';
+import * as projectApi from '@/features/project/api';
 const base = 'http://127.0.0.1:3212';
 
 it('SQL cells persist, format, paginate captured writes and remain independent of graph previews', async () => {
@@ -20,7 +20,7 @@ it('SQL cells persist, format, paginate captured writes and remain independent o
   await expect(role('cell', { name: '9007199254740993', exact: true }, console)).toBeDisplayed();
   await role('link', { name: /next page/i }, console).click();
   await expect(role('cell', { name: '20', exact: true }, console)).toBeDisplayed();
-  const count = await api.querySql(base, [{ sql: 'SELECT count(*) AS n FROM "SQL Example"' }]);
+  const count = await projectApi.querySql(base, [{ sql: 'SELECT count(*) AS n FROM "SQL Example"' }]);
   expect(String(count.getChild('n')?.get(0))).toBe('45');
   await expect(role('button', { name: 'Select SQL Example', exact: true })).not.toExist();
   await expect(text(/Outdated result/, {}, console)).not.toExist();
@@ -68,7 +68,7 @@ it('SQL cells persist, format, paginate captured writes and remain independent o
 });
 
 it('Live previews are read only, truncate output and do not execute persisted cells on mount', async () => {
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: "INSERT INTO wordflow.sql_cells VALUES (uuid(),0,'SELECT 1','live')" },
   ], { all: true });
   await browser.url('/');

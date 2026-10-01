@@ -1,17 +1,26 @@
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { QueryCache, QueryClient, QueryObserver } from '@tanstack/react-query';
 import { afterEach, expect, it, vi } from 'vite-plus/test';
-import * as api from './api';
 import { refreshProjectQueries } from './projectChanges';
 import { clearSavedAnalysis, savedAnalysisQuery } from './savedAnalysis';
 
 const base = 'http://test';
-const tab: api.Tab = {
+const tab: analysesApi.Tab = {
   id: 'tab',
   kind: 'frequency',
   name: 'Frequency 1',
   position: 0,
   settings: { colors: ['blue'] },
-  analysis: { id: 'saved', request: { inputs: [] }, has_result: true },
+  analysis: {
+    request_status: {
+      status: 'supported',
+      request: { kind: 'frequency', request: { inputs: [] } },
+    },
+    id: 'saved',
+    request: { inputs: [] },
+    has_result: true,
+  },
 };
 const tabKey = ['native', base, 'tabs', 'frequency'];
 const outputKey = ['native', base, 'analyses', 'saved'];
@@ -63,6 +72,7 @@ it('handles Clear overtaking the output phase of a broad refresh before its SSE 
   );
   const fetch = vi.fn(async () =>
     Response.json({
+      request_status: { status: 'supported', request: { kind: 'frequency', request: {} } },
       id: 'saved',
       kind: 'frequency',
       request: {},
@@ -74,7 +84,7 @@ it('handles Clear overtaking the output phase of a broad refresh before its SSE 
     new QueryObserver(
       cache,
       savedAnalysisQuery(cache, base, tab, (id, signal) =>
-        api.getFrequencyResult(base, id, signal),
+        frequencyApi.getFrequencyResult(base, id, signal),
       ),
     ).subscribe(vi.fn()),
   );
@@ -101,7 +111,7 @@ it('handles Clear overtaking the output phase of a broad refresh before its SSE 
   expect(errors).not.toHaveBeenCalled();
   expect(cache.getQueryData(outputKey)).toBeNull();
   expect(cache.getQueryData(pageKey)).toBeUndefined();
-  expect(cache.getQueryData<api.Tab[]>(tabKey)?.[0]?.analysis?.has_result).toBe(false);
+  expect(cache.getQueryData<analysesApi.Tab[]>(tabKey)?.[0]?.analysis?.has_result).toBe(false);
   await refreshProjectQueries(cache, base, { resources: ['tabs'], analysis_ids: ['saved'] });
   expect(cache.getQueryData(outputKey)).toBeUndefined();
   expect(cache.getQueryData(independentKey)).toBe('independent');
@@ -112,7 +122,7 @@ it('commits Clear to tab ownership and removes only its output, ignoring an olde
   cache.setQueryData(outputKey, 'manifest');
   cache.setQueryData(pageKey, 'page');
   cache.setQueryData(independentKey, 'independent');
-  const oldTabs = Promise.withResolvers<api.Tab[]>();
+  const oldTabs = Promise.withResolvers<analysesApi.Tab[]>();
   const pendingTabs = cache
     .fetchQuery({
       queryKey: tabKey,
@@ -121,15 +131,15 @@ it('commits Clear to tab ownership and removes only its output, ignoring an olde
     })
     .catch(() => undefined);
   const clear = Promise.withResolvers<undefined>();
-  vi.spyOn(api, 'clearTab').mockImplementation(() => clear.promise);
+  vi.spyOn(analysesApi, 'clearTab').mockImplementation(() => clear.promise);
   const clearing = clearSavedAnalysis(cache, base, tab);
-  await vi.waitFor(() => expect(api.clearTab).toHaveBeenCalledOnce());
+  await vi.waitFor(() => expect(analysesApi.clearTab).toHaveBeenCalledOnce());
   expect(cache.getQueryData(outputKey)).toBe('manifest');
   clear.resolve(undefined);
   await clearing;
   oldTabs.resolve([tab]);
   await pendingTabs;
-  expect(cache.getQueryData<api.Tab[]>(tabKey)?.[0]).toEqual({
+  expect(cache.getQueryData<analysesApi.Tab[]>(tabKey)?.[0]).toEqual({
     ...tab,
     analysis: { ...tab.analysis, has_result: false },
   });
@@ -140,7 +150,7 @@ it('commits Clear to tab ownership and removes only its output, ignoring an olde
 
 it('does not start a stale manifest read after Clear has reconciled ownership', async () => {
   const { cache } = setup();
-  vi.spyOn(api, 'clearTab').mockResolvedValue(undefined);
+  vi.spyOn(analysesApi, 'clearTab').mockResolvedValue(undefined);
   await clearSavedAnalysis(cache, base, tab);
   const read = vi.fn(async () => 'stale');
   await expect(cache.fetchQuery(savedAnalysisQuery(cache, base, tab, read))).resolves.toBeNull();
@@ -151,7 +161,7 @@ it('keeps existing output and ownership when Clear fails', async () => {
   const { cache } = setup();
   cache.setQueryData(outputKey, 'manifest');
   cache.setQueryData(pageKey, 'page');
-  vi.spyOn(api, 'clearTab').mockRejectedValue(new Error('Protected table'));
+  vi.spyOn(analysesApi, 'clearTab').mockRejectedValue(new Error('Protected table'));
   await expect(clearSavedAnalysis(cache, base, tab)).rejects.toThrow('Protected table');
   expect(cache.getQueryData(tabKey)).toEqual([tab]);
   expect(cache.getQueryData(outputKey)).toBe('manifest');
@@ -166,7 +176,15 @@ it.each(['output', 'error'] as const)(
     const read = vi.fn(() => late.promise);
     const pending = cache.fetchQuery(savedAnalysisQuery(cache, base, tab, read));
     await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
-    const replacement = { ...tab, analysis: { id: 'replacement', request: {}, has_result: true } };
+    const replacement = {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: {} } },
+        id: 'replacement',
+        request: {},
+        has_result: true,
+      },
+    };
     cache.setQueryData(tabKey, [replacement]);
     if (outcome === 'error') late.reject(new Error('Deleted analysis'));
     else late.resolve('obsolete output');
@@ -187,7 +205,7 @@ it('resumes an interrupted initial manifest load when Clear fails', async () => 
     new QueryObserver(cache, savedAnalysisQuery(cache, base, tab, read)).subscribe(vi.fn()),
   );
   await vi.waitFor(() => expect(read).toHaveBeenCalledOnce());
-  vi.spyOn(api, 'clearTab').mockRejectedValue(new Error('Clear failed'));
+  vi.spyOn(analysesApi, 'clearTab').mockRejectedValue(new Error('Clear failed'));
   await expect(clearSavedAnalysis(cache, base, tab)).rejects.toThrow('Clear failed');
   await vi.waitFor(() => expect(cache.getQueryData(outputKey)).toBe('manifest'));
   first.resolve('obsolete');
@@ -198,7 +216,7 @@ it('resumes an interrupted initial manifest load when Clear fails', async () => 
 
 it('cancels projections and stale tab reads when a manifest confirms no output', async () => {
   const { cache, errors } = setup();
-  const oldTabs = Promise.withResolvers<api.Tab[]>();
+  const oldTabs = Promise.withResolvers<analysesApi.Tab[]>();
   const oldPage = Promise.withResolvers<string>();
   const tabs = cache
     .fetchQuery({ queryKey: tabKey, queryFn: vi.fn(() => oldTabs.promise), staleTime: 0 })
@@ -212,7 +230,7 @@ it('cancels projections and stale tab reads when a manifest confirms no output',
   oldTabs.resolve([tab]);
   oldPage.resolve('obsolete page');
   await Promise.all([tabs, page]);
-  expect(cache.getQueryData<api.Tab[]>(tabKey)?.[0]?.analysis?.has_result).toBe(false);
+  expect(cache.getQueryData<analysesApi.Tab[]>(tabKey)?.[0]?.analysis?.has_result).toBe(false);
   expect(cache.getQueryData(pageKey)).toBeUndefined();
   expect(errors).not.toHaveBeenCalled();
 });

@@ -1,7 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
-import type { EditorView } from '@codemirror/view';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ChevronDown, Code2, GripVertical, MoreHorizontal, Play, Plus } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import {
@@ -13,11 +10,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import HelpIcon from '@/components/help/HelpIcon';
-import * as api from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
 import { reportProjectError } from '@/features/project/projectErrors';
 import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
-import { SqlEditor } from './SqlEditor';
+import type { EditorView } from '@codemirror/view';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown, Code2, GripVertical, MoreHorizontal, Play, Plus } from 'lucide-react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { PreviewTable } from '../components/PreviewTable';
 import {
   ConsoleRunner,
@@ -28,6 +27,7 @@ import {
   type SqlCellRecord,
   type SqlCellSource,
 } from './sqlCells';
+import { SqlEditor } from './SqlEditor';
 
 export function SqlSubTab({
   base,
@@ -74,7 +74,7 @@ export function SqlSubTab({
         const previous = saved.find((cell) => cell.id === change.id);
         if (previous?.sql === change.source.sql && previous.mode === change.source.mode)
           return true;
-        await api.executeSql(
+        await projectApi.executeSql(
           base,
           previous
             ? [saveCellStatement(change.id, change.source)]
@@ -112,7 +112,8 @@ export function SqlSubTab({
             retained.some((cell) => cell.id === ids[index] && cell.position !== index),
           ),
         ];
-        if (statements.length) await api.executeSql(base, statements, { resources: ['sql_cells'] });
+        if (statements.length)
+          await projectApi.executeSql(base, statements, { resources: ['sql_cells'] });
         client.setQueryData<SqlCellRecord[]>(
           queryKey,
           retained
@@ -218,7 +219,7 @@ export function SqlSubTab({
             runner={runner}
             save={(source) => persistCells({ kind: 'source', id: seed.id, source })}
             execute={(source) =>
-              api.runSqlScript(
+              projectApi.runSqlScript(
                 base,
                 source.sql,
                 source.mode === 'live' ? 'preview' : 'execute',
@@ -262,7 +263,7 @@ interface SqlCellProps {
   editing: boolean;
   runner: ConsoleRunner;
   save: (source: SqlCellSource) => Promise<boolean>;
-  execute: (source: SqlCellSource) => Promise<api.SqlExecutionResult>;
+  execute: (source: SqlCellSource) => Promise<projectApi.SqlExecutionResult>;
   onMove: (index: number) => void;
   onDuplicate: (source: SqlCellSource) => void;
   onDelete: () => void;
@@ -287,7 +288,9 @@ function SqlCell({
   const [saving, setSaving] = useState(0);
   const [executing, setExecuting] = useState(0);
   const [status, setStatus] = useState('');
-  const [result, setResult] = useState<(api.SqlExecutionResult & { sql: string }) | null>(null);
+  const [result, setResult] = useState<(projectApi.SqlExecutionResult & { sql: string }) | null>(
+    null,
+  );
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [liveRevision, setLiveRevision] = useState(0);

@@ -1,90 +1,63 @@
+import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it } from 'vite-plus/test';
-import { decodeAnalysisRequest, emptyConcordance, matchesAnalysisRequest } from './analysisRequest';
-const input = {
-  source: { schema: 'data', name: 'Corpus' },
-  column: 'text',
-  tokenizer: 'future-model',
-};
+import {
+  decodeAnalysisRequest,
+  defaultAnalysisRequest,
+  emptyConcordance,
+  matchesAnalysisRequest,
+  useRequestRestoration,
+} from './analysisRequest';
 describe('saved request compatibility', () => {
-  it('restores siblings, reports exact nested originals, and never mutates saved JSON', () => {
-    const original = {
-      inputs: [{ ...input, tokenizer: 42, extra: '<script>alert(1)</script>' }],
-      search: {
-        query: 'cat',
-        mode: 'future',
-        case_sensitive: 'false',
-        left_context: -1,
-        right_context: 0,
-      },
-      future: { nested: [1, 2] },
+  it('keeps unsupported provenance inspectable and requires a local reset', () => {
+    const original = { inputs: [{ column: 42 }], future: { nested: [1, 2] } };
+    const analysis = {
+      request: original,
+      request_status: { status: 'unsupported' as const, reason: 'Unknown field future' },
     };
     const before = JSON.stringify(original);
-    const { request, issues } = decodeAnalysisRequest('concordance', original);
-    expect(request.inputs[0]).toEqual({ ...input, tokenizer: null });
-    expect(request.search).toEqual({ ...emptyConcordance.search, query: 'cat', right_context: 0 });
-    expect(issues.map((i) => i.path)).toEqual([
-      'future',
-      'inputs[0].extra',
-      'inputs[0].tokenizer',
-      'search.mode',
-      'search.case_sensitive',
-      'search.left_context',
-    ]);
-    expect(issues.find((i) => i.path === 'future')?.value).toEqual(original.future);
+    const { result } = renderHook(() => useRequestRestoration('frequency', analysis));
+    expect(result.current.blocked).toBe(true);
+    expect(result.current.issues[0]?.value).toBe(original);
+    const change = (request: unknown) => {
+      expect(request).toEqual({ inputs: [] });
+    };
+    act(() => result.current.reset(change));
+    expect(result.current.blocked).toBe(false);
     expect(JSON.stringify(original)).toBe(before);
-    expect(matchesAnalysisRequest('concordance', request, original)).toBe(false);
-    expect(matchesAnalysisRequest('concordance', request, request)).toBe(true);
+    expect(result.current.issues).toHaveLength(1);
   });
-  it('omits malformed and excess inputs while retaining usable input order', () => {
-    const { request, issues } = decodeAnalysisRequest('frequency', {
-      inputs: [null, input, 4, { ...input, column: 'other' }, input],
-    });
-    expect(request.inputs.map((i) => i.column)).toEqual(['text', 'other']);
-    expect(issues.map((i) => i.path)).toEqual(['inputs[0]', 'inputs[2]', 'inputs[4]']);
-    expect(request.inputs[0]?.tokenizer).toBe('future-model');
+  it('retains recognized missing inputs without treating live availability as format compatibility', () => {
+    const request = {
+      inputs: [
+        { source: { schema: 'data', name: 'missing' }, column: 'text', tokenizer: 'missing-model' },
+      ],
+    };
+    const status = {
+      status: 'supported' as const,
+      request: { kind: 'frequency' as const, request },
+    };
+    expect(decodeAnalysisRequest('frequency', status)).toEqual({ request, issues: [] });
+    expect(matchesAnalysisRequest('frequency', request, status)).toBe(true);
   });
-  it.each([false, 1, 'saved', []])('handles malformed root %j', (value) => {
-    const decoded = decodeAnalysisRequest('quotation', value);
-    expect(decoded.request.input.column).toBe('');
-    expect(decoded.issues[0]).toMatchObject({ path: '(request)', value });
-  });
-  it('defaults missing optional settings without warning and keeps missing input unselected', () => {
-    expect(decodeAnalysisRequest('concordance', { search: { query: 'cat' } })).toEqual({
-      request: { ...emptyConcordance, search: { ...emptyConcordance.search, query: 'cat' } },
-      issues: [],
-    });
-    expect(decodeAnalysisRequest('quotation', null).issues).toEqual([]);
-  });
-  it('handles malformed containers independently and does not coerce scalar values', () => {
-    const decoded = decodeAnalysisRequest('concordance', {
-      inputs: 'Corpus',
-      search: { query: 1, regex: 1, left_context: '10', right_context: 51 },
-    });
-    expect(decoded.request).toEqual(emptyConcordance);
-    expect(decoded.issues).toHaveLength(5);
+  it('rejects kind mismatch and does not match unsupported requests', () => {
     expect(
-      decodeAnalysisRequest('quotation', { input: { source: [], column: 'valid' } }).request.input
-        .column,
-    ).toBe('valid');
+      decodeAnalysisRequest('quotation', {
+        status: 'supported',
+        request: { kind: 'frequency', request: { inputs: [] } },
+      }).issues,
+    ).toHaveLength(1);
+    expect(
+      matchesAnalysisRequest(
+        'frequency',
+        { inputs: [] },
+        { status: 'unsupported', reason: 'unknown' },
+      ),
+    ).toBe(false);
+    const request = defaultAnalysisRequest('frequency');
+    request.inputs.push({ source: { name: 'x' }, column: 'text', tokenizer: 't' });
+    expect(defaultAnalysisRequest('frequency').inputs).toEqual([]);
   });
 });
-
-it('does not substitute a schema or retain unusable input slots', () => {
-  const decoded = decodeAnalysisRequest('frequency', {
-    inputs: [{ source: { name: 'Corpus' }, column: 'text' }, input],
-  });
-  expect(decoded.request.inputs).toEqual([input]);
-  expect(decoded.issues[0]?.path).toBe('inputs[0]');
-});
-
-it('distinguishes literal dotted keys from nested paths', () => {
-  const decoded = decodeAnalysisRequest('concordance', {
-    'search.mode': true,
-    search: { mode: 'future' },
-  });
-  expect(decoded.issues.map((issue) => issue.path)).toEqual(['["search.mode"]', 'search.mode']);
-});
-
 it('ignores retained tokenizer choices for Text Concordance but compares them in Tokens mode', () => {
   const request = {
     ...emptyConcordance,

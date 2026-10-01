@@ -480,15 +480,18 @@ async fn edit(
     tag = "api",
     params(("table_name" = String, Path)),
     request_body = crate::project::mutations::ColumnChange,
-    responses((status = 204, description = "Success"), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+    responses((status = 204, description = "Success", headers(("x-wordflow-change-id" = String, description = "Committed mutation identity shared with project events"))), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn change_column(
     State(project): State<ProjectRuntime>,
     Path(target): Path<ObjectTarget>,
     InputJson(input): InputJson<crate::project::mutations::ColumnChange>,
 ) -> Result<impl IntoResponse> {
-    project.change_column(target, input).await?;
-    Ok(StatusCode::NO_CONTENT)
+    let change_id = project.change_column(target, input).await?;
+    Ok((
+        [("x-wordflow-change-id", change_id.to_string())],
+        StatusCode::NO_CONTENT,
+    ))
 }
 #[utoipa::path(
     post, path = "/api/project/views", operation_id = "api_create_view",
@@ -652,15 +655,18 @@ async fn delete_node(
     tag = "api",
     params(("table_name" = String, Path)),
     request_body = Rename,
-    responses((status = 200, description = "Success", body = TableName), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+    responses((status = 200, description = "Success", body = TableName, headers(("x-wordflow-change-id" = String, description = "Committed mutation identity shared with project events"))), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn rename_node(
     State(project): State<ProjectRuntime>,
     Path(id): Path<ObjectTarget>,
     InputJson(input): InputJson<Rename>,
 ) -> Result<impl IntoResponse> {
-    let table_name = project.rename_node(id, input.name).await?;
-    Ok(Json(TableName { table_name }))
+    let (table_name, change_id) = project.rename_node(id, input.name).await?;
+    Ok((
+        [("x-wordflow-change-id", change_id.to_string())],
+        Json(TableName { table_name }),
+    ))
 }
 #[utoipa::path(
     post, path = "/api/project/nodes/{table_name}/clone", operation_id = "api_clone_node",
@@ -990,7 +996,7 @@ async fn delete_node_object(
     tag = "api",
     params(("schema" = String, Path), ("table_name" = String, Path)),
     request_body = Rename,
-    responses((status = 200, description = "Success", body = TableName), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+    responses((status = 200, description = "Success", body = TableName, headers(("x-wordflow-change-id" = String, description = "Committed mutation identity shared with project events"))), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn rename_node_object(
     state: State<ProjectRuntime>,
@@ -1035,7 +1041,7 @@ async fn export_node_object(
     tag = "api",
     params(("schema" = String, Path), ("table_name" = String, Path)),
     request_body = crate::project::mutations::ColumnChange,
-    responses((status = 204, description = "Success"), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+    responses((status = 204, description = "Success", headers(("x-wordflow-change-id" = String, description = "Committed mutation identity shared with project events"))), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn change_column_object(
     state: State<ProjectRuntime>,

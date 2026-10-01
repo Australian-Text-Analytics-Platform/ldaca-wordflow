@@ -1,11 +1,12 @@
+import * as projectApi from '@/features/project/api';
 import { QueryClient } from '@tanstack/react-query';
 import { expect, it, vi } from 'vite-plus/test';
-import * as api from './api';
-import { schemaQuery } from './projectQueries';
+
 import { refreshProjectQueries } from './projectChanges';
+import { schemaQuery } from './projectQueries';
 
 it('shares one schema request for a Data Block and its qualified target, invalidated by object', async () => {
-  const read = vi.spyOn(api, 'nodeSchema').mockResolvedValue([]);
+  const read = vi.spyOn(projectApi, 'nodeSchema').mockResolvedValue([]);
   const cache = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });

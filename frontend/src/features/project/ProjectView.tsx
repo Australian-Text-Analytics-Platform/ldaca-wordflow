@@ -1,5 +1,3 @@
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { lazy, Suspense, useEffect, useState } from 'react';
 import { NodeActionsToolbar, NodePinButton } from '@/components/layout/NodeActionsToolbar';
 import { ProjectControlsView } from '@/components/layout/ProjectControlsView';
 import ProjectNodeList from '@/components/layout/ProjectNodeList';
@@ -7,78 +5,39 @@ import { ProjectPanels } from '@/components/layout/ProjectPanels';
 import { SidebarView } from '@/components/layout/SidebarView';
 import { ThreeColumnLayout } from '@/components/layout/ThreeColumnLayout';
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as editingApi from '@/features/table-editing/api';
 import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
-import { useAnnotationState } from '@/features/tools/annotation/annotationState';
+import {
+  InputDestinationChooser,
+  useInputDestinations,
+} from '@/features/tools/common/inputDestinations';
 import type { ToolId } from '@/features/tools/toolIds';
 import { TOOL_DEFINITIONS } from '@/features/tools/toolRegistry';
 import { usePinnedNodesStore } from '@/stores/pinnedNodesStore';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { useUIStore } from '@/stores/uiStore';
-import * as api from './api';
-import { DataLoaderWorkspace } from './DataLoaderWorkspace';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { EditTableDialog } from './EditTableDialog';
 import { useGraphState } from './graphState';
 import NativeDataView from './NativeDataView';
-import ProjectGraph from './ProjectGraph';
 import { useProjectPreview } from './previewState';
 import { reportProjectError } from './projectErrors';
+import ProjectGraph from './ProjectGraph';
 import { useProjectViewState } from './projectViewState';
+import { useRenameWorkspace } from './reconcileRenames';
 import { TaskCentre } from './TaskCentre';
+import { isTabbedTool, ToolHost } from './ToolHost';
 import { useNativeTasks } from './useNativeTasks';
 import { ViewSqlDialog } from './ViewSqlDialog';
 
-const DataPreprocessingFeature = lazy(
-  () => import('@/features/tools/preprocessing/DataPreprocessingFeature'),
-);
-const TokenFrequencyFeature = lazy(
-  () => import('@/features/tools/token-frequency/TokenFrequencyFeature'),
-);
-
-import { NodeInputPointerCarrier } from '@/components/layout/NodeInputPointerCarrier';
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
-import { useFrequencyState } from '@/features/tools/token-frequency/frequencyState';
-import {
-  type NodeInputPointerPosition,
-  useNodeInputRequestsStore,
-} from '@/stores/nodeInputRequestsStore';
 
-const ExportFeature = lazy(() => import('@/features/tools/export/ExportFeature'));
-const AnnotationFeature = lazy(() => import('@/features/tools/annotation/AnnotationFeature'));
-const PlotsFeature = lazy(() => import('@/features/tools/plots/PlotsFeature'));
-const TopicModelingFeature = lazy(
-  () => import('@/features/tools/topic-modeling/TopicModelingFeature'),
-);
-
-import { useTopicState } from '@/features/tools/topic-modeling/topicState';
-
-const QuotationFeature = lazy(() => import('@/features/tools/quotation/QuotationFeature'));
-const ConcordanceFeature = lazy(() => import('@/features/tools/concordance/ConcordanceFeature'));
-
-import { useConcordanceState } from '@/features/tools/concordance/concordanceState';
-import { useQuotationState } from '@/features/tools/quotation/quotationState';
-
-export type ProjectTool =
-  | 'data-loader'
-  | 'filter'
-  | 'token-frequency'
-  | 'concordance'
-  | 'quotation'
-  | 'topic-modeling'
-  | 'plots'
-  | 'annotation'
-  | 'export';
+export type ProjectTool = ToolId;
 const isProjectTool = (id: string): id is ProjectTool =>
-  [
-    'data-loader',
-    'filter',
-    'token-frequency',
-    'concordance',
-    'quotation',
-    'topic-modeling',
-    'plots',
-    'annotation',
-    'export',
-  ].includes(id);
+  TOOL_DEFINITIONS.some((tool) => tool.id === id);
 
 interface ProjectViewProps {
   base: string;
@@ -97,33 +56,19 @@ function ProjectViewContent({
   activeTool: ProjectTool;
   setActiveTool: (tool: ProjectTool) => void;
 }) {
+  useRenameWorkspace(base);
   const navigate = useEditingNavigation();
   const setActiveTool = (tool: ProjectTool) => {
     navigate(() => {
-      if (tool === 'annotation') setAnnotationOpened(true);
-      if (tool === 'export') setExportOpened(true);
       changeTool(tool);
     });
   };
-  const annotationTab = useAnnotationState((s) => s.active[base]);
-  const [exportOpened, setExportOpened] = useState(false);
-  const [annotationOpened, setAnnotationOpened] = useState(false);
 
   const taskCentre = useNativeTasks(base);
-  const [preprocessingOpened, setPreprocessingOpened] = useState(false);
-  const [frequencyOpened, setFrequencyOpened] = useState(false);
-  const [plotsOpened, setPlotsOpened] = useState(false);
-  const [topicOpened, setTopicOpened] = useState(false);
-  const topicTab = useTopicState((s) => s.active[base]);
-  const [quotationOpened, setQuotationOpened] = useState(false);
-  const quotationTab = useQuotationState((s) => s.active[base]);
-  const [concordanceOpened, setConcordanceOpened] = useState(false);
-  const concordanceTab = useConcordanceState((state) => state.active[base]);
-  const frequencyTab = useFrequencyState((state) => state.active[base]);
   const preprocessingTool = usePreprocessingInputs((state) => state.activeTool);
   const [hidden, setHidden] = useState<ToolId[]>([]);
-  const [editingSql, setEditingSql] = useState<api.DataTarget | null>(null);
-  const [editingTable, setEditingTable] = useState<api.CellEditSession | null>(null);
+  const [editingSql, setEditingSql] = useState<objectsApi.DataTarget | null>(null);
+  const [editingTable, setEditingTable] = useState<editingApi.CellEditSession | null>(null);
   const selection = useSelectionStore();
   const preview = useProjectPreview();
   const pins = usePinnedNodesStore();
@@ -131,32 +76,35 @@ function ProjectViewContent({
   const dependencySelection = useGraphState((state) => state.selected);
   const graph = useQuery({
     queryKey: ['native', base, 'graph', 'logical'],
-    queryFn: ({ signal }) => api.graph(base, signal),
+    queryFn: ({ signal }) => projectApi.graph(base, signal),
   });
   const nodes = graph.data?.nodes ?? [];
   const dependencies = useQuery({
     queryKey: ['native', base, 'graph', 'dependencies'],
-    queryFn: ({ signal }) => api.dependencyGraph(base, signal),
+    queryFn: ({ signal }) => projectApi.dependencyGraph(base, signal),
     enabled:
       graphMode === 'dependencies' ||
-      (preview.active !== null && !nodes.some((n) => api.sameTarget(n.table_name, preview.active))),
+      (preview.active !== null &&
+        !nodes.some((n) => objectsApi.sameTarget(n.table_name, preview.active))),
   });
-  const dependencyNodes: api.ProjectNode[] = (dependencies.data?.nodes ?? []).map((node) => ({
-    ...node,
-    table_name: api.targetKey(node.object),
-    label: api.targetLabel(node.object),
-    document_column: null,
-  }));
-  const dependencyGraph: api.Graph = {
+  const dependencyNodes: projectApi.ProjectNode[] = (dependencies.data?.nodes ?? []).map(
+    (node) => ({
+      ...node,
+      table_name: objectsApi.targetKey(node.object),
+      label: objectsApi.targetLabel(node.object),
+      document_column: null,
+    }),
+  );
+  const dependencyGraph: projectApi.Graph = {
     nodes: dependencyNodes,
     edges: (dependencies.data?.edges ?? []).map((edge) => ({
-      source_name: api.targetKey(edge.source),
-      target_name: api.targetKey(edge.target),
+      source_name: objectsApi.targetKey(edge.source),
+      target_name: objectsApi.targetKey(edge.target),
       dependency: true,
     })),
   };
   const isDependencies = graphMode === 'dependencies';
-  const graphTarget = (id: string): api.DataTarget => {
+  const graphTarget = (id: string): objectsApi.DataTarget => {
     if (!isDependencies) return id;
     const object = dependencyNodes.find((node) => node.table_name === id)?.object;
     if (!object) throw new Error('Database object is no longer in this graph');
@@ -177,41 +125,42 @@ function ProjectViewContent({
     useProjectPreview.getState().retain(valid);
     useGraphState.getState().retain('logical', valid);
     usePreprocessingInputs.getState().retain(valid);
-    useNodeInputRequestsStore.getState().prune(base, [...valid]);
   }, [graph.data, base]);
   useEffect(() => {
     if (!dependencies.data) return;
-    const keys = new Set(dependencies.data.nodes.map((node) => api.targetKey(node.object)));
+    const keys = new Set(dependencies.data.nodes.map((node) => objectsApi.targetKey(node.object)));
     useGraphState.getState().retain('dependencies', keys);
     useProjectPreview.getState().retainObjects(keys);
     useProjectViewState.getState().retain(keys);
   }, [dependencies.data]);
   const startEditing = useMutation({
-    mutationFn: (name: api.DataTarget) => api.beginCellEdit(base, name),
+    mutationFn: (name: objectsApi.DataTarget) => editingApi.beginCellEdit(base, name),
     onSuccess: setEditingTable,
   });
-  const editTable = (name: api.DataTarget) => {
+  const editTable = (name: objectsApi.DataTarget) => {
     if (!startEditing.isPending && !editingTable) startEditing.mutate(name);
   };
-  const removeMany = async (ids: api.DataTarget[]) => {
+  const removeMany = async (ids: objectsApi.DataTarget[]) => {
     const errors: string[] = [];
     for (const id of ids) {
       try {
-        await api.deleteNode(base, id);
-        const object = api.objectRef(id);
+        await projectApi.deleteNode(base, id);
+        const object = objectsApi.objectRef(id);
         if (object.schema === 'data') {
           useSelectionStore.getState().removeNode(object.name);
           usePinnedNodesStore.getState().unpinNode(object.name);
         }
         useGraphState.setState((state) => ({
-          selected: state.selected.filter((key) => key !== api.targetKey(id)),
+          selected: state.selected.filter((key) => key !== objectsApi.targetKey(id)),
         }));
         const views = useProjectViewState.getState();
-        views.retain(new Set([...views.nodes.keys()].filter((key) => key !== api.targetKey(id))));
+        views.retain(
+          new Set([...views.nodes.keys()].filter((key) => key !== objectsApi.targetKey(id))),
+        );
         useProjectPreview.getState().remove(id);
       } catch (error) {
         errors.push(
-          `${api.targetLabel(id)}: ${error instanceof Error ? error.message : String(error)}`,
+          `${objectsApi.targetLabel(id)}: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
     }
@@ -219,46 +168,23 @@ function ProjectViewContent({
       reportProjectError(new Error(errors.join('\n\n')), 'Could not delete Data Blocks');
     return errors.length === 0;
   };
-  const remove = (id: api.DataTarget) => removeMany([id]);
+  const remove = (id: objectsApi.DataTarget) => removeMany([id]);
   const renamed = useMutation({
-    mutationFn: ({ id, name }: { id: api.DataTarget; name: string }) =>
-      api.renameNode(base, id, name),
-    onSuccess: (result, { id }) => {
-      const name = result.table_name;
-      const object = api.objectRef(id);
-      const next = { schema: object.schema, name };
-      if (object.schema === 'data') {
-        const current = useSelectionStore.getState();
-        current.replaceSelectedNodes(
-          current.selectedNodeIds.map((value) => (value === object.name ? name : value)),
-        );
-        const pinned = usePinnedNodesStore.getState();
-        usePinnedNodesStore.setState({
-          pinnedNodeIds: pinned.pinnedNodeIds.map((value) =>
-            value === object.name ? name : value,
-          ),
-        });
-        usePreprocessingInputs.getState().rename(object.name, name);
-        useFrequencyState.getState().renameSource(base, object.name, name);
-        useNodeInputRequestsStore.getState().rename(base, object.name, name);
-      }
-      useProjectPreview.getState().rename(id, typeof id === 'string' ? name : next);
-      useProjectViewState.getState().rename(api.targetKey(id), api.targetKey(next));
-      useGraphState.getState().rename(id, next);
-    },
+    mutationFn: ({ id, name }: { id: objectsApi.DataTarget; name: string }) =>
+      projectApi.renameNode(base, id, name),
   });
   const cloned = useMutation({
-    mutationFn: (id: api.DataTarget) => api.cloneNode(base, id),
+    mutationFn: (id: objectsApi.DataTarget) => projectApi.cloneNode(base, id),
   });
   const materialized = useMutation({
-    mutationFn: (id: api.DataTarget) => api.materializeNode(base, id),
+    mutationFn: (id: objectsApi.DataTarget) => projectApi.materializeNode(base, id),
   });
   const undone = useMutation({
-    mutationFn: (id: api.DataTarget) => api.undoNode(base, id),
+    mutationFn: (id: objectsApi.DataTarget) => projectApi.undoNode(base, id),
   });
   const linked = useMutation({
     mutationFn: ({ source, target }: { source: string; target: string }) =>
-      api.addLogicalLink(base, source, target),
+      projectApi.addLogicalLink(base, source, target),
   });
   const reconnected = useMutation({
     mutationFn: ({
@@ -266,63 +192,28 @@ function ProjectViewContent({
       source,
       replacement,
     }: {
-      child: api.ObjectRef;
-      source: api.ObjectRef;
-      replacement: api.ObjectRef;
-    }) => api.replaceSource(base, child, source, replacement),
+      child: objectsApi.ObjectRef;
+      source: objectsApi.ObjectRef;
+      replacement: objectsApi.ObjectRef;
+    }) => projectApi.replaceSource(base, child, source, replacement),
   });
-  const rename = (id: api.DataTarget, name: string) => {
+  const rename = (id: objectsApi.DataTarget, name: string) => {
     renamed.mutate({ id, name });
   };
   const clone = cloned.mutate;
   const undo = undone.mutate;
-  const inputTool =
-    activeTool === 'export'
-      ? 'export'
-      : activeTool === 'annotation' && annotationTab
-        ? 'annotation'
-        : activeTool === 'topic-modeling' && topicTab
-          ? 'topic-modeling'
-          : activeTool === 'plots'
-            ? 'plots'
-            : activeTool === 'filter'
-              ? preprocessingTool
-              : activeTool === 'token-frequency' && frequencyTab
-                ? 'token-frequency'
-                : activeTool === 'concordance' && concordanceTab
-                  ? 'concordance'
-                  : activeTool === 'quotation' && quotationTab
-                    ? 'quotation'
-                    : null;
+  const destinations = useInputDestinations((state) => state.destinations);
   const addInput =
-    inputTool && (inputTool === 'export' || (!editingTable && !startEditing.isPending))
-      ? (name: string, pointer?: NodeInputPointerPosition) => {
-          useNodeInputRequestsStore.getState().requestAdd(base, inputTool, name, pointer);
-        }
+    destinations.some((item) => item.base === base && item.tool === activeTool) &&
+    (activeTool === 'export' || (!editingTable && !startEditing.isPending))
+      ? (name: string) => useInputDestinations.getState().add(base, activeTool, [graphTarget(name)])
       : undefined;
   const visibleTools = TOOL_DEFINITIONS.map((v) => v.id).filter((id) => !hidden.includes(id));
   return (
     <ThreeColumnLayout
-      isTabbedMain={
-        activeTool === 'token-frequency' ||
-        activeTool === 'concordance' ||
-        activeTool === 'quotation' ||
-        activeTool === 'plots' ||
-        activeTool === 'topic-modeling' ||
-        activeTool === 'annotation'
-      }
-      scrollMain={
-        activeTool !== 'data-loader' &&
-        activeTool !== 'token-frequency' &&
-        activeTool !== 'concordance' &&
-        activeTool !== 'quotation' &&
-        activeTool !== 'plots' &&
-        activeTool !== 'topic-modeling' &&
-        activeTool !== 'annotation'
-      }
-      hosts={
-        <NodeInputPointerCarrier scopeId={base} tool={addInput ? inputTool : null} nodes={list} />
-      }
+      isTabbedMain={isTabbedTool(activeTool)}
+      scrollMain={!isTabbedTool(activeTool) && activeTool !== 'data-loader'}
+      hosts={<InputDestinationChooser base={base} tool={activeTool} />}
       sidebar={
         <SidebarView
           onFeedback={() => {
@@ -348,12 +239,6 @@ function ProjectViewContent({
                     onClick={() => {
                       if (isProjectTool(tool.id)) {
                         setActiveTool(tool.id);
-                        if (tool.id === 'filter') setPreprocessingOpened(true);
-                        if (tool.id === 'token-frequency') setFrequencyOpened(true);
-                        if (tool.id === 'plots') setPlotsOpened(true);
-                        if (tool.id === 'concordance') setConcordanceOpened(true);
-                        if (tool.id === 'quotation') setQuotationOpened(true);
-                        if (tool.id === 'topic-modeling') setTopicOpened(true);
                       }
                     }}
                     disabled={!isProjectTool(tool.id)}
@@ -454,9 +339,9 @@ function ProjectViewContent({
                 preview.active === null
                   ? null
                   : isDependencies
-                    ? api.targetKey(preview.active)
-                    : api.objectRef(preview.active).schema === 'data'
-                      ? api.objectRef(preview.active).name
+                    ? objectsApi.targetKey(preview.active)
+                    : objectsApi.objectRef(preview.active).schema === 'data'
+                      ? objectsApi.objectRef(preview.active).name
                       : null
               }
               onPreview={(id) => {
@@ -511,124 +396,25 @@ function ProjectViewContent({
         />
       )}
     >
-      <div className="w-full min-w-0" hidden={activeTool !== 'export'}>
-        {(exportOpened || activeTool === 'export') && (
-          <Suspense fallback={<div className="p-4">Loading Export…</div>}>
-            <ExportFeature
-              base={base}
-              nodes={nodes}
-              active={activeTool === 'export'}
-              graphSelection={
-                isDependencies
-                  ? dependencyNodes
-                      .filter((node) =>
-                        dependencySelection.includes(api.targetKey(node.object ?? node.table_name)),
-                      )
-                      .map((node) => api.objectRef(node.object ?? node.table_name))
-                  : selection.selectedNodeIds.map(api.objectRef)
-              }
-            />
-          </Suspense>
-        )}
-      </div>
-      <div hidden={activeTool !== 'data-loader'} className="w-full min-h-0">
-        <DataLoaderWorkspace
-          active={activeTool === 'data-loader'}
-          base={base}
-          onActivate={() => {
-            setActiveTool('data-loader');
-          }}
-        />
-      </div>
-      <div className="w-full min-w-0" hidden={activeTool !== 'filter'}>
-        {preprocessingOpened && (
-          <Suspense fallback={<p>Loading preprocessing…</p>}>
-            <DataPreprocessingFeature base={base} nodes={nodes} active={activeTool === 'filter'} />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'token-frequency'}>
-        {frequencyOpened && (
-          <Suspense fallback={<p>Loading Frequency…</p>}>
-            <TokenFrequencyFeature
-              onOpenConcordance={() => {
-                setConcordanceOpened(true);
-                setActiveTool('concordance');
-              }}
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              onCancel={taskCentre.cancel}
-              active={activeTool === 'token-frequency'}
-            />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'quotation'}>
-        {(quotationOpened || activeTool === 'quotation') && (
-          <Suspense fallback={<p>Loading Quotation…</p>}>
-            <QuotationFeature
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              active={activeTool === 'quotation'}
-              onCancel={taskCentre.cancel}
-            />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'concordance'}>
-        {(concordanceOpened || activeTool === 'concordance') && (
-          <Suspense fallback={<p>Loading Concordance…</p>}>
-            <ConcordanceFeature
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              onCancel={taskCentre.cancel}
-              active={activeTool === 'concordance'}
-            />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'plots'}>
-        {(plotsOpened || activeTool === 'plots') && (
-          <Suspense fallback={<p>Loading Plots…</p>}>
-            <PlotsFeature
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              onCancel={taskCentre.cancel}
-              active={activeTool === 'plots'}
-            />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'topic-modeling'}>
-        {(topicOpened || activeTool === 'topic-modeling') && (
-          <Suspense fallback={<p>Loading Topic Modelling…</p>}>
-            <TopicModelingFeature
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              onCancel={taskCentre.cancel}
-              active={activeTool === 'topic-modeling'}
-            />
-          </Suspense>
-        )}
-      </div>
-      <div className="h-full min-h-0 w-full min-w-0" hidden={activeTool !== 'annotation'}>
-        {(annotationOpened || activeTool === 'annotation') && (
-          <Suspense fallback={<p>Loading Annotation…</p>}>
-            <AnnotationFeature
-              base={base}
-              nodes={nodes}
-              tasks={taskCentre.tasks}
-              onCancel={taskCentre.cancel}
-              active={activeTool === 'annotation'}
-            />
-          </Suspense>
-        )}
-      </div>
+      <ToolHost
+        base={base}
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        nodes={nodes}
+        tasks={taskCentre.tasks}
+        onCancel={taskCentre.cancel}
+        exportSelection={
+          isDependencies
+            ? dependencyNodes
+                .filter((node) =>
+                  dependencySelection.includes(
+                    objectsApi.targetKey(node.object ?? node.table_name),
+                  ),
+                )
+                .map((node) => objectsApi.objectRef(node.object ?? node.table_name))
+            : selection.selectedNodeIds.map(objectsApi.objectRef)
+        }
+      />
       {editingTable && (
         <EditTableDialog
           key={editingTable.session_id}
@@ -641,7 +427,7 @@ function ProjectViewContent({
       )}
       {editingSql !== null && (
         <ViewSqlDialog
-          key={api.targetKey(editingSql)}
+          key={objectsApi.targetKey(editingSql)}
           base={base}
           name={editingSql}
           onClose={() => {

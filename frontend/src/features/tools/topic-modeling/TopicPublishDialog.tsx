@@ -1,17 +1,17 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { useMutation } from '@tanstack/react-query';
+import { useState } from 'react';
 
 export function TopicPublishDialog({
   base,
@@ -22,15 +22,15 @@ export function TopicPublishDialog({
 }: {
   base: string;
   id: string;
-  summary: api.TopicSummary;
-  initial: api.TopicPublish;
+  summary: topicApi.TopicSummary;
+  initial: topicApi.TopicPublish;
   onClose: () => void;
 }) {
   const [request, setRequest] = useState(() => structuredClone(initial));
   const [selected, setSelected] = useState(summary.sources.map(() => true));
   const [sync, setSync] = useState(false);
   const mutation = useMutation({
-    mutationFn: (captured: api.TopicPublish) => api.publishTopicModel(base, id, captured),
+    mutationFn: (captured: topicApi.TopicPublish) => topicApi.publishTopicModel(base, id, captured),
     onSuccess: onClose,
   });
   const changeColumn = (index: number, column: string, checked: boolean) => {

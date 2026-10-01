@@ -1,6 +1,6 @@
 import { browser, expect } from '@wdio/globals';
 import { expectAppError } from '../../e2e-browser/diagnostics';
-import { querySql, executeSql } from '../../src/features/project/api';
+import { querySql, executeSql } from '@/features/project/api';
 
 export async function datetimeScenario(base: string) {
   await executeSql(base, [

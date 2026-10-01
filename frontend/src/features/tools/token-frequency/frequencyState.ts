@@ -1,5 +1,6 @@
+import type { FrequencyRequest } from '@/features/tools/token-frequency/api';
 import { create } from 'zustand';
-import type { FrequencyRequest } from '@/features/project/api';
+import { renameInput, renamedDrafts, type Rename } from '../common/renameReferences';
 
 export interface FrequencyDisplay {
   display: 'cloud' | 'list';
@@ -31,7 +32,7 @@ interface FrequencyState {
   activate: (base: string, id: string) => void;
   setDraft: (base: string, id: string, draft: FrequencyDraft) => void;
   remove: (base: string, id: string) => void;
-  renameSource: (base: string, before: string, after: string) => void;
+  reconcile: (base: string, rename: Rename) => void;
 }
 const draftKey = (base: string, id: string) => JSON.stringify([base, id]);
 export const useFrequencyState = create<FrequencyState>((set) => ({
@@ -70,25 +71,8 @@ export const useFrequencyState = create<FrequencyState>((set) => ({
       return { drafts, active, display };
     });
   },
-  renameSource: (base, before, after) => {
-    set((state) => ({
-      drafts: Object.fromEntries(
-        Object.entries(state.drafts).map(([key, draft]) => {
-          if ((JSON.parse(key) as string[])[0] !== base) return [key, draft];
-          return [
-            key,
-            {
-              inputs: draft.inputs.map((input) =>
-                input.source.schema === 'data' && input.source.name === before
-                  ? { ...input, source: { ...input.source, name: after } }
-                  : input,
-              ),
-              study: draft.study === before ? after : draft.study,
-            },
-          ];
-        }),
-      ),
-    }));
+  reconcile: (base, rename) => {
+    set((state) => ({ drafts: renamedDrafts(state.drafts, base, rename, renameFrequencyDraft) }));
   },
 }));
 export const getFrequencyDraft = (state: FrequencyState, base: string, id: string) =>
@@ -98,4 +82,17 @@ export function orderedFrequencyRequest(draft: FrequencyDraft): FrequencyRequest
   const study = inputs.findIndex((input) => input.source.name === draft.study);
   if (inputs.length === 2 && study === 0) inputs.reverse();
   return { inputs };
+}
+
+function renameFrequencyDraft(draft: FrequencyDraft, rename: Rename): FrequencyDraft {
+  return {
+    ...draft,
+    inputs: draft.inputs.map((input) => renameInput(input, rename, ['column'])),
+    study:
+      rename.type === 'table' &&
+      rename.source.schema === 'data' &&
+      draft.study?.toLowerCase() === rename.source.name.toLowerCase()
+        ? rename.name
+        : draft.study,
+  };
 }

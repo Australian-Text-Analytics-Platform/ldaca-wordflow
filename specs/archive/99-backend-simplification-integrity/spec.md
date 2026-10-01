@@ -1,5 +1,7 @@
 # Issue 99: Backend Simplification, Integrity, and Modernization
 
+Status: superseded by the current native implementation. Historical unchecked tasks remain unchanged; current applicable verification is tracked in [the modularity plan](../wordflow-modularity/plan.md).
+
 ## Purpose
 
 Simplify the backend without preserving accidental complexity. Remove proven

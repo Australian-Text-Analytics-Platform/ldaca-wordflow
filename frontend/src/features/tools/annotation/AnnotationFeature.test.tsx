@@ -1,44 +1,57 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
+import * as projectApi from '@/features/project/api';
+import { createProjectQueryClient } from '@/features/project/projectErrors';
+import * as editingApi from '@/features/table-editing/api';
+import { EditingNavigation } from '@/features/table-editing/EditingNavigation';
+import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
+import * as annotationApi from '@/features/tools/annotation/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Utf8 } from 'apache-arrow';
 import { useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import * as api from '@/features/project/api';
-import { createProjectQueryClient } from '@/features/project/projectErrors';
-import { EditingNavigation } from '@/features/table-editing/EditingNavigation';
-import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
 import AnnotationFeature from './AnnotationFeature';
 import { useAnnotationState } from './annotationState';
 
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
-  listTabs: vi.fn(),
-  nodeSchema: vi.fn(),
+vi.mock('@/features/tools/annotation/api', async (original) => ({
+  ...(await original<object>()),
   beginAnnotationEdit: vi.fn(),
+}));
+vi.mock('@/features/tools/common/analysisApi', async (original) => ({
+  ...(await original<object>()),
+  listTabs: vi.fn(),
+  updateTab: vi.fn(),
+}));
+vi.mock('@/features/table-editing/api', async (original) => ({
+  ...(await original<object>()),
   cellEditPage: vi.fn(),
   saveCellEdit: vi.fn(),
   cancelCellEdit: vi.fn(),
-  updateTab: vi.fn(),
 }));
-const setup: api.AnnotationSetup = {
+vi.mock('@/features/project/api', async (original) => ({
+  ...(await original<object>()),
+  nodeSchema: vi.fn(),
+}));
+const setup: annotationApi.AnnotationSetup = {
   source: { schema: 'data', name: 'docs' },
   document: 'text',
   annotation: 'label',
   correction: 'correction',
   codebook: null,
 };
-const tab: api.Tab = {
+const tab: analysesApi.Tab = {
   id: 'tab',
   kind: 'annotation',
   name: 'Annotation 1',
   position: 0,
   analysis: null,
-  settings: { manual: { setup: { ...setup, future: 'retained' } } },
+  settings: { manual: { setup } },
+  setup_status: { status: 'supported', request: setup },
 };
 const names = ['rowid', 'text', 'label', 'correction', 'reference'];
-const session: api.CellEditSession = {
+const session: editingApi.CellEditSession = {
   session_id: 'edit',
   schema: 'data',
   table_name: 'docs',
@@ -53,12 +66,12 @@ const session: api.CellEditSession = {
 beforeEach(() => {
   vi.clearAllMocks();
   useAnnotationState.setState({ active: {}, drafts: {}, previews: {} });
-  vi.mocked(api.listTabs).mockResolvedValue([tab]);
-  vi.mocked(api.nodeSchema).mockResolvedValue(
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([tab]);
+  vi.mocked(projectApi.nodeSchema).mockResolvedValue(
     names.map((name) => ({ name, field: new Field(name, new Utf8()) })),
   );
-  vi.mocked(api.beginAnnotationEdit).mockResolvedValue(session);
-  vi.mocked(api.cellEditPage).mockImplementation(
+  vi.mocked(annotationApi.beginAnnotationEdit).mockResolvedValue(session);
+  vi.mocked(editingApi.cellEditPage).mockImplementation(
     async (_base, _id, _page, _size, _sort, _signal, review) => ({
       schema: names.map((name) => ({ name, field: new Field(name, new Utf8()) })),
       columns: names,
@@ -81,10 +94,10 @@ beforeEach(() => {
       },
     }),
   );
-  vi.mocked(api.saveCellEdit).mockResolvedValue(undefined);
-  vi.mocked(api.cancelCellEdit).mockResolvedValue(undefined);
+  vi.mocked(editingApi.saveCellEdit).mockResolvedValue(undefined);
+  vi.mocked(editingApi.cancelCellEdit).mockResolvedValue(undefined);
 });
-const nodes: api.ProjectNode[] = [
+const nodes: projectApi.ProjectNode[] = [
   {
     table_name: 'docs',
     visible: true,
@@ -121,19 +134,25 @@ function mount() {
   );
   return userEvent.setup();
 }
-it('restores supported Manual settings without editing or rewriting unknown JSON', async () => {
+it('restores supported Manual settings without starting an editing session automatically', async () => {
   const user = mount();
   const start = await screen.findByRole('button', { name: 'Start', exact: true });
-  expect(await screen.findByText('These saved settings are not recognized:')).toBeVisible();
-  expect(api.beginAnnotationEdit).not.toHaveBeenCalled();
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(
+    screen.queryByRole('button', { name: 'Start with current defaults' }),
+  ).not.toBeInTheDocument();
+  expect(annotationApi.beginAnnotationEdit).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
   await user.click(start);
   await screen.findAllByRole('textbox', { name: 'Edit label' });
-  expect(api.beginAnnotationEdit).toHaveBeenCalledExactlyOnceWith('http://annotation', 'tab', {
-    mode: 'manual',
-    setup,
-  });
-  expect(api.cellEditPage).toHaveBeenCalledWith(
+  expect(annotationApi.beginAnnotationEdit).toHaveBeenCalledExactlyOnceWith(
+    'http://annotation',
+    'tab',
+    {
+      mode: 'manual',
+      setup,
+    },
+  );
+  expect(editingApi.cellEditPage).toHaveBeenCalledWith(
     'http://annotation',
     'edit',
     1,
@@ -153,21 +172,21 @@ it('keeps failed saves and Stay drafts, then saves once before leaving', async (
   let dialog = await screen.findByRole('alertdialog');
   await user.click(within(dialog).getByRole('button', { name: 'Stay' }));
   expect(screen.getByDisplayValue('B')).toBeVisible();
-  vi.mocked(api.saveCellEdit).mockRejectedValueOnce(new Error('Codebook changed'));
+  vi.mocked(editingApi.saveCellEdit).mockRejectedValueOnce(new Error('Codebook changed'));
   await user.click(screen.getByRole('button', { name: 'Leave tool' }));
   dialog = await screen.findByRole('alertdialog');
   await user.click(within(dialog).getByRole('button', { name: 'Save', exact: true }));
-  await waitFor(() => expect(api.saveCellEdit).toHaveBeenCalledOnce());
+  await waitFor(() => expect(editingApi.saveCellEdit).toHaveBeenCalledOnce());
   expect(screen.queryByText('Another tool')).not.toBeInTheDocument();
   expect(screen.getByRole('alertdialog')).toBeVisible();
   await user.click(within(dialog).getByRole('button', { name: 'Save', exact: true }));
   await screen.findByText('Another tool');
-  expect(api.saveCellEdit).toHaveBeenLastCalledWith('http://annotation', 'edit', {
+  expect(editingApi.saveCellEdit).toHaveBeenLastCalledWith('http://annotation', 'edit', {
     changes: [{ row_ref: '01', column: 'label', value: 'B' }],
     deletions: [],
     insertions: [],
   });
-  expect(api.cancelCellEdit).not.toHaveBeenCalled();
+  expect(editingApi.cancelCellEdit).not.toHaveBeenCalled();
 });
 it('sends None as SQL NULL and Discard never saves labels', async () => {
   const user = mount();
@@ -175,7 +194,7 @@ it('sends None as SQL NULL and Discard never saves labels', async () => {
   await screen.findAllByRole('textbox', { name: 'Edit label' });
   await user.click(screen.getAllByRole('button', { name: 'None', exact: true })[0]!);
   await waitFor(() =>
-    expect(vi.mocked(api.cellEditPage).mock.calls.at(-1)?.[6]?.changes).toEqual([
+    expect(vi.mocked(editingApi.cellEditPage).mock.calls.at(-1)?.[6]?.changes).toEqual([
       { row_ref: '01', column: 'label', value: null },
     ]),
   );
@@ -184,6 +203,23 @@ it('sends None as SQL NULL and Discard never saves labels', async () => {
     within(await screen.findByRole('alertdialog')).getByRole('button', { name: 'Discard' }),
   );
   await screen.findByText('Another tool');
-  expect(api.saveCellEdit).not.toHaveBeenCalled();
-  expect(api.cancelCellEdit).toHaveBeenCalledExactlyOnceWith('http://annotation', 'edit');
+  expect(editingApi.saveCellEdit).not.toHaveBeenCalled();
+  expect(editingApi.cancelCellEdit).toHaveBeenCalledExactlyOnceWith('http://annotation', 'edit');
+});
+
+it('blocks unknown manual setup until explicit local reset without saving a preference', async () => {
+  const original = { ...setup, future: 'retained' };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      settings: { manual: { setup: original } },
+      setup_status: { status: 'unsupported', reason: 'Unknown field future' },
+    },
+  ]);
+  const user = mount();
+  await user.click(await screen.findByRole('button', { name: 'Start with current defaults' }));
+  expect(screen.getByRole('button', { name: 'Start', exact: true })).toBeDisabled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
+  expect(annotationApi.beginAnnotationEdit).not.toHaveBeenCalled();
+  expect(original.future).toBe('retained');
 });

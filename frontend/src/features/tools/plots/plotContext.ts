@@ -1,6 +1,6 @@
-import type { PlotMode, PlotRequest, PlotSelection } from '@/features/project/api';
-import { categoryLabel, plotMeasure, type PlotDisplay, type PlotRow } from './plotModel';
+import type { PlotMode, PlotRequest, PlotSelection } from '@/features/tools/plots/api';
 import { showValue } from '../common/analysisValue';
+import { categoryLabel, plotMeasure, type PlotDisplay, type PlotRow } from './plotModel';
 import { plotLabels } from './plotState';
 
 export function plotSelectionKeys(mode: PlotMode, selection: PlotSelection): string[] {

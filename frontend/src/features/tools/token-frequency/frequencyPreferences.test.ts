@@ -1,5 +1,5 @@
+import type { FrequencyAnalysisResult } from '@/features/tools/token-frequency/api';
 import { expect, it } from 'vite-plus/test';
-import type { FrequencyAnalysisResult } from '@/features/project/api';
 import { corpusColor, corpusColorKey, frequencySettings } from './frequencySettings';
 
 const corpora = ['Reference', 'Study'].map((name) => ({

@@ -1,8 +1,3 @@
-import { captureChart } from '../common/captureChart';
-import { useRef, type ReactNode } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { useActiveTheme } from '@/features/theme/themeRuntime';
-import { toNodeSurfaceColor } from '@/lib/nodeColor';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -12,27 +7,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import type { ConcordanceInput, ConcordanceSearch } from '@/features/project/api';
-import {
-  buildChartExport,
-  saveGeneratedExport,
-  type ChartExportFormat,
-} from '../common/chartExport';
-import { showValue, type DocumentRow } from './concordanceRows';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useActiveTheme } from '@/features/theme/themeRuntime';
+import type { ConcordanceInput, ConcordanceSearch } from '@/features/tools/concordance/api';
+import { saveGeneratedExport } from '@/lib/download';
+import { toNodeSurfaceColor } from '@/lib/nodeColor';
+import { useMutation } from '@tanstack/react-query';
+import { useRef, type ReactNode } from 'react';
+import { captureChart } from '../common/captureChart';
+import { buildChartExport, type ChartExportFormat } from '../common/chartExport';
 import { ChartDownload } from '../common/components/DownloadControl';
 import { ConcordanceChart } from './ConcordanceChart';
 import {
   DISPLAY_BINS,
-  dispersionSeries,
+  binLabel,
   dispersionOption,
-  termKey,
+  dispersionSeries,
   selectBin,
   selectBinRange,
-  binLabel,
+  termKey,
   type Density,
   type DispersionChartMode,
 } from './concordanceDispersionModel';
+import { showValue, type DocumentRow } from './concordanceRows';
 
 interface Props {
   saved: boolean;

@@ -1,5 +1,5 @@
 import { $, expect } from '@wdio/globals';
-import * as api from '../../src/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { withResearchFile, prepareResearchVisit, addResearchInput, chooseColumn, runResearchAnalysis, researchScreenshot, setResearchTheme } from './researchData';
 
@@ -9,7 +9,7 @@ export async function trendsRenderingScenario(base: string, prefix: string) {
     await $('button=Plots').click();
     await $('[role="tablist"][aria-label="Plot modes"]').$('[role="tab"]=Trends').click();
     const panel = $('[data-testid="trends-workspace"]');
-    if ((await api.listTabs(base, undefined, 'trends')).some((tab) => tab.analysis)) {
+    if ((await analysesApi.listTabs(base, undefined, 'trends')).some((tab) => tab.analysis)) {
       await panel.$('button[aria-label="New tab"]').click();
     }
     await addResearchInput(panel, source);
@@ -65,6 +65,6 @@ export async function trendsRenderingScenario(base: string, prefix: string) {
     await setResearchTheme(true);
     await researchScreenshot(`${prefix}-dense-calendar-dark`, results);
     await setResearchTheme(false);
-    expect((await api.listTabs(base, undefined, 'trends')).find((tab) => tab.analysis?.id === id)?.analysis?.id).toBe(id);
+    expect((await analysesApi.listTabs(base, undefined, 'trends')).find((tab) => tab.analysis?.id === id)?.analysis?.id).toBe(id);
   });
 }

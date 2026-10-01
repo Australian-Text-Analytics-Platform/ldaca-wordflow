@@ -1,18 +1,28 @@
-import { useRef, type ReactNode } from 'react';
-import type { EditorView } from '@codemirror/view';
-import { Calculator, Code2, Loader2 } from 'lucide-react';
 import HelpIcon from '@/components/help/HelpIcon';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
-import { identifier } from '@/features/project/api';
+import { Input } from '@/components/ui/input';
 import { takeMostRecent } from '@/features/project/common/utils/selectionUtils';
+import { identifier } from '@/features/project/objects';
+import type { EditorView } from '@codemirror/view';
+import { Calculator, Code2, Loader2 } from 'lucide-react';
+import { useRef, useState, type ReactNode } from 'react';
 import { PreviewTable } from '../components/PreviewTable';
 import { SubTabActivityTag } from '../components/SubTabActivityTag';
 import { SqlEditor } from '../sql/SqlEditor';
-import { ColumnPicker } from './components/ColumnPicker';
 import { BubbleBuilder } from './components/BubbleBuilder';
+import { ColumnPicker } from './components/ColumnPicker';
 import { useBuildSubTab, type BuildSubTabProps } from './hooks/useBuildSubTab';
 
 type Props = BuildSubTabProps & {
@@ -25,6 +35,7 @@ export function BuildSubTab(props: Props) {
 }
 function BuildSubTabContent(props: Props) {
   const build = useBuildSubTab(props);
+  const [confirmNew, setConfirmNew] = useState(false);
   const { draft, preview, apply, activeNode, columns } = build;
   const editor = useRef<EditorView | null>(null);
   const insertColumn = (column: string) => {
@@ -36,6 +47,23 @@ function BuildSubTabContent(props: Props) {
   };
   return (
     <div className="flex min-w-0 flex-col gap-4">
+      <AlertDialog open={confirmNew} onOpenChange={setConfirmNew}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start a new visual expression?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This discards the edited SQL and starts with an empty visual builder. The output
+              column name is retained.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep SQL</AlertDialogCancel>
+            <AlertDialogAction onClick={build.startNewVisual}>
+              Start new expression
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <Card className="min-w-0">
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-2">
@@ -53,18 +81,13 @@ function BuildSubTabContent(props: Props) {
             <section className="flex min-w-0 flex-col gap-3" aria-label="SQL expression editor">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h3 className="font-medium">SQL expression</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={build.parsing}
-                  onClick={build.returnToBuilder}
-                >
-                  {build.parsing && <Loader2 className="animate-spin" />}Return to bubble builder
+                <Button variant="outline" size="sm" onClick={() => setConfirmNew(true)}>
+                  New visual expression
                 </Button>
               </div>
               <p className="text-body text-description">
-                Write one DuckDB expression. Returning to the builder converts supported expressions
-                to bubbles and keeps other fragments as editable SQL.
+                Write one DuckDB expression. Starting a new visual expression discards this SQL
+                draft.
               </p>
               <SqlEditor
                 value={draft.sql.expression}
@@ -79,9 +102,9 @@ function BuildSubTabContent(props: Props) {
               <div>
                 <ColumnPicker columns={columns} onColumn={insertColumn} disabled={!activeNode} />
               </div>
-              {(build.parseError ?? preview.error) && (
+              {preview.error && (
                 <p role="status" className="whitespace-pre-wrap break-words text-body text-error">
-                  {build.parseError ?? preview.error}
+                  {preview.error}
                 </p>
               )}
             </section>

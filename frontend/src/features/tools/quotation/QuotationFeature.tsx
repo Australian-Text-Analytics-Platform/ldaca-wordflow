@@ -1,32 +1,34 @@
-import { useNodePreferences } from '../common/useNodePreferences';
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
-import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
-import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { AnalysisAction } from '../common/components/AnalysisAction';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { schemaQuery } from '@/features/project/projectQueries';
-import { Button } from '@/components/ui/button';
 import HelpIcon from '@/components/help/HelpIcon';
+import { Button } from '@/components/ui/button';
+import * as projectApi from '@/features/project/api';
+import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as quotationApi from '@/features/tools/quotation/api';
+import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Tabs } from '../common/Tabs';
 import { analysisDraftKey } from '../common/analysisDraftStore';
-import { useTabSettings } from '../common/useTabSettings';
-import { useAnalysisPreview } from '../common/useAnalysisPreview';
+import { matchesAnalysisRequest, useRequestRestoration } from '../common/analysisRequest';
+import { AnalysisAction } from '../common/components/AnalysisAction';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
+import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
 import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
+import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
 import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '../common/nodeInputs/useNodeInputRequests';
-import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
-import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
-import { VIZ_PALETTE, GREY } from '../common/vizPalette';
-import { emptyQuotation, useQuotationState } from './quotationState';
+import { useAnalysisPreview } from '../common/useAnalysisPreview';
+import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
+import { useNodePreferences } from '../common/useNodePreferences';
+import { useTabSettings } from '../common/useTabSettings';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { QuotationResults } from './QuotationResults';
+import { emptyQuotation, useQuotationState } from './quotationState';
 interface Props {
   base: string;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing?: boolean;
   onCancel: (id: string) => void;
@@ -59,14 +61,14 @@ function QuotationTab({
   editing = false,
   onCancel,
   tab,
-}: Props & { tab: api.Tab }) {
+}: Props & { tab: analysesApi.Tab }) {
   const cache = useQueryClient();
   const savePreference = useNodePreferences(base);
   const key = analysisDraftKey(base, tab.id);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
-      api.getQuotationResult(base, id, signal),
+      quotationApi.getQuotationResult(base, id, signal),
     ),
     enabled: active && Boolean(analysisId),
   });
@@ -76,10 +78,10 @@ function QuotationTab({
   const discardPreview = useQuotationState((state) => state.discardPreview);
   const preview = useAnalysisPreview(base, tab.id, active, localPreview, discardPreview);
   const clearPreview = preview.clear;
-  const restored = decodeAnalysisRequest('quotation', tab.analysis?.request);
+  const restored = useRequestRestoration('quotation', tab.analysis, [base, tab.id]);
   const draft = stored ?? restored.request;
   const submitted = preview.submitted;
-  const update = (value: api.QuotationRequest) => {
+  const update = (value: quotationApi.QuotationRequest) => {
     useQuotationState.getState().setDraft(base, tab.id, value);
   };
   const view = submitted ? 'preview' : 'saved';
@@ -113,13 +115,6 @@ function QuotationTab({
     getColumnInfos: () => mapArrowColumnsToInfo(schema.data ?? []),
     constraints: { maxNodes: 1, fieldPredicate: isArrowStringField, preserveColumnSelection: true },
   });
-  const inputs = useNodeInputRequests({
-    scopeId: base,
-    tool: 'quotation',
-    addNodes: picker.addNodes,
-    enabled: active && !editing,
-    deferPlacement: Boolean(result.data ?? submitted),
-  });
   const { settings, change } = useTabSettings(base, tab);
   const color =
     nodes.find((node) => node.table_name === draft.input.source.name)?.color ??
@@ -127,14 +122,17 @@ function QuotationTab({
   const captured = {
     input: { ...draft.input, column: picker.nodeColumnSelections[0]?.column ?? draft.input.column },
   };
-  const ready = Boolean(
-    captured.input.source.schema &&
-    captured.input.column &&
-    nodes.some((node) => node.table_name === captured.input.source.name),
-  );
+  const ready =
+    !restored.blocked &&
+    Boolean(
+      captured.input.source.schema &&
+      captured.input.column &&
+      nodes.some((node) => node.table_name === captured.input.source.name),
+    );
   const running = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
-    mutationFn: (request: api.QuotationRequest) => api.runQuotation(base, tab.id, request),
+    mutationFn: (request: quotationApi.QuotationRequest) =>
+      quotationApi.runQuotation(base, tab.id, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'quotation'] }),
   });
   const executionTask =
@@ -161,7 +159,7 @@ function QuotationTab({
           <>
             <NodeInputsPanel
               {...picker}
-              {...inputs}
+
               title="Quotation input"
               maxNodes={1}
               inputOrder={draft.input.source.name ? [draft.input.source.name] : []}
@@ -193,7 +191,11 @@ function QuotationTab({
               Built-in English extractor · The pinned language model is downloaded on first use and
               reused offline.
             </p>
-            <RequestCompatibilityWarning issues={restored.issues} />
+            <RequestCompatibilityWarning
+              issues={restored.issues}
+              onReset={() => restored.reset(update)}
+              resetDone={!restored.blocked}
+            />
             <div className="flex flex-wrap items-center gap-2">
               <AnalysisAction
                 reason={
@@ -209,7 +211,7 @@ function QuotationTab({
                             matchesAnalysisRequest(
                               'quotation',
                               captured,
-                              result.data?.request ?? tab.analysis?.request,
+                              result.data?.request_status ?? tab.analysis?.request_status,
                             )
                           ? 'These settings already have saved results. Change the parameters or clear results to run again.'
                           : undefined
@@ -248,7 +250,7 @@ function QuotationTab({
                       ? 'Wait for Run to finish, or cancel it first.'
                       : !ready
                         ? 'Choose the required inputs and search settings first.'
-                        : matchesAnalysisRequest('quotation', captured, result.data?.request)
+                        : matchesAnalysisRequest('quotation', captured, result.data?.request_status)
                           ? 'These settings already have saved results. Change the request or clear results to preview again.'
                           : undefined
                 }

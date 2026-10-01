@@ -19,7 +19,7 @@ it('keeps project and tab drafts independent and reconciles source rename only i
   const state = useFrequencyState.getState();
   state.setDraft('one', 'tab', { inputs, study: 'A' });
   state.setDraft('two', 'tab', { inputs, study: 'A' });
-  state.renameSource('one', 'A', 'Renamed');
+  state.reconcile('one', { type: 'table', source: { schema: 'data', name: 'A' }, name: 'Renamed' });
   expect(getFrequencyDraft(useFrequencyState.getState(), 'one', 'tab')?.study).toBe('Renamed');
   expect(getFrequencyDraft(useFrequencyState.getState(), 'two', 'tab')?.study).toBe('A');
   state.activate('one', 'tab');

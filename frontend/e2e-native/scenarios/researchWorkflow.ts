@@ -1,5 +1,7 @@
 import { $, browser, expect } from '@wdio/globals';
-import * as api from '../../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as plotsApi from '@/features/tools/plots/api';
 import {
   withResearchFile,
   readResearchData,
@@ -28,9 +30,9 @@ export async function researchWorkflow(base: string) {
   });
   const readRows = async (name: string) =>
     (
-      await api.querySql(base, [
+      await projectApi.querySql(base, [
         {
-          sql: `SELECT row_id,label,cohort,consent FROM data.${api.identifier(name)} ORDER BY row_id,cohort`,
+          sql: `SELECT row_id,label,cohort,consent FROM data.${ objectsApi.identifier(name)} ORDER BY row_id,cohort`,
         },
       ])
     )
@@ -71,7 +73,7 @@ export async function researchWorkflow(base: string) {
       await addResearchInput(panel, 'survey_joined');
       await chooseColumn('Category', 'cohort', panel);
       const id = await runResearchAnalysis(base, 'compare', panel);
-      const data = await api.queryPlot(base, id, 'compare', { uncased: false, minimum_rows: 0 });
+      const data = await plotsApi.queryPlot(base, id, 'compare', { uncased: false, minimum_rows: 0 });
       const counts = Object.fromEntries(
         data
           .toArray()

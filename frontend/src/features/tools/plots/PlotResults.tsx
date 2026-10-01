@@ -1,31 +1,28 @@
-import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
-import { useRef, useState } from 'react';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import {
-  buildChartExport,
-  saveGeneratedExport,
-  type ChartExportFormat,
-} from '../common/chartExport';
+import * as plotsApi from '@/features/tools/plots/api';
+import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
+import { saveGeneratedExport } from '@/lib/download';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
+import { captureChart } from '../common/captureChart';
+import { buildChartExport, type ChartExportFormat } from '../common/chartExport';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { ChartDownload } from '../common/components/DownloadControl';
 import { PlotChart } from './PlotChart';
-import { captureChart } from '../common/captureChart';
+import { plotExportContext, plotPublicationScope, plotSelectionKeys } from './plotContext';
 import {
   buildPlot,
   categoryLabel,
   wrapPlotLabel,
-  type PlotRow,
   type PlotDisplay,
+  type PlotRow,
 } from './plotModel';
-import { plotExportContext, plotPublicationScope, plotSelectionKeys } from './plotContext';
 import { PlotPublishDialog } from './PlotPublishDialog';
-const emptySelection = (): api.PlotSelection => ({
+const emptySelection = (): plotsApi.PlotSelection => ({
   hidden: [],
   intervals: [],
   cells: [],
@@ -42,8 +39,8 @@ export function PlotResults({
   onSettings,
 }: {
   base: string;
-  mode: api.PlotMode;
-  result: api.PlotAnalysis;
+  mode: plotsApi.PlotMode;
+  result: plotsApi.PlotAnalysis;
   active: boolean;
   editing: boolean;
   settings: Record<string, unknown>;
@@ -55,14 +52,14 @@ export function PlotResults({
   const frame = useRef<HTMLDivElement>(null);
   const [chartWidth, setChartWidth] = useState(0);
   const anchor = useRef<string | null>(null);
-  const request = decodeAnalysisRequest(mode, result.request).request;
+  const request = decodeAnalysisRequest(mode, result.request_status).request;
   const uncased = settings.uncased === true;
   const minimum_rows =
     typeof settings.minimum_rows === 'number' ? Math.max(0, Math.floor(settings.minimum_rows)) : 0;
   const query = { uncased, minimum_rows };
   const data = useQuery({
     queryKey: ['native', base, 'analyses', result.id, mode, query],
-    queryFn: ({ signal }) => api.queryPlot(base, result.id, mode, query, signal),
+    queryFn: ({ signal }) => plotsApi.queryPlot(base, result.id, mode, query, signal),
     enabled: active,
     staleTime: Infinity,
     placeholderData: keepPreviousData,

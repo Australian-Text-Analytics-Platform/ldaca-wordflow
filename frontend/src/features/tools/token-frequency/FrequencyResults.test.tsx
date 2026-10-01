@@ -1,27 +1,34 @@
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { useConcordanceState, concordanceKey } from '../concordance/concordanceState';
-import { useFrequencyState } from './frequencyState';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import * as projectApi from '@/features/project/api';
+import * as filesApi from '@/features/project/filesApi';
+import type { Tab } from '@/features/tools/common/analysisApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import type { FrequencyAnalysisResult, FrequencyQuery } from '@/features/tools/token-frequency/api';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { tableFromArrays } from 'apache-arrow';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
-import type { FrequencyAnalysisResult, Tab, FrequencyQuery } from '@/features/project/api';
-import { FrequencyResults } from './FrequencyResults';
+import { concordanceKey, useConcordanceState } from '../concordance/concordanceState';
 import { FrequencyCorpusCloud, FrequencyJuxtorpusCloud } from './FrequencyCharts';
+import { FrequencyResults } from './FrequencyResults';
+import { useFrequencyState } from './frequencyState';
 
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 vi.mock('./FrequencyCharts', () => ({
   FrequencyCorpusCloud: vi.fn(() => <div>Cloud</div>),
   FrequencyJuxtorpusCloud: vi.fn(() => <div>Juxtorpus</div>),
 }));
-vi.mock('@/features/project/api', async (importOriginal) => ({
-  ...(await importOriginal<typeof api>()),
+vi.mock('@/features/tools/token-frequency/api', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   queryFrequency: vi.fn(),
+  exportFrequency: vi.fn(),
+}));
+vi.mock('@/features/tools/common/analysisApi', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   createTab: vi.fn(),
   updateTab: vi.fn(),
-  exportFrequency: vi.fn(),
 }));
 const base = 'http://project';
 const tab: Tab = {
@@ -30,9 +37,29 @@ const tab: Tab = {
   name: 'Frequency',
   position: 0,
   settings: { display: 'list', listLimit: 50 },
-  analysis: { id: 'result', request: null, has_result: true },
+  analysis: {
+    request_status: { status: 'supported', request: { kind: 'frequency', request: null } },
+    id: 'result',
+    request: null,
+    has_result: true,
+  },
 };
 const result: FrequencyAnalysisResult = {
+  request_status: {
+    status: 'supported',
+    request: {
+      kind: 'frequency',
+      request: {
+        inputs: [
+          {
+            source: { schema: 'data', name: 'Corpus' },
+            column: 'text',
+            tokenizer: 'plain_words',
+          },
+        ],
+      },
+    },
+  },
   id: 'result',
   tab_id: tab.id,
   kind: 'frequency',
@@ -120,12 +147,12 @@ beforeEach(() => {
   useFrequencyState.setState({ display: {} });
   useConcordanceState.setState({ active: {}, drafts: {}, previews: {} });
   useFrequencyState.getState().setDisplay(base, tab.id, { display: 'list', listLimit: 50 });
-  vi.mocked(api.queryFrequency).mockResolvedValue(rows);
-  vi.mocked(api.updateTab).mockImplementation(async (_base, _id, update) => {
+  vi.mocked(frequencyApi.queryFrequency).mockResolvedValue(rows);
+  vi.mocked(analysesApi.updateTab).mockImplementation(async (_base, _id, update) => {
     persisted = { ...persisted, ...update };
     return persisted;
   });
-  vi.mocked(api.exportFrequency).mockResolvedValue('Corpus.csv');
+  vi.mocked(frequencyApi.exportFrequency).mockResolvedValue('Corpus.csv');
 });
 afterEach(() => vi.restoreAllMocks());
 it('retains decoded projection rows through unrelated renders and unchanged refreshes', async () => {
@@ -145,16 +172,16 @@ it('retains decoded projection rows through unrelated renders and unchanged refr
     </QueryClientProvider>,
   );
   expect(cloudRows()).toBe(original);
-  expect(api.queryFrequency).toHaveBeenCalledOnce();
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledOnce();
 
-  vi.mocked(api.queryFrequency).mockResolvedValue({
+  vi.mocked(frequencyApi.queryFrequency).mockResolvedValue({
     table: tableFromArrays({ token: ['alpha'], frequency: [9007199254740993n] }),
     totalRows: 1,
   });
   await act(() => client.refetchQueries({ queryKey: ['native', base, 'analyses'] }));
   expect(cloudRows()).toBe(original);
 
-  vi.mocked(api.queryFrequency).mockResolvedValue({
+  vi.mocked(frequencyApi.queryFrequency).mockResolvedValue({
     table: tableFromArrays({ token: ['beta'], frequency: [2n] }),
     totalRows: 1,
   });
@@ -169,7 +196,7 @@ it('shows exact saved totals and exports the complete filtered list independentl
   fireEvent.click(screen.getByRole('button', { name: 'Export Corpus list' }));
   fireEvent.click(screen.getByRole('button', { name: 'Export', exact: true }));
   await waitFor(() =>
-    expect(api.exportFrequency).toHaveBeenCalledWith(
+    expect(frequencyApi.exportFrequency).toHaveBeenCalledWith(
       base,
       result.id,
       { view: 'corpus', corpus_index: 0, filter: '', stopword_source: undefined },
@@ -182,14 +209,14 @@ it('keeps preceding rows but disables exports until the current filter finishes'
   mount();
   await screen.findByText('alpha');
   const replacement = Promise.withResolvers<typeof rows>();
-  vi.mocked(api.queryFrequency).mockImplementation((_base, _id, query: FrequencyQuery) =>
+  vi.mocked(frequencyApi.queryFrequency).mockImplementation((_base, _id, query: FrequencyQuery) =>
     query.filter ? replacement.promise : Promise.resolve(rows),
   );
   fireEvent.change(screen.getByRole('textbox', { name: 'Filter tokens' }), {
     target: { value: 'beta*' },
   });
   await waitFor(() =>
-    expect(api.queryFrequency).toHaveBeenCalledWith(
+    expect(frequencyApi.queryFrequency).toHaveBeenCalledWith(
       base,
       result.id,
       expect.objectContaining({ filter: 'beta*' }),
@@ -213,7 +240,7 @@ it('keeps saved reads and exports available during editing without preference wr
   expect(screen.getByRole('textbox', { name: 'Filter tokens' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Word clouds' })).toBeEnabled();
   expect(screen.getByRole('button', { name: 'Export Corpus list' })).toBeEnabled();
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
 });
 
 it('keeps every character during rapid typing and keeps browsing settings local after complete entry', async () => {
@@ -224,7 +251,7 @@ it('keeps every character during rapid typing and keeps browsing settings local 
   await user.type(filter, 'a*');
   expect(filter).toHaveValue('a*');
   await waitFor(() =>
-    expect(api.queryFrequency).toHaveBeenCalledWith(
+    expect(frequencyApi.queryFrequency).toHaveBeenCalledWith(
       base,
       result.id,
       expect.objectContaining({ filter: 'a*' }),
@@ -237,7 +264,7 @@ it('keeps every character during rapid typing and keeps browsing settings local 
   await user.type(limit, '20');
   expect(limit).toHaveValue(20);
   await user.tab();
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
   expect(useFrequencyState.getState().display[JSON.stringify([base, tab.id])]).toMatchObject({
     cloudLimit: 20,
     filter: 'a*',
@@ -245,8 +272,8 @@ it('keeps every character during rapid typing and keeps browsing settings local 
 });
 
 it('retains the previous display on a failed enabled list and blocks export instead of treating it as empty', async () => {
-  vi.spyOn(api, 'nodeSchema').mockResolvedValue([]);
-  const words = vi.spyOn(api, 'readStopwords').mockResolvedValue(['banana']);
+  vi.spyOn(projectApi, 'nodeSchema').mockResolvedValue([]);
+  const words = vi.spyOn(filesApi, 'readStopwords').mockResolvedValue(['banana']);
   persisted.settings = {
     ...persisted.settings,
     stopwordSource: { source: { schema: 'data', name: 'words' }, column: 'word' },
@@ -264,7 +291,7 @@ it('retains the previous display on a failed enabled list and blocks export inst
   );
   await screen.findByText('alpha');
   await waitFor(() =>
-    expect(api.queryFrequency).toHaveBeenLastCalledWith(
+    expect(frequencyApi.queryFrequency).toHaveBeenLastCalledWith(
       base,
       result.id,
       expect.objectContaining({
@@ -280,7 +307,7 @@ it('retains the previous display on a failed enabled list and blocks export inst
   expect(screen.getByText('alpha')).toBeInTheDocument();
   expect(await screen.findByText(/display is outdated/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Export Corpus list' })).toBeDisabled();
-  expect(api.queryFrequency).not.toHaveBeenCalledWith(
+  expect(frequencyApi.queryFrequency).not.toHaveBeenCalledWith(
     base,
     result.id,
     expect.objectContaining({ stopword_source: undefined }),
@@ -289,9 +316,9 @@ it('retains the previous display on a failed enabled list and blocks export inst
 });
 
 it('does not fall back to a cached unfiltered result when switching to an unreadable list', async () => {
-  vi.spyOn(api, 'nodeSchema').mockResolvedValue([]);
-  const words = vi.spyOn(api, 'readStopwords').mockResolvedValue(['banana']);
-  vi.mocked(api.queryFrequency).mockImplementation(async (_base, _id, query) =>
+  vi.spyOn(projectApi, 'nodeSchema').mockResolvedValue([]);
+  const words = vi.spyOn(filesApi, 'readStopwords').mockResolvedValue(['banana']);
+  vi.mocked(frequencyApi.queryFrequency).mockImplementation(async (_base, _id, query) =>
     query.stopword_source
       ? rows
       : {
@@ -352,7 +379,7 @@ it('pages through all comparison rows and resets the page when filtering or sort
       },
     },
   };
-  vi.mocked(api.queryFrequency).mockImplementation(async (_base, _id, query) =>
+  vi.mocked(frequencyApi.queryFrequency).mockImplementation(async (_base, _id, query) =>
     query.view === 'comparison'
       ? { table: tableFromArrays({ token: [`page ${String(query.page)}`] }), totalRows: 120 }
       : rows,
@@ -361,7 +388,7 @@ it('pages through all comparison rows and resets the page when filtering or sort
   await screen.findByText('page 1');
   fireEvent.click(screen.getByRole('link', { name: 'Go to next page' }));
   await screen.findByText('page 2');
-  expect(api.queryFrequency).toHaveBeenCalledWith(
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledWith(
     base,
     result.id,
     expect.objectContaining({
@@ -380,7 +407,7 @@ it('pages through all comparison rows and resets the page when filtering or sort
   await screen.findByText('page 2');
   fireEvent.click(screen.getByRole('button', { name: 'Sort by Signed LL' }));
   await screen.findByText('page 1');
-  expect(api.queryFrequency).toHaveBeenCalledWith(
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledWith(
     base,
     result.id,
     expect.objectContaining({
@@ -391,7 +418,7 @@ it('pages through all comparison rows and resets the page when filtering or sort
     }),
     expect.any(AbortSignal),
   );
-  expect(api.queryFrequency).not.toHaveBeenCalledWith(
+  expect(frequencyApi.queryFrequency).not.toHaveBeenCalledWith(
     base,
     result.id,
     expect.objectContaining({ view: 'comparison', limit: expect.any(Number) }),
@@ -411,19 +438,21 @@ it('opens a Concordance Preview using the saved source and clicked token', async
     name: 'Concordance 1',
     analysis: null,
   };
-  vi.mocked(api.createTab).mockResolvedValue(created);
-  vi.mocked(api.updateTab).mockImplementationOnce(async (_base, _id, changes) => ({
+  vi.mocked(analysesApi.createTab).mockResolvedValue(created);
+  vi.mocked(analysesApi.updateTab).mockImplementationOnce(async (_base, _id, changes) => ({
     ...created,
     ...changes,
   }));
   mount();
   const token = await screen.findByText('alpha');
   fireEvent.click(token);
-  await waitFor(() => expect(api.createTab).toHaveBeenCalledExactlyOnceWith(base, 'concordance'));
+  await waitFor(() =>
+    expect(analysesApi.createTab).toHaveBeenCalledExactlyOnceWith(base, 'concordance'),
+  );
   await waitFor(() => expect(useConcordanceState.getState().active[base]).toBe(created.id));
   const preview = useConcordanceState.getState().previews[concordanceKey(base, created.id)];
   expect(preview?.request.inputs).toEqual(result.request.inputs);
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
   expect(preview?.request.search).toMatchObject({
     query: 'alpha',
     mode: 'text',
@@ -454,8 +483,8 @@ it.each([
   });
   saved.result.payload.comparison_artifact_id = 'comparison';
   const created: Tab = { ...tab, id: 'concordance', kind: 'concordance', analysis: null };
-  vi.mocked(api.createTab).mockResolvedValue(created);
-  vi.mocked(api.updateTab).mockImplementationOnce(async (_base, _id, changes) => ({
+  vi.mocked(analysesApi.createTab).mockResolvedValue(created);
+  vi.mocked(analysesApi.updateTab).mockImplementationOnce(async (_base, _id, changes) => ({
     ...created,
     ...changes,
   }));
@@ -486,7 +515,9 @@ it.each([
       await within(await screen.findByRole('region', { name: label })).findByText('alpha'),
     );
   }
-  await waitFor(() => expect(api.createTab).toHaveBeenCalledExactlyOnceWith(base, 'concordance'));
+  await waitFor(() =>
+    expect(analysesApi.createTab).toHaveBeenCalledExactlyOnceWith(base, 'concordance'),
+  );
   await waitFor(() => expect(useConcordanceState.getState().active[base]).toBe(created.id));
   const key = concordanceKey(base, created.id);
   const state = useConcordanceState.getState();

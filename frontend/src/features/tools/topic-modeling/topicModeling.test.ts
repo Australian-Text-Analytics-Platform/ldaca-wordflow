@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
+import { topicDownload } from './topicExport';
 import {
   buildTopicBubbleModels,
   findTopicIdsInsideLasso,
   normalizeTopicPositions,
 } from './topicModelingGraph';
 import type { TopicModelingTopic } from './topicPresentation';
-import { topicDownload } from './topicExport';
 const topic = (id: number, x: number, y: number, size: number[]): TopicModelingTopic => ({
   id,
   x,
@@ -26,27 +26,13 @@ const options = {
   topicSearchQuery: '',
 };
 describe('Topic Modelling presentation contracts', () => {
-  it('keeps sampling out of requests and restores independent valid settings', () => {
-    const saved = {
-      inputs: [{ source: { schema: 'data', name: 'source' }, column: 'text' }],
-      tokenizer: 'future:preserved',
-      embedding_model: 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2',
-      max_segment_tokens: 256,
-      minimum_topic_size: 2,
-      sampling: { count: 100 },
-      seed: 42,
-    };
-    const { request, issues } = decodeAnalysisRequest('topic-modeling', saved);
-    expect(request.tokenizer).toBe(saved.tokenizer);
-    expect(request.max_segment_tokens).toBe(128);
-    expect(request.seed).toBe(42);
-    expect(issues.map((i) => i.path)).toEqual(['sampling', 'max_segment_tokens']);
-    expect(matchesAnalysisRequest('topic-modeling', request, saved)).toBe(false);
-    expect(matchesAnalysisRequest('topic-modeling', request, request)).toBe(true);
-    expect(saved.max_segment_tokens).toBe(256);
-    expect(
-      decodeAnalysisRequest('topic-modeling', { embedding_model: saved.embedding_model }).issues,
-    ).toEqual([]);
+  it('keeps sampling out of submitted requests and leaves unknown provenance unsupported', () => {
+    const saved = { inputs: [], sampling: { count: 100 }, seed: 42 };
+    const status = { status: 'unsupported' as const, reason: 'Unknown field sampling' };
+    const restored = decodeAnalysisRequest('topic-modeling', status, saved);
+    expect(restored.request).not.toHaveProperty('sampling');
+    expect(restored.issues[0]?.value).toBe(saved);
+    expect(matchesAnalysisRequest('topic-modeling', restored.request, status)).toBe(false);
   });
   it('uses one scale for both axes and preserves coordinates when a topic has zero memberships', () => {
     const topics = [topic(0, 0, 0, [1, 0]), topic(1, 10, 5, [4, 0]), topic(2, 20, 10, [0, 0])];

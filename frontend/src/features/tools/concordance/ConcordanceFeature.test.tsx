@@ -1,35 +1,47 @@
-import userEvent from '@testing-library/user-event';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Field, Utf8, Float64, Struct, List, vectorFromArray, tableFromArrays } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import * as projectApi from '@/features/project/api';
+import { refreshProjectQueries } from '@/features/project/projectChanges';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Field, Float64, List, Struct, tableFromArrays, Utf8, vectorFromArray } from 'apache-arrow';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import ConcordanceFeature from './ConcordanceFeature';
 import { concordanceKey, emptyConcordance, useConcordanceState } from './concordanceState';
-import { refreshProjectQueries } from '@/features/project/projectChanges';
 vi.mock('./ConcordanceDispersion', () => ({
   ConcordanceDispersion: () => <p>Dispersion chart</p>,
 }));
 vi.mock('../common/language/useDetectedColumnLanguage', () => ({
   useDetectedColumnLanguage: () => ({ data: 'en', isFetching: false, isError: false }),
 }));
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+vi.mock('@/features/tools/common/analysisApi', async (original) => ({
+  ...(await original<object>()),
   listTabs: vi.fn(),
   createTab: vi.fn(),
   deleteTab: vi.fn(),
-  getTokenizers: vi.fn(),
-  nodeSchema: vi.fn(),
-  previewConcordance: vi.fn(),
   updateTab: vi.fn(),
+  clearTab: vi.fn(),
+}));
+vi.mock('@/features/tools/concordance/api', async (original) => ({
+  ...(await original<object>()),
+  previewConcordance: vi.fn(),
   runConcordance: vi.fn(),
   getConcordanceResult: vi.fn(),
   queryConcordance: vi.fn(),
-  clearTab: vi.fn(),
+}));
+vi.mock('@/features/project/api', async (original) => ({
+  ...(await original<object>()),
+  nodeSchema: vi.fn(),
+}));
+vi.mock('@/features/tools/token-frequency/api', async (original) => ({
+  ...(await original<object>()),
+  getTokenizers: vi.fn(),
 }));
 const base = 'http://concordance';
-const tab: api.Tab = {
+const tab: analysesApi.Tab = {
   id: 'tab',
   kind: 'concordance',
   name: 'Concordance 1',
@@ -37,12 +49,12 @@ const tab: api.Tab = {
   settings: {},
   analysis: null,
 };
-const request: api.ConcordanceRequest = {
+const request: concordanceApi.ConcordanceRequest = {
   ...emptyConcordance,
   inputs: [{ source: { schema: 'data', name: 'Corpus' }, column: 'text', tokenizer: null }],
   search: { ...emptyConcordance.search, query: 'cat' },
 };
-const nodes: api.ProjectNode[] = [
+const nodes: projectApi.ProjectNode[] = [
   {
     table_name: 'Corpus',
     visible: true,
@@ -88,7 +100,8 @@ const previewButton = () =>
     exact: true,
   });
 
-const completed: api.ConcordanceAnalysisResult = {
+const completed: concordanceApi.ConcordanceAnalysisResult = {
+  request_status: { status: 'supported', request: { kind: 'concordance', request: request } },
   id: 'result',
   tab_id: tab.id,
   kind: 'concordance',
@@ -116,14 +129,14 @@ const completed: api.ConcordanceAnalysisResult = {
 beforeEach(() => {
   vi.clearAllMocks();
   useConcordanceState.setState({ active: {}, drafts: {}, previews: {} });
-  vi.mocked(api.listTabs).mockResolvedValue([tab]);
-  vi.mocked(api.createTab).mockResolvedValue(tab);
-  vi.mocked(api.getTokenizers).mockResolvedValue([]);
-  vi.mocked(api.nodeSchema).mockResolvedValue([
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([tab]);
+  vi.mocked(analysesApi.createTab).mockResolvedValue(tab);
+  vi.mocked(frequencyApi.getTokenizers).mockResolvedValue([]);
+  vi.mocked(projectApi.nodeSchema).mockResolvedValue([
     { name: 'text', field: new Field('text', new Utf8()) },
   ]);
-  vi.mocked(api.previewConcordance).mockResolvedValue(page);
-  vi.mocked(api.updateTab).mockImplementation(async (_base, _id, change) => ({
+  vi.mocked(concordanceApi.previewConcordance).mockResolvedValue(page);
+  vi.mocked(analysesApi.updateTab).mockImplementation(async (_base, _id, change) => ({
     ...tab,
     ...change,
   }));
@@ -152,28 +165,28 @@ it('calculates only after Preview and reuses pages for presentation and unrelate
   useConcordanceState.getState().setDraft(base, tab.id, request);
   const { client } = mount();
   await screen.findByRole('textbox', { name: 'Concordance query' });
-  expect(api.previewConcordance).not.toHaveBeenCalled();
+  expect(concordanceApi.previewConcordance).not.toHaveBeenCalled();
   fireEvent.change(screen.getByRole('textbox', { name: 'Concordance query' }), {
     target: { value: 'dog' },
   });
-  expect(api.previewConcordance).not.toHaveBeenCalled();
+  expect(concordanceApi.previewConcordance).not.toHaveBeenCalled();
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(previewButton());
   await screen.findByRole('button', { name: 'cat', exact: true });
-  expect(api.previewConcordance).toHaveBeenCalledTimes(1);
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledTimes(1);
   await userEvent.click(screen.getByRole('tab', { name: 'Dispersion', exact: true }));
   await screen.findByText('Dispersion chart');
-  expect(api.previewConcordance).toHaveBeenCalledTimes(1);
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledTimes(1);
   await act(() =>
     refreshProjectQueries(client, base, {
       objects: [{ schema: 'data', name: 'Unrelated' }],
     }),
   );
-  expect(api.previewConcordance).toHaveBeenCalledTimes(1);
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledTimes(1);
   await act(() =>
     refreshProjectQueries(client, base, { objects: [{ schema: 'data', name: 'Corpus' }] }),
   );
-  await waitFor(() => expect(api.previewConcordance).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(concordanceApi.previewConcordance).toHaveBeenCalledTimes(2));
   expect(useConcordanceState.getState().drafts[concordanceKey(base, tab.id)]?.search.query).toBe(
     'dog',
   );
@@ -185,7 +198,9 @@ it('retains a failed preview and explicit Preview can refresh unchanged settings
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(previewButton());
   await screen.findByRole('button', { name: 'cat', exact: true });
-  vi.mocked(api.previewConcordance).mockRejectedValueOnce(new Error('Source unavailable'));
+  vi.mocked(concordanceApi.previewConcordance).mockRejectedValueOnce(
+    new Error('Source unavailable'),
+  );
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(previewButton());
   await screen.findByText(/Refresh failed/);
@@ -194,15 +209,23 @@ it('retains a failed preview and explicit Preview can refresh unchanged settings
 });
 
 it('offers Rerun for a broken saved projection and returns to Run after Retry succeeds', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: completed.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'concordance', request: request } },
+        id: completed.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.getConcordanceResult).mockResolvedValue(completed);
-  vi.mocked(api.queryConcordance).mockRejectedValue(new Error('Missing artifact table'));
+  vi.mocked(concordanceApi.getConcordanceResult).mockResolvedValue(completed);
+  vi.mocked(concordanceApi.queryConcordance).mockRejectedValue(new Error('Missing artifact table'));
   mount();
   const rerun = await screen.findByRole('button', { name: 'Rerun', exact: true });
   await waitFor(() => expect(rerun).toHaveAttribute('aria-disabled', 'false'));
-  vi.mocked(api.queryConcordance).mockResolvedValue(page);
+  vi.mocked(concordanceApi.queryConcordance).mockResolvedValue(page);
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await screen.findByRole('button', { name: 'cat', exact: true });
   expect(screen.getByRole('button', { name: 'Run', exact: true })).toBeInTheDocument();
@@ -210,25 +233,25 @@ it('offers Rerun for a broken saved projection and returns to Run after Retry su
     'aria-disabled',
     'true',
   );
-  expect(api.runConcordance).not.toHaveBeenCalled();
+  expect(concordanceApi.runConcordance).not.toHaveBeenCalled();
 });
 it('creates once on tool entry and does not recreate a closed last tab', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([]);
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
   const { client } = mount();
   await screen.findByRole('tab', { name: /Concordance 1/ });
-  expect(api.createTab).toHaveBeenCalledTimes(1);
+  expect(analysesApi.createTab).toHaveBeenCalledTimes(1);
   await act(async () => {
     client.setQueryData(['native', base, 'tabs', 'concordance'], []);
   });
   await screen.findByRole('button', { name: 'New Concordance analysis' });
-  expect(api.createTab).toHaveBeenCalledTimes(1);
+  expect(analysesApi.createTab).toHaveBeenCalledTimes(1);
 });
 
 it('Stop aborts only the pending Preview and ignores its late response', async () => {
   useConcordanceState.getState().setDraft(base, tab.id, request);
   let signal: AbortSignal | undefined;
   let resolve: ((value: typeof page) => void) | undefined;
-  vi.mocked(api.previewConcordance).mockImplementation((_base, _id, _request, abort) => {
+  vi.mocked(concordanceApi.previewConcordance).mockImplementation((_base, _id, _request, abort) => {
     signal = abort;
     return new Promise((done) => {
       resolve = done;
@@ -238,7 +261,7 @@ it('Stop aborts only the pending Preview and ignores its late response', async (
   await screen.findByRole('textbox', { name: 'Concordance query' });
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(previewButton());
-  await waitFor(() => expect(api.previewConcordance).toHaveBeenCalledOnce());
+  await waitFor(() => expect(concordanceApi.previewConcordance).toHaveBeenCalledOnce());
   fireEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
   await waitFor(() => expect(signal?.aborted).toBe(true));
   await act(async () => {
@@ -246,7 +269,7 @@ it('Stop aborts only the pending Preview and ignores its late response', async (
     await Promise.resolve();
   });
   expect(screen.queryByRole('button', { name: 'cat', exact: true })).not.toBeInTheDocument();
-  expect(api.runConcordance).not.toHaveBeenCalled();
+  expect(concordanceApi.runConcordance).not.toHaveBeenCalled();
 });
 
 it('discards Preview on leaving, keeps the draft, and ignores legacy persisted Preview', async () => {
@@ -256,26 +279,31 @@ it('discards Preview on leaving, keeps the draft, and ignores legacy persisted P
   expect(screen.queryByRole('region', { name: 'Concordance results' })).not.toBeInTheDocument();
   fireEvent.click(previewButton());
   await screen.findByRole('button', { name: 'cat', exact: true });
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
   session.show(false);
   await waitFor(() => expect(useConcordanceState.getState().previews).toEqual({}));
   session.show(true);
   expect(screen.queryByRole('region', { name: 'Concordance results' })).not.toBeInTheDocument();
   expect(screen.getByRole('textbox', { name: 'Concordance query' })).toHaveValue('cat');
-  expect(api.previewConcordance).toHaveBeenCalledOnce();
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledOnce();
   session.unmount();
   useConcordanceState.setState({ active: {}, drafts: {}, previews: {} });
-  vi.mocked(api.listTabs).mockResolvedValue([
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
     {
       ...tab,
       settings: { preview: { request, analysisId: null } },
-      analysis: { id: 'submitted-analysis', request, has_result: false },
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'concordance', request: request } },
+        id: 'submitted-analysis',
+        request,
+        has_result: false,
+      },
     },
   ]);
   mount();
   await screen.findByRole('textbox', { name: 'Concordance query' });
   expect(screen.getByRole('textbox', { name: 'Concordance query' })).toHaveValue('cat');
-  expect(api.previewConcordance).toHaveBeenCalledOnce();
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledOnce();
 });
 
 it('clears Preview without changing its draft or writing settings', async () => {
@@ -289,7 +317,7 @@ it('clears Preview without changing its draft or writing settings', async () => 
   expect(client.getQueriesData({ queryKey: ['native', base, 'analysis-preview', tab.id] })).toEqual(
     [],
   );
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
   expect(screen.getByRole('textbox', { name: 'Concordance query' })).toHaveValue('cat');
   expect(screen.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
     'aria-disabled',
@@ -299,7 +327,7 @@ it('clears Preview without changing its draft or writing settings', async () => 
 
 it('keeps Text options when changing modes and restores Preview fields and document-page counts', async () => {
   useConcordanceState.getState().setDraft(base, tab.id, request);
-  vi.mocked(api.previewConcordance).mockResolvedValue({ ...page, documentCount: 20 });
+  vi.mocked(concordanceApi.previewConcordance).mockResolvedValue({ ...page, documentCount: 20 });
   mount();
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(screen.getByRole('checkbox', { name: 'Regex', exact: true }));
@@ -316,19 +344,19 @@ it('keeps Text options when changing modes and restores Preview fields and docum
 });
 it('moves from Preview to saved results once, protects newer drafts, and re-enables Preview after clearing', async () => {
   useConcordanceState.getState().setDraft(base, tab.id, request);
-  const pending = Promise.withResolvers<api.ConcordanceAnalysisResult>();
-  vi.mocked(api.runConcordance).mockReturnValueOnce(pending.promise);
-  vi.mocked(api.getConcordanceResult).mockResolvedValue(completed);
-  vi.mocked(api.queryConcordance).mockResolvedValue(page);
+  const pending = Promise.withResolvers<concordanceApi.ConcordanceAnalysisResult>();
+  vi.mocked(concordanceApi.runConcordance).mockReturnValueOnce(pending.promise);
+  vi.mocked(concordanceApi.getConcordanceResult).mockResolvedValue(completed);
+  vi.mocked(concordanceApi.queryConcordance).mockResolvedValue(page);
   const { client } = mount();
   await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(previewButton());
   await screen.findByRole('button', { name: 'cat', exact: true });
   fireEvent.click(screen.getByRole('button', { name: 'Run' }));
-  await waitFor(() => expect(api.runConcordance).toHaveBeenCalledOnce());
+  await waitFor(() => expect(concordanceApi.runConcordance).toHaveBeenCalledOnce());
   expect(previewButton()).toHaveAttribute('aria-disabled', 'true');
   fireEvent.click(previewButton());
-  expect(api.previewConcordance).toHaveBeenCalledOnce();
+  expect(concordanceApi.previewConcordance).toHaveBeenCalledOnce();
   fireEvent.change(screen.getByRole('textbox', { name: 'Concordance query' }), {
     target: { value: 'dog' },
   });
@@ -338,7 +366,20 @@ it('moves from Preview to saved results once, protects newer drafts, and re-enab
   await act(async () => {
     client.setQueryData(
       ['native', base, 'tabs', 'concordance'],
-      [{ ...tab, analysis: { id: 'result', request, has_result: true } }],
+      [
+        {
+          ...tab,
+          analysis: {
+            request_status: {
+              status: 'supported',
+              request: { kind: 'concordance', request: request },
+            },
+            id: 'result',
+            request,
+            has_result: true,
+          },
+        },
+      ],
     );
   });
   expect(screen.getByRole('textbox', { name: 'Concordance query' })).toHaveValue('dog');
@@ -359,7 +400,7 @@ it('moves from Preview to saved results once, protects newer drafts, and re-enab
     }),
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Clear results' }));
-  await waitFor(() => expect(api.clearTab).toHaveBeenCalledOnce());
+  await waitFor(() => expect(analysesApi.clearTab).toHaveBeenCalledOnce());
   await act(async () => {
     client.setQueryData(['native', base, 'tabs', 'concordance'], [tab]);
   });
@@ -374,10 +415,21 @@ it('moves from Preview to saved results once, protects newer drafts, and re-enab
 it.each([0, 1])(
   'blocks matching completed requests, including %i matches, and tracks changes without a dirty flag',
   async (count) => {
-    vi.mocked(api.listTabs).mockResolvedValue([
-      { ...tab, analysis: { id: completed.id, request, has_result: true } },
+    vi.mocked(analysesApi.listTabs).mockResolvedValue([
+      {
+        ...tab,
+        analysis: {
+          request_status: {
+            status: 'supported',
+            request: { kind: 'concordance', request: request },
+          },
+          id: completed.id,
+          request,
+          has_result: true,
+        },
+      },
     ]);
-    vi.mocked(api.getConcordanceResult).mockResolvedValue({
+    vi.mocked(concordanceApi.getConcordanceResult).mockResolvedValue({
       ...completed,
       result: {
         version: 1,
@@ -391,7 +443,7 @@ it.each([0, 1])(
         },
       },
     });
-    vi.mocked(api.queryConcordance).mockResolvedValue({
+    vi.mocked(concordanceApi.queryConcordance).mockResolvedValue({
       ...page,
       totalRows: count,
       matchCount: count,
@@ -401,7 +453,7 @@ it.each([0, 1])(
     const run = screen.getByRole('button', { name: 'Run', exact: true });
     await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'true'));
     fireEvent.click(run);
-    expect(api.runConcordance).not.toHaveBeenCalled();
+    expect(concordanceApi.runConcordance).not.toHaveBeenCalled();
     fireEvent.change(query, { target: { value: 'dog' } });
     expect(run).toHaveAttribute('aria-disabled', 'false');
     fireEvent.change(query, { target: { value: request.search.query } });
@@ -411,51 +463,67 @@ it.each([0, 1])(
   },
 );
 
-it('restores supported saved fields and enables compatibility Rerun without rewriting JSON', async () => {
-  const incompatible = { ...request, future_option: { value: '<b>future</b>' } };
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: 'result', request: incompatible, has_result: true } },
+it('requires explicit defaults for unsupported requests and retains original JSON until Run', async () => {
+  const original = { ...request, future_option: { value: 'future' } };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        id: 'unsupported',
+        request: original,
+        request_status: { status: 'unsupported', reason: 'Unknown field future_option' },
+        has_result: false,
+      },
+    },
   ]);
-  vi.mocked(api.getConcordanceResult).mockResolvedValue(completed);
   mount();
-  expect(await screen.findByText('These saved settings are not recognized:')).toBeInTheDocument();
-  const rerun = await screen.findByRole('button', { name: 'Rerun', exact: true });
-  await waitFor(() => expect(rerun).toHaveAttribute('aria-disabled', 'false'));
-  expect(api.updateTab).not.toHaveBeenCalled();
-  expect(incompatible.future_option.value).toBe('<b>future</b>');
+  const reset = await screen.findByRole('button', { name: 'Start with current defaults' });
+  expect(previewButton()).toHaveAttribute('aria-disabled', 'true');
+  fireEvent.click(reset);
+  expect(
+    screen.queryByRole('button', { name: 'Start with current defaults' }),
+  ).not.toBeInTheDocument();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
+  expect(original.future_option.value).toBe('future');
 });
 
-it('keeps original compatibility issues through edits, Preview, Clear and refreshed saved requests', async () => {
-  const original = { ...request, search: { ...request.search, future: { value: 7 } } };
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: 'submitted-analysis', request: original, has_result: false } },
+it('reset creates a local current draft while Clear preserves original unsupported provenance', async () => {
+  const original = { ...request, future: 7 };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        id: 'submitted-analysis',
+        request: original,
+        request_status: { status: 'unsupported', reason: 'Unknown field future' },
+        has_result: false,
+      },
+    },
   ]);
   const { client } = mount();
-  const query = await screen.findByRole('textbox', { name: 'Concordance query' });
-  fireEvent.change(query, { target: { value: 'dog' } });
-  await waitFor(() => expect(previewButton()).toHaveAttribute('aria-disabled', 'false'));
-  fireEvent.click(previewButton());
-  await screen.findByRole('button', { name: 'cat', exact: true });
-  expect(vi.mocked(api.previewConcordance).mock.calls[0]?.[2]).toMatchObject({
-    search: { query: 'dog' },
-  });
-  expect(vi.mocked(api.previewConcordance).mock.calls[0]?.[2]).not.toHaveProperty('search.future');
-  fireEvent.click(screen.getByRole('button', { name: 'Clear results' }));
-  expect(screen.getByText('search.future')).toBeInTheDocument();
-  expect(query).toHaveValue('dog');
-  expect(api.updateTab).not.toHaveBeenCalled();
-  expect(api.clearTab).not.toHaveBeenCalled();
-  expect(client.getQueryData(['native', base, 'tabs', 'concordance'])).toEqual([
-    { ...tab, analysis: { id: 'submitted-analysis', request: original, has_result: false } },
-  ]);
-  await act(async () => {
-    client.setQueryData(
-      ['native', base, 'tabs', 'concordance'],
-      [{ ...tab, analysis: { id: 'submitted-analysis', request, has_result: false } }],
-    );
-  });
-  await waitFor(() =>
-    expect(screen.queryByText('These saved settings are not recognized:')).not.toBeInTheDocument(),
+  fireEvent.click(await screen.findByRole('button', { name: 'Start with current defaults' }));
+  act(() =>
+    useConcordanceState
+      .getState()
+      .setDraft(base, tab.id, { ...request, search: { ...request.search, query: 'dog' } }),
   );
-  expect(query).toHaveValue('dog');
+  fireEvent.click(previewButton());
+  await waitFor(() => expect(concordanceApi.previewConcordance).toHaveBeenCalledOnce());
+  expect(vi.mocked(concordanceApi.previewConcordance).mock.calls[0]?.[2]).not.toHaveProperty(
+    'future',
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'Clear results' }));
+  expect(screen.getByRole('complementary', { name: 'Saved settings compatibility' })).toBeVisible();
+  expect(client.getQueryData(['native', base, 'tabs', 'concordance'])).toEqual([
+    {
+      ...tab,
+      analysis: {
+        id: 'submitted-analysis',
+        request: original,
+        request_status: { status: 'unsupported', reason: 'Unknown field future' },
+        has_result: false,
+      },
+    },
+  ]);
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
 });

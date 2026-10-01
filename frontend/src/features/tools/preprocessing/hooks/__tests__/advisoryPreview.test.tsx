@@ -1,15 +1,19 @@
+import { inputNode } from '@/test/nodeMetadata';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vite-plus/test';
-import { inputNode } from '@/test/nodeMetadata';
+import { useBuildSubTab } from '../../build/hooks/useBuildSubTab';
 import { useFilterSubTabSections } from '../../filter/hooks/useFilterSubTabSections';
 import { useReplaceSubTab } from '../../replace/hooks/useReplaceSubTab';
-import { useBuildSubTab } from '../../build/hooks/useBuildSubTab';
 const preview = vi.hoisted(() => vi.fn());
 vi.mock('../usePreprocessingPreview', () => ({ usePreprocessingPreview: preview }));
 vi.mock('../useNodePreviewWithRawFallback', () => ({ useNodePreviewWithRawFallback: preview }));
 vi.mock('@/features/project/api', () => ({
+  identifier: (s: string) => s,
+  querySql: vi.fn().mockResolvedValue({ get: () => ({ missing_count: 0 }) }),
+}));
+vi.mock('@/features/project/objects', () => ({
   identifier: (s: string) => s,
   querySql: vi.fn().mockResolvedValue({ get: () => ({ missing_count: 0 }) }),
 }));

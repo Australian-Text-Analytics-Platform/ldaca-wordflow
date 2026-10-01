@@ -1,6 +1,6 @@
-import { create } from 'zustand';
+import { objectRef, targetKey, type DataTarget } from '@/features/project/objects';
 import type { Viewport } from '@xyflow/react';
-import { objectRef, targetKey, type DataTarget } from './api';
+import { create } from 'zustand';
 
 export type GraphMode = 'logical' | 'dependencies';
 interface Placement {

@@ -1,22 +1,23 @@
-import { ServerControls } from '@/features/server/ServerControls';
-import { useAnnotationState } from '@/features/tools/annotation/annotationState';
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { getCurrentWindow } from '@tauri-apps/api/window';
 import { DesktopNavigationHeaderView } from '@/components/layout/DesktopNavigationHeaderView';
 import { Button } from '@/components/ui/button';
+import { projectStatus } from '@/features/project/api';
+import { ServerControls } from '@/features/server/ServerControls';
+import { useAnnotationState } from '@/features/tools/annotation/annotationState';
+import { listTabs } from '@/features/tools/common/analysisApi';
+import { useConcordanceState } from '@/features/tools/concordance/concordanceState';
+import { plotLabels, plotScope, usePlotMode, usePlotState } from '@/features/tools/plots/plotState';
+import { useQuotationState } from '@/features/tools/quotation/quotationState';
+import { useFrequencyState } from '@/features/tools/token-frequency/frequencyState';
+import { TOOL_DEFINITIONS } from '@/features/tools/toolRegistry';
+import { useTopicState } from '@/features/tools/topic-modeling/topicState';
 import { isMacOSDesktop } from '@/lib/isMacOSDesktop';
 import { isTauri } from '@/lib/isTauri';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useEffect, useState } from 'react';
 import NativeSettings from './NativeSettings';
-import ProjectView, { type ProjectTool } from './ProjectView';
-import { listTabs, projectStatus } from './api';
 import { reportProjectError } from './projectErrors';
-import { useFrequencyState } from '@/features/tools/token-frequency/frequencyState';
-import { useTopicState } from '@/features/tools/topic-modeling/topicState';
-import { useQuotationState } from '@/features/tools/quotation/quotationState';
-import { useConcordanceState } from '@/features/tools/concordance/concordanceState';
-import { usePlotMode, usePlotState, plotScope, plotLabels } from '@/features/tools/plots/plotState';
-import { TOOL_DEFINITIONS } from '@/features/tools/toolRegistry';
+import ProjectView, { type ProjectTool } from './ProjectView';
 
 /** The native host initializes and owns the document, including Save and Close. */
 export default function DocumentSession({ base }: { base: string }) {

@@ -1,13 +1,15 @@
-import type { ReactNode } from 'react';
-import * as api from '@/features/project/api';
 import { Button } from '@/components/ui/button';
+import * as objectsApi from '@/features/project/objects';
+import * as editingApi from '@/features/table-editing/api';
 import { EditingLeaveDialog } from '@/features/table-editing/EditingLeaveDialog';
 import { useTableEditing } from '@/features/table-editing/useTableEditing';
+import * as annotationApi from '@/features/tools/annotation/api';
+import type { ReactNode } from 'react';
 
 export type CorrectionEditor = ReturnType<typeof useTableEditing>;
 export interface CorrectionSession {
-  session: api.CellEditSession;
-  setup: api.AnnotationSetup;
+  session: editingApi.CellEditSession;
+  setup: annotationApi.AnnotationSetup;
   preview: boolean;
   analysisId: string | null;
 }
@@ -22,7 +24,7 @@ export function CorrectionDraft({
 }: {
   base: string;
   value: CorrectionSession;
-  review: Omit<api.AnnotationReview, 'changes'>;
+  review: Omit<annotationApi.AnnotationReview, 'changes'>;
   onFinished: () => void;
   onUseExamples: () => void;
   children: (editor: CorrectionEditor) => ReactNode;
@@ -36,7 +38,7 @@ export function CorrectionDraft({
     readPages: !value.preview,
     review: value.preview ? undefined : review,
     liveDependencies: value.setup.codebook
-      ? [api.objectRef(value.setup.codebook.source)]
+      ? [objectsApi.objectRef(value.setup.codebook.source)]
       : undefined,
   });
   return (

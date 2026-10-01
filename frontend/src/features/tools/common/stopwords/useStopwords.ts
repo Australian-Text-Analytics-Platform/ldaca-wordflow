@@ -1,5 +1,5 @@
+import * as objectsApi from '@/features/project/objects';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
 import {
   createStopwordTable,
   readStopwords,
@@ -26,7 +26,7 @@ export function useStopwords({
   const words = useQuery(stopwordQuery(base, selected, active));
   async function prepare(captured: StopwordSource | null, parents: StopwordSource[]) {
     const next = await writableStopwords(base, captured, parents);
-    if (captured === null || !api.sameTarget(next.source, captured.source)) {
+    if (captured === null || !objectsApi.sameTarget(next.source, captured.source)) {
       await onSelect(next);
     }
     return next;

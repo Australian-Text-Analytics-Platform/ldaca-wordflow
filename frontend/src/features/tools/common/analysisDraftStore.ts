@@ -12,10 +12,12 @@ interface State<Request> {
   handoff: (base: string, id: string, draft: Request) => void;
   remove: (base: string, id: string) => void;
 }
-export const createAnalysisDraftStore = <Request>() =>
+export const createAnalysisDraftStore = <Request>(
+  renameRequest: (request: Request, rename: Rename) => Request,
+) =>
   create<State<Request>>((set) => ({
     reconcile: (base, rename) => {
-      set((state) => ({ drafts: renamedDrafts(state.drafts, base, rename) }));
+      set((state) => ({ drafts: renamedDrafts(state.drafts, base, rename, renameRequest) }));
     },
     active: {},
     drafts: {},

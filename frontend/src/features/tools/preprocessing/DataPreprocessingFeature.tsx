@@ -1,56 +1,55 @@
-import { suggestDataBlockName, type DataBlockOperation } from '@/features/project/automaticNames';
-import { schemaQuery } from '@/features/project/projectQueries';
-import { lazy, Suspense, useState } from 'react';
-import { useQueries, useMutation, useIsMutating } from '@tanstack/react-query';
-import { Calculator, Code2, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
 import InfoIcon from '@/components/help/InfoIcon';
 import { EditorTabs } from '@/components/tabs';
-import { Tabs, TabsContent } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import type { ProjectNode } from '@/features/project/api';
+import { querySql } from '@/features/project/api';
+import { suggestDataBlockName, type DataBlockOperation } from '@/features/project/automaticNames';
+import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import { reportProjectError } from '@/features/project/projectErrors';
+import { schemaQuery } from '@/features/project/projectQueries';
 import { NodeInputsPanel } from '@/features/tools/common/components/NodeInputsPanel';
+import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
 import {
   useNodeInputs,
   type UseNodeInputsResult,
 } from '@/features/tools/common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '@/features/tools/common/nodeInputs/useNodeInputRequests';
-import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
-import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
 import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
-import { reportProjectError } from '@/features/project/projectErrors';
-import type { ProjectNode } from '@/features/project/api';
-import { querySql } from '@/features/project/api';
-import { usePreprocessingInputs } from './inputState';
+import { useIsMutating, useMutation, useQueries } from '@tanstack/react-query';
+import { Calculator, Code2, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
+import { lazy, Suspense, useState } from 'react';
+import { BuildSubTab } from './build/BuildSubTab';
+import { buildExpression, type BuildColumnRequest } from './build/hooks/buildExpressionModel';
+import { ConcatSubTab } from './concat/ConcatSubTab';
 import { FilterSubTab } from './filter/FilterSubTab';
-import { SliceSubTab } from './slice/SliceSubTab';
+import { usePreprocessingInputs } from './inputState';
 import { JoinSubTab } from './join/JoinSubTab';
 import { joinColumnMappings } from './join/columnMappings';
-import { ConcatSubTab } from './concat/ConcatSubTab';
-import { ReplaceSubTab } from './replace/ReplaceSubTab';
-import { BuildSubTab } from './build/BuildSubTab';
-const SqlSubTab = lazy(() =>
-  import('./sql/SqlSubTab').then((module) => ({ default: module.SqlSubTab })),
-);
-import type { FilterRequest } from './types';
-import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
-import { buildExpression, type BuildColumnRequest } from './build/hooks/buildExpressionModel';
 import {
-  applyTransformation,
   applyFind,
+  applyTransformation,
   previewSql,
   resultSelect,
-  type Transformation,
   type ColumnMapping,
+  type Transformation,
 } from './projectPreprocessing';
+import { ReplaceSubTab } from './replace/ReplaceSubTab';
+import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
+import { SliceSubTab } from './slice/SliceSubTab';
 import {
   bindInput,
   columnSelect,
   filterSelect,
   findColumn,
   joinSelect,
+  resolveColumnName,
   sampleSelect,
   stackSelect,
-  resolveColumnName,
 } from './sql';
+import type { FilterRequest } from './types';
+const SqlSubTab = lazy(() =>
+  import('./sql/SqlSubTab').then((module) => ({ default: module.SqlSubTab })),
+);
 
 const TOOLS = [
   { id: 'filter', title: 'Filter', Icon: Filter },
@@ -207,12 +206,6 @@ function ToolPane({
     constraints: { maxNodes: 1 },
   });
   const first = picker.selectedNodes[0] ?? null;
-  const inputRequests = useNodeInputRequests({
-    scopeId: base,
-    tool,
-    enabled: active && tool !== 'join',
-    addNodes: picker.addNodes,
-  });
   const id = first?.id ?? null;
   const selected = picker.selectedNodes.map((node) => node.id);
   const isLoading = { operations: pending > 0 };
@@ -227,7 +220,7 @@ function ToolPane({
       </div>
     ) : (
       <NodeInputsPanel
-        {...inputRequests}
+        disabled={!active}
         resolvedNodes={picker.resolvedNodes}
         availableNodes={picker.availableNodes}
         canAddMore={picker.canAddMore}
@@ -472,28 +465,20 @@ function ToolPane({
   );
 }
 
-/** Two placement areas keep graph additions carried until a role is chosen. */
+/** Each join role registers its own labelled input destination. */
 function JoinInputPanel({
-  base,
-  active,
   role,
   picker,
+  active,
 }: {
   base: string;
   active: boolean;
   role: 'Left' | 'Right';
   picker: UseNodeInputsResult;
 }) {
-  const requests = useNodeInputRequests({
-    scopeId: base,
-    tool: 'join',
-    enabled: active,
-    deferPlacement: true,
-    addNodes: picker.addNodes,
-  });
   return (
     <NodeInputsPanel
-      {...requests}
+      disabled={!active}
       title={`${role} input`}
       resolvedNodes={picker.resolvedNodes}
       availableNodes={picker.availableNodes}

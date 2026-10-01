@@ -1,20 +1,22 @@
-import { act, render, waitFor } from '@testing-library/react';
+import { type ProjectNode } from '@/features/project/api';
+import { objectRef, targetKey, type DataTarget } from '@/features/project/objects';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, render, waitFor } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import NativeDataView from './NativeDataView';
 import type { ProjectDataTableViewModel } from './data-view/components/projectTableModel';
-import { objectRef, targetKey, type DataTarget, type ProjectNode } from './api';
 import { useProjectPreview } from './previewState';
-import { useProjectViewState } from './projectViewState';
 import { refreshProjectQueries } from './projectChanges';
+import { useProjectViewState } from './projectViewState';
 
 const api = vi.hoisted(() => ({
   nodeSchema: vi.fn(),
   rowPage: vi.fn(),
   changeColumn: vi.fn(),
 }));
-vi.mock('./api', async (original) => ({ ...(await original()), ...api }));
+vi.mock('@/features/project/objects', async (original) => ({ ...(await original()), ...api }));
+vi.mock('@/features/project/api', async (original) => ({ ...(await original()), ...api }));
 let model: ProjectDataTableViewModel;
 vi.mock('./data-view/components/ProjectDataTableView', () => ({
   ProjectDataTableView: (props: { model: ProjectDataTableViewModel }) => {

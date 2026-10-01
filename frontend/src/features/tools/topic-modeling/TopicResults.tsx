@@ -1,19 +1,19 @@
-import { suggestDataBlockName, suggestDataBlockNames } from '@/features/project/automaticNames';
-import { useRef, useState } from 'react';
-import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { objectDependencies } from '@/features/project/projectChanges';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import * as projectApi from '@/features/project/api';
+import { suggestDataBlockName, suggestDataBlockNames } from '@/features/project/automaticNames';
+import * as filesApi from '@/features/project/filesApi';
+import * as objectsApi from '@/features/project/objects';
+import { objectDependencies } from '@/features/project/projectChanges';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { saveGeneratedExport } from '@/lib/download';
+import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
+import { useRef, useState } from 'react';
+import { buildChartExport, CHART_FORMATS, type ChartExportFormat } from '../common/chartExport';
 import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { DownloadButton, DownloadDialog } from '../common/components/DownloadControl';
-import {
-  buildChartExport,
-  CHART_FORMATS,
-  saveGeneratedExport,
-  type ChartExportFormat,
-} from '../common/chartExport';
 import { StopwordControl } from '../common/stopwords/StopwordControl';
 import {
   completeStopwordSource,
@@ -21,13 +21,13 @@ import {
 } from '../common/stopwords/stopwordData';
 import { useStopwords } from '../common/stopwords/useStopwords';
 import { GREY, VIZ_PALETTE } from '../common/vizPalette';
+import { TopicDocuments } from './TopicDocuments';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
+import { TopicPublishDialog } from './TopicPublishDialog';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
+import { topicDownload } from './topicExport';
 import { buildTopicBubbleModels } from './topicModelingGraph';
 import type { TopicModelingTopic } from './topicPresentation';
-import { TopicDocuments } from './TopicDocuments';
-import { TopicPublishDialog } from './TopicPublishDialog';
-import { topicDownload } from './topicExport';
 
 export function TopicResults({
   base,
@@ -43,13 +43,13 @@ export function TopicResults({
   outdated,
 }: {
   base: string;
-  tab: api.Tab;
+  tab: analysesApi.Tab;
   owner: { analysis: string } | { tab: string; preview: string };
-  summary: api.TopicSummary;
-  request: api.TopicRequest;
+  summary: topicApi.TopicSummary;
+  request: topicApi.TopicRequest;
   settings: Record<string, unknown>;
   onSettings: (patch: Record<string, unknown>) => void;
-  nodes: api.ProjectNode[];
+  nodes: projectApi.ProjectNode[];
   active: boolean;
   editing: boolean;
   outdated: boolean;
@@ -80,7 +80,7 @@ export function TopicResults({
   const stopwordSource = decodeStopwordSource(settings.stopword_source);
   const stopwordsEnabled = settings.stopwords_enabled === true;
   const appliedStopwords = stopwordsEnabled ? completeStopwordSource(stopwordSource) : null;
-  const selectStopwords = (selected: api.StopwordSource | null) => {
+  const selectStopwords = (selected: filesApi.StopwordSource | null) => {
     onSettings({
       stopword_source: selected,
       stopwords_enabled: selected !== null || stopwordsEnabled,
@@ -100,7 +100,7 @@ export function TopicResults({
   const map = useQuery({
     queryKey: [...root, 'map', base, owner, count],
     queryFn: ({ signal }) =>
-      api.queryTopicModel(base, owner, { projection: 'map', topic_count: count }, signal),
+      topicApi.queryTopicModel(base, owner, { projection: 'map', topic_count: count }, signal),
     enabled: active,
     staleTime: Infinity,
     placeholderData: keepPreviousData,
@@ -108,7 +108,7 @@ export function TopicResults({
   const words = useQuery({
     queryKey: [...root, 'words', base, owner, count, appliedStopwords],
     queryFn: ({ signal }) =>
-      api.queryTopicModel(
+      topicApi.queryTopicModel(
         base,
         owner,
         {
@@ -125,8 +125,8 @@ export function TopicResults({
   });
   const [applied, setApplied] = useState<{
     count: number;
-    basis: api.TopicBasis;
-    words: api.TopicWords;
+    basis: topicApi.TopicBasis;
+    words: topicApi.TopicWords;
   } | null>(null);
   if (
     map.data?.projection === 'map' &&
@@ -146,15 +146,15 @@ export function TopicResults({
   const [search, setSearch] = useState('');
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [csv, setCsv] = useState(true);
-  const [publication, setPublication] = useState<api.TopicPublish | null>(null);
+  const [publication, setPublication] = useState<topicApi.TopicPublish | null>(null);
   const frame = useRef<HTMLDivElement>(null);
   const colors = (settings.colors ?? {}) as Record<string, string>;
-  const sourceIds = summary.sources.map((s) => api.targetKey(s.input.source));
+  const sourceIds = summary.sources.map((s) => objectsApi.targetKey(s.input.source));
   const nodeColors = Object.fromEntries(
     summary.sources.map((s, i) => [
       sourceIds[i] ?? '',
       nodes.find((node) => node.table_name === s.input.source.name)?.color ??
-        colors[api.targetKey(s.input.source)] ??
+        colors[objectsApi.targetKey(s.input.source)] ??
         VIZ_PALETTE[i] ??
         GREY,
     ]),
@@ -236,7 +236,9 @@ export function TopicResults({
         documentCounts: summary.sources.map((s) => s.document_count),
         topics: allTopics,
         selected: selection,
-        colors: summary.sources.map((s) => nodeColors[api.targetKey(s.input.source)] ?? GREY),
+        colors: summary.sources.map(
+          (s) => nodeColors[objectsApi.targetKey(s.input.source)] ?? GREY,
+        ),
       });
       const image = await buildChartExport(snapshot.svg, format);
       const stem = `${tab.name}${isSaved ? '' : '_sample'}`;

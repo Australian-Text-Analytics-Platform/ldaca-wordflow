@@ -1,15 +1,15 @@
-import { useState } from 'react';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import * as filesApi from '@/features/project/filesApi';
 import { SampleCollectionList } from '@/features/tools/data-loader/components/SampleCollectionList';
-import * as api from './api';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 export default function NativeSampleImport({ base, active }: { base: string; active: boolean }) {
   const imported = useMutation({
-    mutationFn: (input: api.SampleImportRequest) => api.importSamples(base, input),
+    mutationFn: (input: filesApi.SampleImportRequest) => filesApi.importSamples(base, input),
     onSuccess: () => {
       setSelected([]);
     },
@@ -19,7 +19,7 @@ export default function NativeSampleImport({ base, active }: { base: string; act
   const [asViews, setAsViews] = useState(true);
   const catalogue = useQuery({
     queryKey: ['sample-catalogue', base],
-    queryFn: ({ signal }) => api.sampleCatalogue(base, signal),
+    queryFn: ({ signal }) => filesApi.sampleCatalogue(base, signal),
     enabled: active,
     staleTime: 0,
     retry: false,

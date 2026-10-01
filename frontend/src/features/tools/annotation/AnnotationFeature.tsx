@@ -1,7 +1,3 @@
-import { suggestDataBlockName } from '@/features/project/automaticNames';
-import { useNodePreferences } from '../common/useNodePreferences';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -14,19 +10,31 @@ import {
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs as ModeTabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import * as api from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
+import { suggestDataBlockName } from '@/features/project/automaticNames';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import * as objectsApi from '@/features/project/objects';
 import { schemaQuery } from '@/features/project/projectQueries';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as editingApi from '@/features/table-editing/api';
 import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
+import * as annotationApi from '@/features/tools/annotation/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { analysisDraftKey } from '../common/analysisDraftStore';
-import { decodeAnalysisRequest, decodeAnnotationSetup } from '../common/analysisRequest';
+import {
+  decodeAnalysisRequest,
+  decodeAnnotationSetup,
+  useRequestReset,
+} from '../common/analysisRequest';
 import { NodeColumnSelector } from '../common/components/NodeColumnSelector';
 import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
-import { useNodeInputRequests } from '../common/nodeInputs/useNodeInputRequests';
 import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
 import { Tabs } from '../common/Tabs';
+import { useNodePreferences } from '../common/useNodePreferences';
 import { useTabSettings } from '../common/useTabSettings';
 import { VIZ_PALETTE } from '../common/vizPalette';
 import { AnnotationAi } from './AnnotationAi';
@@ -35,9 +43,9 @@ import { useAnnotationState } from './annotationState';
 
 interface Props {
   base: string;
-  nodes: api.ProjectNode[];
+  nodes: projectApi.ProjectNode[];
   active: boolean;
-  tasks?: api.NativeTask[];
+  tasks?: tasksApi.NativeTask[];
   onCancel?: (id: string) => void;
 }
 export default function AnnotationFeature(props: Props) {
@@ -69,16 +77,21 @@ function AnnotationTab({
   onCancel = () => {
     /* Manual-only hosts have no task cancellation action. */
   },
-}: Props & { tab: api.Tab }) {
+}: Props & { tab: analysesApi.Tab }) {
   const cache = useQueryClient();
   const savePreference = useNodePreferences(base);
   const navigate = useEditingNavigation();
   const local = useAnnotationState((s) => s.drafts[analysisDraftKey(base, tab.id)]);
   const manual = tab.settings.manual;
   const restored = decodeAnnotationSetup(
+    tab.setup_status,
     manual && typeof manual === 'object' && 'setup' in manual ? manual.setup : undefined,
   );
-  const aiRestored = decodeAnalysisRequest('annotation', tab.analysis?.request);
+  const aiRestored = decodeAnalysisRequest(
+    'annotation',
+    tab.analysis?.request_status,
+    tab.analysis?.request,
+  );
   const manualTime =
     manual &&
     typeof manual === 'object' &&
@@ -87,8 +100,14 @@ function AnnotationTab({
       ? manual.started_at
       : '';
   const latestIsAi = Boolean(tab.analysis && (!manualTime || tab.analysis.created_at > manualTime));
+  const issues = latestIsAi ? aiRestored.issues : restored.issues;
+  const { resetDone, acknowledge } = useRequestReset(
+    [base, tab.id],
+    latestIsAi ? [tab.analysis?.id, tab.analysis?.request] : [manualTime, manual],
+  );
+  const blocked = issues.length > 0 && !resetDone;
   const setup = local?.setup ?? (latestIsAi ? aiRestored.request.setup : restored.request);
-  const update = (patch: Partial<api.AnnotationSetup>) => {
+  const update = (patch: Partial<annotationApi.AnnotationSetup>) => {
     useAnnotationState
       .getState()
       .setDraft(base, tab.id, { ...local, setup: { ...setup, ...patch } });
@@ -96,10 +115,12 @@ function AnnotationTab({
   const { settings, change } = useTabSettings(base, tab);
   const mode = settings.mode === 'ai' ? 'ai' : 'manual';
   const [aiEditing, setAiEditing] = useState(false);
-  const [session, setSession] = useState<api.CellEditSession | null>(null);
-  const [codebookSession, setCodebookSession] = useState<api.CellEditSession | null>(null);
+  const [session, setSession] = useState<editingApi.CellEditSession | null>(null);
+  const [codebookSession, setCodebookSession] = useState<editingApi.CellEditSession | null>(null);
   const [create, setCreate] = useState<
-    { kind: 'codebook' } | { kind: 'annotation' | 'correction'; source: api.ObjectRef } | null
+    | { kind: 'codebook' }
+    | { kind: 'annotation' | 'correction'; source: objectsApi.ObjectRef }
+    | null
   >(null);
   const [name, setName] = useState('');
   const schema = useQuery({
@@ -141,15 +162,9 @@ function AnnotationTab({
     constraints: { maxNodes: 1, fieldPredicate: isArrowStringField, preserveColumnSelection: true },
   });
   const captured = { ...setup, document: picker.nodeColumnSelections[0]?.column ?? setup.document };
-  const inputs = useNodeInputRequests({
-    scopeId: base,
-    tool: 'annotation',
-    addNodes: picker.addNodes,
-    enabled: active && !session && !aiEditing,
-    deferPlacement: Boolean(session) || aiEditing,
-  });
   const start = useMutation({
-    mutationFn: (request: api.AnnotationEdit) => api.beginAnnotationEdit(base, tab.id, request),
+    mutationFn: (request: annotationApi.AnnotationEdit) =>
+      annotationApi.beginAnnotationEdit(base, tab.id, request),
     onSuccess: (created, request) => {
       if (request.mode === 'codebook') setCodebookSession(created);
       else setSession(created);
@@ -157,12 +172,12 @@ function AnnotationTab({
     },
   });
   const materialize = useMutation({
-    mutationFn: (source: api.ObjectRef) => api.materializeNode(base, source),
+    mutationFn: (source: objectsApi.ObjectRef) => projectApi.materializeNode(base, source),
   });
   const add = useMutation({
     mutationFn: async (target: NonNullable<typeof create>) => {
-      if (target.kind === 'codebook') return api.createAnnotationCodebook(base, name);
-      await api.changeColumn(base, target.source, {
+      if (target.kind === 'codebook') return annotationApi.createAnnotationCodebook(base, name);
+      await projectApi.changeColumn(base, target.source, {
         operation: 'add',
         column: name,
         sql_type: 'VARCHAR',
@@ -171,7 +186,7 @@ function AnnotationTab({
     },
     onSuccess: (book, target) => {
       if (book) update({ codebook: book });
-      else if (target.kind !== 'codebook' && api.sameTarget(target.source, setup.source))
+      else if (target.kind !== 'codebook' && objectsApi.sameTarget(target.source, setup.source))
         update({ [target.kind]: name });
       setCreate(null);
       setName('');
@@ -205,7 +220,8 @@ function AnnotationTab({
         >
           <NodeInputsPanel
             {...picker}
-            {...inputs}
+
+            disabled={Boolean(session) || aiEditing || start.isPending}
             title="Annotation source"
             columnLabel="Document column"
             maxNodes={1}
@@ -242,7 +258,7 @@ function AnnotationTab({
               disabled={node?.kind !== 'table'}
               onClick={() => {
                 setName('annotation');
-                setCreate({ kind: 'annotation', source: api.objectRef(setup.source) });
+                setCreate({ kind: 'annotation', source: objectsApi.objectRef(setup.source) });
               }}
             >
               New annotation column
@@ -263,7 +279,7 @@ function AnnotationTab({
               disabled={node?.kind !== 'table'}
               onClick={() => {
                 setName('correction');
-                setCreate({ kind: 'correction', source: api.objectRef(setup.source) });
+                setCreate({ kind: 'correction', source: objectsApi.objectRef(setup.source) });
               }}
             >
               New correction column
@@ -276,7 +292,7 @@ function AnnotationTab({
                 variant="outline"
                 disabled={materialize.isPending}
                 onClick={() => {
-                  materialize.mutate(api.objectRef(setup.source));
+                  materialize.mutate(objectsApi.objectRef(setup.source));
                 }}
               >
                 Materialize in place
@@ -362,7 +378,8 @@ function AnnotationTab({
                 variant="outline"
                 disabled={materialize.isPending}
                 onClick={() => {
-                  if (setup.codebook) materialize.mutate(api.objectRef(setup.codebook.source));
+                  if (setup.codebook)
+                    materialize.mutate(objectsApi.objectRef(setup.codebook.source));
                 }}
               >
                 Materialize Codebook in place
@@ -373,7 +390,14 @@ function AnnotationTab({
         {mode === 'manual' && (
           <>
             <RequestCompatibilityWarning
-              issues={latestIsAi ? aiRestored.issues : restored.issues}
+              issues={issues}
+              onReset={() => {
+                useAnnotationState
+                  .getState()
+                  .setDraft(base, tab.id, { setup: decodeAnnotationSetup().request });
+                acknowledge();
+              }}
+              resetDone={!blocked}
               action="Start"
             />
             <div className="flex gap-2">
@@ -391,6 +415,7 @@ function AnnotationTab({
               ) : (
                 <Button
                   disabled={
+                    blocked ||
                     start.isPending ||
                     !captured.document ||
                     !setup.annotation ||

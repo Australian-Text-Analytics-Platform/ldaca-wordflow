@@ -76,7 +76,15 @@ it('invalidates only named analysis outputs and removes cleared output under its
         name: 'Frequency 1',
         position: 0,
         settings: {},
-        analysis: { id: '0', request: { inputs: [] }, has_result: false },
+        analysis: {
+          request_status: {
+            status: 'supported',
+            request: { kind: 'frequency', request: { inputs: [] } },
+          },
+          id: '0',
+          request: { inputs: [] },
+          has_result: false,
+        },
       },
     ],
   );
@@ -88,7 +96,12 @@ it('invalidates only named analysis outputs and removes cleared output under its
 
 it('drops a replaced analysis and ignores its late response without refreshing unrelated output', async () => {
   const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  let analysis = { id: 'old', request: {}, has_result: true };
+  let analysis = {
+    request_status: { status: 'supported', request: { kind: 'frequency', request: {} } },
+    id: 'old',
+    request: {},
+    has_result: true,
+  };
   const tabKey = ['native', 'project', 'tabs', 'frequency'];
   const readTabs = vi.fn(async () => [
     { id: 'tab', kind: 'frequency', name: 'Frequency 1', position: 0, settings: {}, analysis },
@@ -106,7 +119,12 @@ it('drops a replaced analysis and ignores its late response without refreshing u
     queryFn: readOutput,
   }).subscribe(vi.fn());
   cache.setQueryData(['native', 'project', 'analyses', 'independent'], 'untouched');
-  analysis = { id: 'new', request: {}, has_result: false };
+  analysis = {
+    request_status: { status: 'supported', request: { kind: 'frequency', request: {} } },
+    id: 'new',
+    request: {},
+    has_result: false,
+  };
   await refreshProjectQueries(cache, 'project', {
     resources: ['tabs'],
     analysis_ids: ['old', 'new'],

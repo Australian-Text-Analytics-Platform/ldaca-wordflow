@@ -1,12 +1,16 @@
+import * as tasksApi from '@/features/project/tasksApi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
+import { reportProjectError } from './projectErrors';
 import { TaskCentre } from './TaskCentre';
 import { useNativeTasks } from './useNativeTasks';
-import * as api from './api';
-import { reportProjectError } from './projectErrors';
-vi.mock('./api', () => ({ getTasks: vi.fn(), cancelTask: vi.fn(), dismissTask: vi.fn() }));
+vi.mock('@/features/project/tasksApi', () => ({
+  getTasks: vi.fn(),
+  cancelTask: vi.fn(),
+  dismissTask: vi.fn(),
+}));
 vi.mock('./projectErrors', () => ({ reportProjectError: vi.fn() }));
 
 class Stream extends EventTarget {
@@ -17,13 +21,13 @@ class Stream extends EventTarget {
     super();
     Stream.current = this;
   }
-  send(revision: number, tasks: api.NativeTask[]) {
+  send(revision: number, tasks: tasksApi.NativeTask[]) {
     act(() => {
       this.dispatchEvent(new MessageEvent('tasks', { data: JSON.stringify({ revision, tasks }) }));
     });
   }
 }
-const task = (state: api.NativeTask['state'] = 'running'): api.NativeTask => ({
+const task = (state: tasksApi.NativeTask['state'] = 'running'): tasksApi.NativeTask => ({
   id: 'one',
   label: 'Inspect corpus',
   state,
@@ -50,15 +54,15 @@ function mount() {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.stubGlobal('EventSource', Stream);
-  vi.mocked(api.getTasks).mockResolvedValue({ revision: 0, tasks: [] });
+  vi.mocked(tasksApi.getTasks).mockResolvedValue({ revision: 0, tasks: [] });
 });
 afterEach(() => {
   vi.unstubAllGlobals();
 });
 
 it('keeps a newer stream snapshot when the initial HTTP request finishes late', async () => {
-  let resolve!: (snapshot: api.TaskSnapshot) => void;
-  vi.mocked(api.getTasks).mockReturnValue(
+  let resolve!: (snapshot: tasksApi.TaskSnapshot) => void;
+  vi.mocked(tasksApi.getTasks).mockReturnValue(
     new Promise((done) => {
       resolve = done;
     }),
@@ -96,7 +100,7 @@ it('reports a new task failure once and preserves summaries across reconnects', 
   expect(reportProjectError).toHaveBeenCalledTimes(2);
   expect(screen.queryByRole('status')).not.toBeInTheDocument();
   await waitFor(() => {
-    expect(api.getTasks).toHaveBeenCalledTimes(1);
+    expect(tasksApi.getTasks).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -109,21 +113,21 @@ it('shows progress and expandable errors with cancellation and dismissal control
   expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   stream.send(2, [{ ...task(), progress: { message: 'Encoding', fraction: 0.5 } }]);
   expect(await screen.findByRole('progressbar')).toHaveAttribute('aria-valuenow', '50');
-  vi.mocked(api.cancelTask).mockResolvedValue({ revision: 3, tasks: [task('cancelling')] });
+  vi.mocked(tasksApi.cancelTask).mockResolvedValue({ revision: 3, tasks: [task('cancelling')] });
   await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
-  expect(api.cancelTask).toHaveBeenCalledWith('http://project', 'one');
+  expect(tasksApi.cancelTask).toHaveBeenCalledWith('http://project', 'one');
   expect(await screen.findByRole('button', { name: 'Cancelling…' })).toBeDisabled();
   stream.send(4, [task('failed')]);
   expect(await screen.findByText('Query failed')).toBeInTheDocument();
   expect(screen.queryByText('Reading')).not.toBeInTheDocument();
-  vi.mocked(api.dismissTask).mockResolvedValue({ revision: 5, tasks: [] });
+  vi.mocked(tasksApi.dismissTask).mockResolvedValue({ revision: 5, tasks: [] });
   await user.click(screen.getByRole('button', { name: 'Dismiss' }));
-  expect(api.dismissTask).toHaveBeenCalledWith('http://project', 'one');
+  expect(tasksApi.dismissTask).toHaveBeenCalledWith('http://project', 'one');
   expect(await screen.findByText('No tasks')).toBeInTheDocument();
 });
 
 it('uses HTTP as the initial baseline and observes a failure arriving in the first SSE snapshot', async () => {
-  vi.mocked(api.getTasks).mockResolvedValue({
+  vi.mocked(tasksApi.getTasks).mockResolvedValue({
     revision: 1,
     tasks: [{ ...task('failed'), id: 'old' }],
   });

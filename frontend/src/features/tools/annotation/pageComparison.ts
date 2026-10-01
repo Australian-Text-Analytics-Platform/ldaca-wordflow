@@ -1,4 +1,4 @@
-import type { AnnotationComparison, AnnotationPrediction } from '@/features/project/api';
+import type { AnnotationComparison, AnnotationPrediction } from '@/features/tools/annotation/api';
 
 /** Preview is bounded to one page. Presentation comparisons never submit another prediction. */
 export function pageComparison(

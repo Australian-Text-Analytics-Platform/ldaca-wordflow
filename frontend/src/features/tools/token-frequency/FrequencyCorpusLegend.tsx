@@ -1,6 +1,6 @@
-import { GREY } from '../common/vizPalette';
-import type { FrequencyAnalysisResult } from '@/features/project/api';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { FrequencyAnalysisResult } from '@/features/tools/token-frequency/api';
+import { GREY } from '../common/vizPalette';
 
 /** Corpus identity and colour use the saved run's Reference/Study order. */
 export function FrequencyCorpusLegend({

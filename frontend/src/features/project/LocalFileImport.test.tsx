@@ -1,31 +1,35 @@
+import * as projectApi from '@/features/project/api';
+import * as filesApi from '@/features/project/filesApi';
+import { isTauri } from '@/lib/isTauri';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { open } from '@tauri-apps/plugin-dialog';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { DataLoaderWorkspace } from './DataLoaderWorkspace';
-import * as api from './api';
-import { open } from '@tauri-apps/plugin-dialog';
-import { isTauri } from '@/lib/isTauri';
 import { useProjectFileDrop } from './useProjectFileDrop';
 vi.mock('./useProjectFileDrop', () => ({ useProjectFileDrop: vi.fn() }));
 vi.mock('@tauri-apps/plugin-dialog', () => ({ open: vi.fn() }));
 vi.mock('@/lib/isTauri', () => ({ isTauri: vi.fn(() => false) }));
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
-vi.mock('./api', async (load) => ({
-  ...(await load<typeof api>()),
+vi.mock('@/features/project/filesApi', async (load) => ({
+  ...(await load<object>()),
   localFileMetadata: vi.fn(),
-  querySql: vi.fn(),
   importTables: vi.fn(),
   sampleCatalogue: vi.fn(),
+}));
+vi.mock('@/features/project/api', async (load) => ({
+  ...(await load<object>()),
+  querySql: vi.fn(),
 }));
 beforeEach(() => {
   vi.clearAllMocks();
   localStorage.clear();
   vi.mocked(isTauri).mockReturnValue(false);
-  vi.mocked(api.localFileMetadata).mockImplementation(async (_base, paths) =>
+  vi.mocked(filesApi.localFileMetadata).mockImplementation(async (_base, paths) =>
     paths.map((path) => ({ path, size_bytes: 2048 })),
   );
-  vi.mocked(api.importTables).mockResolvedValue({ table_names: ['first', 'second'] });
+  vi.mocked(filesApi.importTables).mockResolvedValue({ table_names: ['first', 'second'] });
 });
 function setup() {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -63,7 +67,7 @@ it('imports all columns immediately from a path and recent click, without schema
   setup();
   await add(user, '/tmp/first.csv');
   await waitFor(() =>
-    expect(api.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
+    expect(filesApi.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
       {
         table_name: 'first',
         sql: 'SELECT * FROM read_csv(?)',
@@ -71,14 +75,14 @@ it('imports all columns immediately from a path and recent click, without schema
       },
     ]),
   );
-  expect(api.querySql).not.toHaveBeenCalled();
+  expect(projectApi.querySql).not.toHaveBeenCalled();
   expect(screen.queryByRole('button', { name: 'Import files' })).not.toBeInTheDocument();
   const recent = await screen.findByRole('button', { name: 'Import first.csv' });
   expect(await screen.findByText('2 KB')).toBeInTheDocument();
   expect(within(recent).getByAltText('')).toHaveAttribute('src', '/icons/material/table.svg');
   expect(recent).toHaveAttribute('title', '/tmp/first.csv');
   await user.click(recent);
-  await waitFor(() => expect(api.importTables).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(filesApi.importTables).toHaveBeenCalledTimes(2));
   expect(JSON.parse(localStorage.getItem('wordflow.desktop.recentDataFiles') ?? '[]')).toEqual([
     '/tmp/first.csv',
   ]);
@@ -91,10 +95,10 @@ it('native chooser and drops import once immediately; cancellation does nothing 
     .mockResolvedValueOnce(null)
     .mockResolvedValueOnce(['/tmp/first.csv', '/tmp/second.parquet', '/tmp/first.csv']);
   await user.click(screen.getByRole('button', { name: 'Choose files…' }));
-  expect(api.importTables).not.toHaveBeenCalled();
+  expect(filesApi.importTables).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button', { name: 'Choose files…' }));
   await waitFor(() =>
-    expect(api.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
+    expect(filesApi.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
       { table_name: 'first', sql: 'SELECT * FROM read_csv(?)', parameters: ['/tmp/first.csv'] },
       {
         table_name: 'second',
@@ -109,7 +113,7 @@ it('native chooser and drops import once immediately; cancellation does nothing 
     vi.mocked(useProjectFileDrop).mock.calls.at(-1)?.[0](['/tmp/third.JSONL']);
   });
   await waitFor(() =>
-    expect(api.importTables).toHaveBeenLastCalledWith('http://project', [
+    expect(filesApi.importTables).toHaveBeenLastCalledWith('http://project', [
       {
         table_name: 'third',
         sql: 'SELECT * FROM read_json(?)',
@@ -119,10 +123,10 @@ it('native chooser and drops import once immediately; cancellation does nothing 
   );
   expect(screen.getByRole('tab', { name: 'Local files' })).toHaveAttribute('aria-selected', 'true');
   expect(view.props.onActivate).toHaveBeenCalledOnce();
-  expect(api.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
 });
 it('keeps failed paths for explicit retry and only adds successful imports to recents', async () => {
-  vi.mocked(api.importTables).mockRejectedValueOnce(new Error('missing file'));
+  vi.mocked(filesApi.importTables).mockRejectedValueOnce(new Error('missing file'));
   const user = userEvent.setup();
   setup();
   await add(user, '/tmp/first.csv');
@@ -131,12 +135,12 @@ it('keeps failed paths for explicit retry and only adds successful imports to re
   expect(screen.queryByRole('region', { name: 'Recent files' })).not.toBeInTheDocument();
   await user.type(screen.getByRole('textbox', { name: /Data file path/ }), '{Enter}');
   await screen.findByRole('button', { name: 'Import first.csv' });
-  expect(api.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
 });
 it('keeps import actions available during overlapping work and retains progress until all requests finish', async () => {
   let finishFirst!: (value: { table_names: string[] }) => void;
   let finishSecond!: (value: { table_names: string[] }) => void;
-  vi.mocked(api.importTables)
+  vi.mocked(filesApi.importTables)
     .mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -153,7 +157,7 @@ it('keeps import actions available during overlapping work and retains progress 
   setup();
   await add(user, '/tmp/first.csv');
   await add(user, '/tmp/second.csv');
-  expect(api.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
   await act(async () => {
     finishSecond({ table_names: ['second'] });
   });
@@ -176,7 +180,7 @@ it('shows filesystem sizes and file type icons, with unavailable sizes distinct 
     'wordflow.desktop.recentDataFiles',
     JSON.stringify(['/a/data.parquet', '/b/data.json', '/c/empty.tsv', '/d/missing.csv']),
   );
-  vi.mocked(api.localFileMetadata).mockResolvedValue([
+  vi.mocked(filesApi.localFileMetadata).mockResolvedValue([
     { path: '/a/data.parquet', size_bytes: 1048576 },
     { path: '/b/data.json', size_bytes: 42 },
     { path: '/c/empty.tsv', size_bytes: 0 },
@@ -193,5 +197,5 @@ it('shows filesystem sizes and file type icons, with unavailable sizes distinct 
   expect(
     within(screen.getByRole('button', { name: 'Import data.json' })).getByAltText(''),
   ).toHaveAttribute('src', '/icons/material/json.svg');
-  expect(api.importTables).not.toHaveBeenCalled();
+  expect(filesApi.importTables).not.toHaveBeenCalled();
 });

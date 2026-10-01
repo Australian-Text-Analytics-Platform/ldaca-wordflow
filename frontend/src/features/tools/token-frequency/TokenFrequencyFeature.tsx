@@ -1,20 +1,5 @@
-import { NodeInputField } from '../common/components/NodeInputField';
-import { useNodePreferences } from '../common/useNodePreferences';
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
-import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
-import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { AnalysisAction } from '../common/components/AnalysisAction';
-import { schemaQuery } from '@/features/project/projectQueries';
-import { useEffect, useRef } from 'react';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Plus } from 'lucide-react';
 import HelpIcon from '@/components/help/HelpIcon';
-import { EditorTabs } from '@/components/tabs';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Select,
   SelectContent,
@@ -22,21 +7,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import * as projectApi from '@/features/project/api';
+import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { NodeInputsPanel } from '@/features/tools/common/components/NodeInputsPanel';
 import { useNodeInputs } from '@/features/tools/common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '@/features/tools/common/nodeInputs/useNodeInputRequests';
-import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
-import * as api from '@/features/project/api';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Tabs as AnalysisTabs } from '../common/Tabs';
+import { matchesAnalysisRequest, useRequestRestoration } from '../common/analysisRequest';
+import { AnalysisAction } from '../common/components/AnalysisAction';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
+import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
+import { NodeInputField } from '../common/components/NodeInputField';
+import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import { TokenizerChoice } from '../common/language/TokenizerChoice';
+import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
+import { useNodePreferences } from '../common/useNodePreferences';
+import { FrequencyResults } from './FrequencyResults';
+import { corpusColor, useFrequencySettings } from './frequencySettings';
 import {
   getFrequencyDraft,
   orderedFrequencyRequest,
   useFrequencyState,
   type FrequencyDraft,
 } from './frequencyState';
-import { TokenizerChoice } from '../common/language/TokenizerChoice';
-import { FrequencyResults } from './FrequencyResults';
-import { corpusColor, useFrequencySettings } from './frequencySettings';
 
 export default function TokenFrequencyFeature({
   base,
@@ -48,184 +47,41 @@ export default function TokenFrequencyFeature({
   onOpenConcordance,
 }: {
   base: string;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing?: boolean;
   onCancel: (id: string) => void;
   onOpenConcordance?: () => void;
 }) {
-  const cache = useQueryClient();
-  const key = ['native', base, 'tabs', 'frequency'];
-  const tabs = useQuery({
-    queryKey: key,
-    queryFn: ({ signal }) => api.listTabs(base, signal, 'frequency'),
-  });
   const chosen = useFrequencyState((state) => state.active[base]);
-  const tab = tabs.data?.find((item) => item.id === chosen) ?? tabs.data?.[0];
-  useEffect(() => {
-    if (tab && tab.id !== chosen) useFrequencyState.getState().activate(base, tab.id);
-  }, [base, chosen, tab]);
-  const create = useMutation({
-    mutationKey: [...key, 'create'],
-    mutationFn: () => api.createTab(base, 'frequency'),
-    onSuccess: async (created) => {
-      await cache.cancelQueries({ queryKey: key });
-      cache.setQueryData<api.Tab[]>(key, (old) => [
-        ...(old ?? []).filter((item) => item.id !== created.id),
-        created,
-      ]);
-      useFrequencyState.getState().activate(base, created.id);
-    },
-  });
-  const { mutate: createTab, isError: creationFailed } = create;
-  const initialTabChecked = useRef(false);
-  useEffect(() => {
-    if (!active) {
-      initialTabChecked.current = false;
-      return;
-    }
-    if (initialTabChecked.current || editing || !tabs.isSuccess || tabs.isFetching) return;
-    // Check once per visit, so closing the last tab leaves the empty state available.
-    initialTabChecked.current = true;
-    if (
-      tabs.data.length === 0 &&
-      // The mutation cache also covers Strict Mode and remounts during creation.
-      cache.isMutating({
-        mutationKey: ['native', base, 'tabs', 'frequency', 'create'],
-      }) === 0
-    ) {
-      createTab();
-    }
-  }, [active, editing, tabs.isSuccess, tabs.isFetching, tabs.data, cache, base, createTab]);
-  const rename = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => api.updateTab(base, id, { name }),
-    onSuccess: (updated) =>
-      cache.setQueryData<api.Tab[]>(key, (old) =>
-        old?.map((item) => (item.id === updated.id ? { ...item, name: updated.name } : item)),
-      ),
-  });
-  const reorder = useMutation({
-    mutationFn: (ids: string[]) => api.reorderTabs(base, 'frequency', ids),
-    onSuccess: (next) =>
-      cache.setQueryData<api.Tab[]>(key, (old) =>
-        old
-          ?.map((item) => ({
-            ...item,
-            position: next.find((updated) => updated.id === item.id)?.position ?? item.position,
-          }))
-          .sort((a, b) => a.position - b.position),
-      ),
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => api.deleteTab(base, id),
-    onSuccess: (_, id) => {
-      useFrequencyState.getState().remove(base, id);
-      cache.setQueryData<api.Tab[]>(key, (old) => old?.filter((item) => item.id !== id));
-    },
-  });
   return (
-    <div
-      data-testid="frequency-workspace"
-      className="@container/frequency flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden rounded-lg border border-surface-border bg-surface"
+    <AnalysisTabs
+      base={base}
+      active={active}
+      editing={editing}
+      kind="frequency"
+      label="Frequency"
+      description="Count words in one Data Block or compare two corpora. Results are saved in this project."
+      chosen={chosen}
+      help={<HelpIcon targetKey="analysis.token-frequency.tab" label="About Frequency" />}
+      onActivate={(id) => useFrequencyState.getState().activate(base, id)}
+      onRemove={(id) => useFrequencyState.getState().remove(base, id)}
     >
-      {tab && (
-        <EditorTabs
-          className="shrink-0"
-          aria-label="Frequency analyses"
-          activeTabId={tab.id}
-          tabs={(tabs.data ?? []).map((item) => ({ id: item.id, title: item.name }))}
-          onActivate={(id) => {
-            useFrequencyState.getState().activate(base, id);
-          }}
-          onClose={
-            editing || remove.isPending
-              ? undefined
-              : (id) => {
-                  remove.mutate(id);
-                }
-          }
-          onCreate={
-            create.isPending || editing
-              ? undefined
-              : () => {
-                  create.mutate();
-                }
-          }
-          onRename={
-            editing
-              ? undefined
-              : (id, name) => {
-                  rename.mutate({ id, name });
-                }
-          }
-          onReorder={
-            editing
-              ? undefined
-              : (ids) => {
-                  reorder.mutate(ids);
-                }
-          }
+      {(tab) => (
+        <FrequencyTab
+          key={tab.id}
+          base={base}
+          tab={tab}
+          nodes={nodes}
+          tasks={tasks}
+          active={active}
+          editing={editing}
+          onCancel={onCancel}
+          onOpenConcordance={onOpenConcordance}
         />
       )}
-      <ScrollArea data-testid="frequency-content" className="min-h-0 min-w-0 flex-1">
-        <div className="min-h-full min-w-0 p-3">
-          {tabs.isPending || (!tab && tabs.isFetching) ? (
-            <p role="status">Loading analyses…</p>
-          ) : tabs.isError ? (
-            <div role="alert" className="space-y-2">
-              <p>Could not load Frequency analyses.</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  void tabs.refetch();
-                }}
-              >
-                Retry
-              </Button>
-            </div>
-          ) : !tab && create.isPending ? (
-            <p role="status">Creating Frequency analysis…</p>
-          ) : !tab ? (
-            <section aria-label="Frequency" className="space-y-3 p-1">
-              <div className="flex items-center gap-2">
-                <h1 className="text-body font-semibold">Frequency</h1>
-                <HelpIcon targetKey="analysis.token-frequency.tab" label="About Frequency" />
-              </div>
-              {creationFailed ? (
-                <p role="alert">Could not create a Frequency analysis.</p>
-              ) : (
-                <p className="text-body text-description">
-                  Count words in one Data Block or compare two corpora. Results are saved in this
-                  project.
-                </p>
-              )}
-              <Button
-                disabled={create.isPending || editing}
-                onClick={() => {
-                  create.mutate();
-                }}
-              >
-                <Plus className="size-4" />
-                {creationFailed ? 'Retry' : 'New Frequency analysis'}
-              </Button>
-            </section>
-          ) : (
-            <FrequencyTab
-              key={tab.id}
-              base={base}
-              tab={tab}
-              nodes={nodes}
-              tasks={tasks}
-              active={active}
-              editing={editing}
-              onCancel={onCancel}
-              onOpenConcordance={onOpenConcordance}
-            />
-          )}
-        </div>
-      </ScrollArea>
-    </div>
+    </AnalysisTabs>
   );
 }
 
@@ -240,9 +96,9 @@ function FrequencyTab({
   onOpenConcordance,
 }: {
   base: string;
-  tab: api.Tab;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  tab: analysesApi.Tab;
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing: boolean;
   onCancel: (id: string) => void;
@@ -253,13 +109,13 @@ function FrequencyTab({
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
-      api.getFrequencyResult(base, id, signal),
+      frequencyApi.getFrequencyResult(base, id, signal),
     ),
     enabled: active && Boolean(analysisId),
   });
   const recovery = useAnalysisRecovery(base, analysisId);
   const stored = useFrequencyState((state) => getFrequencyDraft(state, base, tab.id));
-  const restored = decodeAnalysisRequest('frequency', tab.analysis?.request);
+  const restored = useRequestRestoration('frequency', tab.analysis, [base, tab.id]);
   const savedInputs = restored.request.inputs;
   const draft: FrequencyDraft = stored ?? {
     inputs: savedInputs,
@@ -305,16 +161,9 @@ function FrequencyTab({
       mapArrowColumnsToInfo(schemas[selectedNames.indexOf(node.id)]?.data ?? []),
     constraints: { maxNodes: 2, fieldPredicate: isArrowStringField, preserveColumnSelection: true },
   });
-  const inputRequests = useNodeInputRequests({
-    scopeId: base,
-    tool: 'token-frequency',
-    addNodes: picker.addNodes,
-    enabled: active && !editing,
-    deferPlacement: Boolean(result.data),
-  });
   const tokenizers = useQuery({
     queryKey: ['native', base, 'tokenizers'],
-    queryFn: ({ signal }) => api.getTokenizers(base, signal),
+    queryFn: ({ signal }) => frequencyApi.getTokenizers(base, signal),
     staleTime: Infinity,
   });
   const { settings, persist: persistSettings } = useFrequencySettings(
@@ -325,10 +174,10 @@ function FrequencyTab({
   );
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
-    mutationFn: async (request: api.FrequencyRequest) => {
+    mutationFn: async (request: frequencyApi.FrequencyRequest) => {
       // Resolve saved positional colours before a new run can change the corpus order.
       if (Array.isArray(tab.settings.colors)) await persistSettings({ colors: settings.colors });
-      return api.runFrequency(base, tab.id, request);
+      return frequencyApi.runFrequency(base, tab.id, request);
     },
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'frequency'] }),
   });
@@ -351,6 +200,7 @@ function FrequencyTab({
   });
   const running = run.isPending || Boolean(currentTask);
   const ready =
+    !restored.blocked &&
     captured.inputs.length > 0 &&
     captured.inputs.every(
       (input) =>
@@ -386,7 +236,7 @@ function FrequencyTab({
           <>
             <NodeInputsPanel
               {...picker}
-              {...inputRequests}
+
               inputOrder={selectedNames}
               maxNodes={2}
               title="Frequency inputs"
@@ -500,7 +350,15 @@ function FrequencyTab({
                 </Button>
               </p>
             )}
-            <RequestCompatibilityWarning issues={restored.issues} />
+            <RequestCompatibilityWarning
+              issues={restored.issues}
+              onReset={() =>
+                restored.reset((value) =>
+                  update({ inputs: value.inputs, study: value.inputs[1]?.source.name ?? null }),
+                )
+              }
+              resetDone={!restored.blocked}
+            />
             <div className="flex flex-wrap items-center gap-2 px-3 pb-3 pt-1">
               <AnalysisAction
                 reason={
@@ -516,7 +374,7 @@ function FrequencyTab({
                             matchesAnalysisRequest(
                               'frequency',
                               captured,
-                              result.data?.request ?? tab.analysis?.request,
+                              result.data?.request_status ?? tab.analysis?.request_status,
                             )
                           ? 'These settings already have saved results. Change the parameters or clear results to run again.'
                           : undefined
@@ -574,7 +432,7 @@ function FrequencyTab({
         >
           <FrequencyResults
             key={result.data.id}
-            inputRequests={inputRequests}
+
             editing={editing}
             nodes={nodes}
             inputs={captured.inputs}

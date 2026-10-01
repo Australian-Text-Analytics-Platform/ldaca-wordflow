@@ -1,23 +1,33 @@
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
+import * as aiApi from '@/features/ai/api';
 import { ProviderSelector } from '@/features/ai/ProviderSelector';
-import * as api from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
 import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as editingApi from '@/features/table-editing/api';
+import * as annotationApi from '@/features/tools/annotation/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import {
+  decodeAnalysisRequest,
+  matchesAnalysisRequest,
+  useRequestRestoration,
+} from '../common/analysisRequest';
 import { AnalysisAction } from '../common/components/AnalysisAction';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
 import { NodeColumnSelector } from '../common/components/NodeColumnSelector';
 import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
 import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
-import type { CorrectionSession } from './CorrectionDraft';
 import { AnnotationOutput } from './AnnotationOutput';
+import type { CorrectionSession } from './CorrectionDraft';
 import { useAnnotationPreview } from './useAnnotationPreview';
 
 const PROMPT =
@@ -34,21 +44,28 @@ export function AnnotationAi({
   onEditingChange,
 }: {
   base: string;
-  tab: api.Tab;
-  request: api.AnnotationRequest;
-  onChange: (request: api.AnnotationRequest) => void;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  tab: analysesApi.Tab;
+  request: annotationApi.AnnotationRequest;
+  onChange: (request: annotationApi.AnnotationRequest) => void;
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   onCancel: (id: string) => void;
   active: boolean;
   onEditingChange?: (editing: boolean) => void;
 }) {
   const cache = useQueryClient();
-  const connections = useQuery({
-    queryKey: ['host', base, 'ai-providers'],
-    queryFn: ({ signal }) => api.aiConnections(base, signal),
+  const capabilities = useQuery({
+    queryKey: [
+      'host',
+      base,
+      'ai-capabilities',
+      request.inference.provider,
+      request.inference.model,
+    ],
+    queryFn: ({ signal }) =>
+      aiApi.aiCapabilities(base, request.inference.provider, request.inference.model, signal),
+    enabled: active && Boolean(request.inference.provider && request.inference.model.trim()),
   });
-  const provider = connections.data?.find((c) => c.id === request.inference.provider)?.provider;
   const [editor, setEditor] = useState<CorrectionSession | null>(null);
   const finishEditor = () => {
     setEditor(null);
@@ -58,15 +75,16 @@ export function AnnotationAi({
   const id = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
-      api.getAnnotationResult(base, id, signal),
+      annotationApi.getAnnotationResult(base, id, signal),
     ),
     enabled: active && Boolean(id),
   });
   const recovery = useAnalysisRecovery(base, id);
-  const restored = decodeAnalysisRequest('annotation', tab.analysis?.request);
+  const restored = useRequestRestoration('annotation', tab.analysis, [base, tab.id]);
   const running = tasks.find((t) => t.tab_id === tab.id && t.finished_at === null);
   const run = useMutation({
-    mutationFn: (value: api.AnnotationRequest) => api.runAnnotation(base, tab.id, value),
+    mutationFn: (value: annotationApi.AnnotationRequest) =>
+      annotationApi.runAnnotation(base, tab.id, value),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'annotation'] }),
   });
   const clear = useMutation({
@@ -80,45 +98,51 @@ export function AnnotationAi({
   const exampleColumns = (examples.data ?? [])
     .filter((c) => isArrowStringField(c.field))
     .map((c) => c.name);
-  const update = (patch: Partial<api.AnnotationInference>) => {
+  const update = (patch: Partial<annotationApi.AnnotationInference>) => {
     onChange({ ...request, inference: { ...request.inference, ...patch } });
   };
   const busy = run.isPending || Boolean(running);
-  const ready = Boolean(
-    request.setup.source.name &&
-    request.setup.document &&
-    request.setup.codebook?.code &&
-    request.setup.codebook.description &&
-    request.inference.provider &&
-    request.inference.model.trim(),
-  );
+  const ready =
+    !restored.blocked &&
+    Boolean(
+      request.setup.source.name &&
+      request.setup.document &&
+      request.setup.codebook?.code &&
+      request.setup.codebook.description &&
+      request.inference.provider &&
+      request.inference.model.trim(),
+    );
   const partial = (result.data?.report.failed ?? 0) > 0;
   const unchanged =
-    Boolean(id) &&
-    matchesAnalysisRequest('annotation', request, result.data?.request ?? tab.analysis?.request);
-  const reason = editor
-    ? 'Save or cancel correction edits first.'
-    : busy
-      ? 'This analysis is already running.'
-      : !ready
-        ? 'Choose a source, document column, Codebook and provider/model first.'
-        : unchanged && !recovery.failed && !partial
-          ? 'These settings already have saved results. Change the parameters or clear results to run again.'
-          : undefined;
+    Boolean(id) && matchesAnalysisRequest('annotation', request, tab.analysis?.request_status);
+  const reason = restored.blocked
+    ? 'Start with current defaults before running this analysis.'
+    : editor
+      ? 'Save or cancel correction edits first.'
+      : busy
+        ? 'This analysis is already running.'
+        : !ready
+          ? 'Choose a source, document column, Codebook and provider/model first.'
+          : unchanged && !recovery.failed && !partial
+            ? 'These settings already have saved results. Change the parameters or clear results to run again.'
+            : undefined;
   const displayedSetup =
     editor?.setup ??
     (preview.state
       ? preview.state.request.setup
       : result.data
-        ? decodeAnalysisRequest('annotation', result.data.request).request.setup
+        ? decodeAnalysisRequest('annotation', result.data.request_status).request.setup
         : request.setup);
   const outputSetup = {
     ...displayedSetup,
-    correction: api.sameTarget(displayedSetup.source, request.setup.source)
+    correction: objectsApi.sameTarget(displayedSetup.source, request.setup.source)
       ? request.setup.correction
       : displayedSetup.correction,
   };
-  const openEditor = (session: api.CellEditSession, setup: api.AnnotationSetup) => {
+  const openEditor = (
+    session: editingApi.CellEditSession,
+    setup: annotationApi.AnnotationSetup,
+  ) => {
     setEditor({ session, setup, preview: Boolean(preview.state), analysisId: id });
     onEditingChange?.(true);
   };
@@ -181,7 +205,10 @@ export function AnnotationAi({
               { value: 'missing', label: 'Fill missing only' },
             ]}
             onChange={(value) => {
-              onChange({ ...request, processing: value as api.AnnotationRequest['processing'] });
+              onChange({
+                ...request,
+                processing: value as annotationApi.AnnotationRequest['processing'],
+              });
             }}
           />
         </label>
@@ -193,6 +220,19 @@ export function AnnotationAi({
         >
           <summary className="cursor-pointer">Advanced settings and examples</summary>
           <div className="mt-3 space-y-3">
+            {capabilities.isError && (
+              <p role="status">
+                Model controls could not be loaded.
+                <Button
+                  variant="link"
+                  onClick={() => {
+                    void capabilities.refetch();
+                  }}
+                >
+                  Retry model controls
+                </Button>
+              </p>
+            )}
             <div className="flex flex-wrap gap-3">
               <label className="min-w-40 flex-1">
                 Temperature
@@ -203,6 +243,12 @@ export function AnnotationAi({
                   step={0.1}
                   value={request.inference.temperature ?? ''}
                   placeholder="Provider default"
+                  disabled={
+                    !capabilities.data ||
+                    (!capabilities.data.temperature_with_reasoning &&
+                      !['default', 'off'].includes(request.inference.reasoning ?? 'default') &&
+                      request.inference.temperature === null)
+                  }
                   onChange={(e) => {
                     update({ temperature: e.target.value === '' ? null : Number(e.target.value) });
                   }}
@@ -213,23 +259,12 @@ export function AnnotationAi({
                 <SearchableSelect
                   ariaLabel="Reasoning"
                   value={request.inference.reasoning}
-                  options={[
-                    'default',
-                    ...(provider === 'apple' ? [] : ['low', 'medium', 'high']),
-                    ...(provider === 'openrouter' ||
-                    request.inference.model.startsWith('gemini-2.5-flash') ||
-                    request.inference.model.startsWith('gpt-5.1') ||
-                    (request.inference.model.startsWith('gpt-5.2') &&
-                      !request.inference.model.includes('pro')) ||
-                    /^claude-(sonnet|haiku|opus)-4-5/.test(request.inference.model)
-                      ? ['off']
-                      : []),
-                  ].map((value) => ({
+                  options={(capabilities.data?.reasoning ?? ['default']).map((value) => ({
                     value,
                     label: value === 'default' ? 'Provider default' : value,
                   }))}
                   onChange={(value) => {
-                    update({ reasoning: value as api.AnnotationInference['reasoning'] });
+                    update({ reasoning: value as annotationApi.AnnotationInference['reasoning'] });
                   }}
                 />
               </label>
@@ -309,7 +344,7 @@ export function AnnotationAi({
                           ...request,
                           examples: {
                             ...request.examples,
-                            selection: value as api.AnnotationExamples['selection'],
+                            selection: value as annotationApi.AnnotationExamples['selection'],
                           },
                         });
                     }}
@@ -350,7 +385,11 @@ export function AnnotationAi({
             )}
           </div>
         </details>
-        <RequestCompatibilityWarning issues={restored.issues} />
+        <RequestCompatibilityWarning
+          issues={restored.issues}
+          onReset={() => restored.reset(onChange)}
+          resetDone={!restored.blocked}
+        />
         <div className="flex flex-wrap gap-2">
           <AnalysisAction
             reason={

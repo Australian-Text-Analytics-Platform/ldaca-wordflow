@@ -1,5 +1,5 @@
 import { TaskRows } from '@/components/layout/sidebar/TaskRows';
-import type { NativeTask } from './api';
+import type { NativeTask } from '@/features/project/tasksApi';
 
 export function TaskCentre({
   tasks,

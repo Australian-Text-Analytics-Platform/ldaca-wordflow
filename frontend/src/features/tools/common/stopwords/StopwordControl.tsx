@@ -1,27 +1,28 @@
-import { schemaQuery } from '@/features/project/projectQueries';
-import { useId, useRef, useState } from 'react';
-import { X } from 'lucide-react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
-import { Input } from '@/components/ui/input';
-import { Tag } from '@/components/ui/tag';
 import {
   AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
   AlertDialogDescription,
   AlertDialogFooter,
-  AlertDialogCancel,
-  AlertDialogAction,
+  AlertDialogHeader,
+  AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Tag } from '@/components/ui/tag';
+import * as projectApi from '@/features/project/api';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
-import { NodeInputsPanel, type NodeInputsPanelProps } from '../components/NodeInputsPanel';
-import { useNodeInputs } from '../nodeInputs/useNodeInputs';
+import * as objectsApi from '@/features/project/objects';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { X } from 'lucide-react';
+import { useId, useRef, useState } from 'react';
+import { NodeInputsPanel } from '../components/NodeInputsPanel';
 import { mergeStopwords } from '../language/stopwords';
+import { useNodeInputs } from '../nodeInputs/useNodeInputs';
 import { StopwordPresets } from './StopwordPresets';
 import { saveStopwords, stopwordQuery, type StopwordSource } from './stopwordData';
 import type { useStopwords } from './useStopwords';
@@ -35,17 +36,15 @@ export function StopwordControl({
   controller,
   onSelect,
   onEnabledChange,
-  inputRequests,
 }: {
   base: string;
-  nodes: api.ProjectNode[];
+  nodes: projectApi.ProjectNode[];
   selected: StopwordSource | null;
   enabled: boolean;
   disabled: boolean;
   controller: ReturnType<typeof useStopwords>;
   onSelect: (selected: StopwordSource | null) => Promise<void>;
   onEnabledChange: (enabled: boolean) => void;
-  inputRequests?: Pick<NodeInputsPanelProps, 'pendingInputRequest' | 'consumeInputRequest'>;
 }) {
   const id = useId();
   const select = useMutation({ mutationFn: onSelect });
@@ -62,10 +61,10 @@ export function StopwordControl({
     enabled: Boolean(choice?.source.schema && choice.source.name),
   });
   const node = nodes.find((node) =>
-    api.sameTarget(node.object ?? node.table_name, choice?.source ?? null),
+    objectsApi.sameTarget(node.object ?? node.table_name, choice?.source ?? null),
   );
   const appliedNode = nodes.find((item) =>
-    api.sameTarget(item.object ?? item.table_name, selected?.source ?? null),
+    objectsApi.sameTarget(item.object ?? item.table_name, selected?.source ?? null),
   );
   const unavailable = choice !== null && (!node || node.kind === 'missing');
   const busy = controller.create.isPending || controller.edit.isPending;
@@ -138,7 +137,7 @@ export function StopwordControl({
             )}
             <NodeInputsPanel
               {...picker}
-              {...inputRequests}
+
               title="Stopword Data Block"
               maxNodes={1}
               columnLabel="Stopword column"

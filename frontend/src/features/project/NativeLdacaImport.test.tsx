@@ -1,19 +1,23 @@
+import * as filesApi from '@/features/project/filesApi';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { DataLoaderWorkspace } from './DataLoaderWorkspace';
 import { useProjectPreview } from './previewState';
-import { useSelectionStore } from '@/stores/selectionStore';
-import * as api from './api';
-vi.mock('./api', () => ({ importLdaca: vi.fn(), searchLdaca: vi.fn(), sampleCatalogue: vi.fn() }));
+vi.mock('@/features/project/filesApi', () => ({
+  importLdaca: vi.fn(),
+  searchLdaca: vi.fn(),
+  sampleCatalogue: vi.fn(),
+}));
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 beforeEach(() => vi.clearAllMocks());
 it('searches with a session token, retains results and drafts across tabs, and imports without opening previews', async () => {
   const user = userEvent.setup();
   useProjectPreview.setState({ active: 'existing' });
   useSelectionStore.getState().replaceSelectedNodes(['selected']);
-  vi.mocked(api.searchLdaca).mockResolvedValue([
+  vi.mocked(filesApi.searchLdaca).mockResolvedValue([
     {
       id: 'record',
       title: 'Example corpus',
@@ -24,8 +28,8 @@ it('searches with a session token, retains results and drafts across tabs, and i
       file_formats: ['text/plain'],
     },
   ]);
-  const result = Promise.withResolvers<Awaited<ReturnType<typeof api.importLdaca>>>();
-  vi.mocked(api.importLdaca).mockReturnValue(result.promise);
+  const result = Promise.withResolvers<Awaited<ReturnType<typeof filesApi.importLdaca>>>();
+  vi.mocked(filesApi.importLdaca).mockReturnValue(result.promise);
   render(
     <QueryClientProvider client={new QueryClient()}>
       <DataLoaderWorkspace base="http://project" active onActivate={vi.fn()} />
@@ -38,7 +42,7 @@ it('searches with a session token, retains results and drafts across tabs, and i
   await user.type(screen.getByLabelText('Portal token'), 'session-token');
   await user.type(screen.getByRole('textbox', { name: 'Search', exact: true }), 'corpus{Enter}');
   await screen.findByRole('article', { name: 'Example corpus' });
-  expect(api.searchLdaca).toHaveBeenCalledExactlyOnceWith(
+  expect(filesApi.searchLdaca).toHaveBeenCalledExactlyOnceWith(
     'http://project',
     'keyword',
     'corpus',
@@ -51,7 +55,7 @@ it('searches with a session token, retains results and drafts across tabs, and i
   await user.click(screen.getByRole('tab', { name: 'LDaCA' }));
   expect(screen.getByRole('textbox', { name: 'Search', exact: true })).toHaveValue('corpus');
   await user.click(within(screen.getByRole('article')).getByRole('button', { name: 'Import' }));
-  expect(api.importLdaca).toHaveBeenCalledExactlyOnceWith(
+  expect(filesApi.importLdaca).toHaveBeenCalledExactlyOnceWith(
     'http://project',
     'record',
     'session-token',
@@ -64,5 +68,5 @@ it('searches with a session token, retains results and drafts across tabs, and i
   expect(screen.getByRole('article', { name: 'Example corpus' })).toBeVisible();
   expect(useProjectPreview.getState()).toMatchObject({ active: 'existing' });
   expect(useSelectionStore.getState().selectedNodeIds).toEqual(['selected']);
-  expect(api.sampleCatalogue).not.toHaveBeenCalled();
+  expect(filesApi.sampleCatalogue).not.toHaveBeenCalled();
 });

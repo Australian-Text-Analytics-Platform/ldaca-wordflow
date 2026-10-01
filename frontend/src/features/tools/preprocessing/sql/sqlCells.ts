@@ -1,4 +1,4 @@
-import * as api from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
 
 type SqlCellMode = 'default' | 'live';
 export interface SqlCellSource {
@@ -12,7 +12,7 @@ export interface SqlCellRecord extends SqlCellSource {
 export const sqlCellsKey = (base: string) => ['native', base, 'sql-cells'] as const;
 
 export async function loadSqlCells(base: string, signal?: AbortSignal): Promise<SqlCellRecord[]> {
-  const table = await api.querySql(
+  const table = await projectApi.querySql(
     base,
     [
       {
@@ -28,13 +28,13 @@ export async function loadSqlCells(base: string, signal?: AbortSignal): Promise<
     mode: row.mode as SqlCellMode,
   }));
 }
-export function saveCellStatement(id: string, source: SqlCellSource): api.Statement {
+export function saveCellStatement(id: string, source: SqlCellSource): projectApi.Statement {
   return {
     sql: 'UPDATE wordflow.sql_cells SET sql=?, mode=? WHERE id=?',
     parameters: [source.sql, source.mode, id],
   };
 }
-export function reorderCellStatements(ids: string[]): api.Statement[] {
+export function reorderCellStatements(ids: string[]): projectApi.Statement[] {
   return ids.map((id, position) => ({
     sql: 'UPDATE wordflow.sql_cells SET position=? WHERE id=?',
     parameters: [position, id],

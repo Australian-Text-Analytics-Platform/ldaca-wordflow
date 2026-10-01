@@ -1,5 +1,3 @@
-import { useId, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -12,7 +10,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { sqlTypes } from '../../api';
+import { sqlTypes } from '@/features/project/api';
+import { useQuery } from '@tanstack/react-query';
+import { useId, useState } from 'react';
 
 // Only ranking is local. Available types and aliases come from DuckDB.
 const COMMON_TYPES = [

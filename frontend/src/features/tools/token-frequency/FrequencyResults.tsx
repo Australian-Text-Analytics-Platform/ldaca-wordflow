@@ -1,30 +1,32 @@
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { toast } from 'sonner';
-import { buildChartExport, saveGeneratedExport } from '../common/chartExport';
-import { emptyConcordance, useConcordanceState } from '../concordance/concordanceState';
-import { objectDependencies } from '@/features/project/projectChanges';
-import { useDeferredValue, useRef, useState } from 'react';
-import { keepPreviousData, useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import type { Table, TypeMap } from 'apache-arrow';
-import { Button } from '@/components/ui/button';
 import HelpIcon from '@/components/help/HelpIcon';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import type { NodeInputsPanelProps } from '@/features/tools/common/components/NodeInputsPanel';
-import { GREY } from '@/features/tools/common/vizPalette';
-import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
-import { FrequencyCorpusLegend } from './FrequencyCorpusLegend';
+import * as projectApi from '@/features/project/api';
+import { objectDependencies } from '@/features/project/projectChanges';
 import { reportProjectError } from '@/features/project/projectErrors';
-import * as api from '@/features/project/api';
-import { FrequencyCorpusCloud, FrequencyJuxtorpusCloud } from './FrequencyCharts';
-import { FrequencyRankedList, FREQUENCY_LIST_CHUNK_SIZE } from './FrequencyRankedList';
-import { FrequencyComparison } from './FrequencyComparison';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import { GREY } from '@/features/tools/common/vizPalette';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import { saveGeneratedExport } from '@/lib/download';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Table, TypeMap } from 'apache-arrow';
+import { useDeferredValue, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { buildChartExport } from '../common/chartExport';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { DownloadButton } from '../common/components/DownloadControl';
+import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
+import { StopwordControl } from '../common/stopwords/StopwordControl';
+import { completeStopwordSource, type StopwordSource } from '../common/stopwords/stopwordData';
+import { useStopwords } from '../common/stopwords/useStopwords';
+import { emptyConcordance, useConcordanceState } from '../concordance/concordanceState';
+import { FrequencyCorpusCloud, FrequencyJuxtorpusCloud } from './FrequencyCharts';
+import { FrequencyComparison } from './FrequencyComparison';
+import { FrequencyCorpusLegend } from './FrequencyCorpusLegend';
 import { FrequencyDownload } from './FrequencyDownload';
 import { buildFrequencyBundle, type DownloadFormat } from './frequencyExport';
-import { exactCount, useFrequencySettings, corpusColor } from './frequencySettings';
-import { StopwordControl } from '../common/stopwords/StopwordControl';
-import { useStopwords } from '../common/stopwords/useStopwords';
-import { completeStopwordSource, type StopwordSource } from '../common/stopwords/stopwordData';
+import { FREQUENCY_LIST_CHUNK_SIZE, FrequencyRankedList } from './FrequencyRankedList';
+import { corpusColor, exactCount, useFrequencySettings } from './frequencySettings';
 
 const NO_STOPWORDS: string[] = [];
 type RecordRow = Record<string, unknown>;
@@ -40,7 +42,7 @@ const records = (table: Table<TypeMap> | undefined): RecordRow[] =>
       )
     : [];
 // Query selection retains decoded rows across observer/status and interaction updates.
-const projectionRows = (page: Awaited<ReturnType<typeof api.queryFrequency>>) => ({
+const projectionRows = (page: Awaited<ReturnType<typeof frequencyApi.queryFrequency>>) => ({
   ...page,
   rows: records(page.table),
 });
@@ -49,7 +51,7 @@ interface DownloadTarget {
   label: string;
   kind: 'chart' | 'table';
   analysisId: string;
-  query: api.FrequencyQuery;
+  query: frequencyApi.FrequencyQuery;
   stopwords: string[];
   svg?: SVGSVGElement;
 }
@@ -63,19 +65,17 @@ export function FrequencyResults({
   editing,
   nodes,
   inputs,
-  inputRequests,
   onOpenConcordance,
 }: {
   onOpenConcordance?: () => void;
   base: string;
-  tab: api.Tab;
-  result: api.FrequencyAnalysisResult;
+  tab: analysesApi.Tab;
+  result: frequencyApi.FrequencyAnalysisResult;
   outdated: boolean;
   active: boolean;
   editing: boolean;
-  nodes: api.ProjectNode[];
+  nodes: projectApi.ProjectNode[];
   inputs: StopwordSource[];
-  inputRequests?: Pick<NodeInputsPanelProps, 'pendingInputRequest' | 'consumeInputRequest'>;
 }) {
   const cache = useQueryClient();
   const handoff = useMutation({
@@ -88,9 +88,9 @@ export function FrequencyResults({
         })),
         search: { ...emptyConcordance.search, query: token },
       };
-      const created = await api.createTab(base, 'concordance');
+      const created = await analysesApi.createTab(base, 'concordance');
       await cache.cancelQueries({ queryKey: ['native', base, 'tabs', 'concordance'] });
-      cache.setQueryData<api.Tab[]>(['native', base, 'tabs', 'concordance'], (old) => [
+      cache.setQueryData<analysesApi.Tab[]>(['native', base, 'tabs', 'concordance'], (old) => [
         ...(old ?? []).filter((tab) => tab.id !== created.id),
         created,
       ]);
@@ -149,7 +149,7 @@ export function FrequencyResults({
   }
   const common = { filter: resolved.filter, stopword_source: resolved.source };
   const stopwords = resolved.words;
-  const corpusQueries: api.FrequencyQuery[] = result.result.payload.corpora.map(
+  const corpusQueries: frequencyApi.FrequencyQuery[] = result.result.payload.corpora.map(
     (_, corpus_index) => ({
       ...common,
       view: 'corpus',
@@ -172,7 +172,7 @@ export function FrequencyResults({
   ]);
   const [pagination, setPagination] = useState({ key: pageKey, page: 1 });
   const page = pagination.key === pageKey ? pagination.page : 1;
-  const comparisonQuery: api.FrequencyQuery = {
+  const comparisonQuery: frequencyApi.FrequencyQuery = {
     ...common,
     view: 'comparison',
     sort: settings.comparisonSort,
@@ -180,16 +180,16 @@ export function FrequencyResults({
     page,
     page_size: settings.comparisonRows,
   };
-  const juxtorpusQuery: api.FrequencyQuery = {
+  const juxtorpusQuery: frequencyApi.FrequencyQuery = {
     ...common,
     view: 'juxtorpus',
     limit: settings.cloudLimit,
     page_size: settings.cloudLimit * 2,
   };
-  const projectionOptions = (query: api.FrequencyQuery, enabled: boolean) => ({
+  const projectionOptions = (query: frequencyApi.FrequencyQuery, enabled: boolean) => ({
     queryKey: ['native', base, 'analyses', result.id, 'rows', query],
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      api.queryFrequency(base, result.id, query, signal),
+      frequencyApi.queryFrequency(base, result.id, query, signal),
     select: projectionRows,
     enabled: active && enabled && !stopwordsUnavailable,
     placeholderData: keepPreviousData,
@@ -228,7 +228,7 @@ export function FrequencyResults({
   const capture = (
     label: string,
     kind: 'chart' | 'table',
-    query: api.FrequencyQuery,
+    query: frequencyApi.FrequencyQuery,
     chartKey?: string,
   ) => {
     const svg = chartKey ? svgs.current.get(chartKey) : undefined;
@@ -250,12 +250,18 @@ export function FrequencyResults({
       (format === 'csv' || format === 'markdown') &&
       !includeStopwords
     )
-      return api.exportFrequency(base, download.analysisId, download.query, format, filename);
+      return frequencyApi.exportFrequency(
+        base,
+        download.analysisId,
+        download.query,
+        format,
+        filename,
+      );
     let blob: Blob;
     let exportedWords = download.stopwords;
     if (format === 'csv' || format === 'markdown') {
       if (includeStopwords) {
-        const parts = await api.downloadFrequencyParts(
+        const parts = await frequencyApi.downloadFrequencyParts(
           base,
           download.analysisId,
           download.query,
@@ -263,7 +269,13 @@ export function FrequencyResults({
         );
         blob = parts.table;
         exportedWords = parts.stopwords;
-      } else blob = await api.downloadFrequency(base, download.analysisId, download.query, format);
+      } else
+        blob = await frequencyApi.downloadFrequency(
+          base,
+          download.analysisId,
+          download.query,
+          format,
+        );
     } else {
       if (!download.svg) throw new Error('The selected cloud is unavailable.');
       blob = await buildChartExport(download.svg, format);
@@ -324,7 +336,6 @@ export function FrequencyResults({
         </p>
       )}
       <StopwordControl
-        inputRequests={inputRequests}
         base={base}
         nodes={nodes}
         selected={settings.stopwordSource}
@@ -635,13 +646,11 @@ export function FrequencyResults({
               pageSize={settings.comparisonRows}
               rowCount={compared.data?.totalRows ?? 0}
               loading={compared.isFetching}
-              table={{
-                setPageIndex: (index) => {
-                  setPagination({ key: pageKey, page: index + 1 });
-                },
-                setPageSize: (size) => {
-                  change({ comparisonRows: size });
-                },
+              onPageChange={(index) => {
+                setPagination({ key: pageKey, page: index + 1 });
+              }}
+              onPageSizeChange={(size) => {
+                change({ comparisonRows: size });
               }}
             />
           </section>

@@ -1,17 +1,7 @@
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { toast } from 'sonner';
-import { AnalysisPublishMenu } from '../common/components/AnalysisPublishMenu';
-import { inspectAnalysisRow } from '../common/components/inspectAnalysisRow';
-import { VIZ_PALETTE, GREY } from '../common/vizPalette';
 import HelpIcon from '@/components/help/HelpIcon';
-import { useEffect, useId, useRef, useState } from 'react';
-import { keepPreviousData, useQueries, useQueryClient, useQuery } from '@tanstack/react-query';
-import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   Table,
   TableBody,
@@ -20,11 +10,32 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { RowDetailPanel } from '../common/components/RowDetailPanel';
-import { useRowDetailDialog } from '../common/components/useRowDetailDialog';
-import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as objectsApi from '@/features/project/objects';
 import { objectDependencies } from '@/features/project/projectChanges';
-import * as api from '@/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import { toNodeSurfaceColor } from '@/lib/nodeColor';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { useEffect, useId, useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
+import { AnalysisPublishMenu } from '../common/components/AnalysisPublishMenu';
+import { inspectAnalysisRow } from '../common/components/inspectAnalysisRow';
+import { RowDetailPanel } from '../common/components/RowDetailPanel';
+import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
+import { useRowDetailDialog } from '../common/components/useRowDetailDialog';
+import { useRetainedPages } from '../common/useRetainedPages';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
+import { ConcordanceDispersion } from './ConcordanceDispersion';
+import {
+  previewDensity,
+  type Density,
+  type DispersionChartMode,
+} from './concordanceDispersionModel';
+import { ConcordancePublishDialog } from './ConcordancePublishDialog';
 import {
   decodeConcordanceRows,
   interleave,
@@ -32,21 +43,13 @@ import {
   type DocumentRow,
   type Match,
 } from './concordanceRows';
-import { toNodeSurfaceColor } from '@/lib/nodeColor';
-import {
-  previewDensity,
-  type Density,
-  type DispersionChartMode,
-} from './concordanceDispersionModel';
-import { ConcordanceDispersion } from './ConcordanceDispersion';
-import { ConcordancePublishDialog } from './ConcordancePublishDialog';
 interface Props {
   onCancelPreview?: () => void;
   base: string;
-  tab: api.Tab;
-  result?: api.ConcordanceAnalysisResult;
-  submitted: { request: api.ConcordanceRequest; generation: number } | null;
-  draft: api.ConcordanceRequest;
+  tab: analysesApi.Tab;
+  result?: concordanceApi.ConcordanceAnalysisResult;
+  submitted: { request: concordanceApi.ConcordanceRequest; generation: number } | null;
+  draft: concordanceApi.ConcordanceRequest;
   active: boolean;
   stopped: boolean;
   view: 'preview' | 'saved';
@@ -54,7 +57,6 @@ interface Props {
   editing: boolean;
   onSettings: (patch: Record<string, unknown>) => void;
 }
-type Page = Awaited<ReturnType<typeof api.previewConcordance>>;
 export function ConcordanceResults({
   base,
   tab,
@@ -72,7 +74,7 @@ export function ConcordanceResults({
   const saved = view === 'saved';
   const request =
     saved && result
-      ? decodeAnalysisRequest('concordance', result.request).request
+      ? decodeAnalysisRequest('concordance', result.request_status).request
       : submitted?.request;
   const [presentation, setPresentation] = useState(
     tab.settings.presentation === 'dispersion' ? 'dispersion' : 'table',
@@ -81,7 +83,7 @@ export function ConcordanceResults({
   const panelId = useId();
   const [pageSize, setPageSize] = useState(20);
   const [pages, setPages] = useState<number[]>([]);
-  const [sorts, setSorts] = useState<(api.ConcordanceSort | null)[]>([]);
+  const [sorts, setSorts] = useState<(concordanceApi.ConcordanceSort | null)[]>([]);
   const [highlightContext, setHighlightContext] = useState(true);
   const [metadata, setMetadata] = useState<string[]>([]);
   const [detail, setDetail] = useState<{ row: DocumentRow; index: number; group: number } | null>(
@@ -94,8 +96,7 @@ export function ConcordanceResults({
   const [excluded, setExcluded] = useState<string[]>([]);
   const [bins, setBins] = useState<Record<string, number[]>>({});
   const [publish, setPublish] = useState<'matches' | 'documents' | null>(null);
-  const cache = useQueryClient();
-  const filter = (index: number): api.ConcordanceFilter => ({
+  const filter = (index: number): concordanceApi.ConcordanceFilter => ({
     excluded_terms: saved && presentation === 'dispersion' ? excluded : [],
     uncased,
     bins:
@@ -107,7 +108,7 @@ export function ConcordanceResults({
   const queries = useQueries({
     queries: (request?.inputs ?? []).map((input, index) => {
       const sort = combined ? null : (sorts[index] ?? null);
-      const query: api.ConcordanceQuery = {
+      const query: concordanceApi.ConcordanceQuery = {
         source_index: index,
         projection: presentation === 'table' ? 'matches' : 'documents',
         filter: filter(index),
@@ -115,7 +116,7 @@ export function ConcordanceResults({
         page_size: pageSize,
         sort,
       };
-      const preview: api.ConcordancePreviewRequest = {
+      const preview: concordanceApi.ConcordancePreviewRequest = {
         input,
         search: (request ?? draft).search,
         page: (pages[index] ?? 0) + 1,
@@ -125,11 +126,11 @@ export function ConcordanceResults({
       return {
         queryKey: saved
           ? ['native', base, 'analyses', result?.id, 'concordance', query]
-          : ['native', base, 'analysis-preview', tab.id, preview],
+          : ['native', base, 'analysis-preview', tab.id, submitted?.generation, preview],
         queryFn: ({ signal }: { signal: AbortSignal }) =>
           saved
-            ? api.queryConcordance(base, result?.id ?? '', query, signal)
-            : api.previewConcordance(base, tab.id, preview, signal),
+            ? concordanceApi.queryConcordance(base, result?.id ?? '', query, signal)
+            : concordanceApi.previewConcordance(base, tab.id, preview, signal),
         enabled: active && Boolean(saved ? result : submitted) && (!stopped || saved),
         meta: saved ? undefined : objectDependencies(input.source),
         placeholderData: saved ? undefined : keepPreviousData,
@@ -137,17 +138,6 @@ export function ConcordanceResults({
       };
     }),
   });
-  const generation = useRef(submitted);
-  useEffect(() => {
-    const previous = generation.current;
-    generation.current = submitted;
-    if (
-      previous?.generation !== submitted?.generation &&
-      JSON.stringify(previous?.request) === JSON.stringify(submitted?.request)
-    ) {
-      void cache.invalidateQueries({ queryKey: ['native', base, 'analysis-preview', tab.id] });
-    }
-  }, [submitted, cache, base, tab.id]);
   const submission = saved ? result?.id : submitted?.generation;
   const [displayedSubmission, setDisplayedSubmission] = useState(submission);
   if (displayedSubmission !== submission) {
@@ -155,31 +145,13 @@ export function ConcordanceResults({
     setPages([]);
   }
   // Retain the last successful page when a refresh fails, visibly marked below.
-  const [retained, setRetained] = useState<Record<string, Page>>({});
-  const fresh = queries.flatMap((query, index) => {
-    const key = JSON.stringify([
-      view,
-      saved ? result?.id : null,
-      saved ? presentation : null,
-      request?.inputs[index]?.source,
-    ]);
-    return query.data && !query.isPlaceholderData && retained[key] !== query.data
-      ? [[key, query.data] as const]
-      : [];
-  });
-  if (fresh.length) setRetained({ ...retained, ...Object.fromEntries(fresh) });
-  const data = queries.map(
-    (query, index) =>
-      query.data ??
-      retained[
-        JSON.stringify([
-          view,
-          saved ? result?.id : null,
-          saved ? presentation : null,
-          request?.inputs[index]?.source,
-        ])
-      ],
+  const retained = useRetainedPages(
+    (request?.inputs ?? []).map((input) =>
+      JSON.stringify([view, saved ? result?.id : null, saved ? presentation : null, input.source]),
+    ),
+    queries,
   );
+  const data = retained.pages;
   const rawRows = data.map((page, index) => (page ? decodeConcordanceRows(page.table, index) : []));
   const rows = rawRows.map((group) => group.filter((row) => row.matches.length > 0));
   const groups = combined ? [interleave(rows)] : rows;
@@ -189,7 +161,7 @@ export function ConcordanceResults({
         ? result.result.payload.corpora.map((_, source_index) => ({
             queryKey: ['native', base, 'analyses', result.id, 'density', source_index],
             queryFn: ({ signal }: { signal: AbortSignal }) =>
-              api.concordanceDensity(
+              concordanceApi.concordanceDensity(
                 base,
                 result.id,
                 { source_index, bin_count: 100, uncased: false },
@@ -217,11 +189,20 @@ export function ConcordanceResults({
     setExcluded([]);
     setPages([]);
   }
-  const outdated = Boolean(request && !matchesAnalysisRequest('concordance', draft, request));
+  const outdated = Boolean(
+    request &&
+    !matchesAnalysisRequest(
+      'concordance',
+      draft,
+      saved
+        ? result?.request_status
+        : { status: 'supported', request: { kind: 'concordance', request } },
+    ),
+  );
   const color = (index: number) => {
     const input = request?.inputs[index];
     return input
-      ? (colors[api.targetKey(input.source)] ?? VIZ_PALETTE[index] ?? GREY)
+      ? (colors[objectsApi.targetKey(input.source)] ?? VIZ_PALETTE[index] ?? GREY)
       : 'currentColor';
   };
   const sourceColumns = (request?.inputs ?? []).map((_, index) =>
@@ -317,14 +298,12 @@ export function ConcordanceResults({
       <TablePaginationFooter
         pageIndex={pages[index] ?? 0}
         pageSize={pageSize}
-        table={{
-          setPageIndex: (page) => {
-            changePage(index, page);
-          },
-          setPageSize: (size) => {
-            setPageSize(size);
-            setPages([]);
-          },
+        onPageChange={(page) => {
+          changePage(index, page);
+        }}
+        onPageSizeChange={(size) => {
+          setPageSize(size);
+          setPages([]);
         }}
         rowCount={
           saved
@@ -442,9 +421,7 @@ export function ConcordanceResults({
               draft.
             </p>
           )}
-          {queries.some(
-            (query) => query.isFetching || query.isError || query.isPlaceholderData,
-          ) && (
+          {queries.some((_, index) => retained.stale[index]) && (
             <p role={queries.some((query) => query.isError) ? 'alert' : 'status'}>
               {queries.some((query) => query.isError)
                 ? 'Refresh failed. The previous page is outdated.'
@@ -567,7 +544,7 @@ export function ConcordanceResults({
                     (input, sourceIndex) =>
                       input && (
                         <h3
-                          key={api.targetKey(input.source)}
+                          key={objectsApi.targetKey(input.source)}
                           className="flex min-w-0 items-center gap-2 break-all font-semibold"
                         >
                           <span
@@ -861,7 +838,7 @@ function Inspection({
   analysisId?: string;
   initialIndex: number;
   rows: DocumentRow[];
-  inputs: api.ConcordanceInput[];
+  inputs: concordanceApi.ConcordanceInput[];
   sequenceKey: string;
   page: number;
   hasNext: boolean;
@@ -882,7 +859,7 @@ function Inspection({
     toPayload: (row) => ({ record: row.source, textColumn: inputs[row.sourceIndex]?.column }),
   });
   const selected = controller.selectedItem;
-  const detailQuery: api.ConcordanceQuery = {
+  const detailQuery: concordanceApi.ConcordanceQuery = {
     source_index: selected?.sourceIndex ?? 0,
     projection: 'documents',
     filter: {
@@ -898,7 +875,8 @@ function Inspection({
   };
   const full = useQuery({
     queryKey: ['native', base, 'analyses', analysisId, 'concordance', detailQuery],
-    queryFn: ({ signal }) => api.queryConcordance(base, analysisId ?? '', detailQuery, signal),
+    queryFn: ({ signal }) =>
+      concordanceApi.queryConcordance(base, analysisId ?? '', detailQuery, signal),
     enabled: Boolean(analysisId && selected),
     staleTime: Infinity,
   });

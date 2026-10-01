@@ -1,35 +1,36 @@
-import type { ArrowColumn } from '@/lib/arrow/decodeArrowTable';
-import { useRef, useState, type ReactNode } from 'react';
-import { toast } from 'sonner';
-import { identifier as sqlIdentifier, querySql } from '@/features/project/api';
-import { table as sqlTable } from '../../sql';
 import { Checkbox } from '@/components/ui/checkbox';
+import { querySql } from '@/features/project/api';
+import { suggestDataBlockName } from '@/features/project/automaticNames';
+import { identifier as sqlIdentifier } from '@/features/project/objects';
 import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
+import type { ArrowColumn } from '@/lib/arrow/decodeArrowTable';
 import {
   isArrowDictionaryField,
   isArrowStringField,
   isArrowStringListField,
 } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import { getOperatorsForField } from '../../utils/typeUtils';
-import { suggestDataBlockName } from '@/features/project/automaticNames';
+import { useRef, useState, type ReactNode } from 'react';
+import { toast } from 'sonner';
 import {
   useNodePreviewWithRawFallback,
   type OperationPreviewFetcher,
 } from '../../hooks/useNodePreviewWithRawFallback';
-import { buildFilterRequestPayload, isConditionComplete } from '../utils/serializers';
-import { applyFilterConditionFieldChange, createFilterCondition } from '../utils/conditionState';
-import { FilterConditionValueInput } from '../components/FilterConditionValueInput';
+import { table as sqlTable } from '../../sql';
 import type {
+  ConditionColumnOption,
   ConditionRange,
   ConditionValue,
   FilterCondition,
   FilterConditionWithId,
   FilterRequest,
-  ConditionColumnOption,
   PreviewPagination,
   PreviewRow,
 } from '../../types';
+import { getOperatorsForField } from '../../utils/typeUtils';
+import { FilterConditionValueInput } from '../components/FilterConditionValueInput';
+import { applyFilterConditionFieldChange, createFilterCondition } from '../utils/conditionState';
+import { buildFilterRequestPayload, isConditionComplete } from '../utils/serializers';
 
 export interface FilterSubTabProps {
   existingNames?: string[];

@@ -1,15 +1,16 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { expect, it, vi } from 'vite-plus/test';
-import { decodeAnalysisRequest } from '../common/analysisRequest';
+import { defaultAnalysisRequest } from '../common/analysisRequest';
 import { TopicSamplingDialog } from './TopicSamplingDialog';
 it('captures both current sample sizes on confirmation without requiring blur', async () => {
   const user = userEvent.setup();
   const confirm = vi.fn();
   const close = vi.fn();
-  const request = decodeAnalysisRequest('topic-modeling', {
+  const request = {
+    ...defaultAnalysisRequest('topic-modeling'),
     inputs: ['one', 'two'].map((name) => ({ source: { schema: 'data', name }, column: 'text' })),
-  }).request;
+  };
   render(
     <TopicSamplingDialog
       base="sample-test"
@@ -38,9 +39,10 @@ it('blocks invalid sizes and Cancel does not calculate', async () => {
   const user = userEvent.setup();
   const confirm = vi.fn(),
     close = vi.fn();
-  const request = decodeAnalysisRequest('topic-modeling', {
+  const request = {
+    ...defaultAnalysisRequest('topic-modeling'),
     inputs: [{ source: { schema: 'data', name: 'one' }, column: 'text' }],
-  }).request;
+  };
   render(
     <TopicSamplingDialog
       base="invalid-test"

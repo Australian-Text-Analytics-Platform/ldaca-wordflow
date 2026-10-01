@@ -1,7 +1,6 @@
+import { ProjectError, request } from '@/api/client';
 import type { components } from '@/api/generated/native';
 import { requestUrl } from '@/api/http';
-import { ProjectError } from '@/features/project/api';
-import { request } from '@/features/project/api';
 export type Library = components['schemas']['Library'];
 export type LibraryFile = components['schemas']['LibraryFile'];
 

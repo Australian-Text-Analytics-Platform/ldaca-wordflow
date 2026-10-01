@@ -3,15 +3,18 @@ import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { browser, $, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as tasksApi from '@/features/project/tasksApi';
 export async function concordanceScenario(base: string, prefix: string) {
   const name = `${prefix}_documents`;
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
-      { sql: `CREATE TABLE ${api.identifier(name)} (text VARCHAR, category VARCHAR)` },
+      { sql: `CREATE TABLE ${ objectsApi.identifier(name)} (text VARCHAR, category VARCHAR)` },
       {
-        sql: `INSERT INTO ${api.identifier(name)} VALUES ('😀 cat cat dog','one'),('no match','two'),('猫 cat','three')`,
+        sql: `INSERT INTO ${ objectsApi.identifier(name)} VALUES ('😀 cat cat dog','one'),('no match','two'),('猫 cat','three')`,
       },
       {
         sql: "INSERT INTO wordflow.nodes(table_name,document_column) VALUES (?, 'text')",
@@ -57,16 +60,16 @@ export async function concordanceScenario(base: string, prefix: string) {
   await browser.keys(Key.Escape);
   await columns.waitForExist({ reverse: true });
   await expect(results.$('th=category')).toExist();
-  const tabs = await api.listTabs(base, undefined, 'concordance');
+  const tabs = await analysesApi.listTabs(base, undefined, 'concordance');
   const tab = tabs[0];
   if (!tab) throw new Error('Concordance tab missing');
   expect(outputAnalysisId(tab)).toBeNull();
   expect(tab.settings.preview).toBeUndefined();
   expect(tab.analysis).toBeNull();
   await $('button=Data Loader').click();
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
-    [{ sql: `UPDATE ${api.identifier(name)} SET text = 'cat fresh' WHERE category = 'two'` }],
+    [{ sql: `UPDATE ${ objectsApi.identifier(name)} SET text = 'cat fresh' WHERE category = 'two'` }],
     {
       objects: [{ schema: 'data', name }],
     },
@@ -85,7 +88,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   await expect(query).toHaveValue('cat');
   await expect(results).toHaveText(expect.stringContaining('4 matches'));
   await disableAnimations();
-  const records = await api.querySql(base, [
+  const records = await projectApi.querySql(base, [
     {
       sql: 'SELECT count(*) AS count FROM wordflow.analyses WHERE tab_id = ?',
       parameters: [tab.id],
@@ -93,7 +96,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   ]);
   expect(records.toArray().map((row: Record<string, unknown>) => String(row.count))).toEqual(['0']);
   expect(
-    (await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
+    (await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
   ).toHaveLength(0);
   await expect(request.$('button=Run')).toHaveAttribute('aria-disabled', 'false');
   await request.$('button=Run').click();
@@ -101,7 +104,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   await browser.waitUntil(
     async () => {
       resultId =
-        outputAnalysisId((await api.listTabs(base, undefined, 'concordance')).find(
+        outputAnalysisId((await analysesApi.listTabs(base, undefined, 'concordance')).find(
           (item) => item.id === tab.id,
         )) ?? null;
       return Boolean(resultId);
@@ -194,7 +197,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   await dialog.$('button=Add').click();
   await dialog.waitForExist({ reverse: true });
   await browser.waitUntil(async () =>
-    (await api.graph(base)).nodes.some(
+    (await projectApi.graph(base)).nodes.some(
       (node) => node.table_name === suggestDataBlockName([name], 'cc_doc', []),
     ),
   );
@@ -228,7 +231,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   }
   await setAnalysisPaneSize('normal');
 
-  await api.executeSql(base, [{ sql: `DROP TABLE ${api.identifier(name)}` }], {
+  await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.identifier(name)}` }], {
     objects: [{ schema: 'data', name }],
     resources: ['graph'],
   });
@@ -237,7 +240,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   await results.$('button=cat').waitForExist();
   // Reload only after the presentation write has reached the backend.
   await browser.waitUntil(async () =>
-    (await api.listTabs(base, undefined, 'concordance')).find((item) => item.id === tab.id)
+    (await analysesApi.listTabs(base, undefined, 'concordance')).find((item) => item.id === tab.id)
       ?.settings.presentation === 'table',
   );
   await browser.refresh();

@@ -8,7 +8,8 @@ import { it } from 'mocha';
 import { role, text, label, testId, placeholder, press, screenshot } from './fixtures';
 
 import type { FilterCondition } from '../src/features/tools/preprocessing/types';
-import * as api from '../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
 import { joinColumnMappings } from '../src/features/tools/preprocessing/join/columnMappings';
 import {
   applyTransformation,
@@ -26,8 +27,7 @@ import {
 } from '../src/features/tools/preprocessing/sql';
 
 const base = 'http://127.0.0.1:3212';
-const seed = async () =>
-  api.executeSql(base, [
+const seed = async () => projectApi.executeSql(base, [
     {
       sql: `CREATE TABLE data."source's table" AS SELECT i AS id, CASE WHEN i % 3 = 0 THEN NULL ELSE i END AS n, 'one two three' AS text, 9007199254740993::BIGINT AS huge, 123456789012345678.123456789::DECIMAL(30,9) AS exact FROM range(45) t(i)`,
     },
@@ -47,10 +47,10 @@ const single = (select: string): Transformation => ({
   mappings: [{ source: "source's table", column: 'text', output: 'text' }],
 });
 const scalar = async (select: string) =>
-  (await api.querySql(base, [{ sql: select }])).get(0)?.toJSON() as Record<string, unknown>;
+  (await projectApi.querySql(base, [{ sql: select }])).get(0)?.toJSON() as Record<string, unknown>;
 
 it('join metadata follows native merged keys and duplicate output names', async () => {
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: "CREATE TABLE data.jl AS SELECT 'left' AS id, 'L' AS label" },
     { sql: "CREATE TABLE data.jr AS SELECT 'right' AS id, 'R' AS label" },
     {
@@ -105,7 +105,7 @@ it('join metadata follows native merged keys and duplicate output names', async 
       "SELECT count(*)::INTEGER AS n FROM wordflow.tokenizer_models WHERE table_name='full_join'",
     ),
   ).toEqual({ n: 0 });
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     {
       sql: `UPDATE wordflow.arrow_metadata SET extension_metadata='{"side":"left"}' WHERE relation_name='jr' AND field_path=json_array('id')`,
     },
@@ -139,16 +139,16 @@ it('DuckDB preprocessing: new Views, NULLs, precision, propagation and rollback'
   expect(
     await scalar("SELECT count(*)::INTEGER AS n FROM wordflow.edges WHERE target_name='filtered'"),
   ).toEqual({ n: 0 });
-  const before = await api.graph(base);
+  const before = await projectApi.graph(base);
   expect(before.edges.find((edge) => edge.target_name === 'filtered')?.dependency).toBe(true);
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: `INSERT INTO data."source's table" VALUES (100,100,'new',1,1)` },
   ], { all: true });
   expect(await scalar('SELECT count(*)::INTEGER AS n FROM data.filtered')).toEqual({
     n: 5,
   });
   await expect(applyTransformation(base, operation, 'filtered')).rejects.toThrow();
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('atomic_failure')" },
   ], { all: true });
   await expect(applyTransformation(base, operation, 'atomic_failure')).rejects.toThrow();
@@ -160,7 +160,7 @@ it('DuckDB preprocessing: new Views, NULLs, precision, propagation and rollback'
   expect(await scalar(`SELECT count(*)::INTEGER AS n FROM data."source's table"`)).toEqual(
     { n: 46 },
   );
-  expect((await api.graph(base)).nodes.some((node) => node.table_name.endsWith('_backing'))).toBe(
+  expect((await projectApi.graph(base)).nodes.some((node) => node.table_name.endsWith('_backing'))).toBe(
     false,
   );
 });
@@ -186,13 +186,13 @@ it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () 
   const joined = await previewSql(base, join, 1, 3);
   expect(joined.columns).toContain('text_1');
   await applyTransformation(base, { select: join, mappings: [] }, 'joined');
-  expect((await api.rowPage(base, 'joined', 1, 3, [])).columns).toEqual(joined.columns);
+  expect((await projectApi.rowPage(base, 'joined', 1, 3, [])).columns).toEqual(joined.columns);
   for (const kind of ['left', 'right', 'full', 'semi', 'anti', 'cross'] as const)
     expect(
       (await previewSql(base, joinSelect("source's table", 'live', kind, 'id', 'n'), 1, 2)).columns
         .length,
     ).toBeGreaterThan(0);
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: 'CREATE TABLE data.different AS SELECT 1 AS id, TRUE AS extra' },
     { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('different')" },
   ], { all: true });
@@ -226,11 +226,11 @@ it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () 
       base,
       { table_name: "source's table", kind: 'table' },
       { ...request, output_column: name },
-      (await api.nodeSchema(base, "source's table")).map(({ name }) => name),
+      (await projectApi.nodeSchema(base, "source's table")).map(({ name }) => name),
     );
     expect(
       await scalar(
-        `SELECT ${api.identifier(name)} AS found FROM data."source's table" LIMIT 1`,
+        `SELECT ${ objectsApi.identifier(name)} AS found FROM data."source's table" LIMIT 1`,
       ),
     ).toEqual({ found: expected });
   }
@@ -255,7 +255,7 @@ it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () 
     await scalar('SELECT count(DISTINCT total)::INTEGER AS n FROM data.totals'),
   ).toEqual({ n: 1 });
   expect(
-    (await api.nodeSchema(base, "source's table")).some((column) =>
+    (await projectApi.nodeSchema(base, "source's table")).some((column) =>
       ['found', 'total'].includes(column.name),
     ),
   ).toBe(false);
@@ -336,7 +336,7 @@ it('graph double-click adds inputs only to the active preprocessing tool', async
 
 it('preprocessing preserves mapped metadata and uses native typed filtering', async () => {
   await seed();
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: "CREATE TYPE labels AS ENUM ('a', 'b', 'unused')" },
     {
       sql: `CREATE TABLE data.typed AS SELECT 'a'::labels AS category, ['one','two'] AS tags, [0.1,0.8]::DOUBLE[2] AS coverage, TIMESTAMP_NS '2026-09-12 10:11:12.123456789' AS moment UNION ALL SELECT NULL, NULL, NULL, NULL`,
@@ -396,7 +396,7 @@ it('preprocessing preserves mapped metadata and uses native typed filtering', as
       "SELECT count(*)::INTEGER AS n FROM wordflow.arrow_metadata WHERE relation_name='no_consensus'",
     ),
   ).toEqual({ n: 0 });
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     {
       sql: "INSERT INTO wordflow.arrow_metadata(schema_name,relation_name,field_path,extension_name,extension_metadata) SELECT schema_name,'live',field_path,extension_name,extension_metadata FROM wordflow.arrow_metadata WHERE relation_name='source''s table'",
     },
@@ -486,7 +486,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
       await expect(role('combobox', { name: 'Apply result as' }, pane)).not.toExist();
       await expect(role('columnheader', {}, pane)).toHaveText(expect.stringContaining('id'));
       if (theme === 'light') {
-        const before = (await api.graph(base)).nodes.map((node) => node.table_name);
+        const before = (await projectApi.graph(base)).nodes.map((node) => node.table_name);
         if (title === 'Find') {
           await expect(label('New Data Block name', {}, pane)).not.toExist();
           await role('button', { name: 'Apply', exact: true }, pane).click();
@@ -495,13 +495,13 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
               (await scalar(`SELECT text FROM data."source's table" LIMIT 1`)).text ===
               ' two three',
           );
-          expect((await api.graph(base)).nodes.map(({ table_name }) => table_name)).toEqual(before);
+          expect((await projectApi.graph(base)).nodes.map(({ table_name }) => table_name)).toEqual(before);
         } else {
           await role('button', { name: 'Create Data Block', exact: true }, pane).click();
           await browser.waitUntil(
-            async () => (await api.graph(base)).nodes.length === before.length + 1,
+            async () => (await projectApi.graph(base)).nodes.length === before.length + 1,
           );
-          const created = (await api.graph(base)).nodes.filter(
+          const created = (await projectApi.graph(base)).nodes.filter(
             (node) => !before.includes(node.table_name),
           );
           expect(created).toHaveLength(1);
@@ -512,7 +512,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
           };
           expect(created[0]?.table_name).toBe(expectedNames[title]);
           if (title === 'Build') {
-            expect((await api.nodeSchema(base, expectedNames[title] ?? '')).map((column) => column.name)).toContain('col');
+            expect((await projectApi.nodeSchema(base, expectedNames[title] ?? '')).map((column) => column.name)).toContain('col');
           }
         }
         expect(
@@ -539,7 +539,7 @@ it('self-joins keep independent keys, canonical output metadata, and one calcula
     const source = "source's table";
     const select = joinSelect(source, source, kind, leftKey, rightKey);
     const preview = await previewSql(base, select, 1, 10);
-    const sourceColumns = (await api.nodeSchema(base, source)).map(({ name }) => ({
+    const sourceColumns = (await projectApi.nodeSchema(base, source)).map(({ name }) => ({
       source,
       column: name,
       output: name,
@@ -559,7 +559,7 @@ it('self-joins keep independent keys, canonical output metadata, and one calcula
       },
       `self_${kind}`,
     );
-    const graph = await api.graph(base);
+    const graph = await projectApi.graph(base);
     expect(graph.edges.filter((edge) => edge.target_name === `self_${kind}`)).toHaveLength(1);
     expect(
       await scalar(
@@ -567,7 +567,7 @@ it('self-joins keep independent keys, canonical output metadata, and one calcula
       ),
     ).toEqual({ d: '{"note":"preserved"}' });
   }
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: 'CREATE TABLE data.empty AS SELECT 1 AS id WHERE false' },
     { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('empty')" },
   ], { all: true });
@@ -586,18 +586,22 @@ it('self-joins keep independent keys, canonical output metadata, and one calcula
   }
 });
 
-it('Join graph carrying targets separate roles for the same Data Block', async () => {
+it('Join graph additions choose separate roles for the same Data Block', async () => {
   await seed();
   await browser.url('/');
   await role('button', { name: 'Preprocessing', exact: true }).click();
   await role('tab', { name: 'Join', exact: true }).click();
   const pane = role('tabpanel', { name: 'Join', exact: true });
   const source = browser.$('[data-id=' + JSON.stringify("source's table") + ']');
+  const destination = () => role('dialog', { name: 'Add to input' });
   await source.doubleClick();
-  await expect(role('status', { name: /Carrying/ })).toBeDisplayed();
-  await role('button', { name: 'Add to Left input', exact: true }, pane).click();
+  await expect(destination()).toBeDisplayed();
+  await role('button', { name: 'Left input', exact: true }, destination()).click();
+  await expect(destination()).not.toExist();
   await source.doubleClick();
-  await role('button', { name: 'Add to Right input', exact: true }, pane).click();
+  await expect(destination()).toBeDisplayed();
+  await role('button', { name: 'Right input', exact: true }, destination()).click();
+  await expect(destination()).not.toExist();
   await expect(text('Left input (1/1)', { exact: true }, pane)).toBeDisplayed();
   await expect(text('Right input (1/1)', { exact: true }, pane)).toBeDisplayed();
   await expect(testId('project-data-overlay')).not.toExist();
@@ -615,12 +619,12 @@ it('Join graph carrying targets separate roles for the same Data Block', async (
   await role('button', { name: 'Create Data Block', exact: true }, pane).click();
   await expect(role('button', { name: 'Select self_roles', exact: true })).toBeDisplayed();
   await expect(testId('project-data-overlay')).not.toExist();
-  const graph = await api.graph(base);
+  const graph = await projectApi.graph(base);
   expect(graph.edges.filter((edge) => edge.target_name === 'self_roles')).toHaveLength(1);
 });
 
 it('precise temporal Filter text survives shadcn calendar interaction in both themes', async () => {
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     {
       sql: "CREATE TABLE data.temporal AS SELECT TIMESTAMPTZ '2026-09-16 12:34:56.123456+10:30' AS stamp",
     },

@@ -1,12 +1,7 @@
+import { querySql } from '@/features/project/api';
+import { identifier, objectRef, objectSql, type DataTarget } from '@/features/project/objects';
 import { objectDependencies } from '@/features/project/projectChanges';
 import { useQuery } from '@tanstack/react-query';
-import {
-  identifier,
-  objectRef,
-  objectSql,
-  querySql,
-  type DataTarget,
-} from '@/features/project/api';
 import { detectLanguageIso6391 } from './languageDetection';
 
 interface DetectedColumnLanguageArgs {

@@ -7,7 +7,6 @@ issue backlogs here.
 
 ## Current implementation work
 
-- [Issue 25: Derived Data Block Creation](25-derived-data-block-creation/spec.md)
-- [Issue 56: Topic Representative Words and Result Controls](56-topic-representative-words/spec.md)
-- [Issue 61: Top Topics per Document for Topic Bubbles](61-top-topics-per-row/spec.md)
-- [Issue 99: Backend Simplification, Integrity, and Modernization](99-backend-simplification-integrity/spec.md)
+- [Topic representative-word acceptance](topic-word-presentation-acceptance/spec.md)
+
+Other directories retain their own in-flight verification records. The completed modularity change and historical Issue 25, 56, 61 and 99 records are under `specs/archive/`.

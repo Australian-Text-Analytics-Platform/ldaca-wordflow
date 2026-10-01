@@ -16,5 +16,7 @@ it('escapes originals and retains complete large values behind bounded disclosur
   expect(
     screen.getByText(JSON.stringify(large, null, 2), { normalizer: (text) => text }),
   ).toBeInTheDocument();
-  expect(screen.getByText('Run will save only supported settings.')).toBeInTheDocument();
+  expect(
+    screen.getByText('Start with current defaults to create a new request.'),
+  ).toBeInTheDocument();
 });

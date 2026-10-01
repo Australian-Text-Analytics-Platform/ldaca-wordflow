@@ -1,16 +1,16 @@
-import { useCallback, useReducer, useId } from 'react';
 import { useMutation, useMutationState } from '@tanstack/react-query';
+import { useCallback, useId, useReducer } from 'react';
 
 import { type ArrowField } from '@/lib/arrow/decodeArrowTable';
 
+import { ProjectError } from '@/api/client';
+import { columnCastIdentity, type ColumnCastType } from '../services/schemaMutations';
 import {
   columnMutationReducer,
   createColumnMutationState,
   type PendingCast,
   type PendingSqlCast,
 } from './columnMutationState';
-import { ProjectError } from '@/features/project/api';
-import { columnCastIdentity, type ColumnCastType } from '../services/schemaMutations';
 
 interface UseColumnMutationsArgs {
   nodeName?: string;

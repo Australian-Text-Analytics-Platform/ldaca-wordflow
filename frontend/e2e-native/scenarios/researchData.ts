@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { resolve, join, extname } from 'node:path';
 import { browser, $, expect } from '@wdio/globals';
 import type { ChainablePromiseElement } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { outputDir } from '../../e2e-browser/fixtures';
 
@@ -85,11 +85,15 @@ export async function withResearchFile(
 export async function chooseColumn(label: string, value: string, scope: ChainablePromiseElement) {
   const trigger = scope.$(`[role="combobox"][aria-label=${JSON.stringify(label)}]`);
   await trigger.waitForEnabled();
+  if ((await trigger.getText()) === value) return;
   await trigger.click();
   // Radix Select also opens with the embedded driver's keyboard events.
   if (!(await $('[role="option"]').isExisting())) await browser.keys('ArrowDown');
-  await $(`[role="option"]=${value}`).click();
+  const option = $(`[role="option"]=${value}`);
+  await option.waitForDisplayed();
+  await option.click();
   await expect(trigger).toHaveText(value);
+  await expect($('[role="listbox"]')).not.toExist();
 }
 export async function addResearchInput(scope: ChainablePromiseElement, name: string) {
   await scope.$('button=Add data block').waitForEnabled();
@@ -100,18 +104,18 @@ export async function addResearchInput(scope: ChainablePromiseElement, name: str
 }
 export async function runResearchAnalysis(
   base: string,
-  kind: api.AnalysisKind,
+  kind: analysesApi.AnalysisKind,
   scope: ChainablePromiseElement,
 ) {
   const before = new Set(
-    (await api.listTabs(base, undefined, kind)).map((tab) => tab.analysis?.id),
+    (await analysesApi.listTabs(base, undefined, kind)).map((tab) => tab.analysis?.id),
   );
   await expect(scope.$('button=Run')).toHaveAttribute('aria-disabled', 'false');
   await scope.$('button=Run').click();
   let id: string | undefined;
   await browser.waitUntil(
     async () => {
-      id = (await api.listTabs(base, undefined, kind)).find(
+      id = (await analysesApi.listTabs(base, undefined, kind)).find(
         (tab) => tab.analysis?.has_result && !before.has(tab.analysis.id),
       )?.analysis?.id;
       return Boolean(id);

@@ -1,17 +1,17 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import * as filesApi from '@/features/project/filesApi';
 import { MutationCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { useStopwords } from './useStopwords';
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+vi.mock('@/features/project/filesApi', async (original) => ({
+  ...(await original<object>()),
   prepareStopwords: vi.fn(),
   readStopwords: vi.fn(),
 }));
 it('captures the selected View and corpus inputs before asynchronous preparation', async () => {
-  const pending = Promise.withResolvers<api.StopwordSource>();
-  vi.mocked(api.prepareStopwords).mockImplementationOnce(() => pending.promise);
-  vi.mocked(api.readStopwords).mockResolvedValue([]);
+  const pending = Promise.withResolvers<filesApi.StopwordSource>();
+  vi.mocked(filesApi.prepareStopwords).mockImplementationOnce(() => pending.promise);
+  vi.mocked(filesApi.readStopwords).mockResolvedValue([]);
   const onSelect = vi.fn().mockResolvedValue(undefined);
   const errors = vi.fn();
   const client = new QueryClient({
@@ -32,7 +32,7 @@ it('captures the selected View and corpus inputs before asynchronous preparation
   act(() => {
     result.current.edit.mutate();
   });
-  await waitFor(() => expect(api.prepareStopwords).toHaveBeenCalledOnce());
+  await waitFor(() => expect(filesApi.prepareStopwords).toHaveBeenCalledOnce());
   rerender({ selected: other, inputs: [other] });
   await act(async () => {
     pending.resolve({
@@ -45,9 +45,9 @@ it('captures the selected View and corpus inputs before asynchronous preparation
     source: { schema: 'data', name: 'original_stopwords' },
     column: 'word',
   });
-  expect(api.prepareStopwords).toHaveBeenCalledWith('', original, [original]);
+  expect(filesApi.prepareStopwords).toHaveBeenCalledWith('', original, [original]);
   expect(result.current.edit.data?.inputs).toEqual([original]);
-  vi.mocked(api.prepareStopwords).mockRejectedValueOnce(new Error('Missing table'));
+  vi.mocked(filesApi.prepareStopwords).mockRejectedValueOnce(new Error('Missing table'));
   act(() => {
     result.current.edit.mutate();
   });

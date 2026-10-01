@@ -1,12 +1,12 @@
-import { useEffect, useEffectEvent, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import * as filesApi from '@/features/project/filesApi';
+import { isTauri } from '@/lib/isTauri';
 import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { open } from '@tauri-apps/plugin-dialog';
 import { File, FolderOpen, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { isTauri } from '@/lib/isTauri';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { reportProjectError } from './projectErrors';
-import * as api from './api';
 
 const RECENTS_KEY = 'wordflow.desktop.recentDataFiles';
 function readRecents(): string[] {
@@ -63,7 +63,7 @@ export function LocalFileImport({
   const metadataKey = [base, 'local-file-metadata'];
   const metadata = useQuery({
     queryKey: [base, 'local-file-metadata', recent],
-    queryFn: ({ signal }) => api.localFileMetadata(base, recent, signal),
+    queryFn: ({ signal }) => filesApi.localFileMetadata(base, recent, signal),
     enabled: recent.length > 0,
   });
   const mutationKey = [base, 'local-file-import'];
@@ -71,7 +71,7 @@ export function LocalFileImport({
   const imported = useMutation({
     mutationKey,
     mutationFn: (paths: string[]) =>
-      api.importTables(
+      filesApi.importTables(
         base,
         paths.map((file) => ({
           table_name: filename(file).replace(/\.[^.]+$/, ''),

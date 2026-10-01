@@ -1,7 +1,7 @@
-import * as api from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
 import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
-import { bindInput, findColumn, selectText } from './sql';
 import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
+import { bindInput, findColumn, selectText } from './sql';
 
 import type { ColumnMapping } from '@/features/project/api';
 export type { ColumnMapping } from '@/features/project/api';
@@ -25,7 +25,7 @@ export async function previewSql(
   signal?: AbortSignal,
 ) {
   const decoded = decodeArrowData(
-    await api.querySql(
+    await projectApi.querySql(
       base,
       [
         {
@@ -45,7 +45,7 @@ export async function previewSql(
 
 /** Create a live result and its metadata atomically; never overwrite an input. */
 export function applyTransformation(base: string, operation: Transformation, outputName: string) {
-  return api.createView(base, {
+  return projectApi.createView(base, {
     name: outputName,
     sql: resultSelect(operation),
     mappings: operation.mappings,
@@ -56,12 +56,16 @@ export function applyTransformation(base: string, operation: Transformation, out
 /** Find changes one column in place, using the same expression as its preview. */
 export async function applyFind(
   base: string,
-  target: Pick<api.ProjectNode, 'table_name' | 'kind'>,
+  target: Pick<projectApi.ProjectNode, 'table_name' | 'kind'>,
   request: ReplaceRequest,
   columns: readonly string[],
 ) {
   if (target.kind === 'missing') throw new Error('The selected Data Block is unavailable');
   const { column, expression } = findColumn(request, columns);
-  await api.changeColumn(base, target.table_name, { operation: 'transform', column, expression });
+  await projectApi.changeColumn(base, target.table_name, {
+    operation: 'transform',
+    column,
+    expression,
+  });
   return { table_name: target.table_name };
 }

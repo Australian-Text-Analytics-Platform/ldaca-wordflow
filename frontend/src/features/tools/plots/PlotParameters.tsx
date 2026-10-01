@@ -1,13 +1,15 @@
-import { Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { SearchableSelect } from '@/components/ui/searchable-select';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import { objectDependencies } from '@/features/project/projectChanges';
+import * as plotsApi from '@/features/tools/plots/api';
+import type { ArrowField } from '@/lib/arrow/decodeArrowTable';
 import { useQuery } from '@tanstack/react-query';
 import { DataType } from 'apache-arrow';
-import type { ArrowField } from '@/lib/arrow/decodeArrowTable';
-import * as api from '@/features/project/api';
+import { Plus, X } from 'lucide-react';
 import { NodeColumnSelector } from '../common/components/NodeColumnSelector';
-import { SearchableSelect } from '@/components/ui/searchable-select';
-import { Input } from '@/components/ui/input';
-import { objectDependencies } from '@/features/project/projectChanges';
-import { Button } from '@/components/ui/button';
 export function PlotParameters({
   base,
   active,
@@ -17,9 +19,9 @@ export function PlotParameters({
 }: {
   base: string;
   active: boolean;
-  draft: api.PlotRequest;
+  draft: plotsApi.PlotRequest;
   fields: ArrowField[];
-  onChange: (r: api.PlotRequest) => void;
+  onChange: (r: plotsApi.PlotRequest) => void;
 }) {
   const all = fields.map((f) => f.name);
   const numeric = fields
@@ -35,7 +37,7 @@ export function PlotParameters({
     );
   const zones = useQuery({
     queryKey: ['native', base, 'timezones'],
-    queryFn: ({ signal }) => api.plotTimezones(base, signal),
+    queryFn: ({ signal }) => plotsApi.plotTimezones(base, signal),
     enabled: active && aware,
     staleTime: Infinity,
   });
@@ -51,11 +53,11 @@ export function PlotParameters({
       groups,
     ],
     queryFn: ({ signal }) =>
-      api.querySql(
+      projectApi.querySql(
         base,
         [
           {
-            sql: `SELECT ${groups.map((name, i) => `count(DISTINCT json_array(${api.identifier(name)})) AS ${api.identifier(String(i))}`).join(',')} FROM ${api.identifier(r.source.schema ?? 'data')}.${api.identifier(r.source.name)}`,
+            sql: `SELECT ${groups.map((name, i) => `count(DISTINCT json_array(${objectsApi.identifier(name)})) AS ${objectsApi.identifier(String(i))}`).join(',')} FROM ${objectsApi.identifier(r.source.schema ?? 'data')}.${objectsApi.identifier(r.source.name)}`,
           },
         ],
         signal,
@@ -101,7 +103,7 @@ export function PlotParameters({
             onChange={(value) => {
               onChange({
                 ...r,
-                measure: value as api.PlotMeasure,
+                measure: value as plotsApi.PlotMeasure,
                 value: value === 'count' ? null : r.value,
               });
             }}
@@ -184,7 +186,7 @@ export function PlotParameters({
                   onChange={(value) => {
                     onChange({
                       ...r,
-                      interval: { type: 'time', unit: value as api.PlotTimeUnit, step: 1 },
+                      interval: { type: 'time', unit: value as plotsApi.PlotTimeUnit, step: 1 },
                     });
                   }}
                 />

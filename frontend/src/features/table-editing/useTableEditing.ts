@@ -1,12 +1,14 @@
+import * as objectsApi from '@/features/project/objects';
 import { objectDependencies } from '@/features/project/projectChanges';
-import { useEffect, useRef, useState } from 'react';
+import * as editingApi from '@/features/table-editing/api';
+import * as annotationApi from '@/features/tools/annotation/api';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { SortingState } from '@tanstack/react-table';
-import * as api from '@/features/project/api';
+import { useEffect, useRef, useState } from 'react';
 
 export interface EditableCell {
   rowRef: string;
-  column: api.CellEditColumn;
+  column: editingApi.CellEditColumn;
   original: string | null;
   value: string | null;
   options?: string[];
@@ -21,7 +23,7 @@ interface InsertedRow {
   values: Record<string, string | null>;
 }
 interface Draft {
-  patches: Map<string, api.CellPatch>;
+  patches: Map<string, editingApi.CellPatch>;
   deletions: Set<string>;
   insertions: InsertedRow[];
 }
@@ -40,12 +42,12 @@ export function useTableEditing({
   onFinished,
 }: {
   base: string;
-  session: api.CellEditSession;
+  session: editingApi.CellEditSession;
   editableColumns?: readonly string[];
   allowRowChanges?: boolean;
-  review?: Omit<api.AnnotationReview, 'changes'>;
+  review?: Omit<annotationApi.AnnotationReview, 'changes'>;
   initialPageSize?: number;
-  liveDependencies?: api.ObjectRef[];
+  liveDependencies?: objectsApi.ObjectRef[];
   /** Callers with captured rows can edit their typed references without fetching another page. */
   readPages?: boolean;
   onFinished: (saved: boolean) => void | Promise<void>;
@@ -65,7 +67,7 @@ export function useTableEditing({
     mounted.current = true;
     const release = () => {
       if (finished.current) return;
-      void api.cancelCellEdit(base, session.session_id).catch((error: unknown) => {
+      void editingApi.cancelCellEdit(base, session.session_id).catch((error: unknown) => {
         // Teardown may follow an accepted Save whose successful response was lost.
         if (!(error instanceof Error && 'code' in error && error.code === 'editing_closed'))
           console.warn('Could not release table editing session during teardown', error);
@@ -94,7 +96,7 @@ export function useTableEditing({
       review ? [...draft.patches.values()] : null,
     ],
     queryFn: ({ signal }) =>
-      api.cellEditPage(
+      editingApi.cellEditPage(
         base,
         session.session_id,
         page,
@@ -113,7 +115,7 @@ export function useTableEditing({
   });
   const save = useMutation({
     mutationFn: () =>
-      api.saveCellEdit(base, session.session_id, {
+      editingApi.saveCellEdit(base, session.session_id, {
         changes: [...draft.patches.values()],
         deletions: [...draft.deletions],
         insertions: draft.insertions.map(({ values }) => ({ values })),
@@ -124,7 +126,7 @@ export function useTableEditing({
     },
   });
   const cancel = useMutation({
-    mutationFn: () => api.cancelCellEdit(base, session.session_id),
+    mutationFn: () => editingApi.cancelCellEdit(base, session.session_id),
     onSuccess: () => {
       finished.current = true;
       return onFinished(false);

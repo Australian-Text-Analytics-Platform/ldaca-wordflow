@@ -1,22 +1,23 @@
-import { useState } from 'react';
-import * as api from '@/features/project/api';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
+import * as objectsApi from '@/features/project/objects';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { useState } from 'react';
 import { topicKey, useTopicSampling } from './topicState';
 
 export function TopicSamplingDialog({
@@ -29,16 +30,18 @@ export function TopicSamplingDialog({
 }: {
   base: string;
   tab: string;
-  request: api.TopicRequest;
+  request: topicApi.TopicRequest;
   knownCounts: Map<string, number>;
   onClose: () => void;
-  onConfirm: (request: api.TopicRequest, sampling: api.TopicSampling[]) => void;
+  onConfirm: (request: topicApi.TopicRequest, sampling: topicApi.TopicSampling[]) => void;
 }) {
   const [request] = useState(() => structuredClone(initial));
   const [choices, setChoices] = useState(() =>
     request.inputs.map(
       (input) =>
-        useTopicSampling.getState().choices[topicKey(base, tab)]?.[api.targetKey(input.source)] ?? {
+        useTopicSampling.getState().choices[topicKey(base, tab)]?.[
+          objectsApi.targetKey(input.source)
+        ] ?? {
           mode: 'count' as const,
           count: 1000,
         },
@@ -62,10 +65,10 @@ export function TopicSamplingDialog({
         {request.inputs.map((input, index) => {
           const choice = choices[index];
           if (!choice) return null;
-          const count = knownCounts.get(api.targetKey(input.source));
+          const count = knownCounts.get(objectsApi.targetKey(input.source));
           return (
             <fieldset
-              key={`${String(index)}-${api.targetKey(input.source)}`}
+              key={`${String(index)}-${objectsApi.targetKey(input.source)}`}
               className="space-y-2 rounded-md border p-3"
             >
               <legend className="max-w-full break-words px-1 font-medium">
@@ -153,7 +156,7 @@ export function TopicSamplingDialog({
                   tab,
                   Object.fromEntries(
                     request.inputs.map((input, i) => [
-                      api.targetKey(input.source),
+                      objectsApi.targetKey(input.source),
                       choices[i] ?? { mode: 'count', count: 1000 },
                     ]),
                   ),

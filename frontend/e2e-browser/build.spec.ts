@@ -3,7 +3,8 @@ import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, text, label, testId, testIds, rect, press, screenshot } from './fixtures';
 import type { ChainablePromiseElement } from 'webdriverio';
-import * as api from '../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
 import { decodeArrowData } from '../src/lib/arrow/decodeArrowTable';
 import { mapArrowColumnsToInfo } from '../src/features/project/data-view/utils/columnTypes';
 import { columnSelect, table } from '../src/features/tools/preprocessing/sql';
@@ -22,7 +23,6 @@ import {
   type BuildCombinationKind,
   type BuildBuilderToken,
 } from '../src/features/tools/preprocessing/build/hooks/buildExpressionModel';
-import { parsedBuildExpression } from '../src/features/tools/preprocessing/build/parseBuildExpression';
 const base = 'http://127.0.0.1:3212';
 const node = 'build"source';
 const op = (
@@ -75,14 +75,14 @@ const buildExpression = (
     columns,
   );
 async function seed() {
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: "CREATE TYPE data.build_category AS ENUM ('A','B','unused')" },
     {
       sql: `CREATE TABLE ${table(node)} AS SELECT ' Abç Abç ' AS txt, 4::DECIMAL(30,8) AS n, true AS b, DATE '2026-09-15' AS d, TIMESTAMP '2026-09-15 12:34:56.123456' AS ts, TIME '12:34:56.123456' AS tm, [3,NULL,1,3] AS nums, ['a',NULL,'b'] AS words, NULL::VARCHAR AS missing, 'A'::"data".build_category AS category, '2026-09-15 12:34:56.123456 +1000' AS date_text`,
     },
     { sql: `INSERT INTO wordflow.nodes(table_name) VALUES (?)`, parameters: [node] },
   ], { all: true });
-  return mapArrowColumnsToInfo(await api.nodeSchema(base, node));
+  return mapArrowColumnsToInfo(await projectApi.nodeSchema(base, node));
 }
 const cases: Record<BuildOperation['kind'], [string, BuildOperation['arguments'], unknown]> = {
   is_null: ['missing', {}, true],
@@ -156,18 +156,14 @@ it('every Build operation creates a new View through the pinned DuckDB engine', 
     const tokens = [token(column, [op(kind, args)])];
     const read = async (expression: string) =>
       decodeArrowData(
-        await api.querySql(base, [{ sql: `SELECT ${expression} AS result FROM ${table(node)}` }]),
+        await projectApi.querySql(base, [{ sql: `SELECT ${expression} AS result FROM ${table(node)}` }]),
       ).rows[0]?.result;
     const generated = buildExpression(tokens, columns);
-    const parsed = parsedBuildExpression(await api.parseExpression(base, generated), columns);
-    expect(parsed.kind).not.toBe('sql');
-    const roundtrip = compile({ mode: 'visual', roots: [parsed] }, columns);
+    const parsed = await projectApi.parseExpression(base, generated);
     const value = await read(generated);
-    expect(await read(roundtrip)).toEqual(value);
+    expect(await read(parsed.sql)).toEqual(value);
     const scalarSql = buildExpression(tokens, columns, node);
-    const parsedScalar = parsedBuildExpression(await api.parseExpression(base, scalarSql), columns);
-    expect(parsedScalar.kind).not.toBe('sql');
-    expect(await read(compile({ mode: 'visual', roots: [parsedScalar] }, columns))).toEqual(value);
+    expect(await read(scalarSql)).toEqual(value);
     if (kind === 'list_distinct') expect([...(value as number[])].sort((a, b) => String(a).localeCompare(String(b)))).toEqual(expected);
     else if (typeof expected === 'number') expect(Number(value)).toBeCloseTo(expected, 10);
     else expect(value).toEqual(expected);
@@ -182,15 +178,15 @@ it('every Build operation creates a new View through the pinned DuckDB engine', 
       name,
     );
     const output = decodeArrowData(
-      await api.querySql(base, [{ sql: `SELECT output FROM ${table(name)}` }]),
+      await projectApi.querySql(base, [{ sql: `SELECT output FROM ${table(name)}` }]),
     ).rows[0]?.output;
     expect(output).toEqual(value);
-    expect((await api.nodeSchema(base, node)).some((field) => field.name === 'output')).toBe(false);
+    expect((await projectApi.nodeSchema(base, node)).some((field) => field.name === 'output')).toBe(false);
   }
 });
 it('Build chains preserve native types, summaries, View propagation and rollback', async () => {
   const columns = await seed();
-  await api.executeSql(base, [{ sql: `INSERT INTO ${table(node)} SELECT * FROM ${table(node)}` }], { all: true });
+  await projectApi.executeSql(base, [{ sql: `INSERT INTO ${table(node)} SELECT * FROM ${table(node)}` }], { all: true });
   const cases_ = [
     [token('txt', [op('trim'), op('lower'), op('count_distinct')])],
     [token('txt', [op('split', { delimiter: ' ' }), op('list_length'), op('mean')])],
@@ -201,16 +197,16 @@ it('Build chains preserve native types, summaries, View propagation and rollback
     const transformation = { select, currentInput: node, mappings: [] };
     await applyTransformation(base, transformation, `live_${String(index)}`);
     const data = decodeArrowData(
-      await api.querySql(base, [
+      await projectApi.querySql(base, [
         { sql: `SELECT computed FROM data.live_${String(index)} LIMIT 1` },
       ]),
     ).rows;
     expect(data).toHaveLength(1);
     expect(data[0]?.computed).toEqual(index === 0 ? '1' : 4);
   }
-  await api.changeColumn(base, 'live_0', { operation: 'transform', column: 'computed', expression: 'NULL' });
-  await api.undoNode(base, 'live_0');
-  expect((await api.querySql(base, [{ sql: 'SELECT * FROM data.live_0' }])).numRows).toBe(
+  await projectApi.changeColumn(base, 'live_0', { operation: 'transform', column: 'computed', expression: 'NULL' });
+  await projectApi.undoNode(base, 'live_0');
+  expect((await projectApi.querySql(base, [{ sql: 'SELECT * FROM data.live_0' }])).numRows).toBe(
     2,
   );
   const numeric = [
@@ -224,7 +220,7 @@ it('Build chains preserve native types, summaries, View propagation and rollback
   ];
   expect(
     decodeArrowData(
-      await api.querySql(base, [{ sql: `SELECT ${buildExpression(numeric, columns)} AS v` }]),
+      await projectApi.querySql(base, [{ sql: `SELECT ${buildExpression(numeric, columns)} AS v` }]),
     ).rows[0]?.v,
   ).toBe('9007199254740993.123456789');
   const timestamp = buildExpression(
@@ -233,7 +229,7 @@ it('Build chains preserve native types, summaries, View propagation and rollback
   );
   expect(
     decodeArrowData(
-      await api.querySql(base, [
+      await projectApi.querySql(base, [
         {
           sql: `SELECT strftime(${timestamp}, '%Y-%m-%d %H:%M:%S.%f %z') AS v FROM ${table(node)} LIMIT 1`,
         },
@@ -243,7 +239,7 @@ it('Build chains preserve native types, summaries, View propagation and rollback
   const lists = buildExpression([token('nums'), token('nums')], columns, undefined, 'list_concat');
   expect(
     decodeArrowData(
-      await api.querySql(base, [{ sql: `SELECT ${lists} AS v FROM ${table(node)} LIMIT 1` }]),
+      await projectApi.querySql(base, [{ sql: `SELECT ${lists} AS v FROM ${table(node)} LIMIT 1` }]),
     ).rows[0]?.v,
   ).toEqual([3, null, 1, 3, 3, null, 1, 3]);
   const invalid = 'missing_column + 1';
@@ -258,9 +254,9 @@ it('Build chains preserve native types, summaries, View propagation and rollback
       'failed',
     ),
   ).rejects.toThrow();
-  expect((await api.graph(base)).nodes.some((n) => n.table_name === 'failed')).toBe(false);
-  await api.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
-  expect((await api.querySql(base, [{ sql: 'SELECT * FROM data.live_0' }])).numRows).toBe(
+  expect((await projectApi.graph(base)).nodes.some((n) => n.table_name === 'failed')).toBe(false);
+  await projectApi.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
+  expect((await projectApi.querySql(base, [{ sql: 'SELECT * FROM data.live_0' }])).numRows).toBe(
     0,
   );
 });
@@ -270,17 +266,17 @@ it('Build uses dictionary text and native empty/NULL list behavior', async () =>
   const category = buildExpression([token('category', [op('lower')])], columns);
   expect(
     decodeArrowData(
-      await api.querySql(base, [{ sql: `SELECT ${category} AS value FROM ${table(node)}` }]),
+      await projectApi.querySql(base, [{ sql: `SELECT ${category} AS value FROM ${table(node)}` }]),
     ).rows[0]?.value,
   ).toBe('a');
-  const untouched = await api.querySql(base, [
+  const untouched = await projectApi.querySql(base, [
     {
       sql: `SELECT ${buildExpression([token('category')], columns)} AS category FROM ${table(node)}`,
     },
   ]);
   expect(DataType.isDictionary(untouched.schema.fields[0]?.type)).toBe(true);
   expect(untouched.getChild('category')?.data[0]?.dictionary?.toArray()).toContain('unused');
-  await api.executeSql(base, [
+  await projectApi.executeSql(base, [
     { sql: `UPDATE ${table(node)} SET nums=[], words=[], missing=NULL` },
   ], { all: true });
   for (const [kind, expected] of [
@@ -299,12 +295,12 @@ it('Build uses dictionary text and native empty/NULL list behavior', async () =>
     );
     expect(
       decodeArrowData(
-        await api.querySql(base, [{ sql: `SELECT ${expression} AS value FROM ${table(node)}` }]),
+        await projectApi.querySql(base, [{ sql: `SELECT ${expression} AS value FROM ${table(node)}` }]),
       ).rows[0]?.value,
     ).toEqual(expected);
   }
-  await api.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
-  const empty = await api.querySql(base, [
+  await projectApi.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
+  const empty = await projectApi.querySql(base, [
     {
       sql: `SELECT ${buildExpression([token('n', [op('mean')])], columns)} AS average FROM ${table(node)}`,
     },
@@ -317,8 +313,8 @@ it('Build menus, parameter editing and chip contrast work in both themes and nar
   await seed();
   const longColumn =
     'A long column name with spaces and a "quoted" identifier that must wrap within this narrow pane';
-  await api.executeSql(base, [
-    { sql: `ALTER TABLE ${table(node)} ADD COLUMN ${api.identifier(longColumn)} VARCHAR` },
+  await projectApi.executeSql(base, [
+    { sql: `ALTER TABLE ${table(node)} ADD COLUMN ${ objectsApi.identifier(longColumn)} VARCHAR` },
   ], { all: true });
   await browser.setViewport({ width: 1100, height: 850 });
   await browser.url('/');
@@ -426,7 +422,7 @@ it('explicit Build combinations preserve native NULLs, ordering, precise values 
   ];
   const read = async (definition: BuildVisualDefinition) =>
     decodeArrowData(
-      await api.querySql(base, [
+      await projectApi.querySql(base, [
         {
           sql: `SELECT ${compile(definition, columns)} AS result FROM ${table(node)}`,
         },
@@ -436,12 +432,7 @@ it('explicit Build combinations preserve native NULLs, ordering, precise values 
     const definition = visual(parts, kind);
     if (definition.roots[0]?.kind === 'combination' && definition.roots[0].combination)
       definition.roots[0].combination.separator = ' · ';
-    const roundtrip = parsedBuildExpression(
-      await api.parseExpression(base, compile(definition, columns)),
-      columns,
-    );
-    expect(roundtrip.kind).not.toBe('sql');
-    expect(await read({ mode: 'visual', roots: [roundtrip] })).toEqual(expected);
+    await projectApi.parseExpression(base, compile(definition, columns));
     expect(await read(definition)).toEqual(expected);
   }
   const finalSummary = {
@@ -467,13 +458,13 @@ it('explicit Build combinations preserve native NULLs, ordering, precise values 
   );
   expect(
     decodeArrowData(
-      await api.querySql(base, [{ sql: 'SELECT combined FROM data.combined_view' }]),
+      await projectApi.querySql(base, [{ sql: 'SELECT combined FROM data.combined_view' }]),
     ).rows[0]?.combined,
   ).toBe(6);
   const exact = visual([number('9007199254740993.123456789'), number('0.000000001')], 'add');
   expect(await read(exact)).toBe('9007199254740993.123456790');
   await expect(read(visual([token('d'), token('nums')], 'coalesce'))).rejects.toThrow();
-  await api.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
+  await projectApi.executeSql(base, [{ sql: `DELETE FROM ${table(node)}` }], { all: true });
   expect(await read(finalSummary)).toBeUndefined();
 });
 
@@ -497,7 +488,7 @@ it('handwritten Build expressions create Views, preserve inputs and reject confl
     await applyTransformation(base, transformation, `sql_${kind}`);
     expect(
       decodeArrowData(
-        await api.querySql(base, [{ sql: `SELECT result FROM data.sql_${kind}` }]),
+        await projectApi.querySql(base, [{ sql: `SELECT result FROM data.sql_${kind}` }]),
       ).rows[0]?.result,
     ).toBe('ABÇ ABÇ');
   }
@@ -508,17 +499,16 @@ it('handwritten Build expressions create Views, preserve inputs and reject confl
   expect(competing.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
   expect(competing.filter((result) => result.status === 'rejected')).toHaveLength(1);
   expect(
-    (await api.graph(base)).nodes.filter((node) => node.table_name === 'competing_build'),
+    (await projectApi.graph(base)).nodes.filter((node) => node.table_name === 'competing_build'),
   ).toHaveLength(1);
-  expect((await api.nodeSchema(base, node)).some((c) => c.name === 'result')).toBe(false);
-  await expect(
-    api.querySql(base, [
+  expect((await projectApi.nodeSchema(base, node)).some((c) => c.name === 'result')).toBe(false);
+  await expect( projectApi.querySql(base, [
       {
         sql: `SELECT ${compile({ mode: 'sql', expression: '1; DELETE FROM wordflow.nodes' }, columns)} FROM ${table(node)}`,
       },
     ]),
   ).rejects.toThrow();
-  expect((await api.graph(base)).nodes.some((n) => n.table_name === node)).toBe(true);
+  expect((await projectApi.graph(base)).nodes.some((n) => n.table_name === node)).toBe(true);
 });
 
 it('Build SQL handoff inserts columns at the cursor, retains output on errors and reconstructs edited SQL', async () => {
@@ -549,12 +539,14 @@ it('Build SQL handoff inserts columns at the cursor, retains output on errors an
   await expect(role('cell', { name: 'ABÇ ABÇ', exact: true }, pane)).toBeDisplayed();
   await expect(role('button', { name: 'Create Data Block', exact: true }, pane)).toBeEnabled();
   await expect(browser.$('[data-sonner-toast]')).not.toExist();
-  await role('button', { name: 'Return to bubble builder' }, pane).click();
+  await role('button', { name: 'New visual expression' }, pane).click();
+  await role('button', {name:'Keep SQL'}).click();
   await expect(editor).toHaveText('upper(');
   await editor.setValue('upper("txt")');
-  await role('button', { name: 'Return to bubble builder' }, pane).click();
-  await expect(role('button', { name: 'Edit Uppercase' }, pane)).toBeDisplayed();
-  await expect(role('cell', { name: 'ABÇ ABÇ', exact: true }, pane)).toBeDisplayed();
+  await role('button', { name: 'New visual expression' }, pane).click();
+  await role('button', {name:'Start new expression'}).click();
+  await expect(pane.$('.cm-content')).not.toExist();
+  await expect(role('button', {name:'Add column txt',exact:true},pane)).toBeDisplayed();
 });
 
 it('nested expressions preserve grouping, exact casts and SQL fragments without execution during conversion', async () => {
@@ -575,34 +567,18 @@ it('nested expressions preserve grouping, exact casts and SQL fragments without 
     `greatest(txt, 'zz')`,
   ];
   for (const sql of expressions) {
-    const root = parsedBuildExpression(await api.parseExpression(base, sql), columns);
-    const roundtrip = compile({ mode: 'visual', roots: [root] }, columns);
+    const root = await projectApi.parseExpression(base, sql);
+    const roundtrip = root.sql;
     const read = async (expression: string) =>
       decodeArrowData(
-        await api.querySql(base, [{ sql: `SELECT ${expression} AS v FROM ${table(node)}` }]),
+        await projectApi.querySql(base, [{ sql: `SELECT ${expression} AS v FROM ${table(node)}` }]),
       ).rows;
     expect(await read(roundtrip)).toEqual(await read(sql));
   }
-  await api.executeSql(base, [{ sql: `INSERT INTO ${table(node)} SELECT * FROM ${table(node)}` }], { all: true });
+  await projectApi.executeSql(base, [{ sql: `INSERT INTO ${table(node)} SELECT * FROM ${table(node)}` }], { all: true });
   const scalarWindow = `(SELECT sum(n) OVER () FROM ${table(node)})`;
-  const opaqueWindow = parsedBuildExpression(
-    await api.parseExpression(base, scalarWindow),
-    columns,
-  );
-  expect(opaqueWindow.kind).toBe('sql');
-  expect(opaqueWindow.operations).toEqual([]);
-  await expect(
-    api.querySql(base, [
-      { sql: `SELECT ${compile({ mode: 'visual', roots: [opaqueWindow] }, columns)}` },
-    ]),
-  ).rejects.toThrow(/more than one row/i);
-  const mixed = parsedBuildExpression(
-    await api.parseExpression(base, `lower(CASE WHEN b THEN txt ELSE '' END)`),
-    columns,
-  );
-  expect(mixed.kind).toBe('sql');
-  expect(mixed.operations.map((item) => item.kind)).toEqual(['lower']);
-  if (mixed.kind === 'sql') expect(mixed.expression).toMatch(/^CASE/);
+  const parsedWindow = await projectApi.parseExpression(base, scalarWindow);
+  await expect(projectApi.querySql(base, [{sql: `SELECT ${parsedWindow.sql}`}])).rejects.toThrow(/more than one row/i);
   const window = { mode: 'visual' as const, roots: [token('n', [op('mean')])] };
   const expression = compile(window, columns);
   await applyTransformation(
@@ -615,7 +591,7 @@ it('nested expressions preserve grouping, exact casts and SQL fragments without 
     'window_summary',
   );
   expect(compile(window, columns)).toBe(expression);
-  expect((await api.nodeSchema(base, node)).some((field) => field.name === 'unchanged_summary')).toBe(
+  expect((await projectApi.nodeSchema(base, node)).some((field) => field.name === 'unchanged_summary')).toBe(
     false,
   );
 });
@@ -772,6 +748,7 @@ it('palette drag copies, nested drops move subtrees, and second-root cancellatio
   }
   await role('button', { name: 'Edit SQL expression' }, pane).click();
   await expect(pane.$('.cm-content')).toHaveText(expect.stringContaining('concat_ws'));
-  await role('button', { name: 'Return to bubble builder' }, pane).click();
-  await expect(testIds('build-bubble', {}, pane)).toBeElementsArrayOfSize(5);
+  await role('button', { name: 'New visual expression' }, pane).click();
+  await role('button', {name:'Keep SQL'}).click();
+  await expect(pane.$('.cm-content')).toHaveText(expect.stringContaining('concat_ws'));
 });

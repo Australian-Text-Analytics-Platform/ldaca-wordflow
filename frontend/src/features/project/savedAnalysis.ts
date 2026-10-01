@@ -1,5 +1,5 @@
+import { clearTab, type Tab } from '@/features/tools/common/analysisApi';
 import { queryOptions, type QueryClient } from '@tanstack/react-query';
-import { clearTab, type Tab } from './api';
 
 const tabsKey = (base: string, tab: Tab) => ['native', base, 'tabs', tab.kind];
 const outputKey = (base: string, id: string | null) => ['native', base, 'analyses', id];

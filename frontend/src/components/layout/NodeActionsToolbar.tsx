@@ -1,12 +1,3 @@
-import { useState } from 'react';
-import { Pin, Settings2, Plus } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,8 +8,16 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { DataBlockRenameDialog } from '@/features/project/common/components/DataBlockRenameDialog';
-import type { NodeInputPointerPosition } from '@/stores/nodeInputRequestsStore';
+import { cn } from '@/lib/utils';
+import { Pin, Plus, Settings2 } from 'lucide-react';
+import { useState } from 'react';
 import { NodeMoreMenu } from './NodeMoreMenu';
 
 /** Minimal node shape the row toolbar needs. */
@@ -32,7 +31,7 @@ export interface NodeActionsToolbarProps {
   isPinned: boolean;
   onTogglePin: (nodeId: string) => void;
   inputsDisabled?: boolean;
-  onAddToSelection?: (nodeId: string, pointer?: NodeInputPointerPosition) => void;
+  onAddToSelection?: (nodeId: string) => void;
   onRename: (nodeId: string, newName: string) => void;
   onClone: (nodeId: string) => void;
   onMaterialize?: (nodeId: string) => void;
@@ -182,16 +181,15 @@ export function NodeActionsToolbar({
 
       <button
         type="button"
-        onClick={(event) => {
-          onAddToSelection?.(
-            node.id,
-            event.detail > 0 ? { x: event.clientX, y: event.clientY } : undefined,
-          );
+        onClick={() => {
+          onAddToSelection?.(node.id);
         }}
         className={iconButtonClass}
-        disabled={inputsDisabled}
+        disabled={inputsDisabled || !onAddToSelection}
         title={
-          inputsDisabled ? 'Analysis execution is not available on desktop yet' : 'Add to selection'
+          inputsDisabled || !onAddToSelection
+            ? 'Choose an input destination in the current tool'
+            : 'Add to input'
         }
         aria-label={`Add ${node.name} to selection`}
       >

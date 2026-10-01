@@ -20,6 +20,38 @@ pub enum Reasoning {
     Medium,
     High,
 }
+/// Controls implemented by this adapter, not an exhaustive provider capability catalogue.
+#[derive(Debug, Serialize, utoipa::ToSchema)]
+pub struct InferenceCapabilities {
+    pub reasoning: Vec<Reasoning>,
+    pub temperature_with_reasoning: bool,
+}
+pub fn capabilities(provider: Provider, model: &str) -> InferenceCapabilities {
+    let model = model.trim();
+    let mut reasoning = vec![Reasoning::Default];
+    if provider != Provider::Apple {
+        reasoning.extend([Reasoning::Low, Reasoning::Medium, Reasoning::High]);
+        let off = match provider {
+            Provider::Openai => {
+                model.starts_with("gpt-5.1")
+                    || model.starts_with("gpt-5.2") && !model.contains("pro")
+            }
+            Provider::Google => model.starts_with("gemini-2.5-flash"),
+            Provider::Anthropic => ["claude-sonnet-4-5", "claude-haiku-4-5", "claude-opus-4-5"]
+                .iter()
+                .any(|prefix| model.starts_with(prefix)),
+            Provider::Openrouter | Provider::Custom => true,
+            Provider::Apple => false,
+        };
+        if off {
+            reasoning.push(Reasoning::Off);
+        }
+    }
+    InferenceCapabilities {
+        reasoning,
+        temperature_with_reasoning: !matches!(provider, Provider::Openai | Provider::Anthropic),
+    }
+}
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct Inference {
@@ -478,6 +510,12 @@ fn payload(
     system: &str,
     user: &str,
 ) -> Result<(String, Value)> {
+    let controls = capabilities(provider, &config.model);
+    if !controls.reasoning.contains(&config.reasoning) {
+        return Err(Error::invalid(
+            "This reasoning setting is not supported for this model; choose Provider default",
+        ));
+    }
     let effort = match config.reasoning {
         Reasoning::Low => Some("low"),
         Reasoning::Medium => Some("medium"),
@@ -491,10 +529,7 @@ fn payload(
         _ => 0,
     };
     let model = config.model.trim();
-    if config.temperature.is_some()
-        && effort.is_some()
-        && matches!(provider, Provider::Openai | Provider::Anthropic)
-    {
+    if config.temperature.is_some() && effort.is_some() && !controls.temperature_with_reasoning {
         return Err(Error::invalid(
             "Explicit temperature cannot be combined with reasoning for this provider. Choose Provider default for temperature.",
         ));
@@ -508,14 +543,7 @@ fn payload(
             }
             match config.reasoning {
                 Reasoning::Default => {}
-                Reasoning::Off if model.starts_with("gemini-2.5-flash") => {
-                    generation["thinkingConfig"] = json!({"thinkingBudget":0})
-                }
-                Reasoning::Off => {
-                    return Err(Error::invalid(
-                        "Off is supported here only for Gemini 2.5 Flash models; choose Provider default for other models",
-                    ));
-                }
+                Reasoning::Off => generation["thinkingConfig"] = json!({"thinkingBudget":0}),
                 _ if model.starts_with("gemini-2.5-") => {
                     generation["thinkingConfig"] = json!({"thinkingBudget":budget})
                 }
@@ -542,18 +570,7 @@ fn payload(
             }
             match config.reasoning {
                 Reasoning::Default => {}
-                Reasoning::Off
-                    if model.starts_with("claude-sonnet-4-5")
-                        || model.starts_with("claude-haiku-4-5")
-                        || model.starts_with("claude-opus-4-5") =>
-                {
-                    body["thinking"] = json!({"type":"disabled"})
-                }
-                Reasoning::Off => {
-                    return Err(Error::invalid(
-                        "Off is not verified for this Anthropic model; choose Provider default",
-                    ));
-                }
+                Reasoning::Off => body["thinking"] = json!({"type":"disabled"}),
                 _ if model.starts_with("claude-sonnet-4-5")
                     || model.starts_with("claude-haiku-4-5")
                     || model.starts_with("claude-opus-4-5") =>
@@ -582,14 +599,6 @@ fn payload(
                     body["reasoning"] = json!({"effort":effort});
                 }
             } else if config.reasoning == Reasoning::Off {
-                if provider == Provider::Openai
-                    && !(model.starts_with("gpt-5.1")
-                        || model.starts_with("gpt-5.2") && !model.contains("pro"))
-                {
-                    return Err(Error::invalid(
-                        "Off is not verified for this model; choose Provider default",
-                    ));
-                }
                 body["reasoning_effort"] = json!("none");
             } else if let Some(effort) = effort {
                 body["reasoning_effort"] = json!(effort);
@@ -786,6 +795,50 @@ mod tests {
         assert_eq!(
             body["generationConfig"]["thinkingConfig"]["thinkingBudget"],
             0
+        );
+    }
+    #[test]
+    fn advertised_reasoning_matches_payload_validation() {
+        for (provider, model) in [
+            (Provider::Openai, "gpt-5.1"),
+            (Provider::Openai, "gpt-5.2-pro"),
+            (Provider::Anthropic, "claude-sonnet-4-5"),
+            (Provider::Anthropic, "claude-sonnet-4-6"),
+            (Provider::Google, "gemini-2.5-flash"),
+            (Provider::Google, "gemini-2.5-pro"),
+            (Provider::Openrouter, "custom"),
+            (Provider::Custom, "custom"),
+        ] {
+            let controls = capabilities(provider, model);
+            for reasoning in [
+                Reasoning::Default,
+                Reasoning::Off,
+                Reasoning::Low,
+                Reasoning::Medium,
+                Reasoning::High,
+            ] {
+                let mut request = config();
+                request.model = model.into();
+                request.reasoning = reasoning;
+                assert_eq!(
+                    payload(provider, &request, "", "[]").is_ok(),
+                    controls.reasoning.contains(&reasoning)
+                );
+                if matches!(
+                    reasoning,
+                    Reasoning::Low | Reasoning::Medium | Reasoning::High
+                ) {
+                    request.temperature = Some(0.5);
+                    assert_eq!(
+                        payload(provider, &request, "", "[]").is_ok(),
+                        controls.temperature_with_reasoning
+                    );
+                }
+            }
+        }
+        assert_eq!(
+            capabilities(Provider::Apple, "system").reasoning,
+            vec![Reasoning::Default]
         );
     }
 }

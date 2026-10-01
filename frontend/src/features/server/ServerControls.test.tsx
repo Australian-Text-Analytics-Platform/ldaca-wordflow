@@ -1,12 +1,12 @@
+import { ProjectError } from '@/api/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { ServerControls } from './ServerControls';
 import { ServerContext } from './context';
-import { ProjectError } from '@/features/project/api';
 const request = vi.hoisted(() => vi.fn());
-vi.mock('@/features/project/api', async (original) => ({ ...(await original<object>()), request }));
+vi.mock('@/api/client', async (original) => ({ ...(await original<object>()), request }));
 vi.mock('@/features/project/projectErrors', () => ({ reportProjectError: vi.fn() }));
 beforeEach(() => request.mockReset());
 function mount() {

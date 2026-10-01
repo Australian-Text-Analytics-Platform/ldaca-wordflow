@@ -1,6 +1,9 @@
 import { browser, $, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as plotsApi from '@/features/tools/plots/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import {
   withResearchFile,
@@ -17,7 +20,7 @@ import {
 export async function researchPlotScenario(
   base: string,
   prefix: string,
-  mode: api.PlotMode,
+  mode: plotsApi.PlotMode,
   inputFile?: string,
 ) {
   const records = await readResearchData<SurveyRow>('community-survey.json');
@@ -30,12 +33,12 @@ export async function researchPlotScenario(
       : 'community-survey.csv');
   await prepareResearchVisit();
   await withResearchFile(file, source, async () => {
-    const imported = await api.querySql(base, [
-      { sql: `SELECT count(*) AS n FROM data.${api.identifier(source)}` },
+    const imported = await projectApi.querySql(base, [
+      { sql: `SELECT count(*) AS n FROM data.${ objectsApi.identifier(source)}` },
     ]);
     expect(Number(imported.getChild('n')?.get(0))).toBe(records.length);
     if (file.endsWith('.parquet')) {
-      const types = await api.querySql(base, [{ sql: `DESCRIBE data.${api.identifier(source)}` }]);
+      const types = await projectApi.querySql(base, [{ sql: `DESCRIBE data.${ objectsApi.identifier(source)}` }]);
       const columns = types
         .toArray()
         .map((row: Record<string, unknown>) => [row.column_name, row.column_type]);
@@ -52,9 +55,9 @@ export async function researchPlotScenario(
       await expect(stamp).toHaveText(expect.stringContaining('datetime with timezone'));
       await expect($('[role="dialog"]')).not.toExist();
       await $('[aria-label="Close preview"]').click();
-      const converted = await api.querySql(base, [
+      const converted = await projectApi.querySql(base, [
         {
-          sql: `SELECT recorded_at=TIMESTAMPTZ '2025-11-01 04:00:15.125+00' AS correct FROM data.${api.identifier(source)} WHERE row_id=1`,
+          sql: `SELECT recorded_at=TIMESTAMPTZ '2025-11-01 04:00:15.125+00' AS correct FROM data.${ objectsApi.identifier(source)} WHERE row_id=1`,
         },
       ]);
       expect(converted.getChild('correct')?.get(0)).toBe(true);
@@ -63,7 +66,7 @@ export async function researchPlotScenario(
     const label = mode.slice(0, 1).toUpperCase() + mode.slice(1);
     await $('[role="tablist"][aria-label="Plot modes"]').$(`[role="tab"]=${label}`).click();
     const panel = $(`[data-testid="${mode}-workspace"]`);
-    if ((await api.listTabs(base, undefined, mode)).some((tab) => tab.analysis)) {
+    if ((await analysesApi.listTabs(base, undefined, mode)).some((tab) => tab.analysis)) {
       const previous = await panel.$('[role="tab"][aria-selected="true"]').getText();
       await panel.$('button[aria-label="New tab"]').click();
       await browser.waitUntil(async () => {
@@ -108,7 +111,7 @@ export async function researchPlotScenario(
     const chart = results.$('[data-testid="plot-chart"]');
     await chart.$('svg').waitForExist();
     await expect(results).toHaveText(expect.stringContaining('480 rows'));
-    const data = await api.queryPlot(base, id, mode, { uncased: false, minimum_rows: 0 });
+    const data = await plotsApi.queryPlot(base, id, mode, { uncased: false, minimum_rows: 0 });
     const rows = data.toArray() as Record<string, unknown>[];
     if (mode === 'trends') {
       expect(rows.reduce((n, r) => n + Number(r.value), 0)).toBe(480);
@@ -270,9 +273,9 @@ export async function researchPlotScenario(
       expect(chosen.length).toBeGreaterThan(intersection.length);
     }
     await publishRows(base, results, `${source}_selected`, chosen.length);
-    const selected = await api.querySql(base, [
+    const selected = await projectApi.querySql(base, [
       {
-        sql: `SELECT row_id FROM data.${api.identifier(`${source}_selected`)} ORDER BY row_id`,
+        sql: `SELECT row_id FROM data.${ objectsApi.identifier(`${source}_selected`)} ORDER BY row_id`,
       },
     ]);
     expect(selected.toArray().map((row: Record<string, unknown>) => Number(row.row_id))).toEqual(
@@ -311,8 +314,8 @@ export async function researchPlotScenario(
     const eligible =
       mode === 'scatter' ? records.filter((r) => r.x !== null && r.y !== null) : records;
     await publishRows(base, results, `${source}_published`, eligible.length);
-    const published = await api.querySql(base, [
-      { sql: `SELECT row_id FROM data.${api.identifier(`${source}_published`)} ORDER BY row_id` },
+    const published = await projectApi.querySql(base, [
+      { sql: `SELECT row_id FROM data.${ objectsApi.identifier(`${source}_published`)} ORDER BY row_id` },
     ]);
     expect(published.toArray().map((r: Record<string, unknown>) => Number(r.row_id))).toEqual(
       eligible.map((r) => r.row_id),
@@ -336,8 +339,8 @@ async function publishRows(
   await dialog.$('button=Select all').click();
   await dialog.$('button=Add').click();
   await dialog.waitForExist({ reverse: true });
-  const rows = await api.querySql(base, [
-    { sql: `SELECT count(*) AS n FROM data.${api.identifier(name)}` },
+  const rows = await projectApi.querySql(base, [
+    { sql: `SELECT count(*) AS n FROM data.${ objectsApi.identifier(name)}` },
   ]);
   expect(Number(rows.getChild('n')?.get(0))).toBe(count);
 }

@@ -1,13 +1,15 @@
+import * as objectsApi from '@/features/project/objects';
+import { reportProjectError } from '@/features/project/projectErrors';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
+import { stopwordSource, type StopwordSource } from '../common/stopwords/stopwordData';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import {
-  useFrequencyState,
   defaultFrequencyDisplay,
+  useFrequencyState,
   type FrequencyDisplay,
 } from './frequencyState';
-import { stopwordSource, type StopwordSource } from '../common/stopwords/stopwordData';
-import * as api from '@/features/project/api';
-import { useMutation, useMutationState, useQueryClient } from '@tanstack/react-query';
-import { reportProjectError } from '@/features/project/projectErrors';
-import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 
 export interface FrequencySettings {
   stopwordsEnabled: boolean;
@@ -15,11 +17,11 @@ export interface FrequencySettings {
   colors: Record<string, string>;
 }
 
-type Corpus = api.FrequencyAnalysisResult['result']['payload']['corpora'][number];
-export const corpusColorKey = (source: api.DataTarget) => api.targetKey(source);
+type Corpus = frequencyApi.FrequencyAnalysisResult['result']['payload']['corpora'][number];
+export const corpusColorKey = (source: objectsApi.DataTarget) => objectsApi.targetKey(source);
 
 export function frequencySettings(
-  value: api.Tab['settings'],
+  value: analysesApi.Tab['settings'],
   corpora: Corpus[] = [],
 ): FrequencySettings {
   return {
@@ -41,7 +43,7 @@ export function frequencySettings(
 
 export function corpusColor(
   settings: FrequencySettings,
-  source: api.DataTarget,
+  source: objectsApi.DataTarget,
   fallback: string | null | undefined,
   index: number,
 ) {
@@ -56,7 +58,7 @@ export function corpusColor(
 /** Request and result controls share serialized, optimistic presentation updates. */
 export function useFrequencySettings(
   base: string,
-  tab: api.Tab,
+  tab: analysesApi.Tab,
   editing: boolean,
   corpora: Corpus[],
 ) {
@@ -74,9 +76,10 @@ export function useFrequencySettings(
     mutationKey: saveKey,
     meta: { reportError: false },
     scope: { id: JSON.stringify(saveKey) },
-    mutationFn: (next: FrequencySettings) => api.updateTab(base, tab.id, { settings: { ...next } }),
+    mutationFn: (next: FrequencySettings) =>
+      analysesApi.updateTab(base, tab.id, { settings: { ...next } }),
     onSuccess: (updated) =>
-      cache.setQueryData<api.Tab[]>(tabsKey, (tabs) =>
+      cache.setQueryData<analysesApi.Tab[]>(tabsKey, (tabs) =>
         tabs?.map((item) =>
           item.id === updated.id ? { ...item, settings: updated.settings } : item,
         ),
@@ -85,7 +88,7 @@ export function useFrequencySettings(
   const persist = async (patch: Partial<FrequencySettings>) => {
     if (editing) throw new Error('Finish table editing first.');
     const current =
-      cache.getQueryData<api.Tab[]>(tabsKey)?.find((item) => item.id === tab.id) ?? tab;
+      cache.getQueryData<analysesApi.Tab[]>(tabsKey)?.find((item) => item.id === tab.id) ?? tab;
     // Pending writes supply the optimistic overlay; committed query data remains authoritative.
     const latest = cache
       .getMutationCache()

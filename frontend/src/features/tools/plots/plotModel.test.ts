@@ -1,7 +1,7 @@
-import { describe, it, expect } from 'vite-plus/test';
-import { buildPlot, categoryLabel, type PlotDisplay } from './plotModel';
+import type { CompareRequest, PlotSelection, TrendsRequest } from '@/features/tools/plots/api';
+import { describe, expect, it } from 'vite-plus/test';
 import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import type { PlotSelection, CompareRequest, TrendsRequest } from '@/features/project/api';
+import { buildPlot, categoryLabel, type PlotDisplay } from './plotModel';
 const display: PlotDisplay = {
   style: 'bar',
   smooth: true,
@@ -86,24 +86,12 @@ describe('Plots semantic projections', () => {
     expect(categoryLabel('[null]')).not.toBe(categoryLabel('["(Missing)"]'));
     expect(categoryLabel('[""]')).not.toBe(categoryLabel('["(empty)"]'));
   });
-  it('restores supported siblings while reporting incompatible saved fields', () => {
-    const restored = decodeAnalysisRequest('trends', {
-      source: { schema: 'data', name: 'x' },
-      axis: 'year',
-      groups: ['one', 4, 'two', 'three', 'four'],
-      interval: { type: 'numeric', width: 3, origin: null },
-      measure: 'future',
-      timezone: 'UTC',
-      future: true,
-    });
-    expect(restored.request.axis).toBe('year');
-    expect(restored.request.groups).toEqual(['one', 'two', 'three']);
-    expect(restored.issues.map((i) => i.path)).toEqual(
-      expect.arrayContaining(['groups[1]', 'groups[4]', 'interval.width', 'measure', 'future']),
-    );
-    expect(
-      matchesAnalysisRequest('trends', restored.request, { ...restored.request, future: true }),
-    ).toBe(false);
+  it('does not repair incompatible saved plot requests implicitly', () => {
+    const status = { status: 'unsupported' as const, reason: 'Unknown measure future' };
+    const restored = decodeAnalysisRequest('trends', status, { measure: 'future' });
+    expect(restored.request.axis).toBe('');
+    expect(restored.issues).toHaveLength(1);
+    expect(matchesAnalysisRequest('trends', restored.request, status)).toBe(false);
   });
 });
 

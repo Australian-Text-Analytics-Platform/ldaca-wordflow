@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 
 /** Pages and submitted Preview settings belong only to this mounted tab visit. */
 export function useAnalysisPreview<Request>(
@@ -10,6 +10,7 @@ export function useAnalysisPreview<Request>(
   consumeHandoff: (base: string, id: string) => void,
 ) {
   const cache = useQueryClient();
+  const generation = useRef(handoff?.generation ?? 0);
   const [submitted, setSubmitted] = useState(handoff);
   const [wasActive, setWasActive] = useState(active);
   if (wasActive !== active) {
@@ -41,7 +42,10 @@ export function useAnalysisPreview<Request>(
     submitted,
     clear,
     submit: (request: Request) => {
-      setSubmitted((previous) => ({ request, generation: (previous?.generation ?? 0) + 1 }));
+      void cache.cancelQueries({ queryKey: ['native', base, 'analysis-preview', id] });
+      cache.removeQueries({ queryKey: ['native', base, 'analysis-preview', id] });
+      generation.current += 1;
+      setSubmitted({ request, generation: generation.current });
     },
   };
 }

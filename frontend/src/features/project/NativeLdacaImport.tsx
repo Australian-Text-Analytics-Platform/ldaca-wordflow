@@ -1,7 +1,5 @@
-import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { ChevronRight, ExternalLink, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -11,10 +9,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import * as api from './api';
+import * as filesApi from '@/features/project/filesApi';
+import { useMutation } from '@tanstack/react-query';
+import { ChevronRight, ExternalLink, Search } from 'lucide-react';
+import { useState } from 'react';
 
-function portalUrl(record: api.OniSearchResult) {
+function portalUrl(record: filesApi.OniSearchResult) {
   const identifier = record.crate_id?.trim() ? record.crate_id : record.id;
   if (/^https?:\/\//i.test(identifier)) return identifier;
   return `https://data.ldaca.edu.au/collection?id=${encodeURIComponent(identifier)}&_crateId=${encodeURIComponent(record.crate_id ?? identifier)}`;
@@ -28,7 +28,7 @@ export default function NativeLdacaImport({ base }: { base: string }) {
   const [format, setFormat] = useState('all');
   const search = useMutation({
     mutationFn: (input: { method: 'keyword' | 'identifier'; query: string; token: string }) =>
-      api.searchLdaca(base, input.method, input.query, input.token),
+      filesApi.searchLdaca(base, input.method, input.query, input.token),
     onSuccess: () => {
       setCollection('all');
       setFormat('all');
@@ -36,7 +36,7 @@ export default function NativeLdacaImport({ base }: { base: string }) {
   });
   const imported = useMutation({
     mutationFn: (input: { id: string; token: string }) =>
-      api.importLdaca(base, input.id, input.token || undefined),
+      filesApi.importLdaca(base, input.id, input.token || undefined),
   });
   const records = search.data ?? [];
   const options = (field: 'collections' | 'file_formats') =>

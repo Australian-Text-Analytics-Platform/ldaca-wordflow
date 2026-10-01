@@ -2,7 +2,7 @@ use super::*;
 use crate::ProjectRuntime;
 use axum::{
     Json,
-    extract::{Path, State, rejection::JsonRejection},
+    extract::{Path, Query, State, rejection::JsonRejection},
 };
 use std::collections::BTreeSet;
 use std::time::Duration;
@@ -12,6 +12,7 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(list, create))
         .routes(utoipa_axum::routes!(update, remove))
         .routes(utoipa_axum::routes!(models))
+        .routes(utoipa_axum::routes!(model_capabilities))
 }
 #[utoipa::path(
     get, path = "/api/ai/providers", operation_id = "ai_http_list",
@@ -245,4 +246,23 @@ async fn discover(
     let mut values: Vec<_> = result.into_iter().collect();
     values.sort_by_cached_key(|s| (s.to_lowercase(), s.clone()));
     Ok(values)
+}
+
+#[derive(Deserialize)]
+struct ModelSelection {
+    model: String,
+}
+#[utoipa::path(
+    get, path = "/api/ai/providers/{id}/capabilities", operation_id = "ai_http_capabilities",
+    tag = "ai_http",
+    params(("id" = String, Path), ("model" = String, Query)),
+    responses((status = 200, body = inference::InferenceCapabilities), (status = 400, body = crate::error::ErrorEnvelope))
+)]
+async fn model_capabilities(
+    State(runtime): State<ProjectRuntime>,
+    Path(id): Path<Uuid>,
+    Query(selection): Query<ModelSelection>,
+) -> Result<Json<inference::InferenceCapabilities>> {
+    let provider = runtime.ai().provider(id).await?;
+    Ok(Json(inference::capabilities(provider, &selection.model)))
 }

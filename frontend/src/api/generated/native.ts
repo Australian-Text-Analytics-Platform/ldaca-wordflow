@@ -32,6 +32,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/ai/providers/{id}/capabilities': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['ai_http_capabilities'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/ai/providers/{id}/models': {
     parameters: {
       query?: never;
@@ -1659,6 +1675,7 @@ export interface components {
       id: string;
       kind: string;
       request: unknown;
+      request_status: components['schemas']['RequestRestoration'];
       result: null | components['schemas']['AnalysisOutput'];
       /** Format: uuid */
       tab_id: string;
@@ -1675,6 +1692,7 @@ export interface components {
       /** Format: uuid */
       id: string;
       request: unknown;
+      request_status: components['schemas']['RequestRestoration'];
     };
     AnnotationExamples: {
       label: string;
@@ -1803,6 +1821,11 @@ export interface components {
       all?: boolean;
       /** @default [] */
       analysis_ids?: string[];
+      /**
+       * Format: uuid
+       * @default 00000000-0000-0000-0000-000000000000
+       */
+      id?: string;
       /** @default [] */
       objects?: components['schemas']['Relation'][];
       /** @default [] */
@@ -2291,6 +2314,11 @@ export interface components {
       /** Format: double */
       temperature?: number | null;
     };
+    /** @description Controls implemented by this adapter, not an exhaustive provider capability catalogue. */
+    InferenceCapabilities: {
+      reasoning: components['schemas']['Reasoning'][];
+      temperature_with_reasoning: boolean;
+    };
     Interval:
       | {
           origin?: string | null;
@@ -2571,8 +2599,71 @@ export interface components {
       occurrence_count: number;
       word: string;
     };
+    /** @description Read compatibility never mutates saved provenance or checks live object availability. */
+    RequestRestoration:
+      | {
+          request: components['schemas']['RestoredRequest'];
+          /** @enum {string} */
+          status: 'supported';
+        }
+      | {
+          reason: string;
+          /** @enum {string} */
+          status: 'unsupported';
+        };
     /** @enum {string} */
     Resource: 'graph' | 'tabs' | 'sql_cells' | 'project' | 'sql_types';
+    RestoredRequest:
+      | {
+          /** @enum {string} */
+          kind: 'frequency';
+          request: components['schemas']['FrequencyRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'concordance';
+          request: components['schemas']['ConcordanceRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'quotation';
+          request: components['schemas']['QuotationRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'topic-modeling';
+          request: components['schemas']['TopicRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'annotation';
+          request: components['schemas']['AnnotationRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'trends';
+          request: components['schemas']['TrendsRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'compare';
+          request: components['schemas']['CompareRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'scatter';
+          request: components['schemas']['ScatterRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'heatmap';
+          request: components['schemas']['HeatmapRequest'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'sankey';
+          request: components['schemas']['SankeyRequest'];
+        };
     Review: {
       changes?: components['schemas']['CellEditPatch'][];
       compare: string[];
@@ -2696,6 +2787,17 @@ export interface components {
       session_id: string;
       table_name: string;
     };
+    SetupRestoration:
+      | {
+          request: components['schemas']['ManualSetup'];
+          /** @enum {string} */
+          status: 'supported';
+        }
+      | {
+          reason: string;
+          /** @enum {string} */
+          status: 'unsupported';
+        };
     SqlBatch: {
       changes?: null | components['schemas']['ChangeScope'];
       max_rows?: number | null;
@@ -2738,6 +2840,7 @@ export interface components {
       /** Format: int64 */
       position: number;
       settings: unknown;
+      setup_status?: null | components['schemas']['SetupRestoration'];
     };
     TableImport: {
       parameters?: unknown[];
@@ -3239,6 +3342,37 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  ai_http_capabilities: {
+    parameters: {
+      query: {
+        model: string;
+      };
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['InferenceCapabilities'];
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -6104,6 +6238,8 @@ export interface operations {
       /** @description Success */
       204: {
         headers: {
+          /** @description Committed mutation identity shared with project events */
+          'x-wordflow-change-id'?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -6852,6 +6988,8 @@ export interface operations {
       /** @description Success */
       200: {
         headers: {
+          /** @description Committed mutation identity shared with project events */
+          'x-wordflow-change-id'?: string;
           [name: string]: unknown;
         };
         content: {
@@ -7347,6 +7485,8 @@ export interface operations {
       /** @description Success */
       204: {
         headers: {
+          /** @description Committed mutation identity shared with project events */
+          'x-wordflow-change-id'?: string;
           [name: string]: unknown;
         };
         content?: never;
@@ -8025,6 +8165,8 @@ export interface operations {
       /** @description Success */
       200: {
         headers: {
+          /** @description Committed mutation identity shared with project events */
+          'x-wordflow-change-id'?: string;
           [name: string]: unknown;
         };
         content: {

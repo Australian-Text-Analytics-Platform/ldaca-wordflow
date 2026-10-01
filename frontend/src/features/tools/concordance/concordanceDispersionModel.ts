@@ -1,6 +1,6 @@
+import type { ConcordanceInput } from '@/features/tools/concordance/api';
 import type { EChartsCoreOption } from 'echarts/core';
-import type { ConcordanceInput } from '@/features/project/api';
-import { VIZ_PALETTE, GREY } from '../common/vizPalette';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { showValue, type DocumentRow } from './concordanceRows';
 
 export type DispersionChartMode = 'line' | 'bar' | 'area' | 'cumulative';

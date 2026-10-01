@@ -1,6 +1,8 @@
 //! Tabs own submitted analyses; analyses own optional completed output and artifacts.
 use super::*;
 use std::collections::HashSet;
+mod restoration;
+pub(crate) use restoration::{RequestRestoration, SetupRestoration};
 
 #[derive(Clone, Debug, Serialize, utoipa::ToSchema)]
 pub(crate) struct Tab {
@@ -9,6 +11,8 @@ pub(crate) struct Tab {
     pub name: String,
     pub position: i64,
     pub settings: Value,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub setup_status: Option<SetupRestoration>,
     #[schema(required = true)]
     pub analysis: Option<AnalysisSummary>,
 }
@@ -17,6 +21,7 @@ pub(crate) struct AnalysisSummary {
     pub id: Uuid,
     pub created_at: String,
     pub request: Value,
+    pub request_status: RequestRestoration,
     pub has_result: bool,
 }
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -45,6 +50,7 @@ pub(crate) struct Analysis {
     pub tab_id: Uuid,
     pub kind: String,
     pub request: Value,
+    pub request_status: RequestRestoration,
     pub created_at: String,
     #[schema(required = true)]
     pub result: Option<AnalysisOutput>,
@@ -315,18 +321,28 @@ fn read_tabs(conn: &Connection, kind: Option<&str>) -> Result<Vec<Tab>> {
     let mut rows = statement.query(params![kind, kind])?;
     let mut tabs = Vec::new();
     while let Some(row) = rows.next()? {
+        let settings: Value = serde_json::from_str(&row.get::<_, String>(4)?)?;
+        let setup_status = settings
+            .get("manual")
+            .and_then(|manual| manual.get("setup"))
+            .map(SetupRestoration::read);
         tabs.push(Tab {
             id: decode_uuid(&row.get::<_, String>(0)?)?,
             kind: row.get(1)?,
             name: row.get(2)?,
             position: row.get(3)?,
-            settings: serde_json::from_str(&row.get::<_, String>(4)?)?,
+            settings,
+            setup_status,
             analysis: row
                 .get::<_, Option<String>>(5)?
                 .map(|id| {
                     Ok::<_, Error>(AnalysisSummary {
                         id: decode_uuid(&id)?,
                         request: serde_json::from_str(&row.get::<_, String>(6)?)?,
+                        request_status: RequestRestoration::read(
+                            &row.get::<_, String>(1)?,
+                            &serde_json::from_str(&row.get::<_, String>(6)?)?,
+                        ),
                         has_result: row.get(7)?,
                         created_at: row.get(8)?,
                     })
@@ -358,6 +374,10 @@ pub(super) fn read_analysis(conn: &Connection, id: Uuid) -> Result<Analysis> {
         tab_id: decode_uuid(&row.get::<_, String>(1)?)?,
         kind: row.get(2)?,
         request: serde_json::from_str(&row.get::<_, String>(3)?)?,
+        request_status: RequestRestoration::read(
+            &row.get::<_, String>(2)?,
+            &serde_json::from_str(&row.get::<_, String>(3)?)?,
+        ),
         created_at: row.get(4)?,
         result: row
             .get::<_, Option<String>>(5)?

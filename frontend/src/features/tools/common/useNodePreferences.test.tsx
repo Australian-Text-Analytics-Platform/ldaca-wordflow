@@ -1,16 +1,16 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
+import * as transportApi from '@/api/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { useNodePreferences } from './useNodePreferences';
 
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+vi.mock('@/api/client', async (original) => ({
+  ...(await original<object>()),
   request: vi.fn(),
 }));
 it('persists immediately, serializes choices, and refreshes only graph defaults', async () => {
   const first = Promise.withResolvers<undefined>();
-  vi.mocked(api.request).mockReturnValueOnce(first.promise).mockResolvedValue(undefined);
+  vi.mocked(transportApi.request).mockReturnValueOnce(first.promise).mockResolvedValue(undefined);
   const client = new QueryClient();
   client.setQueryData(['native', 'base', 'graph', 'logical'], {});
   client.setQueryData(['native', 'base', 'analyses', 'saved'], { request: 'unchanged' });
@@ -23,8 +23,8 @@ it('persists immediately, serializes choices, and refreshes only graph defaults'
     result.current('Corpus 文', { preference: 'document_column', value: 'text' });
     result.current('Corpus 文', { preference: 'color', value: '#123abc' });
   });
-  await waitFor(() => expect(api.request).toHaveBeenCalledTimes(1));
-  expect(api.request).toHaveBeenCalledWith(
+  await waitFor(() => expect(transportApi.request).toHaveBeenCalledTimes(1));
+  expect(transportApi.request).toHaveBeenCalledWith(
     'base',
     '/api/project/nodes/{table_name}/preferences',
     'patch',
@@ -34,7 +34,7 @@ it('persists immediately, serializes choices, and refreshes only graph defaults'
     },
   );
   await act(async () => first.resolve(undefined));
-  await waitFor(() => expect(api.request).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(transportApi.request).toHaveBeenCalledTimes(2));
   expect(client.getQueryState(['native', 'base', 'graph', 'logical'])?.isInvalidated).toBe(true);
   expect(client.getQueryState(['native', 'base', 'analyses', 'saved'])?.isInvalidated).toBe(false);
 });

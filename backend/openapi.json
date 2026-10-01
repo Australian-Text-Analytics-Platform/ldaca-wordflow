@@ -14,6 +14,9 @@
             "type": "string"
           },
           "request": {},
+          "request_status": {
+            "$ref": "#/components/schemas/RequestRestoration"
+          },
           "result": {
             "oneOf": [
               {
@@ -34,6 +37,7 @@
           "tab_id",
           "kind",
           "request",
+          "request_status",
           "created_at",
           "result"
         ],
@@ -69,12 +73,16 @@
             "format": "uuid",
             "type": "string"
           },
-          "request": {}
+          "request": {},
+          "request_status": {
+            "$ref": "#/components/schemas/RequestRestoration"
+          }
         },
         "required": [
           "id",
           "created_at",
           "request",
+          "request_status",
           "has_result"
         ],
         "type": "object"
@@ -582,6 +590,11 @@
               "type": "string"
             },
             "type": "array"
+          },
+          "id": {
+            "default": "00000000-0000-0000-0000-000000000000",
+            "format": "uuid",
+            "type": "string"
           },
           "objects": {
             "default": [],
@@ -2535,6 +2548,25 @@
         ],
         "type": "object"
       },
+      "InferenceCapabilities": {
+        "description": "Controls implemented by this adapter, not an exhaustive provider capability catalogue.",
+        "properties": {
+          "reasoning": {
+            "items": {
+              "$ref": "#/components/schemas/Reasoning"
+            },
+            "type": "array"
+          },
+          "temperature_with_reasoning": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "reasoning",
+          "temperature_with_reasoning"
+        ],
+        "type": "object"
+      },
       "Interval": {
         "oneOf": [
           {
@@ -3697,6 +3729,47 @@
         ],
         "type": "object"
       },
+      "RequestRestoration": {
+        "description": "Read compatibility never mutates saved provenance or checks live object availability.",
+        "oneOf": [
+          {
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/RestoredRequest"
+              },
+              "status": {
+                "enum": [
+                  "supported"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "request",
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "unsupported"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "Resource": {
         "enum": [
           "graph",
@@ -3706,6 +3779,190 @@
           "sql_types"
         ],
         "type": "string"
+      },
+      "RestoredRequest": {
+        "oneOf": [
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "frequency"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/FrequencyRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "concordance"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/ConcordanceRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "quotation"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/QuotationRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "topic-modeling"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/TopicRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "annotation"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/AnnotationRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "trends"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/TrendsRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "compare"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/CompareRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "scatter"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/ScatterRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "heatmap"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/HeatmapRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "sankey"
+                ],
+                "type": "string"
+              },
+              "request": {
+                "$ref": "#/components/schemas/SankeyRequest"
+              }
+            },
+            "required": [
+              "request",
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
       },
       "Review": {
         "additionalProperties": false,
@@ -4214,6 +4471,46 @@
         ],
         "type": "object"
       },
+      "SetupRestoration": {
+        "oneOf": [
+          {
+            "properties": {
+              "request": {
+                "$ref": "#/components/schemas/ManualSetup"
+              },
+              "status": {
+                "enum": [
+                  "supported"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "request",
+              "status"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "reason": {
+                "type": "string"
+              },
+              "status": {
+                "enum": [
+                  "unsupported"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "reason",
+              "status"
+            ],
+            "type": "object"
+          }
+        ]
+      },
       "SqlBatch": {
         "additionalProperties": false,
         "properties": {
@@ -4401,7 +4698,17 @@
             "format": "int64",
             "type": "integer"
           },
-          "settings": {}
+          "settings": {},
+          "setup_status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/SetupRestoration"
+              }
+            ]
+          }
         },
         "required": [
           "id",
@@ -5620,6 +5927,54 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "ai_http"
+        ]
+      }
+    },
+    "/api/ai/providers/{id}/capabilities": {
+      "get": {
+        "operationId": "ai_http_capabilities",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "model",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InferenceCapabilities"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
           }
         },
         "tags": [
@@ -9714,7 +10069,15 @@
         },
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Success",
+            "headers": {
+              "x-wordflow-change-id": {
+                "description": "Committed mutation identity shared with project events",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -10791,7 +11154,15 @@
                 }
               }
             },
-            "description": "Success"
+            "description": "Success",
+            "headers": {
+              "x-wordflow-change-id": {
+                "description": "Committed mutation identity shared with project events",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -11488,7 +11859,15 @@
         },
         "responses": {
           "204": {
-            "description": "Success"
+            "description": "Success",
+            "headers": {
+              "x-wordflow-change-id": {
+                "description": "Committed mutation identity shared with project events",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {
@@ -12536,7 +12915,15 @@
                 }
               }
             },
-            "description": "Success"
+            "description": "Success",
+            "headers": {
+              "x-wordflow-change-id": {
+                "description": "Committed mutation identity shared with project events",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
           },
           "400": {
             "content": {

@@ -1,12 +1,12 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { tableFromArrays } from 'apache-arrow';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
-import { FrequencyRankedList, FREQUENCY_LIST_CHUNK_SIZE } from './FrequencyRankedList';
+import { FREQUENCY_LIST_CHUNK_SIZE, FrequencyRankedList } from './FrequencyRankedList';
 
-vi.mock('@/features/project/api', async (importOriginal) => ({
-  ...(await importOriginal<typeof api>()),
+vi.mock('@/features/tools/token-frequency/api', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   queryFrequency: vi.fn(),
 }));
 const page = (number: number) => ({
@@ -48,7 +48,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(384);
   vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(500);
-  vi.mocked(api.queryFrequency).mockImplementation(async (_base, _id, query) =>
+  vi.mocked(frequencyApi.queryFrequency).mockImplementation(async (_base, _id, query) =>
     page(query.page ?? 1),
   );
 });
@@ -59,11 +59,11 @@ it('keeps the full scroll range while fetching only nearby chunks and retaining 
   expect(within(list).getByText('word0')).toBeInTheDocument();
   expect(within(list).getByText('317.')).toBeInTheDocument();
   expect(within(list).getAllByRole('listitem').length).toBeLessThan(40);
-  expect(api.queryFrequency).not.toHaveBeenCalled();
+  expect(frequencyApi.queryFrequency).not.toHaveBeenCalled();
   expect(within(list).getAllByRole('listitem')[0]).toHaveAttribute('aria-setsize', '10000');
   fireEvent.scroll(list, { target: { scrollTop: 400 * 40 } });
   await within(list).findByText('word400');
-  expect(api.queryFrequency).toHaveBeenCalledWith(
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledWith(
     'http://project',
     'saved',
     expect.objectContaining({ page: 3, page_size: 200, filter: 'word*' }),
@@ -77,12 +77,12 @@ it('keeps the full scroll range while fetching only nearby chunks and retaining 
   expect(row).toHaveAttribute('aria-posinset', '401');
   expect(within(row).getByTestId('frequency-bar')).toHaveStyle({ width: '60%' });
   expect(within(list).queryByText('word0')).not.toBeInTheDocument();
-  expect(api.queryFrequency).toHaveBeenCalledTimes(2); // Visible rows span chunks 2 and 3.
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledTimes(2); // Visible rows span chunks 2 and 3.
   fireEvent.scroll(list, { target: { scrollTop: 0 } });
   await within(list).findByText('word0');
   fireEvent.scroll(list, { target: { scrollTop: 400 * 40 } });
   await within(list).findByText('word400');
-  expect(api.queryFrequency).toHaveBeenCalledTimes(2);
+  expect(frequencyApi.queryFrequency).toHaveBeenCalledTimes(2);
 });
 
 it('keeps exact counts and keyboard/context stopword actions', () => {
@@ -107,16 +107,16 @@ it('keeps exact counts and keyboard/context stopword actions', () => {
 
 it('leaves unloaded positions visible and supports retry without resetting the scroll range', async () => {
   const pending = Promise.withResolvers<ReturnType<typeof page>>();
-  vi.mocked(api.queryFrequency).mockImplementation((_base, _id, query) =>
+  vi.mocked(frequencyApi.queryFrequency).mockImplementation((_base, _id, query) =>
     query.page === 3 ? pending.promise : Promise.resolve(page(2)),
   );
   const { list } = mount();
   fireEvent.scroll(list, { target: { scrollTop: 400 * 40 } });
-  await waitFor(() => expect(api.queryFrequency).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(frequencyApi.queryFrequency).toHaveBeenCalledTimes(2));
   expect(within(list).getAllByText('Loading…').length).toBeGreaterThan(0);
   await act(async () => pending.reject(new Error('Read failed')));
   await screen.findByRole('alert');
-  vi.mocked(api.queryFrequency).mockResolvedValue(page(3));
+  vi.mocked(frequencyApi.queryFrequency).mockResolvedValue(page(3));
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await within(list).findByText('word400');
   expect(list.scrollTop).toBe(400 * 40);

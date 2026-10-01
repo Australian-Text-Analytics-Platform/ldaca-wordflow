@@ -1,6 +1,6 @@
+import type { NativeTask } from '@/features/project/tasksApi';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
-import type { NativeTask } from '@/features/project/api';
 import { AnalysisProgress } from './AnalysisProgress';
 
 it('uses task stages and supplied progress, and forwards cancellation once', () => {

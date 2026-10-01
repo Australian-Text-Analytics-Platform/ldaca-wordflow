@@ -103,11 +103,12 @@ async fn rename_and_delete_include_dependants_and_uncertain_views_without_scanni
     runtime.create(None).await.unwrap();
     runtime.sql(batch("CREATE TABLE source(n INTEGER); CREATE VIEW child AS SELECT * FROM source; CREATE VIEW never_execute AS SELECT error('must not execute') AS n FROM source; CREATE VIEW generated AS SELECT * FROM range(1); INSERT INTO wordflow.nodes(table_name) VALUES ('source')", None)).await.unwrap();
     let mut events = runtime.changes();
-    runtime
+    let (_, change_id) = runtime
         .rename_node("source", "renamed".into())
         .await
         .unwrap();
     let renamed = events.try_recv().unwrap();
+    assert_eq!(renamed.id, change_id);
     for name in ["source", "renamed", "child", "never_execute", "generated"] {
         assert!(
             renamed.objects.contains(&object("data", name)),

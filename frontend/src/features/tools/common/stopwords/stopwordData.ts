@@ -1,8 +1,8 @@
+import type { StopwordSource } from '@/features/project/filesApi';
+import * as filesApi from '@/features/project/filesApi';
 import { objectDependencies } from '@/features/project/projectChanges';
-import * as api from '@/features/project/api';
-import type { StopwordSource } from '@/features/project/api';
-export { readStopwords, saveStopwords } from '@/features/project/api';
-export type { StopwordSource } from '@/features/project/api';
+export { readStopwords, saveStopwords } from '@/features/project/filesApi';
+export type { StopwordSource } from '@/features/project/filesApi';
 
 export function completeStopwordSource(value: StopwordSource | null): StopwordSource | null {
   return value?.source.schema && value.source.name && value.column ? value : null;
@@ -32,14 +32,14 @@ export function stopwordQuery(base: string, selected: StopwordSource | null, act
     enabled: active && Boolean(schema && name && column),
     placeholderData: (previous: string[] | undefined) => previous,
     queryFn: ({ signal }: { signal: AbortSignal }) =>
-      api.readStopwords(base, { source: { schema, name }, column }, signal),
+      filesApi.readStopwords(base, { source: { schema, name }, column }, signal),
     meta: { ...objectDependencies({ schema, name }), reportError: false },
   };
 }
 
 /** Backend preparation owns naming, View copying, registration and logical parents. */
 export function createStopwordTable(base: string, inputs: readonly StopwordSource[]) {
-  return api.prepareStopwords(base, null, inputs);
+  return filesApi.prepareStopwords(base, null, inputs);
 }
 
 export function writableStopwords(
@@ -47,5 +47,5 @@ export function writableStopwords(
   selected: StopwordSource | null,
   inputs: readonly StopwordSource[],
 ) {
-  return api.prepareStopwords(base, selected, inputs);
+  return filesApi.prepareStopwords(base, selected, inputs);
 }

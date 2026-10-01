@@ -1,17 +1,21 @@
-import { useState } from 'react';
+import * as projectApi from '@/features/project/api';
+import * as filesApi from '@/features/project/filesApi';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Field, Int32, Utf8 } from 'apache-arrow';
+import { useState } from 'react';
 import { beforeEach, expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { StopwordControl } from './StopwordControl';
 import type { StopwordSource } from './stopwordData';
 import { useStopwords } from './useStopwords';
 
 vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+  ...(await original<object>()),
   nodeSchema: vi.fn(),
+}));
+vi.mock('@/features/project/filesApi', async (original) => ({
+  ...(await original<object>()),
   readStopwords: vi.fn().mockResolvedValue(['the', 'and']),
   prepareStopwords: vi.fn(),
 }));
@@ -19,7 +23,7 @@ const words: StopwordSource = {
   source: { schema: 'data', name: 'Shared words' },
   column: 'code',
 };
-const nodes: api.ProjectNode[] = [
+const nodes: projectApi.ProjectNode[] = [
   {
     table_name: words.source.name,
     visible: true,
@@ -31,13 +35,12 @@ const nodes: api.ProjectNode[] = [
   },
 ];
 const changed = vi.fn();
-const consumed = vi.fn();
 
 function mount(
   initial: StopwordSource | null = null,
-  carried = false,
+  _carried = false,
   initiallyEnabled = true,
-  kind: api.ProjectNode['kind'] = 'table',
+  kind: projectApi.ProjectNode['kind'] = 'table',
 ) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   function Harness() {
@@ -64,14 +67,6 @@ function mount(
         controller={controller}
         onSelect={onSelect}
         onEnabledChange={setEnabled}
-        inputRequests={
-          carried
-            ? {
-                pendingInputRequest: { id: 7, nodeId: words.source.name },
-                consumeInputRequest: consumed,
-              }
-            : undefined
-        }
       />
     );
   }
@@ -83,7 +78,7 @@ function mount(
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(api.nodeSchema).mockResolvedValue([
+  vi.mocked(projectApi.nodeSchema).mockResolvedValue([
     { name: 'word', field: new Field('word', new Utf8(), true) },
     { name: 'code', field: new Field('code', new Int32(), true) },
   ]);
@@ -114,7 +109,7 @@ it('uses the shared searchable Add control, selected card and unrestricted colum
 
 it('keeps a missing saved column visible and clears the selection without deleting data', async () => {
   mount({ ...words, column: 'removed column' });
-  await waitFor(() => expect(api.nodeSchema).toHaveBeenCalled());
+  await waitFor(() => expect(projectApi.nodeSchema).toHaveBeenCalled());
   await waitFor(() =>
     expect(screen.getByRole('combobox', { name: 'Stopword column' })).toHaveTextContent(
       'removed column',
@@ -123,15 +118,6 @@ it('keeps a missing saved column visible and clears the selection without deleti
   expect(changed).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Clear all' }));
   await waitFor(() => expect(changed).toHaveBeenCalledWith(null));
-});
-
-it('places a carried Data Block only after its stopword target is selected', async () => {
-  mount(null, true);
-  expect(changed).not.toHaveBeenCalled();
-  fireEvent.click(screen.getByRole('button', { name: 'Add to Stopword Data Block' }));
-  await screen.findByRole('combobox', { name: 'Stopword column' });
-  expect(changed).not.toHaveBeenCalled();
-  expect(consumed).toHaveBeenCalledWith(7);
 });
 
 it('keeps an incomplete legacy choice local until its column is chosen', async () => {
@@ -186,12 +172,12 @@ it('shows View words read-only without implicitly creating an editable Table', a
   await screen.findByText('the');
   expect(screen.queryByRole('textbox', { name: 'Add stopword' })).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Remove stopword the' })).not.toBeInTheDocument();
-  expect(api.prepareStopwords).not.toHaveBeenCalled();
+  expect(filesApi.prepareStopwords).not.toHaveBeenCalled();
   const copied = { ...words, source: { schema: 'data', name: 'Editable words' } };
-  vi.mocked(api.prepareStopwords).mockResolvedValue(copied);
+  vi.mocked(filesApi.prepareStopwords).mockResolvedValue(copied);
   fireEvent.click(screen.getByRole('button', { name: 'Create editable copy' }));
   await waitFor(() =>
-    expect(api.prepareStopwords).toHaveBeenCalledWith('http://project', words, []),
+    expect(filesApi.prepareStopwords).toHaveBeenCalledWith('http://project', words, []),
   );
   await waitFor(() => expect(changed).toHaveBeenCalledWith(copied));
 });

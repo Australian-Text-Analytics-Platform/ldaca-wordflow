@@ -1,11 +1,11 @@
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { tableFromArrays } from 'apache-arrow';
 import { expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { TopicDocuments } from './TopicDocuments';
-vi.mock('@/features/project/api', () => ({ queryTopicDocuments: vi.fn() }));
+vi.mock('@/features/tools/topic-modeling/api', () => ({ queryTopicDocuments: vi.fn() }));
 vi.mock('@/lib/arrow/decodeArrowTable', () => ({
   decodeArrowData: () => ({
     rows: [
@@ -15,7 +15,7 @@ vi.mock('@/lib/arrow/decodeArrowTable', () => ({
   }),
 }));
 it('pages a captured model, keeps duplicate text and selects original metadata', async () => {
-  vi.mocked(api.queryTopicDocuments).mockResolvedValue({
+  vi.mocked(topicApi.queryTopicDocuments).mockResolvedValue({
     table: tableFromArrays({}),
     totalRows: 45,
     hasNext: true,
@@ -40,7 +40,7 @@ it('pages a captured model, keeps duplicate text and selects original metadata',
         total_count: 45,
       },
     ],
-  } satisfies api.TopicSummary;
+  } satisfies topicApi.TopicSummary;
   const { unmount } = render(
     <QueryClientProvider client={client}>
       <TopicDocuments
@@ -56,7 +56,7 @@ it('pages a captured model, keeps duplicate text and selects original metadata',
   );
   expect(await screen.findByText('45 matching documents')).toBeInTheDocument();
   expect(screen.getAllByText('Repeated 😀 document')).toHaveLength(4);
-  expect(api.queryTopicDocuments).toHaveBeenLastCalledWith(
+  expect(topicApi.queryTopicDocuments).toHaveBeenLastCalledWith(
     '/api/project',
     { analysis: 'saved-model' },
     expect.objectContaining({ source: 0, page: 1, page_size: 20, metadata: [], top_n: 1 }),
@@ -65,7 +65,7 @@ it('pages a captured model, keeps duplicate text and selects original metadata',
   const user = userEvent.setup();
   await user.click(screen.getByRole('link', { name: 'Go to next page' }));
   await waitFor(() =>
-    expect(api.queryTopicDocuments).toHaveBeenLastCalledWith(
+    expect(topicApi.queryTopicDocuments).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ page: 2 }),
@@ -75,7 +75,7 @@ it('pages a captured model, keeps duplicate text and selects original metadata',
   await user.click(screen.getByRole('button', { name: /Metadata/ }));
   await user.click(screen.getByRole('checkbox', { name: 'label' }));
   await waitFor(() =>
-    expect(api.queryTopicDocuments).toHaveBeenLastCalledWith(
+    expect(topicApi.queryTopicDocuments).toHaveBeenLastCalledWith(
       expect.anything(),
       expect.anything(),
       expect.objectContaining({ page: 1, metadata: ['label'] }),

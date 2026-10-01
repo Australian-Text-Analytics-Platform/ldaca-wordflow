@@ -1,19 +1,19 @@
-import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-function requiredPlotColumns(r: api.PlotRequest): string[] {
+import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
+import * as plotsApi from '@/features/tools/plots/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+function requiredPlotColumns(r: plotsApi.PlotRequest): string[] {
   if ('axis' in r) return [r.axis, ...r.groups, ...(r.value ? [r.value] : [])];
   if ('category' in r)
     return [r.category, ...(r.stack ? [r.stack] : []), ...(r.value ? [r.value] : [])];
@@ -33,11 +33,11 @@ export function PlotPublishDialog({
   onClose,
 }: {
   base: string;
-  mode: api.PlotMode;
-  result: api.PlotAnalysis;
-  request: api.PlotRequest;
-  query: api.PlotQuery;
-  selection: api.PlotSelection;
+  mode: plotsApi.PlotMode;
+  result: plotsApi.PlotAnalysis;
+  request: plotsApi.PlotRequest;
+  query: plotsApi.PlotQuery;
+  selection: plotsApi.PlotSelection;
   scope: { summary: string; details: string[] };
   onClose: () => void;
 }) {
@@ -57,7 +57,7 @@ export function PlotPublishDialog({
   ]);
   const mutation = useMutation({
     mutationFn: () =>
-      api.publishPlot(base, captured.result.id, mode, {
+      plotsApi.publishPlot(base, captured.result.id, mode, {
         name,
         columns,
         query: captured.query,

@@ -28,7 +28,7 @@ describe('native OpenAPI contracts', () => {
       }
     }
     // This guards accidental route omission during the initial cutover.
-    expect(ids.size).toBe(111);
+    expect(ids.size).toBe(112);
     const refs = JSON.stringify(contract).matchAll(/"\$ref":"([^"]+)"/g);
     for (const [, ref] of refs) {
       expect(ref?.startsWith('#/components/schemas/')).toBe(true);
@@ -52,6 +52,7 @@ describe('native OpenAPI contracts', () => {
         tab_id: 'tab',
         kind: 'frequency',
         request: { future: true },
+        request_status: { status: 'unsupported', reason: 'Unknown field future' },
         created_at: 'date',
         result: null,
       }),

@@ -3,17 +3,21 @@ import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { browser, $, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as quotationApi from '@/features/tools/quotation/api';
 import { requireQuotationModel } from '../../scripts/quotation-model.mjs';
 export async function quotationScenario(base: string, prefix: string) {
   await requireQuotationModel();
   const name = `${prefix}_documents`;
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
-      { sql: `CREATE TABLE ${api.identifier(name)} (text VARCHAR,tags INTEGER[])` },
+      { sql: `CREATE TABLE ${ objectsApi.identifier(name)} (text VARCHAR,tags INTEGER[])` },
       {
-        sql: `INSERT INTO ${api.identifier(name)} VALUES (?,[1,2]),(NULL,[]),('No quotations here.',[]),(?,[3])`,
+        sql: `INSERT INTO ${ objectsApi.identifier(name)} VALUES (?,[1,2]),(NULL,[]),('No quotations here.',[]),(?,[3])`,
         parameters: [
           '😀 Alice said, "The project will finish tomorrow morning."',
           'Alice said, "The project will finish tomorrow morning." She added, "The team will begin the following project next week."',
@@ -62,17 +66,17 @@ export async function quotationScenario(base: string, prefix: string) {
   await browser.keys(Key.Escape);
   await columns.waitForExist({ reverse: true });
   await expect(results.$('th*=tags')).toExist();
-  const tab = (await api.listTabs(base, undefined, 'quotation'))[0];
+  const tab = (await analysesApi.listTabs(base, undefined, 'quotation'))[0];
   if (!tab) throw new Error('Quotation tab missing');
   expect(outputAnalysisId(tab)).toBeNull();
   expect(tab.settings.preview).toBeUndefined();
   expect(tab.analysis).toBeNull();
   await $('button=Data Loader').click();
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
       {
-        sql: `UPDATE ${api.identifier(name)} SET text = ? WHERE tags = [1,2]`,
+        sql: `UPDATE ${ objectsApi.identifier(name)} SET text = ? WHERE tags = [1,2]`,
         parameters: ['😀 Alice said, "The revised project will finish next month."'],
       },
     ],
@@ -93,7 +97,7 @@ export async function quotationScenario(base: string, prefix: string) {
     expect.stringContaining('The revised project will finish next month.'),
   );
   await disableAnimations();
-  const records = await api.querySql(base, [
+  const records = await projectApi.querySql(base, [
     {
       sql: 'SELECT count(*) AS count FROM wordflow.analyses WHERE tab_id = ?',
       parameters: [tab.id],
@@ -101,7 +105,7 @@ export async function quotationScenario(base: string, prefix: string) {
   ]);
   expect(records.toArray().map((row: Record<string, unknown>) => String(row.count))).toEqual(['0']);
   expect(
-    (await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
+    (await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
   ).toHaveLength(0);
   await results.$('button[aria-label="Inspect document 1"]').click();
   await $('[role="dialog"]').waitForDisplayed();
@@ -114,7 +118,7 @@ export async function quotationScenario(base: string, prefix: string) {
   await browser.waitUntil(
     async () => {
       resultId =
-        outputAnalysisId((await api.listTabs(base, undefined, 'quotation')).find((t) => t.id === tab.id)) ?? null;
+        outputAnalysisId((await analysesApi.listTabs(base, undefined, 'quotation')).find((t) => t.id === tab.id)) ?? null;
       return Boolean(resultId);
     },
     { timeout: 30000 },
@@ -135,7 +139,7 @@ export async function quotationScenario(base: string, prefix: string) {
   await dialog.$('button=Add').click();
   await dialog.waitForExist({ reverse: true });
   await browser.waitUntil(async () =>
-    (await api.graph(base)).nodes.some((n) => n.table_name === suggestDataBlockName([name], 'qt', [])),
+    (await projectApi.graph(base)).nodes.some((n) => n.table_name === suggestDataBlockName([name], 'qt', [])),
   );
   for (const theme of ['light', 'dark']) {
     await $('button[aria-label="Open settings"]').click();
@@ -154,7 +158,7 @@ export async function quotationScenario(base: string, prefix: string) {
     }
   }
   await setAnalysisPaneSize('normal');
-  await api.executeSql(base, [{ sql: `DROP TABLE ${api.identifier(name)}` }], {
+  await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.identifier(name)}` }], {
     objects: [{ schema: 'data', name }],
     resources: ['graph'],
   });
@@ -162,12 +166,12 @@ export async function quotationScenario(base: string, prefix: string) {
   await $('button=Quotation').waitForEnabled();
   await $('button=Quotation').click();
   await results.$('button[aria-label="Inspect document 1"]').waitForExist();
-  const completed = (await api.listTabs(base, undefined, 'quotation')).find(
+  const completed = (await analysesApi.listTabs(base, undefined, 'quotation')).find(
     (t) => t.id === tab.id,
   );
   const completedId = outputAnalysisId(completed);
   if (!completedId) throw new Error('Saved quotation result missing');
-  const manifest = await api.getQuotationResult(base, completedId);
+  const manifest = await quotationApi.getQuotationResult(base, completedId);
   if (!manifest) throw new Error('Completed Quotation analysis has no saved output');
   expect(manifest.result.payload.document_count).toBe(4);
   expect(manifest.result.payload.matching_documents).toBe(2);

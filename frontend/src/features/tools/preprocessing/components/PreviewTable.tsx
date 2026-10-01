@@ -1,17 +1,3 @@
-import React from 'react';
-import { arrowTypeDisplayName, type ArrowColumn } from '@/lib/arrow/decodeArrowTable';
-import { Loader2 } from 'lucide-react';
-import { flexRender } from '@tanstack/react-table';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { TablePaginationFooter } from '@/features/tools/common/components/TablePaginationFooter';
 import {
   Card,
   CardContent,
@@ -20,11 +6,25 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { TablePaginationFooter } from '@/features/tools/common/components/TablePaginationFooter';
+import { type DataColumnDef, useDataTable } from '@/features/tools/common/hooks/useDataTable';
+import { type ArrowColumn, arrowTypeDisplayName } from '@/lib/arrow/decodeArrowTable';
+import { flexRender } from '@tanstack/react-table';
+import { Loader2 } from 'lucide-react';
+import React from 'react';
 import { RowDetailPanel } from '../../common/components/RowDetailPanel';
 import { useRowDetailDialog } from '../../common/components/useRowDetailDialog';
-import { type DataColumnDef, useDataTable } from '@/features/tools/common/hooks/useDataTable';
+import { type PreviewPagination, type PreviewRow, PREVIEW_PAGE_SIZE_OPTIONS } from '../types';
 import { formatPreviewValue } from '../utils/typeUtils';
-import { type PreviewRow, type PreviewPagination, PREVIEW_PAGE_SIZE_OPTIONS } from '../types';
 
 interface PreviewTableProps {
   title: React.ReactNode;
@@ -254,7 +254,8 @@ export function PreviewTable({
       {ready && !error && (
         <CardFooter className="block border-t border-surface-border p-0">
           <TablePaginationFooter
-            table={table}
+            onPageChange={(page) => table.setPageIndex(page)}
+            onPageSizeChange={(size) => table.setPageSize(size)}
             pageIndex={currentPage - 1}
             pageSize={pageSize}
             hasNext={hasNext}

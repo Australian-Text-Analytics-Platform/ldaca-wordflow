@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
+import * as transportApi from '@/api/client';
 import type { components } from '@/api/generated/native';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /** Save shared defaults without changing any captured analysis request. */
 export function useNodePreferences(base: string) {
@@ -14,7 +14,7 @@ export function useNodePreferences(base: string) {
       name: string;
       preference: components['schemas']['NodePreference'];
     }) =>
-      api.request(base, '/api/project/nodes/{table_name}/preferences', 'patch', {
+      transportApi.request(base, '/api/project/nodes/{table_name}/preferences', 'patch', {
         path: { table_name: name },
         body: preference,
       }),

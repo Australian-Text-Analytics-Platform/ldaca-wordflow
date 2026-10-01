@@ -1,10 +1,6 @@
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -12,13 +8,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import * as api from '@/features/project/api';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as projectApi from '@/features/project/api';
 import {
   DATA_BLOCK_EXPORT_FORMATS,
   type DataBlockExportFormat,
 } from '@/features/project/common/exportFormats';
+import * as filesApi from '@/features/project/filesApi';
+import * as objectsApi from '@/features/project/objects';
 import { NodeInputsPanel } from '@/features/tools/common/components/NodeInputsPanel';
-import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { toast } from 'sonner';
 
 const actions = {
   copy_table: 'Keep Table definition',
@@ -35,18 +36,18 @@ export default function ExportFeature({
   active,
 }: {
   base: string;
-  nodes: api.ProjectNode[];
-  graphSelection: api.ObjectRef[];
+  nodes: projectApi.ProjectNode[];
+  graphSelection: objectsApi.ObjectRef[];
   active: boolean;
 }) {
   const [mode, setMode] = useState('files');
   const [scope, setScope] = useState('selected');
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
-  const [selected, setSelected] = useState<api.ObjectRef[]>([]);
+  const [selected, setSelected] = useState<objectsApi.ObjectRef[]>([]);
   const [includeHidden, setIncludeHidden] = useState(false);
   const catalogue = useQuery({
     queryKey: ['native', base, 'graph', 'dependencies'],
-    queryFn: ({ signal }) => api.dependencyGraph(base, signal),
+    queryFn: ({ signal }) => projectApi.dependencyGraph(base, signal),
     enabled: active && (includeHidden || selected.some((r) => r.schema !== 'data')),
   });
   const candidates = includeHidden
@@ -55,22 +56,22 @@ export default function ExportFeature({
         .map((node) => ({ ref: node.object, color: node.color }))
     : nodes
         .filter((node) => node.visible && node.kind !== 'missing')
-        .map((node) => ({ ref: api.objectRef(node.table_name), color: node.color }));
-  const metadata = (ref: api.ObjectRef) => ({
-    id: api.targetKey(ref),
-    name: ref.schema === 'data' ? ref.name : api.targetLabel(ref),
-    color: nodes.find((node) => api.sameTarget(node.table_name, ref))?.color ?? null,
+        .map((node) => ({ ref: objectsApi.objectRef(node.table_name), color: node.color }));
+  const metadata = (ref: objectsApi.ObjectRef) => ({
+    id: objectsApi.targetKey(ref),
+    name: ref.schema === 'data' ? ref.name : objectsApi.targetLabel(ref),
+    color: nodes.find((node) => objectsApi.sameTarget(node.table_name, ref))?.color ?? null,
     document: null,
     tokenizerModel: null,
   });
-  const selectedKeys = new Set(selected.map(api.targetKey));
-  const add = (refs: api.ObjectRef[]) => {
+  const selectedKeys = new Set(selected.map(objectsApi.targetKey));
+  const add = (refs: objectsApi.ObjectRef[]) => {
     setSelected((previous) => {
-      const seen = new Set(previous.map(api.targetKey));
+      const seen = new Set(previous.map(objectsApi.targetKey));
       return [
         ...previous,
         ...refs.filter((ref) => {
-          const key = api.targetKey(ref);
+          const key = objectsApi.targetKey(ref);
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -78,12 +79,9 @@ export default function ExportFeature({
       ];
     });
   };
-  const carried = useNodeInputRequestsStore((s) =>
-    s.pendingRequests.findLast((r) => r.scopeId === base && r.tool === 'export'),
-  );
-  const consume = useNodeInputRequestsStore((s) => s.consume);
+
   const complete = mode === 'project' && scope === 'complete';
-  const request: api.ExportRequest =
+  const request: filesApi.ExportRequest =
     mode === 'files'
       ? { kind: 'files', objects: selected, format }
       : complete
@@ -91,11 +89,11 @@ export default function ExportFeature({
         : { kind: 'selected_project', objects: selected };
   const inspection = useQuery({
     queryKey: ['native', base, 'graph', 'export-inspection', request],
-    queryFn: ({ signal }) => api.inspectExport(base, request, signal),
+    queryFn: ({ signal }) => filesApi.inspectExport(base, request, signal),
     enabled: active && mode === 'project' && (complete || selected.length > 0),
   });
   const download = useMutation({
-    mutationFn: (captured: api.ExportRequest) => api.exportProject(base, captured),
+    mutationFn: (captured: filesApi.ExportRequest) => filesApi.exportProject(base, captured),
     onSuccess: (filename) => {
       if (filename !== null) toast.success('Export saved', { description: filename });
     },
@@ -165,14 +163,14 @@ export default function ExportFeature({
               <NodeInputsPanel
                 title="Data Blocks to export"
                 resolvedNodes={selected.map((ref) => ({
-                  id: api.targetKey(ref),
+                  id: objectsApi.targetKey(ref),
                   name: ref.name,
                   node: metadata(ref),
                   column: '',
                   columnOptions: [],
                 }))}
                 availableNodes={candidates
-                  .filter(({ ref }) => !selectedKeys.has(api.targetKey(ref)))
+                  .filter(({ ref }) => !selectedKeys.has(objectsApi.targetKey(ref)))
                   .map(({ ref }) => metadata(ref))}
                 canAddMore
                 showAddAll
@@ -181,18 +179,16 @@ export default function ExportFeature({
                 onAddNodes={(ids) => {
                   add(
                     ids.flatMap((id) => {
-                      const found = candidates.find(({ ref }) => api.targetKey(ref) === id);
-                      return found
-                        ? [found.ref]
-                        : carried && api.targetKey(carried.nodeId) === id
-                          ? [api.objectRef(carried.nodeId)]
-                          : [];
+                      const found = candidates.find(({ ref }) => objectsApi.targetKey(ref) === id);
+                      return found ? [found.ref] : [objectsApi.objectRef(id)];
                     }),
                   );
                   return [];
                 }}
                 onRemoveNode={(id) => {
-                  setSelected((previous) => previous.filter((ref) => api.targetKey(ref) !== id));
+                  setSelected((previous) =>
+                    previous.filter((ref) => objectsApi.targetKey(ref) !== id),
+                  );
                 }}
                 onClear={() => {
                   setSelected([]);
@@ -200,10 +196,7 @@ export default function ExportFeature({
                 onColumnChange={() => {
                   /* Export always includes every column. */
                 }}
-                pendingInputRequest={
-                  carried ? { id: carried.id, nodeId: api.targetKey(carried.nodeId) } : undefined
-                }
-                consumeInputRequest={consume}
+                identifyInput={objectsApi.targetKey}
               />
             </>
           )}
@@ -282,9 +275,11 @@ export default function ExportFeature({
                               item.reason,
                           )
                           .map((item) => (
-                            <li key={api.targetKey(item.source)} className="break-words">
-                              <span className="font-medium">{api.targetLabel(item.source)}</span> —{' '}
-                              {actions[item.action]}
+                            <li key={objectsApi.targetKey(item.source)} className="break-words">
+                              <span className="font-medium">
+                                {objectsApi.targetLabel(item.source)}
+                              </span>{' '}
+                              — {actions[item.action]}
                               {item.reason && <p className="text-description">{item.reason}</p>}
                             </li>
                           ))}
@@ -298,8 +293,8 @@ export default function ExportFeature({
                             {inspection.data?.objects
                               .filter((item) => item.classification !== 'data_block')
                               .map((item) => (
-                                <li key={api.targetKey(item.source)} className="break-words">
-                                  {api.targetLabel(item.source)} — {actions[item.action]}
+                                <li key={objectsApi.targetKey(item.source)} className="break-words">
+                                  {objectsApi.targetLabel(item.source)} — {actions[item.action]}
                                 </li>
                               ))}
                           </ul>

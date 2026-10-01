@@ -1,5 +1,7 @@
 # Topic Representative Words and Result Controls
 
+Status: superseded by the current native implementation. Historical unchecked tasks remain unchanged; current applicable verification is tracked in [the modularity plan](../wordflow-modularity/plan.md).
+
 Issue: [#56](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/issues/56)
 
 ## Representative-word contract

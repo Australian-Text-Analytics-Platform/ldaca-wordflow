@@ -1,14 +1,4 @@
-import type { DataBlockExportFormat } from '@/features/project/common/exportFormats';
-import { useEffect, useReducer, useRef } from 'react';
-import {
-  type NodeProps,
-  Handle,
-  NodeToolbar,
-  Position,
-  useStore,
-  type Node as ReactFlowNode,
-} from '@xyflow/react';
-import { Copy, Check, Eye, Plus } from 'lucide-react';
+import { DataBlockName } from '@/components/DataBlockName';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -19,15 +9,24 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import type { ProjectGraphNodeCard } from '../graphNodeModel';
-import { cn } from '@/lib/utils';
-import { normalizeNodeColor, toNodeSurfaceColor } from '@/lib/nodeColor';
-import { GREY } from '@/features/tools/common/vizPalette';
-import { DataBlockName } from '@/components/DataBlockName';
-import type { NodeInputPointerPosition } from '@/stores/nodeInputRequestsStore';
-import { CUSTOM_NODE_TOOLBAR_BUTTON_CLASS, CustomNodeActionMenu } from './CustomNodeActionMenu';
 import { DataBlockExportDialog } from '@/features/project/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/project/common/components/DataBlockRenameDialog';
+import type { DataBlockExportFormat } from '@/features/project/common/exportFormats';
+import { GREY } from '@/features/tools/common/vizPalette';
+import { normalizeNodeColor, toNodeSurfaceColor } from '@/lib/nodeColor';
+import { cn } from '@/lib/utils';
+import {
+  Handle,
+  NodeToolbar,
+  Position,
+  useStore,
+  type NodeProps,
+  type Node as ReactFlowNode,
+} from '@xyflow/react';
+import { Check, Copy, Eye, Plus } from 'lucide-react';
+import { useEffect, useReducer, useRef } from 'react';
+import type { ProjectGraphNodeCard } from '../graphNodeModel';
+import { CUSTOM_NODE_TOOLBAR_BUTTON_CLASS, CustomNodeActionMenu } from './CustomNodeActionMenu';
 import {
   releaseToolbarOwner,
   setActiveToolbarOwner,
@@ -54,7 +53,7 @@ export interface CustomNodeData extends Record<string, unknown> {
   onPreview?: (nodeId: string) => void;
   isPreviewed?: boolean;
   /** Requests that this node is added to the active view's node inputs. */
-  onAddToSelection?: (nodeId: string, pointer?: NodeInputPointerPosition) => void;
+  onAddToSelection?: (nodeId: string) => void;
 }
 
 const COMPACT_NODE_ZOOM_THRESHOLD = 0.6;
@@ -330,7 +329,7 @@ export function CustomNodeView({
    */
   const handleAddClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    onAddToSelection?.(node.id, e.detail > 0 ? { x: e.clientX, y: e.clientY } : undefined);
+    onAddToSelection?.(node.id);
   };
 
   /**

@@ -75,8 +75,8 @@ list updates every analysis using it without another Frequency run. If a list
 is missing or unreadable, the previous display is marked outdated and exports
 are disabled until you resolve the selection or switch filtering off.
 
-After results are available, carrying a Data Block from the graph shows separate
-placement targets for **Frequency inputs** and **Stopword Data Block**. Place it
+After results are available, adding a Data Block from the graph offers separate
+labelled destinations for **Frequency inputs** and **Stopword Data Block**. Place it
 in the stopword target to leave the corpus inputs unchanged.
 
 Only the selected source, column and filtering switch are saved with the tab.

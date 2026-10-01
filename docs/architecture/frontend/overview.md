@@ -21,10 +21,9 @@ to the standalone Rust backend during development.
   local drafts. See [server ownership](../backend/server.md).
 - Rust DTOs and annotated handlers own the HTTP contracts;
   `api/generated/native.ts` contains their generated TypeScript declarations.
-  `features/project/api.ts` retains transport, generated aliases and narrow
-  feature adapters. The generated FastAPI client remains archived.
+  `api/client.ts` owns transport and errors; `features/project/objects.ts` owns pure object identity. Feature adapters live beside project files, tasks, editing, AI and each analysis tool, consuming the generated contracts. The generated FastAPI client remains archived.
   See [contract generation](../../reference/native-project-api.md#contract-generation).
-- `features/project/ProjectView`, `ProjectGraph` and `NativeDataView` connect
+- `features/project/ProjectView` supplies workspace context to a typed `ToolHost`. Its one visited-tool set keeps panels mounted, while active flags retain feature-owned lifecycle behavior and one Suspense boundary per panel owns loading. `ProjectGraph` and `NativeDataView` connect
   DuckDB operations to the existing sidebar, graph and table presentation.
   Shared graph, table and input components live under `features/project/`, with
   visual primitives under `components/`. Retired FastAPI wrappers are under `archive/frontend/`.
@@ -67,8 +66,7 @@ whereas **Rerun** submits the current draft through the ordinary Run endpoint.
 Recovery neither runs automatically nor writes a persisted error flag. Preview,
 input and unrelated-tab query failures do not change the Run label.
 
-Frequency, Concordance, Quotation and the five Plots modes use native tasks and project-owned saved results;
-other analysis execution remains unavailable. The Data Loader, Preprocessing,
+Frequency, Concordance, Quotation, Topic Modelling, Annotation and the five Plots modes use native tasks and project-owned saved results. The Data Loader, Preprocessing,
 Frequency, Concordance, Quotation, graph and paginated Data
 View retain their established three-column presentation; desktop has no server
 project catalogue, authentication, Data Root or managed-file bootstrap.
@@ -144,7 +142,7 @@ breakpoints are reserved for viewport-owned surfaces such as dialogs.
 
 ## Frequency
 
-The named `EditorTabs` strip stays fixed at the top of the Frequency pane. One
+The shared analysis `Tabs` shell owns Frequency tab creation, retry, mutations, cache updates and editing navigation protection. Its named `EditorTabs` strip stays fixed at the top of the Frequency pane. One
 content `ScrollArea` contains the **Token Frequency Analysis** request card and
 **Token Frequency Results** card, stacked in the historical layout. The cards
 remain available while loading or without a result; they are not a second set of
@@ -182,19 +180,7 @@ clears previous output before calculation; failure or cancellation after that
 transaction leaves no completed result. Results are marked when they describe
 different submitted parameters from the current draft.
 
-Saved tab requests cross the frontend boundary as `unknown`. The shared
-`common/analysisRequest` decoder restores supported fields independently, using
-concrete per-analysis defaults and constraints. Unknown fields and invalid values
-produce path/value issues; the shared warning above the actions retains the
-original JSON for inspection. Missing required inputs stay unselected, and saved
-source, column and tokenizer references are not replaced based on availability.
-Local drafts take precedence over decoded saved settings. Opening, editing,
-Preview and Clear never rewrite the saved request or dismiss its compatibility
-issues. An accepted Run saves only the supported captured request through the
-existing backend transaction. Partial restoration enables **Rerun** when a saved
-result exists, subject to normal admission controls. Equality uses the same
-reader and never treats an incompatible request as fully recognized. This is
-request restoration, not project migration or repair of saved result artifacts.
+Saved requests remain inspectable original JSON. Alongside that JSON, Rust derives a read-only typed `request_status` using each feature's current request DTO. This structural compatibility check does not require a source, column or model to be available. Recognized missing inputs remain editable. Unsupported requests require **Start with current defaults** before Preview or Run; this changes only the local draft and its reset acknowledgement. The original request and output stay saved until an accepted Run. Local edits win over refreshed summaries. Equality compares typed execution requests, ignoring Concordance tokenizers in Text mode and Annotation correction columns where execution does.
 
 Frequency, Concordance and Quotation disable Run when the captured execution
 request matches the completed analysis request, using the tab's derived summary
@@ -237,8 +223,8 @@ View preview nor changes graph selection.
 `common/stopwords` owns the reusable stopword selector and live word-list editor; `common/language` owns presets and sampled recommendations.
 The selector reuses `NodeInputsPanel` with one selected card, the shared searchable
 Add control, unrestricted column choices and remove/clear actions. Once Frequency
-results expose this second input area, graph/sidebar additions remain carried
-until placed into either the corpus or stopword panel.
+results expose this second input area, graph/sidebar additions offer a labelled
+choice between the corpus and stopword panels.
 Frequency selects one Data Block and column for all its corpora. Analysis-tab
 preferences persist `stopwordSource: {source: {schema, name}, column}` and
 `stopwordsEnabled`, never the words themselves. Legacy arrays are ignored.
@@ -572,8 +558,7 @@ captures its applied projection/words/selection before opening the source dialog
 `features/tools/annotation` shares a window-local source/Codebook draft between
 Manual and AI modes. The latest successful Manual Start or accepted AI Run
 initializes shared setup; the AI request independently restores inference controls.
-The shared compatibility decoder restores supported values without rewriting saved
-JSON. Newer local edits win over late responses.
+Rust also derives typed `setup_status` for saved manual setup. Unsupported setup requires the same explicit local reset before Start. Newer local edits win over late responses.
 
 Manual and correction editing reuse `useTableEditing`, including its single patch
 map, navigation guard and Save/Cancel ownership. A Preview correction editor uses
@@ -592,14 +577,14 @@ report/context queries remain immutable.
 
 `features/ai/ProviderSelector` discovers host connections/models, supports manual
 model names, and edits safe connection metadata. Credential submissions use a
-direct transient action, avoiding retention in TanStack mutation caches. The Apple
+direct transient action, avoiding retention in TanStack mutation caches. The selected provider/model capability endpoint uses the same backend policy as payload validation. The UI renders its reasoning choices and temperature compatibility; model-name rules remain with the adapter. The existing embedding catalogue owns Topic model choices and token limits. The Apple
 connection is supplied by the macOS host and requires no saved key or endpoint.
 
 ## Export
 
 `features/tools/export/ExportFeature` owns window-local choices for Data files and
 Wordflow project modes. The shared searchable input panel supplies remove, Clear,
-carried-input placement and optional Add all for the current search. The default
+direct input destinations and optional Add all for the current search. The default
 scope is visible Data Blocks; hidden and other user-schema objects are explicit.
 Use graph selection adds the current graph mode's selected objects. Choices
 survive tool navigation but not reload. Export has no named analysis tabs or
@@ -649,3 +634,13 @@ preference ownership.
 ### Graph control rails
 
 Project Graph and Topic Modelling share `GraphControlButton`: fixed-width icons with immediate, portalled hover/focus tooltips. Disabled actions expose their labels through a focusable wrapper without becoming clickable. The Project Graph selection count uses the same tooltip behavior. Hover and focus never expand either rail or shift its drawing area.
+
+## Shared preview and rename boundaries
+
+Concordance and Quotation include explicit submission generations in preview page query keys. `useAnalysisPreview` cancels and removes superseded page queries and discards them on departure or unmount. `useRetainedPages` keeps only the last successful page for each current source/display slot, with shared freshness status. Loading or failed replacements stay visibly outdated and actions requiring current rows remain disabled. Feature result projections, density and interaction policies remain separate.
+
+Both successful rename adapters and project events call `project/reconcileRenames.ts`, deduplicated by the committed mutation ID shared between response headers and events. Feature-owned typed reference updaters change only their declared source and column fields. Draft keys consistently use `[project, tabId]`; plot mode remains part of active-tab selection only. Unknown saved JSON remains owned and preserved by the backend. Only the mounted workspace reconciles unscoped selection, previews and graph preferences.
+
+Graph and sidebar input actions call the active tool's registered destinations. One destination receives the addition immediately; several destinations open a labelled, keyboard-accessible chooser. The existing picker owns duplicate and capacity rejection. Registration follows panel activation and disabled state. There is no carried stack or pointer overlay.
+
+`lib/download.ts` owns Blob installation. Large native exports continue through their existing staged and streaming IPC paths. `TablePaginationFooter` accepts direct page/page-size callbacks and uses one native page-size selector. Chart controllers stay with their distinct feature interaction policies.

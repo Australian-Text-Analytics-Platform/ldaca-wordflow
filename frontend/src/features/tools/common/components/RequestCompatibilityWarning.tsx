@@ -1,11 +1,16 @@
+import { Button } from '@/components/ui/button';
 import type { RequestIssue } from '../analysisRequest';
 
 export function RequestCompatibilityWarning({
   issues,
   action = 'Run',
+  onReset,
+  resetDone = false,
 }: {
   issues: RequestIssue[];
   action?: 'Run' | 'Start';
+  onReset?: () => void;
+  resetDone?: boolean;
 }) {
   if (!issues.length) return null;
   return (
@@ -13,7 +18,7 @@ export function RequestCompatibilityWarning({
       className="min-w-0 rounded-md border border-border bg-background-secondary p-3 text-sm"
       aria-label="Saved settings compatibility"
     >
-      <p className="font-semibold">These saved settings are not recognized:</p>
+      <p className="font-semibold">These saved settings are not supported:</p>
       <ul className="my-2 max-h-64 space-y-3 overflow-auto">
         {issues.map((issue) => {
           const json = JSON.stringify(issue.value, null, 2);
@@ -35,7 +40,12 @@ export function RequestCompatibilityWarning({
           );
         })}
       </ul>
-      <p>{action} will save only supported settings.</p>
+      <p>
+        {resetDone
+          ? `${action} will save your new settings. The original request remains saved until then.`
+          : 'Start with current defaults to create a new request.'}
+      </p>
+      {onReset && !resetDone && <Button onClick={onReset}>Start with current defaults</Button>}
     </aside>
   );
 }

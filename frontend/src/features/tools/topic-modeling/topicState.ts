@@ -1,8 +1,9 @@
+import type { TopicRequest, TopicSampling } from '@/features/tools/topic-modeling/api';
 import { create } from 'zustand';
-import type { TopicRequest, TopicSampling } from '@/features/project/api';
-import { createAnalysisDraftStore, analysisDraftKey } from '../common/analysisDraftStore';
+import { analysisDraftKey, createAnalysisDraftStore } from '../common/analysisDraftStore';
+import { renameInput, type Rename } from '../common/renameReferences';
 export { analysisDraftKey as topicKey } from '../common/analysisDraftStore';
-export const useTopicState = createAnalysisDraftStore<TopicRequest>();
+export const useTopicState = createAnalysisDraftStore<TopicRequest>(renameRequest);
 export const useTopicSampling = create<{
   choices: Record<string, Record<string, TopicSampling>>;
   remove: (base: string, tab: string) => void;
@@ -21,3 +22,10 @@ export const useTopicSampling = create<{
     set((state) => ({ choices: { ...state.choices, [analysisDraftKey(base, tab)]: choices } }));
   },
 }));
+
+function renameRequest(request: TopicRequest, rename: Rename): TopicRequest {
+  return {
+    ...request,
+    inputs: request.inputs.map((input) => renameInput(input, rename, ['column'])),
+  };
+}

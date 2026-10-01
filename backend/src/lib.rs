@@ -72,6 +72,7 @@ pub fn router(
                     header::HeaderName::from_static("x-wordflow-statements-completed"),
                     header::HeaderName::from_static("x-wordflow-result-truncated"),
                     header::HeaderName::from_static("x-wordflow-task-id"),
+                    header::HeaderName::from_static("x-wordflow-change-id"),
                     header::HeaderName::from_static("x-wordflow-total-rows"),
                     header::HeaderName::from_static("x-wordflow-document-count"),
                     header::HeaderName::from_static("x-wordflow-match-count"),

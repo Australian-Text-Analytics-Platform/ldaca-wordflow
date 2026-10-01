@@ -1,17 +1,17 @@
 import { objectDependencies } from '@/features/project/projectChanges';
-import { useEffect, useState } from 'react';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { DataType } from 'apache-arrow';
+import { useEffect, useState } from 'react';
 
-import { identifier as sqlIdentifier } from '@/features/project/api';
-import { literal as sqlString, table as sqlTable } from '../../sql';
-import { previewSql } from '../../projectPreprocessing';
+import { identifier as sqlIdentifier } from '@/features/project/objects';
 import {
   arrowTypeName,
   isArrowDictionaryField,
   isArrowStringListField,
 } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
+import { previewSql } from '../../projectPreprocessing';
+import { literal as sqlString, table as sqlTable } from '../../sql';
 import type { ConditionColumnOption } from '../../types';
 import {
   buildCategoricalOptionEntries,

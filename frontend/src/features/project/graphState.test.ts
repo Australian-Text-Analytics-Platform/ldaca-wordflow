@@ -1,9 +1,9 @@
+import { targetKey } from '@/features/project/objects';
+import { useSelectionStore } from '@/stores/selectionStore';
 import { beforeEach, expect, it } from 'vite-plus/test';
 import { useGraphState } from './graphState';
 import { useProjectPreview } from './previewState';
 import { useProjectViewState } from './projectViewState';
-import { useSelectionStore } from '@/stores/selectionStore';
-import { targetKey } from './api';
 
 beforeEach(() => {
   useGraphState.setState({

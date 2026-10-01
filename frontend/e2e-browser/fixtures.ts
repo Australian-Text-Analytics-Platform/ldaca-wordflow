@@ -2,16 +2,10 @@ import { browser } from '@wdio/globals';
 import { Key, type ChainablePromiseElement } from 'webdriverio';
 import type { ByRoleOptions, MatcherOptions, queries } from '@testing-library/dom';
 import { resolve } from 'node:path';
-import {
-  cancelTask,
-  dismissTask,
-  getTasks,
-  executeSql,
-  deleteTab,
-  identifier,
-  listTabs,
-  querySql,
-} from '../src/features/project/api';
+import { cancelTask, dismissTask, getTasks } from '@/features/project/tasksApi';
+import { executeSql, querySql } from '@/features/project/api';
+import { deleteTab, listTabs } from '@/features/tools/common/analysisApi';
+import { identifier } from '@/features/project/objects';
 
 export const baseUrl = 'http://127.0.0.1:3212';
 export const outputDir =

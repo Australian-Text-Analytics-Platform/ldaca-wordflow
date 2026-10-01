@@ -1,4 +1,4 @@
-import type { TopicWord } from '@/features/project/api';
+import type { TopicWord } from '@/features/tools/topic-modeling/api';
 export interface TopicModelingTopic {
   id: number;
   x: number;

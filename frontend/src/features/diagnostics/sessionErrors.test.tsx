@@ -1,15 +1,15 @@
-import { beforeEach, expect, it, vi } from 'vite-plus/test';
+import { ProjectError } from '@/api/client';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { QueryObserver } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { toast } from 'sonner';
-import { recordSessionError, useSessionErrors, listenForSessionErrors } from './sessionErrors';
-import { SessionErrors } from './SessionErrorHistory';
 import { bypass } from 'msw';
-import { QueryObserver } from '@tanstack/react-query';
-import { reportProjectError, createProjectQueryClient } from '../project/projectErrors';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { toast } from 'sonner';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import { ErrorCollector } from '../../../e2e-browser/errorCollector';
-import { ProjectError } from '../project/api';
+import { createProjectQueryClient, reportProjectError } from '../project/projectErrors';
+import { SessionErrors } from './SessionErrorHistory';
+import { listenForSessionErrors, recordSessionError, useSessionErrors } from './sessionErrors';
 
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 vi.mock('@/lib/sentry', () => ({ captureException: vi.fn() }));

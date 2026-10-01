@@ -1,7 +1,7 @@
+import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { useState } from 'react';
 import { describe, expect, it } from 'vite-plus/test';
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { useDataTable } from '../../hooks/useDataTable';
 import { TablePaginationFooter } from '../TablePaginationFooter';
 
@@ -25,7 +25,13 @@ function ControlledHarness() {
   return (
     <div>
       <span data-testid="page-source">{page}</span>
-      <TablePaginationFooter table={table} pageIndex={page - 1} pageSize={20} rowCount={1000} />
+      <TablePaginationFooter
+        onPageChange={(page) => table.setPageIndex(page)}
+        onPageSizeChange={(size) => table.setPageSize(size)}
+        pageIndex={page - 1}
+        pageSize={20}
+        rowCount={1000}
+      />
     </div>
   );
 }
@@ -44,7 +50,15 @@ function LookaheadHarness() {
     pageSize: 20,
   });
 
-  return <TablePaginationFooter table={table} pageIndex={0} pageSize={20} hasNext />;
+  return (
+    <TablePaginationFooter
+      onPageChange={(page) => table.setPageIndex(page)}
+      onPageSizeChange={(size) => table.setPageSize(size)}
+      pageIndex={0}
+      pageSize={20}
+      hasNext
+    />
+  );
 }
 
 describe('TablePaginationFooter controlled pagination', () => {

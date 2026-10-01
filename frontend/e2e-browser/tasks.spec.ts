@@ -3,7 +3,7 @@ import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, text, testId, post, get, remove, press, screenshot, stubResponse } from './fixtures';
 
-import type { NativeTask, TaskSnapshot } from '../src/features/project/api';
+import type { NativeTask, TaskSnapshot } from '@/features/project/tasksApi';
 
 // Test-owned snapshots isolate presentation; the next test uses real production routes.
 it('native task rows show progress, errors, cancellation and dismissal in both themes', async () => {

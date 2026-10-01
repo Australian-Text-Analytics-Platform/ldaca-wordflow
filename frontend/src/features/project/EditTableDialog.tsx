@@ -1,15 +1,3 @@
-import { useEffect, useRef, useState } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { isTauri } from '@/lib/isTauri';
-import { Button } from '@/components/ui/button';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,10 +8,22 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import type { CellEditSession } from '@/features/table-editing/api';
 import { EditableTable } from '@/features/table-editing/EditableTable';
 import { useTableEditing } from '@/features/table-editing/useTableEditing';
+import { isTauri } from '@/lib/isTauri';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useEffect, useRef, useState } from 'react';
 import { reportProjectError } from './projectErrors';
-import type { CellEditSession } from './api';
 
 export function EditTableDialog({
   base,

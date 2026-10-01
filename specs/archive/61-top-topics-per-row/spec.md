@@ -1,5 +1,7 @@
 # Top Topics per Document for Topic Bubbles
 
+Status: superseded by the current native implementation. Historical unchecked tasks remain unchanged; current applicable verification is tracked in [the modularity plan](../wordflow-modularity/plan.md).
+
 Issue: [#61](https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/issues/61)
 
 ## Result contract

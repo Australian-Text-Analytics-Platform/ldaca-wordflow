@@ -1,5 +1,5 @@
+import { sameTarget, targetKey, type DataTarget } from '@/features/project/objects';
 import { create } from 'zustand';
-import { sameTarget, targetKey, type DataTarget } from './api';
 
 interface State {
   active: DataTarget | null;

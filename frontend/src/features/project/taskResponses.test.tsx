@@ -1,6 +1,9 @@
-import { afterEach, expect, it, vi } from 'vite-plus/test';
+import * as transportApi from '@/api/client';
+import * as projectApi from '@/features/project/api';
+import * as filesApi from '@/features/project/filesApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { toast } from 'sonner';
-import * as api from './api';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { createProjectQueryClient, reportProjectError } from './projectErrors';
 vi.mock('sonner', () => ({ toast: { error: vi.fn() } }));
 const nativeInvoke = vi.hoisted(() => vi.fn());
@@ -28,7 +31,8 @@ it('keeps accepted task failures structured and leaves their toast to the observ
   );
   const client = createProjectQueryClient();
   const mutation = client.getMutationCache().build(client, {
-    mutationFn: () => api.runSqlScript('http://project', 'SELECT 1', 'execute', 'SQL cell 1'),
+    mutationFn: () =>
+      projectApi.runSqlScript('http://project', 'SELECT 1', 'execute', 'SQL cell 1'),
   });
   const error: unknown = await mutation.execute(undefined).catch((failure: unknown) => failure);
   expect(error).toMatchObject({ code: 'sql_error', statementIndex: 1, taskId: 'task-1' });
@@ -63,7 +67,7 @@ it('still reports submission failures and leaves ordinary SQL requests untracked
       ),
     ),
   );
-  const error: unknown = await api
+  const error: unknown = await projectApi
     .querySql('http://project', [{ sql: 'SELECT 1' }])
     .catch((failure: unknown) => failure);
   reportProjectError(error);
@@ -93,10 +97,10 @@ it('retains the HTTP context and complete Rust response without recording reques
       }),
     ),
   );
-  const error = await api
+  const error = await analysesApi
     .createTab('http://project', 'concordance')
     .catch((failure: unknown) => failure);
-  expect(error).toBeInstanceOf(api.ProjectError);
+  expect(error).toBeInstanceOf(transportApi.ProjectError);
   expect(error).toMatchObject({
     message: body.error.message,
     code: 'invalid_request',
@@ -111,7 +115,7 @@ it.each(['upstream Rust failure\ncaused by: connection closed', ''])(
       'fetch',
       vi.fn().mockResolvedValue(new Response(body, { status: 502, statusText: 'Bad Gateway' })),
     );
-    const error = await api.graph('http://project').catch((failure: unknown) => failure);
+    const error = await projectApi.graph('http://project').catch((failure: unknown) => failure);
     expect(error).toMatchObject({
       message: body || 'Request failed (502)',
       details: `GET /api/project/graph\nHTTP 502 Bad Gateway\n\n${body || 'Request failed (502)'}`,
@@ -121,13 +125,13 @@ it.each(['upstream Rust failure\ncaused by: connection closed', ''])(
 
 it('adds request context to network failures while preserving cancellation', async () => {
   vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')));
-  await expect(api.graph('http://project')).rejects.toMatchObject({
+  await expect(projectApi.graph('http://project')).rejects.toMatchObject({
     message: 'Failed to fetch',
     details: 'GET /api/project/graph\nNo HTTP response received\n\nFailed to fetch',
   });
   const aborted = new DOMException('Cancelled', 'AbortError');
   vi.mocked(fetch).mockRejectedValue(aborted);
-  await expect(api.graph('http://project')).rejects.toBe(aborted);
+  await expect(projectApi.graph('http://project')).rejects.toBe(aborted);
 });
 
 it('normalizes native export errors with the same task notification owner as HTTP', async () => {
@@ -137,7 +141,7 @@ it('normalizes native export errors with the same task notification owner as HTT
     task_id: 'export-1',
     statement_index: 2,
   });
-  const error = await api
+  const error = await filesApi
     .exportNode('http://project', 'documents', 'csv')
     .catch((failure: unknown) => failure);
   expect(error).toMatchObject({
@@ -151,18 +155,20 @@ it('normalizes native export errors with the same task notification owner as HTT
   expect(toast.error).not.toHaveBeenCalled();
   nativeInvoke.mockRejectedValue({ code: 'desktop_error', message: 'Chooser failed' });
   reportProjectError(
-    await api.exportNode('http://project', 'documents', 'csv').catch((failure: unknown) => failure),
+    await filesApi
+      .exportNode('http://project', 'documents', 'csv')
+      .catch((failure: unknown) => failure),
   );
   expect(toast.error).toHaveBeenCalledOnce();
 });
 
 it('preserves native failures without a message field and ordinary Error messages', () => {
   const native = { code: 'worker_failed', cause: { panic: 'tokenizer failed' } };
-  expect(api.ProjectError.fromNative(native)).toMatchObject({
+  expect(transportApi.ProjectError.fromNative(native)).toMatchObject({
     message: JSON.stringify(native),
     details: JSON.stringify({ error: native }, null, 2),
   });
-  expect(api.ProjectError.fromNative(new Error('Native failure')).details).toContain(
+  expect(transportApi.ProjectError.fromNative(new Error('Native failure')).details).toContain(
     'Native failure',
   );
 });

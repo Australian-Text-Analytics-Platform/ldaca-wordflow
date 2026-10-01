@@ -1,18 +1,18 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef, useState } from 'react';
-import * as api from '@/features/project/api';
 import { objectDependencies } from '@/features/project/projectChanges';
 import { reportProjectError } from '@/features/project/projectErrors';
+import * as annotationApi from '@/features/tools/annotation/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 
 export function useAnnotationPreview(base: string, tab: string, active: boolean) {
   const cache = useQueryClient();
   const controller = useRef<AbortController | null>(null);
   const [state, setState] = useState<{
-    request: api.AnnotationRequest;
+    request: annotationApi.AnnotationRequest;
     page: number;
     size: number;
     startedAt: number;
-    data?: api.AnnotationPreview;
+    data?: annotationApi.AnnotationPreview;
     error?: string;
     outdated?: boolean;
   } | null>(null);
@@ -72,13 +72,13 @@ export function useAnnotationPreview(base: string, tab: string, active: boolean)
       }),
     [base, tab, cache],
   );
-  const submit = (request: api.AnnotationRequest, page = 1, size = 10) => {
+  const submit = (request: annotationApi.AnnotationRequest, page = 1, size = 10) => {
     controller.current?.abort();
     const current = new AbortController();
     controller.current = current;
     const captured = structuredClone(request);
     setState({ request: captured, page, size, startedAt: Date.now() });
-    void api
+    void annotationApi
       .previewAnnotation(base, tab, captured, page, size, current.signal)
       .then((data) => {
         if (controller.current !== current || current.signal.aborted) return;

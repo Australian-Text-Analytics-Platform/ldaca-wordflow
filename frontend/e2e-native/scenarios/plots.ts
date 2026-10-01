@@ -1,12 +1,14 @@
 import { browser, $, expect } from '@wdio/globals';
-import * as api from '../../src/features/project/api';
+import * as plotsApi from '@/features/tools/plots/api';
+import * as projectApi from '@/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import { outputDir, checked } from '../../e2e-browser/fixtures';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { resolve } from 'node:path';
 import { Key } from 'webdriverio';
 export async function plotsScenario(base: string, prefix: string) {
-  expect(await api.plotTimezones(base)).toContain('UTC');
-  await api.executeSql(
+  expect(await plotsApi.plotTimezones(base)).toContain('UTC');
+  await projectApi.executeSql(
     base,
     [
       {
@@ -20,7 +22,7 @@ export async function plotsScenario(base: string, prefix: string) {
     { objects: [{ schema: 'data', name: 'plot_fixture' }], resources: ['graph'] },
   );
   const source = { schema: 'data', name: 'plot_fixture' };
-  const requests: api.PlotRequests = {
+  const requests: plotsApi.PlotRequests = {
     trends: {
       source,
       axis: 'day',
@@ -35,13 +37,13 @@ export async function plotsScenario(base: string, prefix: string) {
     heatmap: { source, row: 'party', column: 'stance', measure: 'mean', value: 'weight' },
     sankey: { source, stages: ['party', 'stance', 'followup'], measure: 'count', value: null },
   };
-  const createdTabs = new Map<api.PlotMode, string>();
+  const createdTabs = new Map< plotsApi.PlotMode, string>();
   for (const mode of ['trends', 'compare', 'scatter', 'heatmap', 'sankey'] as const) {
-    const tab = await api.createTab(base, mode);
+    const tab = await analysesApi.createTab(base, mode);
     const codes = { trends: 'TR', compare: 'CP', scatter: 'SC', heatmap: 'HM', sankey: 'SK' };
     expect(tab.name).toBe(`${codes[mode]}-1`);
     createdTabs.set(mode, tab.name);
-    await api.runPlot(base, tab.id, mode, requests[mode]);
+    await plotsApi.runPlot(base, tab.id, mode, requests[mode]);
   }
   await browser.refresh();
   await browser.execute(() => {
@@ -124,7 +126,7 @@ export async function plotsScenario(base: string, prefix: string) {
       await dialog.$('input').setValue('plot_selected_row');
       await dialog.$('button=Add').click();
       await dialog.waitForExist({ reverse: true });
-      const published = await api.querySql(base, [{ sql: 'SELECT * FROM data.plot_selected_row' }]);
+      const published = await projectApi.querySql(base, [{ sql: 'SELECT * FROM data.plot_selected_row' }]);
       expect(published.numRows).toBe(1);
     }
   }
@@ -180,7 +182,7 @@ export async function plotsScenario(base: string, prefix: string) {
 export async function plotsBenchmark(base: string) {
   await setAnalysisPaneSize('normal');
   const source = { schema: 'data', name: 'plot_benchmark' };
-  const request: api.PlotRequests['scatter'] = {
+  const request: plotsApi.PlotRequests['scatter'] = {
     source,
     x: 'x',
     y: 'y',
@@ -189,7 +191,7 @@ export async function plotsBenchmark(base: string) {
     label: null,
   };
   for (const count of [10000, 50000, 100000]) {
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
         { sql: 'DROP TABLE IF EXISTS data.plot_benchmark' },
@@ -202,9 +204,9 @@ export async function plotsBenchmark(base: string) {
       ],
       { objects: [source], resources: ['graph'] },
     );
-    const tab = await api.createTab(base, 'scatter');
+    const tab = await analysesApi.createTab(base, 'scatter');
     const start = performance.now();
-    await api.runPlot(base, tab.id, 'scatter', request);
+    await plotsApi.runPlot(base, tab.id, 'scatter', request);
     await browser.refresh();
     await $('button=Plots').click();
     await $('[role="tablist"][aria-label="Plot modes"]').$('[role="tab"]=Scatter').click();
@@ -247,9 +249,9 @@ export async function plotsProjectionBenchmark(base: string) {
   await setAnalysisPaneSize('normal');
   const source = { schema: 'data', name: 'plot_capacity' };
   const cases: {
-    mode: api.PlotMode;
+    mode: plotsApi.PlotMode;
     sql: string;
-    request: api.PlotRequest;
+    request: plotsApi.PlotRequest;
     marks: number;
     description: string;
   }[] = [
@@ -291,7 +293,7 @@ export async function plotsProjectionBenchmark(base: string) {
     },
   ];
   for (const item of cases) {
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
         { sql: 'DROP TABLE IF EXISTS data.plot_capacity' },
@@ -302,12 +304,12 @@ export async function plotsProjectionBenchmark(base: string) {
       ],
       { objects: [source], resources: ['graph'] },
     );
-    const tab = await api.createTab(base, item.mode);
+    const tab = await analysesApi.createTab(base, item.mode);
     const runStart = performance.now();
-    const analysis = await api.runPlot(base, tab.id, item.mode, item.request);
+    const analysis = await plotsApi.runPlot(base, tab.id, item.mode, item.request);
     const runMs = performance.now() - runStart;
     const queryStart = performance.now();
-    const table = await api.queryPlot(base, analysis.id, item.mode, {
+    const table = await plotsApi.queryPlot(base, analysis.id, item.mode, {
       uncased: false,
       minimum_rows: 0,
     });

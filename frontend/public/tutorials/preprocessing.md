@@ -26,9 +26,7 @@ unchanged. Find adds or replaces a column **in the selected Data Block**.
 
 Use **Preprocessing Inputs** to select inputs. Double-click a graph card, or use its
 add button or the sidebar's add button, to add that Data Block to the active tool.
-When a view has more than one input area, the Data Block follows your pointer:
-click the desired area to place it, right-click to discard the latest carried
-block, or press Escape to clear the carried stack.
+When a view has more than one input area, choose its labelled destination from the **Add to input** menu. A single area receives the Data Block immediately. Escape closes the menu.
 
 Inputs are independent of graph selection and opened data previews. New results leave existing previews and graph selection unchanged. Filter, Sample, Find and
 Build accept one input; Join accepts two; Stack accepts two or more. SQL uses actual
@@ -130,7 +128,7 @@ Sample always creates a new View. The short name uses `slc` for slices, `smp` fo
 
 Choose a **Left input** and **Right input**, each with its own key. The same Data
 Block can fill both roles for a self-join. Double-click a graph card, then place
-the carried block into the desired role. Matching key names use USING; different names
+the Data Block into the labelled desired role. Matching key names use USING; different names
 use ON. DuckDB decides type compatibility and disambiguates duplicate output column
 names. The preview shows the same column names that the new result will use.
 
@@ -255,8 +253,7 @@ to an unfinished child. **Check operation** identifies an invalid chain.
 **Draft SQL** preserves all bubbles and marks missing pieces explicitly, for example
 `concat_ws(' ', "first_name", concat_ws(' ', /* add input */))`. It is not sent to
 the database until the visual expression is complete. You can choose **Edit SQL
-expression** to complete the displayed draft directly; returning to bubbles requires
-valid SQL. The previous successful preview remains visible and marked outdated.
+expression** to complete the displayed draft directly. **New visual expression** starts an empty builder after confirming that the edited SQL will be discarded. The previous successful preview remains visible and marked outdated.
 
 The menu follows the preceding step's result type. For example:
 
@@ -317,17 +314,9 @@ at the cursor. Write an expression, not a complete SELECT or script; use the SQL
 console for full statements, grouping or row expansion.
 
 Adding a summary in the builder produces a window expression for the new View.
-Handwritten SQL, including explicit scalar subqueries, keeps its meaning when
-switching between SQL and bubbles.
+Handwritten SQL, including explicit scalar subqueries and casts, keeps its meaning during Preview and Apply.
 
-**Return to bubble builder** parses the current SQL without running it. Supported
-functions, operators and summaries become editable bubbles. Other fragments,
-including CASE and unfamiliar subqueries, remain **SQL-expression bubbles** that
-you can edit, move or combine. Their result type stays unknown unless reliably
-established, so Wordflow does not guess additional type-specific operations.
-Conversion preserves expression meaning, including arithmetic grouping and exact
-numbers, but may change formatting or discard comments. Malformed SQL stays in
-the editor for correction; it does not replace the last valid tree.
+**New visual expression** asks before discarding your SQL draft. **Keep SQL** cancels the transition. **Start new expression** opens an empty visual builder and retains the output column name. SQL is not converted back to bubbles. Malformed SQL stays in the editor for correction.
 
 Drafts survive application-tab changes. Reloading may discard them.
 

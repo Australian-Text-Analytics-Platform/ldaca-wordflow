@@ -1,5 +1,6 @@
 /** Compile-only transport regressions. This module is never called by the application. */
-import { request, runPlot } from '@/features/project/api';
+import { request } from '@/api/client';
+import { runPlot } from '@/features/tools/plots/api';
 import type { components } from '../src/api/generated/native';
 
 export async function verifyHttpTypes() {

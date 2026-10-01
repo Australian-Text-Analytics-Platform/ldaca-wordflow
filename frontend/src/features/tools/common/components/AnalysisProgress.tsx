@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
-import type { NativeTask } from '@/features/project/api';
 import { Button } from '@/components/ui/button';
+import type { NativeTask } from '@/features/project/tasksApi';
+import { useEffect, useState } from 'react';
 
 export function AnalysisProgress({
   name,

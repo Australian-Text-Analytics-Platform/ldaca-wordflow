@@ -1,8 +1,4 @@
-import { objectDependencies } from '@/features/project/projectChanges';
-import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import * as api from './api';
+import { Textarea } from '@/components/ui/textarea';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
+import { objectDependencies } from '@/features/project/projectChanges';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 
 /** Reads the catalogue once per opening; the draft belongs to this dialog until Save. */
 export function ViewSqlDialog({
@@ -20,20 +21,20 @@ export function ViewSqlDialog({
   onClose,
 }: {
   base: string;
-  name: api.DataTarget;
+  name: objectsApi.DataTarget;
   onClose: () => void;
 }) {
   const definition = useQuery({
-    queryKey: ['native', base, 'definition', api.targetKey(name)],
+    queryKey: ['native', base, 'definition', objectsApi.targetKey(name)],
     meta: objectDependencies(name),
-    queryFn: ({ signal }) => api.viewDefinition(base, name, signal),
+    queryFn: ({ signal }) => projectApi.viewDefinition(base, name, signal),
     gcTime: 0,
     refetchOnWindowFocus: false,
   });
   const [draft, setDraft] = useState<string>();
   const sql = draft ?? definition.data?.sql ?? '';
   const save = useMutation({
-    mutationFn: () => api.replaceViewDefinition(base, name, sql),
+    mutationFn: () => projectApi.replaceViewDefinition(base, name, sql),
     onSuccess: onClose,
   });
   return (
@@ -46,7 +47,9 @@ export function ViewSqlDialog({
       <DialogContent className="w-[calc(100%-2rem)] max-w-3xl">
         <DialogHeader>
           <DialogTitle>Edit SQL Definition</DialogTitle>
-          <DialogDescription className="break-all">{api.targetLabel(name)}</DialogDescription>
+          <DialogDescription className="break-all">
+            {objectsApi.targetLabel(name)}
+          </DialogDescription>
         </DialogHeader>
         <p className="text-body-secondary text-description">
           Edit the complete SELECT query. Save replaces this View’s definition.

@@ -1,10 +1,10 @@
-import { act, renderHook, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { Field, Int64 } from 'apache-arrow';
 import type { ReactNode } from 'react';
 import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { useBuildSubTab } from '../useBuildSubTab';
-import * as api from '@/features/project/api';
+
 import { inputNode } from '@/test/nodeMetadata';
 
 vi.mock('../../../projectPreprocessing', () => ({ previewSql: vi.fn() }));
@@ -160,61 +160,8 @@ it('preserves explicit scalar SQL and captures overlapping Apply requests', asyn
   expect(result.current.draft.visual.roots[0]?.operations[0]?.kind).toBe('mean');
 });
 
-it.each(['success', 'failure'])(
-  'ignores an obsolete parse %s and retains the current SQL draft',
-  async (outcome) => {
-    let finish!: () => void;
-    const parse = vi.spyOn(api, 'parseExpression').mockImplementationOnce(
-      () =>
-        new Promise((resolve, reject) => {
-          finish = () =>
-            outcome === 'failure'
-              ? reject(new Error('obsolete error'))
-              : resolve({ kind: 'literal', literal_type: 'number', value: '1', sql: '1' });
-        }),
-    );
-    const cache = new QueryClient();
-    const { result } = renderHook(
-      () =>
-        useBuildSubTab({
-          projectBase: 'project',
-          selectedNodes: [inputNode({ id: 'source', name: 'source' })],
-          getColumnInfos: () => [
-            { name: 'n', typeName: 'Int64', field: new Field('n', new Int64()) },
-          ],
-          isLoading: { operations: false },
-          onAlert: vi.fn(),
-          buildColumnApply: vi.fn(),
-          buildColumnPreview: vi.fn(),
-          previewEnabled: false,
-        }),
-      {
-        wrapper: ({ children }: { children: ReactNode }) => (
-          <QueryClientProvider client={cache}>{children}</QueryClientProvider>
-        ),
-      },
-    );
-    act(() => result.current.addPart({ id: 'n', kind: 'column', column: 'n', operations: [] }));
-    act(() => result.current.editSql());
-    act(() => result.current.returnToBuilder());
-    await waitFor(() => expect(parse).toHaveBeenCalledTimes(1));
-    act(() => result.current.setSql('n + 2'));
-    expect(parse.mock.calls[0]?.[2]?.aborted).toBe(true);
-    await act(async () => {
-      finish();
-    });
-    expect(result.current.draft.sql?.expression).toBe('n + 2');
-    expect(result.current.draft.visual.roots[0]?.kind).toBe('column');
-    expect(result.current.parseError).toBeUndefined();
-  },
-);
-
-it('retains invalid SQL with one inline error and no duplicate notification', async () => {
-  const { createProjectQueryClient } = await import('@/features/project/projectErrors');
-  const { useSessionErrors } = await import('@/features/diagnostics/sessionErrors');
-  useSessionErrors.getState().clear();
-  vi.spyOn(api, 'parseExpression').mockRejectedValueOnce(new Error('syntax error at end of input'));
-  const cache = createProjectQueryClient();
+it('starts a new visual draft explicitly and preserves the output column name', () => {
+  const cache = new QueryClient();
   const { result } = renderHook(
     () =>
       useBuildSubTab({
@@ -233,10 +180,12 @@ it('retains invalid SQL with one inline error and no duplicate notification', as
       ),
     },
   );
+  act(() => result.current.setColumn('new_column'));
   act(() => result.current.editSql());
-  act(() => result.current.setSql('1 +'));
-  act(() => result.current.returnToBuilder());
-  await waitFor(() => expect(result.current.parseError).toBe('syntax error at end of input'));
-  expect(result.current.draft.sql?.expression).toBe('1 +');
-  expect(useSessionErrors.getState().entries).toEqual([]);
+  act(() => result.current.setSql('CASE WHEN 1=1 THEN 4 END'));
+  expect(result.current.draft.sql?.expression).toBe('CASE WHEN 1=1 THEN 4 END');
+  act(() => result.current.startNewVisual());
+  expect(result.current.draft.sql).toBeNull();
+  expect(result.current.draft.visual.roots).toEqual([]);
+  expect(result.current.draft.column).toBe('new_column');
 });

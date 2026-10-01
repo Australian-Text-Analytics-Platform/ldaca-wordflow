@@ -1,10 +1,10 @@
 import { useAnnotationState } from '../annotation/annotationState';
 import { useConcordanceState } from '../concordance/concordanceState';
-import { useQuotationState } from '../quotation/quotationState';
-import { useTopicState } from '../topic-modeling/topicState';
 import { usePlotState } from '../plots/plotState';
+import { useQuotationState } from '../quotation/quotationState';
 import { useFrequencyState } from '../token-frequency/frequencyState';
-import { renamedDrafts, type Rename } from './renameReferences';
+import { useTopicState } from '../topic-modeling/topicState';
+import { type Rename } from './renameReferences';
 export function reconcileAnalysisDrafts(base: string, renames: Rename[]) {
   for (const rename of renames) {
     for (const store of [
@@ -13,8 +13,8 @@ export function reconcileAnalysisDrafts(base: string, renames: Rename[]) {
       useTopicState,
       usePlotState,
       useAnnotationState,
+      useFrequencyState,
     ])
       store.getState().reconcile(base, rename);
-    useFrequencyState.setState((state) => ({ drafts: renamedDrafts(state.drafts, base, rename) }));
   }
 }

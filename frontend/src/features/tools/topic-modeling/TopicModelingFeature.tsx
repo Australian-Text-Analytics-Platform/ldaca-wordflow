@@ -1,11 +1,4 @@
-import { useNodePreferences } from '../common/useNodePreferences';
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { useState } from 'react';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { schemaQuery } from '@/features/project/projectQueries';
-import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
-import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -14,30 +7,45 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import HelpIcon from '@/components/help/HelpIcon';
+import * as projectApi from '@/features/project/api';
+import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import * as objectsApi from '@/features/project/objects';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { Tabs } from '../common/Tabs';
-import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
-import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '../common/nodeInputs/useNodeInputRequests';
-import { TokenizerChoice } from '../common/language/TokenizerChoice';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import {
+  decodeAnalysisRequest,
+  matchesAnalysisRequest,
+  useRequestRestoration,
+} from '../common/analysisRequest';
 import { AnalysisAction } from '../common/components/AnalysisAction';
 import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
+import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
+import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import { TokenizerChoice } from '../common/language/TokenizerChoice';
+import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
 import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
+import { useNodePreferences } from '../common/useNodePreferences';
 import { useTabSettings } from '../common/useTabSettings';
-import { VIZ_PALETTE, GREY } from '../common/vizPalette';
-import { topicKey, useTopicState, useTopicSampling } from './topicState';
-import { useTopicPreview } from './useTopicPreview';
-import { TopicSamplingDialog } from './TopicSamplingDialog';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { TopicResults } from './TopicResults';
+import { TopicSamplingDialog } from './TopicSamplingDialog';
+import { topicKey, useTopicSampling, useTopicState } from './topicState';
+import { useTopicPreview } from './useTopicPreview';
 
 interface Props {
   base: string;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing?: boolean;
   onCancel: (id: string) => void;
@@ -71,24 +79,38 @@ function TopicTab({
   editing = false,
   onCancel,
   tab,
-}: Props & { tab: api.Tab }) {
+}: Props & { tab: analysesApi.Tab }) {
   const cache = useQueryClient();
   const savePreference = useNodePreferences(base);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
-    ...savedAnalysisQuery(cache, base, tab, (id, signal) => api.getTopicResult(base, id, signal)),
+    ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
+      topicApi.getTopicResult(base, id, signal),
+    ),
     enabled: active && Boolean(analysisId),
   });
   const recovery = useAnalysisRecovery(base, analysisId);
-  const restored = decodeAnalysisRequest('topic-modeling', tab.analysis?.request);
+  const models = useQuery({
+    queryKey: ['native', base, 'embedding-models'],
+    queryFn: ({ signal }) => topicApi.embeddingModels(base, signal),
+    staleTime: Infinity,
+  });
+  const restored = useRequestRestoration('topic-modeling', tab.analysis, [base, tab.id]);
   const stored = useTopicState((state) => state.drafts[topicKey(base, tab.id)]);
-  const draft = stored ?? restored.request;
-  const update = (next: api.TopicRequest) => {
+  const modelDefault = models.data?.[0];
+  const currentDefaults = {
+    ...restored.request,
+    ...(modelDefault
+      ? { embedding_model: modelDefault.id, max_segment_tokens: modelDefault.token_limit }
+      : {}),
+  };
+  const draft = stored ?? (tab.analysis ? restored.request : currentDefaults);
+  const update = (next: topicApi.TopicRequest) => {
     useTopicState.getState().setDraft(base, tab.id, next);
   };
   const { settings, change: changeSettings } = useTabSettings(base, tab);
   const colors = (settings.colors ?? {}) as Record<string, string>;
-  const [sampling, setSampling] = useState<api.TopicRequest | null>(null);
+  const [sampling, setSampling] = useState<topicApi.TopicRequest | null>(null);
   const [wasActive, setWasActive] = useState(active);
   if (active !== wasActive) {
     setWasActive(active);
@@ -130,21 +152,9 @@ function TopicTab({
     getColumnInfos: (node) => mapArrowColumnsToInfo(schemas[names.indexOf(node.id)]?.data ?? []),
     constraints: { maxNodes: 2, fieldPredicate: isArrowStringField, preserveColumnSelection: true },
   });
-  const inputRequests = useNodeInputRequests({
-    scopeId: base,
-    tool: 'topic-modeling',
-    addNodes: picker.addNodes,
-    enabled: active && !editing,
-    deferPlacement: Boolean(analysisId ?? preview.state),
-  });
   const tokenizers = useQuery({
     queryKey: ['native', base, 'tokenizers'],
-    queryFn: ({ signal }) => api.getTokenizers(base, signal),
-    staleTime: Infinity,
-  });
-  const models = useQuery({
-    queryKey: ['native', base, 'embedding-models'],
-    queryFn: ({ signal }) => api.embeddingModels(base, signal),
+    queryFn: ({ signal }) => frequencyApi.getTokenizers(base, signal),
     staleTime: Infinity,
   });
   const captured = {
@@ -158,7 +168,7 @@ function TopicTab({
   };
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
-    mutationFn: (request: api.TopicRequest) => api.runTopicModel(base, tab.id, request),
+    mutationFn: (request: topicApi.TopicRequest) => topicApi.runTopicModel(base, tab.id, request),
     onSettled: () =>
       cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'topic-modeling'] }),
   });
@@ -167,6 +177,7 @@ function TopicTab({
   });
   const busy = run.isPending || Boolean(currentTask);
   const ready =
+    !restored.blocked &&
     captured.inputs.length > 0 &&
     Boolean(captured.tokenizer) &&
     captured.inputs.every(
@@ -179,17 +190,19 @@ function TopicTab({
     matchesAnalysisRequest(
       'topic-modeling',
       captured,
-      result.data?.request ?? tab.analysis?.request,
+      result.data?.request_status ?? tab.analysis?.request_status,
     );
-  const reason = editing
-    ? 'Finish Table editing first.'
-    : busy
-      ? 'This analysis is already running.'
-      : !ready
-        ? 'Choose document inputs and a tokenizer first.'
-        : unchanged
-          ? 'These settings already have saved results. Change the parameters or clear results to run again.'
-          : undefined;
+  const reason = restored.blocked
+    ? 'Start with current defaults before running this analysis.'
+    : editing
+      ? 'Finish Table editing first.'
+      : busy
+        ? 'This analysis is already running.'
+        : !ready
+          ? 'Choose document inputs and a tokenizer first.'
+          : unchanged
+            ? 'These settings already have saved results. Change the parameters or clear results to run again.'
+            : undefined;
   const live = preview.state;
   const temporary = live?.update?.state === 'ready' ? live.update : null;
   const owner = temporary
@@ -200,10 +213,10 @@ function TopicTab({
   const summary = temporary?.summary ?? (live ? null : result.data?.result.payload);
   const modelLimit =
     models.data?.find((model) => model.id === draft.embedding_model)?.token_limit ??
-    (draft.embedding_model.includes('multilingual') ? 128 : 256);
+    draft.max_segment_tokens;
   const knownCounts = new Map(
     (result.data?.result.payload.sources ?? []).map((source) => [
-      api.targetKey(source.input.source),
+      objectsApi.targetKey(source.input.source),
       source.total_count,
     ]),
   );
@@ -222,7 +235,7 @@ function TopicTab({
         </h1>
         <NodeInputsPanel
           {...picker}
-          {...inputRequests}
+
           title="Topic Modelling inputs"
           maxNodes={2}
           inputOrder={names}
@@ -237,7 +250,7 @@ function TopicTab({
             draft.inputs.map((input, i) => [
               input.source.name,
               nodes.find((node) => node.table_name === input.source.name)?.color ??
-                colors[api.targetKey(input.source)] ??
+                colors[objectsApi.targetKey(input.source)] ??
                 VIZ_PALETTE[i] ??
                 GREY,
             ]),
@@ -284,7 +297,8 @@ function TopicTab({
               value={draft.embedding_model}
               onValueChange={(embedding_model) => {
                 const limit =
-                  models.data?.find((model) => model.id === embedding_model)?.token_limit ?? 256;
+                  models.data?.find((model) => model.id === embedding_model)?.token_limit ??
+                  draft.max_segment_tokens;
                 setAdjustment(
                   captured.max_segment_tokens > limit
                     ? `Maximum segment length adjusted to this model's limit of ${String(limit)} tokens.`
@@ -378,7 +392,23 @@ function TopicTab({
             {adjustment}
           </p>
         )}
-        <RequestCompatibilityWarning issues={restored.issues} />
+        <RequestCompatibilityWarning
+          issues={restored.issues}
+          onReset={() =>
+            restored.reset((request) =>
+              update({
+                ...request,
+                ...(modelDefault
+                  ? {
+                      embedding_model: modelDefault.id,
+                      max_segment_tokens: modelDefault.token_limit,
+                    }
+                  : {}),
+              }),
+            )
+          }
+          resetDone={!restored.blocked}
+        />
         <div className="flex flex-wrap gap-2">
           <AnalysisAction
             reason={reason}
@@ -482,7 +512,7 @@ function TopicTab({
             request={
               temporary && live
                 ? live.request
-                : decodeAnalysisRequest('topic-modeling', result.data?.request).request
+                : decodeAnalysisRequest('topic-modeling', result.data?.request_status).request
             }
             settings={settings}
             onSettings={changeSettings}

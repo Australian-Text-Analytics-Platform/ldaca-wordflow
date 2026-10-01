@@ -1,12 +1,12 @@
+import { request } from '@/api/client';
 import type { components } from '@/api/generated/native';
-import { request } from '../project/api';
-import { useEffect, useState } from 'react';
-import { getCurrentWindow } from '@tauri-apps/api/window';
-import { reportProjectError } from '../project/projectErrors';
-import { invoke } from '@tauri-apps/api/core';
 import { DesktopWindowFrame } from '@/components/layout/DesktopWindowFrame';
-import ProjectApp from '../project/ProjectApp';
 import wordflowIcon from '@/wordflow-icon.png';
+import { invoke } from '@tauri-apps/api/core';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { useEffect, useState } from 'react';
+import ProjectApp from '../project/ProjectApp';
+import { reportProjectError } from '../project/projectErrors';
 
 type BackendStatus =
   | { status: 'starting' | 'stopping' | 'stopped' }

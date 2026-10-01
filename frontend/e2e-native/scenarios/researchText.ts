@@ -1,5 +1,9 @@
 import { browser, $, expect } from '@wdio/globals';
-import * as api from '../../src/features/project/api';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import * as quotationApi from '@/features/tools/quotation/api';
+import * as projectApi from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
 import { requireQuotationModel } from '../../scripts/quotation-model.mjs';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import {
@@ -31,7 +35,7 @@ export async function researchTextScenario(base: string, prefix: string) {
         async (studyName) => {
           await $('button=Frequency').click();
           const panel = $('[data-testid="frequency-workspace"]');
-          const tokenizer = (await api.getTokenizers(base)).find(
+          const tokenizer = (await frequencyApi.getTokenizers(base)).find(
             (item) => item.model_id === 'native:plain_words_en',
           );
           if (!tokenizer) throw new Error('Native word tokenizer unavailable');
@@ -49,14 +53,14 @@ export async function researchTextScenario(base: string, prefix: string) {
             await chooseColumn(`${name} tokenizer`, tokenizer.label, panel);
           }
           const id = await runResearchAnalysis(base, 'frequency', panel);
-          const result = await api.getFrequencyResult(base, id);
+          const result = await frequencyApi.getFrequencyResult(base, id);
           if (!result) throw new Error('Completed Frequency analysis has no saved output');
           expect(result.result.payload.corpora).toHaveLength(2);
           for (const [index, documents] of [reference, study].entries()) {
             expect(Number(result.result.payload.corpora[index]?.vocabulary_size)).toBeGreaterThan(
               60,
             );
-            const query = await api.queryFrequency(base, id, {
+            const query = await frequencyApi.queryFrequency(base, id, {
               view: 'corpus',
               corpus_index: index,
               filter: 'policy',
@@ -94,7 +98,7 @@ export async function researchTextScenario(base: string, prefix: string) {
             expect.stringContaining('Displayed results use the previously submitted search'),
           );
           const concId = await runResearchAnalysis(base, 'concordance', concordance);
-          const saved = await api.getConcordanceResult(base, concId);
+          const saved = await concordanceApi.getConcordanceResult(base, concId);
           if (!saved) throw new Error('Completed Concordance analysis has no saved output');
           expect(saved.result.payload.corpora.map((c) => c.match_count)).toEqual([
             policyCount(reference),
@@ -129,7 +133,7 @@ export async function researchTextScenario(base: string, prefix: string) {
           await expect(output.$('th=Source')).toExist();
           await expect(output.$('th=topic')).toExist();
           // A later saved page must remain queryable against the imported original rows.
-          const page = await api.queryConcordance(base, concId, {
+          const page = await concordanceApi.queryConcordance(base, concId, {
             source_index: 0,
             projection: 'documents',
             page: 2,
@@ -161,7 +165,7 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     await $('[aria-label="Quotation result columns"]').$('label=tags').click();
     await browser.keys('Escape');
     const id = await runResearchAnalysis(base, 'quotation', panel);
-    const saved = await api.getQuotationResult(base, id);
+    const saved = await quotationApi.getQuotationResult(base, id);
     if (!saved) throw new Error('Completed Quotation analysis has no saved output');
     expect(saved.result.payload.document_count).toBe(28);
     expect(saved.result.payload.matching_documents).toBe(26);
@@ -187,9 +191,9 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     await dialog.$('button=Select all').click();
     await dialog.$('button=Add').click();
     await dialog.waitForExist({ reverse: true });
-    const rows = await api.querySql(base, [
+    const rows = await projectApi.querySql(base, [
       {
-        sql: `SELECT document_id, tags FROM data.${api.identifier(`${source}_published`)} ORDER BY document_id`,
+        sql: `SELECT document_id, tags FROM data.${ objectsApi.identifier(`${source}_published`)} ORDER BY document_id`,
       },
     ]);
     expect(rows.numRows).toBe(26);

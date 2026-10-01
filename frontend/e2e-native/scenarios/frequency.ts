@@ -5,7 +5,12 @@ import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { expectAppError } from '../../e2e-browser/diagnostics';
 import { browser, $, $$, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
-import * as api from '../../src/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import * as projectApi from '@/features/project/api';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as objectsApi from '@/features/project/objects';
+import * as filesApi from '@/features/project/filesApi';
 
 declare global {
   interface Window {
@@ -112,7 +117,7 @@ async function assertNoHorizontalOverflow() {
 }
 
 async function selectTab(base: string, id: string) {
-  const tabs = await api.listTabs(base, undefined, 'frequency');
+  const tabs = await analysesApi.listTabs(base, undefined, 'frequency');
   const index = tabs.findIndex((tab) => tab.id === id);
   const tab = tablist().$$('[role="tab"]')[index];
   if (!tab) throw new Error(`Analysis tab ${id} is missing`);
@@ -124,7 +129,7 @@ async function selectTab(base: string, id: string) {
 }
 
 async function createTab(base: string, name: string) {
-  const tabs = await api.listTabs(base, undefined, 'frequency');
+  const tabs = await analysesApi.listTabs(base, undefined, 'frequency');
   const existing = new Set(tabs.map((tab) => tab.id));
   // Use the initial empty tab; subsequent named analyses use the ordinary + action.
   let created =
@@ -134,12 +139,12 @@ async function createTab(base: string, name: string) {
   if (!created) {
     await tablist().$('button[aria-label="New tab"]').click();
     await browser.waitUntil(async () => {
-      created = (await api.listTabs(base, undefined, 'frequency')).find((tab) => !existing.has(tab.id));
+      created = (await analysesApi.listTabs(base, undefined, 'frequency')).find((tab) => !existing.has(tab.id));
       return Boolean(created);
     });
   }
   if (!created) throw new Error('New Frequency analysis was not saved');
-  const tab = await api.updateTab(base, created.id, { name });
+  const tab = await analysesApi.updateTab(base, created.id, { name });
   await selectTab(base, tab.id);
   return tab;
 }
@@ -155,7 +160,7 @@ async function addInput(base: string, name: string, chooseTokenizer = true) {
   const tokenizer = $(`[aria-label=${JSON.stringify(`${name} tokenizer`)}]`);
   await tokenizer.waitForEnabled();
   if (chooseTokenizer) {
-    const plain = (await api.getTokenizers(base)).find(
+    const plain = (await frequencyApi.getTokenizers(base)).find(
       (model) => model.model_id === 'native:plain_words_en',
     );
     if (!plain) throw new Error('Native word tokenizer is unavailable');
@@ -166,14 +171,14 @@ async function addInput(base: string, name: string, chooseTokenizer = true) {
     await expect(tokenizer).toHaveText(plain.label);
     // Explicit choices are durable before Run, including across tool changes.
     await browser.waitUntil(async () => {
-      const node = (await api.graph(base)).nodes.find((entry) => entry.table_name === name);
+      const node = (await projectApi.graph(base)).nodes.find((entry) => entry.table_name === name);
       return Object.values(node?.tokenizer_models ?? {}).includes(plain.model_id);
     }, { timeoutMsg: 'Tokenizer preference was not saved before Run' });
   }
 }
 
-async function run(base: string, tab: api.Tab, action = 'Run') {
-  const before = outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find(
+async function run(base: string, tab: analysesApi.Tab, action = 'Run') {
+  const before = outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find(
     (entry) => entry.id === tab.id,
   ));
   const button = workspace().$(`button=${action}`);
@@ -182,7 +187,7 @@ async function run(base: string, tab: api.Tab, action = 'Run') {
   let id: string | null | undefined;
   await browser.waitUntil(
     async () => {
-      id = outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find(
+      id = outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find(
         (entry) => entry.id === tab.id,
       ));
       return Boolean(id && id !== before);
@@ -192,12 +197,12 @@ async function run(base: string, tab: api.Tab, action = 'Run') {
   if (!id) throw new Error('Frequency result ID is missing');
   await showLoadedResults();
   await browser.waitUntil(async () =>
-    (await api.getTasks(base)).tasks.some(
+    (await tasksApi.getTasks(base)).tasks.some(
       (task) => task.tab_id === tab.id && task.state === 'succeeded',
     ),
   );
   await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
-  const saved = await api.getFrequencyResult(base, id);
+  const saved = await frequencyApi.getFrequencyResult(base, id);
   if (!saved) throw new Error('Completed Frequency analysis has no saved output');
   return saved;
 }
@@ -208,17 +213,17 @@ async function fixture(base: string, prefix: string) {
     study: `${prefix}_study`,
     backing: `${prefix}_source`,
   };
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
       {
-        sql: `CREATE TABLE ${api.objectSql(names.backing)} AS SELECT * FROM (VALUES ('Apple apple banana.'), ('Banana carrot'), (NULL), ('')) t(text)`,
+        sql: `CREATE TABLE ${ objectsApi.objectSql(names.backing)} AS SELECT * FROM (VALUES ('Apple apple banana.'), ('Banana carrot'), (NULL), ('')) t(text)`,
       },
       {
-        sql: `CREATE VIEW ${api.objectSql(names.reference)} AS SELECT text FROM ${api.objectSql(names.backing)}`,
+        sql: `CREATE VIEW ${ objectsApi.objectSql(names.reference)} AS SELECT text FROM ${ objectsApi.objectSql(names.backing)}`,
       },
       {
-        sql: `CREATE TABLE ${api.objectSql(names.study)} AS SELECT * FROM (VALUES ('banana carrot carrot'), ('durian apple')) t(text)`,
+        sql: `CREATE TABLE ${ objectsApi.objectSql(names.study)} AS SELECT * FROM (VALUES ('banana carrot carrot'), ('durian apple')) t(text)`,
       },
       {
         sql: 'INSERT INTO wordflow.nodes(table_name,document_column) VALUES (?,?), (?,?)',
@@ -236,23 +241,23 @@ async function cleanup(base: string, prefix: string) {
   await setAnalysisPaneSize('normal');
   await $('button=Data Loader').click();
   await $('h1=Data Loader').waitForDisplayed();
-  const owned = (await api.listTabs(base, undefined, 'frequency')).filter((tab) => tab.name.startsWith(prefix));
-  for (const tab of owned) await api.deleteTab(base, tab.id);
+  const owned = (await analysesApi.listTabs(base, undefined, 'frequency')).filter((tab) => tab.name.startsWith(prefix));
+  for (const tab of owned) await analysesApi.deleteTab(base, tab.id);
   await browser.waitUntil(async () =>
-    (await api.getTasks(base)).tasks.every(
+    (await tasksApi.getTasks(base)).tasks.every(
       (task) => !owned.some((tab) => tab.id === task.tab_id) || task.finished_at !== null,
     ),
   );
-  await api.executeSql(
+  await projectApi.executeSql(
     base,
     [
       {
         sql: 'DELETE FROM wordflow.nodes WHERE table_name IN (?,?)',
         parameters: [`${prefix}_reference`, `${prefix}_study`],
       },
-      { sql: `DROP VIEW IF EXISTS ${api.objectSql(`${prefix}_reference`)}` },
-      { sql: `DROP TABLE IF EXISTS ${api.objectSql(`${prefix}_source`)}` },
-      { sql: `DROP TABLE IF EXISTS ${api.objectSql(`${prefix}_study`)}` },
+      { sql: `DROP VIEW IF EXISTS ${ objectsApi.objectSql(`${prefix}_reference`)}` },
+      { sql: `DROP TABLE IF EXISTS ${ objectsApi.objectSql(`${prefix}_source`)}` },
+      { sql: `DROP TABLE IF EXISTS ${ objectsApi.objectSql(`${prefix}_study`)}` },
     ],
     { all: true },
   );
@@ -260,13 +265,13 @@ async function cleanup(base: string, prefix: string) {
 
 /** Shared browser/native UI scenario; native dialogs remain a separate OS check. */
 export async function frequencyInitialTabScenario(base: string) {
-  const taskIds = (await api.getTasks(base)).tasks.map((task) => task.id);
-  expect(await api.listTabs(base, undefined, 'frequency')).toHaveLength(0);
+  const taskIds = (await tasksApi.getTasks(base)).tasks.map((task) => task.id);
+  expect(await analysesApi.listTabs(base, undefined, 'frequency')).toHaveLength(0);
   const tools = $('[data-sidebar-section="tools"]');
   await expect(tools.$('button=Tools')).toBeDisplayed();
   await expect(tools.$('button[aria-label="Edit visible tools"]')).toBeDisplayed();
   await openFrequency();
-  const [initial] = await api.listTabs(base, undefined, 'frequency');
+  const [initial] = await analysesApi.listTabs(base, undefined, 'frequency');
   expect(initial?.name).toBe('FR-1');
   const location = $('nav[aria-label="Current location"]');
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-1');
@@ -276,14 +281,14 @@ export async function frequencyInitialTabScenario(base: string) {
   await $('button=Data Loader').click();
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Data Loader');
   await openFrequency();
-  expect((await api.listTabs(base, undefined, 'frequency')).map((tab) => tab.id)).toEqual([initial?.id]);
+  expect((await analysesApi.listTabs(base, undefined, 'frequency')).map((tab) => tab.id)).toEqual([initial?.id]);
   await browser.refresh();
   await openFrequency();
-  expect((await api.listTabs(base, undefined, 'frequency')).map((tab) => tab.id)).toEqual([initial?.id]);
+  expect((await analysesApi.listTabs(base, undefined, 'frequency')).map((tab) => tab.id)).toEqual([initial?.id]);
   await tablist().$('button[aria-label="New tab"]').click();
-  await browser.waitUntil(async () => (await api.listTabs(base, undefined, 'frequency')).length === 2);
+  await browser.waitUntil(async () => (await analysesApi.listTabs(base, undefined, 'frequency')).length === 2);
   await expect(tablist().$$('[role="tab"]')).toBeElementsArrayOfSize(2);
-  expect((await api.listTabs(base, undefined, 'frequency')).map((tab) => tab.name)).toEqual([
+  expect((await analysesApi.listTabs(base, undefined, 'frequency')).map((tab) => tab.name)).toEqual([
     'FR-1',
     'FR-2',
   ]);
@@ -293,7 +298,7 @@ export async function frequencyInitialTabScenario(base: string) {
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-1');
   // The embedded driver emits mouse events, not the tab strip's pointer events.
   // Verify persisted names through the same API/reopen path as createTab above.
-  await api.updateTab(base, initial.id, { name: 'Corpus comparison' });
+  await analysesApi.updateTab(base, initial.id, { name: 'Corpus comparison' });
   await browser.refresh();
   await openFrequency();
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ Corpus comparison');
@@ -303,27 +308,27 @@ export async function frequencyInitialTabScenario(base: string) {
   // Closing the final tab keeps the empty state until another explicit visit.
   await tablist().$('button[aria-label="Close tab"]').click();
   await expect(tablist().$$('[role="tab"]')).toBeElementsArrayOfSize(1);
-  const [last] = await api.listTabs(base, undefined, 'frequency');
+  const [last] = await analysesApi.listTabs(base, undefined, 'frequency');
   await tablist().$('button[aria-label="Close tab"]').click();
   await expect(workspace().$('button=New Frequency analysis')).toBeDisplayed();
-  expect(await api.listTabs(base, undefined, 'frequency')).toHaveLength(0);
+  expect(await analysesApi.listTabs(base, undefined, 'frequency')).toHaveLength(0);
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency');
   await $('button=Data Loader').click();
   await openFrequency();
   await browser.waitUntil(async () => {
-    const tabs = await api.listTabs(base, undefined, 'frequency');
+    const tabs = await analysesApi.listTabs(base, undefined, 'frequency');
     return tabs.length === 1 && tabs[0]?.id !== last?.id;
   });
   await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
-  expect((await api.getTasks(base)).tasks.map((task) => task.id)).toEqual(taskIds);
+  expect((await tasksApi.getTasks(base)).tasks.map((task) => task.id)).toEqual(taskIds);
 }
 
 export async function frequencyConcordanceScenario(base: string, prefix: string) {
   const names = await fixture(base, prefix);
   const before = new Set(
-    (await api.listTabs(base, undefined, 'concordance')).map((tab) => tab.id),
+    (await analysesApi.listTabs(base, undefined, 'concordance')).map((tab) => tab.id),
   );
-  let created: api.Tab | undefined;
+  let created: analysesApi.Tab | undefined;
   try {
     const tab = await createTab(base, `${prefix} handoff`);
     await addInput(base, names.reference);
@@ -348,7 +353,7 @@ export async function frequencyConcordanceScenario(base: string, prefix: string)
     await expect(studyPreview.$('h3')).toHaveText(names.study);
     await expect(referencePreview).toHaveText(expect.stringContaining('2 matches'));
     await expect(studyPreview).toHaveText(expect.stringContaining('1 matches'));
-    const tabs = await api.listTabs(base, undefined, 'concordance');
+    const tabs = await analysesApi.listTabs(base, undefined, 'concordance');
     created = tabs.find((item) => !before.has(item.id));
     expect(tabs.filter((item) => !before.has(item.id))).toHaveLength(1);
     expect(outputAnalysisId(created)).toBeNull();
@@ -369,19 +374,19 @@ export async function frequencyConcordanceScenario(base: string, prefix: string)
     await browser.keys(Key.ArrowLeft);
     await expect(layout.$('[role="tab"]=Separated')).toHaveAttribute('aria-selected', 'true');
     await expect(previews).toBeElementsArrayOfSize(2);
-    expect((await api.listTabs(base, undefined, 'concordance')).find((item) => item.id === created?.id)?.settings).toEqual(created?.settings);
+    expect((await analysesApi.listTabs(base, undefined, 'concordance')).find((item) => item.id === created?.id)?.settings).toEqual(created?.settings);
     await browser.refresh();
     await $('button=Concordance').waitForEnabled();
     await $('button=Concordance').click();
     await expect(concordance.$('input[aria-label="Concordance query"]')).toHaveValue('');
     await expect(concordanceResults).not.toExist();
     expect(
-      outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find((item) => item.id === tab.id)),
+      outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find((item) => item.id === tab.id)),
     ).toBe(saved.id);
     await expect($('[data-sonner-toast]')).not.toExist();
   } finally {
     await $('button=Data Loader').click();
-    if (created) await api.deleteTab(base, created.id);
+    if (created) await analysesApi.deleteTab(base, created.id);
     await cleanup(base, prefix);
   }
 }
@@ -393,7 +398,7 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     await addInput(base, names.reference);
     const saved = await run(base, tab);
     await $('button=Data Loader').click();
-    await api.executeSql(base, [{
+    await projectApi.executeSql(base, [{
       sql: 'UPDATE wordflow.analyses SET result_version=999 WHERE id=?',
       parameters: [saved.id],
     }], { all: true });
@@ -401,20 +406,20 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     await openFrequency();
     await expect(workspace().$('button=Rerun')).toHaveAttribute('aria-disabled', 'false');
     // Restoring readability and retrying must neither clear output nor submit a task.
-    await api.executeSql(base, [{
+    await projectApi.executeSql(base, [{
       sql: 'UPDATE wordflow.analyses SET result_version=? WHERE id=?',
       parameters: [saved.result.version, saved.id],
     }], { resources: [] });
     await workspace().$('button=Retry').click();
     await showLoadedResults();
     await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
-    expect((await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(1);
+    expect((await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(1);
 
     await $('button=Data Loader').click();
     const artifact = saved.result.payload.corpora[0]?.artifact_id;
     if (!artifact) throw new Error('Missing Frequency artifact');
-    await api.executeSql(base, [{
-      sql: `DROP TABLE ${api.objectSql({ schema: 'wordflow', name: `result_${artifact.replaceAll('-', '')}` })}`,
+    await projectApi.executeSql(base, [{
+      sql: `DROP TABLE ${ objectsApi.objectSql({ schema: 'wordflow', name: `result_${artifact.replaceAll('-', '')}` })}`,
     }], { all: true });
     await openFrequency();
     await expect(workspace().$('button=Rerun')).toHaveAttribute('aria-disabled', 'false');
@@ -423,13 +428,13 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     const rebuilt = await run(base, tab, 'Rerun');
     expect(rebuilt.id).not.toBe(saved.id);
     expect(rebuilt.request).toEqual(saved.request);
-    expect((await api.queryFrequency(base, rebuilt.id, { view: 'corpus' })).totalRows).toBe(3);
-    const leftovers = await api.querySql(base, [{
+    expect((await frequencyApi.queryFrequency(base, rebuilt.id, { view: 'corpus' })).totalRows).toBe(3);
+    const leftovers = await projectApi.querySql(base, [{
       sql: 'SELECT count(*) AS count FROM wordflow.artifacts WHERE analysis_id=?',
       parameters: [saved.id],
     }]);
     expect(String(leftovers.getChild('count')?.get(0))).toBe('0');
-    expect((await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(2);
+    expect((await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(2);
   } finally {
     await cleanup(base, prefix);
   }
@@ -438,11 +443,11 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
 export async function frequencyPersistenceScenario(base: string, prefix: string) {
   const names = await fixture(base, prefix);
   try {
-    const graphBefore = (await api.graph(base)).nodes.map((node) => node.table_name).sort();
+    const graphBefore = (await projectApi.graph(base)).nodes.map((node) => node.table_name).sort();
     const tab = await createTab(base, `${prefix} saved result`);
     await addInput(base, names.reference);
     const result = await run(base, tab);
-    const { table, totalRows } = await api.queryFrequency(base, result.id, { view: 'corpus' });
+    const { table, totalRows } = await frequencyApi.queryFrequency(base, result.id, { view: 'corpus' });
     expect(totalRows).toBe(3);
     expect(
       table
@@ -468,14 +473,14 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
     await browser.keys(Key.Backspace);
     await expect(filter).toHaveValue('');
     await expect(list).toHaveText(expect.stringContaining('banana'));
-    expect((await api.graph(base)).nodes.map((node) => node.table_name).sort()).toEqual(
+    expect((await projectApi.graph(base)).nodes.map((node) => node.table_name).sort()).toEqual(
       graphBefore,
     );
     expect(
-      (await api.dependencyGraph(base)).nodes.every((node) => node.object.schema !== 'wordflow'),
+      (await projectApi.dependencyGraph(base)).nodes.every((node) => node.object.schema !== 'wordflow'),
     ).toBe(true);
     await expect($('[data-testid="project-data-overlay"]')).not.toExist();
-    const frequencyTasks = (await api.getTasks(base)).tasks.filter(
+    const frequencyTasks = (await tasksApi.getTasks(base)).tasks.filter(
       (task) => task.tab_id === tab.id,
     );
     expect(frequencyTasks).toHaveLength(1);
@@ -483,7 +488,7 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
 
     // Limits constrain display, not complete exports.
     const exported = await (
-      await api.downloadFrequency(base, result.id, { view: 'corpus', limit: 1 }, 'csv')
+      await frequencyApi.downloadFrequency(base, result.id, { view: 'corpus', limit: 1 }, 'csv')
     ).text();
     expect(exported.trim().split(/\r?\n/)).toEqual([
       '"token","frequency"',
@@ -497,7 +502,7 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
     await openFrequency();
     await expect(filter).toHaveValue('a*');
     expect(
-      (await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)?.settings,
+      (await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)?.settings,
     ).not.toHaveProperty('filter');
     await browser.refresh();
     await openFrequency();
@@ -509,15 +514,15 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
       results().$(`[aria-label=${JSON.stringify(`${names.reference} ranked frequencies`)}]`),
     ).toHaveText(expect.stringContaining('apple'));
     expect(
-      outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)),
+      outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)),
     ).toBe(result.id);
     expect(
-      (await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
+      (await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
     ).toHaveLength(1);
 
     // A valid stored View can become unavailable; its prior analysis stays self-contained.
     expectAppError(new RegExp(names.backing));
-    await api.executeSql(base, [{ sql: `DROP TABLE ${api.objectSql(names.backing)}` }], {
+    await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.objectSql(names.backing)}` }], {
       all: true,
     });
     await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
@@ -525,7 +530,7 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
     await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'false');
     await workspace().$('button=Run').click();
     await browser.waitUntil(async () =>
-      (await api.getTasks(base)).tasks.some(
+      (await tasksApi.getTasks(base)).tasks.some(
         (task) => task.tab_id === tab.id && task.state === 'failed',
       ),
     );
@@ -533,7 +538,7 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
     expect(await $$('[data-sonner-toast]').map((toast) => toast.getText())).toHaveLength(1);
     await expect(workspace().$('button=Run')).toBeEnabled();
     await expect(results()).not.toExist();
-    const failedTab = (await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id);
+    const failedTab = (await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id);
     expect(outputAnalysisId(failedTab)).toBeNull();
     expect(failedTab?.analysis?.request).toEqual(result.request);
   } finally {
@@ -545,11 +550,11 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
   const names = await fixture(base, prefix);
   try {
     // Juxtorpus deliberately excludes tokens with ten or fewer combined occurrences.
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
-        { sql: `UPDATE ${api.objectSql(names.backing)} SET text=repeat(text || ' ',12)` },
-        { sql: `UPDATE ${api.objectSql(names.study)} SET text=repeat(text || ' ',12)` },
+        { sql: `UPDATE ${ objectsApi.objectSql(names.backing)} SET text=repeat(text || ' ',12)` },
+        { sql: `UPDATE ${ objectsApi.objectSql(names.study)} SET text=repeat(text || ' ',12)` },
       ],
       { all: true },
     );
@@ -564,7 +569,7 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
     );
     const comparison = await run(base, first);
     expect(comparison.result.version).toBe(1);
-    const artifacts = await api.querySql(base, [
+    const artifacts = await projectApi.querySql(base, [
       {
         sql: `SELECT a.name,t.table_type FROM wordflow.artifacts a
             JOIN information_schema.tables t ON t.table_schema='wordflow'
@@ -581,7 +586,7 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
       ['corpus-1', 'BASE TABLE'],
     ]);
     await results().$('button=Ranked lists').click();
-    const page = await api.queryFrequency(base, comparison.id, {
+    const page = await frequencyApi.queryFrequency(base, comparison.id, {
       view: 'comparison',
       sort: 'token',
       descending: false,
@@ -614,7 +619,7 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
       );
     }
     const csv = await (
-      await api.downloadFrequency(base, comparison.id, { view: 'comparison' }, 'csv')
+      await frequencyApi.downloadFrequency(base, comparison.id, { view: 'comparison' }, 'csv')
     ).text();
     expect(csv).toContain(`Reference count (${names.reference})`);
     expect(csv).toContain(`Study count (${names.study})`);
@@ -629,7 +634,7 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
     await expect(results().$('[aria-label="Frequency comparison"]')).toBeDisplayed();
     await selectTab(base, second.id);
     await expect(results().$('[aria-label="Frequency comparison"]')).not.toExist();
-    const current = await api.listTabs(base, undefined, 'frequency');
+    const current = await analysesApi.listTabs(base, undefined, 'frequency');
     expect(outputAnalysisId(current.find((tab) => tab.id === first.id))).toBe(comparison.id);
     expect(outputAnalysisId(current.find((tab) => tab.id === second.id))).toBe(independent.id);
     await selectTab(base, first.id);
@@ -675,18 +680,18 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
 export async function frequencyLocalLanguageScenario(base: string, prefix: string) {
   const names = await fixture(base, prefix);
   try {
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
-        { sql: `DELETE FROM ${api.objectSql(names.backing)}` },
+        { sql: `DELETE FROM ${ objectsApi.objectSql(names.backing)}` },
         {
-          sql: `INSERT INTO ${api.objectSql(names.backing)} VALUES ('This document is written in English. The birds are singing in the garden and the children are playing together.')`,
+          sql: `INSERT INTO ${ objectsApi.objectSql(names.backing)} VALUES ('This document is written in English. The birds are singing in the garden and the children are playing together.')`,
         },
       ],
       { all: true },
     );
     const tab = await createTab(base, `${prefix} language`);
-    const before = (await api.getTasks(base)).tasks.length;
+    const before = (await tasksApi.getTasks(base)).tasks.length;
     // WKWebView custom-protocol fetches are not all present in Resource Timing.
     // Observe the real requests without changing responses or suppressing network work.
     await browser.execute(() => {
@@ -713,7 +718,7 @@ export async function frequencyLocalLanguageScenario(base: string, prefix: strin
       };
     });
     await addInput(base, names.reference, false);
-    const plain = (await api.getTokenizers(base)).find(
+    const plain = (await frequencyApi.getTokenizers(base)).find(
       (model) => model.model_id === 'native:plain_words_en',
     );
     if (!plain) throw new Error('Native word tokenizer is unavailable');
@@ -742,9 +747,9 @@ export async function frequencyLocalLanguageScenario(base: string, prefix: strin
       expect(observed.resources.some((name) => name.endsWith('language-detector.tflite'))).toBe(
         true,
       );
-    expect((await api.getTasks(base)).tasks).toHaveLength(before);
+    expect((await tasksApi.getTasks(base)).tasks).toHaveLength(before);
     expect(
-      outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)),
+      outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)),
     ).toBeNull();
   } finally {
     await browser.execute(() => {
@@ -758,16 +763,16 @@ export async function frequencyLocalLanguageScenario(base: string, prefix: strin
 export async function frequencyContinuousListScenario(base: string, prefix: string) {
   const names = await fixture(base, prefix);
   try {
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
-        { sql: `DELETE FROM ${api.objectSql(names.backing)}` },
+        { sql: `DELETE FROM ${ objectsApi.objectSql(names.backing)}` },
         {
-          sql: `INSERT INTO ${api.objectSql(names.backing)} SELECT repeat('word' || chr((97 + i // 26)::INTEGER) || chr((97 + i % 26)::INTEGER) || ' ', 600 - i) FROM range(600) t(i)`,
+          sql: `INSERT INTO ${ objectsApi.objectSql(names.backing)} SELECT repeat('word' || chr((97 + i // 26)::INTEGER) || chr((97 + i % 26)::INTEGER) || ' ', 600 - i) FROM range(600) t(i)`,
         },
-        { sql: `DELETE FROM ${api.objectSql(names.study)}` },
+        { sql: `DELETE FROM ${ objectsApi.objectSql(names.study)}` },
         {
-          sql: `INSERT INTO ${api.objectSql(names.study)} SELECT text FROM ${api.objectSql(names.backing)} LIMIT 500`,
+          sql: `INSERT INTO ${ objectsApi.objectSql(names.study)} SELECT text FROM ${ objectsApi.objectSql(names.backing)} LIMIT 500`,
         },
       ],
       { all: true },
@@ -835,11 +840,11 @@ export async function frequencyContinuousListScenario(base: string, prefix: stri
       expect.stringContaining('wordaa'),
     );
     const csv = await (
-      await api.downloadFrequency(base, saved.id, { view: 'corpus', corpus_index: 0 }, 'csv')
+      await frequencyApi.downloadFrequency(base, saved.id, { view: 'corpus', corpus_index: 0 }, 'csv')
     ).text();
     expect(csv.trim().split(/\r?\n/)).toHaveLength(601);
     expect(
-      (await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
+      (await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
     ).toHaveLength(1);
   } finally {
     await cleanup(base, prefix);
@@ -877,19 +882,19 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
   };
 
   try {
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
         {
-          sql: `CREATE TABLE ${api.objectSql(multi.source)} (word VARCHAR, note VARCHAR DEFAULT 'new')`,
+          sql: `CREATE TABLE ${ objectsApi.objectSql(multi.source)} (word VARCHAR, note VARCHAR DEFAULT 'new')`,
         },
         {
-          sql: `INSERT INTO ${api.objectSql(multi.source)} VALUES ('banana','remove'),(' Apple ','keep'),('APPLE','also keep'),(NULL,'null'),(' ','blank')`,
+          sql: `INSERT INTO ${ objectsApi.objectSql(multi.source)} VALUES ('banana','remove'),(' Apple ','keep'),('APPLE','also keep'),(NULL,'null'),(' ','blank')`,
         },
-        { sql: `CREATE TABLE ${api.objectSql(numeric.source)} (code INTEGER NOT NULL)` },
-        { sql: `INSERT INTO ${api.objectSql(numeric.source)} VALUES (123),(456)` },
+        { sql: `CREATE TABLE ${ objectsApi.objectSql(numeric.source)} (code INTEGER NOT NULL)` },
+        { sql: `INSERT INTO ${ objectsApi.objectSql(numeric.source)} VALUES (123),(456)` },
         {
-          sql: `CREATE VIEW ${api.objectSql(view.source)} AS SELECT code FROM ${api.objectSql(numeric.source)} ORDER BY code DESC`,
+          sql: `CREATE VIEW ${ objectsApi.objectSql(view.source)} AS SELECT code FROM ${ objectsApi.objectSql(numeric.source)} ORDER BY code DESC`,
         },
         {
           sql: 'INSERT INTO wordflow.nodes(table_name) VALUES (?),(?),(?)',
@@ -901,8 +906,8 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     expect(await readStopwords(base, multi)).toEqual(['banana', 'apple']);
     await saveStopwords(base, multi, ['apple', 'banana'], ['APPLE', 'carrot']);
     expect(await readStopwords(base, multi)).toEqual(['apple', 'carrot']);
-    const preserved = await api.querySql(base, [
-      { sql: `SELECT word,note FROM ${api.objectSql(multi.source)} ORDER BY note` },
+    const preserved = await projectApi.querySql(base, [
+      { sql: `SELECT word,note FROM ${ objectsApi.objectSql(multi.source)} ORDER BY note` },
     ]);
     expect(preserved.toArray().map((row: Record<string, unknown>) => [row.word, row.note])).toEqual(
       [
@@ -918,11 +923,11 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       saveStopwords(base, numeric, ['123', '456'], ['456', 'not a number']),
     ).rejects.toThrow();
     expect(await readStopwords(base, numeric)).toEqual(['123', '456']);
-    await api.executeSql(
+    await projectApi.executeSql(
       base,
       [
         {
-          sql: `ALTER TABLE ${api.objectSql(numeric.source)} ADD COLUMN note VARCHAR DEFAULT 'keep'`,
+          sql: `ALTER TABLE ${ objectsApi.objectSql(numeric.source)} ADD COLUMN note VARCHAR DEFAULT 'keep'`,
         },
       ],
       { all: true },
@@ -931,11 +936,11 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     expect(await readStopwords(base, numeric)).toEqual(['123', '456']);
 
     const copied = await writableStopwords(base, view, [source(names.reference, 'text')]);
-    expect((await api.nodeSchema(base, copied.source))[0]?.name).toBe('code');
+    expect((await projectApi.nodeSchema(base, copied.source))[0]?.name).toBe('code');
     await saveStopwords(base, copied, ['123', '456'], ['456', '789']);
     expect(await readStopwords(base, view)).toEqual(['456', '123']);
     expect(await readStopwords(base, copied)).toEqual(['456', '789']);
-    const edges = await api.graph(base);
+    const edges = await projectApi.graph(base);
     expect(
       edges.edges
         .filter((edge) => edge.target_name === copied.source.name)
@@ -954,11 +959,11 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     const control = () => $('[aria-label="Stopwords"]');
     await control().$('[role="switch"]').click();
     await captureState('empty');
-    const expectedCreatedName = suggestDataBlockName([names.reference], 'sw', (await api.graph(base)).nodes.map((node) => node.table_name));
+    const expectedCreatedName = suggestDataBlockName([names.reference], 'sw', (await projectApi.graph(base)).nodes.map((node) => node.table_name));
     await control().$('button=Create empty').click();
     await expect(control()).toHaveText(expect.stringContaining('0 words'));
     const selection = async () =>
-      (await api.listTabs(base, undefined, 'frequency')).find((t) => t.id === tab.id)?.settings
+      (await analysesApi.listTabs(base, undefined, 'frequency')).find((t) => t.id === tab.id)?.settings
         .stopwordSource as ReturnType<typeof source>;
     const created = await selection();
     expect(created.source.name).toBe(expectedCreatedName);
@@ -992,8 +997,8 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     );
     try {
       const untouched = `${prefix}_unrelated`;
-      await api.executeSql(base, [{ sql: `CREATE TABLE ${api.objectSql(untouched)}(n INTEGER)` }], {
-        objects: [api.objectRef(untouched)],
+      await projectApi.executeSql(base, [{ sql: `CREATE TABLE ${ objectsApi.objectSql(untouched)}(n INTEGER)` }], {
+        objects: [ objectsApi.objectRef(untouched)],
         resources: ['graph'],
       });
       await browser.waitUntil(
@@ -1004,8 +1009,8 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       await browser.execute(() => {
         if (window.__frequencyRefreshProbe) window.__frequencyRefreshProbe.requests = 0;
       });
-      await api.executeSql(base, [{ sql: `INSERT INTO ${api.objectSql(untouched)} VALUES (1)` }], {
-        objects: [api.objectRef(untouched)],
+      await projectApi.executeSql(base, [{ sql: `INSERT INTO ${ objectsApi.objectSql(untouched)} VALUES (1)` }], {
+        objects: [ objectsApi.objectRef(untouched)],
       });
       await browser.waitUntil(
         async () => (await browser.execute(() => window.__frequencyRefreshProbe?.events ?? 0)) > 1,
@@ -1019,8 +1024,8 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       );
       await saveStopwords(base, created, ['apple'], []);
       await expect(list()).toHaveText(expect.stringContaining('apple'));
-      await api.executeSql(base, [{ sql: `DROP TABLE ${api.objectSql(untouched)}` }], {
-        objects: [api.objectRef(untouched)],
+      await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.objectSql(untouched)}` }], {
+        objects: [ objectsApi.objectRef(untouched)],
         resources: ['graph'],
       });
     } finally {
@@ -1130,15 +1135,15 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await browser.waitUntil(async () => JSON.stringify(await readStopwords(base, created)) === JSON.stringify(['apple', 'banana']));
     await expect(dialog().$$('button[aria-label^="Remove stopword "]')[0]).toHaveAttribute('aria-label', 'Remove stopword apple');
     // A direct SQL edit triggers the same data refresh as the Table editor and shared analyses.
-    await api.runSqlScript(
+    await projectApi.runSqlScript(
       base,
-      `DELETE FROM ${api.objectSql(created.source)} WHERE word='Apple'`,
+      `DELETE FROM ${ objectsApi.objectSql(created.source)} WHERE word='Apple'`,
       'execute',
       'Edit stopword list',
     );
     await expect(list()).toHaveText(expect.stringContaining('apple'));
     const csv = await (
-      await api.downloadFrequency(
+      await frequencyApi.downloadFrequency(
         base,
         saved.id,
         { view: 'corpus', stopword_source: created },
@@ -1148,15 +1153,15 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     expect(csv).toContain('apple');
     expect(csv).not.toContain('banana');
     expect(
-      (await api.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
+      (await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id),
     ).toHaveLength(1);
-    expect((await api.getFrequencyResult(base, saved.id))?.result).toEqual(saved.result);
+    expect((await frequencyApi.getFrequencyResult(base, saved.id))?.result).toEqual(saved.result);
 
-    const other = await api.createTab(base, 'frequency', `${prefix} another analysis`);
-    await api.updateTab(base, other.id, {
+    const other = await analysesApi.createTab(base, 'frequency', `${prefix} another analysis`);
+    await analysesApi.updateTab(base, other.id, {
       settings: { stopwordSource: created, stopwordsEnabled: true },
     });
-    await api.runFrequency(base, other.id, decodeAnalysisRequest('frequency', saved.request).request);
+    await frequencyApi.runFrequency(base, other.id, decodeAnalysisRequest('frequency', saved.request_status, saved.request).request);
     await browser.refresh();
     await openFrequency();
     await selectTab(base, other.id);
@@ -1164,9 +1169,9 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await results().$('button=Ranked lists').click();
     await expect(list()).toHaveText(expect.stringContaining('apple'));
     await expect(list()).not.toHaveText(expect.stringContaining('banana'));
-    await api.runSqlScript(
+    await projectApi.runSqlScript(
       base,
-      `INSERT INTO ${api.objectSql(created.source)} VALUES ('apple')`,
+      `INSERT INTO ${ objectsApi.objectSql(created.source)} VALUES ('apple')`,
       'execute',
       'Update shared list',
     );
@@ -1175,9 +1180,9 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await showLoadedResults();
     await results().$('button=Ranked lists').click();
     await expect(list()).not.toHaveText(expect.stringContaining('apple'));
-    await api.runSqlScript(
+    await projectApi.runSqlScript(
       base,
-      `DELETE FROM ${api.objectSql(created.source)} WHERE word='apple'`,
+      `DELETE FROM ${ objectsApi.objectSql(created.source)} WHERE word='apple'`,
       'execute',
       'Update shared list',
     );
@@ -1227,7 +1232,7 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     // Preset confirmation now writes immediately; verify it before resetting this fixture.
     const presetWords = await readStopwords(base, created);
     expect(presetWords.length).toBeGreaterThan(10);
-    await api.saveStopwords(base, created, presetWords, ['banana']);
+    await filesApi.saveStopwords(base, created, presetWords, ['banana']);
     await expect(control()).toHaveText(expect.stringContaining('1 word'));
     // Editing words copies the View column and leaves the View unchanged.
     await selectTab(base, other.id);
@@ -1247,24 +1252,24 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     };
     await selectList(view.source.name, 'code');
     await expect(control()).toHaveText(expect.stringContaining('Read-only list.'));
-    const expectedCopyName = suggestDataBlockName([view.source.name], 'sw', (await api.graph(base)).nodes.map((node) => node.table_name));
+    const expectedCopyName = suggestDataBlockName([view.source.name], 'sw', (await projectApi.graph(base)).nodes.map((node) => node.table_name));
     await control().$('button=Create editable copy').click();
     await $('input[aria-label="Add stopword"]').waitForDisplayed();
     await expect($('button[aria-label="Remove stopword 123"]')).toExist();
     await expect($('button[aria-label="Remove stopword 456"]')).toExist();
     await $('[role="dialog"]').waitForExist({ reverse: true });
-    const copySelection = (await api.listTabs(base, undefined, 'frequency')).find((t) => t.id === other.id)
+    const copySelection = (await analysesApi.listTabs(base, undefined, 'frequency')).find((t) => t.id === other.id)
       ?.settings.stopwordSource as ReturnType<typeof source>;
     expect(copySelection.source.name).toBe(expectedCopyName);
     expect(await readStopwords(base, view)).toEqual(['456', '123']);
     await selectTab(base, tab.id);
     await showLoadedResults();
-    await api.changeColumn(base, created.source, {
+    await projectApi.changeColumn(base, created.source, {
       operation: 'rename',
       column: 'word',
       name: 'stop word',
     });
-    await api.renameNode(base, created.source, `${prefix}_renamed`);
+    await projectApi.renameNode(base, created.source, `${prefix}_renamed`);
     await browser.refresh();
     await openFrequency();
     await selectTab(base, tab.id);
@@ -1272,9 +1277,9 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await results().$('button=Ranked lists').click();
     await expect(control().$('[aria-label="Stopword column"]')).toHaveText('stop word');
     await expect(control()).toHaveText(expect.stringContaining('1 word'));
-    await api.runSqlScript(
+    await projectApi.runSqlScript(
       base,
-      `DROP TABLE ${api.objectSql(`${prefix}_renamed`)}`,
+      `DROP TABLE ${ objectsApi.objectSql(`${prefix}_renamed`)}`,
       'execute',
       'Remove stopword list',
     );
@@ -1287,15 +1292,15 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await captureState('unavailable');
     await control().$('button=Clear all').click();
     await expect(list()).toHaveText(expect.stringContaining('banana'));
-    expect(outputAnalysisId((await api.listTabs(base, undefined, 'frequency')).find((t) => t.id === tab.id))).toBe(
+    expect(outputAnalysisId((await analysesApi.listTabs(base, undefined, 'frequency')).find((t) => t.id === tab.id))).toBe(
       saved.id,
     );
   } finally {
-    for (const node of (await api.graph(base)).nodes.filter(
+    for (const node of (await projectApi.graph(base)).nodes.filter(
       (n) =>
         n.table_name.startsWith(prefix) && ![names.reference, names.study].includes(n.table_name),
     )) {
-      await api.deleteNode(base, node.table_name);
+      await projectApi.deleteNode(base, node.table_name);
     }
     await cleanup(base, prefix);
   }
@@ -1304,7 +1309,7 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
 export async function nodePreferencesScenario(base: string, prefix: string) {
   const names = await fixture(base, prefix);
   try {
-    await api.executeSql(base, [{ sql: `ALTER TABLE ${api.objectSql(names.study)} ADD COLUMN alternative VARCHAR` }], { all: true });
+    await projectApi.executeSql(base, [{ sql: `ALTER TABLE ${ objectsApi.objectSql(names.study)} ADD COLUMN alternative VARCHAR` }], { all: true });
     const tab = await createTab(base, `${prefix} preferences`);
     await addInput(base, names.study);
     await workspace().$('[role="combobox"]=text').click();
@@ -1313,16 +1318,16 @@ export async function nodePreferencesScenario(base: string, prefix: string) {
     await $(`[aria-label="Use #dc2626 for ${names.study}"]`).click();
     await browser.keys('Escape');
     await browser.waitUntil(async () => {
-      const node = (await api.graph(base)).nodes.find((entry) => entry.table_name === names.study);
+      const node = (await projectApi.graph(base)).nodes.find((entry) => entry.table_name === names.study);
       return node?.document_column === 'alternative' && node.color === '#dc2626';
     });
-    expect((await api.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)?.analysis).toBeNull();
+    expect((await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id)?.analysis).toBeNull();
     await browser.refresh();
     await openFrequency();
     await createTab(base, `${prefix} restored defaults`);
     await addInput(base, names.study, false);
     await expect(workspace().$('[role="combobox"]=alternative')).toBeDisplayed();
-    expect((await api.graph(base)).nodes.find((entry) => entry.table_name === names.study)?.color).toBe('#dc2626');
+    expect((await projectApi.graph(base)).nodes.find((entry) => entry.table_name === names.study)?.color).toBe('#dc2626');
   } finally {
     await cleanup(base, prefix);
   }

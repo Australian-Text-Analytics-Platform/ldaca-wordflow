@@ -1,7 +1,7 @@
 import type { components } from '@/api/generated/native';
+import { objectRef, type DataTarget, type ObjectRef } from '@/features/project/objects';
+import type { Tab } from '@/features/tools/common/analysisApi';
 import type { Query, QueryClient } from '@tanstack/react-query';
-import { objectRef, type DataTarget, type ObjectRef } from './api';
-import type { Tab } from './api';
 
 export type ChangeScope = components['schemas']['ChangeScope'];
 

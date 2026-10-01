@@ -258,6 +258,13 @@ impl AiConfiguration {
         })
         .await
     }
+    pub(crate) async fn provider(&self, id: Uuid) -> Result<Provider> {
+        if id == apple::ID {
+            return Ok(Provider::Apple);
+        }
+        self.access(move |_host, state| Ok(connection(state, id)?.provider))
+            .await
+    }
     pub(crate) async fn resolve(&self, id: Uuid) -> Result<(Connection, Option<String>)> {
         if id == apple::ID {
             tokio::task::spawn_blocking(apple::availability).await??;
@@ -454,6 +461,27 @@ mod tests {
             endpoint: Some("http://127.0.0.1:8000/v1".into()),
             credential,
         }
+    }
+    #[tokio::test]
+    async fn capability_metadata_does_not_require_credentials() {
+        let host = AiConfiguration::session_only();
+        let row = host
+            .create(CreateConnection {
+                name: "OpenAI".into(),
+                provider: Provider::Openai,
+                endpoint: None,
+                credential: CredentialUpdate::Keep,
+            })
+            .await
+            .unwrap();
+        assert_eq!(
+            host.provider(row.connection.id).await.unwrap(),
+            Provider::Openai
+        );
+        assert_eq!(
+            host.resolve(row.connection.id).await.unwrap_err().code,
+            "provider_credential_required"
+        );
     }
     #[tokio::test]
     async fn session_secrets_are_shared_between_windows_but_never_persisted_or_returned() {

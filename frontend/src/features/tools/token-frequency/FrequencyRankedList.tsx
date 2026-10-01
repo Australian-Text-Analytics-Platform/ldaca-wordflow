@@ -1,13 +1,13 @@
+import { Button } from '@/components/ui/button';
 import { objectDependencies } from '@/features/project/projectChanges';
-import { useRef, type UIEventHandler } from 'react';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { useQueries } from '@tanstack/react-query';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { Button } from '@/components/ui/button';
-import * as api from '@/features/project/api';
+import { useRef, type UIEventHandler } from 'react';
 
 export const FREQUENCY_LIST_CHUNK_SIZE = 200;
 const ROW_HEIGHT = 40;
-type FrequencyPage = Awaited<ReturnType<typeof api.queryFrequency>>;
+type FrequencyPage = Awaited<ReturnType<typeof frequencyApi.queryFrequency>>;
 
 /** Keep a continuous scroll range while querying and rendering only nearby rows. */
 export function FrequencyRankedList({
@@ -25,7 +25,7 @@ export function FrequencyRankedList({
 }: {
   base: string;
   analysisId: string;
-  query: api.FrequencyQuery;
+  query: frequencyApi.FrequencyQuery;
   firstPage: FrequencyPage | undefined;
   active: boolean;
   label: string;
@@ -57,7 +57,7 @@ export function FrequencyRankedList({
       return {
         queryKey: ['native', base, 'analyses', analysisId, 'rows', chunkQuery],
         queryFn: ({ signal }: { signal: AbortSignal }) =>
-          api.queryFrequency(base, analysisId, chunkQuery, signal),
+          frequencyApi.queryFrequency(base, analysisId, chunkQuery, signal),
         enabled: active,
         staleTime: Infinity,
         meta: {

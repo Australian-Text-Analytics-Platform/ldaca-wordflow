@@ -1,20 +1,22 @@
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { StrictMode } from 'react';
-import { Field, Utf8 } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vite-plus/test';
+import type { ProjectNode } from '@/features/project/api';
+import * as projectApi from '@/features/project/api';
+import { refreshProjectQueries } from '@/features/project/projectChanges';
+import type { NativeTask } from '@/features/project/tasksApi';
+import type { Tab } from '@/features/tools/common/analysisApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
 import type {
   FrequencyAnalysisResult,
-  Tab,
   FrequencyRequest,
-  NativeTask,
-  ProjectNode,
-} from '@/features/project/api';
-import * as api from '@/features/project/api';
+} from '@/features/tools/token-frequency/api';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { Field, Utf8 } from 'apache-arrow';
+import { StrictMode } from 'react';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
 import TokenFrequencyFeature from './TokenFrequencyFeature';
 import { getFrequencyDraft, useFrequencyState } from './frequencyState';
-import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
-import { refreshProjectQueries } from '@/features/project/projectChanges';
 
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 vi.mock('./FrequencyResults', () => ({
@@ -25,17 +27,26 @@ vi.mock('./FrequencyResults', () => ({
 vi.mock('../common/language/useDetectedColumnLanguage', () => ({
   useDetectedColumnLanguage: () => ({ data: 'en', isFetching: false, isError: false }),
 }));
-vi.mock('@/features/project/api', async (importOriginal) => ({
-  ...(await importOriginal<typeof api>()),
+vi.mock('@/features/tools/token-frequency/api', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  runFrequency: vi.fn(),
+  getFrequencyResult: vi.fn(),
+  getTokenizers: vi.fn(),
+}));
+vi.mock('@/features/tools/common/analysisApi', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   listTabs: vi.fn(),
   createTab: vi.fn(),
   updateTab: vi.fn(),
   reorderTabs: vi.fn(),
   deleteTab: vi.fn(),
   clearTab: vi.fn(),
-  runFrequency: vi.fn(),
-  getFrequencyResult: vi.fn(),
-  getTokenizers: vi.fn(),
+}));
+vi.mock('@/features/project/tasksApi', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+}));
+vi.mock('@/features/project/api', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
   nodeSchema: vi.fn(),
 }));
 const base = 'http://project';
@@ -57,6 +68,7 @@ const request: FrequencyRequest = {
   ],
 };
 const saved: FrequencyAnalysisResult = {
+  request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
   id: 'result',
   tab_id: tab.id,
   kind: 'frequency',
@@ -111,107 +123,92 @@ function mount(
 beforeEach(() => {
   vi.clearAllMocks();
   useFrequencyState.setState({ active: {}, drafts: {} });
-  useNodeInputRequestsStore.getState().clear();
-  vi.mocked(api.listTabs).mockResolvedValue([tab]);
-  vi.mocked(api.createTab).mockResolvedValue(tab);
-  vi.mocked(api.getTokenizers).mockResolvedValue([
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([tab]);
+  vi.mocked(analysesApi.createTab).mockResolvedValue(tab);
+  vi.mocked(frequencyApi.getTokenizers).mockResolvedValue([
     { model_id: 'plain_words', label: 'Plain words', languages: ['en'] },
   ]);
-  vi.mocked(api.nodeSchema).mockResolvedValue([
+  vi.mocked(projectApi.nodeSchema).mockResolvedValue([
     { name: 'text', field: new Field('text', new Utf8(), true) },
   ]);
-  vi.mocked(api.getFrequencyResult).mockResolvedValue(saved);
-});
-it('keeps graph additions carried when saved results expose the stopword selector', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
-  ]);
-  mount([], [...nodes, { ...nodes[0]!, table_name: 'Words' }]);
-  await screen.findByText('Saved result');
-  act(() => {
-    useNodeInputRequestsStore.getState().requestAdd(base, 'token-frequency', 'Words');
-  });
-  expect(screen.getByRole('button', { name: 'Add to Frequency inputs' })).toBeInTheDocument();
-  expect(useNodeInputRequestsStore.getState().pendingRequests).toHaveLength(1);
-  expect(screen.getByText('Frequency inputs (1/2)')).toBeInTheDocument();
-  expect(getFrequencyDraft(useFrequencyState.getState(), base, tab.id)).toBeUndefined();
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue(saved);
 });
 it('automatically creates the first tab once across Strict Mode and a pending remount', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([]);
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
   const operation = Promise.withResolvers<Tab>();
-  vi.mocked(api.createTab).mockReturnValue(operation.promise);
+  vi.mocked(analysesApi.createTab).mockReturnValue(operation.promise);
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   });
   client.setQueryData(['native', base, 'tabs', 'frequency'], []);
   const first = mount([], nodes, { client, strict: true });
   await screen.findByText('Creating Frequency analysis…');
-  expect(api.createTab).toHaveBeenCalledOnce();
+  expect(analysesApi.createTab).toHaveBeenCalledOnce();
   first.show(false);
   first.show(true);
   first.unmount();
   mount([], nodes, { client, strict: true });
-  expect(api.createTab).toHaveBeenCalledOnce();
+  expect(analysesApi.createTab).toHaveBeenCalledOnce();
   await act(async () => operation.resolve(tab));
   await screen.findByRole('tab', { name: 'Frequency 1' });
-  expect(api.createTab).toHaveBeenCalledOnce();
+  expect(analysesApi.createTab).toHaveBeenCalledOnce();
   expect(client.getQueryData(['native', base, 'tabs', 'frequency'])).toEqual([tab]);
-  expect(api.runFrequency).not.toHaveBeenCalled();
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
 });
 it.each([
   { active: false, editing: false },
   { active: true, editing: true },
 ])('defers automatic creation while inactive or editing: %j', async (options) => {
-  vi.mocked(api.listTabs).mockResolvedValue([]);
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
   const view = mount([], nodes, options);
   await screen.findByRole('button', { name: 'New Frequency analysis' });
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
   view.show(true);
   await screen.findByRole('tab', { name: 'Frequency 1' });
-  expect(api.createTab).toHaveBeenCalledOnce();
+  expect(analysesApi.createTab).toHaveBeenCalledOnce();
 });
 it('waits for a stale empty list to refresh before deciding to create a tab', async () => {
   const operation = Promise.withResolvers<Tab[]>();
-  vi.mocked(api.listTabs).mockReturnValue(operation.promise);
+  vi.mocked(analysesApi.listTabs).mockReturnValue(operation.promise);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   client.setQueryData(['native', base, 'tabs', 'frequency'], []);
   mount([], nodes, { client });
   await screen.findByText('Loading analyses…');
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
   await act(async () => operation.resolve([tab]));
   await screen.findByRole('tab', { name: 'Frequency 1' });
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
 });
 it('does not create a tab after a list error and reuses the saved tab on retry', async () => {
-  vi.mocked(api.listTabs).mockRejectedValueOnce(new Error('Offline'));
+  vi.mocked(analysesApi.listTabs).mockRejectedValueOnce(new Error('Offline'));
   mount();
   await screen.findByText('Could not load Frequency analyses.');
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await screen.findByRole('tab', { name: 'Frequency 1' });
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
 });
 it('offers an explicit retry after automatic creation fails without retrying on refresh', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([]);
-  vi.mocked(api.createTab).mockRejectedValueOnce(new Error('Conflict'));
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
+  vi.mocked(analysesApi.createTab).mockRejectedValueOnce(new Error('Conflict'));
   const { client } = mount();
   await screen.findByText('Could not create a Frequency analysis.');
   await act(async () =>
     client.invalidateQueries({ queryKey: ['native', base, 'tabs', 'frequency'] }),
   );
-  expect(api.createTab).toHaveBeenCalledOnce();
+  expect(analysesApi.createTab).toHaveBeenCalledOnce();
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await screen.findByRole('tab', { name: 'Frequency 1' });
-  expect(api.createTab).toHaveBeenCalledTimes(2);
+  expect(analysesApi.createTab).toHaveBeenCalledTimes(2);
 });
 it.each(['button', 'reopen'])(
   'leaves the final closed tab empty until %s creates another',
   async (action) => {
     const replacement = { ...tab, id: 'replacement' };
-    vi.mocked(api.deleteTab).mockImplementation(async () => {
-      vi.mocked(api.listTabs).mockResolvedValue([]);
+    vi.mocked(analysesApi.deleteTab).mockImplementation(async () => {
+      vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
     });
-    vi.mocked(api.createTab).mockResolvedValue(replacement);
+    vi.mocked(analysesApi.createTab).mockResolvedValue(replacement);
     const view = mount();
     await screen.findByRole('tab', { name: 'Frequency 1' });
     fireEvent.click(screen.getByRole('button', { name: 'Close tab' }));
@@ -219,7 +216,7 @@ it.each(['button', 'reopen'])(
     await act(async () =>
       view.client.invalidateQueries({ queryKey: ['native', base, 'tabs', 'frequency'] }),
     );
-    expect(api.createTab).not.toHaveBeenCalled();
+    expect(analysesApi.createTab).not.toHaveBeenCalled();
     expect(screen.queryByRole('tab')).not.toBeInTheDocument();
     if (action === 'button') fireEvent.click(create);
     else {
@@ -227,8 +224,8 @@ it.each(['button', 'reopen'])(
       view.show(true);
     }
     await screen.findByRole('tab', { name: 'Frequency 1' });
-    expect(api.createTab).toHaveBeenCalledOnce();
-    expect(api.runFrequency).not.toHaveBeenCalled();
+    expect(analysesApi.createTab).toHaveBeenCalledOnce();
+    expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
   },
 );
 it('keeps the named tab rail outside the scrollable request and results panels', async () => {
@@ -241,18 +238,20 @@ it('keeps the named tab rail outside the scrollable request and results panels',
   expect(screen.getByRole('heading', { name: 'Token Frequency Analysis' })).toBeVisible();
 
   expect(screen.queryByRole('button', { name: 'Delete analysis' })).not.toBeInTheDocument();
-  expect(api.createTab).not.toHaveBeenCalled();
+  expect(analysesApi.createTab).not.toHaveBeenCalled();
 });
 
 it('captures a run without overwriting a newer local draft when it completes', async () => {
   useFrequencyState.getState().setDraft(base, tab.id, { inputs: request.inputs, study: null });
   const operation = Promise.withResolvers<FrequencyAnalysisResult>();
-  vi.mocked(api.runFrequency).mockReturnValue(operation.promise);
+  vi.mocked(frequencyApi.runFrequency).mockReturnValue(operation.promise);
   const { client } = mount();
   const run = await screen.findByRole('button', { name: 'Run', exact: true });
   await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(run);
-  await waitFor(() => expect(api.runFrequency).toHaveBeenCalledWith(base, tab.id, request));
+  await waitFor(() =>
+    expect(frequencyApi.runFrequency).toHaveBeenCalledWith(base, tab.id, request),
+  );
   expect(run).toHaveAttribute('aria-disabled', 'true');
   act(() => {
     useFrequencyState.getState().setDraft(base, tab.id, { inputs: [], study: null });
@@ -260,15 +259,23 @@ it('captures a run without overwriting a newer local draft when it completes', a
   await act(async () => operation.resolve(saved));
   expect(getFrequencyDraft(useFrequencyState.getState(), base, tab.id)?.inputs).toEqual([]);
   expect(client.getQueryData(['native', base, 'analyses', saved.id])).toBeUndefined();
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
 });
 it('keeps the result on admission failure with changed parameters', async () => {
   const changed = request.inputs.map((input) => ({ ...input, tokenizer: 'other' }));
   useFrequencyState.getState().setDraft(base, tab.id, { inputs: changed, study: null });
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.runFrequency).mockRejectedValue(new Error('Conflict'));
+  vi.mocked(frequencyApi.runFrequency).mockRejectedValue(new Error('Conflict'));
   mount();
   await screen.findByText('Saved result outdated');
   const run = screen.getByRole('button', { name: 'Run', exact: true });
@@ -278,30 +285,46 @@ it('keeps the result on admission failure with changed parameters', async () => 
   expect(screen.getByText('Saved result outdated')).toBeInTheDocument();
   expect(run).toHaveAttribute('aria-disabled', 'false');
   expect(getFrequencyDraft(useFrequencyState.getState(), base, tab.id)?.inputs).toEqual(changed);
-  expect(api.runFrequency).toHaveBeenCalledOnce();
+  expect(frequencyApi.runFrequency).toHaveBeenCalledOnce();
 });
 it('leaves hidden result reads inactive during broad refresh and tab deletion', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
   const view = mount();
   await screen.findByText('Saved result');
-  expect(api.getFrequencyResult).toHaveBeenCalledOnce();
+  expect(frequencyApi.getFrequencyResult).toHaveBeenCalledOnce();
   view.show(false);
   await act(async () => refreshProjectQueries(view.client, base, { all: true }));
-  expect(api.getFrequencyResult).toHaveBeenCalledOnce();
+  expect(frequencyApi.getFrequencyResult).toHaveBeenCalledOnce();
   view.show(true);
-  await waitFor(() => expect(api.getFrequencyResult).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(frequencyApi.getFrequencyResult).toHaveBeenCalledTimes(2));
   view.show(false);
-  vi.mocked(api.listTabs).mockResolvedValue([]);
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([]);
   await act(async () => refreshProjectQueries(view.client, base, { all: true }));
-  expect(api.getFrequencyResult).toHaveBeenCalledTimes(2);
+  expect(frequencyApi.getFrequencyResult).toHaveBeenCalledTimes(2);
 });
 it('allows deleting a running analysis while Clear and Run stay disabled', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.deleteTab).mockResolvedValue();
+  vi.mocked(analysesApi.deleteTab).mockResolvedValue();
   const task = {
     id: 'task',
     tab_id: tab.id,
@@ -316,7 +339,7 @@ it('allows deleting a running analysis while Clear and Run stay disabled', async
   );
   expect(screen.getByRole('button', { name: 'Clear results' })).toBeDisabled();
   fireEvent.click(screen.getByRole('button', { name: 'Close tab' }));
-  await waitFor(() => expect(api.deleteTab).toHaveBeenCalledWith(base, tab.id));
+  await waitFor(() => expect(analysesApi.deleteTab).toHaveBeenCalledWith(base, tab.id));
 });
 
 it('retains both automatic recommendations when two inputs detect language together', async () => {
@@ -334,13 +357,21 @@ it('retains both automatic recommendations when two inputs detect language toget
       ),
     ).toEqual(['plain_words', 'plain_words']),
   );
-  expect(api.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
 });
 it('keeps deletion available when a saved result is unsupported or unreadable', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: 'unsupported', request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: 'unsupported',
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
+  vi.mocked(frequencyApi.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
   mount();
   await screen.findByText('Could not load results.');
   expect(screen.getByRole('button', { name: 'Rerun', exact: true })).toBeInTheDocument();
@@ -348,19 +379,27 @@ it('keeps deletion available when a saved result is unsupported or unreadable', 
 });
 
 it('offers Retry without running and Rerun with the saved request after a load failure', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
-  vi.mocked(api.runFrequency).mockResolvedValue(saved);
+  vi.mocked(frequencyApi.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
+  vi.mocked(frequencyApi.runFrequency).mockResolvedValue(saved);
   const view = mount();
   const rerun = await screen.findByRole('button', { name: 'Rerun', exact: true });
   await waitFor(() => expect(rerun).toHaveAttribute('aria-disabled', 'false'));
   fireEvent.click(screen.getByRole('button', { name: 'Retry', exact: true }));
-  await waitFor(() => expect(api.getFrequencyResult).toHaveBeenCalledTimes(2));
-  expect(api.runFrequency).not.toHaveBeenCalled();
-  vi.mocked(api.getFrequencyResult).mockResolvedValue(saved);
-  vi.mocked(api.runFrequency).mockImplementation(async () => {
+  await waitFor(() => expect(frequencyApi.getFrequencyResult).toHaveBeenCalledTimes(2));
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue(saved);
+  vi.mocked(frequencyApi.runFrequency).mockImplementation(async () => {
     await refreshProjectQueries(view.client, base, {
       analysis_ids: [saved.id],
       resources: ['tabs'],
@@ -368,7 +407,9 @@ it('offers Retry without running and Rerun with the saved request after a load f
     return saved;
   });
   fireEvent.click(rerun);
-  await waitFor(() => expect(api.runFrequency).toHaveBeenCalledWith(base, tab.id, request));
+  await waitFor(() =>
+    expect(frequencyApi.runFrequency).toHaveBeenCalledWith(base, tab.id, request),
+  );
   await screen.findByText('Saved result');
   expect(screen.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
     'aria-disabled',
@@ -377,30 +418,43 @@ it('offers Retry without running and Rerun with the saved request after a load f
 });
 
 it('keeps manifest Retry reachable when a failed reload retains previously cached data', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
   const { client } = mount();
   await screen.findByText('Saved result');
-  vi.mocked(api.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
+  vi.mocked(frequencyApi.getFrequencyResult).mockRejectedValue(new Error('Unsupported version'));
   await act(() => client.invalidateQueries({ queryKey: ['native', base, 'analyses', saved.id] }));
   await screen.findByRole('button', { name: 'Rerun', exact: true });
   expect(screen.queryByText('Saved result')).not.toBeInTheDocument();
-  vi.mocked(api.getFrequencyResult).mockResolvedValue(saved);
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue(saved);
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await screen.findByText('Saved result');
   expect(screen.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
     'aria-disabled',
     'true',
   );
-  expect(api.runFrequency).not.toHaveBeenCalled();
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
 });
 
 it('keeps colours on input cards and resolves legacy colours before a rerun changes roles', async () => {
   const legacy = {
     ...tab,
     settings: { colors: ['#ff0000', '#0000ff'] },
-    analysis: { id: saved.id, request, has_result: true },
+    analysis: {
+      request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+      id: saved.id,
+      request,
+      has_result: true,
+    },
   };
   const corpora = ['Corpus', 'Second'].map((name) => ({
     ...request.inputs[0],
@@ -412,8 +466,8 @@ it('keeps colours on input cards and resolves legacy colours before a rerun chan
     total_tokens: '1',
     vocabulary_size: '1',
   }));
-  vi.mocked(api.listTabs).mockResolvedValue([legacy]);
-  vi.mocked(api.getFrequencyResult).mockResolvedValue({
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([legacy]);
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue({
     ...saved,
     result: {
       version: 1,
@@ -421,11 +475,11 @@ it('keeps colours on input cards and resolves legacy colours before a rerun chan
       payload: { corpora, comparison_artifact_id: 'comparison' },
     },
   });
-  vi.mocked(api.updateTab).mockImplementation(async (_base, _id, update) => ({
+  vi.mocked(analysesApi.updateTab).mockImplementation(async (_base, _id, update) => ({
     ...legacy,
     ...update,
   }));
-  vi.mocked(api.runFrequency).mockResolvedValue(saved);
+  vi.mocked(frequencyApi.runFrequency).mockResolvedValue(saved);
   useFrequencyState.getState().setDraft(base, tab.id, {
     inputs: corpora.map(({ source, column, tokenizer }) => ({ source, column, tokenizer })),
     study: 'Corpus',
@@ -437,8 +491,8 @@ it('keeps colours on input cards and resolves legacy colours before a rerun chan
     within(requestPanel).getByRole('button', { name: 'Change color for Corpus' }),
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole('button', { name: 'Run', exact: true }));
-  await waitFor(() => expect(api.runFrequency).toHaveBeenCalled());
-  expect(api.updateTab).toHaveBeenCalledWith(
+  await waitFor(() => expect(frequencyApi.runFrequency).toHaveBeenCalled());
+  expect(analysesApi.updateTab).toHaveBeenCalledWith(
     base,
     tab.id,
     expect.objectContaining({
@@ -450,25 +504,35 @@ it('keeps colours on input cards and resolves legacy colours before a rerun chan
       }),
     }),
   );
-  expect(vi.mocked(api.updateTab).mock.invocationCallOrder[0]).toBeLessThan(
-    vi.mocked(api.runFrequency).mock.invocationCallOrder[0]!,
+  expect(vi.mocked(analysesApi.updateTab).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(frequencyApi.runFrequency).mock.invocationCallOrder[0]!,
   );
   expect(
-    vi.mocked(api.runFrequency).mock.calls[0]?.[2].inputs.map((input) => input.source.name),
+    vi
+      .mocked(frequencyApi.runFrequency)
+      .mock.calls[0]?.[2].inputs.map((input) => input.source.name),
   ).toEqual(['Second', 'Corpus']);
 });
 
 it('blocks matching saved settings during loading and after reload, but allows changes and Clear', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
   const manifest = Promise.withResolvers<FrequencyAnalysisResult>();
-  vi.mocked(api.getFrequencyResult).mockReturnValue(manifest.promise);
+  vi.mocked(frequencyApi.getFrequencyResult).mockReturnValue(manifest.promise);
   const { client } = mount();
   const run = await screen.findByRole('button', { name: 'Run', exact: true });
   await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'true'));
   fireEvent.click(run);
-  expect(api.runFrequency).not.toHaveBeenCalled();
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
   await act(async () => manifest.resolve(saved));
   await screen.findByText('Saved result');
   const changed = {
@@ -489,61 +553,102 @@ it('blocks matching saved settings during loading and after reload, but allows c
         {
           ...tab,
           settings: { colors: ['#ff0000'], stopwords_enabled: true },
-          analysis: { id: saved.id, request, has_result: true },
+          analysis: {
+            request_status: {
+              status: 'supported',
+              request: { kind: 'frequency', request: request },
+            },
+            id: saved.id,
+            request,
+            has_result: true,
+          },
         },
       ],
     );
     await refreshProjectQueries(client, base, { all: true });
   });
   expect(run).toHaveAttribute('aria-disabled', 'true');
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: 'submitted-analysis', request, has_result: false } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: 'submitted-analysis',
+        request,
+        has_result: false,
+      },
+    },
   ]);
   fireEvent.click(screen.getByRole('button', { name: 'Clear results' }));
   await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'false'));
-  expect(api.runFrequency).not.toHaveBeenCalled();
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
 });
 
 it('treats absent output during a stale summary read as cleared while preserving the request', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
-  vi.mocked(api.getFrequencyResult).mockResolvedValue(null);
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue(null);
   const { client } = mount();
   const run = await screen.findByRole('button', { name: 'Run', exact: true });
   await waitFor(() => expect(run).toHaveAttribute('aria-disabled', 'false'));
   expect(screen.queryByText('Saved result')).not.toBeInTheDocument();
   expect(screen.queryByText('Loading results…')).not.toBeInTheDocument();
   expect(client.getQueryData<Tab[]>(['native', base, 'tabs', 'frequency'])?.[0]?.analysis).toEqual({
+    request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
     id: saved.id,
     request,
     has_result: false,
   });
-  expect(api.runFrequency).not.toHaveBeenCalled();
-  expect(api.clearTab).not.toHaveBeenCalled();
+  expect(frequencyApi.runFrequency).not.toHaveBeenCalled();
+  expect(analysesApi.clearTab).not.toHaveBeenCalled();
 });
 
 it('cancels pending saved-result reads before Clear deletes their artifacts', async () => {
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: saved.id, request, has_result: true } },
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+        id: saved.id,
+        request,
+        has_result: true,
+      },
+    },
   ]);
   let signal: AbortSignal | undefined;
   const pending = Promise.withResolvers<FrequencyAnalysisResult>();
-  vi.mocked(api.getFrequencyResult).mockImplementation((_base, _id, abort) => {
+  vi.mocked(frequencyApi.getFrequencyResult).mockImplementation((_base, _id, abort) => {
     signal = abort;
     return pending.promise;
   });
-  vi.mocked(api.clearTab).mockImplementation(async () => {
+  vi.mocked(analysesApi.clearTab).mockImplementation(async () => {
     expect(signal?.aborted).toBe(true);
-    vi.mocked(api.listTabs).mockResolvedValue([
-      { ...tab, analysis: { id: 'submitted-analysis', request, has_result: false } },
+    vi.mocked(analysesApi.listTabs).mockResolvedValue([
+      {
+        ...tab,
+        analysis: {
+          request_status: { status: 'supported', request: { kind: 'frequency', request: request } },
+          id: 'submitted-analysis',
+          request,
+          has_result: false,
+        },
+      },
     ]);
   });
   mount();
   const clear = await screen.findByRole('button', { name: 'Clear results' });
   await waitFor(() => expect(signal).toBeDefined());
   fireEvent.click(clear);
-  await waitFor(() => expect(api.clearTab).toHaveBeenCalledOnce());
+  await waitFor(() => expect(analysesApi.clearTab).toHaveBeenCalledOnce());
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
       'aria-disabled',
@@ -552,16 +657,29 @@ it('cancels pending saved-result reads before Clear deletes their artifacts', as
   );
 });
 
-it('restores supported saved fields and enables compatibility Rerun without rewriting JSON', async () => {
-  const incompatible = { ...request, future_option: { value: '<b>future</b>' } };
-  vi.mocked(api.listTabs).mockResolvedValue([
-    { ...tab, analysis: { id: 'result', request: incompatible, has_result: true } },
+it('requires explicit defaults for unsupported requests and retains original JSON until Run', async () => {
+  const original = { ...request, future_option: { value: 'future' } };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      analysis: {
+        id: 'unsupported',
+        request: original,
+        request_status: { status: 'unsupported', reason: 'Unknown field future_option' },
+        has_result: false,
+      },
+    },
   ]);
-  vi.mocked(api.getFrequencyResult).mockResolvedValue(saved);
   mount();
-  expect(await screen.findByText('These saved settings are not recognized:')).toBeInTheDocument();
-  const rerun = await screen.findByRole('button', { name: 'Rerun', exact: true });
-  await waitFor(() => expect(rerun).toHaveAttribute('aria-disabled', 'false'));
-  expect(api.updateTab).not.toHaveBeenCalled();
-  expect(incompatible.future_option.value).toBe('<b>future</b>');
+  const reset = await screen.findByRole('button', { name: 'Start with current defaults' });
+  expect(screen.getByRole('button', { name: 'Run', exact: true })).toHaveAttribute(
+    'aria-disabled',
+    'true',
+  );
+  fireEvent.click(reset);
+  expect(
+    screen.queryByRole('button', { name: 'Start with current defaults' }),
+  ).not.toBeInTheDocument();
+  expect(analysesApi.updateTab).not.toHaveBeenCalled();
+  expect(original.future_option.value).toBe('future');
 });

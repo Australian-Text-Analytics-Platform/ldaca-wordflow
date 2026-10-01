@@ -1,24 +1,25 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import * as projectApi from '@/features/project/api';
+import * as filesApi from '@/features/project/filesApi';
+import {
+  CustomNodeView,
+  type CustomNodeData,
+} from '@/features/project/graph-view/components/CustomNodeView';
+import { ProjectGraphView } from '@/features/project/graph-view/components/ProjectGraphView';
+import { computeDagreLayout } from '@/features/project/graph-view/services/graphLayout';
+import * as objectsApi from '@/features/project/objects';
 import {
   ConnectionLineType,
   MarkerType,
   Position,
   type Edge,
   type Node,
-  type ReactFlowInstance,
   type NodeProps,
+  type ReactFlowInstance,
 } from '@xyflow/react';
-import type { NodeInputPointerPosition } from '@/stores/nodeInputRequestsStore';
-import {
-  CustomNodeView,
-  type CustomNodeData,
-} from '@/features/project/graph-view/components/CustomNodeView';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { GraphConnectionPreview } from './GraphConnectionPreview';
-import { ProjectGraphView } from '@/features/project/graph-view/components/ProjectGraphView';
-import { computeDagreLayout } from '@/features/project/graph-view/services/graphLayout';
-import { reportProjectError } from './projectErrors';
 import { useGraphState, type GraphMode } from './graphState';
-import * as api from './api';
+import { reportProjectError } from './projectErrors';
 
 function layoutTopology(topology: string) {
   const { nodes, edges } = JSON.parse(topology) as {
@@ -29,7 +30,7 @@ function layoutTopology(topology: string) {
 }
 type NativeNodeData = CustomNodeData & {
   base: string;
-  target?: api.ObjectRef;
+  target?: objectsApi.ObjectRef;
   diagnostic?: string;
 };
 function NativeNode(props: NodeProps<Node<NativeNodeData>>) {
@@ -37,7 +38,9 @@ function NativeNode(props: NodeProps<Node<NativeNodeData>>) {
     <CustomNodeView
       {...props}
       diagnostic={props.data.diagnostic}
-      onExport={(format) => api.exportNode(props.data.base, props.data.target ?? props.id, format)}
+      onExport={(format) =>
+        filesApi.exportNode(props.data.base, props.data.target ?? props.id, format)
+      }
       onError={reportProjectError}
     />
   );
@@ -71,7 +74,7 @@ export default function ProjectGraph({
   onLogicalLink,
   onReplaceSource,
 }: {
-  graph: api.Graph;
+  graph: projectApi.Graph;
   mode?: GraphMode;
   onToggleDependencies?: () => void;
   loading?: boolean;
@@ -82,7 +85,7 @@ export default function ProjectGraph({
   onSelect: (id: string) => void;
   onPreview: (id: string) => void;
   previewed: string | null;
-  onAddToSelection?: (id: string, pointer?: NodeInputPointerPosition) => void;
+  onAddToSelection?: (id: string) => void;
   onClear: () => void;
   onDelete: (id: string) => Promise<unknown>;
   onDeleteMany: (ids: string[]) => Promise<boolean>;
@@ -94,9 +97,9 @@ export default function ProjectGraph({
   onEditTable?: (id: string) => void;
   onLogicalLink?: (source: string, target: string) => void;
   onReplaceSource?: (
-    child: api.ObjectRef,
-    source: api.ObjectRef,
-    replacement: api.ObjectRef,
+    child: objectsApi.ObjectRef,
+    source: objectsApi.ObjectRef,
+    replacement: objectsApi.ObjectRef,
   ) => void;
 }) {
   const flow = useRef<ReactFlowInstance | null>(null);
@@ -108,7 +111,7 @@ export default function ProjectGraph({
   if (connection && !anchor) setConnection(null);
   const object = (id: string) => {
     const node = graph.nodes.find((node) => node.table_name === id);
-    return node ? api.objectRef(node.object ?? node.table_name) : null;
+    return node ? objectsApi.objectRef(node.object ?? node.table_name) : null;
   };
   const cancelConnection = () => {
     setConnection(null);
@@ -346,7 +349,7 @@ export default function ProjectGraph({
           handleNodeDoubleClick: (event, node) => {
             event.preventDefault();
             event.stopPropagation();
-            if (!picking) onAddToSelection?.(node.id, { x: event.clientX, y: event.clientY });
+            if (!picking) onAddToSelection?.(node.id);
           },
           handleNodesChange: (changes) => {
             useGraphState.setState((state) => {

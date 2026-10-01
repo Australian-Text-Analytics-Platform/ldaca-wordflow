@@ -862,3 +862,11 @@ belong to the native catalogue and colors use `#RRGGBB`. This transaction writes
 only registration metadata and emits a Graph resource change. It does not submit
 an analysis or modify saved requests. Graph nodes expose per-column
 `tokenizer_models` when present. See the generated OpenAPI for exact contracts.
+
+## Read-only restoration and model controls
+
+Analysis and tab summaries retain original `request` JSON and add a typed `request_status` tagged as `supported` or `unsupported`. Supported values contain a kind-tagged execution DTO. Annotation tabs also expose optional typed `setup_status` for manual setup. These are derived views, never persisted migration or availability checks.
+
+`GET /api/ai/providers/{id}/capabilities?model=...` returns the reasoning choices and temperature compatibility implemented by the selected backend adapter. The payload validator consumes the same policy. The existing embedding-model endpoint remains the catalogue and token-limit authority.
+
+Successful table rename and column mutation responses retain their existing bodies/statuses and include `x-wordflow-change-id`. Its value matches the transient project event's `id`, allowing both delivery paths to reconcile a rename once.

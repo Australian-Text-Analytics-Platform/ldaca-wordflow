@@ -1,17 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import * as concordanceApi from '@/features/tools/concordance/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
 import { ConcordancePublishDialog } from './ConcordancePublishDialog';
 import { emptyConcordance } from './concordanceState';
 
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+vi.mock('@/features/tools/concordance/api', async (original) => ({
+  ...(await original<object>()),
   publishConcordance: vi.fn().mockResolvedValue([]),
 }));
 
 it('publishes captured result and filters when a newer run arrives while the dialog is open', async () => {
-  const result: api.ConcordanceAnalysisResult = {
+  const result: concordanceApi.ConcordanceAnalysisResult = {
+    request_status: {
+      status: 'supported',
+      request: { kind: 'concordance', request: emptyConcordance },
+    },
     id: 'original',
     tab_id: 'tab',
     kind: 'concordance',
@@ -41,7 +45,7 @@ it('publishes captured result and filters when a newer run arrives while the dia
     },
   };
   result.result.payload.corpora.push(structuredClone(result.result.payload.corpora[0]!));
-  const filter: api.ConcordanceFilter = {
+  const filter: concordanceApi.ConcordanceFilter = {
     excluded_terms: ['dog'],
     uncased: true,
     bins: [2],
@@ -52,7 +56,7 @@ it('publishes captured result and filters when a newer run arrives while the dia
     nodes: [{ table_name: 'CORPUS_CC_1' }],
   });
   const close = vi.fn();
-  const view = (value: api.ConcordanceAnalysisResult) => (
+  const view = (value: concordanceApi.ConcordanceAnalysisResult) => (
     <QueryClientProvider client={client}>
       <ConcordancePublishDialog
         base="http://test"
@@ -68,9 +72,11 @@ it('publishes captured result and filters when a newer run arrives while the dia
   expect(names[0]).toHaveValue('Corpus_cc_2');
   expect(names[1]).toHaveValue('Corpus_cc_3');
   fireEvent.change(names[0]!, { target: { value: 'My explicit name' } });
-  vi.mocked(api.publishConcordance).mockRejectedValueOnce(new Error('Name already exists'));
+  vi.mocked(concordanceApi.publishConcordance).mockRejectedValueOnce(
+    new Error('Name already exists'),
+  );
   fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
-  await waitFor(() => expect(api.publishConcordance).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(concordanceApi.publishConcordance).toHaveBeenCalledTimes(1));
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'Add', exact: true })).toBeEnabled(),
   );
@@ -79,8 +85,13 @@ it('publishes captured result and filters when a newer run arrives while the dia
   rerender(view({ ...result, id: 'newer' }));
   fireEvent.click(screen.getByRole('button', { name: 'Add', exact: true }));
   await waitFor(() => expect(close).toHaveBeenCalledOnce());
-  expect(api.publishConcordance).toHaveBeenCalledWith('http://test', 'original', 'matches', [
-    expect.objectContaining({ source_index: 0, filter, name: 'My explicit name' }),
-    expect.objectContaining({ source_index: 1, name: 'Corpus_cc_3' }),
-  ]);
+  expect(concordanceApi.publishConcordance).toHaveBeenCalledWith(
+    'http://test',
+    'original',
+    'matches',
+    [
+      expect.objectContaining({ source_index: 0, filter, name: 'My explicit name' }),
+      expect.objectContaining({ source_index: 1, name: 'Corpus_cc_3' }),
+    ],
+  );
 });

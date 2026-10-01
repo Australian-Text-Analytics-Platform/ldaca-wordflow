@@ -536,7 +536,7 @@ impl Database {
         change.commit(tx, &self.changes, &self.cancellation)?;
         Ok(())
     }
-    fn rename_node(&mut self, id: impl Into<ObjectTarget>, name: &str) -> Result<String> {
+    fn rename_node(&mut self, id: impl Into<ObjectTarget>, name: &str) -> Result<(String, Uuid)> {
         let target = id.into();
         if name.trim().is_empty() {
             return Err(Error::invalid("Table name cannot be empty"));
@@ -546,7 +546,7 @@ impl Database {
         let source = object.relation.clone();
         let interfaces = renames::ViewInterfaces::capture(&tx, &source)?;
         if source.name == name {
-            return Ok(source.name);
+            return Ok((source.name, Uuid::new_v4()));
         }
         let replacement = Relation {
             schema: source.schema.clone(),
@@ -560,6 +560,7 @@ impl Database {
         });
         scope.resources.push(Resource::Tabs);
         scope.analysis_ids = renames::reconcile(&tx, &scope.renames[0])?;
+        let change_id = scope.id;
         let change = PendingChange::new(&tx, scope, &self.cancellation);
         let database: String = tx.query_row("SELECT current_database()", [], |r| r.get(0))?;
         let relations = {
@@ -625,7 +626,7 @@ impl Database {
         metadata::rename_node(&tx, &object, name)?;
         check_cancellation(&self.cancellation)?;
         change.commit(tx, &self.changes, &self.cancellation)?;
-        Ok(name.to_owned())
+        Ok((name.to_owned(), change_id))
     }
     fn clone_node(&mut self, id: impl Into<ObjectTarget>) -> Result<String> {
         let target = id.into();

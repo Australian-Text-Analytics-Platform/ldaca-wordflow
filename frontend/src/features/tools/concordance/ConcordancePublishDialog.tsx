@@ -1,18 +1,18 @@
-import { cachedDataBlockNames, suggestDataBlockNames } from '@/features/project/automaticNames';
-import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import * as api from '@/features/project/api';
+import { cachedDataBlockNames, suggestDataBlockNames } from '@/features/project/automaticNames';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 const generated = [
   ['left_context', 'Left context'],
   ['matched_text', 'Match'],
@@ -33,15 +33,15 @@ export function ConcordancePublishDialog({
   onClose,
 }: {
   base: string;
-  result: api.ConcordanceAnalysisResult;
+  result: concordanceApi.ConcordanceAnalysisResult;
   projection: 'matches' | 'documents';
-  filters: api.ConcordanceFilter[];
+  filters: concordanceApi.ConcordanceFilter[];
   onClose: () => void;
 }) {
   const cache = useQueryClient();
   const [result] = useState(initialResult);
   const [selected, setSelected] = useState(result.result.payload.corpora.map(() => true));
-  const [outputs, setOutputs] = useState<api.ConcordancePublishSource[]>(() => {
+  const [outputs, setOutputs] = useState<concordanceApi.ConcordancePublishSource[]>(() => {
     const names = suggestDataBlockNames(
       result.result.payload.corpora.map((corpus) => ({
         sources: [corpus.input.source.name],
@@ -59,8 +59,8 @@ export function ConcordancePublishDialog({
   });
   const [sync, setSync] = useState(false);
   const mutation = useMutation({
-    mutationFn: (captured: api.ConcordancePublishSource[]) =>
-      api.publishConcordance(base, result.id, projection, captured),
+    mutationFn: (captured: concordanceApi.ConcordancePublishSource[]) =>
+      concordanceApi.publishConcordance(base, result.id, projection, captured),
     onSuccess: onClose,
   });
   const common =

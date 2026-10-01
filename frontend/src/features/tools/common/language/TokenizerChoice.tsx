@@ -1,6 +1,3 @@
-import { NodeInputField } from '../components/NodeInputField';
-import { useNodePreferences } from '../useNodePreferences';
-import { useEffect, useRef } from 'react';
 import {
   Select,
   SelectContent,
@@ -9,9 +6,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import type * as api from '@/features/project/api';
-import { useDetectedColumnLanguage } from './useDetectedColumnLanguage';
+import type * as objectsApi from '@/features/project/objects';
+import type * as frequencyApi from '@/features/tools/token-frequency/api';
+import { useEffect, useRef } from 'react';
+import { NodeInputField } from '../components/NodeInputField';
+import { useNodePreferences } from '../useNodePreferences';
 import { partitionTokenizerModelsForLanguage } from './languages';
+import { useDetectedColumnLanguage } from './useDetectedColumnLanguage';
 export function TokenizerChoice({
   active,
   base,
@@ -27,9 +28,9 @@ export function TokenizerChoice({
   preferenceTargets?: { name: string; column: string }[];
   active: boolean;
   base: string;
-  source: api.ObjectRef;
+  source: objectsApi.ObjectRef;
   column: string;
-  models: api.TokenizerInfo[];
+  models: frequencyApi.TokenizerInfo[];
   value: string;
   onChange: (value: string) => void;
 }) {

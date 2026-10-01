@@ -1,51 +1,53 @@
-import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
-import { decodeAnalysisRequest } from '../common/analysisRequest';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { AnalysisPublishMenu } from '../common/components/AnalysisPublishMenu';
-import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
-import { inspectAnalysisRow } from '../common/components/inspectAnalysisRow';
-import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
-import { useEffect, useRef, useState } from 'react';
-import { keepPreviousData, useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { objectDependencies } from '@/features/project/projectChanges';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
-import { ChevronDown } from 'lucide-react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog';
-import HelpIcon from '@/components/help/HelpIcon';
+import { Input } from '@/components/ui/input';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cachedDataBlockNames, suggestDataBlockName } from '@/features/project/automaticNames';
+import { objectDependencies } from '@/features/project/projectChanges';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as quotationApi from '@/features/tools/quotation/api';
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { decodeAnalysisRequest } from '../common/analysisRequest';
 import { showValue } from '../common/analysisValue';
+import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
+import { AnalysisPublishMenu } from '../common/components/AnalysisPublishMenu';
+import { inspectAnalysisRow } from '../common/components/inspectAnalysisRow';
 import { RowDetailPanel } from '../common/components/RowDetailPanel';
+import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
 import { useRowDetailDialog } from '../common/components/useRowDetailDialog';
+import { useRetainedPages } from '../common/useRetainedPages';
 import {
-  quotationRows,
-  quotationFields,
   quotationCell,
+  quotationFields,
+  quotationRows,
   quoteColors,
   type QuotationRow,
 } from './quotationRows';
 import { QuotationText } from './QuotationText';
-type Page = Awaited<ReturnType<typeof api.previewQuotation>> & {
-  input: api.QuotationRequest['input'];
+type Page = Awaited<ReturnType<typeof quotationApi.previewQuotation>> & {
+  input: quotationApi.QuotationRequest['input'];
 };
 interface Props {
   onCancelPreview?: () => void;
   base: string;
-  tab: api.Tab;
+  tab: analysesApi.Tab;
   active: boolean;
-  submitted?: { request: api.QuotationRequest; generation: number };
-  draft: api.QuotationRequest;
-  result?: api.QuotationAnalysisResult;
+  submitted?: { request: quotationApi.QuotationRequest; generation: number };
+  draft: quotationApi.QuotationRequest;
+  result?: quotationApi.QuotationAnalysisResult;
   view: 'preview' | 'saved';
   stopped: boolean;
   settings: Record<string, unknown>;
@@ -68,17 +70,16 @@ export function QuotationResults({
   editing,
   onCancelPreview,
 }: Props) {
-  const cache = useQueryClient();
   const saved = view === 'saved';
   const request =
     saved && result
-      ? decodeAnalysisRequest('quotation', result.request).request
+      ? decodeAnalysisRequest('quotation', result.request_status).request
       : submitted?.request;
   const [page, setPage] = useState(1);
   const [pageSizes, setPageSizes] = useState({ preview: 50, saved: 20 });
   const pageSize = pageSizes[view];
   const [unit, setUnit] = useState<'documents' | 'matches'>('documents');
-  const [sort, setSort] = useState<api.QuotationQuery['sort']>(null);
+  const [sort, setSort] = useState<quotationApi.QuotationQuery['sort']>(null);
   const [detail, setDetail] = useState<number | null>(null);
   const [publish, setPublish] = useState<'documents' | 'matches' | null>(null);
   const context = typeof settings.context === 'number' ? settings.context : 5;
@@ -93,8 +94,8 @@ export function QuotationResults({
     setDetail(null);
   }
   const input = request?.input ?? draft.input;
-  const query: api.QuotationQuery = { projection: unit, page, page_size: pageSize, sort };
-  const preview: api.QuotationPreviewRequest = {
+  const query: quotationApi.QuotationQuery = { projection: unit, page, page_size: pageSize, sort };
+  const preview: quotationApi.QuotationPreviewRequest = {
     input,
     page,
     page_size: pageSize,
@@ -103,11 +104,11 @@ export function QuotationResults({
   const data = useQuery({
     queryKey: saved
       ? ['native', base, 'analyses', result?.id, 'quotation', query, input]
-      : ['native', base, 'analysis-preview', tab.id, preview],
+      : ['native', base, 'analysis-preview', tab.id, submitted?.generation, preview],
     queryFn: async ({ signal }): Promise<Page> => ({
       ...(await (saved
-        ? api.queryQuotation(base, result?.id ?? '', query, signal)
-        : api.previewQuotation(base, tab.id, preview, signal))),
+        ? quotationApi.queryQuotation(base, result?.id ?? '', query, signal)
+        : quotationApi.previewQuotation(base, tab.id, preview, signal))),
       input,
     }),
     enabled: active && Boolean(request) && (saved || !stopped),
@@ -115,22 +116,11 @@ export function QuotationResults({
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
-  const previous = useRef(submitted);
-  useEffect(() => {
-    const old = previous.current;
-    previous.current = submitted;
-    if (
-      old?.generation !== submitted?.generation &&
-      JSON.stringify(old?.request) === JSON.stringify(submitted?.request)
-    ) {
-      void cache.invalidateQueries({ queryKey: ['native', base, 'analysis-preview', tab.id] });
-    }
-  }, [base, cache, submitted, tab.id]);
-  const [retained, setRetained] = useState<Record<string, Page>>({});
-  const retainKey = JSON.stringify([view, saved ? result?.id : null, input.source]);
-  if (data.data && !data.isPlaceholderData && retained[retainKey] !== data.data)
-    setRetained({ ...retained, [retainKey]: data.data });
-  const displayed = data.data ?? retained[retainKey];
+  const retained = useRetainedPages(
+    [JSON.stringify([view, saved ? result?.id : null, input.source])],
+    [data],
+  );
+  const [displayed] = retained.pages;
   const displayInput = displayed?.input ?? input;
   const documentRows = displayed ? quotationRows(displayed.table) : [];
   const rows =
@@ -141,7 +131,7 @@ export function QuotationResults({
     ? Object.keys(rows[0].source)
     : (result?.result.payload.columns.map(([name]) => name) ?? []);
   const selected = metadata.filter((name) => fields.includes(name));
-  const stale = data.isFetching || data.isError || data.isPlaceholderData || (!saved && stopped);
+  const stale = retained.stale[0] || (!saved && stopped);
   const setSorting = (field: string, isMetadata: boolean) => {
     setSort({
       field,
@@ -448,14 +438,12 @@ export function QuotationResults({
           <TablePaginationFooter
             pageIndex={page - 1}
             pageSize={pageSize}
-            table={{
-              setPageIndex: (index) => {
-                setPage(index + 1);
-              },
-              setPageSize: (size) => {
-                setPageSizes({ ...pageSizes, [view]: size });
-                setPage(1);
-              },
+            onPageChange={(index) => {
+              setPage(index + 1);
+            }}
+            onPageSizeChange={(size) => {
+              setPageSizes({ ...pageSizes, [view]: size });
+              setPage(1);
             }}
             rowCount={saved ? displayed.totalRows : undefined}
             hasNext={displayed.hasNext}
@@ -544,7 +532,7 @@ function QuotationDetail({
     toPayload: (row) => ({ record: row.source, textColumn: column }),
   });
   const selected = controller.selectedItem;
-  const query: api.QuotationQuery = {
+  const query: quotationApi.QuotationQuery = {
     projection: 'documents',
     page: 1,
     page_size: 1,
@@ -553,7 +541,7 @@ function QuotationDetail({
   };
   const full = useQuery({
     queryKey: ['native', base, 'analyses', analysisId, 'quotation', query],
-    queryFn: ({ signal }) => api.queryQuotation(base, analysisId ?? '', query, signal),
+    queryFn: ({ signal }) => quotationApi.queryQuotation(base, analysisId ?? '', query, signal),
     enabled: Boolean(analysisId && selected),
     staleTime: Infinity,
   });
@@ -589,7 +577,7 @@ function QuotationPublishDialog({
   onClose,
 }: {
   base: string;
-  result: api.QuotationAnalysisResult;
+  result: quotationApi.QuotationAnalysisResult;
   projection: 'documents' | 'matches';
   onClose: () => void;
 }) {
@@ -608,7 +596,8 @@ function QuotationPublishDialog({
     .map(([name]) => name)
     .filter((name) => name !== result.result.payload.input.column);
   const mutation = useMutation({
-    mutationFn: () => api.publishQuotation(base, result.id, { projection, name, metadata, fields }),
+    mutationFn: () =>
+      quotationApi.publishQuotation(base, result.id, { projection, name, metadata, fields }),
     onSuccess: onClose,
   });
   return (

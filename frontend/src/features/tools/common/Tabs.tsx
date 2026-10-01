@@ -1,10 +1,10 @@
-import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
-import { useEffect, useRef, type ReactNode } from 'react';
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { EditorTabs } from '@/components/tabs';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import * as api from '@/features/project/api';
+import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, type ReactNode } from 'react';
 export function Tabs({
   base,
   active,
@@ -16,24 +16,26 @@ export function Tabs({
   onActivate,
   onRemove,
   children,
+  help,
 }: {
   base: string;
   active: boolean;
   editing?: boolean;
-  kind: api.AnalysisKind;
+  kind: analysesApi.AnalysisKind;
   label: string;
   description: string;
   chosen?: string;
   onActivate: (id: string) => void;
   onRemove: (id: string) => void;
-  children: (tab: api.Tab) => ReactNode;
+  children: (tab: analysesApi.Tab) => ReactNode;
+  help?: ReactNode;
 }) {
   const navigate = useEditingNavigation();
   const cache = useQueryClient();
   const key = ['native', base, 'tabs', kind];
   const tabs = useQuery({
     queryKey: key,
-    queryFn: ({ signal }) => api.listTabs(base, signal, kind),
+    queryFn: ({ signal }) => analysesApi.listTabs(base, signal, kind),
   });
   const tab = tabs.data?.find((item) => item.id === chosen) ?? tabs.data?.[0];
   useEffect(() => {
@@ -41,10 +43,10 @@ export function Tabs({
   }, [chosen, tab, onActivate]);
   const create = useMutation({
     mutationKey: [...key, 'create'],
-    mutationFn: () => api.createTab(base, kind),
+    mutationFn: () => analysesApi.createTab(base, kind),
     onSuccess: async (created) => {
       await cache.cancelQueries({ queryKey: key });
-      cache.setQueryData<api.Tab[]>(key, (old) => [
+      cache.setQueryData<analysesApi.Tab[]>(key, (old) => [
         ...(old ?? []).filter((item) => item.id !== created.id),
         created,
       ]);
@@ -67,16 +69,17 @@ export function Tabs({
       createTab();
   }, [active, editing, tabs.isSuccess, tabs.isFetching, tabs.data, cache, base, kind, createTab]);
   const rename = useMutation({
-    mutationFn: ({ id, name }: { id: string; name: string }) => api.updateTab(base, id, { name }),
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      analysesApi.updateTab(base, id, { name }),
     onSuccess: (updated) =>
-      cache.setQueryData<api.Tab[]>(key, (old) =>
+      cache.setQueryData<analysesApi.Tab[]>(key, (old) =>
         old?.map((item) => (item.id === updated.id ? { ...item, name: updated.name } : item)),
       ),
   });
   const reorder = useMutation({
-    mutationFn: (ids: string[]) => api.reorderTabs(base, kind, ids),
+    mutationFn: (ids: string[]) => analysesApi.reorderTabs(base, kind, ids),
     onSuccess: (next) =>
-      cache.setQueryData<api.Tab[]>(key, (old) =>
+      cache.setQueryData<analysesApi.Tab[]>(key, (old) =>
         old
           ?.map((item) => ({
             ...item,
@@ -86,10 +89,10 @@ export function Tabs({
       ),
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api.deleteTab(base, id),
+    mutationFn: (id: string) => analysesApi.deleteTab(base, id),
     onSuccess: (_, id) => {
       onRemove(id);
-      cache.setQueryData<api.Tab[]>(key, (old) => old?.filter((item) => item.id !== id));
+      cache.setQueryData<analysesApi.Tab[]>(key, (old) => old?.filter((item) => item.id !== id));
     },
   });
   return (
@@ -99,6 +102,7 @@ export function Tabs({
     >
       {tab && (
         <EditorTabs
+          className="shrink-0"
           aria-label={`${label} analyses`}
           activeTabId={tab.id}
           tabs={(tabs.data ?? []).map((item) => ({ id: item.id, title: item.name }))}
@@ -142,13 +146,15 @@ export function Tabs({
           }
         />
       )}
-      <ScrollArea className="min-h-0 min-w-0 flex-1">
+      <ScrollArea data-testid={`${kind}-content`} className="min-h-0 min-w-0 flex-1">
         <div className="space-y-3 p-3">
-          {tabs.isPending || (create.isPending && !tab) ? (
-            <p role="status">Loading {label}…</p>
+          {tabs.isPending || (!tab && tabs.isFetching) || (create.isPending && !tab) ? (
+            <p role="status">
+              {create.isPending && !tab ? `Creating ${label} analysis…` : 'Loading analyses…'}
+            </p>
           ) : tabs.isError ? (
             <div role="alert">
-              Could not load analyses.{' '}
+              Could not load {label} analyses.{' '}
               <Button
                 onClick={() => {
                   void tabs.refetch();
@@ -161,8 +167,15 @@ export function Tabs({
             children(tab)
           ) : (
             <section className="space-y-3">
-              <h1>{label}</h1>
-              <p>{description}</p>
+              <div className="flex items-center gap-2">
+                <h1>{label}</h1>
+                {help}
+              </div>
+              {create.isError ? (
+                <p role="alert">Could not create a {label} analysis.</p>
+              ) : (
+                <p>{description}</p>
+              )}
               <Button
                 disabled={editing || create.isPending}
                 onClick={() => {
@@ -171,7 +184,7 @@ export function Tabs({
                   });
                 }}
               >
-                New {label} analysis
+                {create.isError ? 'Retry' : `New ${label} analysis`}
               </Button>
             </section>
           )}

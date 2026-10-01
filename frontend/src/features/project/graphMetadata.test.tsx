@@ -1,9 +1,9 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import type { ProjectNode } from '@/features/project/api';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ComponentType, ReactNode } from 'react';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import ProjectGraph from './ProjectGraph';
-import type { ProjectNode } from './api';
 
 const state = vi.hoisted(() => ({ zoom: 1, count: vi.fn() }));
 vi.mock('@/lib/isTauri', () => ({ isTauri: () => false }));

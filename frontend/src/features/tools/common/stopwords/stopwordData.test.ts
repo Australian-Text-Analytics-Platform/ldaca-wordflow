@@ -1,5 +1,5 @@
+import { prepareStopwords } from '@/features/project/filesApi';
 import { expect, it, vi } from 'vite-plus/test';
-import { prepareStopwords } from '@/features/project/api';
 import { frequencySettings } from '../../token-frequency/frequencySettings';
 
 it('ignores legacy stopword arrays instead of creating an alternative word store', () => {

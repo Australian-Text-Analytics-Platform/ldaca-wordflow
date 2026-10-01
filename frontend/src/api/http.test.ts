@@ -1,6 +1,6 @@
+import { ProjectError, request } from '@/api/client';
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test';
 import { requestUrl } from './http';
-import { request, ProjectError } from '@/features/project/api';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('generated HTTP transport', () => {

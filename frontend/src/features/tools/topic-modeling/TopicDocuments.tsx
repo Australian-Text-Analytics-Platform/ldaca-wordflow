@@ -1,7 +1,5 @@
-import { useEffect, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   Dialog,
   DialogContent,
@@ -9,12 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { showValue } from '../common/analysisValue';
+import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
 
 export function TopicDocuments({
   base,
@@ -27,7 +27,7 @@ export function TopicDocuments({
 }: {
   base: string;
   owner: { analysis: string } | { tab: string; preview: string };
-  summary: api.TopicSummary;
+  summary: topicApi.TopicSummary;
   topic: number;
   count: number;
   topN: number;
@@ -42,7 +42,7 @@ export function TopicDocuments({
     'analysis' in owner
       ? ['native', base, 'analyses', owner.analysis, 'topic-modeling', 'documents']
       : ['native', base, 'analysis-preview', owner.tab, owner.preview, 'documents'];
-  const input: api.TopicDocumentQuery = {
+  const input: topicApi.TopicDocumentQuery = {
     projection: 'documents',
     topic,
     topic_count: count,
@@ -55,7 +55,7 @@ export function TopicDocuments({
   const client = useQueryClient();
   const rows = useQuery({
     queryKey: [...root, base, owner, input],
-    queryFn: ({ signal }) => api.queryTopicDocuments(base, owner, input, signal),
+    queryFn: ({ signal }) => topicApi.queryTopicDocuments(base, owner, input, signal),
     staleTime: Infinity,
   });
   // Closing an inspector releases in-flight reads; immutable completed pages may be reused.
@@ -227,12 +227,10 @@ export function TopicDocuments({
           </>
         )}
         <TablePaginationFooter
-          table={{
-            setPageIndex: setPage,
-            setPageSize: (value) => {
-              setSize(value);
-              setPage(0);
-            },
+          onPageChange={setPage}
+          onPageSizeChange={(value) => {
+            setSize(value);
+            setPage(0);
           }}
           pageIndex={page}
           pageSize={size}

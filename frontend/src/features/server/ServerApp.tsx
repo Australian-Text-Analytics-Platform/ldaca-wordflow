@@ -1,17 +1,17 @@
-import { useConcordanceState } from '@/features/tools/concordance/concordanceState';
-import { useQuotationState } from '@/features/tools/quotation/quotationState';
-import { useAnnotationState } from '@/features/tools/annotation/annotationState';
-import { useTopicState, useTopicSampling } from '@/features/tools/topic-modeling/topicState';
-import { useFrequencyState } from '@/features/tools/token-frequency/frequencyState';
-import { usePlotState, usePlotMode } from '@/features/tools/plots/plotState';
-import { useEffect, useState } from 'react';
-import { QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Toaster } from '@/components/ui/sonner';
+import { request } from '@/api/client';
 import { Button } from '@/components/ui/button';
-import { createProjectQueryClient } from '@/features/project/projectErrors';
-import { request } from '@/features/project/api';
+import { Toaster } from '@/components/ui/sonner';
 import ProjectApp from '@/features/project/ProjectApp';
+import { createProjectQueryClient } from '@/features/project/projectErrors';
+import { useAnnotationState } from '@/features/tools/annotation/annotationState';
+import { useConcordanceState } from '@/features/tools/concordance/concordanceState';
+import { usePlotMode, usePlotState } from '@/features/tools/plots/plotState';
+import { useQuotationState } from '@/features/tools/quotation/quotationState';
+import { useFrequencyState } from '@/features/tools/token-frequency/frequencyState';
+import { useTopicSampling, useTopicState } from '@/features/tools/topic-modeling/topicState';
 import { useSelectionStore } from '@/stores/selectionStore';
+import { QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useState } from 'react';
 import { ServerContext } from './context';
 
 export default function ServerApp({ base }: { base: string }) {

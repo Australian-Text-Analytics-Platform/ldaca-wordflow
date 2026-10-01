@@ -73,7 +73,7 @@ impl Database {
         &mut self,
         target: ObjectTarget,
         change: ColumnChange,
-    ) -> Result<()> {
+    ) -> Result<Uuid> {
         let tx = self.conn.transaction()?;
         let object = target.resolve(&tx)?;
         let relation = &object.relation;
@@ -96,6 +96,7 @@ impl Database {
         if let Some(rename) = scope.renames.first() {
             scope.analysis_ids = renames::reconcile(&tx, rename)?;
         }
+        let change_id = scope.id;
         let pending = PendingChange::new(&tx, scope, &self.cancellation);
         let previous = query::view_query(&tx, relation)?;
         let fields = columns(&tx, relation)?;
@@ -279,7 +280,8 @@ impl Database {
                 metadata::transformed_column(&tx, &object, &column, true)?;
             }
         }
-        pending.commit(tx, &self.changes, &self.cancellation)
+        pending.commit(tx, &self.changes, &self.cancellation)?;
+        Ok(change_id)
     }
     pub(super) fn create_view(&mut self, request: CreateView) -> Result<String> {
         let name = request.name.trim();

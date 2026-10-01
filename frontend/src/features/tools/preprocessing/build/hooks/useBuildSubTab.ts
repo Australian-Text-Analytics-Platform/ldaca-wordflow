@@ -1,19 +1,16 @@
 import { suggestColumnName } from '@/features/project/automaticNames';
-import { useEffect, useRef, useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { parseExpression } from '@/features/project/api';
-import { parsedBuildExpression } from '../parseBuildExpression';
+import { takeMostRecent } from '@/features/project/common/utils/selectionUtils';
+import type { ColumnInfo } from '@/features/project/data-view/utils/columnTypes';
+import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
+import { useRef, useState } from 'react';
+import type { OperationPreviewFetcher } from '../../hooks/useNodePreviewWithRawFallback';
+import { usePreprocessingPreview } from '../../hooks/usePreprocessingPreview';
 import {
   insertExpression,
   moveExpression,
   removeExpression,
   updateExpression,
 } from '../expressionTree';
-import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
-import type { ColumnInfo } from '@/features/project/data-view/utils/columnTypes';
-import { takeMostRecent } from '@/features/project/common/utils/selectionUtils';
-import { usePreprocessingPreview } from '../../hooks/usePreprocessingPreview';
-import type { OperationPreviewFetcher } from '../../hooks/useNodePreviewWithRawFallback';
 import {
   buildColumnRequest,
   emptyVisualBuild,
@@ -43,7 +40,7 @@ interface Draft {
   column: string | null;
 }
 
-/** One expression with visual and SQL representations. Apply captures the complete draft. */
+/** Visual authoring generates SQL once. Apply captures the complete current draft. */
 export function useBuildSubTab(props: BuildSubTabProps) {
   const [activeNode] = takeMostRecent(props.selectedNodes, 1);
   const columns = activeNode ? props.getColumnInfos(activeNode) : [];
@@ -98,27 +95,6 @@ export function useBuildSubTab(props: BuildSubTabProps) {
       sql: { expression: validation.expression },
     }));
   }
-  const parsing = useRef<AbortController | null>(null);
-  useEffect(() => () => parsing.current?.abort(), []);
-  const parse = useMutation({
-    meta: { reportError: false }, // The builder displays this error beside the SQL draft.
-    mutationFn: async () => {
-      const expression = latest.current.sql?.expression;
-      if (expression === undefined || props.projectBase === null) return;
-      parsing.current?.abort();
-      const controller = new AbortController();
-      parsing.current = controller;
-      try {
-        const result = await parseExpression(props.projectBase, expression, controller.signal);
-        if (controller.signal.aborted || latest.current.sql?.expression !== expression) return;
-        const root = parsedBuildExpression(result, columns);
-        update((value) => ({ ...value, visual: { mode: 'visual', roots: [root] }, sql: null }));
-      } catch (error) {
-        if (controller.signal.aborted || latest.current.sql?.expression !== expression) return;
-        throw error;
-      }
-    },
-  });
   function addPart(
     part: BuildBuilderToken,
     parent: string | null = null,
@@ -169,20 +145,14 @@ export function useBuildSubTab(props: BuildSubTabProps) {
       update((value) => ({ ...value, column }));
     },
     setSql: (expression: string) => {
-      parsing.current?.abort();
-      parse.reset();
       update((value) => (value.sql ? { ...value, sql: { ...value.sql, expression } } : value));
     },
     editSql,
-    returnToBuilder: () => {
-      parse.mutate();
+    startNewVisual: () => {
+      update((value) => ({ ...value, visual: emptyVisualBuild(), sql: null }));
     },
-    parsing: parse.isPending,
-    parseError: parse.error?.name === 'AbortError' ? null : parse.error?.message,
 
     clear: () => {
-      parsing.current?.abort();
-      parse.reset();
       update((value) => ({ ...value, visual: emptyVisualBuild(), sql: null }));
     },
     expression: validation.expression,

@@ -1,17 +1,19 @@
-import { ReviewViewport } from './ReviewViewport';
-import { useQuery } from '@tanstack/react-query';
-import { ChevronDown } from 'lucide-react';
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { SearchableSelect } from '@/components/ui/searchable-select';
-import * as api from '@/features/project/api';
+import * as objectsApi from '@/features/project/objects';
 import { objectDependencies } from '@/features/project/projectChanges';
+import * as editingApi from '@/features/table-editing/api';
 import { EditableTable } from '@/features/table-editing/EditableTable';
 import { EditingLeaveDialog } from '@/features/table-editing/EditingLeaveDialog';
-import { AnnotationLabelCell } from './AnnotationLabelCell';
 import { useTableEditing } from '@/features/table-editing/useTableEditing';
+import * as annotationApi from '@/features/tools/annotation/api';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronDown } from 'lucide-react';
+import { useState } from 'react';
+import { AnnotationLabelCell } from './AnnotationLabelCell';
+import { ReviewViewport } from './ReviewViewport';
 
 export function ColumnChoices({
   label,
@@ -75,7 +77,7 @@ export function Score({
   revealed,
   onReveal,
 }: {
-  value: api.AnnotationComparison;
+  value: annotationApi.AnnotationComparison;
   metric: 'kappa' | 'alpha' | 'agreement';
   revealed: boolean;
   onReveal: () => void;
@@ -150,8 +152,8 @@ export function ReviewFilter({
 }: {
   annotation: string;
   compare: string[];
-  filter: api.AnnotationFilter | null;
-  onChange: (value: api.AnnotationFilter | null) => void;
+  filter: annotationApi.AnnotationFilter | null;
+  onChange: (value: annotationApi.AnnotationFilter | null) => void;
 }) {
   return (
     <Popover>
@@ -221,8 +223,8 @@ export function AnnotationEditor({
   onUseExamples,
 }: {
   base: string;
-  session: api.CellEditSession;
-  setup?: api.AnnotationSetup;
+  session: editingApi.CellEditSession;
+  setup?: annotationApi.AnnotationSetup;
   onFinished: () => void;
   title?: string;
   onUseExamples?: () => void;
@@ -230,7 +232,7 @@ export function AnnotationEditor({
   const [compare, setCompare] = useState<string[]>([]);
   const [metadata, setMetadata] = useState<string[]>([]);
   const [revealed, setRevealed] = useState<string[]>([]);
-  const [filter, setFilter] = useState<api.AnnotationFilter | null>(null);
+  const [filter, setFilter] = useState<annotationApi.AnnotationFilter | null>(null);
   const [metric, setMetric] = useState<'kappa' | 'alpha' | 'agreement'>('kappa');
   const roles = setup
     ? [setup.document, setup.annotation, ...(setup.correction ? [setup.correction] : [])]
@@ -247,14 +249,14 @@ export function AnnotationEditor({
     onFinished,
     allowRowChanges: !setup,
     initialPageSize: 10,
-    liveDependencies: setup?.codebook ? [api.objectRef(setup.codebook.source)] : undefined,
+    liveDependencies: setup?.codebook ? [objectsApi.objectRef(setup.codebook.source)] : undefined,
     review: setup ? { compare, filter } : undefined,
   });
   const book = useQuery({
     queryKey: ['native', base, 'annotation-codebook', setup?.codebook],
     queryFn: ({ signal }) => {
       if (!setup?.codebook) throw new Error('Choose a Codebook');
-      return api.annotationCodebook(base, setup.codebook, signal);
+      return annotationApi.annotationCodebook(base, setup.codebook, signal);
     },
     enabled: Boolean(setup?.codebook),
     meta: setup?.codebook ? objectDependencies(setup.codebook.source) : undefined,

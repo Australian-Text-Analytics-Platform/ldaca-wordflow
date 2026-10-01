@@ -48,7 +48,10 @@ impl Notifications {
                 .unwrap_or(&0),
         }
     }
-    fn publish(&self, scope: ChangeScope) {
+    fn publish(&self, mut scope: ChangeScope) {
+        if scope.id.is_nil() {
+            scope.id = Uuid::new_v4();
+        }
         {
             let mut stamps = self
                 .stamps
@@ -85,9 +88,11 @@ pub(crate) enum Resource {
     SqlTypes,
 }
 
-#[derive(Clone, Debug, Default, Deserialize, Serialize, utoipa::ToSchema)]
+#[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(default, deny_unknown_fields)]
 pub(crate) struct ChangeScope {
+    #[schema(required = false)]
+    pub id: Uuid,
     #[schema(required = false)]
     pub all: bool,
     #[schema(required = false)]
@@ -98,6 +103,18 @@ pub(crate) struct ChangeScope {
     pub analysis_ids: Vec<Uuid>,
     #[schema(required = false)]
     pub renames: Vec<renames::Rename>,
+}
+impl Default for ChangeScope {
+    fn default() -> Self {
+        Self {
+            id: Uuid::nil(),
+            all: false,
+            objects: vec![],
+            resources: vec![],
+            analysis_ids: vec![],
+            renames: vec![],
+        }
+    }
 }
 impl ChangeScope {
     pub fn analysis(id: Uuid) -> Self {
@@ -114,6 +131,7 @@ impl ChangeScope {
     }
     pub fn object(object: Relation) -> Self {
         Self {
+            id: Uuid::new_v4(),
             objects: vec![object],
             resources: vec![Resource::Graph],
             ..Self::default()

@@ -1,36 +1,40 @@
-import { useNodePreferences } from '../common/useNodePreferences';
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
-import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
-import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
-import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
-import { AnalysisProgress } from '../common/components/AnalysisProgress';
-import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
-import { AnalysisAction } from '../common/components/AnalysisAction';
-import { useTabSettings } from '../common/useTabSettings';
-import { useAnalysisPreview } from '../common/useAnalysisPreview';
-import { VIZ_PALETTE, GREY } from '../common/vizPalette';
 import HelpIcon from '@/components/help/HelpIcon';
-import { Tabs } from '../common/Tabs';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
-import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '../common/nodeInputs/useNodeInputRequests';
-import { TokenizerChoice } from '../common/language/TokenizerChoice';
-import { schemaQuery } from '@/features/project/projectQueries';
+import { Input } from '@/components/ui/input';
+import * as projectApi from '@/features/project/api';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
+import * as objectsApi from '@/features/project/objects';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
 import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
-import * as api from '@/features/project/api';
-import { concordanceKey, useConcordanceState } from './concordanceState';
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import { matchesAnalysisRequest, useRequestRestoration } from '../common/analysisRequest';
+import { AnalysisAction } from '../common/components/AnalysisAction';
+import { AnalysisNumberInput } from '../common/components/AnalysisNumberInput';
+import { AnalysisProgress } from '../common/components/AnalysisProgress';
+import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
+import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
+import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import { TokenizerChoice } from '../common/language/TokenizerChoice';
+import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
+import { Tabs } from '../common/Tabs';
+import { useAnalysisPreview } from '../common/useAnalysisPreview';
+import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
+import { useNodePreferences } from '../common/useNodePreferences';
+import { useTabSettings } from '../common/useTabSettings';
+import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { ConcordanceResults } from './ConcordanceResults';
+import { concordanceKey, useConcordanceState } from './concordanceState';
 
 interface Props {
   base: string;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing?: boolean;
   onCancel: (id: string) => void;
@@ -63,13 +67,13 @@ function ConcordanceTab({
   editing = false,
   onCancel,
   tab,
-}: Props & { tab: api.Tab }) {
+}: Props & { tab: analysesApi.Tab }) {
   const cache = useQueryClient();
   const savePreference = useNodePreferences(base);
   const analysisId = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
-      api.getConcordanceResult(base, id, signal),
+      concordanceApi.getConcordanceResult(base, id, signal),
     ),
     enabled: active && Boolean(analysisId),
   });
@@ -79,13 +83,13 @@ function ConcordanceTab({
   const discardPreview = useConcordanceState((state) => state.discardPreview);
   const preview = useAnalysisPreview(base, tab.id, active, localPreview, discardPreview);
   const clearPreview = preview.clear;
-  const restored = decodeAnalysisRequest('concordance', tab.analysis?.request);
+  const restored = useRequestRestoration('concordance', tab.analysis, [base, tab.id]);
   const draft = stored ?? restored.request;
-  const update = (next: api.ConcordanceRequest) => {
+  const update = (next: concordanceApi.ConcordanceRequest) => {
     useConcordanceState.getState().setDraft(base, tab.id, next);
   };
   const submitted = preview.submitted ?? null;
-  const setSubmitted = (next: { request: api.ConcordanceRequest }) => {
+  const setSubmitted = (next: { request: concordanceApi.ConcordanceRequest }) => {
     preview.submit(next.request);
   };
   const view = submitted ? 'preview' : 'saved';
@@ -122,21 +126,15 @@ function ConcordanceTab({
     getColumnInfos: (node) => mapArrowColumnsToInfo(schemas[names.indexOf(node.id)]?.data ?? []),
     constraints: { maxNodes: 2, fieldPredicate: isArrowStringField, preserveColumnSelection: true },
   });
-  const inputRequests = useNodeInputRequests({
-    scopeId: base,
-    tool: 'concordance',
-    addNodes: picker.addNodes,
-    enabled: active && !editing,
-    deferPlacement: Boolean(result.data ?? submitted),
-  });
   const tokenizers = useQuery({
     queryKey: ['native', base, 'tokenizers'],
-    queryFn: ({ signal }) => api.getTokenizers(base, signal),
+    queryFn: ({ signal }) => frequencyApi.getTokenizers(base, signal),
     staleTime: Infinity,
   });
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
-    mutationFn: (request: api.ConcordanceRequest) => api.runConcordance(base, tab.id, request),
+    mutationFn: (request: concordanceApi.ConcordanceRequest) =>
+      concordanceApi.runConcordance(base, tab.id, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'concordance'] }),
   });
   const executionTask =
@@ -164,6 +162,7 @@ function ConcordanceTab({
     })),
   };
   const ready =
+    !restored.blocked &&
     captured.inputs.length > 0 &&
     Boolean(draft.search.query.trim()) &&
     captured.inputs.every(
@@ -173,7 +172,7 @@ function ConcordanceTab({
         (draft.search.mode === 'text' || input.tokenizer) &&
         nodes.some((node) => node.table_name === input.source.name),
     );
-  const search = (patch: Partial<api.ConcordanceSearch>) => {
+  const search = (patch: Partial<concordanceApi.ConcordanceSearch>) => {
     update({ ...draft, search: { ...draft.search, ...patch } });
   };
   return (
@@ -195,7 +194,7 @@ function ConcordanceTab({
           <>
             <NodeInputsPanel
               {...picker}
-              {...inputRequests}
+
               inputOrder={names}
               title="Concordance inputs"
               maxNodes={2}
@@ -210,7 +209,7 @@ function ConcordanceTab({
                 draft.inputs.map((input, index) => [
                   input.source.name,
                   nodes.find((node) => node.table_name === input.source.name)?.color ??
-                    colors[api.targetKey(input.source)] ??
+                    colors[objectsApi.targetKey(input.source)] ??
                     VIZ_PALETTE[index] ??
                     GREY,
                 ]),
@@ -341,7 +340,11 @@ function ConcordanceTab({
                 </label>
               ))}
             </div>
-            <RequestCompatibilityWarning issues={restored.issues} />
+            <RequestCompatibilityWarning
+              issues={restored.issues}
+              onReset={() => restored.reset(update)}
+              resetDone={!restored.blocked}
+            />
             <div className="flex flex-wrap items-center gap-2">
               <AnalysisAction
                 reason={
@@ -357,7 +360,7 @@ function ConcordanceTab({
                             matchesAnalysisRequest(
                               'concordance',
                               captured,
-                              result.data?.request ?? tab.analysis?.request,
+                              result.data?.request_status ?? tab.analysis?.request_status,
                             )
                           ? 'These settings already have saved results. Change the parameters or clear results to run again.'
                           : undefined
@@ -396,7 +399,11 @@ function ConcordanceTab({
                       ? 'Wait for Run to finish, or cancel it first.'
                       : !ready
                         ? 'Choose the required inputs and search settings first.'
-                        : matchesAnalysisRequest('concordance', captured, result.data?.request)
+                        : matchesAnalysisRequest(
+                              'concordance',
+                              captured,
+                              result.data?.request_status,
+                            )
                           ? 'These settings already have saved results. Change the request or clear results to preview again.'
                           : undefined
                 }
@@ -457,7 +464,7 @@ function ConcordanceTab({
               ...colors,
               ...Object.fromEntries(
                 nodes.flatMap((node) =>
-                  node.color ? [[api.targetKey(node.table_name), node.color]] : [],
+                  node.color ? [[objectsApi.targetKey(node.table_name), node.color]] : [],
                 ),
               ),
             }}

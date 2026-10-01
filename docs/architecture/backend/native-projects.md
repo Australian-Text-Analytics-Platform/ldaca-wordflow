@@ -233,8 +233,7 @@ App-driven column renames adapt dependent View inputs with compatibility
 projections while retaining their output interfaces. Recognized rename wrappers
 follow the same reconciliation on Undo/Redo. Known execution-request references
 are rebased without touching unknown JSON or literals. Saved Plots retain only
-captured field bindings, not duplicate execution requests. Structured rename
-events update matching window-local drafts without replacing subsequent edits.
+captured field bindings, not duplicate execution requests. Structured rename events update matching window-local drafts without replacing subsequent edits. Each transient change has a UUID; successful table and column mutations return the same identity in `x-wordflow-change-id`. The frontend reconciles both paths once, including response/event reordering and repeated delivery, without altering transaction or event-reset guarantees.
 
 The same query inspection classifies logical graph edges. No DuckDB object OIDs,
 duplicate view definitions, Polars plans, or general transformation language are

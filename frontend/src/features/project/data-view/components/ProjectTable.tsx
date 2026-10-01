@@ -1,13 +1,3 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type {
-  SortingState,
-  Updater,
-  PaginationState as TanstackPaginationState,
-} from '@tanstack/react-table';
-import { type ColumnPinningState, flexRender, useTable } from '@tanstack/react-table';
-import { Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,6 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Table,
   TableBody,
@@ -28,28 +19,37 @@ import {
 } from '@/components/ui/table';
 import { DatetimeFormatPanel } from '@/features/tools/common/components/DatetimeFormatPanel';
 import { RowDetailPanel } from '@/features/tools/common/components/RowDetailPanel';
-import { useRowDetailDialog } from '@/features/tools/common/components/useRowDetailDialog';
 import { TablePaginationFooter } from '@/features/tools/common/components/TablePaginationFooter';
-import { ProjectColumnHeader } from './ProjectColumnHeader';
-import { SqlTypeDialog } from './SqlTypeDialog';
-import { TopicCoverageBar } from './TopicCoverageBar';
-import type { DataRow, NodeTablePagination } from '../types';
+import { useRowDetailDialog } from '@/features/tools/common/components/useRowDetailDialog';
 import { type ArrowField } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import {
-  DATA_TYPES,
-  getTypeDisplayName,
-  columnCastIdentity,
-  type ColumnCastType,
-} from '../services/schemaMutations';
+import { cn } from '@/lib/utils';
+import type {
+  SortingState,
+  PaginationState as TanstackPaginationState,
+  Updater,
+} from '@tanstack/react-table';
+import { flexRender, useTable, type ColumnPinningState } from '@tanstack/react-table';
+import { Loader2 } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useColumnMutations } from '../hooks/useColumnMutations';
 import {
-  projectTableFeatures,
+  columnCastIdentity,
+  DATA_TYPES,
+  getTypeDisplayName,
+  type ColumnCastType,
+} from '../services/schemaMutations';
+import type { DataRow, NodeTablePagination } from '../types';
+import { ProjectColumnHeader } from './ProjectColumnHeader';
+import {
   defaultTablePreferences,
-  type TablePreferences,
+  projectTableFeatures,
   type ProjectTableColumn,
   type ProjectTableColumnDef,
+  type TablePreferences,
 } from './projectTableFeatures';
+import { SqlTypeDialog } from './SqlTypeDialog';
+import { TopicCoverageBar } from './TopicCoverageBar';
 
 // --- Constants ---
 const WIDE_COLUMN_THRESHOLD = 120;
@@ -633,7 +633,8 @@ export function ProjectTable({
           </Table>
         </ScrollArea>
         <TablePaginationFooter
-          table={tableInstance}
+          onPageChange={(page) => tableInstance.setPageIndex(page)}
+          onPageSizeChange={(size) => tableInstance.setPageSize(size)}
           pageIndex={pageIndex}
           pageSize={pageSize}
           rowCount={usesLookaheadPagination ? undefined : totalRows}

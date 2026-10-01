@@ -14,7 +14,11 @@ import {
   chooseColumn,
   runResearchAnalysis,
 } from '../e2e-native/scenarios/researchData';
-import * as api from '../src/features/project/api';
+import * as projectApi from '@/features/project/api';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as frequencyApi from '@/features/tools/token-frequency/api';
+import * as objectsApi from '@/features/project/objects';
+import * as tasksApi from '@/features/project/tasksApi';
 import { baseUrl, outputDir, screenshot } from './fixtures';
 
 const literal = (text: string) => `'${text.replaceAll("'", "''")}'`;
@@ -59,7 +63,7 @@ async function verifySurvey(path: string, extension: string, expected: SurveyRow
   }
   const reader =
     extension === 'parquet' ? 'read_parquet' : extension === 'csv' ? 'read_csv' : 'read_json_auto';
-  const table = await api.querySql(baseUrl, [
+  const table = await projectApi.querySql(baseUrl, [
     {
       sql: `SELECT * EXCLUDE(day,recorded_at,measurement), day::VARCHAR AS day, epoch_ms(recorded_at::TIMESTAMPTZ) AS recorded_ms, measurement::DOUBLE AS measurement FROM ${reader}(${literal(path)}) ORDER BY row_id`,
     },
@@ -127,7 +131,7 @@ it('exports every row and value in five formats, ZIP members, and reopens select
     await chooseColumn('Text Column:', 'label', frequency);
     await chooseColumn(`${source} tokenizer`, 'Plain words (English)', frequency);
     const analysisId = await runResearchAnalysis(baseUrl, 'frequency', frequency);
-    const tabs = await api.listTabs(baseUrl);
+    const tabs = await analysesApi.listTabs(baseUrl);
     expect(tabs).toHaveLength(1);
     await $('button=Export').click();
     await panel.$('[role="tab"]=Wordflow project').click();
@@ -148,9 +152,9 @@ it('exports every row and value in five formats, ZIP members, and reopens select
       [complete, tabs],
     ] as const) {
       await inspectProjectFile(path, async (base) => {
-        expect(await api.listTabs(base)).toEqual(expectedTabs);
+        expect(await analysesApi.listTabs(base)).toEqual(expectedTabs);
         if (path === complete) {
-          const counts = await api.queryFrequency(base, analysisId, {
+          const counts = await frequencyApi.queryFrequency(base, analysisId, {
             view: 'corpus',
             corpus_index: 0,
             filter: 'synthetic',
@@ -161,9 +165,9 @@ it('exports every row and value in five formats, ZIP members, and reopens select
               .map((r: Record<string, unknown>) => [r.token, Number(r.frequency)]),
           ).toEqual([['synthetic', 480]]);
         }
-        const values = await api.querySql(base, [
+        const values = await projectApi.querySql(base, [
           {
-            sql: `SELECT row_id, label, measurement::DOUBLE AS measurement FROM data.${api.identifier(source)} ORDER BY row_id`,
+            sql: `SELECT row_id, label, measurement::DOUBLE AS measurement FROM data.${ objectsApi.identifier(source)} ORDER BY row_id`,
           },
         ]);
         expect(
@@ -171,7 +175,7 @@ it('exports every row and value in five formats, ZIP members, and reopens select
             .toArray()
             .map((r: Record<string, unknown>) => [Number(r.row_id), r.label, r.measurement]),
         ).toEqual(expected.map((r) => [r.row_id, r.label, r.measurement]));
-        expect((await api.getTasks(base)).tasks).toEqual([]);
+        expect((await tasksApi.getTasks(base)).tasks).toEqual([]);
       });
     }
   });

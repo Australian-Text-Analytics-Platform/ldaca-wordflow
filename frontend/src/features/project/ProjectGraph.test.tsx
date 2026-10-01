@@ -1,9 +1,9 @@
+import type { Graph } from '@/features/project/api';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import ProjectGraph from './ProjectGraph';
-import type { ProjectGraphView } from './graph-view/components/ProjectGraphView';
 import type { CustomNodeData } from './graph-view/components/CustomNodeView';
-import type { Graph } from './api';
+import type { ProjectGraphView } from './graph-view/components/ProjectGraphView';
 import { useProjectFileDrop } from './useProjectFileDrop';
 
 const native = vi.hoisted(() => ({
@@ -98,7 +98,7 @@ function DropGraph({
 function renderGraph(onDrop = vi.fn(), onAdd = vi.fn()) {
   return render(<DropGraph onDrop={onDrop} onAdd={onAdd} />);
 }
-it('routes double-click to the same input action with its pointer position', () => {
+it('routes double-click to the same direct input action', () => {
   const add = vi.fn();
   renderGraph(vi.fn(), add);
   const { graph } = native.graph.mock.calls.at(-1)![0] as {
@@ -106,7 +106,7 @@ it('routes double-click to the same input action with its pointer position', () 
   };
   const event = new MouseEvent('dblclick', { clientX: 120, clientY: 180, cancelable: true });
   graph.handleNodeDoubleClick(event, { id: 'my table' });
-  expect(add).toHaveBeenCalledExactlyOnceWith('my table', { x: 120, y: 180 });
+  expect(add).toHaveBeenCalledExactlyOnceWith('my table');
   expect(event.defaultPrevented).toBe(true);
 });
 async function drop(x: number, y: number, paths = ['/data.csv']) {

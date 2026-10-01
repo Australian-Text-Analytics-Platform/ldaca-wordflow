@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
 import { objectDependencies } from '@/features/project/projectChanges';
 import { reportProjectError } from '@/features/project/projectErrors';
+import * as topicApi from '@/features/tools/topic-modeling/api';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef, useState } from 'react';
 
 export function useTopicPreview(base: string, tab: string, active: boolean) {
   const cache = useQueryClient();
@@ -12,9 +12,9 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
     cancelling: boolean;
   } | null>(null);
   const [state, setState] = useState<{
-    request: api.TopicRequest;
+    request: topicApi.TopicRequest;
     startedAt: number;
-    update?: api.TopicPreviewUpdate;
+    update?: topicApi.TopicPreviewUpdate;
     error?: string;
     cancelling?: boolean;
     outdated?: boolean;
@@ -72,7 +72,7 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
       }),
     [base, tab, cache],
   );
-  const submit = (request: api.TopicRequest, sampling: api.TopicSampling[]) => {
+  const submit = (request: topicApi.TopicRequest, sampling: topicApi.TopicSampling[]) => {
     clear();
     const current = {
       controller: new AbortController(),
@@ -82,7 +82,7 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
     connection.current = current;
     const captured = structuredClone({ request, sampling });
     setState({ request: captured.request, startedAt: Date.now() });
-    void api
+    void topicApi
       .streamTopicPreview(base, tab, captured, current.controller.signal, (update) => {
         if (connection.current !== current || current.cancelling) return;
         current.id = update.preview_id;
@@ -113,7 +113,7 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
     current.cancelling = true;
     setState((old) => (old ? { ...old, cancelling: true } : old));
     try {
-      if (current.id) await api.deleteTopicPreview(base, tab, current.id);
+      if (current.id) await topicApi.deleteTopicPreview(base, tab, current.id);
     } catch (error) {
       if (!current.controller.signal.aborted) reportProjectError(error);
     } finally {

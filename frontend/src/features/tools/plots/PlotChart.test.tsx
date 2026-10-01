@@ -1,10 +1,10 @@
+import type { TrendsRequest } from '@/features/tools/plots/api';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { setPlatformAPI } from 'echarts/core';
+import { afterEach, expect, it, vi } from 'vite-plus/test';
 import { captureChart } from '../common/captureChart';
 import { PlotChart } from './PlotChart';
 import { buildPlot, type PlotDisplay } from './plotModel';
-import type { TrendsRequest } from '@/features/project/api';
 
 vi.mock('@/features/theme/themeRuntime', () => ({ useActiveTheme: () => 'light' }));
 

@@ -1,9 +1,8 @@
 # Native analyses
 
-Frequency, Concordance, Quotation and the five Plots modes run inside the owning `ProjectRuntime` and save each tab’s latest successful
+Frequency, Concordance, Quotation, Topic Modelling, Annotation and the five Plots modes run inside the owning `ProjectRuntime` and save each tab’s latest successful
 result in the `.wfpj` database. It reuses native task ownership and independent
-DuckDB operation connections. Other analysis tools remain unavailable; their
-archived implementations are reference material, not active services.
+DuckDB operation connections. Archived Python implementations remain reference material.
 
 [Project semantics](../../domain/native-projects.md#metadata-and-results) defines
 what users keep. This page owns execution, artifact lifetime and publication.
@@ -34,7 +33,7 @@ cleanup also support BLOB ownership; a future binary-producing analysis will
 write and read its bytes within the same publication and read boundaries. `project/analyses.rs` owns kind-scoped tabs, generic result manifests and a shared
 publication transaction accepting analysis-produced descriptors/artifacts.
 `project/frequency.rs` owns Frequency's request, version decoder, calculations
-and projections. Tab numbering and ordering are scoped by kind; Frequency, Concordance and Quotation can currently be created or run.
+and projections. Tab numbering and ordering are scoped by kind; all native analysis kinds can be created or run.
 There is no dynamic analysis registry, general artifact SQL endpoint, filesystem
 manifest or per-result directory. Save As copies results with the rest of the
 database.
@@ -425,3 +424,9 @@ and [fm introduction](https://developer.apple.com/videos/play/wwdc2026/334/).
 See [Annotation verification and performance](../../reference/annotation-performance.md)
 for measured batch memory, database timings, live Apple smoke evidence and
 outstanding platform/visual checks.
+
+## Execution modules and restoration
+
+Concrete Frequency, Concordance, Quotation, Plot and import workflows live in `project/runtime/*_execution.rs` and `imports_execution.rs`, implementing the same `ProjectRuntime` as Topic and Annotation. Admission, independent connections, cancellation, leases and close completion remain together in `runtime.rs`. Publication still occurs through the existing database transaction; no service hierarchy or generic analysis pipeline is introduced.
+
+`analyses/restoration.rs` derives `request_status` beside original request JSON, and `setup_status` beside manual settings. Deserialization uses the execution DTOs and their defaults and unknown-field policy, without writes or live source/model resolution. An unsupported shape remains inspectable. This metadata does not certify execution availability or numeric parameter validity; ordinary execution validation remains authoritative.

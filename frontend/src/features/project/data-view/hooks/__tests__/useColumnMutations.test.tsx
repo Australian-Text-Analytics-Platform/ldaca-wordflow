@@ -1,12 +1,12 @@
-import { ProjectError } from '@/features/project/api';
+import { ProjectError } from '@/api/client';
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { Field, Int64, TimestampMillisecond, Utf8 } from 'apache-arrow';
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 const needsFormat = () =>
   new ProjectError(
     'Enter a format',
     JSON.stringify({ error: { code: 'datetime_format_required' } }),
   );
-import { act, renderHook, waitFor } from '@testing-library/react';
-import { Field, Int64, TimestampMillisecond, Utf8 } from 'apache-arrow';
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 
 const toastMock = vi.hoisted(() => ({ error: vi.fn() }));
 

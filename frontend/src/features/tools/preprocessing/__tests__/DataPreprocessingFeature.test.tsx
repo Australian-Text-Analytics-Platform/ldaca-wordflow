@@ -1,14 +1,15 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
+import type { ProjectNode } from '@/features/project/api';
+import { useProjectPreview } from '@/features/project/previewState';
+import { useSelectionStore } from '@/stores/selectionStore';
+import { ToolInputScope, useInputDestinations } from '@/features/tools/common/inputDestinations';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Int64, Utf8, tableFromArrays } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-import { TooltipProvider } from '@/components/ui/tooltip';
 import DataPreprocessingFeature from '../DataPreprocessingFeature';
 import { usePreprocessingInputs } from '../inputState';
-import { useProjectPreview } from '@/features/project/previewState';
-import { useSelectionStore } from '@/stores/selectionStore';
-import type { ProjectNode } from '@/features/project/api';
 
 const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
@@ -61,7 +62,9 @@ function mount(projectNodes = nodes) {
   return render(
     <QueryClientProvider client={client}>
       <TooltipProvider>
-        <DataPreprocessingFeature base="http://project" nodes={projectNodes} active />
+        <ToolInputScope value={{ base: 'http://project', tool: 'filter', active: true }}>
+          <DataPreprocessingFeature base="http://project" nodes={projectNodes} active />
+        </ToolInputScope>
       </TooltipProvider>
     </QueryClientProvider>,
   );
@@ -104,6 +107,18 @@ beforeEach(() => {
 });
 
 describe('project preprocessing presentation', () => {
+  it('registers only active destinations while retaining visited subtab drafts', async () => {
+    mount();
+    const labels = () =>
+      useInputDestinations.getState().destinations.map((destination) => destination.label);
+    await waitFor(() => expect(labels()).toEqual(['Preprocessing Inputs']));
+    await tab('Join');
+    await waitFor(() => expect(labels()).toEqual(['Left input', 'Right input']));
+    await tab('Build');
+    await waitFor(() => expect(labels()).toEqual(['Preprocessing Inputs']));
+    await tab('Join');
+    await waitFor(() => expect(labels()).toEqual(['Left input', 'Right input']));
+  });
   it('shows the seven retained tools and native input schema without server providers', async () => {
     mount();
     for (const name of ['Filter', 'Sample', 'Join', 'Stack', 'Find', 'Build', 'SQL'])
@@ -319,7 +334,7 @@ it('Find captures targets while inputs change and keeps progress until overlappi
   expect(useProjectPreview.getState().active).toBe('existing');
 });
 
-it('Build keeps incomplete roots, combines bubbles and reconstructs edited SQL without restoration', async () => {
+it('Build keeps incomplete roots, combines bubbles and requires confirmation before discarding edited SQL', async () => {
   mount();
   await tab('Build');
   const build = panel('Build');
@@ -342,11 +357,16 @@ it('Build keeps incomplete roots, combines bubbles and reconstructs edited SQL w
   await tab('Filter');
   await tab('Build');
   expect(build.getByLabelText('DuckDB expression')).toHaveValue(expression);
-  mocks.parse.mockResolvedValue({ kind: 'sql', sql: expression });
-  await userEvent.click(build.getByRole('button', { name: 'Return to bubble builder' }));
-  expect(await build.findByRole('button', { name: /SQL: CASE WHEN/ })).toBeVisible();
+  await userEvent.click(build.getByRole('button', { name: 'New visual expression' }));
+  let dialog = within(await screen.findByRole('alertdialog'));
+  await userEvent.click(dialog.getByRole('button', { name: 'Keep SQL' }));
+  expect(build.getByLabelText('DuckDB expression')).toHaveValue(expression);
+  await userEvent.click(build.getByRole('button', { name: 'New visual expression' }));
+  dialog = within(await screen.findByRole('alertdialog'));
+  await userEvent.click(dialog.getByRole('button', { name: 'Start new expression' }));
   expect(build.queryByLabelText('DuckDB expression')).not.toBeInTheDocument();
-  expect(mocks.parse).toHaveBeenCalledWith('http://project', expression, expect.any(AbortSignal));
+  expect(build.queryAllByTestId('build-bubble')).toHaveLength(0);
+  expect(mocks.parse).not.toHaveBeenCalled();
 });
 
 it('Build preserves typed values and keyboard subtree moves', async () => {
@@ -369,20 +389,6 @@ it('Build preserves typed values and keyboard subtree moves', async () => {
   expect(build.getByText("'00123 “text”'")).toBeVisible();
 });
 
-it('malformed SQL leaves the editor and last valid tree intact', async () => {
-  mount();
-  await tab('Build');
-  const build = panel('Build');
-  await userEvent.click(build.getByRole('button', { name: 'Add column Body' }));
-  await userEvent.click(build.getByRole('button', { name: 'Edit SQL expression' }));
-  fireEvent.change(build.getByLabelText('DuckDB expression'), { target: { value: 'lower(' } });
-  mocks.parse.mockRejectedValue(new Error('Parser Error: incomplete expression'));
-  await userEvent.click(build.getByRole('button', { name: 'Return to bubble builder' }));
-  await waitFor(() => expect(build.getByRole('status')).toHaveTextContent('Parser Error'));
-  expect(build.getByLabelText('DuckDB expression')).toHaveValue('lower(');
-  expect(mocks.report).not.toHaveBeenCalled();
-});
-
 it('SQL preview errors retain the previous output and leave Apply advisory', async () => {
   mount();
   await tab('Build');
@@ -400,7 +406,7 @@ it('SQL preview errors retain the previous output and leave Apply advisory', asy
   expect(mocks.report).not.toHaveBeenCalled();
 });
 
-it('hands unfinished SQL to the editor, keeps the previous preview and parses a correction', async () => {
+it('hands unfinished SQL to the editor and previews a corrected expression', async () => {
   mount();
   await tab('Build');
   const build = panel('Build');
@@ -424,6 +430,6 @@ it('hands unfinished SQL to the editor, keeps the previous preview and parses a 
     target: { value: 'lower("Body")' },
   });
   mocks.parse.mockResolvedValue({ kind: 'sql', sql: 'lower("Body")' });
-  await userEvent.click(build.getByRole('button', { name: 'Return to bubble builder' }));
-  expect(await build.findByRole('button', { name: /SQL: lower/ })).toBeVisible();
+  expect(build.getByLabelText('DuckDB expression')).toHaveValue('lower("Body")');
+  expect(mocks.parse).not.toHaveBeenCalled();
 });

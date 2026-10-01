@@ -1,12 +1,15 @@
+import * as filesApi from '@/features/project/filesApi';
+import { useSelectionStore } from '@/stores/selectionStore';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
 import { DataLoaderWorkspace } from './DataLoaderWorkspace';
-import * as api from './api';
 import { useProjectPreview } from './previewState';
-import { useSelectionStore } from '@/stores/selectionStore';
-vi.mock('./api', () => ({ sampleCatalogue: vi.fn(), importSamples: vi.fn() }));
+vi.mock('@/features/project/filesApi', () => ({
+  sampleCatalogue: vi.fn(),
+  importSamples: vi.fn(),
+}));
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 
 const first = 'ADO/tweets.parquet';
@@ -19,7 +22,7 @@ async function openSamples() {
       <DataLoaderWorkspace base="http://native" active onActivate={vi.fn()} />
     </QueryClientProvider>,
   );
-  expect(api.sampleCatalogue).not.toHaveBeenCalled();
+  expect(filesApi.sampleCatalogue).not.toHaveBeenCalled();
   await user.click(screen.getByRole('tab', { name: 'Samples' }));
   await screen.findByRole('checkbox', { name: 'Tweets' });
   return user;
@@ -30,7 +33,7 @@ describe('native sample imports', () => {
     vi.clearAllMocks();
     useProjectPreview.setState({ active: 'existing' });
     useSelectionStore.getState().replaceSelectedNodes(['selected']);
-    vi.mocked(api.sampleCatalogue).mockResolvedValue({
+    vi.mocked(filesApi.sampleCatalogue).mockResolvedValue({
       commit: 'a'.repeat(40),
       collections: [
         {
@@ -49,7 +52,7 @@ describe('native sample imports', () => {
         },
       ],
     });
-    vi.mocked(api.importSamples).mockResolvedValue({
+    vi.mocked(filesApi.importSamples).mockResolvedValue({
       commit: 'a'.repeat(40),
       table_names: ['gender', 'tweets'],
     });
@@ -86,7 +89,7 @@ describe('native sample imports', () => {
     await user.click(screen.getByRole('checkbox', { name: 'gender.parquet' }));
     await user.click(screen.getByRole('button', { name: 'Import selected' }));
     await waitFor(() =>
-      expect(api.importSamples).toHaveBeenCalledExactlyOnceWith('http://native', {
+      expect(filesApi.importSamples).toHaveBeenCalledExactlyOnceWith('http://native', {
         file_paths: [second],
         as_views: asViews,
       }),
@@ -106,8 +109,8 @@ describe('native sample imports', () => {
   });
 
   it('can switch sources during an import without abandoning its result', async () => {
-    const result = Promise.withResolvers<Awaited<ReturnType<typeof api.importSamples>>>();
-    vi.mocked(api.importSamples).mockReturnValue(result.promise);
+    const result = Promise.withResolvers<Awaited<ReturnType<typeof filesApi.importSamples>>>();
+    vi.mocked(filesApi.importSamples).mockReturnValue(result.promise);
     const user = await openSamples();
     await user.click(screen.getByRole('checkbox', { name: 'Tweets' }));
     await user.click(screen.getByRole('button', { name: 'Import selected' }));
@@ -122,7 +125,7 @@ describe('native sample imports', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Import selected' })).toBeDisabled(),
     );
-    expect(api.importSamples).toHaveBeenCalledTimes(1);
+    expect(filesApi.importSamples).toHaveBeenCalledTimes(1);
     expect(useProjectPreview.getState()).toMatchObject({ active: 'existing' });
     expect(useSelectionStore.getState().selectedNodeIds).toEqual(['selected']);
   });

@@ -1,7 +1,7 @@
+import type { PlotMode, PlotRequest, PlotSelection } from '@/features/tools/plots/api';
 import { format, type EChartsCoreOption } from 'echarts/core';
-import type { PlotMode, PlotRequest, PlotSelection } from '@/features/project/api';
-import { VIZ_PALETTE } from '../common/vizPalette';
 import { showValue } from '../common/analysisValue';
+import { VIZ_PALETTE } from '../common/vizPalette';
 export type PlotRow = Record<string, unknown>;
 export interface PlotDisplay {
   timezone?: string;

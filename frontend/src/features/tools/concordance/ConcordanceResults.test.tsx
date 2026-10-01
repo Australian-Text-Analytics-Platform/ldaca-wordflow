@@ -1,16 +1,18 @@
+import { TooltipProvider } from '@/components/ui/tooltip';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as concordanceApi from '@/features/tools/concordance/api';
+import * as downloads from '@/lib/download';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { Field, Float64, List, Struct, tableFromArrays, Utf8, vectorFromArray } from 'apache-arrow';
+import { beforeEach, expect, it, vi } from 'vite-plus/test';
+import * as chartExport from '../common/chartExport';
+import { ConcordanceResults } from './ConcordanceResults';
+import { emptyConcordance } from './concordanceState';
 vi.mock('../common/captureChart', () => ({
   captureChart: (host: HTMLElement) => host.querySelector('svg')!.cloneNode(true),
 }));
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Field, Utf8, Float64, Struct, List, vectorFromArray, tableFromArrays } from 'apache-arrow';
-import { beforeEach, expect, it, vi } from 'vite-plus/test';
-import * as api from '@/features/project/api';
-import { TooltipProvider } from '@/components/ui/tooltip';
-import { ConcordanceResults } from './ConcordanceResults';
-import userEvent from '@testing-library/user-event';
-import * as chartExport from '../common/chartExport';
-import { emptyConcordance } from './concordanceState';
 
 vi.mock('./ConcordanceChart', () => ({
   ConcordanceChart: ({
@@ -41,11 +43,14 @@ vi.mock('./ConcordanceChart', () => ({
     </div>
   ),
 }));
-vi.mock('@/features/project/api', async (original) => ({
-  ...(await original<typeof api>()),
+vi.mock('@/features/tools/concordance/api', async (original) => ({
+  ...(await original<object>()),
   queryConcordance: vi.fn(),
   previewConcordance: vi.fn(),
   concordanceDensity: vi.fn(),
+}));
+vi.mock('@/features/tools/common/analysisApi', async (original) => ({
+  ...(await original<object>()),
 }));
 const input = {
   source: { schema: 'data', name: 'Corpus' },
@@ -94,7 +99,8 @@ const page = {
   matchCount: 1,
   hasNext: false,
 };
-const result: api.ConcordanceAnalysisResult = {
+const result: concordanceApi.ConcordanceAnalysisResult = {
+  request_status: { status: 'supported', request: { kind: 'concordance', request: request } },
   id: 'result1',
   tab_id: 'tab',
   kind: 'concordance',
@@ -119,20 +125,25 @@ const result: api.ConcordanceAnalysisResult = {
     finished_at: '',
   },
 };
-const tab: api.Tab = {
+const tab: analysesApi.Tab = {
   id: 'tab',
   kind: 'concordance',
   name: 'Concordance 1',
   position: 0,
   settings: { presentation: 'dispersion' },
-  analysis: { id: result.id, request, has_result: true },
+  analysis: {
+    request_status: { status: 'supported', request: { kind: 'concordance', request: request } },
+    id: result.id,
+    request,
+    has_result: true,
+  },
 };
 const onSettings = vi.fn();
 function Harness({
   savedResult = result,
   mode,
 }: {
-  savedResult?: api.ConcordanceAnalysisResult;
+  savedResult?: concordanceApi.ConcordanceAnalysisResult;
   mode: 'preview' | 'saved';
 }) {
   return (
@@ -167,9 +178,9 @@ function mount(initialResult = result, mode: 'preview' | 'saved' = 'saved') {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(api.queryConcordance).mockResolvedValue(page);
-  vi.mocked(api.previewConcordance).mockResolvedValue(page);
-  vi.mocked(api.concordanceDensity).mockResolvedValue(
+  vi.mocked(concordanceApi.queryConcordance).mockResolvedValue(page);
+  vi.mocked(concordanceApi.previewConcordance).mockResolvedValue(page);
+  vi.mocked(concordanceApi.concordanceDensity).mockResolvedValue(
     tableFromArrays({ term: ['cat'], bin: [0], count: [1] }),
   );
 });
@@ -215,13 +226,13 @@ it('puts document rows and pagination before the legend and summary; proportiona
   expect(screen.getByRole('button', { name: 'Clear selection' })).toBeEnabled();
   fireEvent.click(screen.getByRole('checkbox', { name: 'Bar length proportional to text length' }));
   expect(screen.getByRole('button', { name: 'cat (1/1)' })).toBeInTheDocument();
-  expect(api.concordanceDensity).toHaveBeenCalledOnce();
+  expect(concordanceApi.concordanceDensity).toHaveBeenCalledOnce();
 });
 it('keeps filters in saved Dispersion only and resets them on replacement, without refetching density', async () => {
   const view = mount();
   fireEvent.click(await screen.findByRole('button', { name: 'cat (1)' }));
   await waitFor(() =>
-    expect(api.queryConcordance).toHaveBeenLastCalledWith(
+    expect(concordanceApi.queryConcordance).toHaveBeenLastCalledWith(
       'http://test',
       'result1',
       expect.objectContaining({ filter: expect.objectContaining({ excluded_terms: ['cat'] }) }),
@@ -230,7 +241,7 @@ it('keeps filters in saved Dispersion only and resets them on replacement, witho
   );
   await userEvent.click(screen.getByRole('tab', { name: 'Table', exact: true }));
   await waitFor(() =>
-    expect(api.queryConcordance).toHaveBeenLastCalledWith(
+    expect(concordanceApi.queryConcordance).toHaveBeenLastCalledWith(
       'http://test',
       'result1',
       expect.objectContaining({
@@ -243,8 +254,8 @@ it('keeps filters in saved Dispersion only and resets them on replacement, witho
   await userEvent.click(screen.getByRole('tab', { name: 'Dispersion', exact: true }));
   expect(screen.getByRole('button', { name: 'cat (1)' })).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByRole('button', { name: 'Preview', exact: true })).not.toBeInTheDocument();
-  expect(api.previewConcordance).not.toHaveBeenCalled();
-  expect(api.concordanceDensity).toHaveBeenCalledOnce();
+  expect(concordanceApi.previewConcordance).not.toHaveBeenCalled();
+  expect(concordanceApi.concordanceDensity).toHaveBeenCalledOnce();
   fireEvent.click(await screen.findByRole('button', { name: 'Select first bin' }));
   await screen.findByRole('button', { name: 'cat (1/1)' });
   view.replace();
@@ -254,7 +265,7 @@ it('keeps filters in saved Dispersion only and resets them on replacement, witho
 it('retains density after a failed refresh and disables exports', async () => {
   const { client } = mount();
   await screen.findByTestId('chart');
-  vi.mocked(api.concordanceDensity).mockRejectedValue(new Error('unavailable'));
+  vi.mocked(concordanceApi.concordanceDensity).mockRejectedValue(new Error('unavailable'));
   await act(() =>
     client.invalidateQueries({
       queryKey: ['native', 'http://test', 'analyses', 'result1', 'density'],
@@ -279,14 +290,18 @@ it.each(['preview', 'saved'] as const)(
           finished_at: '',
           payload: { corpora: [corpus, { ...corpus, input: second }] },
         },
+        request_status: {
+          status: 'supported',
+          request: { kind: 'concordance', request: { ...request, inputs: [input, second] } },
+        },
       },
       mode,
     );
     await waitFor(() => expect(screen.getAllByRole('button', { name: 'cat (1)' })).toHaveLength(2));
     const before = {
-      preview: vi.mocked(api.previewConcordance).mock.calls.length,
-      query: vi.mocked(api.queryConcordance).mock.calls.length,
-      density: vi.mocked(api.concordanceDensity).mock.calls.length,
+      preview: vi.mocked(concordanceApi.previewConcordance).mock.calls.length,
+      query: vi.mocked(concordanceApi.queryConcordance).mock.calls.length,
+      density: vi.mocked(concordanceApi.concordanceDensity).mock.calls.length,
     };
     expect(before).toEqual(
       mode === 'saved'
@@ -307,9 +322,9 @@ it.each(['preview', 'saved'] as const)(
     expect(separated).toHaveFocus();
     expect(separated).toHaveAttribute('aria-selected', 'true');
     expect(screen.getAllByTestId('dispersion-documents')).toHaveLength(2);
-    expect(api.previewConcordance).toHaveBeenCalledTimes(before.preview);
-    expect(api.queryConcordance).toHaveBeenCalledTimes(before.query);
-    expect(api.concordanceDensity).toHaveBeenCalledTimes(before.density);
+    expect(concordanceApi.previewConcordance).toHaveBeenCalledTimes(before.preview);
+    expect(concordanceApi.queryConcordance).toHaveBeenCalledTimes(before.query);
+    expect(concordanceApi.concordanceDensity).toHaveBeenCalledTimes(before.density);
     expect(onSettings).not.toHaveBeenCalled();
   },
 );
@@ -325,6 +340,10 @@ it('shares term visibility but keeps separated and combined bin selections indep
       version: 1,
       finished_at: '',
       payload: { corpora: [corpus, { ...corpus, input: second }] },
+    },
+    request_status: {
+      status: 'supported',
+      request: { kind: 'concordance', request: { ...request, inputs: [input, second] } },
     },
   });
   const controls = await screen.findAllByRole('button', { name: 'Select first bin' });
@@ -345,14 +364,14 @@ it('shares term visibility but keeps separated and combined bin selections indep
     'aria-pressed',
     'true',
   );
-  expect(api.concordanceDensity).toHaveBeenCalledTimes(2);
+  expect(concordanceApi.concordanceDensity).toHaveBeenCalledTimes(2);
 });
 
 it('captures the displayed SVG with source, scope, query and colored legend before saving', async () => {
   const user = userEvent.setup();
   const encoded = new Blob(['image'], { type: 'image/svg+xml' });
   const build = vi.spyOn(chartExport, 'buildChartExport').mockResolvedValue(encoded);
-  const save = vi.spyOn(chartExport, 'saveGeneratedExport').mockResolvedValue('saved.svg');
+  const save = vi.spyOn(downloads, 'saveGeneratedExport').mockResolvedValue('saved.svg');
   mount();
   await user.click(await screen.findByRole('button', { name: 'Download chart' }));
   fireEvent.keyDown(screen.getByRole('combobox', { name: 'Chart download format' }), {
@@ -374,7 +393,7 @@ it('captures the displayed SVG with source, scope, query and colored legend befo
 
 it('keeps initial loading outside Results and offers Retry on projection failure', async () => {
   const pending = Promise.withResolvers<typeof page>();
-  vi.mocked(api.queryConcordance).mockReturnValueOnce(pending.promise);
+  vi.mocked(concordanceApi.queryConcordance).mockReturnValueOnce(pending.promise);
   mount();
   await screen.findByRole('region', { name: 'Analysis progress' });
   expect(screen.queryByRole('region', { name: 'Concordance results' })).not.toBeInTheDocument();
@@ -390,7 +409,7 @@ it('keeps the Results card mounted when another presentation is loading', async 
   const card = await screen.findByRole('region', { name: 'Concordance results' });
   await screen.findByTestId('dispersion-documents');
   const pending = Promise.withResolvers<typeof page>();
-  vi.mocked(api.queryConcordance).mockReturnValueOnce(pending.promise);
+  vi.mocked(concordanceApi.queryConcordance).mockReturnValueOnce(pending.promise);
   fireEvent.click(screen.getByRole('tab', { name: 'Table', exact: true }));
   expect(screen.getByRole('region', { name: 'Concordance results' })).toBe(card);
   expect(screen.queryByRole('region', { name: 'Analysis progress' })).not.toBeInTheDocument();

@@ -1,37 +1,39 @@
-import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import * as api from '@/features/project/api';
-import { schemaQuery } from '@/features/project/projectQueries';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Tabs as ModeTabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tabs } from '../common/Tabs';
-import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
-import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
-import { useNodeInputRequests } from '../common/nodeInputs/useNodeInputRequests';
+import * as projectApi from '@/features/project/api';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
-import { decodeAnalysisRequest, matchesAnalysisRequest } from '../common/analysisRequest';
+import { schemaQuery } from '@/features/project/projectQueries';
+import { clearSavedAnalysis, savedAnalysisQuery } from '@/features/project/savedAnalysis';
+import * as tasksApi from '@/features/project/tasksApi';
+import * as analysesApi from '@/features/tools/common/analysisApi';
+import * as plotsApi from '@/features/tools/plots/api';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Tabs } from '../common/Tabs';
 import { analysisDraftKey } from '../common/analysisDraftStore';
-import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import { matchesAnalysisRequest, useRequestRestoration } from '../common/analysisRequest';
 import { AnalysisAction } from '../common/components/AnalysisAction';
 import { AnalysisProgress } from '../common/components/AnalysisProgress';
 import { AnalysisResultBoundary } from '../common/components/AnalysisResultBoundary';
+import { NodeInputsPanel } from '../common/components/NodeInputsPanel';
+import { RequestCompatibilityWarning } from '../common/components/RequestCompatibilityWarning';
+import { useNodeInputs } from '../common/nodeInputs/useNodeInputs';
 import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
 import { useTabSettings } from '../common/useTabSettings';
+import { PlotParameters } from './PlotParameters';
+import { PlotResults } from './PlotResults';
 import {
-  plotModes,
   plotLabels,
+  plotModes,
+  plotReady,
   plotScope,
   usePlotMode,
   usePlotState,
-  plotReady,
 } from './plotState';
-import { PlotParameters } from './PlotParameters';
-import { PlotResults } from './PlotResults';
 interface Props {
   base: string;
-  nodes: api.ProjectNode[];
-  tasks: api.NativeTask[];
+  nodes: projectApi.ProjectNode[];
+  tasks: tasksApi.NativeTask[];
   active: boolean;
   editing?: boolean;
   onCancel: (id: string) => void;
@@ -43,8 +45,8 @@ export default function PlotsFeature(props: Props) {
       <ModeTabs
         value={mode}
         onValueChange={(value) => {
-          if (plotModes.includes(value as api.PlotMode))
-            usePlotMode.getState().setMode(props.base, value as api.PlotMode);
+          if (plotModes.includes(value as plotsApi.PlotMode))
+            usePlotMode.getState().setMode(props.base, value as plotsApi.PlotMode);
         }}
       >
         <TabsList aria-label="Plot modes" className="h-auto flex-wrap">
@@ -59,7 +61,7 @@ export default function PlotsFeature(props: Props) {
     </div>
   );
 }
-function PlotTabs(props: Props & { mode: api.PlotMode }) {
+function PlotTabs(props: Props & { mode: plotsApi.PlotMode }) {
   const scope = plotScope(props.base, props.mode);
   const chosen = usePlotState((s) => s.active[scope]);
   return (
@@ -73,7 +75,8 @@ function PlotTabs(props: Props & { mode: api.PlotMode }) {
         usePlotState.getState().activate(scope, id);
       }}
       onRemove={(id) => {
-        usePlotState.getState().remove(scope, id);
+        usePlotState.getState().remove(props.base, id);
+        usePlotState.getState().activate(scope, '');
       }}
     >
       {(tab) => <PlotTab key={tab.id} {...props} tab={tab} />}
@@ -89,19 +92,18 @@ function PlotTab({
   onCancel,
   mode,
   tab,
-}: Props & { mode: api.PlotMode; tab: api.Tab }) {
+}: Props & { mode: plotsApi.PlotMode; tab: analysesApi.Tab }) {
   const cache = useQueryClient();
-  const scope = plotScope(base, mode);
-  const stored = usePlotState((s) => s.drafts[analysisDraftKey(scope, tab.id)]);
-  const restored = decodeAnalysisRequest(mode, tab.analysis?.request);
+  const stored = usePlotState((s) => s.drafts[analysisDraftKey(base, tab.id)]);
+  const restored = useRequestRestoration(mode, tab.analysis, [base, tab.id]);
   const draft = stored ?? restored.request;
-  const update = (next: api.PlotRequest) => {
-    usePlotState.getState().setDraft(scope, tab.id, next);
+  const update = (next: plotsApi.PlotRequest) => {
+    usePlotState.getState().setDraft(base, tab.id, next);
   };
   const id = tab.analysis?.has_result ? tab.analysis.id : null;
   const result = useQuery({
     ...savedAnalysisQuery(cache, base, tab, (id, signal) =>
-      api.getPlotResult(base, id, mode, signal),
+      plotsApi.getPlotResult(base, id, mode, signal),
     ),
     enabled: active && Boolean(id),
   });
@@ -126,16 +128,9 @@ function PlotTab({
     getColumnInfos: () => mapArrowColumnsToInfo(schema.data ?? []),
     constraints: { maxNodes: 1, preserveColumnSelection: true },
   });
-  const inputs = useNodeInputRequests({
-    scopeId: base,
-    tool: 'plots',
-    addNodes: picker.addNodes,
-    enabled: active && !editing,
-    deferPlacement: Boolean(id),
-  });
   const running = tasks.find((t) => t.tab_id === tab.id && t.finished_at === null);
   const run = useMutation({
-    mutationFn: (request: api.PlotRequest) => api.runPlot(base, tab.id, mode, request),
+    mutationFn: (request: plotsApi.PlotRequest) => plotsApi.runPlot(base, tab.id, mode, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', mode] }),
   });
   const clear = useMutation({
@@ -146,8 +141,13 @@ function PlotTab({
     id &&
     !recovery.failed &&
     !restored.issues.length &&
-    matchesAnalysisRequest(mode, draft, result.data?.request ?? tab.analysis?.request);
-  const ready = nodes.some((n) => n.table_name === draft.source.name) && plotReady(draft);
+    matchesAnalysisRequest(
+      mode,
+      draft,
+      result.data?.request_status ?? tab.analysis?.request_status,
+    );
+  const ready =
+    !restored.blocked && nodes.some((n) => n.table_name === draft.source.name) && plotReady(draft);
   return (
     <>
       <section
@@ -160,7 +160,7 @@ function PlotTab({
         </h1>
         <NodeInputsPanel
           {...picker}
-          {...inputs}
+
           title="Plot input"
           maxNodes={1}
           inputOrder={draft.source.name ? [draft.source.name] : []}
@@ -182,7 +182,11 @@ function PlotTab({
           fields={(schema.data ?? []).map((c) => c.field)}
           onChange={update}
         />
-        <RequestCompatibilityWarning issues={restored.issues} />
+        <RequestCompatibilityWarning
+          issues={restored.issues}
+          onReset={() => restored.reset(update)}
+          resetDone={!restored.blocked}
+        />
         <div className="flex flex-wrap gap-2">
           <AnalysisAction
             reason={
