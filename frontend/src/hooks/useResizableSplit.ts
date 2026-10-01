@@ -1,3 +1,9 @@
+import {
+  getPreferences,
+  layoutKey,
+  patchPreferences,
+  subscribePreferences,
+} from '@/features/preferences/preferences';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
 /**
@@ -73,12 +79,7 @@ interface UseResizableSplitOptions {
    * as `defaultValue` / `min` / `max`.
    */
   keyboardStep?: number;
-  /**
-   * When set, the hook reads the initial value from `localStorage[persistKey]`
-   * (falling back to `defaultValue` if missing/invalid) and writes the
-   * committed value back on every change. Storage is sync; failures are
-   * silent (Safari private mode, etc).
-   */
+  /** Application layout preference key. The host owns persistence. */
   persistKey?: string;
 }
 
@@ -102,31 +103,10 @@ export interface ResizableSplitHandle {
 const DEFAULT_PERCENT_MIN = 0.15;
 const DEFAULT_PERCENT_MAX = 0.85;
 
-/** Reads a persisted split value while tolerating private-mode/localStorage failures. */
-/** Called by: useResizableSplit in this hook module. */
 const readPersisted = (key: string | undefined, fallback: number): number => {
-  if (!key || typeof window === 'undefined') return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw === null) return fallback;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  } catch {
-    return fallback;
-  }
+  const field = layoutKey(key);
+  return field ? getPreferences().layout[field] : fallback;
 };
-
-/** Persists committed split values so layout sizing survives reloads. */
-/** Called by: useResizableSplit in this hook module. */
-const writePersisted = (key: string | undefined, value: number) => {
-  if (!key || typeof window === 'undefined') return;
-  try {
-    window.localStorage.setItem(key, String(value));
-  } catch {
-    // ignore storage errors (Safari private mode, etc.)
-  }
-};
-
 const clampSplitValue = (
   value: number,
   min: number,
@@ -176,8 +156,7 @@ export function useResizableSplit({
   const step = keyboardStep ?? (mode === 'percent' ? 0.05 : 10);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
-  // Lazy initializer so we read localStorage exactly once on mount,
-  // then drive state through normal setValue paths.
+  // The startup loader has already populated the host-owned preferences.
   const [preferredValue, setValue] = useState(() =>
     clampSplitValue(readPersisted(persistKey, defaultValue), min, max, mode, maxPixels),
   );
@@ -209,12 +188,34 @@ export function useResizableSplit({
   const onDragStartRef = useRef(onDragStart);
   const onDragEndRef = useRef(onDragEnd);
   const [isDragging, setIsDragging] = useState(false);
+  const pendingSaves = useRef(0);
+  const latestValue = useRef(preferredValue);
+  useLayoutEffect(() => {
+    latestValue.current = preferredValue;
+  }, [preferredValue]);
 
-  // Persist user choices, not temporary constraints from the container size.
   useEffect(() => {
-    if (!persistKey) return;
-    writePersisted(persistKey, preferredValue);
-  }, [persistKey, preferredValue]);
+    const field = layoutKey(persistKey);
+    if (!field || isDragging || preferredValue === getPreferences().layout[field]) return;
+    pendingSaves.current++;
+    const finish = () => {
+      pendingSaves.current--;
+      if (pendingSaves.current === 0 && latestValue.current === preferredValue) {
+        setValue(getPreferences().layout[field]);
+      }
+    };
+    void patchPreferences({ layout: { [field]: preferredValue } }).then(finish, finish);
+  }, [persistKey, preferredValue, isDragging]);
+  useEffect(
+    () =>
+      subscribePreferences(() => {
+        const field = layoutKey(persistKey);
+        if (field && pendingSaves.current === 0 && !isDragging) {
+          setValue(getPreferences().layout[field]);
+        }
+      }),
+    [persistKey, isDragging],
+  );
 
   useEffect(() => {
     onLiveUpdateRef.current = onLiveUpdate;

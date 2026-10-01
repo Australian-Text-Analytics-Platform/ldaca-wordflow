@@ -1,3 +1,4 @@
+import { browserCredentials } from '@/features/server/account';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -168,7 +169,7 @@ function ConnectionDialog({
   const [provider, setProvider] = useState<aiApi.AiProvider>(connection?.provider ?? 'openai');
   const [endpoint, setEndpoint] = useState(connection?.endpoint ?? 'http://localhost:1234/v1');
   const [credential, setCredential] = useState<'keep' | 'session' | 'remember' | 'remove'>(
-    connection ? 'keep' : 'session',
+    connection ? 'keep' : browserCredentials() ? 'remember' : 'session',
   );
   const [key, setKey] = useState('');
   const [pending, setPending] = useState(false);
@@ -218,8 +219,9 @@ function ConnectionDialog({
         <DialogHeader>
           <DialogTitle>{connection ? 'Edit connection' : 'New AI connection'}</DialogTitle>
           <DialogDescription>
-            API keys stay outside projects. Remembered keys use the operating system credential
-            store; session-only keys disappear when the app closes.
+            {browserCredentials()
+              ? 'API keys stay in this browser, separately for each signed-in account.'
+              : 'API keys stay outside projects. Remembered keys use the operating system credential store; session-only keys disappear when the app closes.'}
           </DialogDescription>
         </DialogHeader>
         <label>
@@ -281,8 +283,14 @@ function ConnectionDialog({
             </SelectTrigger>
             <SelectContent>
               {connection && <SelectItem value="keep">Keep current credential</SelectItem>}
-              <SelectItem value="session">Session only</SelectItem>
-              <SelectItem value="remember">Remember in OS store</SelectItem>
+              {browserCredentials() ? (
+                <SelectItem value="remember">Remember in this browser for this account</SelectItem>
+              ) : (
+                <>
+                  <SelectItem value="session">Session only</SelectItem>
+                  <SelectItem value="remember">Remember in OS store</SelectItem>
+                </>
+              )}
               <SelectItem value="remove">No key / remove key</SelectItem>
             </SelectContent>
           </Select>

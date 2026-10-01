@@ -366,7 +366,11 @@ impl Default for StoredPreferences {
 
 fn load_preferences(app: &AppHandle) -> Result<StoredPreferences, String> {
     let store = app
-        .store(SETTINGS_STORE)
+        .store(
+            app.state::<wordflow_storage::AppDirectories>()
+                .data
+                .join(SETTINGS_STORE),
+        )
         .map_err(|error| error.to_string())?;
     Ok(StoredPreferences {
         automatic_checks: store
@@ -384,7 +388,11 @@ fn load_preferences(app: &AppHandle) -> Result<StoredPreferences, String> {
 
 fn save_automatic_checks(app: &AppHandle, enabled: bool) -> Result<(), String> {
     let store = app
-        .store(SETTINGS_STORE)
+        .store(
+            app.state::<wordflow_storage::AppDirectories>()
+                .data
+                .join(SETTINGS_STORE),
+        )
         .map_err(|error| error.to_string())?;
     store.set(AUTOMATIC_CHECKS_KEY, json!(enabled));
     store.save().map_err(|error| error.to_string())
@@ -392,7 +400,11 @@ fn save_automatic_checks(app: &AppHandle, enabled: bool) -> Result<(), String> {
 
 fn save_last_check_at(app: &AppHandle, checked_at: u64) -> Result<(), String> {
     let store = app
-        .store(SETTINGS_STORE)
+        .store(
+            app.state::<wordflow_storage::AppDirectories>()
+                .data
+                .join(SETTINGS_STORE),
+        )
         .map_err(|error| error.to_string())?;
     store.set(LAST_CHECK_AT_KEY, json!(checked_at));
     store.save().map_err(|error| error.to_string())
@@ -400,7 +412,11 @@ fn save_last_check_at(app: &AppHandle, checked_at: u64) -> Result<(), String> {
 
 fn save_skipped_version(app: &AppHandle, version: &str) -> Result<(), String> {
     let store = app
-        .store(SETTINGS_STORE)
+        .store(
+            app.state::<wordflow_storage::AppDirectories>()
+                .data
+                .join(SETTINGS_STORE),
+        )
         .map_err(|error| error.to_string())?;
     store.set(SKIPPED_VERSION_KEY, json!(version));
     store.save().map_err(|error| error.to_string())
@@ -408,7 +424,11 @@ fn save_skipped_version(app: &AppHandle, version: &str) -> Result<(), String> {
 
 fn clear_skipped_version(app: &AppHandle, version: &str) -> Result<(), String> {
     let store = app
-        .store(SETTINGS_STORE)
+        .store(
+            app.state::<wordflow_storage::AppDirectories>()
+                .data
+                .join(SETTINGS_STORE),
+        )
         .map_err(|error| error.to_string())?;
     if store
         .get(SKIPPED_VERSION_KEY)

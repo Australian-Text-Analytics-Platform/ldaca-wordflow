@@ -29,7 +29,7 @@ use std::sync::Arc;
 use anyhow::Result;
 use serde::Serialize;
 
-use crate::tokenizer::{ensure_tokenizer_for_model, TokenizerBackend};
+use crate::tokenizer::{ensure_tokenizer_for_model_in, TokenizerBackend};
 
 /// Fixed candidate capacity retained for presentation-time filtering.
 pub const REPRESENTATIVE_WORD_CANDIDATE_LIMIT: usize = 100;
@@ -129,14 +129,15 @@ pub fn representative_words_filtered(
 /// `native:plain_words_en` for English, a HF id for WordPiece, etc.). Returns
 /// one map per input topic, aligned by index.
 /// Count terms with a cancellation boundary between assigned source spans.
-pub fn count_topic_terms_with_progress<'a>(
+pub fn count_topic_terms_with_assets<'a>(
     topic_count: usize,
     assigned_segments: impl IntoIterator<Item = (i32, &'a str)>,
     model_id: &str,
     lowercase: bool,
+    assets: Option<&crate::model_assets::ModelAssets>,
     progress: &mut impl FnMut() -> Result<()>,
 ) -> Result<Vec<HashMap<String, usize>>> {
-    let backend: Arc<TokenizerBackend> = ensure_tokenizer_for_model(model_id)?;
+    let backend: Arc<TokenizerBackend> = ensure_tokenizer_for_model_in(model_id, assets)?;
     let mut per_topic = vec![HashMap::new(); topic_count];
     for (label, text) in assigned_segments {
         progress()?;

@@ -1,3 +1,9 @@
+import {
+  acceptPreferences,
+  defaultPreferences,
+  getPreferences,
+  patchPreferences,
+} from '@/features/preferences/preferences';
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react';
 import type React from 'react';
 import { describe, expect, it, vi } from 'vite-plus/test';
@@ -80,29 +86,87 @@ describe('useResizableSplit pointer dragging', () => {
 });
 
 describe('useResizableSplit persistence', () => {
+  it('keeps newer keyboard edits while earlier saves and notifications complete', async () => {
+    acceptPreferences(defaultPreferences);
+    let resolveFirst!: () => void;
+    let resolveSecond!: () => void;
+    const first = new Promise<void>((resolve) => {
+      resolveFirst = resolve;
+    });
+    const second = new Promise<void>((resolve) => {
+      resolveSecond = resolve;
+    });
+    vi.mocked(patchPreferences)
+      .mockImplementationOnce(() => first)
+      .mockImplementationOnce(() => second);
+    const { result, unmount } = renderHook(() =>
+      useResizableSplit({
+        orientation: 'vertical',
+        anchor: 'end',
+        defaultValue: 0.3,
+        min: 0.15,
+        max: 0.8,
+        persistKey: 'ldaca.layout.asidePanelRatio',
+      }),
+    );
+    const key = {
+      key: 'ArrowLeft',
+      preventDefault: vi.fn(),
+    } as unknown as React.KeyboardEvent<HTMLDivElement>;
+    act(() => {
+      result.current.splitterProps.onKeyDown(key);
+    });
+    act(() => {
+      result.current.splitterProps.onKeyDown(key);
+    });
+    expect(result.current.value).toBeCloseTo(0.4);
+    await act(async () => {
+      acceptPreferences({
+        ...defaultPreferences,
+        layout: { ...defaultPreferences.layout, asidePanelRatio: 0.35 },
+      });
+      resolveFirst();
+      await first;
+    });
+    expect(result.current.value).toBeCloseTo(0.4);
+    await act(async () => {
+      acceptPreferences({
+        ...defaultPreferences,
+        layout: { ...defaultPreferences.layout, asidePanelRatio: 0.4 },
+      });
+      resolveSecond();
+      await second;
+    });
+    expect(result.current.value).toBeCloseTo(0.4);
+    expect(getPreferences().layout.asidePanelRatio).toBe(0.4);
+    unmount();
+  });
   it.each([
     { stored: '0.08', expected: 0.2 },
     { stored: '0.92', expected: 0.8 },
   ])(
     'clamps a restored percent value of $stored to its configured bounds',
     ({ stored, expected }) => {
-      window.localStorage.setItem('test.split', stored);
+      acceptPreferences({
+        ...defaultPreferences,
+        layout: { ...defaultPreferences.layout, asidePanelRatio: Number(stored) },
+      });
 
       const { result, unmount } = renderHook(() =>
         useResizableSplit({
           defaultValue: 0.5,
           min: 0.2,
           max: 0.8,
-          persistKey: 'test.split',
+          persistKey: 'ldaca.layout.asidePanelRatio',
         }),
       );
 
       expect(result.current.value).toBe(expected);
       expect(result.current.splitterProps['aria-valuenow']).toBe(expected * 100);
-      expect(window.localStorage.getItem('test.split')).toBe(String(expected));
+      expect(String(getPreferences().layout.asidePanelRatio)).toBe(String(expected));
 
       unmount();
-      window.localStorage.removeItem('test.split');
+      acceptPreferences(defaultPreferences);
     },
   );
 });
@@ -154,7 +218,10 @@ describe('useResizableSplit sizing', () => {
         /* Test observer has no external resources. */
       }
     } as typeof ResizeObserver;
-    localStorage.setItem('test.capped', '0.8');
+    acceptPreferences({
+      ...defaultPreferences,
+      layout: { ...defaultPreferences.layout, asidePanelRatio: 0.8 },
+    });
     function Split() {
       const { containerRef, splitterProps } = useResizableSplit({
         orientation: 'vertical',
@@ -163,7 +230,7 @@ describe('useResizableSplit sizing', () => {
         min: 0.15,
         max: 0.8,
         maxPixels: 800,
-        persistKey: 'test.capped',
+        persistKey: 'ldaca.layout.asidePanelRatio',
       });
       return (
         <div ref={containerRef}>
@@ -176,7 +243,7 @@ describe('useResizableSplit sizing', () => {
       const handle = screen.getByRole('separator');
       expect(handle).toHaveAttribute('aria-valuenow', '40');
       expect(handle).toHaveAttribute('aria-valuemax', '40');
-      expect(localStorage.getItem('test.capped')).toBe('0.8');
+      expect(String(getPreferences().layout.asidePanelRatio)).toBe('0.8');
       width = 1000;
       act(() => resize?.([], {} as ResizeObserver));
       expect(handle).toHaveAttribute('aria-valuenow', '80');
@@ -192,7 +259,23 @@ describe('useResizableSplit sizing', () => {
       view.unmount();
       rect.mockRestore();
       globalThis.ResizeObserver = observer;
-      localStorage.removeItem('test.capped');
+      acceptPreferences(defaultPreferences);
     }
   });
+});
+
+vi.mock('@/features/preferences/preferences', async (load) => {
+  const actual = await load<typeof import('@/features/preferences/preferences')>();
+  return {
+    ...actual,
+    patchPreferences: vi.fn(async (patch) => {
+      const current = actual.getPreferences();
+      actual.acceptPreferences({
+        ...current,
+        ...patch,
+        layout: { ...current.layout, ...patch.layout },
+        recentDataFiles: patch.recentDataFiles ?? current.recentDataFiles,
+      });
+    }),
+  };
 });

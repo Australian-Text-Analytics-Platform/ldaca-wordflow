@@ -101,10 +101,11 @@ impl ProjectRuntime {
                 }
                 context.progress("Preparing local models", None);
                 let prepare = request.clone();
+                let assets = runtime.model_assets()?;
                 context
                     .run_blocking(move |context| {
                         context.check_cancelled()?;
-                        prepare.prepare()?;
+                        prepare.prepare(assets.as_ref())?;
                         context.check_cancelled()
                     })
                     .await?;
@@ -184,12 +185,13 @@ impl ProjectRuntime {
         };
         let runtime = self.clone();
         let cache = locked(&self.shared.embedding_cache)?.clone();
+        let assets = runtime.model_assets()?;
         tokio::spawn(async move {
             let owned = preview.clone();
             // The blocking preparation owns the Operation even if the stream is dropped.
             let prepared = tokio::task::spawn_blocking(move || {
                 let result = check_cancellation(&operation.cancellation)
-                    .and_then(|()| input.request.prepare())
+                    .and_then(|()| input.request.prepare(assets.as_ref()))
                     .and_then(|()| check_cancellation(&operation.cancellation));
                 (operation, input, result)
             })

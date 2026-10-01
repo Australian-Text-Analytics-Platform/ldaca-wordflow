@@ -3,8 +3,8 @@
 ## Local build
 
 ```bash
-pnpm install --frozen-lockfile
-pnpm -C frontend build
+vp install --frozen-lockfile
+vp -C frontend run build
 cargo build -p wordflow-server --release --locked --target aarch64-apple-darwin
 node scripts/package-server.mjs aarch64-apple-darwin
 node scripts/verify-server-package.mjs aarch64-apple-darwin
@@ -24,9 +24,9 @@ No Rust, Node or Wordflow Python installation is needed to run the package.
 DATA_DIR="$HOME/wordflow" ./wordflow-server --bind 127.0.0.1:8002
 ```
 
-Startup creates Untitled. Use browser **Project** and **Data files** controls.
+Startup opens the project chooser. Use **New project** or reopen a saved project, then use **Project** and **Data files** controls.
 SIGINT/SIGTERM request graceful cancellation and wait for cleanup. A new process
-starts Untitled; reopen named projects from its file library. Downloads preserve
+starts an empty registry; reopen named projects from its file library. Downloads preserve
 project structure, while Export remains the separate portable-export workflow.
 
 Behind a prefix-stripping proxy:
@@ -38,7 +38,7 @@ Behind a prefix-stripping proxy:
 
 Allow the exact browser origin. Do not disable origin validation or assume
 forwarded headers are trustworthy. The health/readiness check for the host is
-`GET /api/server`; the returned session scopes ordinary project health routes.
+`GET /api/server`; choose a project through `POST /api/server/project`, then use its `project_id` under `/project/{id}`.
 
 ## Release gates
 
@@ -77,3 +77,5 @@ Actual Binder verification is deferred to the real Binder website at the user’
 request. Do not run local Binder simulations as a substitute. As of this implementation's local check, latest stable `v0.7.7` has only
 desktop assets; publish the new server assets before that gate can run. Linux,
 Windows and live Binder results must be reported separately from macOS evidence.
+
+See [Linux multi-user deployment](linux-multi-user.md), [storage contract](../reference/application-storage.md) and [manual cutover](storage-cutover.md).

@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react';
+import { patchPreferences } from '@/features/preferences/preferences';
 
 export const LIGHT_THEME = 'light-2026' as const;
 export const DARK_THEME = 'dark-2026' as const;
-export const THEME_STORAGE_KEY = 'ldaca-color-theme-v1';
 
 export type ColorTheme = typeof LIGHT_THEME | typeof DARK_THEME;
 
@@ -27,19 +27,16 @@ function updateThemeColor(theme: ColorTheme) {
 
 export function applyColorTheme(theme: ColorTheme, persist = true) {
   if (typeof document === 'undefined') return;
+  if (persist) {
+    void patchPreferences({ theme }).catch(() => undefined);
+    return;
+  }
+
   const changed = activeTheme !== theme;
   activeTheme = theme;
   document.documentElement.dataset.theme = theme;
   document.documentElement.style.colorScheme = theme === DARK_THEME ? 'dark' : 'light';
   updateThemeColor(theme);
-
-  if (persist && typeof localStorage !== 'undefined') {
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      // The account preference remains authoritative when local storage is unavailable.
-    }
-  }
 
   if (changed) {
     listeners.forEach((listener) => {
@@ -61,18 +58,4 @@ function subscribe(listener: () => void) {
 
 export function useActiveTheme(): ColorTheme {
   return useSyncExternalStore(subscribe, getActiveTheme, () => LIGHT_THEME);
-}
-
-/** Keeps separately opened browser windows in step with the last-known bootstrap cache. */
-export function startThemeStorageSync(): () => void {
-  if (typeof window === 'undefined') return () => undefined;
-  const handleStorage = (event: StorageEvent) => {
-    if (event.key === THEME_STORAGE_KEY && isColorTheme(event.newValue)) {
-      applyColorTheme(event.newValue, false);
-    }
-  };
-  window.addEventListener('storage', handleStorage);
-  return () => {
-    window.removeEventListener('storage', handleStorage);
-  };
 }

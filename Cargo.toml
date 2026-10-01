@@ -1,5 +1,5 @@
 [workspace]
-members = ["backend", "server", "frontend/src-tauri", "ldaca-rs"]
+members = ["storage", "backend", "server", "frontend/src-tauri", "ldaca-rs"]
 exclude = ["polars-text"]
 default-members = ["backend"]
 resolver = "3"

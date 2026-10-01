@@ -89,24 +89,29 @@ async fn remove(
 async fn models(
     State(runtime): State<ProjectRuntime>,
     Path(id): Path<Uuid>,
+    headers: axum::http::HeaderMap,
 ) -> Result<Json<Vec<String>>> {
+    let runtime = runtime.for_request(&headers)?;
     let config = runtime.ai();
     let (connection, key) = config.resolve(id).await?;
     if connection.provider == Provider::Apple {
         return Ok(Json(vec!["system".into()]));
     }
     if let Some((revision, models)) = config.0.models.lock().await.get(&id)
+        && !config.0.browser_owned
         && *revision == connection.revision
     {
         return Ok(Json(models.clone()));
     }
     let values = discover(runtime.client(), &connection, key.as_deref()).await?;
-    config
-        .0
-        .models
-        .lock()
-        .await
-        .insert(id, (connection.revision, values.clone()));
+    if !config.0.browser_owned {
+        config
+            .0
+            .models
+            .lock()
+            .await
+            .insert(id, (connection.revision, values.clone()));
+    }
     Ok(Json(values))
 }
 pub(super) fn endpoint(connection: &Connection) -> Result<&str> {

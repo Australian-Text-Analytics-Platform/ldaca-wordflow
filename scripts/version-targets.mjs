@@ -28,6 +28,8 @@ export const VERSION_TARGETS = [
     lockTarget('Cargo.lock', 'wordflow-backend'),
     tomlTarget('server/Cargo.toml', 'server/Cargo.toml'),
     lockTarget('Cargo.lock', 'wordflow-server'),
+    tomlTarget('storage/Cargo.toml', 'storage/Cargo.toml'),
+    lockTarget('Cargo.lock', 'wordflow-storage'),
 ];
 
 export const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;

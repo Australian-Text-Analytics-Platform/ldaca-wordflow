@@ -61,9 +61,12 @@ describe('Tauri project window', () => {
     const directory = await mkdtemp(join(tmpdir(), 'wordflow-loader-'));
     const file = join(directory, 'native_loader.csv');
     await writeFile(file, 'id,text\n1,Native import\n');
-    const previousRecents = await browser.execute(() => localStorage.getItem('wordflow.desktop.recentDataFiles'));
+    const previousRecents = await browser.tauri.execute(async ({ core }) => {
+      const preferences = await core.invoke('get_preferences') as { recentDataFiles: string[] };
+      return preferences.recentDataFiles;
+    });
     const previousTheme = await $('html').getAttribute('data-theme');
-    await browser.execute((path) => { localStorage.setItem('wordflow.desktop.recentDataFiles', JSON.stringify([path])); }, file);
+    await browser.tauri.execute(({ core }, path) => core.invoke('patch_preferences', { patch: { recentDataFiles: [path] } }), file);
     await browser.refresh();
     try {
       await $('button*=native_loader.csv').click();
@@ -90,10 +93,7 @@ describe('Tauri project window', () => {
       await expect($('[aria-label="Select native_loader_2"]')).toBeDisplayed();
       await expect($('[data-testid="project-data-overlay"]')).not.toExist();
     } finally {
-      await browser.execute((value) => {
-        if (value === null) localStorage.removeItem('wordflow.desktop.recentDataFiles');
-        else localStorage.setItem('wordflow.desktop.recentDataFiles', value);
-      }, previousRecents);
+      await browser.tauri.execute(({ core }, value) => core.invoke('patch_preferences', { patch: { recentDataFiles: value } }), previousRecents);
       if ((await $('html').getAttribute('data-theme')) !== previousTheme) {
         await $('button[aria-label="Open settings"]').click();
         await $('[role="switch"][aria-label="Use Dark 2026 theme"]').click();

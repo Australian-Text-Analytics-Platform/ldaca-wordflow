@@ -1,5 +1,11 @@
 # Test suites
 
+After `vp -C frontend run build:e2e:native`, run
+`vp -C frontend run test:e2e:native:preferences` to verify preferences across two
+Test app processes with distinct fresh WebView stores. The launcher owns a single
+cleanup lock for this check and clears Test storage and credentials before and
+afterward. Native debug CI runs it on macOS and Windows.
+
 Active application CI runs Rust, Tauri, frontend unit tests, Rust-preview E2E
 and embedded-WebDriver native tests on macOS and Windows. The optional
 `polars-text` adapter retains its independent Rust/Python checks. Retired FastAPI,
@@ -291,3 +297,17 @@ wide layouts. Use the shared `setAnalysisPaneSize` helper, whose assertions foll
 the splitter's measured bounds, and restore normal sizing after responsive checks.
 Normal-width screenshots are the primary visual reference; narrow screenshots
 supplement them. Persistence tests exercise resizing and reload within one scenario.
+
+## Unified storage acceptance
+
+Before each E2E run, the Rust directory helper resolves Test config, data, local
+data, cache, logs and temporary roots. The launcher deduplicates overlapping
+paths, holds a cleanup lock, clears Test credential namespaces and creates a
+fresh browser/WebView profile. Dev and production canaries must remain unchanged.
+Browser and native preference fixtures use the host adapter rather than localStorage.
+
+Exercise preferences across reload/restart and windows, independent projects,
+same-file runtime reuse, shared close and accepted tasks surviving disconnection.
+Linux account/container acceptance has a separate
+[deployment procedure](linux-multi-user.md#acceptance-before-production-cutover).
+Production packaging acceptance requires a dedicated OS account or VM.

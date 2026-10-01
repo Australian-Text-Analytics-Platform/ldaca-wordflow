@@ -5,7 +5,7 @@ import { browser, $, expect } from '@wdio/globals';
 import type { ChainablePromiseElement } from 'webdriverio';
 import * as analysesApi from '@/features/tools/common/analysisApi';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
-import { outputDir } from '../../e2e-browser/fixtures';
+import { outputDir, getTestPreferences, setTestPreferences } from '../../e2e-browser/fixtures';
 
 export const researchDirectory = resolve(import.meta.dirname, '../../e2e/fixtures/data');
 export interface SurveyRow {
@@ -53,9 +53,7 @@ export async function withResearchFile(
   const directory = await mkdtemp(join(tmpdir(), 'wordflow-research-'));
   const path = join(directory, name + extname(file));
   await copyFile(join(researchDirectory, file), path);
-  const previousRecents = await browser.execute(() =>
-    localStorage.getItem('wordflow.desktop.recentDataFiles'),
-  );
+  const previousRecents = (await getTestPreferences()).recentDataFiles;
   try {
     await $('button=Data Loader').click();
     await $('[role="tab"]=Local files').click();
@@ -74,10 +72,7 @@ export async function withResearchFile(
     await expect($('[data-testid="project-data-overlay"]')).not.toExist();
     await visit(name);
   } finally {
-    await browser.execute((value) => {
-      if (value === null) localStorage.removeItem('wordflow.desktop.recentDataFiles');
-      else localStorage.setItem('wordflow.desktop.recentDataFiles', value);
-    }, previousRecents);
+    await setTestPreferences({ recentDataFiles: previousRecents });
     await rm(directory, { recursive: true, force: true });
   }
 }

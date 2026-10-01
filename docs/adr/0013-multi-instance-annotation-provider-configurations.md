@@ -58,3 +58,7 @@ The trade-off is a clean incompatible cutover: credential schema 1, browser
 version 1, Workspace schema 6, and archive format 5 have no runtime migration
 reader. Required local data must be converted operationally before launch, and
 hosted users whose browser partitions were not converted re-add providers.
+
+[ADR 0030](0030-explicit-host-storage-and-isolated-browser-workers.md) replaces
+the application storage and preference/credential persistence clauses described
+here. See it for the current host ownership and clean-cutover decision.

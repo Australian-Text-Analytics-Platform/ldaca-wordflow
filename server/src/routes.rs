@@ -20,7 +20,9 @@ pub fn router() -> OpenApiRouter<Host> {
     OpenApiRouter::with_openapi(<Schemas as utoipa::OpenApi>::openapi())
         .routes(routes!(status))
         .routes(routes!(events))
+        .routes(routes!(project_status))
         .routes(routes!(switch_project))
+        .routes(routes!(close_project))
         .routes(routes!(save))
         .routes(routes!(snapshot))
         .routes(routes!(list))
@@ -33,9 +35,10 @@ pub fn router() -> OpenApiRouter<Host> {
 async fn status(State(host): State<Host>) -> Result<Json<ServerStatus>> {
     Ok(Json(host.status().await?))
 }
-#[utoipa::path(get, path="/api/server/events", operation_id="server_events", responses((status=200, description="Active project session identifiers as SSE data", content_type="text/event-stream", body=String)))]
+#[utoipa::path(get, path="/api/server/events", operation_id="server_events", responses((status=200, description="User project registry and application preference invalidations", content_type="text/event-stream", body=String)))]
 async fn events(State(host): State<Host>) -> impl IntoResponse {
     let receiver = host.0.changed.subscribe();
+    let preferences = host.0.preferences.changes();
     let shutdown = host.0.shutdown.clone();
     let initial = futures_util::stream::once(async move {
         Ok::<_, std::convert::Infallible>(
@@ -43,99 +46,136 @@ async fn events(State(host): State<Host>) -> impl IntoResponse {
         )
     });
     let updates = futures_util::stream::unfold(
-        (receiver, shutdown),
-        |(mut receive, shutdown)| async move {
-            tokio::select! { _ = shutdown.cancelled() => None, result = receive.changed() => {
-                result.ok()?;
-                let id = *receive.borrow_and_update();
-                Some((Ok::<_, std::convert::Infallible>(Event::default().data(id.to_string())), (receive, shutdown)))
-            }}
+        (receiver, preferences, shutdown),
+        |(mut receive, mut preferences, shutdown)| async move {
+            tokio::select! {
+                _ = shutdown.cancelled() => return None,
+                result = receive.changed() => { result.ok()?; receive.borrow_and_update(); },
+                result = preferences.changed() => { result.ok()?; preferences.borrow_and_update(); },
+            }
+            Some((
+                Ok::<_, std::convert::Infallible>(Event::default().data("changed")),
+                (receive, preferences, shutdown),
+            ))
         },
     );
     Sse::new(initial.chain(updates)).keep_alive(axum::response::sse::KeepAlive::default())
 }
+#[utoipa::path(get,path="/api/server/project/{id}",operation_id="server_project",params(("id"=Uuid,Path)),responses((status=200,body=ServerProject),(status=409,body=ErrorEnvelope)))]
+async fn project_status(
+    State(host): State<Host>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<ServerProject>> {
+    Ok(Json(host.project_status(id).await?))
+}
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ServerSwitch {
-    pub session_id: Uuid,
-    /// Absent for a new Untitled project; otherwise an existing library project filename.
     pub name: Option<String>,
+}
+#[utoipa::path(post,path="/api/server/project",operation_id="server_open",request_body=ServerSwitch,responses((status=200,body=ServerProject),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
+async fn switch_project(
+    State(host): State<Host>,
+    InputJson(input): InputJson<ServerSwitch>,
+) -> Result<Json<ServerProject>> {
+    tokio::spawn(async move {
+        let _mutation = host.0.mutation.lock().await;
+        let path = input
+            .name
+            .as_ref()
+            .map(|name| host.0.files.path(Library::Projects, name))
+            .transpose()?;
+        if let Some(path) = &path
+            && let Some(active) = host.open_file(path).await?
+        {
+            return Ok(Json(host.project_status(active.id).await?));
+        }
+        let runtime = host.new_runtime()?;
+        match path {
+            Some(path) => {
+                runtime.open(path).await?;
+            }
+            None => {
+                runtime.create(None).await?;
+            }
+        }
+        let id = Uuid::new_v4();
+        host.0
+            .projects
+            .write()
+            .await
+            .insert(id, Active { id, runtime });
+        host.changed();
+        Ok(Json(host.project_status(id).await?))
+    })
+    .await?
+}
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ServerClose {
+    pub project_id: Uuid,
     #[serde(default)]
     pub discard_untitled: bool,
     #[serde(default)]
     pub interrupt: bool,
 }
-#[utoipa::path(post, path="/api/server/project", operation_id="server_switch", request_body=ServerSwitch, responses((status=200, body=ServerStatus), (status=400, body=ErrorEnvelope), (status=409, body=ErrorEnvelope)))]
-async fn switch_project(
+#[utoipa::path(post,path="/api/server/project/close",operation_id="server_close",request_body=ServerClose,responses((status=204,description="Shared project closed"),(status=409,body=ErrorEnvelope)))]
+async fn close_project(
     State(host): State<Host>,
-    InputJson(input): InputJson<ServerSwitch>,
-) -> Result<Json<ServerStatus>> {
-    tokio::spawn(async move { switch_project_owned(host, input).await }).await?
-}
-async fn switch_project_owned(host: Host, input: ServerSwitch) -> Result<Json<ServerStatus>> {
-    let _mutation = host.0.mutation.lock().await;
-    let active = host.session(input.session_id).await?;
-    let path = input
-        .name
-        .as_ref()
-        .map(|name| host.0.files.path(Library::Projects, name))
-        .transpose()?;
-    let current = active.runtime.status().await?;
-    if path.is_some() && current.as_ref().and_then(|p| p.path.as_ref()) == path.as_ref() {
-        return Ok(Json(host.status().await?));
-    }
-    if active.runtime.is_editing().await {
-        return Err(Error::new(
-            "editing_active",
-            "Save or cancel your table edits before changing projects.",
-        ));
-    }
-    if current.as_ref().is_some_and(|p| p.path.is_none()) && !input.discard_untitled {
-        return Err(Error::new(
-            "save_required",
-            "Save this Untitled project or choose Discard before continuing.",
-        ));
-    }
-    let attempt = active.runtime.begin_close()?;
-    if attempt.has_work() && !input.interrupt {
-        return Err(Error::new(
-            "task_active",
-            "Work is still running. Confirm cancellation before changing projects.",
-        ));
-    }
-    // Prepare first: a missing, incompatible or locked destination leaves the old project usable.
-    let next = host.new_runtime()?;
-    if let Some(path) = path {
-        next.open(path).await?;
-    } else {
-        next.create(None).await?;
-    }
-    if let Err(error) = active.runtime.close().await {
-        next.close().await?;
-        return Err(error);
-    }
-    let id = Uuid::new_v4();
-    *host.0.active.write().await = Active { id, runtime: next };
-    host.0.changed.send_replace(id);
-    drop(attempt);
-    Ok(Json(host.status().await?))
+    InputJson(input): InputJson<ServerClose>,
+) -> Result<StatusCode> {
+    tokio::spawn(async move {
+        let _mutation = host.0.mutation.lock().await;
+        let active = host.session(input.project_id).await?;
+        if active.runtime.is_editing().await {
+            return Err(Error::new(
+                "editing_active",
+                "Save or cancel table edits before closing this project.",
+            ));
+        }
+        if active
+            .runtime
+            .status()
+            .await?
+            .is_some_and(|p| p.path.is_none())
+            && !input.discard_untitled
+        {
+            return Err(Error::new(
+                "save_required",
+                "Save this Untitled project or choose Discard before closing it.",
+            ));
+        }
+        let attempt = active.runtime.begin_close()?;
+        if attempt.has_work() && !input.interrupt {
+            return Err(Error::new(
+                "task_active",
+                "Confirm cancellation before closing the shared project.",
+            ));
+        }
+        active.runtime.close().await?;
+        host.0.projects.write().await.remove(&active.id);
+        host.changed();
+        drop(attempt);
+        Ok(StatusCode::NO_CONTENT)
+    })
+    .await?
 }
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ServerSave {
-    pub session_id: Uuid,
+    pub project_id: Uuid,
     pub name: Option<String>,
 }
-#[utoipa::path(post, path="/api/server/project/save", operation_id="server_save", request_body=ServerSave, responses((status=200, body=ServerStatus), (status=400, body=ErrorEnvelope), (status=409, body=ErrorEnvelope)))]
+#[utoipa::path(post, path="/api/server/project/save", operation_id="server_save", request_body=ServerSave, responses((status=200, body=ServerProject), (status=400, body=ErrorEnvelope), (status=409, body=ErrorEnvelope)))]
 async fn save(
     State(host): State<Host>,
     InputJson(input): InputJson<ServerSave>,
-) -> Result<Json<ServerStatus>> {
+) -> Result<Json<ServerProject>> {
     tokio::spawn(async move { save_owned(host, input).await }).await?
 }
-async fn save_owned(host: Host, input: ServerSave) -> Result<Json<ServerStatus>> {
+async fn save_owned(host: Host, input: ServerSave) -> Result<Json<ServerProject>> {
     let _mutation = host.0.mutation.lock().await;
-    let active = host.session(input.session_id).await?;
+    let active = host.session(input.project_id).await?;
     let path = input
         .name
         .map(|name| host.0.files.path(Library::Projects, &name))
@@ -149,8 +189,8 @@ async fn save_owned(host: Host, input: ServerSave) -> Result<Json<ServerStatus>>
         ));
     }
     active.runtime.save(path).await?;
-    host.0.changed.send_replace(active.id);
-    Ok(Json(host.status().await?))
+    host.changed();
+    Ok(Json(host.project_status(active.id).await?))
 }
 #[utoipa::path(get, path="/api/server/project/{id}/download", operation_id="server_snapshot", params(("id"=Uuid,Path)), responses((status=200, content_type="application/octet-stream", body=wordflow_backend::openapi::Binary), (status=409,body=ErrorEnvelope)))]
 async fn snapshot(State(host): State<Host>, Path(id): Path<Uuid>) -> Result<Response> {
@@ -222,8 +262,7 @@ async fn download(
     };
     let path = host.0.files.path(library, &name)?;
     if matches!(library, Library::Projects) {
-        let active = host.0.active.read().await.clone();
-        if active.runtime.status().await?.and_then(|p| p.path).as_ref() == Some(&path) {
+        if let Some(active) = host.open_file(&path).await? {
             return staged_download(active.runtime.snapshot().await?, &name).await;
         }
         let runtime = host.new_runtime()?;
@@ -249,23 +288,13 @@ async fn delete(
     };
     let path = host.0.files.path(library, &name)?;
     if matches!(library, Library::Projects) {
-        if host
-            .0
-            .active
-            .read()
-            .await
-            .runtime
-            .status()
-            .await?
-            .and_then(|p| p.path)
-            .as_ref()
-            == Some(&path)
-        {
+        if host.open_file(&path).await?.is_some() {
             return Err(Error::new(
                 "project_busy",
-                "Open another project before deleting this file.",
+                "Close the project before deleting it.",
             ));
         }
+
         tokio::task::spawn_blocking(move || {
             let _lock = wordflow_backend::lock_destination(&path)?;
             std::fs::remove_file(path).map_err(Error::from)
@@ -279,7 +308,7 @@ async fn delete(
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ServerImport {
-    pub session_id: Uuid,
+    pub project_id: Uuid,
     pub name: String,
 }
 #[utoipa::path(post,path="/api/server/import",operation_id="server_import",request_body=ServerImport,responses((status=200,body=TableNames),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
@@ -291,7 +320,7 @@ async fn import(
 }
 async fn import_owned(host: Host, input: ServerImport) -> Result<Response> {
     let _file = host.0.data_files.lock().await;
-    let active = host.session(input.session_id).await?;
+    let active = host.session(input.project_id).await?;
     let path = host.0.files.path(Library::Data, &input.name)?;
     let extension = std::path::Path::new(&input.name)
         .extension()
@@ -334,7 +363,7 @@ pub async fn project_request(
     ) {
         return Err(Error::invalid("Use the server project controls."));
     }
-    let prefix = format!("/session/{id}");
+    let prefix = format!("/project/{id}");
     let uri = request
         .uri()
         .path_and_query()

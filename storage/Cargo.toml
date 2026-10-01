@@ -1,0 +1,19 @@
+[package]
+name = "wordflow-storage"
+version = "8.0.0"
+edition = "2024"
+publish = false
+description = "Explicit host storage and application preferences"
+
+[dependencies]
+dirs = "6"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tempfile = "3"
+thiserror = "2"
+utoipa = { version = "=5.4.0" }
+axum = "0.8.9"
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync"] }
+tokio-util = { version = "0.7", features = ["rt"] }
+utoipa-axum = "=0.2.0"

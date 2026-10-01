@@ -102,7 +102,15 @@ it('desktop keeps the three panes, imports inline, and reopens embedded data', a
     await expect(role('cell', { name: 'first', exact: true })).toBeDisplayed();
     expect(errors).toEqual([]);
     expect(requested.length).toBeGreaterThan(0);
-    expect(requested.every((path) => path.startsWith('/api/project'))).toBe(true);
+    expect(requested).toContain('/api/preferences');
+    const applicationRoutes = new Set([
+      '/api/preferences',
+      '/api/preferences/events',
+      '/api/account',
+    ]);
+    expect(
+      requested.every((path) => path.startsWith('/api/project') || applicationRoutes.has(path)),
+    ).toBe(true);
   } finally {
     // The launcher removes the saved project after the backend releases it.
     await rm(source, { force: true });

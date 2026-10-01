@@ -6,21 +6,30 @@ import { createProjectQueryClient } from './projectErrors';
 import { DocumentModalHost } from '@/components/dialogs/DocumentModalHost';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useEffect, useState } from 'react';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DesktopWindowFrame } from '@/components/layout/DesktopWindowFrame';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import DocumentSession from './DocumentSession';
 
-export default function ProjectApp({ base }: { base: string }) {
+export default function ProjectApp({
+  base,
+  queryClient,
+}: {
+  base: string;
+  queryClient?: QueryClient;
+}) {
   const feedback = useUIStore((s) => s.feedback);
   const closeFeedback = useUIStore((s) => s.closeFeedback);
-  const [client] = useState(createProjectQueryClient);
+  const [ownedClient] = useState(createProjectQueryClient);
+  const client = queryClient ?? ownedClient;
   useEffect(
     () => () => {
-      void client.cancelQueries();
-      client.clear();
+      if (!queryClient) {
+        void client.cancelQueries();
+        client.clear();
+      }
     },
-    [client],
+    [client, queryClient],
   );
   return (
     <QueryClientProvider client={client}>

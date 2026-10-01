@@ -360,7 +360,7 @@ impl Editor {
             }))?,
         );
         let schema = Arc::new(Schema::new_with_metadata(schema.fields().clone(), metadata));
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = temporary_file(&session.conn)?;
         let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
         while let Some(array) = stmt.step()? {
             let batch = RecordBatch::from(&array);

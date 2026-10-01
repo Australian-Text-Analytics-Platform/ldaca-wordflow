@@ -2,6 +2,7 @@ use axum::{
     body::{Body, to_bytes},
     http::{Request, StatusCode},
 };
+use futures_util::StreamExt;
 use serde_json::{Value, json};
 use tower::ServiceExt;
 use wordflow_server::{Host, config::Config};
@@ -10,6 +11,12 @@ async fn host() -> (tempfile::TempDir, Host) {
     let dir = tempfile::tempdir().unwrap();
     let host = Host::new(
         &Config {
+            mode: wordflow_server::config::Mode::SingleUser,
+            identity: wordflow_storage::TEST_ID.into(),
+            public_url: None,
+            worker_root: None,
+            worker_socket: None,
+            probe_network: false,
             bind: "127.0.0.1:0".parse().unwrap(),
             data_dir: Some(dir.path().into()),
             public_base_path: "/user/test/proxy/8002/".into(),
@@ -43,70 +50,97 @@ async fn call(host: &Host, method: &str, path: &str, body: Value) -> (StatusCode
         serde_json::from_slice(&bytes).unwrap_or(Value::Null),
     )
 }
+async fn create(host: &Host) -> String {
+    let (status, project) = call(host, "POST", "/api/server/project", json!({"name":null})).await;
+    assert_eq!(status, StatusCode::OK, "{project}");
+    project["project_id"].as_str().unwrap().to_owned()
+}
 #[tokio::test]
-async fn replacement_rejects_old_requests_and_save_as_preserves_project() {
-    let (dir, host) = host().await;
-    let id = host.status().await.unwrap().session_id;
-    let (status, _) = call(
+async fn user_event_stream_notifies_preference_changes_and_project_registry_changes() {
+    let (_directory, host) = host().await;
+    let response = host
+        .router()
+        .oneshot(
+            Request::builder()
+                .uri("/api/server/events")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut events = response.into_body().into_data_stream();
+    events.next().await.unwrap().unwrap();
+    let (status, preferences) = call(
         &host,
-        "POST",
-        "/api/server/project",
-        json!({"session_id":id}),
+        "PATCH",
+        "/api/preferences",
+        json!({"theme":"dark-2026"}),
     )
     .await;
-    assert_eq!(status, StatusCode::CONFLICT);
+    assert_eq!(status, StatusCode::OK, "{preferences}");
+    let preference_event = tokio::time::timeout(std::time::Duration::from_secs(5), events.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&preference_event).contains("data: changed"));
+    create(&host).await;
+    let project_event = tokio::time::timeout(std::time::Duration::from_secs(5), events.next())
+        .await
+        .unwrap()
+        .unwrap()
+        .unwrap();
+    assert!(String::from_utf8_lossy(&project_event).contains("data: changed"));
+    host.close().await.unwrap();
+}
+#[tokio::test]
+async fn independent_projects_same_file_reuse_and_shared_close() {
+    let (dir, host) = host().await;
+    let id = create(&host).await;
+    let new_id = create(&host).await;
+    assert_ne!(id, new_id);
+    assert_eq!(host.status().await.unwrap().projects.len(), 2);
+    assert_eq!(
+        call(
+            &host,
+            "GET",
+            &format!("/project/{id}/api/project"),
+            Value::Null
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
     let (status, saved) = call(
         &host,
         "POST",
         "/api/server/project/save",
-        json!({"session_id":id,"name":"研究.wfpj"}),
+        json!({"project_id":id,"name":"研究.wfpj"}),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{saved}");
-    assert!(dir.path().join("projects/研究.wfpj").exists());
-    let (status, duplicate) = call(
-        &host,
-        "POST",
-        "/api/server/project/save",
-        json!({"session_id":id,"name":"研究.wfpj"}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::CONFLICT, "{duplicate}");
-    let (status, changed) = call(
-        &host,
-        "POST",
-        "/api/server/project",
-        json!({"session_id":id}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{changed}");
-    assert_ne!(changed["session_id"], id.to_string());
-    let (status, _) = call(
-        &host,
-        "GET",
-        &format!("/session/{id}/api/project"),
-        Value::Null,
-    )
-    .await;
-    assert_eq!(status, StatusCode::CONFLICT);
-    let new_id = host.status().await.unwrap().session_id;
+    assert!(dir.path().join("admin/projects/研究.wfpj").exists());
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            "/api/server/project/save",
+            json!({"project_id":id,"name":"研究.wfpj"})
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
     let (status, reopened) = call(
         &host,
         "POST",
         "/api/server/project",
-        json!({"session_id":new_id,"name":"研究.wfpj","discard_untitled":true}),
-    )
-    .await;
-    assert_eq!(status, StatusCode::OK, "{reopened}");
-    let (status, same) = call(
-        &host,
-        "POST",
-        "/api/server/project",
-        json!({"session_id":reopened["session_id"],"name":"研究.wfpj"}),
+        json!({"name":"研究.wfpj"}),
     )
     .await;
     assert_eq!(status, StatusCode::OK);
-    assert_eq!(same["session_id"], reopened["session_id"]);
+    assert_eq!(reopened["project_id"], id);
     assert_eq!(
         call(
             &host,
@@ -117,6 +151,50 @@ async fn replacement_rejects_old_requests_and_save_as_preserves_project() {
         .await
         .0,
         StatusCode::CONFLICT
+    );
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            "/api/server/project/close",
+            json!({"project_id":new_id})
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            "/api/server/project/close",
+            json!({"project_id":new_id,"discard_untitled":true})
+        )
+        .await
+        .0,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        call(
+            &host,
+            "GET",
+            &format!("/project/{new_id}/api/project"),
+            Value::Null
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        call(
+            &host,
+            "GET",
+            &format!("/project/{id}/api/project"),
+            Value::Null
+        )
+        .await
+        .0,
+        StatusCode::OK
     );
     host.close().await.unwrap();
 }
@@ -135,16 +213,16 @@ async fn uploads_are_independent_and_failed_import_retains_file() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::OK);
-    let id = host.status().await.unwrap().session_id;
+    let id = create(&host).await;
     let (status, _) = call(
         &host,
         "POST",
         "/api/server/import",
-        json!({"session_id":id,"name":"bad.parquet"}),
+        json!({"project_id":id,"name":"bad.parquet"}),
     )
     .await;
     assert!(!status.is_success());
-    assert!(dir.path().join("data/bad.parquet").exists());
+    assert!(dir.path().join("admin/data/bad.parquet").exists());
     let response = host
         .router()
         .oneshot(
@@ -157,9 +235,9 @@ async fn uploads_are_independent_and_failed_import_retains_file() {
         .await
         .unwrap();
     assert!(!response.status().is_success());
-    assert!(!dir.path().join("projects/bad.wfpj").exists());
+    assert!(!dir.path().join("admin/projects/bad.wfpj").exists());
     assert_eq!(
-        std::fs::read_dir(dir.path().join("projects"))
+        std::fs::read_dir(dir.path().join("admin/projects"))
             .unwrap()
             .count(),
         0
@@ -181,11 +259,11 @@ async fn origin_and_encoded_paths_are_preserved() {
         .await
         .unwrap();
     assert_eq!(response.status(), StatusCode::FORBIDDEN);
-    let id = host.status().await.unwrap().session_id;
+    let id = create(&host).await;
     let (status, result) = call(
         &host,
         "POST",
-        &format!("/session/{id}/api/project/import"),
+        &format!("/project/{id}/api/project/import"),
         json!({"sources":[{"table_name":"a#b?文", "sql":"SELECT 1 AS value"}]}),
     )
     .await;
@@ -193,7 +271,7 @@ async fn origin_and_encoded_paths_are_preserved() {
     let (status, error) = call(
         &host,
         "GET",
-        &format!("/session/{id}/api/project/nodes/a%23b%3F%E6%96%87/schema"),
+        &format!("/project/{id}/api/project/nodes/a%23b%3F%E6%96%87/schema"),
         Value::Null,
     )
     .await;
@@ -203,4 +281,81 @@ async fn origin_and_encoded_paths_are_preserved() {
         "Encoded identifier was not transported: {error}"
     );
     host.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn preferences_survive_restart_and_users_have_distinct_roots_and_project_ids() {
+    use clap::Parser;
+    let root = tempfile::tempdir().unwrap();
+    let mut config = Config::parse_from(["server", "--identity", wordflow_storage::TEST_ID]);
+    config.data_dir = Some(root.path().into());
+    let a = uuid::Uuid::new_v4().to_string();
+    let b = uuid::Uuid::new_v4().to_string();
+    let shutdown = tokio_util::sync::CancellationToken::new();
+    let first = Host::for_user(&config, vec![], shutdown.clone(), &a)
+        .await
+        .unwrap();
+    let other = Host::for_user(&config, vec![], shutdown.clone(), &b)
+        .await
+        .unwrap();
+    let id = create(&first).await;
+    assert_eq!(
+        call(
+            &other,
+            "GET",
+            &format!("/project/{id}/api/project"),
+            Value::Null
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        call(
+            &first,
+            "PATCH",
+            "/api/preferences",
+            json!({"theme":"dark-2026"})
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        call(
+            &first,
+            "PATCH",
+            "/api/preferences",
+            json!({"layout":{"sidebarWidth":250}})
+        )
+        .await
+        .1["theme"],
+        "dark-2026"
+    );
+    assert_eq!(
+        call(&other, "GET", "/api/preferences", Value::Null).await.1["theme"],
+        "light-2026"
+    );
+    first.close().await.unwrap();
+    let reopened = Host::for_user(&config, vec![], shutdown, &a).await.unwrap();
+    let prefs = call(&reopened, "GET", "/api/preferences", Value::Null)
+        .await
+        .1;
+    assert_eq!(prefs["theme"], "dark-2026");
+    assert_eq!(prefs["layout"]["sidebarWidth"].as_f64(), Some(250.0));
+    assert!(
+        root.path()
+            .join(&a)
+            .join("config/preferences.json")
+            .exists()
+    );
+    assert!(
+        !root
+            .path()
+            .join(&b)
+            .join("config/preferences.json")
+            .exists()
+    );
+    reopened.close().await.unwrap();
+    other.close().await.unwrap();
 }

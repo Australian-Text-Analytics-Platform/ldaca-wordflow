@@ -14,10 +14,12 @@ pub(super) mod topic_preview;
 
 #[derive(Clone)]
 pub struct ProjectRuntime {
+    request_ai: Option<crate::AiConfiguration>,
     shared: Arc<Shared>,
 }
 struct Shared {
     project: Mutex<Option<Project>>,
+    storage: Mutex<Option<wordflow_storage::AppDirectories>>,
     lifecycle: Arc<RwLock<()>>,
     protection: Arc<protection::Protection>,
     editor: Arc<AsyncMutex<Editor>>,
@@ -120,8 +122,10 @@ impl ProjectRuntime {
     }
     pub fn with_ai(shutdown: CancellationToken, ai: crate::AiConfiguration) -> Self {
         Self {
+            request_ai: None,
             shared: Arc::new(Shared {
                 project: Mutex::new(None),
+                storage: Mutex::new(None),
                 lifecycle: Arc::new(RwLock::new(())),
                 protection: Arc::new(protection::Protection::default()),
                 editor: Arc::new(AsyncMutex::new(Editor::default())),
@@ -145,6 +149,50 @@ impl ProjectRuntime {
                 changes: changes::Notifications::default(),
             }),
         }
+    }
+    /// Hosts supply paths before opening any project. No global environment is changed.
+    pub fn set_storage(&self, paths: wordflow_storage::AppDirectories) -> Result<()> {
+        paths.validate()?;
+        if locked(&self.shared.project)?.is_some() {
+            return Err(Error::invalid(
+                "Storage must be supplied before opening a project",
+            ));
+        }
+        self.set_icu_cache_directory(paths.cache.join("icu"))?;
+        self.set_language_cache_directory(paths.cache.join("language"))?;
+        self.set_embedding_cache_path(paths.cache.join("embeddings.duckdb"))?;
+        *locked(&self.shared.storage)? = Some(paths);
+        Ok(())
+    }
+    fn model_assets(&self) -> Result<Option<ldaca_rs::model_assets::ModelAssets>> {
+        Ok(locked(&self.shared.storage)?.as_ref().map(|paths| {
+            ldaca_rs::model_assets::ModelAssets {
+                huggingface: paths.cache.join("huggingface"),
+                lindera: paths.cache.join("lindera"),
+                temporary: paths.temporary.clone(),
+            }
+        }))
+    }
+    pub fn temporary_directory(&self) -> Result<PathBuf> {
+        Ok(locked(&self.shared.storage)?
+            .as_ref()
+            .map(|p| p.temporary.clone())
+            .unwrap_or_else(std::env::temp_dir))
+    }
+    pub fn temporary_file(&self) -> Result<tempfile::NamedTempFile> {
+        Ok(tempfile::NamedTempFile::new_in(
+            self.temporary_directory()?,
+        )?)
+    }
+    fn quotation_path(&self) -> Result<PathBuf> {
+        let paths = locked(&self.shared.storage)?;
+        let paths = paths
+            .as_ref()
+            .ok_or_else(|| Error::invalid("The host must configure model storage"))?;
+        Ok(paths
+            .cache
+            .join("udpipe")
+            .join(ldaca_rs::quotation::MODEL_FILENAME))
     }
     /// Explicit host override, primarily for offline deployments and tests.
     pub fn set_icu_path(&self, path: PathBuf) -> Result<()> {
@@ -207,7 +255,12 @@ impl ProjectRuntime {
         .await
     }
     pub(crate) fn ai(&self) -> &crate::AiConfiguration {
-        &self.shared.ai
+        self.request_ai.as_ref().unwrap_or(&self.shared.ai)
+    }
+    pub(crate) fn for_request(&self, headers: &axum::http::HeaderMap) -> Result<Self> {
+        let mut runtime = self.clone();
+        runtime.request_ai = Some(self.shared.ai.for_request(headers)?);
+        Ok(runtime)
     }
     pub fn client(&self) -> &reqwest::Client {
         &self.shared.client
@@ -663,7 +716,7 @@ impl ProjectRuntime {
                     .as_ref()
                     .ok_or_else(|| Error::new("project_closed", "Open a project first"))?;
                 project.database.conn.execute_batch("CHECKPOINT")?;
-                let file = tempfile::NamedTempFile::new()?;
+                let file = temporary_file(&project.database.conn)?;
                 std::fs::copy(&project.path, file.path())?;
                 Ok(file)
             })
@@ -692,10 +745,28 @@ impl ProjectRuntime {
                 let mut project = match (path, create) {
                     (Some(p), true) => Project::create(&p)?,
                     (Some(p), false) => Project::open(&p)?,
-                    (None, _) => Project::untitled()?,
+                    (None, _) => match locked(&shared.storage)?.as_ref() {
+                        Some(paths) => Project::untitled_in(&paths.temporary)?,
+                        None => Project::untitled()?,
+                    },
                 };
                 if cancellation.is_cancelled() {
                     return Err(interrupted());
+                }
+                if let Some(paths) = locked(&shared.storage)?.as_ref() {
+                    project.database.conn.execute(
+                        "SET GLOBAL temp_directory = ?",
+                        params![paths.temporary.to_string_lossy()],
+                    )?;
+                    project.database.conn.execute(
+                        "SET GLOBAL extension_directory = ?",
+                        params![paths.cache.join("duckdb-extensions").to_string_lossy()],
+                    )?;
+                    project.database.model_assets = Some(ldaca_rs::model_assets::ModelAssets {
+                        huggingface: paths.cache.join("huggingface"),
+                        lindera: paths.cache.join("lindera"),
+                        temporary: paths.temporary.clone(),
+                    });
                 }
                 project.database.changes = shared.changes.clone();
                 let info = project.info();

@@ -15,6 +15,7 @@ tauri-build = { version = "2", features = [] }
 e2e = ["dep:uuid", "dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio"]
 
 [dependencies]
+wordflow-storage = { path = "../../storage" }
 uuid = { version = "1", features = ["v4"], optional = true }
 tauri-plugin-wdio-webdriver = { version = "1.4.0", optional = true }
 tauri-plugin-wdio = { version = "1.4.0", optional = true }

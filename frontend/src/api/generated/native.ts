@@ -1,5 +1,21 @@
 /** Generated from backend/openapi.json. Run pnpm api:generate; do not edit. */
 export interface paths {
+  '/api/account': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['account'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/ai/providers': {
     parameters: {
       query?: never;
@@ -58,6 +74,70 @@ export interface paths {
     get: operations['ai_http_models'];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['logout'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/preferences': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['get_preferences'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch: operations['patch_preferences'];
+    trace?: never;
+  };
+  '/api/preferences/events': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['preference_events'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/preferences/reset': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['reset_preferences'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1594,7 +1674,23 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['server_switch'];
+    post: operations['server_open'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/project/close': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_close'];
     delete?: never;
     options?: never;
     head?: never;
@@ -1611,6 +1707,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['server_save'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/project/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['server_project'];
+    put?: never;
+    post?: never;
     delete?: never;
     options?: never;
     head?: never;
@@ -1669,6 +1781,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
   schemas: {
+    Account: {
+      browser_credentials: boolean;
+      id: string;
+      name?: string | null;
+    };
     Analysis: {
       created_at: string;
       /** Format: uuid */
@@ -2045,7 +2162,7 @@ export interface components {
       sql: string;
     };
     /** @enum {string} */
-    CredentialMode: 'none' | 'session' | 'remembered';
+    CredentialMode: 'none' | 'session' | 'remembered' | 'browser';
     CredentialUpdate:
       | {
           /** @enum {string} */
@@ -2060,6 +2177,10 @@ export interface components {
           /** @enum {string} */
           action: 'remember';
           key: string;
+        }
+      | {
+          /** @enum {string} */
+          action: 'browser';
         }
       | {
           /** @enum {string} */
@@ -2337,6 +2458,22 @@ export interface components {
       code: string;
       description: string;
     };
+    LayoutPatch: {
+      /** Format: double */
+      asidePanelRatio?: number | null;
+      /** Format: double */
+      projectGraphRatio?: number | null;
+      /** Format: double */
+      sidebarWidth?: number | null;
+    };
+    LayoutPreferences: {
+      /** Format: double */
+      asidePanelRatio: number;
+      /** Format: double */
+      projectGraphRatio: number;
+      /** Format: double */
+      sidebarWidth: number;
+    };
     LdacaImport: {
       identifier: string;
       token?: string | null;
@@ -2483,6 +2620,25 @@ export interface components {
           /** @enum {string} */
           status: 'failed';
         };
+    PreferenceErrorEnvelope: {
+      error: components['schemas']['PreferenceFailure'];
+    };
+    PreferenceFailure: {
+      code: string;
+      message: string;
+    };
+    Preferences: {
+      layout: components['schemas']['LayoutPreferences'];
+      recentDataFiles: string[];
+      /** Format: int32 */
+      schemaVersion: number;
+      theme: components['schemas']['Theme'];
+    };
+    PreferencesPatch: {
+      layout?: null | components['schemas']['LayoutPatch'];
+      recentDataFiles?: string[] | null;
+      theme?: null | components['schemas']['Theme'];
+    };
     PrepareStopwords: {
       inputs: components['schemas']['StopwordSource'][];
       selected?: null | components['schemas']['StopwordSource'];
@@ -2754,29 +2910,33 @@ export interface components {
     };
     /** @enum {string} */
     SegmentationMethod: 'automatic' | 'line' | 'sentence';
+    ServerClose: {
+      discard_untitled?: boolean;
+      interrupt?: boolean;
+      /** Format: uuid */
+      project_id: string;
+    };
     ServerImport: {
       name: string;
       /** Format: uuid */
-      session_id: string;
+      project_id: string;
+    };
+    ServerProject: {
+      project?: null | components['schemas']['ProjectInfo'];
+      /** Format: uuid */
+      project_id: string;
     };
     ServerSave: {
       name?: string | null;
       /** Format: uuid */
-      session_id: string;
+      project_id: string;
     };
     ServerStatus: {
-      project?: null | components['schemas']['ProjectInfo'];
+      projects: components['schemas']['ServerProject'][];
       public_base_path: string;
-      /** Format: uuid */
-      session_id: string;
     };
     ServerSwitch: {
-      discard_untitled?: boolean;
-      interrupt?: boolean;
-      /** @description Absent for a new Untitled project; otherwise an existing library project filename. */
       name?: string | null;
-      /** Format: uuid */
-      session_id: string;
     };
     SessionInfo: {
       columns: components['schemas']['CellEditColumn'][];
@@ -2882,6 +3042,8 @@ export interface components {
       /** Format: uuid */
       tab_id?: string | null;
     };
+    /** @enum {string} */
+    Theme: 'light-2026' | 'dark-2026';
     /** @enum {string} */
     TimeUnit: 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year';
     TokenizerInfo: {
@@ -3041,6 +3203,33 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+  account: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Account'];
+        };
+      };
+      401: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
   ai_http_list: {
     parameters: {
       query?: never;
@@ -3455,6 +3644,136 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  logout: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Presented session revoked */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  get_preferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Preferences'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PreferenceErrorEnvelope'];
+        };
+      };
+    };
+  };
+  patch_preferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PreferencesPatch'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Preferences'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PreferenceErrorEnvelope'];
+        };
+      };
+    };
+  };
+  preference_events: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'text/event-stream': string;
+        };
+      };
+    };
+  };
+  reset_preferences: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Preferences'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PreferenceErrorEnvelope'];
         };
       };
     };
@@ -11298,7 +11617,7 @@ export interface operations {
     };
     requestBody?: never;
     responses: {
-      /** @description Active project session identifiers as SSE data */
+      /** @description User project registry and application preference invalidations */
       200: {
         headers: {
           [name: string]: unknown;
@@ -11470,7 +11789,7 @@ export interface operations {
       };
     };
   };
-  server_switch: {
+  server_open: {
     parameters: {
       query?: never;
       header?: never;
@@ -11488,7 +11807,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ServerStatus'];
+          'application/json': components['schemas']['ServerProject'];
         };
       };
       400: {
@@ -11498,6 +11817,36 @@ export interface operations {
         content: {
           'application/json': components['schemas']['ErrorEnvelope'];
         };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_close: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ServerClose'];
+      };
+    };
+    responses: {
+      /** @description Shared project closed */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       409: {
         headers: {
@@ -11527,7 +11876,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['ServerStatus'];
+          'application/json': components['schemas']['ServerProject'];
         };
       };
       400: {
@@ -11536,6 +11885,35 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ServerProject'];
         };
       };
       409: {

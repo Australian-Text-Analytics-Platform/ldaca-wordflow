@@ -1,5 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:net';
@@ -28,7 +27,8 @@ export default class PreviewHost {
       }
       this.testCache = await prepareTestCache();
       await prepareQuotationModel();
-      this.directory = await mkdtemp(join(tmpdir(), 'wordflow-wdio-'));
+      await mkdir(this.testCache.directories.temporary, { recursive: true });
+      this.directory = await mkdtemp(join(this.testCache.directories.temporary, 'browser-'));
       process.env.WORDFLOW_E2E_TEMP_DIR = this.directory;
       process.env.WORDFLOW_E2E_ERRORS = '1';
       const commands = createDevCommands('web', {
@@ -36,7 +36,7 @@ export default class PreviewHost {
         ...this.testCache.env,
         FRONTEND_PORT: '3212',
         VITE_BACKEND_PORT: '8212',
-        WORDFLOW_CONFIG_DIR: join(this.directory, 'configuration'),
+
       });
       this.backendCommand = commands.find((command) => command.name === 'backend');
       this.options = {

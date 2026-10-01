@@ -63,10 +63,23 @@ impl TopicRequest {
         }
         Ok(())
     }
-    pub(super) fn prepare(&self) -> Result<()> {
+    pub(super) fn prepare(
+        &self,
+        assets: Option<&ldaca_rs::model_assets::ModelAssets>,
+    ) -> Result<()> {
         self.validate()?;
-        ldaca_rs::embedding::Embedder::load(Some(&self.embedding_model)).map_err(model_error)?;
-        ldaca_rs::text::Tokenizer::load(&self.tokenizer).map_err(model_error)?;
+        match assets {
+            Some(assets) => {
+                ldaca_rs::embedding::Embedder::load_in(Some(&self.embedding_model), assets)
+            }
+            None => ldaca_rs::embedding::Embedder::load(Some(&self.embedding_model)),
+        }
+        .map_err(model_error)?;
+        match assets {
+            Some(assets) => ldaca_rs::text::Tokenizer::load_in(&self.tokenizer, assets),
+            None => ldaca_rs::text::Tokenizer::load(&self.tokenizer),
+        }
+        .map_err(model_error)?;
         Ok(())
     }
     fn config(&self, cache: Option<PathBuf>) -> engine::RunConfig {
@@ -345,12 +358,14 @@ fn fit(
     sources: Vec<TopicSource>,
     texts: &[String],
     cache: Option<PathBuf>,
+    assets: Option<&ldaca_rs::model_assets::ModelAssets>,
     cancellation: &CancellationToken,
     progress: &mut impl FnMut(&str, Option<f64>),
 ) -> Result<TopicModel> {
-    let natural = engine::run_with_progress(
+    let natural = engine::run_with_progress_in(
         &texts.iter().map(String::as_str).collect::<Vec<_>>(),
         &request.config(cache),
+        assets,
         &mut |stage, fraction| {
             check_cancellation(cancellation).map_err(|e| std::io::Error::other(e.message))?;
             progress(stage, fraction);
@@ -373,9 +388,13 @@ fn fit(
         resolved_model: format!(
             "{}@{}",
             request.embedding_model,
-            ldaca_rs::embedding::Embedder::load(Some(&request.embedding_model))
-                .map_err(model_error)?
-                .cache_fingerprint()
+            match assets {
+                Some(assets) =>
+                    ldaca_rs::embedding::Embedder::load_in(Some(&request.embedding_model), assets),
+                None => ldaca_rs::embedding::Embedder::load(Some(&request.embedding_model)),
+            }
+            .map_err(model_error)?
+            .cache_fingerprint()
         ),
     })
 }
@@ -431,6 +450,7 @@ impl Database {
             sources,
             &texts,
             cache,
+            self.model_assets.as_ref(),
             &self.cancellation,
             &mut progress,
         )?;
@@ -528,6 +548,7 @@ impl Database {
             sources,
             &texts,
             cache,
+            self.model_assets.as_ref(),
             &self.cancellation,
             &mut progress,
         )?;
@@ -812,7 +833,7 @@ mod tests {
             let mut request = request();
             request.embedding_model = supported.id.into();
             request.max_segment_tokens = supported.token_limit;
-            request.prepare().unwrap();
+            request.prepare(None).unwrap();
             let sources = vec![TopicSource {
                 input: request.inputs[0].clone(),
                 columns: vec![],
@@ -824,6 +845,7 @@ mod tests {
                 &request,
                 sources,
                 &texts,
+                None,
                 None,
                 &CancellationToken::new(),
                 &mut |_, _| {},
@@ -863,7 +885,7 @@ mod tests {
             append.flush().unwrap();
         }
         let request = request();
-        request.prepare().unwrap();
+        request.prepare(None).unwrap();
         let start = Instant::now();
         let (_, sampled, _) = capture(
             &p.database.conn,
@@ -964,6 +986,7 @@ mod tests {
             sources,
             &texts,
             Some(cache_path),
+            None,
             &cancellation,
             &mut |stage, _| {
                 if stage == "Reducing embeddings" {

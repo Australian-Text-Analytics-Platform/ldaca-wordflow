@@ -414,16 +414,18 @@ not merely successful packaging or an instrumented WebdriverIO launch.
 Only the `e2e` feature creates a test-owned profile at process startup. All project
 windows share that run's profile. macOS uses a fresh WKWebView data-store UUID;
 other platforms use a temporary webview directory. Provider configuration uses
-the same test-owned temporary root. The application identity is `.test`, while
+the resolved Test config directory. The application identity is `.test`, while
 interactive Dev uses `.dev`. Model libraries receive identity-scoped system cache
 paths before host threads start; production's environment remains unchanged.
-Browser/server E2E launchers supply the same Test cache namespace.
+Browser/server E2E roots live beneath the resolved Test temporary directory.
 The automated runner owns the profile directory and UUID. After the driver exits,
 it removes only that UUID through a hidden cleanup invocation of the same test binary,
 then removes the temporary directory. WebKit can reject removal while the original
 app process retains the store, even after its windows close. E2E launchers clear
-Test preferences and caches before setup and after teardown; production and Dev
+Test config, data, local data, caches, logs, temporary roots and credential namespaces before setup and after teardown; production and Dev
 storage remain untouched. Killing the runner itself or an OS crash can leave
 test-owned storage behind. Dock recent documents are macOS-owned and scoped by
 bundle identity, rather than webview profile. Test native menu history in a dedicated OS account or VM when
 verifying a clean production bundle.
+
+Application preferences use typed Rust IPC and Tauri Store at the resolved config path. Startup loads them before editor/updater rendering; successful field patches broadcast across windows. See the canonical [storage and preference contract](../../reference/application-storage.md).

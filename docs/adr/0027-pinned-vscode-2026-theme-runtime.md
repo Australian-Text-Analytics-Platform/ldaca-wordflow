@@ -46,3 +46,7 @@ Brand and provider assets are explicit raw-color exceptions.
 - Shared primitives and third-party adapters use the same compact metrics and
   semantic variables, while export appearance does not depend on the active
   live theme.
+
+[ADR 0030](0030-explicit-host-storage-and-isolated-browser-workers.md) replaces
+the application storage and preference/credential persistence clauses described
+here. See it for the current host ownership and clean-cutover decision.

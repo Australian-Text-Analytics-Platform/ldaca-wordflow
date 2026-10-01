@@ -1,6 +1,5 @@
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { mkdtemp, rm, mkdir, writeFile, cp } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { SevereServiceError } from 'webdriverio';
 import { assertGuiTestEnvironment } from './gui-test-environment.mjs';
@@ -11,8 +10,11 @@ export default class ServerHost {
     try {
       assertGuiTestEnvironment();
       this.testCache=await prepareTestCache();
-      await prepareQuotationModel();
-      this.directory=await mkdtemp(join(tmpdir(),'wordflow-server-e2e-'));
+      await mkdir(this.testCache.directories.temporary,{recursive:true});
+      this.directory=await mkdtemp(join(this.testCache.directories.temporary,'server-'));
+      const model=await prepareQuotationModel();
+      const models=join(this.directory,'admin/cache/udpipe');
+      await mkdir(models,{recursive:true}); await cp(model,join(models,model.split(/[\\/]/).at(-1)));
       const executable=process.env.WORDFLOW_SERVER_BINARY ?? resolve('../target/debug/wordflow-server');
       this.child=spawn(executable,['--bind','127.0.0.1:3237','--data-dir',this.directory],{env:{...process.env,...this.testCache.env,RUST_LOG:'info'},stdio:['ignore','ignore','pipe']});
       this.log='';this.child.stderr.on('data',data=>{this.log+=data;});

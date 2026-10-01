@@ -60,13 +60,16 @@ impl IntoResponse for Error {
             "project_closed" | "project_busy" | "editing_active" | "editing_closed"
             | "editing_stale" | "nothing_to_undo" | "task_active" | "analysis_busy"
             | "session_changed" | "file_exists" | "save_required" => StatusCode::CONFLICT,
-            "provider_not_found"
+            "project_not_found"
+            | "provider_not_found"
             | "node_not_found"
             | "object_not_found"
             | "task_not_found"
             | "analysis_not_found"
             | "analysis_tab_not_found" => StatusCode::NOT_FOUND,
             "file_not_found" => StatusCode::NOT_FOUND,
+            "authentication_required" => StatusCode::UNAUTHORIZED,
+            "origin_not_allowed" | "csrf_rejected" => StatusCode::FORBIDDEN,
             "stopping" => StatusCode::SERVICE_UNAVAILABLE,
             "worker_failed" | "io_error" | "arrow_error" => StatusCode::INTERNAL_SERVER_ERROR,
             _ => StatusCode::BAD_REQUEST,
@@ -78,4 +81,10 @@ impl IntoResponse for Error {
 #[derive(Serialize, utoipa::ToSchema)]
 pub struct ErrorEnvelope {
     pub error: Error,
+}
+
+impl From<wordflow_storage::Error> for Error {
+    fn from(error: wordflow_storage::Error) -> Self {
+        Self::new("storage_error", error.to_string())
+    }
 }

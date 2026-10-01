@@ -16,9 +16,12 @@ impl ProjectRuntime {
         let _cancel_on_drop = cancellation.clone().drop_guard();
         let runtime = self.clone();
         tokio::spawn(async move {
-            let extractor =
-                quotation::prepare_extractor(runtime.shared.client.clone(), cancellation.clone())
-                    .await?;
+            let extractor = quotation::prepare_extractor(
+                runtime.shared.client.clone(),
+                cancellation.clone(),
+                runtime.quotation_path()?,
+            )
+            .await?;
             check_cancellation(&cancellation)?;
             runtime
                 .run_operation(operation, Access::Write, move |database, _| {
@@ -66,6 +69,7 @@ impl ProjectRuntime {
                 let extractor = quotation::prepare_extractor(
                     runtime.shared.client.clone(),
                     context.cancellation().clone(),
+                    runtime.quotation_path()?,
                 )
                 .await?;
                 context.check_cancelled()?;

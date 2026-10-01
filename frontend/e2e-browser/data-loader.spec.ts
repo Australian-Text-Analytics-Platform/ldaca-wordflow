@@ -1,3 +1,4 @@
+import { setTestPreferences } from './fixtures';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -17,11 +18,10 @@ for (const theme of ['light-2026', 'dark-2026']) {
     await writeFile(jsonPath, JSON.stringify([{id:1, title:'Research metadata'}]));
     await writeFile(tsvPath, 'id\ttext\n1\tResearch notes\n');
     try {
-      await browser.addInitScript((value) => { localStorage.setItem('ldaca-color-theme-v1', value); }, theme);
+      await setTestPreferences({ theme, recentDataFiles: [jsonPath, tsvPath] });
       await stubResponse('/api/project/samples', () => JSON.stringify({ commit: 'a'.repeat(40), collections: [{ id: 'sample', name: 'Example text collection', description: 'Text and accompanying metadata.', total_size_bytes: 32000, files: [{ path: 'sample/text.parquet' }, { path: 'sample/metadata.parquet' }] }] }));
       await stubResponse('/api/project/ldaca/search', () => JSON.stringify({ items: [{ id: 'example', title: 'Example research corpus', description: 'A collection description with source information available before importing.', license: 'CC BY 4.0', file_formats: ['text/plain'], access: ['Open'], collections: ['Research'], types: ['Dataset'], importable: true }] }));
       await browser.setWindowSize(1600, 1000);
-      await browser.addInitScript((paths) => { localStorage.setItem('wordflow.desktop.recentDataFiles', JSON.stringify(paths)); }, [jsonPath, tsvPath]);
       await browser.url('/');
       await expect(role('tab', { name: 'Local files' })).toHaveAttribute('aria-selected', 'true');
       await screenshot(`loader-empty-${theme}.png`);

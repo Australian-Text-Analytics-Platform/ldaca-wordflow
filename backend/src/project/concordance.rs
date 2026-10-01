@@ -84,7 +84,15 @@ pub(crate) enum DocumentMatcher {
     Tokens(TokenConcordance, Tokenizer),
 }
 impl DocumentMatcher {
+    #[cfg(test)]
     pub(crate) fn prepare(search: &ConcordanceSearch, input: &ConcordanceInput) -> Result<Self> {
+        Self::prepare_in(search, input, None)
+    }
+    pub(crate) fn prepare_in(
+        search: &ConcordanceSearch,
+        input: &ConcordanceInput,
+        assets: Option<&ldaca_rs::model_assets::ModelAssets>,
+    ) -> Result<Self> {
         if search.query.trim().is_empty() || search.left_context > 50 || search.right_context > 50 {
             return Err(Error::invalid(
                 "Enter a query and context lengths between 0 and 50",
@@ -103,12 +111,14 @@ impl DocumentMatcher {
                     "Regular expressions are available in Text mode",
                 ));
             }
-            let tokenizer = Tokenizer::load(
-                input
-                    .tokenizer
-                    .as_deref()
-                    .ok_or_else(|| Error::invalid("Select a tokenizer"))?,
-            )
+            let model = input
+                .tokenizer
+                .as_deref()
+                .ok_or_else(|| Error::invalid("Select a tokenizer"))?;
+            let tokenizer = match assets {
+                Some(assets) => Tokenizer::load_in(model, assets),
+                None => Tokenizer::load(model),
+            }
             .map_err(matching_error)?;
             Ok(Self::Tokens(
                 TokenConcordance::new(&search.query, options),

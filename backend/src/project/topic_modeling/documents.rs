@@ -22,6 +22,7 @@ pub(crate) struct TopicDocumentQuery {
 pub(super) struct PreviewDocuments {
     schema: SchemaRef,
     batches: Vec<RecordBatch>,
+    temporary: PathBuf,
 }
 impl PreviewDocuments {
     pub(super) fn capture(
@@ -43,7 +44,11 @@ impl PreviewDocuments {
                 schema.clone(),
             )?);
         }
-        Ok(Self { schema, batches })
+        Ok(Self {
+            schema,
+            batches,
+            temporary: temporary_directory(conn)?,
+        })
     }
 
     fn page(&self, selected: &[(u64, f64)], columns: &[String]) -> Result<tempfile::NamedTempFile> {
@@ -105,7 +110,7 @@ impl PreviewDocuments {
             );
         }
         let batch = concat_batches(&schema, rows.iter()).map_err(arrow_error)?;
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = tempfile::NamedTempFile::new_in(&self.temporary)?;
         let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
         writer.write(&batch).map_err(arrow_error)?;
         writer.finish().map_err(arrow_error)?;

@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "topic-modeling")]
 #[cfg(feature = "cache")]
-use crate::embedding_cache::{get_or_insert_embeddings, CacheScope};
+use crate::embedding_cache::{get_or_insert_embeddings_in, CacheScope};
 #[cfg(feature = "topic-modeling")]
 use crate::tokenizer::PLAIN_WORDS_EN_MODEL_ID;
 #[cfg(feature = "topic-modeling")]
@@ -132,6 +132,15 @@ pub fn run_with_progress(
     cfg: &RunConfig,
     progress: &mut impl FnMut(&str, Option<f64>) -> Result<()>,
 ) -> Result<TopicModelingResult> {
+    run_with_progress_in(documents, cfg, None, progress)
+}
+/// Run using explicit host model caches.
+pub fn run_with_progress_in(
+    documents: &[&str],
+    cfg: &RunConfig,
+    assets: Option<&crate::model_assets::ModelAssets>,
+    progress: &mut impl FnMut(&str, Option<f64>) -> Result<()>,
+) -> Result<TopicModelingResult> {
     progress("Preparing embedding model", None)?;
     anyhow::ensure!(
         cfg.min_cluster_size >= 2,
@@ -141,7 +150,7 @@ pub fn run_with_progress(
         cfg.segmentation.max_tokens > 0,
         "max_tokens must be positive"
     );
-    let embedder = embedding::ensure_embedder(cfg.embedder_repo_id.as_deref())?;
+    let embedder = embedding::ensure_embedder_in(cfg.embedder_repo_id.as_deref(), assets)?;
     if cfg.segmentation.max_tokens > embedder.max_length() {
         anyhow::bail!(
             "segmentation max_tokens {} exceeds model {} maximum length {}",
@@ -211,7 +220,7 @@ pub fn run_with_progress(
     };
     #[cfg(feature = "cache")]
     let embeddings = if let Some(path) = cfg.embedding_cache_path.as_deref() {
-        get_or_insert_embeddings(
+        get_or_insert_embeddings_in(
             path,
             CacheScope {
                 model_id: embedder.model_id(),
@@ -219,6 +228,7 @@ pub fn run_with_progress(
                 provider_id: embedder.provider_id(),
             },
             &texts,
+            assets.map(|assets| assets.temporary.as_path()),
             |misses| encode_topic_embedding_batches(misses, &mut encode),
         )?
     } else {
@@ -258,7 +268,7 @@ pub fn run_with_progress(
         .vectorizer_model_id
         .as_deref()
         .unwrap_or(PLAIN_WORDS_EN_MODEL_ID);
-    let term_counts = ctfidf::count_topic_terms_with_progress(
+    let term_counts = ctfidf::count_topic_terms_with_assets(
         clustered.n_topics,
         clustered
             .labels
@@ -267,6 +277,7 @@ pub fn run_with_progress(
             .zip(texts.iter().map(String::as_str)),
         vectorizer,
         cfg.lowercase,
+        assets,
         &mut || progress("Counting representative words", None),
     )?;
     let embedding_points = embeddings

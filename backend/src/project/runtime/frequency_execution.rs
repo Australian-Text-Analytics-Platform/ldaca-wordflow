@@ -32,15 +32,20 @@ impl ProjectRuntime {
                     .iter()
                     .map(|input| input.tokenizer.clone())
                     .collect();
+                let assets = runtime.model_assets()?;
                 let tokenizers = context
                     .run_blocking(move |context| {
                         models
                             .iter()
                             .map(|model| {
                                 context.check_cancelled()?;
-                                ldaca_rs::text::Tokenizer::load(model).map_err(|error| {
-                                    Error::new("tokenizer_error", error.to_string())
-                                })
+                                match assets.as_ref() {
+                                    Some(assets) => {
+                                        ldaca_rs::text::Tokenizer::load_in(model, assets)
+                                    }
+                                    None => ldaca_rs::text::Tokenizer::load(model),
+                                }
+                                .map_err(|error| Error::new("tokenizer_error", error.to_string()))
                             })
                             .collect::<Result<Vec<_>>>()
                     })
@@ -86,11 +91,11 @@ impl ProjectRuntime {
     ) -> Result<(tempfile::NamedTempFile, String)> {
         self.with_project(move |p| {
             use std::io::Write;
-            let table = tempfile::NamedTempFile::new()?;
-            let words = tempfile::NamedTempFile::new()?;
+            let table = temporary_file(&p.conn)?;
+            let words = temporary_file(&p.conn)?;
             p.export_frequency_parts(id, query, format, table.path(), Some(words.path()))?;
             let boundary = format!("wordflow-{}", Uuid::new_v4().simple());
-            let mut output = tempfile::NamedTempFile::new()?;
+            let mut output = temporary_file(&p.conn)?;
             for (name, extension, file) in [("table", format.extension(), table), ("stopwords", "txt", words)] {
                 write!(output, "--{boundary}\r\nContent-Disposition: form-data; name=\"{name}\"; filename=\"{name}.{extension}\"\r\nContent-Type: application/octet-stream\r\n\r\n")?;
                 std::io::copy(&mut std::fs::File::open(file.path())?, &mut output)?;

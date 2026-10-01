@@ -51,7 +51,7 @@ pub(super) fn arrow_page(
         .query_arrow(params_from_iter(parameters.iter()))?
         .get_schema();
     let schema = Arc::new(metadata.enrich(&raw_schema, raw_schema.fields().len())?);
-    let mut file = tempfile::NamedTempFile::new()?;
+    let mut file = temporary_file(conn)?;
     let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
     while let Some(array) = statement.step()? {
         check_cancellation(cancellation)?;

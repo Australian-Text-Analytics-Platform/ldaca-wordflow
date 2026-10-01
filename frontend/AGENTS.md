@@ -44,7 +44,8 @@ before changing an unfamiliar state or desktop boundary.
   production instance for these checks. Raw `tauri dev` does not load the Dev
   override. Use temporary test projects and clean up sessions you start.
 - Production packaging acceptance must run in a dedicated OS account or VM when
-  the user's production storage must remain untouched. Separate application
+  the user's production storage must remain untouched. GitHub-hosted macOS and
+  Windows packaging jobs provide this VM isolation. Separate application
   identities do not protect a project file explicitly opened by both apps.
 - Before changing packaging, read
   [the desktop architecture](../docs/architecture/frontend/desktop.md) and

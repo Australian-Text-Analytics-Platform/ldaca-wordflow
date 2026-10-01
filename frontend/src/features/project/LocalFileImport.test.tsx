@@ -1,3 +1,8 @@
+import {
+  acceptPreferences,
+  defaultPreferences,
+  getPreferences,
+} from '@/features/preferences/preferences';
 import * as projectApi from '@/features/project/api';
 import * as filesApi from '@/features/project/filesApi';
 import { isTauri } from '@/lib/isTauri';
@@ -23,6 +28,7 @@ vi.mock('@/features/project/api', async (load) => ({
   querySql: vi.fn(),
 }));
 beforeEach(() => {
+  acceptPreferences(defaultPreferences);
   vi.clearAllMocks();
   localStorage.clear();
   vi.mocked(isTauri).mockReturnValue(false);
@@ -83,9 +89,7 @@ it('imports all columns immediately from a path and recent click, without schema
   expect(recent).toHaveAttribute('title', '/tmp/first.csv');
   await user.click(recent);
   await waitFor(() => expect(filesApi.importTables).toHaveBeenCalledTimes(2));
-  expect(JSON.parse(localStorage.getItem('wordflow.desktop.recentDataFiles') ?? '[]')).toEqual([
-    '/tmp/first.csv',
-  ]);
+  expect(getPreferences().recentDataFiles).toEqual(['/tmp/first.csv']);
 });
 it('native chooser and drops import once immediately; cancellation does nothing and a drop opens Local files', async () => {
   vi.mocked(isTauri).mockReturnValue(true);
@@ -170,16 +174,13 @@ it('keeps import actions available during overlapping work and retains progress 
   await user.click(screen.getByRole('tab', { name: 'Local files' }));
   await screen.findByRole('button', { name: 'Import first.csv' });
   await waitFor(() => expect(screen.queryByRole('status')).not.toBeInTheDocument());
-  expect(JSON.parse(localStorage.getItem('wordflow.desktop.recentDataFiles') ?? '[]')).toEqual([
-    '/tmp/first.csv',
-    '/tmp/second.csv',
-  ]);
+  expect(getPreferences().recentDataFiles).toEqual(['/tmp/first.csv', '/tmp/second.csv']);
 });
 it('shows filesystem sizes and file type icons, with unavailable sizes distinct from empty files', async () => {
-  localStorage.setItem(
-    'wordflow.desktop.recentDataFiles',
-    JSON.stringify(['/a/data.parquet', '/b/data.json', '/c/empty.tsv', '/d/missing.csv']),
-  );
+  acceptPreferences({
+    ...defaultPreferences,
+    recentDataFiles: ['/a/data.parquet', '/b/data.json', '/c/empty.tsv', '/d/missing.csv'],
+  });
   vi.mocked(filesApi.localFileMetadata).mockResolvedValue([
     { path: '/a/data.parquet', size_bytes: 1048576 },
     { path: '/b/data.json', size_bytes: 42 },
@@ -198,4 +199,20 @@ it('shows filesystem sizes and file type icons, with unavailable sizes distinct 
     within(screen.getByRole('button', { name: 'Import data.json' })).getByAltText(''),
   ).toHaveAttribute('src', '/icons/material/json.svg');
   expect(filesApi.importTables).not.toHaveBeenCalled();
+});
+
+vi.mock('@/features/preferences/preferences', async (load) => {
+  const actual = await load<typeof import('@/features/preferences/preferences')>();
+  return {
+    ...actual,
+    patchPreferences: vi.fn(async (patch) => {
+      const current = actual.getPreferences();
+      actual.acceptPreferences({
+        ...current,
+        ...patch,
+        layout: { ...current.layout, ...patch.layout },
+        recentDataFiles: patch.recentDataFiles ?? current.recentDataFiles,
+      });
+    }),
+  };
 });

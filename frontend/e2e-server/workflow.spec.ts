@@ -4,6 +4,7 @@ import { it } from 'mocha';
 const base='http://127.0.0.1:3237';
 it('manages real research files and projects through the native server', async () => {
   await browser.url(`${base}/`);
+  await $('button=New project').click();
   await expect($('button=Data files')).toBeDisplayed();
   const uploaded=await browser.uploadFile(resolve('e2e/fixtures/data/community-survey.csv'));
   await $('input[type="file"]').addValue(uploaded);
@@ -20,7 +21,6 @@ it('manages real research files and projects through the native server', async (
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Untitled'));
   await $('button=Project').click(); await $('[role="menuitem"]=Open / manage projects…').click();
   await $('button=Open').click();
-  await $('button=Discard').click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Research 文本'));
   await expect($('[data-id="community-survey"]')).toExist();
   await browser.refresh();

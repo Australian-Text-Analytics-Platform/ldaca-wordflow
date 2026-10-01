@@ -40,3 +40,7 @@ browser extensions, so hosted CSP and XSS hardening remain separate work.
 supersedes the fixed Annotation slots, browser version 1 shape, and
 built-in-only key requirement described above. The deployment-mode ownership
 decision remains in force.
+
+[ADR 0030](0030-explicit-host-storage-and-isolated-browser-workers.md) replaces
+the application storage and preference/credential persistence clauses described
+here. See it for the current host ownership and clean-cutover decision.

@@ -11,6 +11,7 @@ mod embedding_cache;
 mod fingerprint;
 #[cfg(feature = "tokenization")]
 mod lindera_dict;
+pub mod model_assets;
 #[cfg(feature = "tokenization")]
 mod offsets;
 #[cfg(feature = "quotation")]

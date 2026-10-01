@@ -2,12 +2,25 @@
 
 ## Server And Client State
 
+Application preferences use the host adapter and load before rendering. Provider
+metadata belongs to the host; multi-user provider keys remain in account-partitioned
+browser storage and enter only operation headers. See the
+[application storage contract](../../reference/application-storage.md).
+
 TanStack Query owns server-derived resources, request identity, and cache
 invalidation. This includes Workspace runtime state, Tabs, Analyses, Results,
 imports, SQL pages, and schemas. Zustand owns only cross-feature client
 interaction or device state such as the active view, selected and pinned Data
 Blocks, and scoped presentation preferences. Local component state owns form,
 pagination, dialog, and panel interaction.
+
+The browser host retains one Query client per open project and snapshots its
+window-owned selection, pins, preview, table views, graph canvas and preprocessing
+inputs when switching projects. Restoring another project's snapshot keeps equal
+table names in different files independent. Feature drafts already use the
+project's API base in their keys. Shared close releases the closed project's
+Query client and window snapshot; these transient values are not preferences
+or durable project data.
 
 Query keys mirror server-resource ownership. Workspace summaries use the
 explicit `["workspaces", "list"]` collection key, while each Workspace detail
@@ -28,7 +41,7 @@ flowchart TB
     ZUSTAND["Zustand<br/>device and interaction authority"] <--> FEATURES
     LOCAL["Component state<br/>forms and panels"] <--> FEATURES
     URL["URL search state<br/>view identity"] <--> ZUSTAND
-    BROWSER_CREDENTIALS["Per-user provider configurations and secrets<br/>versioned localStorage"] --> CREDENTIAL_FACADE["Mode-specific credential facade<br/>safe metadata and request-boundary injection"]
+    BROWSER_CREDENTIALS["Account-partitioned provider keys<br/>versioned localStorage"] --> CREDENTIAL_FACADE["Mode-specific credential facade<br/>safe metadata and request-boundary injection"]
     CREDENTIAL_FACADE --> FEATURES
     CREDENTIAL_FACADE --> BACKEND
 
@@ -61,21 +74,18 @@ envelope parser. It preserves validation details and complete backend
 diagnostics, adds request IDs to 5xx messages, and falls back to transport status
 only when no structured backend message is readable.
 
-Annotation Provider Configurations are an intentional separate boundary. In
-multi-user mode, a non-devtools Zustand store persists the ordered, user-named
-configuration collection and its secrets by authenticated user ID under
-`wordflow-provider-credentials` version 2. Components receive only safe
-configuration metadata. A request facade reads the selected configuration's
-secret synchronously by UUID inside the final generated SDK call. Model-list
-queries are keyed by configuration UUID, immutable safe locator metadata, and a
-safe credential revision; secret values never enter query keys, mutation state,
-Tab state, hydrated requests, errors, or telemetry. Name-only edits preserve
-cached inference, while credential replacement or removal invalidates model and
-active Preview queries. Logout does not delete
-another account's browser partition, and browser storage events synchronize
-replacement and deletion across tabs. In single-user mode, the same facade
-projects the backend-owned collection and invokes its write-only CRUD
-operations without creating a browser credential entry.
+Annotation Provider Configurations are an intentional separate boundary. The
+host persists connection metadata separately from application preferences.
+Desktop and single-user server keys use the host identity's OS credential
+namespace. Multi-user keys use version 1 browser storage partitioned by account
+UUID and connection UUID; workers never persist them. The request facade reads
+the selected key at the operation boundary and supplies it in transport headers.
+Components and Query resources receive safe metadata. Keys never enter stored
+requests, projects, logs or Query keys. Logout revokes the presented session and
+reloads the application to clear its memory; an account's browser key partition
+remains available for that account's next login. A logout signal also reloads
+other windows for the same account. Single-user mode does not create browser
+credential entries.
 
 Annotation inference controls have one component per provider type rather than
 one universal form with hidden fields. The dispatcher passes only thinking

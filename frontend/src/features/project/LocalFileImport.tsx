@@ -1,3 +1,8 @@
+import {
+  getPreferences,
+  patchPreferences,
+  usePreferences,
+} from '@/features/preferences/preferences';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import * as filesApi from '@/features/project/filesApi';
@@ -8,17 +13,6 @@ import { File, FolderOpen, X } from 'lucide-react';
 import { useEffect, useEffectEvent, useState } from 'react';
 import { reportProjectError } from './projectErrors';
 
-const RECENTS_KEY = 'wordflow.desktop.recentDataFiles';
-function readRecents(): string[] {
-  try {
-    const value: unknown = JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]');
-    return Array.isArray(value)
-      ? value.filter((item): item is string => typeof item === 'string').slice(0, 10)
-      : [];
-  } catch {
-    return [];
-  }
-}
 function reader(path: string) {
   switch (path.split('.').at(-1)?.toLowerCase()) {
     case 'parquet':
@@ -58,7 +52,7 @@ export function LocalFileImport({
   onDropHandled: () => void;
 }) {
   const [path, setPath] = useState('');
-  const [recent, setRecent] = useState(readRecents);
+  const recent = usePreferences().recentDataFiles;
   const cache = useQueryClient();
   const metadataKey = [base, 'local-file-metadata'];
   const metadata = useQuery({
@@ -80,13 +74,8 @@ export function LocalFileImport({
         })),
       ),
     onSuccess: (_result, paths) => {
-      const next = [...new Set([...paths, ...readRecents()])].slice(0, 10);
-      setRecent(next);
-      try {
-        localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
-      } catch {
-        /* Optional device preference. */
-      }
+      const next = [...new Set([...paths, ...getPreferences().recentDataFiles])].slice(0, 10);
+      void patchPreferences({ recentDataFiles: next }).catch(() => undefined);
       setPath((current) => (paths.includes(current.trim()) ? '' : current));
       void cache.invalidateQueries({ queryKey: metadataKey });
     },
@@ -217,8 +206,7 @@ export function LocalFileImport({
                       aria-label={`Remove ${name} from recent files`}
                       onClick={() => {
                         const next = recent.filter((path) => path !== file);
-                        localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
-                        setRecent(next);
+                        void patchPreferences({ recentDataFiles: next }).catch(() => undefined);
                       }}
                     >
                       <X aria-hidden />

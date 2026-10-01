@@ -352,7 +352,7 @@ impl Database {
                         &self.conn,
                         &item.entry.relation,
                         *format,
-                        tempfile::NamedTempFile::new()?,
+                        temporary_file(&self.conn)?,
                         &self.cancellation,
                     )?;
                     zip.start_file(

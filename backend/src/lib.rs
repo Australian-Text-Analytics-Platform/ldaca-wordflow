@@ -56,17 +56,30 @@ pub fn router(
     shutdown: CancellationToken,
     projects: project::ProjectRuntime,
 ) -> Router {
+    router_with_host(origins, shutdown, projects, Router::new())
+}
+pub fn router_with_host(
+    origins: Vec<HeaderValue>,
+    shutdown: CancellationToken,
+    projects: ProjectRuntime,
+    host: Router,
+) -> Router {
     let permitted = origins.clone();
     let (health, _) = health_routes().split_for_parts();
     let (project_routes, _) = api::router().split_for_parts();
     health
         .with_state(shutdown)
         .merge(project_routes.with_state(projects))
+        .merge(host)
         .layer(
             CorsLayer::new()
                 .allow_origin(origins)
                 .allow_methods([Method::GET, Method::POST, Method::PATCH, Method::DELETE])
-                .allow_headers([header::CONTENT_TYPE])
+                .allow_headers([
+                    header::CONTENT_TYPE,
+                    header::HeaderName::from_static("x-wordflow-ai-provider"),
+                    header::HeaderName::from_static("x-wordflow-ai-key"),
+                ])
                 .expose_headers([
                     header::CONTENT_DISPOSITION,
                     header::HeaderName::from_static("x-wordflow-statements-completed"),
@@ -114,7 +127,16 @@ pub async fn serve(
     shutdown: CancellationToken,
     projects: ProjectRuntime,
 ) -> io::Result<()> {
-    let app = router(allowed_origins, shutdown.clone(), projects.clone());
+    serve_with_host(listener, allowed_origins, shutdown, projects, Router::new()).await
+}
+pub async fn serve_with_host(
+    listener: TcpListener,
+    allowed_origins: Vec<HeaderValue>,
+    shutdown: CancellationToken,
+    projects: ProjectRuntime,
+    host: Router,
+) -> io::Result<()> {
+    let app = router_with_host(allowed_origins, shutdown.clone(), projects.clone(), host);
     let server = serve_router(listener, app, shutdown.clone());
     tokio::pin!(server);
     tokio::select! {

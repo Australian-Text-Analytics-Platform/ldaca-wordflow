@@ -1,3 +1,4 @@
+import { transportHeaders, expireAccount } from './account';
 import { ProjectError, request } from '@/api/client';
 import type { components } from '@/api/generated/native';
 import { requestUrl } from '@/api/http';
@@ -15,10 +16,11 @@ export async function uploadFile(
   const response = await fetch(`${base}${path}`, {
     method: 'PUT',
     body: file,
-    headers: { 'Content-Type': 'application/octet-stream' },
+    headers: { 'Content-Type': 'application/octet-stream', ...transportHeaders('PUT') },
     signal,
   });
   if (!response.ok) {
+    if (response.status === 401) expireAccount();
     const details = await response.text();
     let message = details;
     try {
@@ -45,8 +47,8 @@ export async function uploadFile(
   }
   return response.json() as Promise<LibraryFile>;
 }
-export async function importFile(base: string, session: string, name: string) {
+export async function importFile(base: string, projectId: string, name: string) {
   return (
-    await request(base, '/api/server/import', 'post', { body: { session_id: session, name } })
+    await request(base, '/api/server/import', 'post', { body: { project_id: projectId, name } })
   ).json();
 }

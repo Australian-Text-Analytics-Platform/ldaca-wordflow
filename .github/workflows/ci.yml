@@ -65,16 +65,23 @@ jobs:
         with:
           name: frontend-build
           path: frontend/build
-      - run: cargo fmt -p wordflow-backend -p wordflow-server --check
+      - run: cargo fmt -p wordflow-storage -p wordflow-backend -p wordflow-server --check
       - name: Test backend and server lifecycle, storage and HTTP contracts
-        run: cargo test -p wordflow-backend -p wordflow-server --locked
-      - run: cargo clippy -p wordflow-backend -p wordflow-server --all-targets --all-features --locked -- -D warnings
+        run: cargo test -p wordflow-storage -p wordflow-backend -p wordflow-server --locked
+      - run: cargo clippy -p wordflow-storage -p wordflow-backend -p wordflow-server --all-targets --all-features --locked -- -D warnings
       - name: Compile the release server
         run: cargo build -p wordflow-server --bin wordflow-server --release --locked --target ${{ matrix.target }}
       - name: Package and audit native dependencies
         run: node scripts/package-server.mjs ${{ matrix.target }}
+      - name: Install isolated Linux test credential store
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
       - name: Test extracted package, first-use ICU and project persistence
+        if: runner.os != 'Linux'
         run: node scripts/verify-server-package.mjs ${{ matrix.target }}
+      - name: Test extracted Linux package with a fresh OS credential session
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- bash -c 'printf "test\n" | gnome-keyring-daemon --unlock; node scripts/verify-server-package.mjs ${{ matrix.target }}'
 
   native-preview:
     name: Chromium with Rust preview (not Tauri)
@@ -94,11 +101,14 @@ jobs:
       - name: Verify generated native HTTP contracts
         run: vp run api:check
       - run: cargo build --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev
-      - run: vp -C frontend run test:e2e:browser
+      - name: Install isolated Linux test credential store
+        run: sudo apt-get update && sudo apt-get install -y gnome-keyring dbus-x11
+      - name: Exercise browser preview with a fresh OS credential session
+        run: dbus-run-session -- bash -c 'printf "test\n" | gnome-keyring-daemon --unlock; vp -C frontend run test:e2e:browser'
       - name: Build the server with production frontend assets
         run: vp -C frontend run build && cargo build -p wordflow-server --bin wordflow-server --locked
       - name: Exercise browser file and project management
-        run: vp -C frontend run test:e2e:server
+        run: dbus-run-session -- bash -c 'printf "test\n" | gnome-keyring-daemon --unlock; vp -C frontend run test:e2e:server'
       - uses: actions/upload-artifact@v7.0.1
         if: always() && !cancelled()
         with:
@@ -158,6 +168,9 @@ jobs:
       - name: Exercise the complete native suite
         if: matrix.profile == 'debug'
         run: vp -C frontend run test:e2e:native
+      - name: Verify preferences across native process restart with fresh WebView stores
+        if: matrix.profile == 'debug'
+        run: vp -C frontend run test:e2e:native:preferences
       - name: Exercise optimized native lifecycle and representative analysis files
         if: matrix.profile == 'release'
         run: vp -C frontend run test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts --spec ./e2e-native/annotation.spec.ts --spec ./e2e-native/topic-modeling.spec.ts --spec ./e2e-native/export.spec.ts --spec ./e2e-native/research-workflow.spec.ts --spec ./e2e-native/project-reopen.spec.ts

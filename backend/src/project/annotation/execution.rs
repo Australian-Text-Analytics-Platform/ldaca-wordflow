@@ -470,7 +470,7 @@ impl Preview {
             self.schema.fields().clone(),
             metadata,
         ));
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = temporary_file(&self.db.conn)?;
         let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
         for batch in self.batches {
             writer

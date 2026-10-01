@@ -27,9 +27,8 @@ export const mochaHooks = {
       window.__wordflowDiagnostics?.prepareForNavigation();
       await window.__wordflowDiagnostics?.flush();
       window.__wordflowDiagnostics?.disconnect();
-      localStorage.removeItem('ldaca.layout.asidePanelRatio');
-      localStorage.removeItem('ldaca.layout.sidebarWidth');
     });
+    await browser.tauri.execute(({ core }) => core.invoke('patch_preferences', { patch: { theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 } } }));
     resetErrorCapture();
     // pagehide releases any editor left by a failed predecessor before database cleanup.
     await browser.refresh();

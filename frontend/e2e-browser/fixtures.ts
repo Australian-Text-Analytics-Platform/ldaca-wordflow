@@ -1,3 +1,4 @@
+import type { components } from '@/api/generated/native';
 import { browser } from '@wdio/globals';
 import { Key, type ChainablePromiseElement } from 'webdriverio';
 import type { ByRoleOptions, MatcherOptions, queries } from '@testing-library/dom';
@@ -226,4 +227,24 @@ export async function stubResponse(
 }
 export async function clearResponseStubs() {
   for (const restore of responseStubs.splice(0)) await restore();
+}
+
+/** Seed the real host preference adapter before the next document loads. */
+export async function setTestPreferences(patch: Record<string, unknown>, base = baseUrl) {
+  if (browser.tauri) {
+    await browser.tauri.execute(({ core }, value) => core.invoke('patch_preferences', { patch: value }), patch);
+    return;
+  }
+  const response = await fetch(`${base}/api/preferences`, {
+    method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch),
+  });
+  if (!response.ok) throw new Error(`Preference setup failed: ${response.status} ${await response.text()}`);
+}
+
+export async function getTestPreferences(base = baseUrl): Promise<components['schemas']['Preferences']> {
+  if (browser.tauri)
+    return browser.tauri.execute(({ core }) => core.invoke('get_preferences') as Promise<components['schemas']['Preferences']>);
+  const response = await fetch(`${base}/api/preferences`);
+  if (!response.ok) throw new Error(`Preference read failed: ${response.status}`);
+  return response.json();
 }

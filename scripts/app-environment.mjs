@@ -1,45 +1,46 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, realpathSync } from 'node:fs';
 import { isAbsolute, join, resolve } from 'node:path';
+import { homedir } from 'node:os';
 
 export const DEV_IDENTITY = 'au.edu.ldaca.wordflow.dev';
 export const TEST_IDENTITY = 'au.edu.ldaca.wordflow.test';
+const root = resolve(import.meta.dirname, '..');
+const resolved = new Map();
 
-export function applicationConfigurationDirectory(identity, env = process.env, platform = process.platform) {
+/** The Rust resolver owns platform paths. This command only reads paths. */
+export function applicationDirectories(identity, env = process.env) {
   if (![DEV_IDENTITY, TEST_IDENTITY].includes(identity)) {
-    throw new Error('Only Dev and Test configuration directories may be managed by development tooling');
+    throw new Error('Only Dev and Test directories may be managed by development tooling');
   }
-  const base = platform === 'darwin'
-    ? env.HOME && join(env.HOME, 'Library/Application Support')
-    : platform === 'win32'
-      ? env.APPDATA
-      : env.XDG_CONFIG_HOME || (env.HOME && join(env.HOME, '.config'));
-  if (!base || !isAbsolute(base)) throw new Error('Cannot locate an absolute system configuration directory');
-  return resolve(base, identity);
-}
-
-export function applicationCacheDirectory(identity, env = process.env, platform = process.platform) {
-  if (![DEV_IDENTITY, TEST_IDENTITY].includes(identity)) {
-    throw new Error('Only Dev and Test cache directories may be managed by development tooling');
+  const environment = { ...process.env, CARGO_HOME: process.env.CARGO_HOME || join(homedir(), '.cargo'), RUSTUP_HOME: process.env.RUSTUP_HOME || join(homedir(), '.rustup'), ...env };
+  const key = JSON.stringify([identity, ...['HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA', 'XDG_CONFIG_HOME', 'XDG_DATA_HOME', 'XDG_CACHE_HOME', 'TMPDIR', 'TEMP', 'TMP'].map((name) => environment[name])]);
+  if (!resolved.has(key)) {
+    const paths = JSON.parse(execFileSync('cargo', ['run', '--quiet', '--locked', '-p', 'wordflow-storage', '--bin', 'wordflow-storage', '--', '--identity', identity], {
+      cwd: root, env: { ...environment, CARGO_TARGET_DIR: environment.CARGO_TARGET_DIR || (existsSync(join(root, 'target')) ? realpathSync(join(root, 'target')) : join(root, 'target')) }, encoding: 'utf8',
+    }));
+    if (Object.values(paths).some((path) => typeof path !== 'string' || !isAbsolute(path))) throw new Error('Rust returned invalid application directories');
+    resolved.set(key, paths);
   }
-  const base = platform === 'darwin'
-    ? env.HOME && join(env.HOME, 'Library/Caches')
-    : platform === 'win32'
-      ? env.LOCALAPPDATA
-      : env.XDG_CACHE_HOME || (env.HOME && join(env.HOME, '.cache'));
-  if (!base || !isAbsolute(base)) throw new Error('Cannot locate an absolute system cache directory');
-  return resolve(base, identity);
+  return resolved.get(key);
 }
-
-export function applicationEnvironment(identity, env = process.env, platform = process.platform) {
-  const cache = applicationCacheDirectory(identity, env, platform);
+export function applicationConfigurationDirectory(identity, env = process.env) {
+  return applicationDirectories(identity, env).config;
+}
+export function applicationCacheDirectory(identity, env = process.env) {
+  return applicationDirectories(identity, env).cache;
+}
+export function applicationEnvironment(identity, env = process.env) {
+  const directories = applicationDirectories(identity, env);
   return {
     WORDFLOW_APP_ID: identity,
-    WORDFLOW_CACHE_DIR: cache,
-    HF_HOME: join(cache, 'huggingface'),
-    LINDERA_DICT_PATH: join(cache, 'lindera'),
-    WORDFLOW_QUOTATION_CACHE: join(cache, 'udpipe'),
-    WORDFLOW_EMBEDDING_CACHE: join(cache, 'embeddings.duckdb'),
-    // Do not inherit overrides pointing at production's cached assets.
+    WORDFLOW_STORAGE_PATHS: JSON.stringify(directories),
+    HF_HOME: undefined,
+    LINDERA_DICT_PATH: undefined,
+    WORDFLOW_CACHE_DIR: undefined,
+    WORDFLOW_QUOTATION_CACHE: undefined,
     WORDFLOW_QUOTATION_MODEL: undefined,
+    WORDFLOW_EMBEDDING_CACHE: undefined,
     WORDFLOW_ICU_PATH: undefined,
   };
 }

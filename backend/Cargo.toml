@@ -6,6 +6,7 @@ publish = false
 description = "Shared native Wordflow HTTP runtime"
 
 [dependencies]
+wordflow-storage = { path = "../storage" }
 flate2 = "1"
 sha2 = "0.10"
 caseless = "0.2.2"

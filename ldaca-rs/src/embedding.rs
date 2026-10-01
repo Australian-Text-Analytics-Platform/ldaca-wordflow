@@ -12,6 +12,7 @@
 //!
 //! Used by topic modelling and host adapters.
 
+use crate::model_assets::ModelAssets;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::env;
@@ -425,40 +426,45 @@ fn normalize_nested_rows(rows: &mut [Vec<f32>]) {
     }
 }
 
-static REGISTRY: OnceLock<RwLock<HashMap<String, Arc<Embedder>>>> = OnceLock::new();
-
-fn registry() -> &'static RwLock<HashMap<String, Arc<Embedder>>> {
+type Registry = RwLock<HashMap<(Option<ModelAssets>, String), Arc<Embedder>>>;
+static REGISTRY: OnceLock<Registry> = OnceLock::new();
+fn registry() -> &'static Registry {
     REGISTRY.get_or_init(|| RwLock::new(HashMap::new()))
 }
-
-/// Get-or-load the embedder for `repo_id` (default ONNX model if `None`).
 pub(crate) fn ensure_embedder(repo_id: Option<&str>) -> Result<Arc<Embedder>> {
-    let key = repo_id
-        .filter(|value| !value.trim().is_empty())
-        .unwrap_or(DEFAULT_EMBEDDER_REPO_ID)
-        .to_string();
-
+    ensure_embedder_in(repo_id, None)
+}
+pub(crate) fn ensure_embedder_in(
+    repo_id: Option<&str>,
+    assets: Option<&ModelAssets>,
+) -> Result<Arc<Embedder>> {
+    let model = repo_id
+        .filter(|v| !v.trim().is_empty())
+        .unwrap_or(DEFAULT_EMBEDDER_REPO_ID);
+    let key = (assets.cloned(), model.to_owned());
     {
         let map = registry()
             .read()
             .map_err(|_| anyhow::anyhow!("embedder registry lock poisoned"))?;
-        if let Some(embedder) = map.get(&key) {
-            return Ok(Arc::clone(embedder));
+        if let Some(model) = map.get(&key) {
+            return Ok(Arc::clone(model));
         }
     }
     let mut map = registry()
         .write()
         .map_err(|_| anyhow::anyhow!("embedder registry lock poisoned"))?;
-    if let Some(embedder) = map.get(&key) {
-        return Ok(Arc::clone(embedder));
+    if let Some(model) = map.get(&key) {
+        return Ok(Arc::clone(model));
     }
-    let embedder = Arc::new(load_embedder(&key)?);
-    map.insert(key, Arc::clone(&embedder));
-    Ok(embedder)
+    let model = Arc::new(load_embedder(model, assets)?);
+    map.insert(key, Arc::clone(&model));
+    Ok(model)
 }
 
-fn load_embedder(repo_id: &str) -> Result<Embedder> {
-    let api = ApiBuilder::from_env()
+fn load_embedder(repo_id: &str, assets: Option<&ModelAssets>) -> Result<Embedder> {
+    let api = assets
+        .map(ModelAssets::huggingface_api)
+        .unwrap_or_else(ApiBuilder::from_env)
         .build()
         .context("failed to init hf-hub api for embedder")?;
     let unpinned = api.repo(Repo::new(repo_id.to_string(), RepoType::Model));
@@ -853,6 +859,10 @@ fn embedding_threads() -> Option<usize> {
 
 impl Embedder {
     /// Load a model explicitly, sharing an already-loaded immutable model when available.
+    /// Load exclusively from this host's asset cache.
+    pub fn load_in(model_id: Option<&str>, assets: &ModelAssets) -> Result<Arc<Self>> {
+        ensure_embedder_in(model_id, Some(assets))
+    }
     pub fn load(model_id: Option<&str>) -> Result<Arc<Self>> {
         ensure_embedder(model_id)
     }

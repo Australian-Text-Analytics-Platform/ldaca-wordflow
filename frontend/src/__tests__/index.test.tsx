@@ -11,6 +11,10 @@ const { createRoot, installExternalFileDropGuard, render, isTauri, loadBrowser, 
   }));
 
 vi.mock('../lib/isTauri', () => ({ isTauri }));
+vi.mock('../features/preferences/startup', () => ({
+  withPreferences: async (_container: HTMLElement, _base: string, render: () => Promise<void>) =>
+    render(),
+}));
 
 vi.mock('react-dom/client', () => ({
   createRoot,

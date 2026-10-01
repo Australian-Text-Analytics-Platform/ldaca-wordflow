@@ -4,6 +4,7 @@ import { dirname, resolve } from 'node:path';
 import { browser } from '@wdio/globals';
 import {
   role,
+  setTestPreferences,
   registerQueries,
   resetProject,
   baseUrl,
@@ -50,6 +51,7 @@ export const mochaHooks = {
       maxEncodedDataSize: 10 * 1024 * 1024,
     });
     await resetProject();
+    await setTestPreferences({ theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 }, recentDataFiles: [] });
   },
   async afterEach(this: Mocha.Context) {
     await clearResponseStubs();

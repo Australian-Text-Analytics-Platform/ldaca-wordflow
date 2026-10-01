@@ -38,3 +38,7 @@ built-ins, reject duplicate configurations, or require credential rotation to
 create a new UUID. ADR 0013's mode-specific ownership, immutable locator,
 request snapshot, secret-handling, and Custom-destination decisions remain in
 force.
+
+[ADR 0030](0030-explicit-host-storage-and-isolated-browser-workers.md) replaces
+the application storage and preference/credential persistence clauses described
+here. See it for the current host ownership and clean-cutover decision.

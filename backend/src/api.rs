@@ -724,7 +724,7 @@ async fn export_project(
             .submit_task(format!("Export {filename}"), move |context| async move {
                 context.progress("Capturing committed data", None);
                 let file = project
-                    .export_into(input, tempfile::NamedTempFile::new()?)
+                    .export_into(input, project.temporary_file()?)
                     .await?;
                 let mut response = file_response(file, media_type)?;
                 let encoded = filename

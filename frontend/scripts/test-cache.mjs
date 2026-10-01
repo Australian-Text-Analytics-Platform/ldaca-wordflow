@@ -1,11 +1,20 @@
+import { execFileSync } from 'node:child_process';
+import { existsSync, realpathSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { mkdir, rm } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { applicationCacheDirectory, applicationConfigurationDirectory, applicationEnvironment, TEST_IDENTITY } from '../../scripts/app-environment.mjs';
+import { applicationDirectories, applicationEnvironment, TEST_IDENTITY } from '../../scripts/app-environment.mjs';
 
-/** Serialize cache-owning E2E suites before clearing only Test's system cache. */
-export async function prepareTestCache(env = process.env, platform = process.platform) {
-  const directory = applicationCacheDirectory(TEST_IDENTITY, env, platform);
-  const configuration = applicationConfigurationDirectory(TEST_IDENTITY, env, platform);
+async function clearTestCredentials(env) {
+  const root = resolve(import.meta.dirname, '../..');
+  execFileSync('cargo', ['run', '--quiet', '--locked', '-p', 'wordflow-backend', '--bin', 'wordflow-test-reset'], { cwd: root, env: { ...process.env, ...env, CARGO_TARGET_DIR: process.env.CARGO_TARGET_DIR || (existsSync(resolve(root, 'target')) ? realpathSync(resolve(root, 'target')) : resolve(root, 'target')) }, stdio: ['ignore', 'ignore', 'inherit'] });
+}
+/** Serialize E2E suites before clearing all resolved Test-owned roots and credentials. */
+export async function prepareTestCache(env = process.env, resetCredentials = clearTestCredentials) {
+  const directories = applicationDirectories(TEST_IDENTITY, env);
+  const directory = directories.cache;
+  const configuration = directories.config;
+  const roots = [...new Set(Object.values(directories))].sort((a, b) => b.length - a.length);
   const lock = `${directory}.lock`;
   await mkdir(dirname(directory), { recursive: true });
   try {
@@ -19,17 +28,17 @@ export async function prepareTestCache(env = process.env, platform = process.pla
     if (released) return;
     released = true;
     try {
-      await rm(directory, { recursive: true, force: true });
-      await rm(configuration, { recursive: true, force: true });
+      await resetCredentials(env);
+      for (const path of roots) await rm(path, { recursive: true, force: true });
     } finally {
       await rm(lock, { recursive: true, force: true });
     }
   };
   try {
-    await rm(directory, { recursive: true, force: true });
-    await rm(configuration, { recursive: true, force: true });
+    await resetCredentials(env);
+    for (const path of roots) await rm(path, { recursive: true, force: true });
     await mkdir(directory, { recursive: true });
-    return { directory, configuration, env: applicationEnvironment(TEST_IDENTITY, env, platform), cleanup };
+    return { directory, configuration, directories, env: applicationEnvironment(TEST_IDENTITY, env), cleanup };
   } catch (error) {
     await cleanup();
     throw error;

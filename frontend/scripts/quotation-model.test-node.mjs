@@ -1,8 +1,9 @@
+import { applicationDirectories, TEST_IDENTITY } from '../../scripts/app-environment.mjs';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join } from 'node:path';
 import test from 'node:test';
 import { prepareQuotationModel, quotationModel, quotationModelPath, requireQuotationModel } from './quotation-model.mjs';
 
@@ -20,13 +21,8 @@ test('reads the model pin from the native extractor', async () => {
   assert.ok(pin.url.endsWith(pin.filename));
 });
 
-test('resolves Test caches on every platform and ignores inherited production model overrides', () => {
-  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'darwin'), resolve('/home/test/Library/Caches/au.edu.ldaca.wordflow.test/udpipe/m'));
-  assert.equal(quotationModelPath('m', { LOCALAPPDATA: '/local' }, 'win32'), resolve('/local/au.edu.ldaca.wordflow.test/udpipe/m'));
-  assert.equal(quotationModelPath('m', { XDG_CACHE_HOME: '/cache', HOME: '/home/test' }, 'linux'), resolve('/cache/au.edu.ldaca.wordflow.test/udpipe/m'));
-  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'linux'), resolve('/home/test/.cache/au.edu.ldaca.wordflow.test/udpipe/m'));
-  assert.equal(quotationModelPath('m', { HOME: '/home/test', WORDFLOW_QUOTATION_MODEL: '/production/model' }, 'darwin'), resolve('/home/test/Library/Caches/au.edu.ldaca.wordflow.test/udpipe/m'));
-  assert.throws(() => quotationModelPath('m', {}, 'win32'), /system cache directory/);
+test('uses the Rust-resolved Test cache and ignores inherited production overrides', () => {
+  assert.equal(quotationModelPath('m', { WORDFLOW_QUOTATION_MODEL: '/production/model' }), join(applicationDirectories(TEST_IDENTITY).cache, 'udpipe', 'm'));
 });
 
 test('cached model validation and preparation work offline', async (t) => {

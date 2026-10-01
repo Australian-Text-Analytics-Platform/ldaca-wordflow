@@ -258,7 +258,7 @@ impl Database {
         let offset = (page - 1)
             .checked_mul(page_size)
             .ok_or_else(|| Error::invalid("Page offset is too large"))?;
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = temporary_file(&self.conn)?;
         execute_statements_limited(
             &self.conn,
             &[SqlStatement {

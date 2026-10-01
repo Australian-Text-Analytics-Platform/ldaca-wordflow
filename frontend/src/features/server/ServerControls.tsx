@@ -1,3 +1,4 @@
+import { AccountControls } from './AccountControls';
 import { ProjectError, request } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog';
@@ -18,6 +19,7 @@ import { useServer } from './context';
 
 interface Destination {
   name: string | null;
+  close?: boolean;
 }
 export function ServerControls({ projectBase }: { projectBase: string }) {
   const server = useServer();
@@ -25,7 +27,7 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
   const navigate = useEditingNavigation();
   const [library, setLibrary] = useState<'data' | 'projects' | null>(null);
   const [destination, setDestination] = useState<Destination | null>(null);
-  const [prompt, setPrompt] = useState<'untitled' | 'interrupt' | 'save' | null>(null);
+  const [prompt, setPrompt] = useState<'untitled' | 'interrupt' | 'save' | 'close' | null>(null);
   const [filename, setFilename] = useState('');
   const operation = useMutation({
     mutationFn: async (action: () => Promise<void>) => action(),
@@ -42,14 +44,17 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
     operation.mutate(action);
   };
   const change = async (target: Destination, discard = false, interrupt = false) => {
-    await request(server.base, '/api/server/project', 'post', {
-      body: {
-        session_id: server.status.session_id,
-        name: target.name,
-        discard_untitled: discard,
-        interrupt,
-      },
-    });
+    if (target.close) {
+      await request(server.base, '/api/server/project/close', 'post', {
+        body: { project_id: server.status.project_id, discard_untitled: discard, interrupt },
+      });
+      server.select(null);
+    } else {
+      const opened = await (
+        await request(server.base, '/api/server/project', 'post', { body: { name: target.name } })
+      ).json();
+      server.select(opened.project_id);
+    }
     setPrompt(null);
     setDestination(null);
     setLibrary(null);
@@ -64,7 +69,7 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
   };
   const save = async (name: string | null) => {
     await request(server.base, '/api/server/project/save', 'post', {
-      body: { session_id: server.status.session_id, name },
+      body: { project_id: server.status.project_id, name },
     });
     await server.refresh();
     await cache.invalidateQueries({ queryKey: ['native', projectBase, 'project'] });
@@ -82,6 +87,7 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
   };
   return (
     <>
+      <AccountControls base={server.base} />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="sm" disabled={operation.isPending}>
@@ -124,7 +130,7 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
                   server.base,
                   '/api/server/project/{id}/download',
                   'get',
-                  { path: { id: server.status.session_id } },
+                  { path: { id: server.status.project_id } },
                 );
                 await saveGeneratedExport(
                   await response.blob(),
@@ -134,6 +140,30 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
             }}
           >
             Download project
+          </DropdownMenuItem>
+          {server.projects
+            .filter((project) => project.project_id !== server.status.project_id)
+            .map((project) => (
+              <DropdownMenuItem
+                key={project.project_id}
+                onSelect={() => {
+                  navigate(() => {
+                    server.select(project.project_id);
+                  });
+                }}
+              >
+                {project.project?.title ?? 'Untitled'}
+              </DropdownMenuItem>
+            ))}
+          <DropdownMenuItem
+            onSelect={() => {
+              navigate(() => {
+                setDestination({ name: null, close: true });
+                setPrompt('close');
+              });
+            }}
+          >
+            Close project…
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -169,18 +199,22 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
       >
         <DialogContent>
           <DialogTitle>
-            {prompt === 'save'
-              ? 'Save project'
-              : prompt === 'interrupt'
-                ? 'Cancel active work?'
-                : 'Save Untitled project?'}
+            {prompt === 'close'
+              ? 'Close shared project?'
+              : prompt === 'save'
+                ? 'Save project'
+                : prompt === 'interrupt'
+                  ? 'Cancel active work?'
+                  : 'Save Untitled project?'}
           </DialogTitle>
           <DialogDescription>
-            {prompt === 'save'
-              ? 'Choose an unused filename. The project will be saved in the server’s projects directory.'
-              : prompt === 'interrupt'
-                ? 'Changing projects cancels active work and waits for cleanup. The current project stays open if cancellation fails.'
-                : 'Save this project before continuing, or discard its contents.'}
+            {prompt === 'close'
+              ? 'This closes the project in every window that has it open.'
+              : prompt === 'save'
+                ? 'Choose an unused filename. The project will be saved in the server’s projects directory.'
+                : prompt === 'interrupt'
+                  ? 'Closing this project cancels active work and waits for cleanup. The current project stays open if cancellation fails.'
+                  : 'Save this project before continuing, or discard its contents.'}
           </DialogDescription>
           {prompt === 'save' && (
             <label className="flex flex-col gap-2">
@@ -206,6 +240,16 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
             >
               Stay
             </Button>
+            {prompt === 'close' && (
+              <Button
+                disabled={operation.isPending}
+                onClick={() => {
+                  if (destination) run(() => change(destination));
+                }}
+              >
+                Close project
+              </Button>
+            )}
             {prompt === 'untitled' && (
               <>
                 <Button

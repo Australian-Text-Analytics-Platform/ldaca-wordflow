@@ -39,3 +39,5 @@ change rather than leaving a compatibility note or duplicate guide.
 Frontend user documentation remains under `frontend/docs/` and bundled
 in-application documentation remains under `frontend/public/`; those documents
 serve users rather than engineering context.
+
+The [application storage contract](reference/application-storage.md) covers desktop/browser directories, preferences and credentials. Operational changes use [manual cutover](runbooks/storage-cutover.md) and [Linux multi-user deployment](runbooks/linux-multi-user.md).

@@ -59,3 +59,34 @@ impl Secrets for OsSecrets {
         }
     }
 }
+
+/// E2E cleanup is deliberately restricted to the two Test credential namespaces.
+pub(crate) fn clear_test_credentials() -> Result<()> {
+    let store = native_store()?;
+    for identity in [
+        wordflow_storage::TEST_ID.to_owned(),
+        format!("{}.server", wordflow_storage::TEST_ID),
+    ] {
+        let namespace = format!("{identity}.ai.providers");
+        #[cfg(target_os = "windows")]
+        let pattern = format!("^.*{}.*$", namespace.replace('.', "\\."));
+        #[cfg(target_os = "windows")]
+        let spec = std::collections::HashMap::from([("pattern", pattern.as_str())]);
+        #[cfg(not(target_os = "windows"))]
+        let spec = std::collections::HashMap::from([("service", namespace.as_str())]);
+        let entries = store.search(&spec).map_err(unavailable)?;
+        for entry in entries {
+            if entry
+                .get_specifiers()
+                .is_some_and(|(service, _)| service == namespace)
+            {
+                entry.delete_credential().map_err(unavailable)?;
+            } else {
+                return Err(Error::invalid(
+                    "Credential search returned an unexpected namespace",
+                ));
+            }
+        }
+    }
+    Ok(())
+}

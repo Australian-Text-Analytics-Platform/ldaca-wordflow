@@ -42,7 +42,7 @@ impl ProjectRuntime {
                     protection.ready(&work.cancellation).await?;
                     context.progress("Capturing source and Codebook", None);
                     let config = request.inference.clone();
-                    let ai = shared.ai.clone();
+                    let ai = runtime.ai().clone();
                     let client = shared.client.clone();
                     let worker = work.clone();
                     let (mut run, id) = tokio::task::spawn_blocking(move || {
@@ -112,13 +112,13 @@ impl ProjectRuntime {
         let work = operation.work.clone();
         let _request = work.cancellation.clone().drop_guard();
         let shared = self.shared.clone();
+        let ai = self.ai().clone();
         Self::own(operation, async move {
             let _lifecycle = tokio::select! {
                 guard = shared.lifecycle.clone().read_owned() => guard,
                 () = work.cancellation.cancelled() => return Err(interrupted()),
             };
-            let inference = shared
-                .ai
+            let inference = ai
                 .prepare_inference(&shared.client, input.request.inference.clone())
                 .await?;
             let worker = work.clone();

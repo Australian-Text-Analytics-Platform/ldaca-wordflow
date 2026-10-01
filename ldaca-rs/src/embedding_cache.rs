@@ -16,7 +16,7 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 use duckdb::{params, Connection};
 
-use crate::cache::{get_or_insert_text_values, stage_requested_hashes, TextCacheTable};
+use crate::cache::{get_or_insert_text_values_in, stage_requested_hashes, TextCacheTable};
 
 const SCHEMA_SQL: &str = r#"
 CREATE TABLE IF NOT EXISTS embedding_cache (
@@ -51,8 +51,17 @@ pub fn get_or_insert_embeddings(
     texts: &[String],
     compute_misses: impl FnOnce(&[String]) -> Result<Vec<Vec<f32>>>,
 ) -> Result<Vec<Arc<Vec<f32>>>> {
+    get_or_insert_embeddings_in(path, scope, texts, None, compute_misses)
+}
+pub fn get_or_insert_embeddings_in(
+    path: &Path,
+    scope: CacheScope<'_>,
+    texts: &[String],
+    temporary: Option<&Path>,
+    compute_misses: impl FnOnce(&[String]) -> Result<Vec<Vec<f32>>>,
+) -> Result<Vec<Arc<Vec<f32>>>> {
     let table = EmbeddingCacheTable { scope };
-    get_or_insert_text_values(path, &table, texts, compute_misses)
+    get_or_insert_text_values_in(path, &table, texts, temporary, compute_misses)
 }
 
 struct EmbeddingCacheTable<'a> {

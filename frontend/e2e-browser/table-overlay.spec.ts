@@ -1,12 +1,11 @@
+import { setTestPreferences } from './fixtures';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, label, testId, testIds, post, rect, press, screenshot } from './fixtures';
 
 for (const theme of ['light-2026', 'dark-2026']) {
   it(`content-sized cards and table overlay preserve the graph in ${theme}`, async () => {
-    await browser.addInitScript((value) => {
-      localStorage.setItem('ldaca-color-theme-v1', value);
-    }, theme);
+    await setTestPreferences({ theme });
     await browser.url('/');
     await expect(role('heading', { name: 'Data Loader', exact: true })).toBeDisplayed();
     const longName = 'A much longer table name that wraps onto several lines in the graph';

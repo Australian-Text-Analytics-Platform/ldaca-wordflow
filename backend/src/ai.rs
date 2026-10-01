@@ -31,6 +31,7 @@ pub enum CredentialMode {
     None,
     Session,
     Remembered,
+    Browser,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -64,6 +65,7 @@ pub enum CredentialUpdate {
     Remember {
         key: String,
     },
+    Browser,
     Remove,
 }
 #[derive(Deserialize, utoipa::ToSchema)]
@@ -87,11 +89,31 @@ struct State {
     connections: Option<BTreeMap<Uuid, Connection>>,
     sessions: BTreeMap<Uuid, String>,
 }
+struct Unavailable;
+impl Secrets for Unavailable {
+    fn get(&self, _: &str) -> Result<Option<String>> {
+        Err(Error::new(
+            "credential_store_unavailable",
+            "This host has not configured a credential store",
+        ))
+    }
+    fn set(&self, id: &str, _: &str) -> Result<()> {
+        self.get(id).map(|_| ())
+    }
+    fn remove(&self, id: &str) -> Result<()> {
+        self.get(id).map(|_| ())
+    }
+}
+
+type ModelCatalogues = BTreeMap<Uuid, (Uuid, Vec<String>)>;
+
 struct Host {
     path: Option<PathBuf>,
-    secrets: Box<dyn Secrets>,
-    state: Mutex<State>,
-    models: tokio::sync::Mutex<BTreeMap<Uuid, (Uuid, Vec<String>)>>,
+    secrets: Arc<dyn Secrets>,
+    state: Arc<Mutex<State>>,
+    models: Arc<tokio::sync::Mutex<ModelCatalogues>>,
+    browser_owned: bool,
+    request_key: Option<(Uuid, String)>,
 }
 /// Clone once per project runtime. Hosts provide their own identity and safe configuration path.
 /// Construction performs no I/O. All filesystem/keyring work runs on blocking worker threads.
@@ -101,36 +123,70 @@ impl AiConfiguration {
     pub fn new(identity: &str, path: PathBuf) -> Self {
         Self(Arc::new(Host {
             path: Some(path),
-            secrets: Box::new(OsSecrets {
+            secrets: Arc::new(OsSecrets {
                 namespace: format!("{identity}.ai.providers"),
             }),
-            state: Mutex::new(State::default()),
-            models: tokio::sync::Mutex::new(BTreeMap::new()),
+            state: Arc::new(Mutex::new(State::default())),
+            models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
+            browser_owned: false,
+            request_key: None,
         }))
     }
     /// Unconfigured runtimes can use explicitly session-only keys, but cannot remember credentials.
     pub fn session_only() -> Self {
-        struct Unavailable;
-        impl Secrets for Unavailable {
-            fn get(&self, _: &str) -> Result<Option<String>> {
-                Err(Error::new(
-                    "credential_store_unavailable",
-                    "This host has not configured a credential store",
-                ))
-            }
-            fn set(&self, id: &str, _: &str) -> Result<()> {
-                self.get(id).map(|_| ())
-            }
-            fn remove(&self, id: &str) -> Result<()> {
-                self.get(id).map(|_| ())
-            }
-        }
         Self(Arc::new(Host {
             path: None,
-            secrets: Box::new(Unavailable),
-            state: Mutex::new(State::default()),
-            models: tokio::sync::Mutex::new(BTreeMap::new()),
+            secrets: Arc::new(Unavailable),
+            state: Arc::new(Mutex::new(State::default())),
+            models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
+            browser_owned: false,
+            request_key: None,
         }))
+    }
+    /// Workers persist metadata only. Keys live in a single request-scoped adapter.
+    pub fn browser_owned(path: PathBuf) -> Self {
+        let mut host = Self::session_only();
+        if let Some(inner) = Arc::get_mut(&mut host.0) {
+            inner.path = Some(path);
+            inner.browser_owned = true;
+        }
+        host
+    }
+    pub(crate) fn for_request(&self, headers: &axum::http::HeaderMap) -> Result<Self> {
+        if !self.0.browser_owned {
+            return Ok(self.clone());
+        }
+        let request_key = match (
+            headers.get("x-wordflow-ai-provider"),
+            headers.get("x-wordflow-ai-key"),
+        ) {
+            (None, None) => None,
+            (Some(id), Some(key)) => {
+                let id = id
+                    .to_str()
+                    .ok()
+                    .and_then(|id| Uuid::parse_str(id).ok())
+                    .ok_or_else(|| Error::invalid("Invalid provider identity"))?;
+                let key = key
+                    .to_str()
+                    .map_err(|_| Error::invalid("Invalid API key"))?;
+                validate_key(key)?;
+                Some((id, key.to_owned()))
+            }
+            _ => {
+                return Err(Error::invalid(
+                    "A provider identity and key must be supplied together",
+                ));
+            }
+        };
+        Ok(Self(Arc::new(Host {
+            path: self.0.path.clone(),
+            secrets: self.0.secrets.clone(),
+            state: self.0.state.clone(),
+            models: self.0.models.clone(),
+            browser_owned: true,
+            request_key,
+        })))
     }
     async fn access<T: Send + 'static>(
         &self,
@@ -154,6 +210,16 @@ impl AiConfiguration {
                 };
                 let mut connections = BTreeMap::new();
                 for row in rows {
+                    if host.browser_owned
+                        && !matches!(
+                            row.credential_mode,
+                            CredentialMode::None | CredentialMode::Browser
+                        )
+                    {
+                        return Err(Error::invalid(
+                            "Worker connection metadata must use browser-owned credentials",
+                        ));
+                    }
                     validate_name(&row.name)?;
                     validate_endpoint(row.provider, row.endpoint.as_deref())?;
                     if connections.insert(row.id, row).is_some() {
@@ -272,7 +338,14 @@ impl AiConfiguration {
         }
         self.access(move |host, state| {
             let row = connection(state, id)?;
-            let key = credential(host, state, &row)?;
+            let key = if host.browser_owned {
+                host.request_key
+                    .as_ref()
+                    .filter(|(provider, _)| *provider == id)
+                    .map(|(_, key)| key.clone())
+            } else {
+                credential(host, state, &row)?
+            };
             if row.provider != Provider::Custom && key.is_none() {
                 return Err(Error::new(
                     "provider_credential_required",
@@ -283,6 +356,9 @@ impl AiConfiguration {
         })
         .await
     }
+}
+pub fn clear_test_credentials() -> Result<()> {
+    credentials::clear_test_credentials()
 }
 fn connections(state: &State) -> Result<&BTreeMap<Uuid, Connection>> {
     state
@@ -300,7 +376,7 @@ fn connection(state: &State, id: Uuid) -> Result<Connection> {
 }
 fn credential(host: &Host, state: &State, row: &Connection) -> Result<Option<String>> {
     match row.credential_mode {
-        CredentialMode::None => Ok(None),
+        CredentialMode::None | CredentialMode::Browser => Ok(None),
         CredentialMode::Session => Ok(state.sessions.get(&row.id).cloned()),
         CredentialMode::Remembered => host.secrets.get(&row.id.to_string()),
     }
@@ -349,9 +425,27 @@ fn change_credential(
     row: &mut Connection,
     update: CredentialUpdate,
 ) -> Result<()> {
+    if host.browser_owned
+        && matches!(
+            update,
+            CredentialUpdate::Session { .. } | CredentialUpdate::Remember { .. }
+        )
+    {
+        return Err(Error::invalid(
+            "This host stores provider keys in the authenticated browser only",
+        ));
+    }
     let id = row.id.to_string();
     match update {
         CredentialUpdate::Keep => {}
+        CredentialUpdate::Browser => {
+            if !host.browser_owned {
+                return Err(Error::invalid(
+                    "Browser credentials require multi-user mode",
+                ));
+            }
+            row.credential_mode = CredentialMode::Browser;
+        }
         CredentialUpdate::Remember { key } => {
             validate_key(&key)?;
             host.secrets.set(&id, &key)?;
@@ -403,7 +497,7 @@ fn restore_credential(
     Ok(())
 }
 fn validate_key(key: &str) -> Result<()> {
-    if key.trim().is_empty() {
+    if key.trim().is_empty() || key.len() > 8192 || key.contains(['\r', '\n', '\0']) {
         Err(Error::invalid("Enter a nonblank API key, or choose Remove"))
     } else {
         Ok(())
@@ -449,9 +543,11 @@ mod tests {
     fn configured(path: PathBuf) -> AiConfiguration {
         AiConfiguration(Arc::new(Host {
             path: Some(path),
-            secrets: Box::<MemorySecrets>::default(),
-            state: Mutex::new(State::default()),
-            models: tokio::sync::Mutex::new(BTreeMap::new()),
+            secrets: Arc::<MemorySecrets>::default(),
+            state: Arc::new(Mutex::new(State::default())),
+            models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
+            browser_owned: false,
+            request_key: None,
         }))
     }
     fn create(credential: CredentialUpdate) -> CreateConnection {
@@ -461,6 +557,47 @@ mod tests {
             endpoint: Some("http://127.0.0.1:8000/v1".into()),
             credential,
         }
+    }
+    #[tokio::test]
+    async fn browser_keys_are_request_scoped_and_never_enter_metadata_or_other_operations() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("providers.json");
+        let host = AiConfiguration::browser_owned(path.clone());
+        let row = host
+            .create(CreateConnection {
+                name: "Browser OpenAI".into(),
+                provider: Provider::Openai,
+                endpoint: None,
+                credential: CredentialUpdate::Browser,
+            })
+            .await
+            .unwrap();
+        let id = row.connection.id;
+        let mut headers = axum::http::HeaderMap::new();
+        headers.insert("x-wordflow-ai-provider", id.to_string().parse().unwrap());
+        headers.insert("x-wordflow-ai-key", "ephemeral-test-key".parse().unwrap());
+        let scoped = host.for_request(&headers).unwrap();
+        assert_eq!(
+            scoped.resolve(id).await.unwrap().1.as_deref(),
+            Some("ephemeral-test-key")
+        );
+        assert_eq!(
+            host.resolve(id).await.unwrap_err().code,
+            "provider_credential_required"
+        );
+        assert!(!host.list().await.unwrap()[0].has_credential);
+        assert!(
+            !std::fs::read_to_string(path)
+                .unwrap()
+                .contains("ephemeral-test-key")
+        );
+        assert!(
+            host.create(create(CredentialUpdate::Remember {
+                key: "never-store-me".into()
+            }))
+            .await
+            .is_err()
+        );
     }
     #[tokio::test]
     async fn capability_metadata_does_not_require_credentials() {

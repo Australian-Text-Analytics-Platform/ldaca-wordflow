@@ -475,27 +475,9 @@ impl Database {
 pub(super) async fn prepare_extractor(
     client: reqwest::Client,
     cancellation: CancellationToken,
+    path: PathBuf,
 ) -> Result<QuotationExtractor> {
-    use ldaca_rs::quotation::{MODEL_FILENAME, MODEL_URL, is_pinned_model};
-    let explicit = std::env::var_os("WORDFLOW_QUOTATION_MODEL").map(PathBuf::from);
-    let path = if let Some(path) = &explicit {
-        path.clone()
-    } else if let Some(directory) = std::env::var_os("WORDFLOW_QUOTATION_CACHE") {
-        PathBuf::from(directory).join(MODEL_FILENAME)
-    } else {
-        let root = if cfg!(target_os = "macos") {
-            std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Caches"))
-        } else if cfg!(target_os = "windows") {
-            std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
-        } else {
-            std::env::var_os("XDG_CACHE_HOME")
-                .map(PathBuf::from)
-                .or_else(|| std::env::var_os("HOME").map(|p| PathBuf::from(p).join(".cache")))
-        }
-        .ok_or_else(|| Error::invalid("Set WORDFLOW_QUOTATION_MODEL to the pinned UDPipe model"))?;
-        root.join("au.edu.ldaca.wordflow/udpipe")
-            .join(MODEL_FILENAME)
-    };
+    use ldaca_rs::quotation::{MODEL_URL, is_pinned_model};
     let existing = match tokio::fs::read(&path).await {
         Ok(bytes) => Some(bytes),
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
@@ -504,11 +486,6 @@ pub(super) async fn prepare_extractor(
     let bytes = if let Some(bytes) = existing.filter(|bytes| is_pinned_model(bytes)) {
         bytes
     } else {
-        if explicit.is_some() {
-            return Err(Error::invalid(
-                "The configured Quotation model is missing or its checksum is invalid",
-            ));
-        }
         let mut response = tokio::select! {_=cancellation.cancelled()=>return Err(Error::new("cancelled","Quotation preparation cancelled")),response=client.get(MODEL_URL).timeout(std::time::Duration::from_secs(120)).send()=>response.map_err(quote_error)?.error_for_status().map_err(quote_error)?};
         let mut bytes = Vec::new();
         loop {

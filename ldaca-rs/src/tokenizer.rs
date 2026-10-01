@@ -1,3 +1,4 @@
+use crate::model_assets::ModelAssets;
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
@@ -209,40 +210,41 @@ impl TokenizerBackend {
     }
 }
 
-static REGISTRY: OnceLock<RwLock<HashMap<String, Arc<TokenizerBackend>>>> = OnceLock::new();
-
-fn registry() -> &'static RwLock<HashMap<String, Arc<TokenizerBackend>>> {
+type Registry = RwLock<HashMap<(Option<ModelAssets>, String), Arc<TokenizerBackend>>>;
+static REGISTRY: OnceLock<Registry> = OnceLock::new();
+fn registry() -> &'static Registry {
     REGISTRY.get_or_init(|| RwLock::new(HashMap::new()))
 }
-
 pub fn ensure_tokenizer_for_model(model_id: &str) -> Result<Arc<TokenizerBackend>> {
-    let key = model_id.trim();
-    if key.is_empty() {
-        anyhow::bail!("Tokenizer model id is required");
-    }
-
+    ensure_tokenizer_for_model_in(model_id, None)
+}
+pub(crate) fn ensure_tokenizer_for_model_in(
+    model_id: &str,
+    assets: Option<&ModelAssets>,
+) -> Result<Arc<TokenizerBackend>> {
+    let model = model_id.trim();
+    anyhow::ensure!(!model.is_empty(), "Tokenizer model id is required");
+    let key = (assets.cloned(), model.to_owned());
     {
         let map = registry()
             .read()
             .map_err(|_| anyhow::anyhow!("tokenizer registry lock poisoned"))?;
-        if let Some(tok) = map.get(key) {
+        if let Some(tok) = map.get(&key) {
             return Ok(Arc::clone(tok));
         }
     }
-
     let mut map = registry()
         .write()
         .map_err(|_| anyhow::anyhow!("tokenizer registry lock poisoned"))?;
-    if let Some(tok) = map.get(key) {
+    if let Some(tok) = map.get(&key) {
         return Ok(Arc::clone(tok));
     }
-    let backend = load_backend(key)?;
-    let arc = Arc::new(backend);
-    map.insert(key.to_string(), Arc::clone(&arc));
+    let arc = Arc::new(load_backend(model, assets)?);
+    map.insert(key, Arc::clone(&arc));
     Ok(arc)
 }
 
-fn load_backend(model_id: &str) -> Result<TokenizerBackend> {
+fn load_backend(model_id: &str, assets: Option<&ModelAssets>) -> Result<TokenizerBackend> {
     if model_id.starts_with(NATIVE_MODEL_PREFIX) {
         return match model_id {
             PLAIN_WORDS_EN_MODEL_ID => Ok(TokenizerBackend::PlainWordsEn),
@@ -258,12 +260,17 @@ fn load_backend(model_id: &str) -> Result<TokenizerBackend> {
                 "Hugging Face tokenizer model id must include a repository id"
             ));
         }
-        return load_hf_tokenizer(huggingface_model_id).map(TokenizerBackend::HuggingFace);
+        return load_hf_tokenizer(huggingface_model_id, assets).map(TokenizerBackend::HuggingFace);
     }
 
     if model_id.starts_with(LINDERA_MODEL_PREFIX) {
         if let Some(kind) = lindera_dict_for_model_id(model_id) {
-            let tok = crate::lindera_dict::ensure_lindera_tokenizer(kind)?;
+            let tok = match assets {
+                Some(assets) => {
+                    crate::lindera_dict::ensure_lindera_tokenizer_in(kind, &assets.lindera)?
+                }
+                None => crate::lindera_dict::ensure_lindera_tokenizer(kind)?,
+            };
             return Ok(TokenizerBackend::Lindera(tok));
         }
         return Err(anyhow::anyhow!(
@@ -290,8 +297,10 @@ fn lindera_dict_for_model_id(model_id: &str) -> Option<crate::lindera_dict::Lind
     }
 }
 
-fn load_hf_tokenizer(model_id: &str) -> Result<HfTokenizer> {
-    let api = ApiBuilder::from_env()
+fn load_hf_tokenizer(model_id: &str, assets: Option<&ModelAssets>) -> Result<HfTokenizer> {
+    let api = assets
+        .map(ModelAssets::huggingface_api)
+        .unwrap_or_else(ApiBuilder::from_env)
         .build()
         .context("Failed to initialize hf-hub client")?;
     let repo = Repo::with_revision(
@@ -308,10 +317,15 @@ fn load_hf_tokenizer(model_id: &str) -> Result<HfTokenizer> {
 }
 
 pub fn tokenizer_cache_fingerprint(model_id: &str) -> Result<String> {
+    tokenizer_cache_fingerprint_in(model_id, None)
+}
+fn tokenizer_cache_fingerprint_in(model_id: &str, assets: Option<&ModelAssets>) -> Result<String> {
     let artifact_identity = if model_id == PLAIN_WORDS_EN_MODEL_ID {
         "bert-pre-tokenizer".to_string()
     } else if let Some(repository) = model_id.strip_prefix(HUGGINGFACE_MODEL_PREFIX) {
-        let api = ApiBuilder::from_env()
+        let api = assets
+            .map(ModelAssets::huggingface_api)
+            .unwrap_or_else(ApiBuilder::from_env)
             .build()
             .context("Failed to initialize hf-hub client")?;
         let path = api
@@ -367,19 +381,29 @@ impl Default for TokenizeOptions {
 pub struct Tokenizer {
     pub(crate) backend: Arc<TokenizerBackend>,
     pub(crate) model_id: String,
+    assets: Option<ModelAssets>,
 }
 impl Tokenizer {
     pub fn load(model_id: &str) -> Result<Self> {
         Ok(Self {
             backend: ensure_tokenizer_for_model(model_id)?,
             model_id: model_id.trim().to_owned(),
+            assets: None,
+        })
+    }
+    /// Load exclusively from this host's asset caches.
+    pub fn load_in(model_id: &str, assets: &ModelAssets) -> Result<Self> {
+        Ok(Self {
+            backend: ensure_tokenizer_for_model_in(model_id, Some(assets))?,
+            model_id: model_id.trim().to_owned(),
+            assets: Some(assets.clone()),
         })
     }
     pub fn model_id(&self) -> &str {
         &self.model_id
     }
     pub fn fingerprint(&self) -> Result<String> {
-        tokenizer_cache_fingerprint(&self.model_id)
+        tokenizer_cache_fingerprint_in(&self.model_id, self.assets.as_ref())
     }
     pub fn tokenize(&self, text: &str, options: TokenizeOptions) -> Result<Vec<Token>> {
         self.backend
@@ -419,6 +443,21 @@ mod tests {
         PLAIN_WORDS_EN_MODEL_ID,
     };
     use crate::lindera_dict::LinderaDict;
+
+    #[test]
+    fn registry_reuses_only_the_same_asset_context() {
+        let root = tempfile::tempdir().unwrap();
+        let assets = |name: &str| crate::model_assets::ModelAssets {
+            huggingface: root.path().join(name).join("hf"),
+            lindera: root.path().join(name).join("lindera"),
+            temporary: root.path().join(name).join("tmp"),
+        };
+        let a = super::Tokenizer::load_in(PLAIN_WORDS_EN_MODEL_ID, &assets("a")).unwrap();
+        let again = super::Tokenizer::load_in(PLAIN_WORDS_EN_MODEL_ID, &assets("a")).unwrap();
+        let b = super::Tokenizer::load_in(PLAIN_WORDS_EN_MODEL_ID, &assets("b")).unwrap();
+        assert!(std::sync::Arc::ptr_eq(&a.backend, &again.backend));
+        assert!(!std::sync::Arc::ptr_eq(&a.backend, &b.backend));
+    }
 
     #[test]
     fn test_tokenize_plain_text_drops_special_tokens() {
@@ -504,7 +543,7 @@ mod tests {
 
     #[test]
     fn test_unprefixed_model_ids_are_rejected() {
-        let err = match load_backend("bert-base-uncased") {
+        let err = match load_backend("bert-base-uncased", None) {
             Ok(_) => panic!("unprefixed model id should be rejected"),
             Err(err) => err.to_string(),
         };

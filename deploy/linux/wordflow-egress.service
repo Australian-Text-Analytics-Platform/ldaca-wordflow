@@ -1,0 +1,15 @@
+[Unit]
+Description=Wordflow rootless worker egress policy
+Before=wordflow.service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/wordflow/egress.env
+# WORDFLOW_DNS_ARGS contains only reviewed --dns and --allow-https IP arguments.
+ExecStart=/usr/bin/python3 /opt/wordflow/install-egress.py wordflow $WORDFLOW_DNS_ARGS
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

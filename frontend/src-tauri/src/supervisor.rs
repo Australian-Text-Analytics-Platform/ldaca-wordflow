@@ -101,26 +101,12 @@ impl BackendSupervisor {
         });
     }
     async fn run(&self, window: &WebviewWindow, path: Option<PathBuf>) -> Result<(), Error> {
-        self.project.set_icu_cache_directory(
+        self.project.set_storage(
             window
-                .path()
-                .app_cache_dir()
-                .map_err(|e| Error::new("desktop_error", e.to_string()))?
-                .join("icu"),
+                .state::<wordflow_storage::AppDirectories>()
+                .inner()
+                .clone(),
         )?;
-        self.project.set_language_cache_directory(
-            window
-                .path()
-                .app_cache_dir()
-                .map_err(|e| Error::new("desktop_error", e.to_string()))?
-                .join("language"),
-        )?;
-        let cache = window
-            .path()
-            .app_cache_dir()
-            .map_err(|e| Error::new("desktop_error", e.to_string()))?
-            .join("embeddings.duckdb");
-        self.project.set_embedding_cache_path(cache)?;
         let listener = TcpListener::bind("127.0.0.1:0")
             .await
             .map_err(Error::from)?;

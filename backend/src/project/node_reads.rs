@@ -63,7 +63,7 @@ impl Database {
             arrow_metadata::Annotations::load(&self.conn, &relation)?
                 .enrich(&schema, schema.fields().len())?,
         );
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = temporary_file(&self.conn)?;
         let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
         while let Some(array) = statement.step()? {
             check_cancellation(&self.cancellation)?;

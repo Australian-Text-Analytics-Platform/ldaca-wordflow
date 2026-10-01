@@ -2,8 +2,7 @@
 // Keep instrumented release artifacts separate from distributable builds.
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, existsSync, realpathSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { assertGuiTestEnvironment } from './gui-test-environment.mjs';
@@ -15,7 +14,9 @@ const root = resolve(import.meta.dirname, '..');
 export function nativeTestBuild(profile, platform = process.platform) {
   if (!['debug', 'release'].includes(profile)) throw new Error(`Unknown native test profile: ${profile}`);
   if (!['darwin', 'win32'].includes(platform)) throw new Error(`Native WebDriver is not configured for ${platform}`);
-  const target = resolve(root, '../target', `e2e-${profile}`);
+  const targetRoot = resolve(root, '../target');
+  const targetPath = resolve(existsSync(targetRoot) ? realpathSync(targetRoot) : targetRoot, `e2e-${profile}`);
+  const target = existsSync(targetPath) ? realpathSync(targetPath) : targetPath;
   const binary = resolve(target, profile, platform === 'darwin'
     ? 'bundle/macos/LDaCA Wordflow Test.app/Contents/MacOS/ldaca-wordflow'
     : `ldaca-wordflow${platform === 'win32' ? '.exe' : ''}`);
@@ -59,7 +60,8 @@ async function main() {
   let child;
   try {
     if (testCache) {
-      profileDirectory = mkdtempSync(resolve(tmpdir(), 'wordflow-e2e-'));
+      mkdirSync(testCache.directories.temporary, { recursive: true });
+      profileDirectory = mkdtempSync(resolve(testCache.directories.temporary, 'native-webview-'));
       env.WORDFLOW_E2E_PROFILE_DIR = profileDirectory;
       env.WORDFLOW_E2E_STORE_ID = randomUUID();
       console.log('Test-owned browser store:', env.WORDFLOW_E2E_STORE_ID);

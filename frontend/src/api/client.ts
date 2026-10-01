@@ -1,3 +1,4 @@
+import { transportHeaders, expireAccount } from '@/features/server/account';
 import type { components } from '@/api/generated/native';
 import {
   requestUrl,
@@ -23,7 +24,14 @@ export async function request<P extends HttpPath, M extends Method<P>>(
   try {
     response = await fetch(`${base}${path}`, {
       method: requestMethod,
-      headers: body === undefined ? undefined : { 'Content-Type': 'application/json' },
+      headers: {
+        ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+        ...transportHeaders(
+          requestMethod,
+          body,
+          /\/api\/ai\/providers\/([^/]+)\/models$/.exec(path)?.[1],
+        ),
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
       keepalive,
@@ -43,6 +51,9 @@ export async function request<P extends HttpPath, M extends Method<P>>(
     );
   }
   if (!response.ok) {
+    if (response.status === 401) {
+      expireAccount();
+    }
     const text = await response.text();
     let message = text;
     try {

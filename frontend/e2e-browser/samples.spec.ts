@@ -1,3 +1,4 @@
+import { setTestPreferences } from './fixtures';
 import { expectAppError } from './diagnostics';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
@@ -77,9 +78,7 @@ it('sample picker imports pinned remote views and survives reload', async () => 
 
 for (const theme of ['light-2026', 'dark-2026']) {
   it(`sample files can be selected individually and materialized in ${theme}`, async () => {
-    await browser.addInitScript((value) => {
-      localStorage.setItem('ldaca-color-theme-v1', value);
-    }, theme);
+    await setTestPreferences({ theme });
     await browser.url('/');
     await role('tab', { name: 'Samples', exact: true }).click();
     const dialog = role('tabpanel', { name: 'Samples', exact: true });

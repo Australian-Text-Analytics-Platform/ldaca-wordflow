@@ -48,9 +48,10 @@ to the standalone Rust backend during development.
   the manual-format dialog. Failed manual submissions retain the entered format.
 - TanStack Query owns database state. Zustand owns graph selection, the displayed preview, pins, positions
   and other interaction state. Local forms own unsubmitted input.
-- `features/theme/` owns the live VS Code theme. `public/theme-bootstrap.js`
-  reads the renderer's local preference before React starts. The offline theme
-  generator owns the generated CSS.
+- `features/theme/` applies the live VS Code theme. The host preference adapter
+  loads theme, layout and recent files before React renders and synchronizes
+  confirmed changes across windows. The offline theme generator owns generated CSS.
+  See [application storage](../../reference/application-storage.md).
 - `src-tauri/` owns independent project windows, embedded backend tasks, native
   menus/dialogs and the shared application updater.
 

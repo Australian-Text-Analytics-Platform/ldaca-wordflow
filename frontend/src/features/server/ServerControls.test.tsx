@@ -22,16 +22,18 @@ function mount() {
         value={{
           base: '/user/me/proxy/8002',
           status: {
-            session_id: 'session-1',
-            public_base_path: '/user/me/proxy/8002/',
+            project_id: 'session-1',
+
             project: { title: 'Untitled', path: null, schema_version: 1 },
           },
+          projects: [],
+          select: vi.fn(),
           refresh: async () => {
             return undefined;
           },
         }}
       >
-        <ServerControls projectBase="/session/session-1" />
+        <ServerControls projectBase="/project/session-1" />
       </ServerContext>
     </QueryClientProvider>,
   );
@@ -49,7 +51,7 @@ it('saves Untitled with a captured session and retains a failed filename', async
       '/user/me/proxy/8002',
       '/api/server/project/save',
       'post',
-      { body: { session_id: 'session-1', name: '研究.wfpj' } },
+      { body: { project_id: 'session-1', name: '研究.wfpj' } },
     ),
   );
   expect(screen.getByRole('textbox', { name: 'Filename' })).toHaveValue('研究');
@@ -57,21 +59,27 @@ it('saves Untitled with a captured session and retains a failed filename', async
   await user.click(screen.getByRole('button', { name: 'Save', exact: true }));
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 });
-it('requires explicit discard after the host reports an Untitled project', async () => {
+it('requires explicit discard when closing a shared Untitled project', async () => {
   const user = userEvent.setup();
   mount();
   request.mockRejectedValueOnce(
     new ProjectError('Save first', '{"error":{"code":"save_required"}}'),
   );
   await user.click(screen.getByRole('button', { name: 'Project', exact: true }));
-  await user.click(screen.getByRole('menuitem', { name: 'New project' }));
+  await user.click(screen.getByRole('menuitem', { name: 'Close project…' }));
+  await user.click(screen.getByRole('button', { name: 'Close project', exact: true }));
   await screen.findByRole('button', { name: 'Discard' });
   expect(request).toHaveBeenCalledTimes(1);
   request.mockResolvedValueOnce({});
   await user.click(screen.getByRole('button', { name: 'Discard' }));
   await waitFor(() =>
-    expect(request).toHaveBeenLastCalledWith('/user/me/proxy/8002', '/api/server/project', 'post', {
-      body: { session_id: 'session-1', name: null, discard_untitled: true, interrupt: false },
-    }),
+    expect(request).toHaveBeenLastCalledWith(
+      '/user/me/proxy/8002',
+      '/api/server/project/close',
+      'post',
+      {
+        body: { project_id: 'session-1', discard_untitled: true, interrupt: false },
+      },
+    ),
   );
 });

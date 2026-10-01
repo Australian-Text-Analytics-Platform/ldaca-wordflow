@@ -88,6 +88,7 @@ pub(crate) async fn import(
         };
         let id = input.identifier.clone();
         context.progress("Converting documents", None);
+        let temporary = project.temporary_directory()?;
         let staged = context.run_blocking(move |context| {
             let result = if documents.is_empty() {
                 ldaca_rs::data::profiles::wordflow_metadata(&krate, &id, None)
@@ -95,7 +96,7 @@ pub(crate) async fn import(
                 ldaca_rs::data::profiles::document_table(&documents, &texts)
             }.map_err(portal_error)?;
             context.check_cancelled()?;
-            let file = tempfile::tempdir()?;
+            let file = tempfile::tempdir_in(&temporary)?;
             result.write(&file.path().join("import.parquet"), ldaca_rs::data::table::ExportFormat::Parquet)
                 .map_err(portal_error)?;
             context.check_cancelled()?;

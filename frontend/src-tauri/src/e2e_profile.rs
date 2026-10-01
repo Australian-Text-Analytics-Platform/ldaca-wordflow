@@ -34,16 +34,24 @@ pub(crate) fn remove_store_process(context: tauri::Context<tauri::Wry>) {
 }
 
 pub(crate) struct Profile {
-    pub directory: tempfile::TempDir,
+    _directory: tempfile::TempDir,
     #[cfg(target_os = "macos")]
     identifier: [u8; 16],
 }
 impl Profile {
     pub fn new() -> std::io::Result<Self> {
         Ok(Self {
-            directory: match std::env::var_os("WORDFLOW_E2E_PROFILE_DIR") {
+            _directory: match std::env::var_os("WORDFLOW_E2E_PROFILE_DIR") {
                 Some(root) => tempfile::tempdir_in(root)?,
-                None => tempfile::tempdir()?,
+                None => {
+                    let directory =
+                        wordflow_storage::AppDirectories::native(wordflow_storage::TEST_ID)
+                            .map_err(std::io::Error::other)?
+                            .temporary;
+                    wordflow_storage::private_directory(&directory)
+                        .map_err(std::io::Error::other)?;
+                    tempfile::tempdir_in(directory)?
+                }
             },
             #[cfg(target_os = "macos")]
             identifier: *match std::env::var("WORDFLOW_E2E_STORE_ID") {
@@ -60,7 +68,7 @@ impl Profile {
         }
         #[cfg(not(target_os = "macos"))]
         {
-            config.data_directory = Some(self.directory.path().join("webview"));
+            config.data_directory = Some(self._directory.path().join("webview"));
         }
     }
 }

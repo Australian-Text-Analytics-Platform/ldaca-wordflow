@@ -22,14 +22,14 @@ Both hosts interrupt current work and await graceful completion without a deadli
 ## Application Settings
 
 The embedded backend has no machine settings JSON file, backend selector,
-stored backend URL, or Data Root setting. Project data and preferences belong
-in the open `.wfpj`; its path is owned by the document window.
+stored backend URL, or Data Root setting. Project data and project preferences belong in the open `.wfpj`; its path is
+owned by the document window. Application preferences have a separate host owner.
 
 Tauri owns `updater-settings.json` in its application-data directory
 (`~/Library/Application Support/au.edu.ldaca.wordflow/` on macOS). It contains
-`automaticChecks`, `lastCheckAt`, and `skippedVersion`. Renderer-local theme
-and recent-import preferences use webview local storage. These stores have
-separate owners and are not an experimental backend configuration.
+`automaticChecks`, `lastCheckAt`, and `skippedVersion`. Theme, layout and recent-import preferences use the resolved config directory
+and the [typed application preferences adapter](application-storage.md). These
+stores have separate owners.
 
 Old experiment/QA application identifiers and their preferences or caches are
 not read or migrated. Removing those local artifacts needs no application

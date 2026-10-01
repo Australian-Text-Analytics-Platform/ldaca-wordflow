@@ -316,12 +316,7 @@ async fn export(
     }
     // Like browser node exports, this prepares bytes; native installation owns its task after choosing a destination.
     let file = project
-        .export_frequency_into(
-            id,
-            input.query,
-            input.format,
-            tempfile::NamedTempFile::new()?,
-        )
+        .export_frequency_into(id, input.query, input.format, project.temporary_file()?)
         .await?;
     file_response(
         file,
@@ -628,8 +623,10 @@ async fn create_codebook(
 async fn run_annotation(
     State(project): State<ProjectRuntime>,
     Path(id): Path<Uuid>,
+    headers: axum::http::HeaderMap,
     InputJson(input): InputJson<annotation::execution::Request>,
 ) -> Result<axum::response::Response> {
+    let project = project.for_request(&headers)?;
     let task = project.submit_annotation(id, input).await?;
     let id = task.id;
     identified_task_response(id, task.wait().await.map(Json).into_response())
@@ -644,8 +641,10 @@ async fn run_annotation(
 async fn preview_annotation(
     State(project): State<ProjectRuntime>,
     Path(id): Path<Uuid>,
+    headers: axum::http::HeaderMap,
     InputJson(input): InputJson<annotation::execution::PreviewRequest>,
 ) -> Result<axum::response::Response> {
+    let project = project.for_request(&headers)?;
     file_response(
         project.annotation_preview(id, input).await?,
         "application/vnd.apache.arrow.stream",

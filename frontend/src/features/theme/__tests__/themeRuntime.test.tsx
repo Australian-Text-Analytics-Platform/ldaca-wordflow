@@ -1,55 +1,37 @@
 import { act, renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
-
+const patch = vi.hoisted(() => vi.fn());
+vi.mock('@/features/preferences/preferences', () => ({ patchPreferences: patch }));
 import {
   applyColorTheme,
   DARK_THEME,
   getActiveTheme,
   LIGHT_THEME,
-  startThemeStorageSync,
-  THEME_STORAGE_KEY,
   useActiveTheme,
 } from '../themeRuntime';
-
 describe('theme runtime', () => {
   beforeEach(() => {
+    patch.mockResolvedValue(undefined);
+    applyColorTheme(LIGHT_THEME, false);
     localStorage.clear();
-    applyColorTheme(LIGHT_THEME);
   });
-
-  it('applies and publishes both supported themes to the root and startup cache', () => {
+  it('publishes a confirmed host theme to the root and subscribers', () => {
     const view = renderHook(() => useActiveTheme());
-
-    act(() => applyColorTheme(DARK_THEME));
-
+    act(() => applyColorTheme(DARK_THEME, false));
     expect(view.result.current).toBe(DARK_THEME);
     expect(getActiveTheme()).toBe(DARK_THEME);
-    expect(document.documentElement.dataset.theme).toBe(DARK_THEME);
     expect(document.documentElement.style.colorScheme).toBe('dark');
-    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe(DARK_THEME);
+    expect(localStorage.length).toBe(0);
   });
-
-  it('continues applying the account theme when startup storage is unavailable', () => {
-    const storage = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
-      throw new DOMException('storage unavailable');
-    });
-
-    expect(() => applyColorTheme(DARK_THEME)).not.toThrow();
-    expect(document.documentElement.dataset.theme).toBe(DARK_THEME);
-    storage.mockRestore();
+  it('requests a field patch and waits for host confirmation', () => {
+    applyColorTheme(DARK_THEME);
+    expect(patch).toHaveBeenCalledWith({ theme: DARK_THEME });
+    expect(getActiveTheme()).toBe(LIGHT_THEME);
   });
-
-  it('accepts valid cross-window cache events and ignores invalid values', () => {
-    const stop = startThemeStorageSync();
+  it('ignores obsolete browser-local theme events', () => {
     window.dispatchEvent(
-      new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: DARK_THEME }),
+      new StorageEvent('storage', { key: 'ldaca-color-theme-v1', newValue: DARK_THEME }),
     );
-    expect(getActiveTheme()).toBe(DARK_THEME);
-
-    window.dispatchEvent(
-      new StorageEvent('storage', { key: THEME_STORAGE_KEY, newValue: 'system' }),
-    );
-    expect(getActiveTheme()).toBe(DARK_THEME);
-    stop();
+    expect(getActiveTheme()).toBe(LIGHT_THEME);
   });
 });

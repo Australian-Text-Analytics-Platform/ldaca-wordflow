@@ -107,7 +107,9 @@ fn fresh_extract_dir(root: &Path, kind: LinderaDict) -> Result<PathBuf> {
 /// Returns the absolute path to the extracted dict directory. Downloads
 /// + extracts the official Lindera release zip on cache miss.
 pub fn ensure_dict(kind: LinderaDict) -> Result<PathBuf> {
-    let root = cache_root()?;
+    ensure_dict_in(kind, &cache_root()?)
+}
+fn ensure_dict_in(kind: LinderaDict, root: &Path) -> Result<PathBuf> {
     let dict_dir = root.join(kind.cache_subdir());
 
     // Sentinel: lindera dicts always include matrix.mtx. If it's there
@@ -116,14 +118,14 @@ pub fn ensure_dict(kind: LinderaDict) -> Result<PathBuf> {
         return Ok(dict_dir);
     }
 
-    fs::create_dir_all(&root).with_context(|| format!("Failed to create cache dir {root:?}"))?;
+    fs::create_dir_all(root).with_context(|| format!("Failed to create cache dir {root:?}"))?;
 
     with_file_lock(&dict_dir, || {
         if dict_dir.join("matrix.mtx").is_file() {
             return Ok(());
         }
 
-        let extract_dir = fresh_extract_dir(&root, kind)?;
+        let extract_dir = fresh_extract_dir(root, kind)?;
         let archive_bytes = download_archive(kind)?;
         extract_zip(&archive_bytes, &extract_dir)
             .with_context(|| format!("Failed to extract {}", kind.archive_name()))?;
@@ -185,6 +187,14 @@ fn lindera_tokenizer_from_path(path: &Path) -> Result<LinderaTokenizer> {
 /// the dict-load step.
 pub fn ensure_lindera_tokenizer(kind: LinderaDict) -> Result<LinderaTokenizer> {
     let dict_dir = ensure_dict(kind)?;
+    lindera_tokenizer_from_path(&dict_dir)
+}
+
+pub(crate) fn ensure_lindera_tokenizer_in(
+    kind: LinderaDict,
+    root: &Path,
+) -> Result<LinderaTokenizer> {
+    let dict_dir = ensure_dict_in(kind, root)?;
     lindera_tokenizer_from_path(&dict_dir)
 }
 

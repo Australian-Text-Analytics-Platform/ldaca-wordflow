@@ -1,6 +1,27 @@
 {
   "components": {
     "schemas": {
+      "Account": {
+        "properties": {
+          "browser_credentials": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "browser_credentials"
+        ],
+        "type": "object"
+      },
       "Analysis": {
         "properties": {
           "created_at": {
@@ -1432,7 +1453,8 @@
         "enum": [
           "none",
           "session",
-          "remembered"
+          "remembered",
+          "browser"
         ],
         "type": "string"
       },
@@ -1484,6 +1506,20 @@
             },
             "required": [
               "key",
+              "action"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "action": {
+                "enum": [
+                  "browser"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
               "action"
             ],
             "type": "object"
@@ -2634,6 +2670,56 @@
         ],
         "type": "object"
       },
+      "LayoutPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "asidePanelRatio": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "projectGraphRatio": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "sidebarWidth": {
+            "format": "double",
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "LayoutPreferences": {
+        "additionalProperties": false,
+        "properties": {
+          "asidePanelRatio": {
+            "format": "double",
+            "type": "number"
+          },
+          "projectGraphRatio": {
+            "format": "double",
+            "type": "number"
+          },
+          "sidebarWidth": {
+            "format": "double",
+            "type": "number"
+          }
+        },
+        "required": [
+          "sidebarWidth",
+          "asidePanelRatio",
+          "projectGraphRatio"
+        ],
+        "type": "object"
+      },
       "LdacaImport": {
         "additionalProperties": false,
         "properties": {
@@ -3231,6 +3317,96 @@
             "type": "object"
           }
         ]
+      },
+      "PreferenceErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/PreferenceFailure"
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "type": "object"
+      },
+      "PreferenceFailure": {
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "message"
+        ],
+        "type": "object"
+      },
+      "Preferences": {
+        "additionalProperties": false,
+        "properties": {
+          "layout": {
+            "$ref": "#/components/schemas/LayoutPreferences"
+          },
+          "recentDataFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "schemaVersion": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "theme": {
+            "$ref": "#/components/schemas/Theme"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "theme",
+          "layout",
+          "recentDataFiles"
+        ],
+        "type": "object"
+      },
+      "PreferencesPatch": {
+        "additionalProperties": false,
+        "properties": {
+          "layout": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/LayoutPatch"
+              }
+            ]
+          },
+          "recentDataFiles": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
+          "theme": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Theme"
+              }
+            ]
+          }
+        },
+        "type": "object"
       },
       "PrepareStopwords": {
         "additionalProperties": false,
@@ -4347,20 +4523,61 @@
         ],
         "type": "string"
       },
+      "ServerClose": {
+        "additionalProperties": false,
+        "properties": {
+          "discard_untitled": {
+            "type": "boolean"
+          },
+          "interrupt": {
+            "type": "boolean"
+          },
+          "project_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
       "ServerImport": {
         "additionalProperties": false,
         "properties": {
           "name": {
             "type": "string"
           },
-          "session_id": {
+          "project_id": {
             "format": "uuid",
             "type": "string"
           }
         },
         "required": [
-          "session_id",
+          "project_id",
           "name"
+        ],
+        "type": "object"
+      },
+      "ServerProject": {
+        "properties": {
+          "project": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ProjectInfo"
+              }
+            ]
+          },
+          "project_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
         ],
         "type": "object"
       },
@@ -4373,66 +4590,44 @@
               "null"
             ]
           },
-          "session_id": {
+          "project_id": {
             "format": "uuid",
             "type": "string"
           }
         },
         "required": [
-          "session_id"
+          "project_id"
         ],
         "type": "object"
       },
       "ServerStatus": {
         "properties": {
-          "project": {
-            "oneOf": [
-              {
-                "type": "null"
-              },
-              {
-                "$ref": "#/components/schemas/ProjectInfo"
-              }
-            ]
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ServerProject"
+            },
+            "type": "array"
           },
           "public_base_path": {
-            "type": "string"
-          },
-          "session_id": {
-            "format": "uuid",
             "type": "string"
           }
         },
         "required": [
-          "session_id",
-          "public_base_path"
+          "public_base_path",
+          "projects"
         ],
         "type": "object"
       },
       "ServerSwitch": {
         "additionalProperties": false,
         "properties": {
-          "discard_untitled": {
-            "type": "boolean"
-          },
-          "interrupt": {
-            "type": "boolean"
-          },
           "name": {
-            "description": "Absent for a new Untitled project; otherwise an existing library project filename.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "session_id": {
-            "format": "uuid",
-            "type": "string"
           }
         },
-        "required": [
-          "session_id"
-        ],
         "type": "object"
       },
       "SessionInfo": {
@@ -4893,6 +5088,13 @@
           "error"
         ],
         "type": "object"
+      },
+      "Theme": {
+        "enum": [
+          "light-2026",
+          "dark-2026"
+        ],
+        "type": "string"
       },
       "TimeUnit": {
         "enum": [
@@ -5565,6 +5767,34 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/account": {
+      "get": {
+        "operationId": "account",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": ""
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": []
+      }
+    },
     "/api/ai/providers": {
       "get": {
         "operationId": "ai_http_list",
@@ -6078,6 +6308,133 @@
         "tags": [
           "ai_http"
         ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "responses": {
+          "204": {
+            "description": "Presented session revoked"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        },
+        "tags": []
+      }
+    },
+    "/api/preferences": {
+      "get": {
+        "operationId": "get_preferences",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patch_preferences",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreferencesPatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/preferences/events": {
+      "get": {
+        "operationId": "preference_events",
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/preferences/reset": {
+      "post": {
+        "operationId": "reset_preferences",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Preferences"
+                }
+              }
+            },
+            "description": ""
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreferenceErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
       }
     },
     "/api/project": {
@@ -17299,7 +17656,7 @@
                 }
               }
             },
-            "description": "Active project session identifiers as SSE data"
+            "description": "User project registry and application preference invalidations"
           }
         }
       }
@@ -17527,7 +17884,7 @@
     },
     "/api/server/project": {
       "post": {
-        "operationId": "server_switch",
+        "operationId": "server_open",
         "requestBody": {
           "content": {
             "application/json": {
@@ -17543,7 +17900,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServerStatus"
+                  "$ref": "#/components/schemas/ServerProject"
                 }
               }
             },
@@ -17558,6 +17915,36 @@
               }
             },
             "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/server/project/close": {
+      "post": {
+        "operationId": "server_close",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerClose"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Shared project closed"
           },
           "409": {
             "content": {
@@ -17590,7 +17977,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ServerStatus"
+                  "$ref": "#/components/schemas/ServerProject"
                 }
               }
             },
@@ -17601,6 +17988,44 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/server/project/{id}": {
+      "get": {
+        "operationId": "server_project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerProject"
                 }
               }
             },

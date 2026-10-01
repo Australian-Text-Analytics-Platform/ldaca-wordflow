@@ -1,12 +1,11 @@
+import { setTestPreferences } from './fixtures';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { role, screenshot } from './fixtures';
 
 for (const theme of ['light-2026', 'dark-2026']) {
   it(`tutorial Markdown remains readable in ${theme}`, async () => {
-    await browser.addInitScript((value) => {
-      localStorage.setItem('ldaca-color-theme-v1', value);
-    }, theme);
+    await setTestPreferences({ theme });
     await browser.url('/');
     await expect(role('heading', { name: 'Project Graph', exact: true })).toBeDisplayed();
     await role('button', { name: 'Project Graph', exact: true }).click();

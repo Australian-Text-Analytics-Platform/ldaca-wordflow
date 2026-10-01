@@ -26,7 +26,7 @@ export function DataLoaderWorkspace({
       if (!server) return;
       const {
         base: host,
-        status: { session_id: session },
+        status: { project_id: session },
       } = server;
       for (const file of files) {
         const stored = await uploadFile(host, 'data', file);

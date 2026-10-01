@@ -42,7 +42,7 @@ impl Database {
         if let Query::Diagnostics { page, page_size } = query {
             let offset = page_offset(page, page_size)?;
             let relation = analyses::artifact_relation(&self.conn, id, report.diagnostics)?;
-            let mut file = tempfile::NamedTempFile::new()?;
+            let mut file = temporary_file(&self.conn)?;
             execute_statements(
                 &self.conn,
                 &[SqlStatement {
@@ -142,7 +142,7 @@ impl Database {
             })?,
         );
         let schema = Arc::new(Schema::new_with_metadata(schema.fields().clone(), metadata));
-        let mut file = tempfile::NamedTempFile::new()?;
+        let mut file = temporary_file(&self.conn)?;
         let mut writer = StreamWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
         for batch in batches {
             writer

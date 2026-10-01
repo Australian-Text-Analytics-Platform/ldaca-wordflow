@@ -15,8 +15,8 @@ export async function quotationModel() {
   return { filename: constant('MODEL_FILENAME'), url: constant('MODEL_URL'), sha256: constant('MODEL_SHA256') };
 }
 
-export function quotationModelPath(filename, env = process.env, platform = process.platform) {
-  return join(applicationCacheDirectory(TEST_IDENTITY, env, platform), 'udpipe', filename);
+export function quotationModelPath(filename, env = process.env) {
+  return join(applicationCacheDirectory(TEST_IDENTITY, env), 'udpipe', filename);
 }
 
 function verify(bytes, sha256) {

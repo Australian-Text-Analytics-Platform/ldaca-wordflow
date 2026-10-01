@@ -103,6 +103,7 @@ export default defineConfig(({ mode }) => {
     host: '127.0.0.1',
     strictPort: true,
     proxy: mode !== 'tauri' ? {
+      '/api/preferences': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
       '/api/ai': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
       '/api/project': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
       '/api/resources': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,

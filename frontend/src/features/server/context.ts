@@ -1,10 +1,12 @@
 import { createContext, use } from 'react';
 import type { components } from '@/api/generated/native';
 
-export type ServerStatus = components['schemas']['ServerStatus'];
+export type ServerStatus = components['schemas']['ServerProject'];
 export const ServerContext = createContext<{
   base: string;
   status: ServerStatus;
+  projects: ServerStatus[];
+  select: (id: string | null) => void;
   refresh: () => Promise<void>;
 } | null>(null);
 export const useServer = () => use(ServerContext);

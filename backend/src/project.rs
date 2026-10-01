@@ -139,6 +139,7 @@ struct Database {
     conn: Connection,
     cancellation: CancellationToken,
     changes: changes::Notifications,
+    model_assets: Option<ldaca_rs::model_assets::ModelAssets>,
 }
 impl Database {
     fn new(conn: Connection, cancellation: CancellationToken) -> Result<Self> {
@@ -147,11 +148,13 @@ impl Database {
             conn,
             cancellation,
             changes: changes::Notifications::default(),
+            model_assets: None,
         })
     }
     fn connection(&self, cancellation: CancellationToken) -> Result<Self> {
         let mut database = Self::new(self.conn.try_clone()?, cancellation)?;
         database.changes = self.changes.clone();
+        database.model_assets = self.model_assets.clone();
         Ok(database)
     }
     fn import_tables(&mut self, sources: Vec<(String, SqlStatement)>) -> Result<Vec<String>> {
@@ -284,7 +287,7 @@ impl Database {
         }
         validate_statements(&statements)?;
         let mut file = match batch.response {
-            SqlResponse::Arrow => Some(tempfile::NamedTempFile::new()?),
+            SqlResponse::Arrow => Some(temporary_file(&self.conn)?),
             SqlResponse::Command => None,
         };
         self.conn.execute_batch(if read_only {
@@ -1009,3 +1012,22 @@ pub use runtime::{CloseAttempt, ProjectRuntime};
 pub(crate) use runtime::topic_preview::Update as TopicPreviewUpdate;
 
 pub(crate) mod node_preferences;
+
+/// Use the host-configured DuckDB spill directory for response staging too.
+fn temporary_directory(conn: &Connection) -> Result<PathBuf> {
+    let directory: String =
+        conn.query_row("SELECT current_setting('temp_directory')", [], |row| {
+            row.get(0)
+        })?;
+    let path = PathBuf::from(directory);
+    let directory = if path.is_absolute() {
+        path
+    } else {
+        std::env::temp_dir()
+    };
+    std::fs::create_dir_all(&directory)?;
+    Ok(directory)
+}
+fn temporary_file(conn: &Connection) -> Result<tempfile::NamedTempFile> {
+    Ok(tempfile::NamedTempFile::new_in(temporary_directory(conn)?)?)
+}

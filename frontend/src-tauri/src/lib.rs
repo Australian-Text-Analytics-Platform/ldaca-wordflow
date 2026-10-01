@@ -1,4 +1,4 @@
-mod app_environment;
+mod app_storage;
 mod desktop_updater;
 mod documents;
 mod download;
@@ -119,7 +119,7 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
 /// Tauri wiring and the ordering between those domains.
 pub fn run() {
     let context = tauri::generate_context!();
-    if let Err(error) = app_environment::configure(&context.config().identifier) {
+    if let Err(error) = app_storage::validate_identity(&context.config().identifier) {
         eprintln!("Cannot isolate application storage: {error}");
         std::process::exit(1);
     }
@@ -156,6 +156,9 @@ pub fn run() {
         .manage(desktop_updater::DesktopUpdaterState::default())
         .invoke_handler(tauri::generate_handler![
             get_backend_status,
+            app_storage::get_preferences,
+            app_storage::patch_preferences,
+            app_storage::reset_preferences,
             desktop_updater::get_updater_snapshot,
             desktop_updater::check_for_updates,
             desktop_updater::download_update,
@@ -171,15 +174,13 @@ pub fn run() {
         ])
         .setup(|app| {
             tracing::info!("Initializing desktop shell");
+            let directories = app_storage::directories(app.handle())?;
+            directories.create()?;
+            let provider_path = directories.config.join("ai-providers.json");
+            app.manage(directories);
+            app.manage(app_storage::PreferencesState::default());
             #[cfg(feature = "e2e")]
-            let provider_path = {
-                let profile = e2e_profile::Profile::new()?;
-                let path = profile.directory.path().join("ai-providers.json");
-                app.manage(profile);
-                path
-            };
-            #[cfg(not(feature = "e2e"))]
-            let provider_path = app.path().app_config_dir()?.join("ai-providers.json");
+            app.manage(e2e_profile::Profile::new()?);
             app.manage(wordflow_backend::AiConfiguration::new(
                 &app.config().identifier,
                 provider_path,

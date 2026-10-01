@@ -48,13 +48,22 @@ pub fn get_or_insert_text_values<T>(
 where
     T: TextCacheTable,
 {
+    get_or_insert_text_values_in(path, table, texts, None, compute_misses)
+}
+pub fn get_or_insert_text_values_in<T: TextCacheTable>(
+    path: &Path,
+    table: &T,
+    texts: &[String],
+    temporary: Option<&Path>,
+    compute_misses: impl FnOnce(&[String]) -> Result<Vec<T::Value>>,
+) -> Result<Vec<Arc<T::Value>>> {
     if texts.is_empty() {
         return Ok(Vec::new());
     }
 
     let hashes = texts.iter().map(|text| hash_text(text)).collect::<Vec<_>>();
     let mut cached = with_file_lock(path, || {
-        let conn = open_cache(path, table.schema_sql())?;
+        let conn = open_cache(path, table.schema_sql(), temporary)?;
         table.fetch_cached(&conn, &hashes)
     })?;
 
@@ -80,7 +89,7 @@ where
             .zip(computed.into_iter().map(Arc::new))
             .collect::<Vec<_>>();
         with_file_lock(path, || {
-            let conn = open_cache(path, table.schema_sql())?;
+            let conn = open_cache(path, table.schema_sql(), temporary)?;
             table.persist_new(&conn, &entries)
         })?;
         for (hash, value) in entries {
@@ -116,7 +125,7 @@ fn unique_misses<V>(
     (miss_hashes, miss_texts)
 }
 
-fn open_cache(path: &Path, schema_sql: &str) -> Result<Connection> {
+fn open_cache(path: &Path, schema_sql: &str, temporary: Option<&Path>) -> Result<Connection> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
             .with_context(|| format!("create cache dir {}", parent.display()))?;
@@ -125,6 +134,13 @@ fn open_cache(path: &Path, schema_sql: &str) -> Result<Connection> {
         rebuild_cache(path, schema_sql)?;
     }
     let conn = Connection::open(path).with_context(|| format!("open cache {}", path.display()))?;
+    if let Some(temporary) = temporary {
+        std::fs::create_dir_all(temporary)?;
+        conn.execute(
+            "SET GLOBAL temp_directory = ?",
+            [temporary.to_string_lossy().as_ref()],
+        )?;
+    }
     conn.execute_batch(schema_sql)
         .context("initialize cache schema")?;
     Ok(conn)

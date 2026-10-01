@@ -126,7 +126,7 @@ export function FileLibrary({
                   disabled={operation.isPending}
                   onClick={() => {
                     if (library === 'projects') onOpenProject?.(file.name);
-                    else run(() => importFile(base, server.status.session_id, file.name));
+                    else run(() => importFile(base, server.status.project_id, file.name));
                   }}
                 >
                   {library === 'projects' ? 'Open' : 'Import'}

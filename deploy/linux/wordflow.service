@@ -1,0 +1,24 @@
+[Unit]
+Description=Wordflow multi-user gateway
+After=network-online.target wordflow-egress.service
+Wants=network-online.target
+Requires=wordflow-egress.service
+
+[Service]
+User=wordflow
+Group=wordflow
+EnvironmentFile=/etc/wordflow/gateway.env
+ExecStart=/opt/wordflow/wordflow-server --mode multi-user --bind 127.0.0.1:8002
+Restart=on-failure
+RestartSec=5
+KillMode=process
+TimeoutStopSec=infinity
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/srv/wordflow /run/user
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

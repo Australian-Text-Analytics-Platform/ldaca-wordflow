@@ -31,6 +31,9 @@ identity does not protect a shared `.wfpj` file from concurrent writers.
 Final visual, performance and packaging acceptance uses a **release build without
 WebDriver instrumentation**, retaining the production identity. Run production
 acceptance in a dedicated OS account or VM to preserve the installed app's storage.
+The repository's GitHub-hosted macOS and Windows packaging jobs provide isolated
+VMs for this acceptance; no additional local macOS account is required. See
+[GitHub-hosted runner isolation](https://docs.github.com/en/actions/concepts/runners/github-hosted-runners).
 On macOS in that isolated environment:
 
 ```sh
@@ -108,14 +111,15 @@ These roots own ICU, language assets, Hugging Face models/tokenizers, Lindera
 models, UDPipe and embedding results. Production keeps its existing locations.
 Dev's browser backend uses the same Dev identity and system directories.
 
-Before browser, standalone-server or native E2E setup, the launcher acquires a
-sibling `.test.lock` directory, removes only the Test cache and Test configuration
-folder, and creates an empty cache. It then downloads and verifies the pinned
-Quotation model; other assets download when exercised. Test configuration uses
-`~/Library/Application Support/<identifier>`, `APPDATA/<identifier>` or
-`XDG_CONFIG_HOME/<identifier>` (falling back to `~/.config/<identifier>`).
-E2E provider settings and project files use temporary directories; native webviews
-use a fresh per-run store. Teardown removes Test caches, settings and profiles.
+Before browser, standalone-server or native E2E setup, the launcher obtains the
+shared Rust resolver's JSON paths, acquires a sibling `.test.lock` and clears
+only resolved Test config/data/local-data/cache/log/temp roots. Overlapping
+platform directories are deduplicated. It also deletes only the two Test provider
+credential namespaces through the native credential adapter. A fresh Chrome or
+WebView profile is used. Native providers use Test config; server E2E maps an
+`admin` root beneath Test temporary storage. The pinned Quotation model is
+verified during setup; other assets download when exercised. Teardown repeats
+Test cleanup after owned processes stop.
 Ordinary unit/component tests use mocks or temporary fixtures and do not clear
 system directories. Build outputs and failure logs remain available for diagnosis.
 
@@ -379,4 +383,7 @@ cargo test -p wordflow-backend --locked first_use_download_and_offline_reuse -- 
 `verify-signed-native.sh --online` exercises first use in a signed application;
 its `--offline` mode requires an already populated cache. `prepare-icu.mjs` remains
 an explicit test/offline-installation helper, never an ordinary build hook.
+It downloads the pinned resource by default. `WORDFLOW_ICU_SOURCE` selects an
+explicit source file and fails if that file cannot be read; the helper does not
+read the home directory's DuckDB cache.
 Verify Windows/Linux separately on their target hosts.

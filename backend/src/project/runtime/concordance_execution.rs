@@ -15,9 +15,11 @@ impl ProjectRuntime {
         tokio::spawn(async move {
             let search = input.search.clone();
             let source = input.input.clone();
-            let matcher =
-                tokio::task::spawn_blocking(move || DocumentMatcher::prepare(&search, &source))
-                    .await??;
+            let assets = runtime.model_assets()?;
+            let matcher = tokio::task::spawn_blocking(move || {
+                DocumentMatcher::prepare_in(&search, &source, assets.as_ref())
+            })
+            .await??;
             check_cancellation(&cancellation)?;
             runtime
                 .run_operation(operation, Access::Write, move |database, _| {
@@ -88,6 +90,7 @@ impl ProjectRuntime {
                     .await?;
                 context.progress("Preparing search", None);
                 let request = input.clone();
+                let assets = runtime.model_assets()?;
                 let matchers = context
                     .run_blocking(move |context| {
                         request
@@ -95,7 +98,7 @@ impl ProjectRuntime {
                             .iter()
                             .map(|input| {
                                 context.check_cancelled()?;
-                                DocumentMatcher::prepare(&request.search, input)
+                                DocumentMatcher::prepare_in(&request.search, input, assets.as_ref())
                             })
                             .collect::<Result<Vec<_>>>()
                     })

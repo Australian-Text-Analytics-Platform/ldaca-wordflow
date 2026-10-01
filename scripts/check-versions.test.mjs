@@ -15,6 +15,8 @@ test('one registry includes all release Rust packages in the workspace lock', ()
             'Cargo.lock',
             'server/Cargo.toml',
             'Cargo.lock',
+            'storage/Cargo.toml',
+            'Cargo.lock',
         ],
     );
 });
@@ -29,6 +31,8 @@ test('each target extracts its replacement from a representative fixture', () =>
         '[[package]]\nname = "wordflow-backend"\nversion = "0.5.0"',
         'version = "0.5.0"',
         '[[package]]\nname = "wordflow-server"\nversion = "0.5.0"',
+        'version = "0.5.0"',
+        '[[package]]\nname = "wordflow-storage"\nversion = "0.5.0"',
     ];
     VERSION_TARGETS.forEach((target, index) => {
         const replaced = target.replace(fixtures[index], '0.6.0');

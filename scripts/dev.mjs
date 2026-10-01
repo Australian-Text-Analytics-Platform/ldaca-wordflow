@@ -39,7 +39,7 @@ export function createDevCommands(mode, environment = process.env) {
     prefixColor: 'blue',
     env: {
       ...applicationEnvironment(identity, { ...process.env, ...environment }),
-      WORDFLOW_CONFIG_DIR: identity === TEST_IDENTITY ? environment.WORDFLOW_CONFIG_DIR : undefined,
+      WORDFLOW_CONFIG_DIR: undefined,
       WORDFLOW_BIND_ADDR: `127.0.0.1:${backendPort}`,
       CORS_ALLOWED_ORIGINS:
         environment.CORS_ALLOWED_ORIGINS ??

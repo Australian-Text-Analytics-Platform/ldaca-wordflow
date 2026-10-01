@@ -45,9 +45,12 @@ impl Project {
         })
     }
     pub(super) fn untitled() -> Result<Self> {
+        Self::untitled_in(&std::env::temp_dir())
+    }
+    pub(super) fn untitled_in(directory: &Path) -> Result<Self> {
         let temporary = tempfile::Builder::new()
             .prefix("wordflow-untitled-")
-            .tempdir()?;
+            .tempdir_in(directory)?;
         let mut project = Self::create(&temporary.path().join("untitled.wfpj"))?;
         project.temporary = Some(temporary);
         Ok(project)
@@ -90,6 +93,21 @@ impl Project {
             std::fs::hard_link(&staged, path)?;
         }
         let mut saved = Self::open(path)?;
+        saved.database.model_assets = self.database.model_assets.clone();
+        let temporary = temporary_directory(&self.database.conn)?;
+        saved.database.conn.execute(
+            "SET GLOBAL temp_directory = ?",
+            params![temporary.to_string_lossy()],
+        )?;
+        let extensions: String = self.database.conn.query_row(
+            "SELECT current_setting('extension_directory')",
+            [],
+            |row| row.get(0),
+        )?;
+        saved
+            .database
+            .conn
+            .execute("SET GLOBAL extension_directory = ?", params![extensions])?;
         // Save As replaces the database, not the runtime's change subscriptions.
         saved.database.changes = self.database.changes.clone();
         *self = saved;

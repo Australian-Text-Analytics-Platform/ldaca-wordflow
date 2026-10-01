@@ -1,7 +1,6 @@
 /** Build-time provisioning only. DuckDB checks the extension signature when loading. */
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
@@ -30,14 +29,12 @@ if (!platform)
 
 const root = path.resolve(argument('--output-dir') ?? fileURLToPath(new URL('../src-tauri/resources/icu/', import.meta.url)));
 const filename = 'icu.duckdb_extension';
-const source =
-  process.env.WORDFLOW_ICU_SOURCE ??
-  path.join(homedir(), '.duckdb/extensions', version, platform, filename);
+const source = process.env.WORDFLOW_ICU_SOURCE;
 const url = `https://extensions.duckdb.org/${version}/${platform}/${filename}.gz`;
 let bytes;
-try {
-  bytes = await readFile(source);
-} catch {
+if (source) {
+  bytes = await readFile(path.resolve(source));
+} else {
   const response = await fetch(url);
   if (!response.ok) throw new Error(`ICU provisioning failed: ${response.status} ${url}`);
   bytes = gunzipSync(Buffer.from(await response.arrayBuffer()));
