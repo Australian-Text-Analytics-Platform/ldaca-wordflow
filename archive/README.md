@@ -11,7 +11,7 @@ supported compatibility distribution.
 | `polars-source-utils/` | Retired serialized Polars-plan source paths, available in repository history; its upstream no longer serves the pinned commit |
 | `pyproject.toml`, `uv.lock`, `.python-version` | Former root Python environment definition |
 | `scripts/`, `tests/` | Python distribution/runtime checks and old development/staging helpers |
-| `frontend/` | FastAPI shell, authentication, Data Root, project catalogue, task streams, inactive analysis controllers, generated contracts, exclusive tests/utilities, old tutorials and browser/build tooling |
+| `frontend/` | FastAPI shell, authentication, Data Root, project catalogue, task streams, inactive analysis controllers, generated contracts, exclusive tests/utilities, old tutorials, unused documentation images and browser/build tooling |
 | `.github/workflows/` | Previous Python release workflow and complete pre-archive CI snapshot |
 | `legacy-overview.md` and `docs/` | Former architecture, FastAPI settings and development instructions |
 

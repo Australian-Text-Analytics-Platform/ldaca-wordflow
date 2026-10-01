@@ -1,7 +1,7 @@
 # Current application tour
 
-The left sidebar contains Tools, Data Blocks and the Task Centre. Data Loader,
-Preprocessing and Frequency are available; other analysis tools remain disabled.
+The left sidebar contains Tools, Data Blocks and the Task Centre. Use Tools to
+switch between imports, preprocessing, analyses and export.
 
 The center displays the active tool. The right column contains Project Graph
 and independently opened data previews. Selecting a graph card and opening its

@@ -33,9 +33,3 @@ export function createWildcardMatcher(query: string): ((candidate: string) => bo
   const needle = trimmed.toLowerCase();
   return (candidate) => candidate.toLowerCase().includes(needle);
 }
-
-/** Filters `values` by `query`, preserving the caller's original ordering. */
-export function filterByWildcard(values: string[], query: string): string[] {
-  const matches = createWildcardMatcher(query);
-  return matches ? values.filter(matches) : values;
-}

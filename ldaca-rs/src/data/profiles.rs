@@ -1,13 +1,13 @@
 //! Explicit compatibility profiles. Generic conversion never selects these implicitly.
 use crate::data::{
-    metadata::{as_list, entity_types, first_string, reference},
+    metadata::{entity_types, first_string},
     table::Row,
     tabulate::{convert, Config},
     Error, Result, RoCrate, Table,
 };
 use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::collections::HashMap;
 use url::Url;
 
@@ -176,11 +176,4 @@ pub fn document_table(documents: &[Document], texts: &IndexMap<String, String>) 
             "text",
         ],
     )
-}
-pub fn reference_ids(entity: &Map<String, Value>, property: &str) -> Vec<String> {
-    as_list(entity.get(property).unwrap_or(&Value::Null))
-        .into_iter()
-        .filter_map(reference)
-        .map(str::to_owned)
-        .collect()
 }

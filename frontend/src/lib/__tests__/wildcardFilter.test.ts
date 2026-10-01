@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 
-import { createWildcardMatcher, filterByWildcard } from '../wildcardFilter';
+import { createWildcardMatcher } from '../wildcardFilter';
 
 const COLUMNS = [
   'speaker_id',
@@ -16,41 +16,43 @@ describe('createWildcardMatcher', () => {
     expect(createWildcardMatcher('')).toBeNull();
     expect(createWildcardMatcher('   ')).toBeNull();
   });
-});
-
-describe('filterByWildcard', () => {
-  it('returns every value when the query is blank', () => {
-    expect(filterByWildcard(COLUMNS, '  ')).toEqual(COLUMNS);
-  });
-
   it('matches case-insensitive substrings for plain queries', () => {
-    expect(filterByWildcard(COLUMNS, 'speaker')).toEqual(['speaker_id', 'Speaker_Name']);
-    expect(filterByWildcard(COLUMNS, 'TEXT')).toEqual(['utterance_text']);
+    expect(COLUMNS.filter(createWildcardMatcher('speaker')!)).toEqual([
+      'speaker_id',
+      'Speaker_Name',
+    ]);
+    expect(COLUMNS.filter(createWildcardMatcher('TEXT')!)).toEqual(['utterance_text']);
   });
 
   it('treats * as any run of characters, anchored to the whole name', () => {
-    expect(filterByWildcard(COLUMNS, 'utterance*')).toEqual(['utterance_text', 'utterance.count']);
-    expect(filterByWildcard(COLUMNS, '*_id')).toEqual(['speaker_id']);
-    expect(filterByWildcard(COLUMNS, '*')).toEqual(COLUMNS);
+    expect(COLUMNS.filter(createWildcardMatcher('utterance*')!)).toEqual([
+      'utterance_text',
+      'utterance.count',
+    ]);
+    expect(COLUMNS.filter(createWildcardMatcher('*_id')!)).toEqual(['speaker_id']);
+    expect(COLUMNS.filter(createWildcardMatcher('*')!)).toEqual(COLUMNS);
   });
 
   it('treats ? as exactly one character', () => {
-    expect(filterByWildcard(['a1', 'a12', 'b1'], 'a?')).toEqual(['a1']);
+    expect(['a1', 'a12', 'b1'].filter(createWildcardMatcher('a?')!)).toEqual(['a1']);
   });
 
   it('anchors wildcard queries, so a bare fragment does not match', () => {
-    expect(filterByWildcard(COLUMNS, 'speaker*')).toEqual(['speaker_id', 'Speaker_Name']);
-    expect(filterByWildcard(COLUMNS, '*eaker')).toEqual([]);
+    expect(COLUMNS.filter(createWildcardMatcher('speaker*')!)).toEqual([
+      'speaker_id',
+      'Speaker_Name',
+    ]);
+    expect(COLUMNS.filter(createWildcardMatcher('*eaker')!)).toEqual([]);
   });
 
   it('matches regex metacharacters in column names literally', () => {
-    expect(filterByWildcard(COLUMNS, 'utterance.')).toEqual(['utterance.count']);
-    expect(filterByWildcard(COLUMNS, '(2024)')).toEqual(['session (2024)']);
-    expect(filterByWildcard(COLUMNS, 'session*')).toEqual(['session (2024)']);
+    expect(COLUMNS.filter(createWildcardMatcher('utterance.')!)).toEqual(['utterance.count']);
+    expect(COLUMNS.filter(createWildcardMatcher('(2024)')!)).toEqual(['session (2024)']);
+    expect(COLUMNS.filter(createWildcardMatcher('session*')!)).toEqual(['session (2024)']);
   });
 
   it('preserves the original column order', () => {
-    expect(filterByWildcard(COLUMNS, '*e*')).toEqual([
+    expect(COLUMNS.filter(createWildcardMatcher('*e*')!)).toEqual([
       'speaker_id',
       'Speaker_Name',
       'utterance_text',

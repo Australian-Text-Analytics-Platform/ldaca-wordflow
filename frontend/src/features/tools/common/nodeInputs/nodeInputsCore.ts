@@ -23,11 +23,6 @@ export interface NodeInput {
   column?: string | null;
 }
 
-export interface NodeSelectionInput {
-  nodeId: string;
-  column?: string | null;
-}
-
 /** Per-tool constraints that gate which nodes/columns are valid inputs. */
 export interface NodeInputConstraints {
   /** Retain saved selections, including empty or unavailable columns, for explicit replacement. */
@@ -61,18 +56,6 @@ export interface NodeAddRejection {
 
 /** Optional typed-column getter from ``useNodeColumnInfos``. */
 export type ColumnInfoGetter = (node: NodeMetadata) => ColumnInfo[] | undefined;
-
-/**
- * Converts feature-local node/column selections into the persisted tab input shape.
- * Called by: analysis feature hydration and handoff paths that receive
- * `{nodeId, column}` selections from task requests, token-frequency handoff,
- * or generated node lists before committing them through `onTabInputSetChange`.
- */
-export function nodeInputsFromSelections(selections: NodeSelectionInput[]): NodeInput[] {
-  return selections
-    .filter((selection) => selection.nodeId)
-    .map((selection) => ({ node_id: selection.nodeId, column: selection.column ?? null }));
-}
 
 /**
  * Builds a node-id → live-node lookup from the project node list.

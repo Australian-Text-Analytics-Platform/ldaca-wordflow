@@ -6,7 +6,6 @@ import {
   type NodeInput,
   buildNodeMap,
   defaultColumnForNode,
-  nodeInputsFromSelections,
   resolveNodeInputs,
   validateAdd,
 } from '../nodeInputsCore';
@@ -33,21 +32,6 @@ const columnInfos = (node: NodeMetadata) => {
 };
 
 const map = buildNodeMap(nodes);
-
-describe('nodeInputsFromSelections', () => {
-  it('normalizes selection objects into persisted node inputs', () => {
-    expect(
-      nodeInputsFromSelections([
-        { nodeId: 'n1', column: 'text' },
-        { nodeId: '', column: 'ignored' },
-        { nodeId: 'n2' },
-      ]),
-    ).toEqual([
-      { node_id: 'n1', column: 'text' },
-      { node_id: 'n2', column: null },
-    ]);
-  });
-});
 
 describe('validateAdd', () => {
   it('rejects unknown nodes', () => {
