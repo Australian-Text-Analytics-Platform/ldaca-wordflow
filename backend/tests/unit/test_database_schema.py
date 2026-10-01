@@ -75,10 +75,39 @@ async def test_user_storage_quota_defaults_nullable_and_positive_only(
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("stored_version", [1, 6])
+async def test_a_version_6_database_with_the_same_schema_is_upgraded(
+    tmp_path: Path,
+) -> None:
+    """0.7.6 servers wrote version 6 with the same tables (issue 250)."""
+    database = Database(tmp_path / "users.db")
+    await database.initialize()
+    async with aiosqlite.connect(database.path) as connection:
+        await connection.execute(
+            "INSERT INTO users (id, email, name, created_at) VALUES (?, ?, ?, ?)",
+            ("user-1", "a@example.test", "A", "2026-08-28T00:00:00+00:00"),
+        )
+        await connection.execute("PRAGMA user_version = 6")
+        await connection.commit()
+
+    await database.initialize()
+
+    async with aiosqlite.connect(database.path) as connection:
+        version = await (await connection.execute("PRAGMA user_version")).fetchone()
+        rows = await (await connection.execute("SELECT id FROM users")).fetchall()
+    assert version == (7,)
+    assert rows == [("user-1",)]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    ("stored_version", "reason"),
+    # Version 6 is only upgraded when its structure is version 7's (issue 250).
+    [(1, "schema version"), (6, "table set")],
+)
 async def test_existing_schema_marker_is_rejected_without_relabeling(
     tmp_path: Path,
     stored_version: int,
+    reason: str,
 ) -> None:
     database = Database(tmp_path / "users.db")
     async with aiosqlite.connect(database.path) as connection:
@@ -86,7 +115,7 @@ async def test_existing_schema_marker_is_rejected_without_relabeling(
         await connection.execute(f"PRAGMA user_version = {stored_version}")
         await connection.commit()
 
-    with pytest.raises(RuntimeError, match="schema version"):
+    with pytest.raises(RuntimeError, match=reason):
         await database.initialize()
 
     async with aiosqlite.connect(database.path) as connection:

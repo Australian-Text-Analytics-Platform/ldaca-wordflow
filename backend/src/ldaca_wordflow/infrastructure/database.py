@@ -75,6 +75,9 @@ CREATE TABLE IF NOT EXISTS oauth_transactions (
 """
 
 _SCHEMA_VERSION = 7
+# 0.7.6 servers wrote version 6 with the same tables; it is upgraded in place
+# when it passes every version-7 check (issue 250).
+_UPGRADABLE_SCHEMA_VERSION = 6
 _EXPECTED_COLUMNS = {
     "users": [
         ("id", "TEXT", 0, None, 1),
@@ -157,6 +160,10 @@ class Database:
                     await connection.execute(
                         "CREATE INDEX idx_sessions_expiry ON user_sessions(expires_at)"
                     )
+                    await connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
+                elif version == _UPGRADABLE_SCHEMA_VERSION and tables:
+                    # Relabel inside this transaction, then validate the whole
+                    # schema as version 7; any failure rolls the label back.
                     await connection.execute(f"PRAGMA user_version = {_SCHEMA_VERSION}")
                 elif version != _SCHEMA_VERSION:
                     raise RuntimeError("Unsupported database schema version")
