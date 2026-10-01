@@ -6,7 +6,7 @@ import {
   compatibilityKinds,
 } from '../e2e-native/scenarios/requestCompatibility';
 for (const kind of compatibilityKinds)
-  it(`restores compatible settings with safe warnings for ${kind}`, async function () {
+  it(`requires explicit reset and preserves unsupported settings for ${kind}`, async function () {
     this.timeout(240000);
     await browser.url('/');
     await requestCompatibilityScenario(baseUrl, 'browser', kind);

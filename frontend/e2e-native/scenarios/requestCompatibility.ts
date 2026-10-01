@@ -116,10 +116,28 @@ export async function requestCompatibilityScenario(
   expect(
     (await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
   ).toEqual(original);
-  // Run uses only decoded settings, and the normal accepted-run transaction replaces the original.
+  const reset = warning.$('button=Start with current defaults');
+  await expect(reset).toBeDisplayed();
+  if (kind === 'frequency')
+    await expect($('button=Run')).toHaveAttribute('aria-disabled', 'true');
+  await reset.click();
+  await expect(reset).not.toExist();
+  await expect(warning.$('pre')).toHaveText(
+    expect.stringContaining('<b>Keep this original JSON</b>'),
+  );
+  expect(
+    (await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
+  ).toEqual(original);
+  // Reset changes only the draft. An accepted Run persists the newly configured request.
   if (kind === 'frequency') {
     const run = $('button=Run');
+    await expect(run).toHaveAttribute('aria-disabled', 'true');
+    await $('button=Add data block').click();
+    await $(`button=${name}`).click();
     await expect(run).toHaveAttribute('aria-disabled', 'false');
+    expect(
+      (await analysesApi.listTabs(base, undefined, kind)).find((t) => t.id === tab.id)?.analysis?.request,
+    ).toEqual(original);
     await run.click();
     await browser.waitUntil(async () =>
       Boolean(

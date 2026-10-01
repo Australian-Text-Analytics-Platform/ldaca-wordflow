@@ -69,7 +69,7 @@ matching failures in 5 minutes 43 seconds:
 | Restored Frequency request | Run remains disabled at `requestCompatibility.ts:122` |
 | Live samples | Fixed four-checkbox expectation fails after the catalogue expanded |
 
-These assertions remain unchanged. The sample screenshot shows five collections;
+The comparison above used unchanged assertions. The sample screenshot shows five collections;
 the request resolves the live repository before pinning a snapshot. The initial
 migrated builder-dialog lookup failure did not reproduce in either the baseline
 or migrated focused run. The migrated project and builder rerun passed all four
@@ -162,8 +162,8 @@ overlapping launch; the subsequent serialized run completed normally.
   jobs, including updater/assets and Quick Look. Their existing runners provide
   the required VM isolation; no separate local macOS account is needed.
 - The four confirmed browser baseline failures remain outside this storage change.
-  The native shared Frequency scenario fails as reported above. Production
-  acceptance must account for these existing workflow results without weakening
+  Frequency is subsequently corrected and rechecked as documented below. Production
+  acceptance must account for the remaining workflow results without weakening
   assertions or silently excluding them.
 
 The local Docker context points to an absent daemon, and only the macOS Rust
@@ -171,3 +171,30 @@ target is installed. No suitable Linux enforcement environment or registered
 test-client configuration has been supplied. Follow the
 [Linux acceptance procedure](../../../docs/runbooks/linux-multi-user.md) and
 [manual cutover procedure](../../../docs/runbooks/storage-cutover.md) using copies.
+
+## Saved-request compatibility follow-up
+
+The approved modularity plan already requires explicit reset for unsupported
+saved requests. The shared compatibility E2E scenario still expected the earlier
+partial-restoration behavior. Its Frequency failure is therefore an outdated
+assertion, not an undecided compatibility policy or a storage regression.
+
+The scenario now verifies explicit reset for all ten analysis kinds, retained
+inspectable original JSON and unchanged saved provenance after reset. Frequency
+also verifies that the empty draft remains non-runnable, adding an input enables
+Run, editing still leaves the saved request intact, and accepted execution saves
+the supported replacement request and removes the compatibility warning.
+
+Focused browser and native compatibility specs each pass all ten tests, with no
+skips. Browser test time was 2 minutes 12 seconds; native test time was 27 seconds.
+Native verification used the existing instrumented debug Test bundle with hash
+`5e85ed622e3f545dc8c55d8f5c3f2a1c55562fd6666b06678c97a2f068f60d05`.
+The launchers cleaned Test storage and credentials before execution and removed
+the Test roots and native WebView store afterward. No production app was launched.
+
+All 719 frontend tests and 17 Node checks pass, as do lint, tooling type checks,
+Markdown links and `git diff --check`. The first sandboxed unit run failed only
+because its diagnostics collector could not bind localhost; the permitted rerun
+passed. The complete E2E suites were not repeated for this test-only follow-up;
+the historical full-run outcomes above remain recorded. Three other confirmed
+browser baseline failures remain unresolved.
