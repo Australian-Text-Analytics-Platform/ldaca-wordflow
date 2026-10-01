@@ -24,6 +24,12 @@ from .settings import Settings, load_settings
 
 logger = logging.getLogger(__name__)
 
+# Open connections get this long to finish after a stop is requested. Browser
+# event streams (/api/events) never finish on their own, and the lifespan
+# shutdown that would end them runs only after this wait, so without a bound a
+# stop waits until the process is killed (issue 252).
+CONNECTION_DRAIN_SECONDS = 5
+
 
 @dataclass(frozen=True, slots=True)
 class ServerHandle:
@@ -197,6 +203,7 @@ def _prepare_server(
             root_path=root_path or "",
             reload=False,
             log_level="info",
+            timeout_graceful_shutdown=CONNECTION_DRAIN_SECONDS,
         )
         server = uvicorn.Server(config)
         return server, listener, current, startup_path

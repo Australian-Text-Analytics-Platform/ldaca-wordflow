@@ -252,3 +252,38 @@ def test_parent_watchdog_rejects_malformed_desktop_contract(
     monkeypatch.delenv("LDACA_PARENT_PID")
     with pytest.raises(ValueError, match="interval"):
         process_watchdog.start_parent_watchdog(interval_seconds=0)
+
+
+@pytest.mark.anyio
+async def test_open_event_stream_does_not_block_a_stop(tmp_path: Path) -> None:
+    """A browser tab keeps /api/events open; a stop must still finish (issue 252)."""
+
+    import time
+
+    import httpx
+
+    from ldaca_wordflow.server_launcher import CONNECTION_DRAIN_SECONDS
+
+    startup_file = tmp_path / "startup.json"
+    handle = await start_async_server(
+        serve_frontend=False,
+        port=0,
+        startup_file=startup_file,
+        settings=Settings(multi_user=False, data_root=tmp_path / "data"),
+    )
+    port = handle.server.config.port
+    async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{port}") as client:
+        for _ in range(100):
+            if (await client.get("/health/ready")).status_code == 200:
+                break
+            await asyncio.sleep(0.1)
+        async with client.stream("GET", "/api/events", timeout=None) as stream:
+            lines = stream.aiter_lines()
+            assert (await anext(lines)) == "event: stream_ready"
+
+            started = time.monotonic()
+            await handle.close(timeout=CONNECTION_DRAIN_SECONDS + 10)
+            elapsed = time.monotonic() - started
+
+    assert elapsed < CONNECTION_DRAIN_SECONDS + 5
+    assert handle.task.done()
