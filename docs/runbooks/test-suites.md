@@ -217,25 +217,18 @@ runner just to hide an unnecessarily slow fixture.
 
 ## Model and network checks
 
-Quotation browser and native E2E scenarios run by default. Before the first run,
-prepare the pinned model from the repository root:
+Quotation browser and native E2E scenarios run by default. E2E launchers clean
+Test caches and preferences before each run and provision the pinned UDPipe model
+with SHA-256 verification. The model pin comes from the native extractor.
+See [isolated caches and reproducible tests](desktop-runtime.md#isolated-caches-and-reproducible-tests)
+for directories, lock ownership, teardown and network requirements.
 
-```sh
-pnpm prepare:e2e:models
-```
-
-This explicit preparation command downloads the native extractor's pinned UDPipe
-model, verifies its SHA-256, and installs it in the same OS cache used by the app.
-An already valid model is reused without network access. Set
-`WORDFLOW_QUOTATION_MODEL` to an absolute path to override the cache location for
-both preparation and execution. The filename, URL and checksum come from the
-native extractor's constants, rather than a second model inventory.
-
-E2E scenarios verify the file offline before invoking Quotation. A missing or
-corrupt model fails the scenario with preparation instructions; it is not silently
-skipped or downloaded during testing. Selecting unrelated spec files does not
-require the model. Browser and native CI jobs prepare it explicitly before testing.
-The application still retains its normal download-on-first-use behavior.
+`vp run prepare:e2e:models` is an optional standalone model-download diagnostic
+that writes only the Test cache. The next E2E run clears and reprovisions it;
+do not run this diagnostic concurrently with an E2E suite. Scenario workers
+verify the model offline before invoking Quotation. Missing or corrupt assets
+fail explicitly rather than skipping assertions. Production retains its normal
+download-on-first-use behavior and existing cache locations.
 
 Quotation model tests require a separately provisioned pinned UDPipe model. The
 [polars-text development runbook](polars-text-development.md#quotation-verification)

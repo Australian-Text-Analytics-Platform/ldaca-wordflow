@@ -21,16 +21,17 @@ releases keep the production identity. Raw `tauri dev` does not load this
 override automatically. Restart an already-running development app once to
 pick up the new identity.
 
-For native QA while Dev is running, build the current source with the production
-configuration and launch that local bundle. Both identities may run together;
-another production instance still shares the bundle's single-instance lock.
-Use temporary projects: different application identities do not permit two
-processes to write the same DuckDB project. Follow the
-[agent testing instructions](../../frontend/AGENTS.md#desktop-and-documentation)
-when an existing development process needs to be stopped.
+Native automation uses **LDaCA Wordflow Test** (`au.edu.ldaca.wordflow.test`).
+Production, Dev and Test have separate single-instance locks, preferences,
+provider credentials and native recent-document histories. Dev and Test disable
+updates, file associations and Quick Look registration. Neither imports production
+preferences or models. A project you explicitly select remains editable: app
+identity does not protect a shared `.wfpj` file from concurrent writers.
 
 Final visual, performance and packaging acceptance uses a **release build without
-WebDriver instrumentation**, retaining the production identity. On macOS:
+WebDriver instrumentation**, retaining the production identity. Run production
+acceptance in a dedicated OS account or VM to preserve the installed app's storage.
+On macOS in that isolated environment:
 
 ```sh
 vp run build:qa:mac
@@ -97,30 +98,59 @@ Vite binds loopback and proxies project and health requests. `vp run dev:desktop
 Tauri application. The Python server tooling is archived.
 `FRONTEND_PORT` and `VITE_BACKEND_PORT` override the browser development ports.
 
+## Isolated caches and reproducible tests
+
+Dev and Test use the system cache root, followed by their full identifier:
+`~/Library/Caches/au.edu.ldaca.wordflow.dev` and
+`~/Library/Caches/au.edu.ldaca.wordflow.test` on macOS, `LOCALAPPDATA/<identifier>`
+on Windows, and `XDG_CACHE_HOME/<identifier>` (or `~/.cache/<identifier>`) on Linux.
+These roots own ICU, language assets, Hugging Face models/tokenizers, Lindera
+models, UDPipe and embedding results. Production keeps its existing locations.
+Dev's browser backend uses the same Dev identity and system directories.
+
+Before browser, standalone-server or native E2E setup, the launcher acquires a
+sibling `.test.lock` directory, removes only the Test cache and Test configuration
+folder, and creates an empty cache. It then downloads and verifies the pinned
+Quotation model; other assets download when exercised. Test configuration uses
+`~/Library/Application Support/<identifier>`, `APPDATA/<identifier>` or
+`XDG_CONFIG_HOME/<identifier>` (falling back to `~/.config/<identifier>`).
+E2E provider settings and project files use temporary directories; native webviews
+use a fresh per-run store. Teardown removes Test caches, settings and profiles.
+Ordinary unit/component tests use mocks or temporary fixtures and do not clear
+system directories. Build outputs and failure logs remain available for diagnosis.
+
+A second E2E suite fails before clearing anything. After a killed runner or OS
+crash, first confirm no Test process or E2E runner remains, then remove the
+reported `.test.lock` directory and rerun; startup clears leftover Test storage.
+Clearing caches makes cold model downloads part of every E2E run, so these suites
+need network access during setup and first-use asset checks. Dev caches persist
+between interactive sessions. Explicit production model/ICU path overrides are
+ignored in Dev and Test.
+
 ## Automated native tests
 
 WebdriverIO drives the actual Tauri webview on macOS and Windows using its
 [embedded driver](https://webdriver.io/docs/desktop-testing/tauri/). No external
 `tauri-driver`, browser-driver download or paid service is needed. The fast suite
-uses an unbundled debug executable:
+uses a debug Test application:
 
 ```sh
 vp -C frontend run build:e2e:native
 vp -C frontend run test:e2e:native
 ```
 
-The build compiles frontend assets and a debug executable with the opt-in Cargo
+The build compiles frontend assets and a debug application with the opt-in Cargo
 `e2e` feature and the test-only bridge injected by Vite's `e2e` mode.
 `tauri.e2e.conf.json` grants bridge access to project windows, enables the public
-Tauri JavaScript API for real IPC assertions and disables automatic updates. The production identifier,
-single-instance handling and project runtime remain intact. Normal Dev and
+Tauri JavaScript API for real IPC assertions. It selects the Test identifier and
+turns off updates, file associations and Quick Look embedding. Single-instance
+handling and the real project runtime remain intact. Normal Dev and
 distributable release builds omit the WebDriver dependency and server. Never distribute an
 instrumented binary.
 
 The service owns launch and cleanup, runs one process at a time and starts with
-an empty temporary Untitled project. It can coexist with Wordflow Dev. Close a
-running production-identity Wordflow before testing; do not disable the
-single-instance plugin. Tests restore any theme preference they change. Reuse
+an empty temporary Untitled project. It can coexist with Wordflow Dev and the
+installed production app; keep the single-instance plugin enabled. Tests restore any theme preference they change. Reuse
 the built binary for test-only changes; rebuild after Rust or frontend changes.
 Use `vp -C frontend run test:e2e:native --spec ./e2e-native/project.spec.ts` to
 select a spec. Logs, failure screenshots and theme captures live in
@@ -148,18 +178,20 @@ vp run build:e2e:native:release
 vp run test:e2e:native:release --spec ./e2e-native/project.spec.ts --spec ./e2e-native/research-plots.spec.ts --spec ./e2e-native/research-text.spec.ts
 ```
 
-Both commands use the same scenario runner and production identity. The release
-lane uses isolated Cargo outputs under `target/e2e-release/`; it launches
-the bundled executable on macOS and stages resources beside the unbundled Windows
-executable. It does not test Windows installation. Test frontend assets are isolated
-in `.tmp/e2e-build/`, leaving ordinary `build/` assets untouched. ICU downloads on first timezone use and is retained in the host cache; neither
+Both commands use the same scenario runner and Test identity. Debug builds use
+`target/e2e-debug/`; release builds use `target/e2e-release/`. Both macOS lanes
+launch the executable inside `LDaCA Wordflow Test.app`, giving native OS services
+its Test bundle identity. Windows stages resources beside its unbundled executable.
+It does not test Windows installation. Test frontend assets are isolated
+in `.tmp/e2e-build/`, leaving ordinary `build/` assets untouched. ICU downloads on
+first timezone use into Test's cache; neither
 build command bundles it. Normal frontend builds reject test
 bridge markers.
 
 Evidence is separated into `.tmp/wdio/native-debug/` and `native-release/`. Each
-contains `build.json` identifying the profile, production identity, instrumentation,
-binary path, hash and build time. The runner rejects a binary that changed after
-that record was written. CI runs the full debug suite, representative release
+contains `build.json` identifying the profile, Test identity, instrumentation,
+binary path, hash and build time. The runner rejects mismatched identity, profile, path or binary hash before launch.
+Instrumented binaries also refuse to start under another identity. CI runs the full debug suite, representative release
 scenarios on macOS/Windows, and a clean macOS release-bundle smoke check. These
 are distinct gates: an optimized instrumented test is not a shipping-app or
 performance acceptance result. Report the profile, instrumentation, platform and
@@ -176,7 +208,7 @@ marks the old document and waits for its replacement through the native page-sou
 read before running more commands. This avoids interacting with the old screen or
 losing an execute-script result while its document is being discarded.
 The runner and service own log-directory creation, app launch and cleanup. Run only
-one native suite at a time, since it owns the production identity and embedded driver.
+one cache-owning E2E suite at a time; the shared Test-cache lock prevents overlap.
 Keep the Mac unlocked and the test window visible for interactive checks. WebKit
 can suspend animations in an inactive window, leaving popovers invisible and
 causing `waitForStable` to reject even though the application has loaded.

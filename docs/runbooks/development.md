@@ -1,6 +1,6 @@
 # Local development
 
-The repository-root Cargo workspace contains `backend`, `ldaca-rs`, and
+The repository-root Cargo workspace contains `backend`, `server`, `ldaca-rs`, and
 `frontend/src-tauri`. They share the root `Cargo.lock` and `target/`; select a
 package with `--manifest-path` or `-p` for focused checks. `polars-text` is
 maintained in an independent Rust/Python repository with its own lockfile and build output.
@@ -16,7 +16,9 @@ vp run dev:desktop
 ```
 
 `vp run dev` starts Axum and the Rust browser preview. `dev:backend` and
-`dev:frontend` start each independently. Desktop uses Tauri's embedded backend.
+`dev:frontend` start each independently. Desktop uses Tauri's embedded backend. Interactive desktop and browser hosts use
+the `.dev` identity; E2E hosts use `.test`. See the [desktop isolation contract](desktop-runtime.md#isolated-caches-and-reproducible-tests)
+for system-cache paths and per-run cleanup.
 The application no longer has a root Python environment or `dev:python` command.
 The retired FastAPI workflow is preserved in [the archive](../../archive/README.md).
 
@@ -105,3 +107,7 @@ packaging verification.
 
 For the optional Python adapter, follow [polars-text development](polars-text-development.md).
 Its local Python tooling remains supported independently of the retired backend.
+
+VS Code tasks in `.vscode/tasks.json` reuse the root application scripts and
+share their terminal presentation settings. `Test All` checks the Cargo workspace
+and frontend; the independent `polars-text` adapter is checked separately.

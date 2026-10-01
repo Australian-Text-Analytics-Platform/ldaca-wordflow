@@ -1,4 +1,13 @@
 {
+  "productName": "LDaCA Wordflow Test",
+  "identifier": "au.edu.ldaca.wordflow.test",
+  "bundle": {
+    "createUpdaterArtifacts": false,
+    "fileAssociations": [],
+    "macOS": {
+      "files": null
+    }
+  },
   "app": {
     "withGlobalTauri": true,
     "security": {
@@ -25,6 +34,7 @@
     }
   },
   "build": {
+    "beforeBundleCommand": null,
     "beforeBuildCommand": "pnpm exec tsc -p tsconfig.app.json --noEmit && pnpm exec vp build --mode e2e --outDir .tmp/e2e-build",
     "frontendDist": "../.tmp/e2e-build"
   }

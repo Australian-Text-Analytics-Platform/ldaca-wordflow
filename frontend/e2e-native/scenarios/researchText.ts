@@ -42,7 +42,7 @@ export async function researchTextScenario(base: string, prefix: string) {
           for (const [index, name] of [refName, studyName].entries()) {
             await addResearchInput(panel, name);
             // New inputs append a column selector; imported files carry no document default.
-            const columns = panel.$$('[role="combobox"][aria-label="Text Column:"]');
+            const columns = panel.$$('[role="combobox"][aria-label="Column"]');
             await expect(columns).toBeElementsArrayOfSize(index + 1);
             const column = columns[index];
             if (!column) throw new Error('Text column selector missing');
@@ -156,7 +156,7 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     await $('button=Quotation').click();
     const panel = $('[data-testid="quotation-workspace"]');
     await addResearchInput(panel, source);
-    await chooseColumn('Text Column:', 'text', panel);
+    await chooseColumn('Column', 'text', panel);
     await panel.$('button=Preview').click();
     const results = panel.$('[aria-label="Quotation results"]');
     await results.$('button[aria-label^="Inspect document"]').waitForExist();

@@ -1,5 +1,6 @@
 import { browser, $, expect } from '@wdio/globals';
 import { it } from 'mocha';
+import { querySql } from '@/features/project/api';
 
 async function sql(script: string) {
   const status = await browser.tauri.execute(({ core }) => core.invoke('get_backend_status') as Promise<{ url: string }>);
@@ -42,6 +43,12 @@ it('adds logical parents and reconnects dependencies in the native webview', asy
   await parentMenu('link_child');
   await focusCard('link_source');
   await browser.keys('Enter');
+  // Keyboard dispatch returns before the asynchronous link mutation commits.
+  const { url } = await browser.tauri.execute(({ core }) => core.invoke('get_backend_status') as Promise<{ url: string }>);
+  await browser.waitUntil(async () => {
+    const rows = await querySql(url, [{ sql: "SELECT count(*)::INTEGER AS n FROM wordflow.edges WHERE source_name='link_source' AND target_name='link_child'" }]);
+    return Number(rows.toArray()[0]?.n) === 1;
+  }, { timeoutMsg: 'Native logical parent was not committed' });
   await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.edges WHERE source_name='link_source' AND target_name='link_child')=1 THEN true ELSE error('Native logical parent missing') END");
   await expect($('[data-testid="project-data-overlay"]')).not.toExist();
   const midpoint = await (await edge('link_source', 'link_child').$('.react-flow__edge-path').getElement()).execute((element) => {

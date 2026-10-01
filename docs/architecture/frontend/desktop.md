@@ -176,15 +176,16 @@ macOS owns persistence, deduplication, limits and the standard Dock recent-docum
 presentation; closing windows or quitting does not clear it. Dock file selections
 use the same Tauri file-URL opening flow. Registration is best-effort and cannot
 turn a successful save into a failed save. There is no application history store
-or project-format change, and the Dev and production bundle identities have
+or project-format change, and the Dev, Test and production bundle identities have
 separate native histories.
 
 ## Packaging
 
 Application identity comes from Tauri configuration. `pnpm dev:desktop` adds the
-Dev override; local QA bundles and releases use the production configuration.
+Dev override; native automation adds the Test override. Local production QA
+bundles and releases use the production configuration.
 The existing single-instance plugin separates those identities without a custom
-lock. Dev has no update endpoints, file associations or bundled Quick Look
+lock. Dev and Test have no update endpoints, file associations or bundled Quick Look
 extension. Build profiles (debug/release) remain independent of app identity.
 Automated native checks have separate debug and release lanes with opt-in test
 instrumentation. Final visual/performance acceptance uses an uninstrumented release
@@ -196,7 +197,7 @@ for commands and side-by-side testing.
 Native automation is opt-in: the Cargo `e2e` feature registers the embedded
 WebDriver server and WDIO IPC bridge, while Vite's `e2e` mode injects its client.
 The test configuration grants bridge permissions only to project windows and
-disables updates without changing application identity. Normal Dev and distributable release
+selects `.test` with updates and production OS integrations disabled. Normal Dev and distributable release
 builds include neither the driver nor its client. WebdriverIO owns test-process
 startup and cleanup. Both native and browser E2E use WebdriverIO; the browser
 configuration independently covers Chrome against the Rust preview.
@@ -413,11 +414,16 @@ not merely successful packaging or an instrumented WebdriverIO launch.
 Only the `e2e` feature creates a test-owned profile at process startup. All project
 windows share that run's profile. macOS uses a fresh WKWebView data-store UUID;
 other platforms use a temporary webview directory. Provider configuration uses
-the same test-owned temporary root. The application identity remains production.
+the same test-owned temporary root. The application identity is `.test`, while
+interactive Dev uses `.dev`. Model libraries receive identity-scoped system cache
+paths before host threads start; production's environment remains unchanged.
+Browser/server E2E launchers supply the same Test cache namespace.
 The automated runner owns the profile directory and UUID. After the driver exits,
 it removes only that UUID through a hidden cleanup invocation of the same test binary,
 then removes the temporary directory. WebKit can reject removal while the original
-app process retains the store, even after its windows close. Production preferences
-and Recent files are never cleared. Killing the runner itself or an OS crash can
-leave test-owned storage behind. Dock recent documents are macOS-owned and are
-not isolated by webview profiles; test them in a dedicated OS account or VM.
+app process retains the store, even after its windows close. E2E launchers clear
+Test preferences and caches before setup and after teardown; production and Dev
+storage remain untouched. Killing the runner itself or an OS crash can leave
+test-owned storage behind. Dock recent documents are macOS-owned and scoped by
+bundle identity, rather than webview profile. Test native menu history in a dedicated OS account or VM when
+verifying a clean production bundle.

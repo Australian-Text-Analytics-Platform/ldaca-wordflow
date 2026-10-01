@@ -3,10 +3,15 @@ import { browser } from '@wdio/globals';
 import '@wdio/types';
 import type { TauriServiceOptions } from '@wdio/tauri-service';
 import { connectErrorCapture } from './e2e-browser/diagnostics';
+import { nativeTestBuild } from './scripts/native-e2e.mjs';
+import { TEST_IDENTITY } from '../scripts/app-environment.mjs';
 
 const outputDir = process.env.WORDFLOW_E2E_OUTPUT_DIR ?? resolve(import.meta.dirname, '.tmp/wdio/native-debug');
-const appBinaryPath = process.env.WORDFLOW_E2E_BINARY ?? resolve(import.meta.dirname, '../target/debug',
-  process.platform === 'win32' ? 'ldaca-wordflow.exe' : 'ldaca-wordflow');
+const allowedBinaries = ['debug', 'release'].flatMap((profile) =>
+  ['darwin', 'win32'].map((platform) => nativeTestBuild(profile, platform).binary));
+const appBinaryPath = process.env.WORDFLOW_APP_ID === TEST_IDENTITY &&
+  allowedBinaries.includes(process.env.WORDFLOW_E2E_BINARY ?? '')
+  ? process.env.WORDFLOW_E2E_BINARY ?? '' : '';
 const service: TauriServiceOptions = {
   appBinaryPath,
   driverProvider: 'embedded',
@@ -19,7 +24,7 @@ const service: TauriServiceOptions = {
 export const config: WebdriverIO.Config = {
   runner: 'local',
   specs: ['./e2e-native/**/*.spec.ts'],
-  maxInstances: 1, // One production-identity process owns all its project windows.
+  maxInstances: 1, // One Test process owns all its project windows.
   services: [['tauri', service]],
   capabilities: [{ browserName: 'tauri' }],
   framework: 'mocha',
@@ -29,6 +34,9 @@ export const config: WebdriverIO.Config = {
   waitforTimeout: 15_000,
   connectionRetryCount: 0,
   mochaOpts: { timeout: 60_000, require: ['./e2e-native/hooks.ts'] },
+  onPrepare() {
+    if (!appBinaryPath) throw new Error('Use test:e2e:native to launch the isolated Test application');
+  },
   async afterCommand(name) {
     if (name === 'switchToWindow') await connectErrorCapture();
   },

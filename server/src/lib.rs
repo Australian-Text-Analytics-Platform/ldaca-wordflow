@@ -23,6 +23,8 @@ struct Inner {
     shutdown: CancellationToken,
     ai: AiConfiguration,
     icu: Option<PathBuf>,
+    cache_directory: PathBuf,
+    embedding_cache: PathBuf,
     origins: Vec<HeaderValue>,
     base_path: String,
 }
@@ -46,17 +48,27 @@ impl Host {
         let root = config.directory()?;
         let files = tokio::task::spawn_blocking(move || files::Files::new(&root)).await??;
         let ai = AiConfiguration::new(
-            "au.edu.ldaca.wordflow.server",
+            if std::env::var("WORDFLOW_APP_ID").as_deref() == Ok("au.edu.ldaca.wordflow.test") {
+                "au.edu.ldaca.wordflow.test"
+            } else {
+                "au.edu.ldaca.wordflow.server"
+            },
             files.root().join("ai-providers.json"),
         );
         let icu = config.icu_path.clone();
         let runtime = ProjectRuntime::with_ai(shutdown.clone(), ai.clone());
-        runtime.set_icu_cache_directory(files.root().join("cache/icu"))?;
-        runtime.set_language_cache_directory(files.root().join("cache/language"))?;
+        let cache_directory = std::env::var_os("WORDFLOW_CACHE_DIR")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| files.root().join("cache"));
+        let embedding_cache = std::env::var_os("WORDFLOW_EMBEDDING_CACHE")
+            .map(PathBuf::from)
+            .unwrap_or_else(|| files.root().join("embeddings.duckdb"));
+        runtime.set_icu_cache_directory(cache_directory.join("icu"))?;
+        runtime.set_language_cache_directory(cache_directory.join("language"))?;
         if let Some(path) = &icu {
             runtime.set_icu_path(path.clone())?;
         }
-        runtime.set_embedding_cache_path(files.root().join("embeddings.duckdb"))?;
+        runtime.set_embedding_cache_path(embedding_cache.clone())?;
         runtime.create(None).await?;
         let id = Uuid::new_v4();
         let (changed, _) = watch::channel(id);
@@ -69,18 +81,20 @@ impl Host {
             shutdown,
             ai,
             icu,
+            cache_directory,
+            embedding_cache,
             origins,
             base_path: config.base_path()?,
         })))
     }
     fn new_runtime(&self) -> Result<ProjectRuntime> {
         let runtime = ProjectRuntime::with_ai(self.0.shutdown.clone(), self.0.ai.clone());
-        runtime.set_icu_cache_directory(self.0.files.root().join("cache/icu"))?;
-        runtime.set_language_cache_directory(self.0.files.root().join("cache/language"))?;
+        runtime.set_icu_cache_directory(self.0.cache_directory.join("icu"))?;
+        runtime.set_language_cache_directory(self.0.cache_directory.join("language"))?;
         if let Some(path) = &self.0.icu {
             runtime.set_icu_path(path.clone())?;
         }
-        runtime.set_embedding_cache_path(self.0.files.root().join("embeddings.duckdb"))?;
+        runtime.set_embedding_cache_path(self.0.embedding_cache.clone())?;
         Ok(runtime)
     }
     pub async fn status(&self) -> Result<ServerStatus> {

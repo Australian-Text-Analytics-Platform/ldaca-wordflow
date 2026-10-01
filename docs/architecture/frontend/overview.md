@@ -4,7 +4,7 @@ The React 19, Vite+, and TypeScript application renders the same project interfa
 in Tauri, the browser preview and the packaged server. `src/index.tsx` loads
 `features/server/ServerApp` when the host injects deployment configuration,
 otherwise `features/desktop/DesktopApp`. There is no backend selector. Tauri discovers the owning window's backend through IPC. Browser
-requests use the current origin, with Vite proxying project and health routes
+requests use the current origin, with Vite proxying native API and health routes
 to the standalone Rust backend during development.
 
 ## Current Boundaries

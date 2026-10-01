@@ -1,5 +1,6 @@
 import concurrently from 'concurrently';
 import { pathToFileURL } from 'node:url';
+import { applicationEnvironment, DEV_IDENTITY, TEST_IDENTITY } from './app-environment.mjs';
 
 const frontendCommand = 'pnpm -C frontend dev';
 
@@ -25,6 +26,7 @@ export function parseDevMode(arguments_) {
 }
 
 export function createDevCommands(mode, environment = process.env) {
+  const identity = environment.WORDFLOW_APP_ID === TEST_IDENTITY ? TEST_IDENTITY : DEV_IDENTITY;
   const frontendPort = developmentPort(environment, 'FRONTEND_PORT', '3000');
   const backendPort = developmentPort(environment, 'VITE_BACKEND_PORT', '8002');
   const developmentCorsOrigins = [
@@ -36,7 +38,8 @@ export function createDevCommands(mode, environment = process.env) {
     name: 'backend',
     prefixColor: 'blue',
     env: {
-      ...(environment.WORDFLOW_CONFIG_DIR ? { WORDFLOW_CONFIG_DIR: environment.WORDFLOW_CONFIG_DIR } : {}),
+      ...applicationEnvironment(identity, { ...process.env, ...environment }),
+      WORDFLOW_CONFIG_DIR: identity === TEST_IDENTITY ? environment.WORDFLOW_CONFIG_DIR : undefined,
       WORDFLOW_BIND_ADDR: `127.0.0.1:${backendPort}`,
       CORS_ALLOWED_ORIGINS:
         environment.CORS_ALLOWED_ORIGINS ??

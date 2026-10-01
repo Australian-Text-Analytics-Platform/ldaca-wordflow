@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applicationCacheDirectory, TEST_IDENTITY } from '../../scripts/app-environment.mjs';
 
 // The native extractor owns the pinned model identity; do not maintain another inventory.
 export async function quotationModel() {
@@ -15,14 +16,7 @@ export async function quotationModel() {
 }
 
 export function quotationModelPath(filename, env = process.env, platform = process.platform) {
-  if (env.WORDFLOW_QUOTATION_MODEL) return env.WORDFLOW_QUOTATION_MODEL;
-  const root = platform === 'darwin'
-    ? env.HOME && join(env.HOME, 'Library/Caches')
-    : platform === 'win32'
-      ? env.LOCALAPPDATA
-      : env.XDG_CACHE_HOME || (env.HOME && join(env.HOME, '.cache'));
-  if (!root) throw new Error('Cannot locate the model cache. Set WORDFLOW_QUOTATION_MODEL to an absolute model path.');
-  return join(root, 'au.edu.ldaca.wordflow/udpipe', filename);
+  return join(applicationCacheDirectory(TEST_IDENTITY, env, platform), 'udpipe', filename);
 }
 
 function verify(bytes, sha256) {
@@ -38,7 +32,7 @@ export async function requireQuotationModel(model = undefined, path = undefined)
     verify(await readFile(path), model.sha256);
   } catch (cause) {
     throw new Error(
-      `Quotation E2E requires the pinned UDPipe model at ${path}. Run pnpm prepare:e2e:models from the repository root, or set WORDFLOW_QUOTATION_MODEL to a valid model file. (${cause.message})`,
+      `Quotation E2E requires the pinned UDPipe model at ${path}. Run vp run prepare:e2e:models from the repository root. (${cause.message})`,
       { cause },
     );
   }

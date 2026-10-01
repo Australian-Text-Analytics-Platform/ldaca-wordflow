@@ -94,8 +94,6 @@ jobs:
       - name: Verify generated native HTTP contracts
         run: vp run api:check
       - run: cargo build --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev
-      - name: Prepare pinned Quotation model
-        run: vp run prepare:e2e:models
       - run: vp -C frontend run test:e2e:browser
       - name: Build the server with production frontend assets
         run: vp -C frontend run build && cargo build -p wordflow-server --bin wordflow-server --locked
@@ -157,8 +155,6 @@ jobs:
           const files = readdirSync(join(plan.target, profile), { recursive: true });
           assert.ok(!files.some(file => /(?:backend-runtime|libpython)/i.test(file)), 'Legacy Python runtime must not be bundled');
           JS
-      - name: Prepare pinned Quotation model
-        run: vp run prepare:e2e:models
       - name: Exercise the complete native suite
         if: matrix.profile == 'debug'
         run: vp -C frontend run test:e2e:native

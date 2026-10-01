@@ -1,9 +1,6 @@
 /// <reference types="vite-plus/client" />
 
 interface ImportMetaEnv {
-  readonly VITE_GOOGLE_CLIENT_ID?: string;
-  readonly VITE_BACKEND_API_BASE?: string;
-  readonly VITE_BACKEND_PORT?: string;
   /** App version, injected by `vite.config.ts` from `package.json`. */
   readonly VITE_APP_VERSION?: string;
   /** Short git SHA at build/dev start, injected by `vite.config.ts`. */

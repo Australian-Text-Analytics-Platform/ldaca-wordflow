@@ -164,11 +164,15 @@ async function addInput(base: string, name: string, chooseTokenizer = true) {
       (model) => model.model_id === 'native:plain_words_en',
     );
     if (!plain) throw new Error('Native word tokenizer is unavailable');
-    await tokenizer.click();
-    // Radix opens on keyboard as well as pointerdown; this works in the embedded driver.
-    await browser.keys('ArrowDown');
-    await $(`[role="option"]=${plain.label}`).click();
-    await expect(tokenizer).toHaveText(plain.label);
+    // A recommendation may already select Plain words. Clear a known selection
+    // so the final choice always fires the manual preference change event.
+    for (const label of [plain.label, 'Select a tokenizer', plain.label]) {
+      await tokenizer.click();
+      // Keyboard opening also works in the embedded driver.
+      await browser.keys('ArrowDown');
+      await $(`[role="option"]=${label}`).click();
+      await expect(tokenizer).toHaveText(label);
+    }
     // Explicit choices are durable before Run, including across tool changes.
     await browser.waitUntil(async () => {
       const node = (await projectApi.graph(base)).nodes.find((entry) => entry.table_name === name);
@@ -398,6 +402,8 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     await addInput(base, names.reference);
     const saved = await run(base, tab);
     await $('button=Data Loader').click();
+    // Native click dispatch can finish before the hidden pane becomes inactive.
+    await workspace().waitForDisplayed({ reverse: true });
     await projectApi.executeSql(base, [{
       sql: 'UPDATE wordflow.analyses SET result_version=999 WHERE id=?',
       parameters: [saved.id],
@@ -416,6 +422,7 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     expect((await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(1);
 
     await $('button=Data Loader').click();
+    await workspace().waitForDisplayed({ reverse: true });
     const artifact = saved.result.payload.corpora[0]?.artifact_id;
     if (!artifact) throw new Error('Missing Frequency artifact');
     await projectApi.executeSql(base, [{

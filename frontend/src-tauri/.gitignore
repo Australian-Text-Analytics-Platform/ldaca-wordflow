@@ -1,6 +1,3 @@
-# Rust/Cargo build artifacts
-target/
-
 # Tauri generated files
 gen/
 WixTools/
@@ -19,22 +16,11 @@ WixTools/
 *.AppImage
 *.appimage
 
-# Keep all source icons (they're small and needed for builds)
-# Icons are managed by generate-icons.sh script
-
 # Platform-specific
 .cargo/
-.idea/
 .vscode/
-
-# Logs
-*.log
 
 # Retired Python packaging outputs, kept ignored for older checkouts.
 backend-runtime/
 backend-runtime.staging-*/
 uv-bin/
-
-# Temp files
-*~
-.DS_Store

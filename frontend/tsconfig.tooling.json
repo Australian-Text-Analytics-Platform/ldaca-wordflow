@@ -16,11 +16,9 @@
     "src/stopword.d.ts",
     "vite.config.ts",
     "e2e-browser/**/*.ts",
-    "wdio.conf.ts",
+    "wdio*.conf.ts",
     "e2e-native/**/*.ts",
-    "wdio.browser.conf.ts",
     "type-tests/**/*.ts",
-    "wdio.server.conf.ts",
     "e2e-server/**/*.ts"
   ],
   "exclude": [

@@ -43,7 +43,10 @@ storage: macOS `~/Library/Application Support/Wordflow/server`, Windows
 
 Safe host connection metadata and the model-aware embedding cache also live
 beneath the configured root; credential values remain in the existing host
-credential service. Models are downloaded only on demand.
+credential service. Models are downloaded only on demand. Test launchers set
+`WORDFLOW_APP_ID=au.edu.ldaca.wordflow.test` for credential isolation and supply
+`WORDFLOW_CACHE_DIR` and `WORDFLOW_EMBEDDING_CACHE` to use the Test system-cache
+root; ordinary server defaults remain unchanged.
 
 Uploads stream into temporary files in their destination filesystem, then use
 atomic no-overwrite publication. Duplicate uploads receive numeric suffixes.

@@ -73,7 +73,18 @@ test('retired Python mode is unavailable', () => {
 
 // Isolated test hosts must not write provider metadata into the developer's account.
 test('backend receives an explicitly isolated host configuration directory', () => {
-  const commands = createDevCommands('web', { WORDFLOW_CONFIG_DIR: '/tmp/test-provider-settings' });
+  const commands = createDevCommands('web', { WORDFLOW_APP_ID: 'au.edu.ldaca.wordflow.test', WORDFLOW_CONFIG_DIR: '/tmp/test-provider-settings' });
   assert.equal(commands[0].env.WORDFLOW_CONFIG_DIR, '/tmp/test-provider-settings');
   assert.equal(Object.hasOwn(commands[1].env, 'WORDFLOW_CONFIG_DIR'), false);
+});
+
+test('interactive and test hosts receive isolated model cache environments', () => {
+  const dev = createDevCommands('backend', { HF_HOME: '/production/models', WORDFLOW_QUOTATION_MODEL: '/production/model', WORDFLOW_CONFIG_DIR: '/production/settings' })[0].env;
+  const isolated = createDevCommands('backend', { WORDFLOW_APP_ID: 'au.edu.ldaca.wordflow.test' })[0].env;
+  assert.ok(dev.HF_HOME.includes('au.edu.ldaca.wordflow.dev'));
+  assert.ok(isolated.HF_HOME.includes('au.edu.ldaca.wordflow.test'));
+  assert.notEqual(dev.HF_HOME, isolated.HF_HOME);
+  assert.equal(dev.WORDFLOW_QUOTATION_MODEL, undefined);
+  assert.equal(dev.WORDFLOW_CONFIG_DIR, undefined);
+  assert.equal(isolated.WORDFLOW_ICU_PATH, undefined);
 });

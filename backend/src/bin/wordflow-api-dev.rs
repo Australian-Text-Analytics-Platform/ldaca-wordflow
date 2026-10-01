@@ -3,8 +3,23 @@ use std::{error::Error, net::SocketAddr};
 use tokio::net::TcpListener;
 use tokio_util::sync::CancellationToken;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), Box<dyn Error>> {
+    // Configure model libraries before the async runtime creates any threads.
+    let cache = cache_directory()?;
+    unsafe {
+        std::env::set_var("HF_HOME", cache.join("huggingface"));
+        std::env::set_var("LINDERA_DICT_PATH", cache.join("lindera"));
+        std::env::set_var("WORDFLOW_QUOTATION_CACHE", cache.join("udpipe"));
+        std::env::remove_var("WORDFLOW_QUOTATION_MODEL");
+        std::env::remove_var("WORDFLOW_ICU_PATH");
+    }
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(run(cache))
+}
+
+async fn run(cache: std::path::PathBuf) -> Result<(), Box<dyn Error>> {
     tracing_subscriber::fmt()
         .with_env_filter(
             tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()),
@@ -22,29 +37,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let shutdown = CancellationToken::new();
     let config_directory = configuration_directory()?;
     let ai = wordflow_backend::AiConfiguration::new(
-        "au.edu.ldaca.wordflow.server",
+        application_identity(),
         config_directory.join("ai-providers.json"),
     );
     let project = wordflow_backend::ProjectRuntime::with_ai(shutdown.clone(), ai);
-    project.set_icu_cache_directory(config_directory.join("cache/icu"))?;
-    project.set_language_cache_directory(config_directory.join("cache/language"))?;
-    if let Some(path) = std::env::var_os("WORDFLOW_ICU_PATH") {
-        project.set_icu_path(path.into())?;
-    }
-    if let Some(cache) = std::env::var_os("WORDFLOW_EMBEDDING_CACHE")
-        .map(std::path::PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("LOCALAPPDATA")
-                .map(|path| std::path::PathBuf::from(path).join("Wordflow/embeddings.duckdb"))
-        })
-        .or_else(|| {
-            std::env::var_os("HOME").map(|home| {
-                std::path::PathBuf::from(home).join(".cache/wordflow/embeddings.duckdb")
-            })
-        })
-    {
-        project.set_embedding_cache_path(cache)?;
-    }
+    project.set_icu_cache_directory(cache.join("icu"))?;
+    project.set_language_cache_directory(cache.join("language"))?;
+    project.set_embedding_cache_path(cache.join("embeddings.duckdb"))?;
     if std::env::args().any(|arg| arg == "--untitled") {
         project.create(None).await?;
     }
@@ -85,21 +84,55 @@ async fn shutdown_signal() -> std::io::Result<()> {
 
 fn configuration_directory() -> Result<std::path::PathBuf, Box<dyn Error>> {
     use std::path::PathBuf;
-    if let Some(path) = std::env::var_os("WORDFLOW_CONFIG_DIR") {
+    if let Some(path) = std::env::var_os("WORDFLOW_CONFIG_DIR")
+        .filter(|_| application_identity().ends_with(".test"))
+    {
         return Ok(PathBuf::from(path));
     }
     #[cfg(target_os = "windows")]
     if let Some(path) = std::env::var_os("APPDATA") {
-        return Ok(PathBuf::from(path).join("Wordflow"));
+        return Ok(PathBuf::from(path).join(application_identity()));
     }
-    #[cfg(not(target_os = "windows"))]
+    #[cfg(target_os = "macos")]
+    if let Some(home) = std::env::var_os("HOME") {
+        return Ok(PathBuf::from(home)
+            .join("Library/Application Support")
+            .join(application_identity()));
+    }
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     {
         if let Some(path) = std::env::var_os("XDG_CONFIG_HOME") {
-            return Ok(PathBuf::from(path).join("wordflow"));
+            return Ok(PathBuf::from(path).join(application_identity()));
         }
         if let Some(path) = std::env::var_os("HOME") {
-            return Ok(PathBuf::from(path).join(".config/wordflow"));
+            return Ok(PathBuf::from(path)
+                .join(".config")
+                .join(application_identity()));
         }
     }
-    Err("Set WORDFLOW_CONFIG_DIR to the server account's configuration directory".into())
+    Err("Cannot locate the development configuration directory".into())
+}
+
+fn application_identity() -> &'static str {
+    if std::env::var("WORDFLOW_APP_ID").as_deref() == Ok("au.edu.ldaca.wordflow.test") {
+        "au.edu.ldaca.wordflow.test"
+    } else {
+        "au.edu.ldaca.wordflow.dev"
+    }
+}
+
+fn cache_directory() -> Result<std::path::PathBuf, Box<dyn Error>> {
+    use std::path::PathBuf;
+    let base = if cfg!(target_os = "macos") {
+        std::env::var_os("HOME").map(|home| PathBuf::from(home).join("Library/Caches"))
+    } else if cfg!(target_os = "windows") {
+        std::env::var_os("LOCALAPPDATA").map(PathBuf::from)
+    } else {
+        std::env::var_os("XDG_CACHE_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".cache")))
+    };
+    Ok(base
+        .ok_or("Cannot locate the system cache directory")?
+        .join(application_identity()))
 }

@@ -480,6 +480,8 @@ pub(super) async fn prepare_extractor(
     let explicit = std::env::var_os("WORDFLOW_QUOTATION_MODEL").map(PathBuf::from);
     let path = if let Some(path) = &explicit {
         path.clone()
+    } else if let Some(directory) = std::env::var_os("WORDFLOW_QUOTATION_CACHE") {
+        PathBuf::from(directory).join(MODEL_FILENAME)
     } else {
         let root = if cfg!(target_os = "macos") {
             std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Caches"))

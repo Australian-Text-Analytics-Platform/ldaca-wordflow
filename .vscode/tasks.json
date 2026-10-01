@@ -1,110 +1,52 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Start Wordflow",
-            "type": "shell",
-            "command": "pnpm dev",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
-            "label": "Start Backend",
-            "type": "shell",
-            "command": "pnpm dev:backend",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
-            "label": "Start Frontend",
-            "type": "shell",
-            "command": "pnpm dev:frontend",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
-            "label": "Compile Tauri App (MacOS)",
-            "type": "shell",
-            "command": "pnpm build:desktop:mac",
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
-            "label": "Compile Tauri App (Windows)",
-            "type": "shell",
-            "command": "pnpm build:desktop:windows",
-            "options": {
-                "cwd": "${workspaceFolder}/frontend"
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        },
-        {
-            "label": "Test All",
-            "type": "shell",
-            "command": "cargo test --workspace --locked && pnpm -C frontend check && (cd polars-text && uv run pytest && uvx ty check)",
-            "options": {
-                "cwd": "${workspaceFolder}"
-            },
-            "problemMatcher": [],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": true,
-                "clear": false
-            }
-        }
-    ]
+  "version": "2.0.0",
+  "presentation": {
+    "echo": true,
+    "reveal": "always",
+    "focus": false,
+    "panel": "shared",
+    "showReuseMessage": true,
+    "clear": false
+  },
+  "tasks": [
+    {
+      "label": "Start Wordflow",
+      "type": "shell",
+      "command": "vp run dev",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Start Backend",
+      "type": "shell",
+      "command": "vp run dev:backend",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Start Frontend",
+      "type": "shell",
+      "command": "vp run dev:frontend",
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Compile Tauri App (MacOS)",
+      "type": "shell",
+      "command": "vp run build:desktop:mac",
+      "problemMatcher": []
+    },
+    {
+      "label": "Compile Tauri App (Windows)",
+      "type": "shell",
+      "command": "vp run build:desktop:windows",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test All",
+      "type": "shell",
+      "command": "cargo test --workspace --locked && vp -C frontend run check",
+      "problemMatcher": []
+    }
+  ]
 }

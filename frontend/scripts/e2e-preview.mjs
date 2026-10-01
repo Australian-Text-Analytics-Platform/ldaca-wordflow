@@ -7,6 +7,8 @@ import concurrently from 'concurrently';
 import { SevereServiceError } from 'webdriverio';
 import { createDevCommands } from '../../scripts/dev.mjs';
 import { assertGuiTestEnvironment } from './gui-test-environment.mjs';
+import { prepareTestCache } from './test-cache.mjs';
+import { prepareQuotationModel } from './quotation-model.mjs';
 
 /** WDIO launcher service owns the same Rust/Vite hosts used by pnpm dev. */
 export default class PreviewHost {
@@ -24,11 +26,14 @@ export default class PreviewHost {
           probe.listen(port, '127.0.0.1', () => probe.close(resolve));
         });
       }
+      this.testCache = await prepareTestCache();
+      await prepareQuotationModel();
       this.directory = await mkdtemp(join(tmpdir(), 'wordflow-wdio-'));
       process.env.WORDFLOW_E2E_TEMP_DIR = this.directory;
       process.env.WORDFLOW_E2E_ERRORS = '1';
       const commands = createDevCommands('web', {
         ...process.env,
+        ...this.testCache.env,
         FRONTEND_PORT: '3212',
         VITE_BACKEND_PORT: '8212',
         WORDFLOW_CONFIG_DIR: join(this.directory, 'configuration'),
@@ -98,9 +103,14 @@ export default class PreviewHost {
     this.backend = undefined;
   }
   async onComplete() {
-    await this.onWorkerEnd();
-    this.host?.commands.forEach((command) => command.kill());
-    await this.host?.result.catch(() => {});
-    if (this.directory) await rm(this.directory, { recursive: true, force: true });
+    try {
+      await this.onWorkerEnd();
+      this.host?.commands.forEach((command) => command.kill());
+      await this.host?.result.catch(() => {});
+      if (this.directory) await rm(this.directory, { recursive: true, force: true });
+    } finally {
+      await this.testCache?.cleanup();
+      this.testCache = undefined;
+    }
   }
 }

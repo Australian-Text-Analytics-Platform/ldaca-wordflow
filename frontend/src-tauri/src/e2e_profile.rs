@@ -1,4 +1,4 @@
-//! Test-only browser storage. The production app identity and document handling stay intact.
+//! Fresh browser storage for each run of the isolated Test application.
 
 /// Run without project windows after the driver has stopped the owning process.
 /// WebKit rejects removal while any webview in that process still retains the store.

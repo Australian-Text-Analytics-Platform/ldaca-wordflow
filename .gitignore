@@ -54,8 +54,6 @@ yarn-error.log*
 lerna-debug.log*
 
 # Frontend - Build outputs
-build/
-dist/
 .next/
 out/
 
@@ -67,7 +65,6 @@ out/
 
 # Frontend - Logs
 frontend.log
-*.log
 
 # Frontend - Cache & Temp
 .cache/
@@ -118,24 +115,16 @@ pids/
 
 # dotenv environment variables file
 # frontend/.env is intentionally committed — it holds only the public docs
-# base URL (VITE_DOCS_BASE_URL) baked into the Vite build. Secrets and local
+# origin (VITE_DOCS_ORIGIN) baked into the Vite build. Secrets and local
 # overrides go in frontend/.env.local (still ignored).
-.env
 !frontend/.env
 .env.test
 
 # parcel-bundler cache (https://parceljs.org/)
-.cache
 .parcel-cache
 
 # TypeScript cache
 *.tsbuildinfo
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
 
 # Stores VSCode versions used for testing VSCode extensions
 .vscode-test
@@ -168,7 +157,6 @@ $RECYCLE.BIN/
 *.lnk
 
 # Linux
-*~
 .fuse_hidden*
 .directory
 .Trash-*
@@ -187,28 +175,7 @@ frontend/build/
 !frontend/src/features/tools/preprocessing/build/**
 frontend/dist/
 
-# Desktop (Tauri) - Build artifacts
-src-tauri/target/
-src-tauri/gen/
-src-tauri/WixTools/
-
-# Desktop (Tauri) - Bundled outputs
-src-tauri/*.app
-src-tauri/*.dmg
-src-tauri/*.exe
-src-tauri/*.msi
-src-tauri/*.deb
-src-tauri/*.rpm
-src-tauri/*.AppImage
-
-# Desktop (Tauri) - Platform-specific
-src-tauri/.cargo/
-
-# npm Workspaces - Root level
-node_modules/
-
-# npm Workspaces - Workspace members have their own node_modules
-frontend/node_modules/
+# Workspace install artifacts
 frontend/package-lock.json
 
 # Development artifacts from workspace and NLP processing

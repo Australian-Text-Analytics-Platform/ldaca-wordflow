@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vite-plus/test';
-import { nativeTestBuild } from './native-e2e.mjs';
+import { nativeTestBuild, validateNativeTestBuild } from './native-e2e.mjs';
 
 const frontendRoot = resolve(import.meta.dirname, '..');
 const repoRoot = resolve(frontendRoot, '..');
@@ -58,7 +58,12 @@ describe('desktop configuration contracts', () => {
 
     expect(cargo).toMatch(/tauri-plugin-wdio-webdriver = \{[^\n]*optional = true/);
     expect(source).toMatch(/#\[cfg\(feature = "e2e"\)\]\s*let builder = builder\s*\.plugin\(tauri_plugin_wdio_webdriver::init\(\)\)/);
-    expect(config.identifier).toBeUndefined();
+    expect(config.identifier).toBe('au.edu.ldaca.wordflow.test');
+    expect(config.productName).toBe('LDaCA Wordflow Test');
+    expect(config.bundle.fileAssociations).toEqual([]);
+    expect(config.bundle.macOS.files).toBeNull();
+    expect(config.bundle.createUpdaterArtifacts).toBe(false);
+    expect(config.build.beforeBundleCommand).toBeNull();
     expect(config.app.withGlobalTauri).toBe(true);
     expect(config.plugins.updater.endpoints).toEqual([]);
     expect(scripts['build:e2e:native']).toBe('node scripts/native-e2e.mjs build debug');
@@ -81,6 +86,10 @@ describe('desktop configuration contracts', () => {
       expect(release.target).not.toBe(debug.target);
       expect(release.output).not.toBe(debug.output);
       expect(release.binary).toContain('e2e-release');
+      expect(debug.binary).toContain('e2e-debug');
+      expect(debug.identity).toBe('au.edu.ldaca.wordflow.test');
+      expect(debug.binary).toContain(platform === 'darwin' ? 'LDaCA Wordflow Test.app/Contents/MacOS/' : '.exe');
+      expect(release.identity).toBe(debug.identity);
       expect(release.binary).toContain(platform === 'darwin' ? '.app/Contents/MacOS/' : '.exe');
     }
     expect(() => nativeTestBuild('production')).toThrow('Unknown native test profile');
@@ -90,12 +99,23 @@ describe('desktop configuration contracts', () => {
     expect(scripts['build:qa:mac']).toContain('--locked');
   });
 
+  it('refuses production or stale binaries before launching native tests', () => {
+    const plan = nativeTestBuild('debug', 'darwin');
+    const build = { identity: plan.identity, profile: plan.profile, binary: plan.binary,
+      instrumented: true, sha256: 'verified-hash' };
+    expect(() => validateNativeTestBuild(build, plan, 'verified-hash')).not.toThrow();
+    for (const mismatch of [{ identity: 'au.edu.ldaca.wordflow' }, { profile: 'release' },
+      { binary: '/production/ldaca-wordflow' }, { instrumented: false }, { sha256: 'old-hash' }]) {
+      expect(() => validateNativeTestBuild({ ...build, ...mismatch }, plan, 'verified-hash')).toThrow('isolated Test application');
+    }
+  });
+
   it('uses opaque native windows with no private material API', () => {
     const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
     const macOS = JSON.parse(read('frontend/src-tauri/tauri.macos.conf.json'));
     expect(tauri.app.macOSPrivateApi ?? false).toBe(false);
     expect(tauri.app.windows[0].transparent).toBe(false);
-    expect(macOS.app.windows[0].transparent).toBe(false);
+    expect((macOS.app?.windows ?? tauri.app.windows)[0].transparent).toBe(false);
   });
 
   it('uses least-privilege desktop capabilities and a production-only strict CSP', () => {

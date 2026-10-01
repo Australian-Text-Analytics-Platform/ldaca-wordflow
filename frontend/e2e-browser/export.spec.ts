@@ -128,7 +128,7 @@ it('exports every row and value in five formats, ZIP members, and reopens select
     await $('button=Frequency').click();
     const frequency = $('[data-testid="frequency-workspace"]');
     await addResearchInput(frequency, source);
-    await chooseColumn('Text Column:', 'label', frequency);
+    await chooseColumn('Column', 'label', frequency);
     await chooseColumn(`${source} tokenizer`, 'Plain words (English)', frequency);
     const analysisId = await runResearchAnalysis(baseUrl, 'frequency', frequency);
     const tabs = await analysesApi.listTabs(baseUrl);

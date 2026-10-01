@@ -1,3 +1,4 @@
+mod app_environment;
 mod desktop_updater;
 mod documents;
 mod download;
@@ -118,6 +119,10 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
 /// Tauri wiring and the ordering between those domains.
 pub fn run() {
     let context = tauri::generate_context!();
+    if let Err(error) = app_environment::configure(&context.config().identifier) {
+        eprintln!("Cannot isolate application storage: {error}");
+        std::process::exit(1);
+    }
     #[cfg(all(feature = "e2e", target_os = "macos"))]
     if std::env::var_os("WORDFLOW_E2E_CLEANUP_STORE").is_some() {
         e2e_profile::remove_store_process(context);

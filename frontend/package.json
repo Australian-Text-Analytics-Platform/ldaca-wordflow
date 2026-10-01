@@ -64,7 +64,7 @@
     "theme:check": "node scripts/generate-vscode-theme.mjs --check",
     "theme:audit": "node scripts/check-theme-contract.mjs",
     "preview": "vp preview",
-    "test": "vp test run && node --test scripts/verify-build.test-node.mjs scripts/source-graph.test-node.mjs scripts/sync-language-assets.test-node.mjs scripts/quotation-model.test-node.mjs",
+    "test": "vp test run && node --test scripts/verify-build.test-node.mjs scripts/source-graph.test-node.mjs scripts/sync-language-assets.test-node.mjs scripts/quotation-model.test-node.mjs scripts/test-cache.test-node.mjs",
     "prepare:e2e:models": "node scripts/quotation-model.mjs",
     "test:e2e:browser": "wdio run wdio.browser.conf.ts",
     "test:e2e": "pnpm test:e2e:browser",

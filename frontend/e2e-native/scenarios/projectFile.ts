@@ -3,7 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
-/** Read an exported project in a fresh production runtime, without reusing the exporting runtime. */
+/** Read an exported project in a fresh native runtime, without reusing the exporting runtime. */
 export async function inspectProjectFile(path: string, inspect: (base: string) => Promise<void>) {
   const directory = await mkdtemp(join(tmpdir(), 'wordflow-export-reader-'));
   const executable = resolve(

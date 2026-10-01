@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import test from 'node:test';
 import { prepareQuotationModel, quotationModel, quotationModelPath, requireQuotationModel } from './quotation-model.mjs';
 
@@ -20,13 +20,13 @@ test('reads the model pin from the native extractor', async () => {
   assert.ok(pin.url.endsWith(pin.filename));
 });
 
-test('resolves the native cache convention on each platform, with optional override', () => {
-  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'darwin'), join('/home/test/Library/Caches/au.edu.ldaca.wordflow/udpipe/m'));
-  assert.equal(quotationModelPath('m', { LOCALAPPDATA: '/local' }, 'win32'), join('/local/au.edu.ldaca.wordflow/udpipe/m'));
-  assert.equal(quotationModelPath('m', { XDG_CACHE_HOME: '/cache', HOME: '/home/test' }, 'linux'), join('/cache/au.edu.ldaca.wordflow/udpipe/m'));
-  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'linux'), join('/home/test/.cache/au.edu.ldaca.wordflow/udpipe/m'));
-  assert.equal(quotationModelPath('m', { WORDFLOW_QUOTATION_MODEL: '/explicit/model' }, 'darwin'), '/explicit/model');
-  assert.throws(() => quotationModelPath('m', {}, 'win32'), /Set WORDFLOW_QUOTATION_MODEL/);
+test('resolves Test caches on every platform and ignores inherited production model overrides', () => {
+  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'darwin'), resolve('/home/test/Library/Caches/au.edu.ldaca.wordflow.test/udpipe/m'));
+  assert.equal(quotationModelPath('m', { LOCALAPPDATA: '/local' }, 'win32'), resolve('/local/au.edu.ldaca.wordflow.test/udpipe/m'));
+  assert.equal(quotationModelPath('m', { XDG_CACHE_HOME: '/cache', HOME: '/home/test' }, 'linux'), resolve('/cache/au.edu.ldaca.wordflow.test/udpipe/m'));
+  assert.equal(quotationModelPath('m', { HOME: '/home/test' }, 'linux'), resolve('/home/test/.cache/au.edu.ldaca.wordflow.test/udpipe/m'));
+  assert.equal(quotationModelPath('m', { HOME: '/home/test', WORDFLOW_QUOTATION_MODEL: '/production/model' }, 'darwin'), resolve('/home/test/Library/Caches/au.edu.ldaca.wordflow.test/udpipe/m'));
+  assert.throws(() => quotationModelPath('m', {}, 'win32'), /system cache directory/);
 });
 
 test('cached model validation and preparation work offline', async (t) => {
@@ -38,7 +38,7 @@ test('cached model validation and preparation work offline', async (t) => {
 
 test('missing and corrupt models fail with setup instructions, without downloading', async (t) => {
   const { path } = await fixture(t);
-  await assert.rejects(requireQuotationModel(model, path), /pnpm prepare:e2e:models/);
+  await assert.rejects(requireQuotationModel(model, path), /vp run prepare:e2e:models/);
   await writeFile(path, 'corrupt');
   await assert.rejects(requireQuotationModel(model, path), /checksum is invalid/);
   assert.equal(await readFile(path, 'utf8'), 'corrupt');

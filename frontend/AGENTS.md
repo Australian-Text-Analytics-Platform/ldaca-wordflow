@@ -38,20 +38,14 @@ before changing an unfamiliar state or desktop boundary.
 - Final visual, performance and packaging QA uses an uninstrumented release
   bundle. Production identity alone does not imply a release build. Report build
   profile and instrumentation separately; see the desktop runbook for commands.
-- For native QA while the user's development app is running, prefer a
-  production-identity test build from the current source. WebdriverIO can drive
-  the unbundled test executable; use a bundle for OS automation or packaging
-  checks that require one. A separate QA
-  identity is not required. Use `vp run dev:desktop` for the separate Dev identity;
-  raw `tauri dev` does not load the Dev override. Check the effective app
-  identifiers before assuming two processes can coexist; a shared identifier
-  can trigger the single-instance lock.
-- If the lock or testing needs require it, the user authorizes stopping the
-  existing Wordflow development process and starting an agent-owned test
-  session without asking again. Prefer graceful shutdown; if termination is
-  needed, target the confirmed development process. Use temporary test projects,
-  preserve saved user files, and clean up the session you start. Testing a local
-  production-identity bundle does not authorize publishing a release.
+- Native automation uses the isolated `.test` identity and fresh test-owned storage.
+  Use `vp run dev:desktop` for the separate `.dev` identity. Routine tests may
+  coexist with the installed production app; do not stop it or launch a second
+  production instance for these checks. Raw `tauri dev` does not load the Dev
+  override. Use temporary test projects and clean up sessions you start.
+- Production packaging acceptance must run in a dedicated OS account or VM when
+  the user's production storage must remain untouched. Separate application
+  identities do not protect a project file explicitly opened by both apps.
 - Before changing packaging, read
   [the desktop architecture](../docs/architecture/frontend/desktop.md) and
   [desktop runtime runbook](../docs/runbooks/desktop-runtime.md), then inspect
@@ -79,7 +73,9 @@ vp -C frontend run docs:check
 `test:e2e` (or `test:e2e:browser`) runs WebdriverIO/Chrome against the Rust
 preview. For actual Tauri webview/IPC tests, run `build:e2e:native` followed by
 `test:e2e:native`. The latter uses WebdriverIO's embedded driver and owns its
-unbundled production-identity test process; the separate Dev app may stay open.
+Test process; Dev and production may stay open. macOS launches the executable
+inside the Test bundle so native OS services also see its Test identity. Each E2E launcher
+clears Test caches and preferences before setup and removes them after teardown.
 Use `build:e2e:native:release` and `test:e2e:native:release` for the optimized
 instrumented lane. Use `build:qa:mac` and `verify:qa:mac` for clean local release
 acceptance. Do not publish or install an instrumented test binary. Native menus, file

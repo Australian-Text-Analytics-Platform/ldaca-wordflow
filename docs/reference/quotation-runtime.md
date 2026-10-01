@@ -23,8 +23,11 @@ Default cache roots are `~/Library/Caches` on macOS, `LOCALAPPDATA` on Windows,
 and `XDG_CACHE_HOME` (or `~/.cache`) on Linux, under
 `au.edu.ldaca.wordflow/udpipe/`. `WORDFLOW_QUOTATION_MODEL` selects an explicitly
 provisioned file with the same checksum. An invalid override fails explicitly.
-Saved results do not need the model. Ordinary tests do not download it; provisioned
-native/API/E2E tests use that override, and library/adapter acceptance uses
+`WORDFLOW_QUOTATION_CACHE` selects a download directory when no explicit model
+file is supplied. Dev and Test hosts set it to their own system-cache `udpipe/`
+folder and ignore production file overrides. Saved results do not need the model.
+Ordinary tests do not download it; E2E launchers provision the Test directory,
+native/API acceptance may use a provisioned override, and library/adapter acceptance uses
 `WORDFLOW_TEST_UDPIPE_MODEL`.
 
 The model is attributed to Straka and Straková, *UDPipe 1 models for Universal
