@@ -4,6 +4,7 @@ import { Cog } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 const SettingsDialog = React.lazy(() =>
   import('@/components/dialogs/SettingsDialog').then(({ SettingsDialog }) => ({
@@ -17,13 +18,19 @@ interface SettingsButtonProps {
   tooltipSide?: React.ComponentProps<typeof TooltipContent>['side'];
 }
 
-/** Opens the shared Settings dialog from application chrome. */
+/**
+ * Opens the shared Settings dialog from application chrome, and renders it
+ * whenever another part of the app opens it at a tab (issue 249).
+ */
 export function SettingsButton({
   className,
   iconClassName,
   tooltipSide = 'right',
 }: SettingsButtonProps) {
-  const [open, setOpen] = React.useState(false);
+  const open = useSettingsDialogStore((state) => state.open);
+  const tab = useSettingsDialogStore((state) => state.tab);
+  const openSettings = useSettingsDialogStore((state) => state.openSettings);
+  const closeSettings = useSettingsDialogStore((state) => state.closeSettings);
 
   return (
     <>
@@ -37,7 +44,7 @@ export function SettingsButton({
             className={cn('h-7 w-7 text-description', className)}
             aria-label="Open settings"
             onClick={() => {
-              setOpen(true);
+              openSettings();
             }}
           >
             <Cog data-testid="settings-button-icon" className={iconClassName ?? 'h-4 w-4'} />
@@ -48,7 +55,13 @@ export function SettingsButton({
 
       {open ? (
         <React.Suspense fallback={null}>
-          <SettingsDialog open onOpenChange={setOpen} />
+          <SettingsDialog
+            open
+            initialTab={tab}
+            onOpenChange={(next) => {
+              if (!next) closeSettings();
+            }}
+          />
         </React.Suspense>
       ) : null}
     </>

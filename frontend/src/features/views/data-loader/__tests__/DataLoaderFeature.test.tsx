@@ -7,6 +7,7 @@ import { listDataPortalCollections } from '@/api';
 import type { FileTreeNode } from '@/features/views/data-loader/types';
 import { WorkspaceDownloadsProvider } from '@/features/workspace/workspace-downloads/WorkspaceDownloadsProvider';
 import DataLoaderFeature from '../DataLoaderFeature';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 const {
   mockCreateWorkspace,
@@ -674,6 +675,11 @@ describe('DataLoaderFeature citation UI', () => {
     expect(await screen.findByText('2 of 2 collections')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Import metadata only' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Update access token' })).toBeInTheDocument();
+    // The token is changed in Settings > Portal, not inline (issue 249).
+    useSettingsDialogStore.setState({ open: false, tab: 'general' });
+    await user.click(screen.getByRole('button', { name: 'Update access token' }));
+    expect(useSettingsDialogStore.getState()).toMatchObject({ open: true, tab: 'portal' });
+    useSettingsDialogStore.setState({ open: false, tab: 'general' });
     expect(screen.getAllByRole('button', { name: 'Import' })).toHaveLength(1);
 
     await user.type(screen.getByLabelText('Filter collections'), 'cooee');

@@ -14,6 +14,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { SettingsTab } from '@/stores/settingsDialogStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useGuidanceAcknowledgmentsStore } from '@/features/guidance/acknowledgmentsStore';
 import {
@@ -37,6 +38,8 @@ import { isTauri } from '@/lib/isTauri';
 interface SettingsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The tab shown when the dialog opens (issue 249). */
+  initialTab?: SettingsTab;
 }
 
 const SETTINGS_TABS = [
@@ -57,7 +60,11 @@ const SETTINGS_TABS = [
  * acknowledgments device-local, and reuse the working-directory backend config
  * panel in single-user mode.
  */
-export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
+export function SettingsDialog({
+  open,
+  onOpenChange,
+  initialTab = 'general',
+}: SettingsDialogProps) {
   const { workspaces } = useWorkspaceData();
   const userId = useAuth().user?.id ?? null;
   const visibleViews = useVisibleViews();
@@ -130,7 +137,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             </div>
           </DialogHeader>
           <Tabs
-            defaultValue="general"
+            defaultValue={initialTab}
             orientation="vertical"
             className="flex min-h-0 flex-1 flex-row gap-0 overflow-hidden"
           >

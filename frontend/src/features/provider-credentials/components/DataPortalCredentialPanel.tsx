@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useProviderCredentials } from '../useProviderCredentials';
 import { toastError } from '@/lib/toastError';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 /** Standalone Data Portal credential surface, intentionally outside LLM provider settings. */
 export function DataPortalCredentialPanel({
@@ -15,6 +16,10 @@ export function DataPortalCredentialPanel({
   onChanged?: () => void;
 } = {}) {
   const credentials = useProviderCredentials();
+  // Lets an open LDaCA loader re-check access after a change here (issue 249).
+  const notifyPortalTokenChanged = useSettingsDialogStore(
+    (state) => state.notifyPortalTokenChanged,
+  );
   const [draft, setDraft] = useState('');
   const [pending, setPending] = useState(false);
   const configured = credentials.dataPortal.userConfigured;
@@ -27,6 +32,7 @@ export function DataPortalCredentialPanel({
       await credentials.saveDataPortalCredential(draft);
       setDraft('');
       toast.success('LDaCA access token saved.');
+      notifyPortalTokenChanged();
       onChanged?.();
     } catch (error) {
       toastError(error, "Couldn't save the LDaCA access token.");
@@ -40,6 +46,7 @@ export function DataPortalCredentialPanel({
     try {
       await credentials.clearDataPortalCredential();
       toast.success('LDaCA access token removed.');
+      notifyPortalTokenChanged();
       onChanged?.();
     } catch (error) {
       toastError(error, "Couldn't remove the LDaCA access token.");

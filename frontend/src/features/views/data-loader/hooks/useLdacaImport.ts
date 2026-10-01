@@ -1,9 +1,14 @@
-import { useReducer } from 'react';
+import { useEffect, useReducer, type Dispatch } from 'react';
 import {
   listDataPortalCollectionsWithProviderCredential,
   submitDataPortalImportWithProviderCredential,
 } from '@/features/provider-credentials/providerCredentialRequests';
-import { initialLdacaImportState, ldacaImportReducer } from './ldacaImportState';
+import {
+  initialLdacaImportState,
+  ldacaImportReducer,
+  type LdacaImportAction,
+} from './ldacaImportState';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 type Notify = (
   type: 'success' | 'error' | 'info',
@@ -14,6 +19,19 @@ type Notify = (
 
 interface UseLdacaImportParams {
   notify: Notify;
+}
+
+/** Fetches the collection list with the current token's access. */
+async function fetchCollections(dispatch: Dispatch<LdacaImportAction>, notify: Notify) {
+  dispatch({ type: 'collectionsStarted' });
+  try {
+    const { data } = await listDataPortalCollectionsWithProviderCredential();
+    dispatch({ type: 'collectionsSucceeded', collections: data.items });
+  } catch (error) {
+    const message = (error as Error).message || "Couldn't load LDaCA collections.";
+    dispatch({ type: 'collectionsFailed', message });
+    notify('error', message);
+  }
 }
 
 /**
@@ -27,22 +45,21 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
 
   const loadCollections = async (force = false) => {
     if (state.collectionsLoading || (!force && state.collectionsLoaded)) return;
-    dispatch({ type: 'collectionsStarted' });
-    try {
-      const { data } = await listDataPortalCollectionsWithProviderCredential();
-      dispatch({ type: 'collectionsSucceeded', collections: data.items });
-    } catch (error) {
-      const message = (error as Error).message || "Couldn't load LDaCA collections.";
-      dispatch({ type: 'collectionsFailed', message });
-      notify('error', message);
-    }
+    await fetchCollections(dispatch, notify);
   };
 
-  /** Re-checks access after the API token changes. */
-  const reloadCollections = async () => {
-    dispatch({ type: 'collectionsInvalidated' });
-    await loadCollections(true);
-  };
+  // The token is changed in Settings > Portal (issue 249): re-check access
+  // straight away while the dialog is open, otherwise on its next open.
+  const dialogOpen = state.ldacaImportOpen;
+  useEffect(
+    () =>
+      useSettingsDialogStore.subscribe((current, previous) => {
+        if (current.portalTokenRevision === previous.portalTokenRevision) return;
+        dispatch({ type: 'collectionsInvalidated' });
+        if (dialogOpen) void fetchCollections(dispatch, notify);
+      }),
+    [dialogOpen, notify],
+  );
 
   const setLdacaImportOpen = (open: boolean) => {
     dispatch({ type: 'setOpen', open });
@@ -51,10 +68,6 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
 
   const setFilter = (filter: string) => {
     dispatch({ type: 'setFilter', filter });
-  };
-
-  const setTokenPanelOpen = (open: boolean) => {
-    dispatch({ type: 'setTokenPanelOpen', open });
   };
 
   /**
@@ -87,9 +100,6 @@ export function useLdacaImport({ notify }: UseLdacaImportParams) {
     setFilter,
     collections: state.collections,
     collectionsLoading: state.collectionsLoading,
-    reloadCollections,
-    tokenPanelOpen: state.tokenPanelOpen,
-    setTokenPanelOpen,
     importingId: state.importingId,
     ldacaImporting: Boolean(state.importingId),
     errorMessage: state.errorMessage,

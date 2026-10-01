@@ -181,9 +181,11 @@ For these you can:
   every item. A collection that publishes no item metadata (marked
   **Collection description only**) offers **Import collection metadata**
   instead, which gives one row describing the collection.
-- **Update access token**: enter or change your token in place (you can get one by signing in to the LDaCA Data Portal). The list then
-  checks access again, so collections you have been granted access to become
-  available to import.
+- **Update access token**: opens **Settings**, at **Portal**, where you enter or
+  change your token (you can get one by signing in to the LDaCA Data Portal).
+  When you save it, the list checks access again, so collections you have been
+  granted access to become available to import. Close Settings to return to the
+  list.
 
 ![A restricted collection, with Import metadata only and Update access token](tutorials/assets/data_loader/ldaca_restricted.png)
 

@@ -65,7 +65,10 @@ function makeQueryClient() {
 }
 
 /** Renders SettingsDialog inside the query provider it uses to inspect tab sidecar state. */
-function renderSettingsDialog(queryClient = makeQueryClient()) {
+function renderSettingsDialog(
+  queryClient = makeQueryClient(),
+  initialTab?: ComponentProps<typeof SettingsDialog>['initialTab'],
+) {
   return {
     queryClient,
     ...render(
@@ -85,7 +88,7 @@ function renderSettingsDialog(queryClient = makeQueryClient()) {
             configureDataRoot: vi.fn(),
           }}
         >
-          <SettingsDialog open onOpenChange={vi.fn()} />
+          <SettingsDialog open onOpenChange={vi.fn()} initialTab={initialTab} />
         </DataRootContext.Provider>
       </QueryClientProvider>,
     ),
@@ -192,6 +195,13 @@ describe('SettingsDialog', () => {
     expect(await screen.findByText('LDaCA access token', { selector: 'h3' })).toBeInTheDocument();
     expect(screen.getByLabelText('LDaCA access token')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Add provider' })).not.toBeInTheDocument();
+  });
+
+  it('opens at the Portal tab when asked, for Update access token (issue 249)', async () => {
+    renderSettingsDialog(makeQueryClient(), 'portal');
+
+    expect(screen.getByRole('tab', { name: 'Portal' })).toHaveAttribute('aria-selected', 'true');
+    expect(await screen.findByLabelText('LDaCA access token')).toBeInTheDocument();
   });
 
   it('renders update preferences only in the desktop runtime', async () => {

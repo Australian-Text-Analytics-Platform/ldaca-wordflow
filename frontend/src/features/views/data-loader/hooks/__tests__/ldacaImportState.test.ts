@@ -27,18 +27,16 @@ describe('ldacaImportReducer', () => {
     );
   });
 
-  it('closes and resets the filter and token panel after an import starts', () => {
+  it('closes and resets the filter after an import starts', () => {
     const state = {
       ...initialLdacaImportState,
       ldacaImportOpen: true,
       filter: 'speech',
-      tokenPanelOpen: true,
     };
 
     expect(ldacaImportReducer(state, { type: 'importSucceeded' })).toMatchObject({
       ldacaImportOpen: false,
       filter: '',
-      tokenPanelOpen: false,
     });
   });
 });

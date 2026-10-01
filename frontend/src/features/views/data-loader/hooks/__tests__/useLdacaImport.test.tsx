@@ -6,6 +6,7 @@ import {
   submitDataPortalImportWithProviderCredential,
 } from '@/features/provider-credentials/providerCredentialRequests';
 import { useLdacaImport } from '../useLdacaImport';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 vi.mock('@/features/provider-credentials/providerCredentialRequests', () => ({
   listDataPortalCollectionsWithProviderCredential: vi.fn(),
@@ -63,8 +64,26 @@ describe('useLdacaImport', () => {
     act(() => result.current.setLdacaImportOpen(true));
     expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(1);
 
-    await act(async () => result.current.reloadCollections());
-    expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(2);
+    // Saving the token in Settings > Portal re-checks access straight away (issue 249).
+    act(() => useSettingsDialogStore.getState().notifyPortalTokenChanged());
+    await waitFor(() =>
+      expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(2),
+    );
+  });
+
+  it('re-checks access on the next open after a token change while closed', async () => {
+    const { result } = renderHook(() => useLdacaImport({ notify }));
+    act(() => result.current.setLdacaImportOpen(true));
+    await waitFor(() => expect(result.current.collections).toEqual([record]));
+    act(() => result.current.setLdacaImportOpen(false));
+
+    act(() => useSettingsDialogStore.getState().notifyPortalTokenChanged());
+    expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(1);
+
+    act(() => result.current.setLdacaImportOpen(true));
+    await waitFor(() =>
+      expect(listDataPortalCollectionsWithProviderCredential).toHaveBeenCalledTimes(2),
+    );
   });
 
   it('imports a whole collection, or its metadata only, and closes the dialog', async () => {

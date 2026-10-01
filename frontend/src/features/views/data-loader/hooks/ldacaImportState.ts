@@ -7,16 +7,13 @@ export interface LdacaImportState {
   collections: LdacaCollection[];
   collectionsLoaded: boolean;
   collectionsLoading: boolean;
-  /** Shows the inline API token panel from a restricted row. */
-  tokenPanelOpen: boolean;
   importingId: string | undefined;
   errorMessage: string | undefined;
 }
 
-type LdacaImportAction =
+export type LdacaImportAction =
   | { type: 'setOpen'; open: boolean }
   | { type: 'setFilter'; filter: string }
-  | { type: 'setTokenPanelOpen'; open: boolean }
   | { type: 'collectionsInvalidated' }
   | { type: 'collectionsStarted' }
   | { type: 'collectionsSucceeded'; collections: LdacaCollection[] }
@@ -31,15 +28,14 @@ export const initialLdacaImportState: LdacaImportState = {
   collections: [],
   collectionsLoaded: false,
   collectionsLoading: false,
-  tokenPanelOpen: false,
   importingId: undefined,
   errorMessage: undefined,
 };
 
 /**
  * Owns the LDaCA import dialog's state transitions: the collection list
- * loaded on open (and again after a token change), the local filter, the
- * inline token panel, and the one running import.
+ * loaded on open (and again after a token change), the local filter, and the
+ * one running import.
  */
 export function ldacaImportReducer(
   state: LdacaImportState,
@@ -50,8 +46,6 @@ export function ldacaImportReducer(
       return { ...state, ldacaImportOpen: action.open };
     case 'setFilter':
       return { ...state, filter: action.filter };
-    case 'setTokenPanelOpen':
-      return { ...state, tokenPanelOpen: action.open };
     case 'collectionsInvalidated':
       return { ...state, collectionsLoaded: false };
     case 'collectionsStarted':
@@ -68,7 +62,7 @@ export function ldacaImportReducer(
     case 'importStarted':
       return { ...state, importingId: action.importingId };
     case 'importSucceeded':
-      return { ...state, ldacaImportOpen: false, filter: '', tokenPanelOpen: false };
+      return { ...state, ldacaImportOpen: false, filter: '' };
     case 'importFinished':
       return { ...state, importingId: undefined };
   }

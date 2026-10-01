@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { DataPortalCredentialPanel } from '@/features/provider-credentials/components/DataPortalCredentialPanel';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { filterLdacaCollections } from '../hooks/ldacaImportState';
 
 const LDACA_PORTAL_COLLECTION_URL = 'https://data.ldaca.edu.au/collection';
@@ -24,10 +24,7 @@ export interface LdacaImportDialogProps {
   onFilterChange: (filter: string) => void;
   collections: LdacaCollection[];
   collectionsLoading: boolean;
-  tokenPanelOpen: boolean;
-  onTokenPanelOpenChange: (open: boolean) => void;
   /** Re-checks collection access after the API token changes. */
-  onTokenChanged: () => void;
   importingId?: string;
   importing: boolean;
   errorMessage?: string;
@@ -182,6 +179,7 @@ function LdacaCollectionRow({
  * Rendered by: DataLoaderDialogs.
  */
 export function LdacaImportDialog(props: LdacaImportDialogProps) {
+  const openSettings = useSettingsDialogStore((state) => state.openSettings);
   const visible = filterLdacaCollections(props.collections, props.filter);
 
   return (
@@ -228,12 +226,6 @@ export function LdacaImportDialog(props: LdacaImportDialogProps) {
             </div>
           </div>
 
-          {props.tokenPanelOpen ? (
-            <div className="rounded-md border border-surface-border/70 p-3">
-              <DataPortalCredentialPanel onChanged={props.onTokenChanged} />
-            </div>
-          ) : null}
-
           {props.errorMessage ? (
             <p
               role="alert"
@@ -258,7 +250,8 @@ export function LdacaImportDialog(props: LdacaImportDialogProps) {
                   importingId={props.importingId}
                   onImport={props.onImport}
                   onUpdateToken={() => {
-                    props.onTokenPanelOpenChange(true);
+                    // The token lives in Settings > Portal (issue 249).
+                    openSettings('portal');
                   }}
                 />
               ))}
