@@ -47,7 +47,8 @@ quotation and the full combination.
 
 Generated OpenAPI/TypeScript drift checks and workflow syntax checks pass.
 Internal documentation links pass. Final diff checks are repeated before commit.
-No generated contract was edited by hand.
+The changed Mermaid diagrams render and their labels, direction and grouping
+were visually inspected. No generated contract was edited by hand.
 
 ## GUI and process checks
 
