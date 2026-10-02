@@ -242,10 +242,10 @@
 
 /* Screenshots: a gamma curve (DocumentView's #doc-image-gamma) darkens faint
    light greys, such as 1px graph edges, while white stays white; contrast()
-   would push them to white instead. The dark theme also dims the image so
-   white areas do not glare. */
+   would push them to white instead. Both themes also dim the image (0.9 light,
+   0.8 dark): faint lines only separate from white once white is softened. */
 .doc-prose img {
-  filter: url(#doc-image-gamma);
+  filter: url(#doc-image-gamma) brightness(0.9);
 }
 
 [data-theme="dark-2026"] .doc-prose img {

@@ -32,7 +32,7 @@ describe('Help window styles (issue 262)', () => {
 
   it('brings out faint screenshot detail with a gamma curve, never contrast()', () => {
     // contrast() pushes light greys to white and erased Project Graph edges.
-    expect(rule('.doc-prose img')).toContain('filter: url(#doc-image-gamma);');
+    expect(rule('.doc-prose img')).toContain('filter: url(#doc-image-gamma) brightness(0.9);');
     expect(rule('[data-theme="dark-2026"] .doc-prose img')).toContain(
       'filter: url(#doc-image-gamma) brightness(0.8);',
     );
