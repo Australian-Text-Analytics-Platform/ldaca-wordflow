@@ -294,6 +294,28 @@ describe('desktop configuration contracts', () => {
     expect(tauri.app.security.devCsp).toContain('ws://127.0.0.1:3001');
   });
 
+  it('lets desktop Help load the published docs channel (#264)', () => {
+    // Help fetches Markdown and the registry from VITE_DOCS_ORIGIN and falls
+    // back to the built-in docs on failure. A CSP without the docs origin made
+    // that fetch fail silently in every desktop release, so published docs
+    // fixes never reached desktop users.
+    const tauri = JSON.parse(read('frontend/src-tauri/tauri.conf.json'));
+    const docsOrigin = new URL(
+      /^VITE_DOCS_ORIGIN=(.+)$/m.exec(read('frontend/.env'))?.[1].trim() ?? '',
+    ).origin;
+    const directive = (csp, name) =>
+      csp
+        .split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith(`${name} `))
+        ?.split(/\s+/) ?? [];
+
+    for (const csp of [tauri.app.security.csp, tauri.app.security.devCsp]) {
+      expect(directive(csp, 'connect-src')).toContain(docsOrigin);
+      expect(directive(csp, 'img-src')).toContain(docsOrigin);
+    }
+  });
+
   it('keeps backend startup off the Tauri setup and main threads', () => {
     const desktopShell = read('frontend/src-tauri/src/lib.rs');
     const supervisor = read('frontend/src-tauri/src/supervisor.rs');
