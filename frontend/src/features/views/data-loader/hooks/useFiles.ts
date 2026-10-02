@@ -1,13 +1,7 @@
 import { useState } from 'react';
 import { uploadFileWithProgress, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  createFolder,
-  deleteFile,
-  downloadFile,
-  getUserFileResource,
-  listUserFiles,
-} from '@/api';
+import { createFolder, deleteFile, downloadFile, getUserFileResource, listUserFiles } from '@/api';
 import { saveBackendDownload } from '@/lib/download';
 import { type FileTreeNode } from '../types';
 import { queryKeys } from '@/lib/queryKeys';

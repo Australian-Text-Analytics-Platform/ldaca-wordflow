@@ -995,11 +995,15 @@ describe('DataLoaderFeature citation UI', () => {
       expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
     });
     expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
-      1, firstFile, 'first.csv',
+      1,
+      firstFile,
+      'first.csv',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
-      2, secondFile, 'second.csv',
+      2,
+      secondFile,
+      'second.csv',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
@@ -1110,11 +1114,15 @@ describe('DataLoaderFeature citation UI', () => {
       expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
     });
     expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
-      1, firstFile, 'dragged-a.csv',
+      1,
+      firstFile,
+      'dragged-a.csv',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
-      2, secondFile, 'dragged-b.csv',
+      2,
+      secondFile,
+      'dragged-b.csv',
       expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
   });
