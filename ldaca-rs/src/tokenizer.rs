@@ -5,9 +5,7 @@ use std::path::Path;
 use std::sync::{Arc, OnceLock, RwLock};
 
 use anyhow::{Context, Result};
-use hf_hub::api::sync::ApiBuilder;
-use hf_hub::{Repo, RepoType};
-use lindera::tokenizer::Tokenizer as LinderaTokenizer;
+use lindera::segmenter::Segmenter as LinderaTokenizer;
 use tokenizers::pre_tokenizers::bert::BertPreTokenizer;
 use tokenizers::{
     OffsetReferential, OffsetType, PreTokenizedString, PreTokenizer, Tokenizer as HfTokenizer,
@@ -44,8 +42,8 @@ fn keep_token_text(token: &str, remove_punctuation: bool) -> bool {
 ///   or Korean (ko-dic)
 pub enum TokenizerBackend {
     PlainWordsEn,
-    HuggingFace(HfTokenizer),
-    Lindera(LinderaTokenizer),
+    HuggingFace(Box<HfTokenizer>),
+    Lindera(Box<LinderaTokenizer>),
 }
 
 struct TokenRecord {
@@ -162,7 +160,7 @@ impl TokenizerBackend {
                     .collect()
             }
             TokenizerBackend::Lindera(tok) => tok
-                .tokenize(processed_ref)
+                .segment(Cow::Borrowed(processed_ref))
                 .map_err(|e| anyhow::anyhow!("Lindera tokenize failed: {e}"))?
                 .into_iter()
                 .map(|t| TokenRecord {
@@ -260,7 +258,8 @@ fn load_backend(model_id: &str, assets: Option<&ModelAssets>) -> Result<Tokenize
                 "Hugging Face tokenizer model id must include a repository id"
             ));
         }
-        return load_hf_tokenizer(huggingface_model_id, assets).map(TokenizerBackend::HuggingFace);
+        return load_hf_tokenizer(huggingface_model_id, assets)
+            .map(|tokenizer| TokenizerBackend::HuggingFace(Box::new(tokenizer)));
     }
 
     if model_id.starts_with(LINDERA_MODEL_PREFIX) {
@@ -271,7 +270,7 @@ fn load_backend(model_id: &str, assets: Option<&ModelAssets>) -> Result<Tokenize
                 }
                 None => crate::lindera_dict::ensure_lindera_tokenizer(kind)?,
             };
-            return Ok(TokenizerBackend::Lindera(tok));
+            return Ok(TokenizerBackend::Lindera(Box::new(tok)));
         }
         return Err(anyhow::anyhow!(
             "Unknown Lindera tokenizer model id: {model_id}"
@@ -298,20 +297,11 @@ fn lindera_dict_for_model_id(model_id: &str) -> Option<crate::lindera_dict::Lind
 }
 
 fn load_hf_tokenizer(model_id: &str, assets: Option<&ModelAssets>) -> Result<HfTokenizer> {
-    let api = assets
-        .map(ModelAssets::huggingface_api)
-        .unwrap_or_else(ApiBuilder::from_env)
-        .build()
+    let api = crate::model_assets::huggingface_model(model_id, assets)
         .context("Failed to initialize hf-hub client")?;
-    let repo = Repo::with_revision(
-        model_id.to_string(),
-        RepoType::Model,
-        DEFAULT_TOKENIZER_REF.to_string(),
-    );
-    let api = api.repo(repo);
-    let tokenizer_path = api
-        .get("tokenizer.json")
-        .with_context(|| format!("Failed to fetch tokenizer.json for {model_id}"))?;
+    let tokenizer_path =
+        crate::model_assets::huggingface_file(&api, "tokenizer.json", DEFAULT_TOKENIZER_REF)
+            .with_context(|| format!("Failed to fetch tokenizer.json for {model_id}"))?;
     HfTokenizer::from_file(tokenizer_path)
         .map_err(|e| anyhow::anyhow!("Failed to load tokenizer {model_id}: {e}"))
 }
@@ -323,19 +313,11 @@ fn tokenizer_cache_fingerprint_in(model_id: &str, assets: Option<&ModelAssets>) 
     let artifact_identity = if model_id == PLAIN_WORDS_EN_MODEL_ID {
         "bert-pre-tokenizer".to_string()
     } else if let Some(repository) = model_id.strip_prefix(HUGGINGFACE_MODEL_PREFIX) {
-        let api = assets
-            .map(ModelAssets::huggingface_api)
-            .unwrap_or_else(ApiBuilder::from_env)
-            .build()
+        let api = crate::model_assets::huggingface_model(repository, assets)
             .context("Failed to initialize hf-hub client")?;
-        let path = api
-            .repo(Repo::with_revision(
-                repository.to_string(),
-                RepoType::Model,
-                DEFAULT_TOKENIZER_REF.to_string(),
-            ))
-            .get("tokenizer.json")
-            .with_context(|| format!("Failed to fetch tokenizer.json for {repository}"))?;
+        let path =
+            crate::model_assets::huggingface_file(&api, "tokenizer.json", DEFAULT_TOKENIZER_REF)
+                .with_context(|| format!("Failed to fetch tokenizer.json for {repository}"))?;
         let revision = path
             .parent()
             .and_then(Path::file_name)
@@ -443,6 +425,37 @@ mod tests {
         PLAIN_WORDS_EN_MODEL_ID,
     };
     use crate::lindera_dict::LinderaDict;
+
+    #[test]
+    #[ignore = "downloads official Hugging Face and Lindera assets into a fresh temporary cache"]
+    fn downloaded_tokenizers_reuse_host_cache() {
+        let root = tempfile::tempdir().unwrap();
+        let assets = crate::model_assets::ModelAssets {
+            huggingface: root.path().join("hf"),
+            lindera: root.path().join("lindera"),
+            temporary: root.path().join("tmp"),
+        };
+        for _ in 0..2 {
+            let bert = load_backend("huggingface:bert-base-uncased", Some(&assets)).unwrap();
+            assert_eq!(
+                bert.tokenize_text_with_offsets("Hello world!", true, true)
+                    .unwrap(),
+                vec![("hello".into(), 0, 5), ("world".into(), 6, 11)]
+            );
+            let jieba = load_backend(JIEBA_MODEL_ID, Some(&assets)).unwrap();
+            assert_eq!(
+                jieba
+                    .tokenize_text_with_offsets("南京市长江大桥", false, true)
+                    .unwrap(),
+                vec![("南京市".into(), 0, 3), ("长江大桥".into(), 3, 7)]
+            );
+        }
+        assert!(assets.huggingface.join("hub").is_dir());
+        assert!(assets
+            .lindera
+            .join("lindera-jieba-6.2.0/matrix.mtx")
+            .is_file());
+    }
 
     #[test]
     fn registry_reuses_only_the_same_asset_context() {

@@ -238,7 +238,7 @@ impl TableSet {
                 })
                 .take(100)
                 .collect();
-            let digest = format!("{:x}", Sha256::digest(table.name.as_bytes()));
+            let digest = hex::encode(Sha256::digest(table.name.as_bytes()));
             let filename = format!("table-{stem}-{}.{}", &digest[..16], format.extension());
             table.write(&temp.path().join(&filename), format)?;
             manifest.push(json!({"name":table.name,"file":filename,"metadata":table.schema.metadata(),"schema":table.schema_json()}));

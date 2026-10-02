@@ -13,7 +13,7 @@ pub const MODEL_FILENAME: &str = "english-ewt-ud-2.5-191206.udpipe";
 pub const MODEL_URL: &str = "https://lindat.mff.cuni.cz/repository/server/api/core/bitstreams/handle/11234/1-3131/english-ewt-ud-2.5-191206.udpipe";
 pub const MODEL_SHA256: &str = "784bd0fa85e3d831fd02a55290d0acfd05c953159dc38cc33d52e1b28add9957";
 pub fn is_pinned_model(bytes: &[u8]) -> bool {
-    format!("{:x}", Sha256::digest(bytes)) == MODEL_SHA256
+    hex::encode(Sha256::digest(bytes)) == MODEL_SHA256
 }
 
 #[derive(Debug, thiserror::Error)]

@@ -25,7 +25,7 @@ The retired FastAPI workflow is preserved in [the archive](../../archive/README.
 ## Toolchain setup
 
 Vite+ 1.0.0 owns frontend builds, tests, lint and format. Global `vp` manages
-Node 24.15.0 from `.node-version` and pnpm 11.24.0 from root `packageManager`.
+Node 24.21.0 from `.node-version` and pnpm 12.8.1 from root `packageManager`.
 The workspace catalog pins `vite-plus` in both packages and aligns the Vite core
 alias and Vitest override. Do not upgrade those entries independently.
 

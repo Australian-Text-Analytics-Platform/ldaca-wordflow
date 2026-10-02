@@ -57,7 +57,7 @@ impl Cache {
         let _guard = self.download.lock().await;
         let path = self.directory.join(&hash).join(name);
         if let Ok(bytes) = tokio::fs::read(&path).await
-            && format!("{:x}", Sha256::digest(&bytes)) == hash
+            && hex::encode(Sha256::digest(&bytes)) == hash
         {
             return Ok(bytes);
         }
@@ -77,7 +77,7 @@ impl Cache {
             }
             bytes.extend_from_slice(&chunk);
         }
-        if format!("{:x}", Sha256::digest(&bytes)) != hash {
+        if hex::encode(Sha256::digest(&bytes)) != hash {
             return Err(Error::new(
                 "asset_unavailable",
                 "Language asset checksum mismatch",

@@ -18,7 +18,7 @@ file.
 ## Development
 
 Install [Vite+ 1.0.0](https://viteplus.dev/guide/env) with Node and package-manager
-management enabled. The repository pins Node 24.15.0 and pnpm 11.24.0; see the
+management enabled. The repository pins Node 24.21.0 and pnpm 12.8.1; see the
 [setup procedure](docs/runbooks/development.md#toolchain-setup).
 
 ```sh

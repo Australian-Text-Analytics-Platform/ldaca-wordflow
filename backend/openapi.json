@@ -41,10 +41,10 @@
           "result": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/AnalysisOutput"
               },
               {
-                "$ref": "#/components/schemas/AnalysisOutput"
+                "type": "null"
               }
             ]
           },
@@ -193,10 +193,10 @@
             "items": {
               "oneOf": [
                 {
-                  "type": "null"
+                  "$ref": "#/components/schemas/Prediction"
                 },
                 {
-                  "$ref": "#/components/schemas/Prediction"
+                  "type": "null"
                 }
               ]
             },
@@ -385,10 +385,10 @@
           "examples": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/AnnotationExamples"
               },
               {
-                "$ref": "#/components/schemas/AnnotationExamples"
+                "type": "null"
               }
             ]
           },
@@ -511,10 +511,10 @@
           "review": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Review"
               },
               {
-                "$ref": "#/components/schemas/Review"
+                "type": "null"
               }
             ]
           },
@@ -1075,10 +1075,10 @@
           "sort": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/DocumentSort"
               },
               {
-                "$ref": "#/components/schemas/DocumentSort"
+                "type": "null"
               }
             ]
           }
@@ -1132,10 +1132,10 @@
           "sort": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/SavedSort"
               },
               {
-                "$ref": "#/components/schemas/SavedSort"
+                "type": "null"
               }
             ]
           },
@@ -1201,12 +1201,8 @@
             "type": "integer"
           },
           "mode": {
-            "default": "text",
-            "oneOf": [
-              {
-                "$ref": "#/components/schemas/SearchMode"
-              }
-            ]
+            "$ref": "#/components/schemas/SearchMode",
+            "default": "text"
           },
           "query": {
             "default": "",
@@ -1330,10 +1326,10 @@
               "credential_error": {
                 "oneOf": [
                   {
-                    "type": "null"
+                    "$ref": "#/components/schemas/Error"
                   },
                   {
-                    "$ref": "#/components/schemas/Error"
+                    "type": "null"
                   }
                 ]
               },
@@ -1598,10 +1594,10 @@
           "diagnostic": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Error"
               },
               {
-                "$ref": "#/components/schemas/Error"
+                "type": "null"
               }
             ]
           },
@@ -2383,10 +2379,10 @@
           "stopword_source": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/StopwordSource"
               },
               {
-                "$ref": "#/components/schemas/StopwordSource"
+                "type": "null"
               }
             ]
           },
@@ -2808,10 +2804,10 @@
           "codebook": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Codebook"
               },
               {
-                "$ref": "#/components/schemas/Codebook"
+                "type": "null"
               }
             ]
           },
@@ -2885,10 +2881,10 @@
           "diagnostic": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Error"
               },
               {
-                "$ref": "#/components/schemas/Error"
+                "type": "null"
               }
             ]
           },
@@ -3379,10 +3375,10 @@
           "layout": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/LayoutPatch"
               },
               {
-                "$ref": "#/components/schemas/LayoutPatch"
+                "type": "null"
               }
             ]
           },
@@ -3398,10 +3394,10 @@
           "theme": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Theme"
               },
               {
-                "$ref": "#/components/schemas/Theme"
+                "type": "null"
               }
             ]
           }
@@ -3420,10 +3416,10 @@
           "selected": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/StopwordSource"
               },
               {
-                "$ref": "#/components/schemas/StopwordSource"
+                "type": "null"
               }
             ]
           }
@@ -3508,10 +3504,10 @@
           "project": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/ProjectInfo"
               },
               {
-                "$ref": "#/components/schemas/ProjectInfo"
+                "type": "null"
               }
             ]
           }
@@ -3592,10 +3588,10 @@
           "sort": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/DocumentSort"
               },
               {
-                "$ref": "#/components/schemas/DocumentSort"
+                "type": "null"
               }
             ]
           }
@@ -3662,10 +3658,10 @@
           "sort": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/SavedSort"
               },
               {
-                "$ref": "#/components/schemas/SavedSort"
+                "type": "null"
               }
             ]
           }
@@ -4158,10 +4154,10 @@
           "filter": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/RowFilter"
               },
               {
-                "$ref": "#/components/schemas/RowFilter"
+                "type": "null"
               }
             ]
           }
@@ -4564,10 +4560,10 @@
           "project": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/ProjectInfo"
               },
               {
-                "$ref": "#/components/schemas/ProjectInfo"
+                "type": "null"
               }
             ]
           },
@@ -4712,10 +4708,10 @@
           "changes": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/ChangeScope"
               },
               {
-                "$ref": "#/components/schemas/ChangeScope"
+                "type": "null"
               }
             ]
           },
@@ -4777,10 +4773,10 @@
               "changes": {
                 "oneOf": [
                   {
-                    "type": "null"
+                    "$ref": "#/components/schemas/ChangeScope"
                   },
                   {
-                    "$ref": "#/components/schemas/ChangeScope"
+                    "type": "null"
                   }
                 ]
               },
@@ -4872,10 +4868,10 @@
           "analysis": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/AnalysisSummary"
               },
               {
-                "$ref": "#/components/schemas/AnalysisSummary"
+                "type": "null"
               }
             ]
           },
@@ -4897,10 +4893,10 @@
           "setup_status": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/SetupRestoration"
               },
               {
-                "$ref": "#/components/schemas/SetupRestoration"
+                "type": "null"
               }
             ]
           }
@@ -5020,10 +5016,10 @@
           "error": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Error"
               },
               {
-                "$ref": "#/components/schemas/Error"
+                "type": "null"
               }
             ]
           },
@@ -5051,10 +5047,10 @@
           "progress": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/TaskProgress"
               },
               {
-                "$ref": "#/components/schemas/TaskProgress"
+                "type": "null"
               }
             ]
           },
@@ -5529,10 +5525,10 @@
               "stopword_source": {
                 "oneOf": [
                   {
-                    "type": "null"
+                    "$ref": "#/components/schemas/StopwordSource"
                   },
                   {
-                    "$ref": "#/components/schemas/StopwordSource"
+                    "type": "null"
                   }
                 ]
               },
@@ -5778,8 +5774,7 @@
                   "$ref": "#/components/schemas/Account"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "401": {
             "content": {
@@ -5788,8 +5783,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         },
         "tags": []
@@ -6193,8 +6187,7 @@
                   "$ref": "#/components/schemas/InferenceCapabilities"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -6203,8 +6196,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         },
         "tags": [
@@ -6324,8 +6316,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         },
         "tags": []
@@ -6342,8 +6333,7 @@
                   "$ref": "#/components/schemas/Preferences"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -6352,8 +6342,7 @@
                   "$ref": "#/components/schemas/PreferenceErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       },
@@ -6377,8 +6366,7 @@
                   "$ref": "#/components/schemas/Preferences"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -6387,8 +6375,7 @@
                   "$ref": "#/components/schemas/PreferenceErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -6404,8 +6391,7 @@
                   "type": "string"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -6421,8 +6407,7 @@
                   "$ref": "#/components/schemas/Preferences"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -6431,8 +6416,7 @@
                   "$ref": "#/components/schemas/PreferenceErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17571,8 +17555,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "403": {
             "content": {
@@ -17581,8 +17564,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "404": {
             "content": {
@@ -17591,8 +17573,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "500": {
             "content": {
@@ -17601,8 +17582,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "503": {
             "content": {
@@ -17611,8 +17591,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17628,8 +17607,7 @@
                   "$ref": "#/components/schemas/ServerStatus"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "500": {
             "content": {
@@ -17638,8 +17616,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17685,8 +17662,7 @@
                   "type": "array"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17695,8 +17671,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17733,8 +17708,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       },
@@ -17766,8 +17740,7 @@
                   "$ref": "#/components/schemas/Binary"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17776,8 +17749,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       },
@@ -17819,8 +17791,7 @@
                   "$ref": "#/components/schemas/LibraryFile"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17829,8 +17800,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17856,8 +17826,7 @@
                   "$ref": "#/components/schemas/TableNames"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17866,8 +17835,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "409": {
             "content": {
@@ -17876,8 +17844,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17903,8 +17870,7 @@
                   "$ref": "#/components/schemas/ServerProject"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17913,8 +17879,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "409": {
             "content": {
@@ -17923,8 +17888,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17953,8 +17917,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -17980,8 +17943,7 @@
                   "$ref": "#/components/schemas/ServerProject"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "400": {
             "content": {
@@ -17990,8 +17952,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "409": {
             "content": {
@@ -18000,8 +17961,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -18028,8 +17988,7 @@
                   "$ref": "#/components/schemas/ServerProject"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "409": {
             "content": {
@@ -18038,8 +17997,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -18066,8 +18024,7 @@
                   "$ref": "#/components/schemas/Binary"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "409": {
             "content": {
@@ -18076,8 +18033,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -18093,8 +18049,7 @@
                   "$ref": "#/components/schemas/Health"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "403": {
             "content": {
@@ -18103,8 +18058,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }
@@ -18120,8 +18074,7 @@
                   "$ref": "#/components/schemas/Health"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "403": {
             "content": {
@@ -18130,8 +18083,7 @@
                   "$ref": "#/components/schemas/ErrorEnvelope"
                 }
               }
-            },
-            "description": ""
+            }
           },
           "503": {
             "content": {
@@ -18140,8 +18092,7 @@
                   "$ref": "#/components/schemas/Health"
                 }
               }
-            },
-            "description": ""
+            }
           }
         }
       }

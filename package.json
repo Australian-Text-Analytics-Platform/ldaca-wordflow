@@ -2,7 +2,7 @@
   "name": "ldaca-wordflow-root",
   "version": "0.0.1",
   "private": true,
-  "packageManager": "pnpm@11.24.0",
+  "packageManager": "pnpm@12.8.1",
   "description": "Root workspace for LDaCA Wordflow",
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -31,7 +31,7 @@
   "devDependencies": {
     "concurrently": "^10.0.5",
     "vite-plus": "catalog:",
-    "@types/node": "^24.13.3"
+    "@types/node": "^24.19.1"
   },
   "type": "module"
 }

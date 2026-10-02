@@ -8,7 +8,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.7.1", features = [] }
 
 [features]
 # Opt in only for local/CI automation. Normal Dev and release builds have no driver.
@@ -16,30 +16,30 @@ e2e = ["dep:uuid", "dep:tauri-plugin-wdio-webdriver", "dep:tauri-plugin-wdio"]
 
 [dependencies]
 wordflow-storage = { path = "../../storage" }
-uuid = { version = "1", features = ["v4"], optional = true }
+uuid = { version = "1.26.1", features = ["v4"], optional = true }
 tauri-plugin-wdio-webdriver = { version = "1.4.0", optional = true }
 tauri-plugin-wdio = { version = "1.4.0", optional = true }
 wordflow-backend = { path = "../../backend" }
-tokio-util = { version = "0.7", features = ["rt"] }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tauri = { version = "2", features = [] }
-http = "1"
-tempfile = "3"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tokio = { version = "1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+tauri = { version = "2.12.1", features = [] }
+http = "1.5.0"
+tempfile = "3.27.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tokio = { version = "1.53.1", features = ["fs", "io-util", "macros", "rt-multi-thread", "sync"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-single-instance = "2"
-tauri-plugin-opener = "2"
-tauri-plugin-dialog = "2"
-tauri-plugin-store = "2"
-tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2.5.2"
+tauri-plugin-opener = "2.7.0"
+tauri-plugin-dialog = "2.8.1"
+tauri-plugin-store = "2.5.0"
+tauri-plugin-updater = "2.13.1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-objc2 = "0.6"
+objc2 = "0.6.4"
 
 [dev-dependencies]
-reqwest = { version = "0.13", default-features = false, features = ["rustls", "json"] }
-tauri = { version = "2", features = ["test"] }
+reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json"] }
+tauri = { version = "2.12.1", features = ["test"] }

@@ -6,14 +6,14 @@ publish = false
 description = "Explicit host storage and application preferences"
 
 [dependencies]
-dirs = "6"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-tempfile = "3"
-thiserror = "2"
-utoipa = { version = "=5.4.0" }
+dirs = "7.0.0"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+tempfile = "3.27.0"
+thiserror = "2.0.21"
+utoipa = { version = "=6.0.0" }
 axum = "0.8.9"
-futures-util = "0.3"
-tokio = { version = "1", features = ["sync"] }
-tokio-util = { version = "0.7", features = ["rt"] }
-utoipa-axum = "=0.2.0"
+futures-util = "0.3.34"
+tokio = { version = "1.53.1", features = ["sync"] }
+tokio-util = { version = "0.7.19", features = ["rt"] }
+utoipa-axum = "=0.3.0"

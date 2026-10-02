@@ -1793,7 +1793,7 @@ export interface components {
       kind: string;
       request: unknown;
       request_status: components['schemas']['RequestRestoration'];
-      result: null | components['schemas']['AnalysisOutput'];
+      result: components['schemas']['AnalysisOutput'] | null;
       /** Format: uuid */
       tab_id: string;
     };
@@ -1833,7 +1833,7 @@ export interface components {
       outdated: boolean;
       /** Format: int64 */
       page: number;
-      predictions: (null | components['schemas']['Prediction'])[];
+      predictions: (components['schemas']['Prediction'] | null)[];
       row_refs: (string | null)[];
       skipped: number;
     };
@@ -1883,7 +1883,7 @@ export interface components {
       skipped: number;
     };
     AnnotationRequest: {
-      examples?: null | components['schemas']['AnnotationExamples'];
+      examples?: components['schemas']['AnnotationExamples'] | null;
       inference: components['schemas']['Inference'];
       processing?: components['schemas']['Processing'];
       setup: components['schemas']['ManualSetup'];
@@ -1916,7 +1916,7 @@ export interface components {
       page: number;
       /** Format: int64 */
       page_size: number;
-      review?: null | components['schemas']['Review'];
+      review?: components['schemas']['Review'] | null;
       sorting?: components['schemas']['CellEditSort'][];
     };
     CellEditPatch: {
@@ -2068,7 +2068,7 @@ export interface components {
       /** Format: int64 */
       page_size: number;
       search: components['schemas']['ConcordanceSearch'];
-      sort?: null | components['schemas']['DocumentSort'];
+      sort?: components['schemas']['DocumentSort'] | null;
     };
     ConcordancePublish: {
       projection: components['schemas']['Projection'];
@@ -2081,7 +2081,7 @@ export interface components {
       /** Format: int64 */
       page_size: number;
       projection?: components['schemas']['Projection'];
-      sort?: null | components['schemas']['SavedSort'];
+      sort?: components['schemas']['SavedSort'] | null;
       source_index: number;
     };
     ConcordanceRequest: {
@@ -2136,7 +2136,7 @@ export interface components {
       revision: string;
     } & {
       built_in: boolean;
-      credential_error: null | components['schemas']['Error'];
+      credential_error: components['schemas']['Error'] | null;
       has_credential: boolean;
     };
     Context: {
@@ -2199,7 +2199,7 @@ export interface components {
       color: string | null;
       /** Format: int64 */
       column_count: number | null;
-      diagnostic?: null | components['schemas']['Error'];
+      diagnostic?: components['schemas']['Error'] | null;
       /** @enum {string} */
       kind: 'table' | 'view' | 'missing';
       object: components['schemas']['Relation'];
@@ -2389,7 +2389,7 @@ export interface components {
       /** Format: int64 */
       page_size?: number | null;
       sort?: string | null;
-      stopword_source?: null | components['schemas']['StopwordSource'];
+      stopword_source?: components['schemas']['StopwordSource'] | null;
       view?: components['schemas']['FrequencyView'];
     };
     FrequencyRequest: {
@@ -2496,7 +2496,7 @@ export interface components {
     };
     ManualSetup: {
       annotation: string;
-      codebook?: null | components['schemas']['Codebook'];
+      codebook?: components['schemas']['Codebook'] | null;
       correction?: string | null;
       document: string;
       source: components['schemas']['ObjectTarget'];
@@ -2514,7 +2514,7 @@ export interface components {
       color: string | null;
       /** Format: int64 */
       column_count: number | null;
-      diagnostic?: null | components['schemas']['Error'];
+      diagnostic?: components['schemas']['Error'] | null;
       document_column: string | null;
       /** @enum {string} */
       kind: 'table' | 'view' | 'missing';
@@ -2635,13 +2635,13 @@ export interface components {
       theme: components['schemas']['Theme'];
     };
     PreferencesPatch: {
-      layout?: null | components['schemas']['LayoutPatch'];
+      layout?: components['schemas']['LayoutPatch'] | null;
       recentDataFiles?: string[] | null;
-      theme?: null | components['schemas']['Theme'];
+      theme?: components['schemas']['Theme'] | null;
     };
     PrepareStopwords: {
       inputs: components['schemas']['StopwordSource'][];
-      selected?: null | components['schemas']['StopwordSource'];
+      selected?: components['schemas']['StopwordSource'] | null;
     };
     PreviewSummary: {
       natural_topic_count: number;
@@ -2661,7 +2661,7 @@ export interface components {
       path?: string | null;
     };
     ProjectStatus: {
-      project: null | components['schemas']['ProjectInfo'];
+      project: components['schemas']['ProjectInfo'] | null;
     };
     /** @enum {string} */
     Projection: 'matches' | 'documents';
@@ -2680,7 +2680,7 @@ export interface components {
       page: number;
       /** Format: int64 */
       page_size: number;
-      sort?: null | components['schemas']['DocumentSort'];
+      sort?: components['schemas']['DocumentSort'] | null;
     };
     QuotationPublish: {
       fields: string[];
@@ -2695,7 +2695,7 @@ export interface components {
       /** Format: int64 */
       page_size: number;
       projection?: components['schemas']['Projection'];
-      sort?: null | components['schemas']['SavedSort'];
+      sort?: components['schemas']['SavedSort'] | null;
     };
     QuotationRequest: {
       input: components['schemas']['DocumentInput'];
@@ -2823,7 +2823,7 @@ export interface components {
     Review: {
       changes?: components['schemas']['CellEditPatch'][];
       compare: string[];
-      filter?: null | components['schemas']['RowFilter'];
+      filter?: components['schemas']['RowFilter'] | null;
     };
     ReviewSummary: {
       comparisons: components['schemas']['Comparison'][];
@@ -2922,7 +2922,7 @@ export interface components {
       project_id: string;
     };
     ServerProject: {
-      project?: null | components['schemas']['ProjectInfo'];
+      project?: components['schemas']['ProjectInfo'] | null;
       /** Format: uuid */
       project_id: string;
     };
@@ -2959,7 +2959,7 @@ export interface components {
           status: 'unsupported';
         };
     SqlBatch: {
-      changes?: null | components['schemas']['ChangeScope'];
+      changes?: components['schemas']['ChangeScope'] | null;
       max_rows?: number | null;
       mode?: components['schemas']['SqlMode'];
       response?: components['schemas']['SqlResponse'];
@@ -2972,7 +2972,7 @@ export interface components {
     /** @enum {string} */
     SqlMode: 'execute' | 'read' | 'preview';
     SqlRequest: {
-      changes?: null | components['schemas']['ChangeScope'];
+      changes?: components['schemas']['ChangeScope'] | null;
       max_rows?: number | null;
       mode?: components['schemas']['SqlMode'];
       response?: components['schemas']['SqlResponse'];
@@ -2992,7 +2992,7 @@ export interface components {
       source: components['schemas']['ObjectTarget'];
     };
     Tab: {
-      analysis: null | components['schemas']['AnalysisSummary'];
+      analysis: components['schemas']['AnalysisSummary'] | null;
       /** Format: uuid */
       id: string;
       kind: string;
@@ -3000,7 +3000,7 @@ export interface components {
       /** Format: int64 */
       position: number;
       settings: unknown;
-      setup_status?: null | components['schemas']['SetupRestoration'];
+      setup_status?: components['schemas']['SetupRestoration'] | null;
     };
     TableImport: {
       parameters?: unknown[];
@@ -3028,14 +3028,14 @@ export interface components {
     TaskSummary: {
       /** Format: int64 */
       created_at: number;
-      error: null | components['schemas']['Error'];
+      error: components['schemas']['Error'] | null;
       /** Format: int64 */
       finished_at: number | null;
       /** Format: uuid */
       id: string;
       label: string;
       notice?: string | null;
-      progress: null | components['schemas']['TaskProgress'];
+      progress: components['schemas']['TaskProgress'] | null;
       /** Format: int64 */
       started_at: number | null;
       state: components['schemas']['TaskState'];
@@ -3142,7 +3142,7 @@ export interface components {
       | {
           /** @enum {string} */
           projection: 'words';
-          stopword_source?: null | components['schemas']['StopwordSource'];
+          stopword_source?: components['schemas']['StopwordSource'] | null;
           topic_count: number;
         };
     TopicRequest: {

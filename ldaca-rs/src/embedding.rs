@@ -20,8 +20,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex, OnceLock, RwLock};
 
 use anyhow::{Context, Result};
-use hf_hub::api::sync::{ApiBuilder, ApiRepo};
-use hf_hub::{Repo, RepoType};
+use hf_hub::{HFRepositorySync, RepoTypeModel};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use ort::ep;
 use ort::session::builder::GraphOptimizationLevel;
@@ -110,7 +109,7 @@ impl PoolingConfig {
 }
 
 struct PinnedRepo {
-    repo: ApiRepo,
+    repo: HFRepositorySync<RepoTypeModel>,
     snapshot_root: PathBuf,
     revision: String,
 }
@@ -121,8 +120,7 @@ impl PinnedRepo {
         if cached.exists() {
             Ok(cached)
         } else {
-            self.repo
-                .get(filename)
+            crate::model_assets::huggingface_file(&self.repo, filename, &self.revision)
                 .with_context(|| format!("fetch {filename} at revision {}", self.revision))
         }
     }
@@ -462,22 +460,13 @@ pub(crate) fn ensure_embedder_in(
 }
 
 fn load_embedder(repo_id: &str, assets: Option<&ModelAssets>) -> Result<Embedder> {
-    let api = assets
-        .map(ModelAssets::huggingface_api)
-        .unwrap_or_else(ApiBuilder::from_env)
-        .build()
+    let unpinned = crate::model_assets::huggingface_model(repo_id, assets)
         .context("failed to init hf-hub api for embedder")?;
-    let unpinned = api.repo(Repo::new(repo_id.to_string(), RepoType::Model));
-    let modules_path = unpinned
-        .get("modules.json")
+    let modules_path = crate::model_assets::huggingface_file(&unpinned, "modules.json", "main")
         .with_context(|| format!("fetch Sentence Transformers modules.json for {repo_id}"))?;
     let (snapshot_root, revision) = snapshot_from_path(&modules_path)?;
     let repo = PinnedRepo {
-        repo: api.repo(Repo::with_revision(
-            repo_id.to_string(),
-            RepoType::Model,
-            revision.clone(),
-        )),
+        repo: unpinned,
         snapshot_root,
         revision: revision.clone(),
     };
@@ -761,7 +750,7 @@ fn embedding_fingerprint(
         hasher.update(value.as_bytes());
         hasher.update([0]);
     }
-    format!("{:x}", hasher.finalize())
+    hex::encode(hasher.finalize())
 }
 
 fn resolve_onnx_artifact(repo: &PinnedRepo, repo_id: &str) -> Result<(PathBuf, String)> {

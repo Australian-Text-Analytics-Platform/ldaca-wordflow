@@ -5,7 +5,7 @@
 //! dictionaries are NOT bundled with this library — instead the first
 //! `lindera:*` tokenize call lands here, fetches the matching official Lindera
 //! release zip, extracts into the local dictionary cache, and hands the loaded
-//! `Tokenizer` back to `tokenizer.rs` for memoization in the existing
+//! `Segmenter` back to `tokenizer.rs` for memoization in the existing
 //! `REGISTRY`.
 //!
 //! Cache layout: `${LINDERA_DICT_PATH:-$HOME/.cache/ldaca}/<dict-name>/`.
@@ -22,12 +22,11 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use anyhow::{bail, Context, Result};
 use lindera::dictionary::load_dictionary;
 use lindera::mode::Mode;
-use lindera::segmenter::Segmenter;
-use lindera::tokenizer::Tokenizer as LinderaTokenizer;
+use lindera::segmenter::Segmenter as LinderaTokenizer;
 
 use crate::file_lock::with_file_lock;
 
-const LINDERA_VERSION: &str = "3.0.7";
+const LINDERA_VERSION: &str = "6.2.0";
 const LINDERA_RELEASE_BASE_URL: &str = "https://github.com/lindera/lindera/releases/download";
 const LINDERA_DICT_PATH_ENV: &str = "LINDERA_DICT_PATH";
 const MAX_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
@@ -177,8 +176,7 @@ fn lindera_tokenizer_from_path(path: &Path) -> Result<LinderaTokenizer> {
         .with_context(|| format!("Lindera dictionary path is not valid UTF-8: {path:?}"))?;
     let dictionary = load_dictionary(path_str)
         .map_err(|e| anyhow::anyhow!("Lindera load_dictionary({path_str}) failed: {e}"))?;
-    let segmenter = Segmenter::new(Mode::Normal, dictionary, None);
-    Ok(LinderaTokenizer::new(segmenter))
+    Ok(LinderaTokenizer::new(Mode::Normal, dictionary, None))
 }
 
 /// Build a `LinderaTokenizer` for the given dict, downloading + extracting

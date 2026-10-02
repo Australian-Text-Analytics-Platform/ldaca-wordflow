@@ -179,7 +179,7 @@ impl Workers {
         if root.to_string_lossy().contains(',') {
             return Err(Error::invalid("Docker storage root cannot contain commas"));
         }
-        let namespace = format!("{:x}", Sha256::digest(root.as_os_str().as_encoded_bytes()));
+        let namespace = hex::encode(Sha256::digest(root.as_os_str().as_encoded_bytes()));
         let public = reqwest::Url::parse(
             config
                 .public_url

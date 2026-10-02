@@ -223,6 +223,17 @@ runner just to hide an unnecessarily slow fixture.
 
 ## Model and network checks
 
+The native tokenizer download/cache acceptance check uses a fresh temporary asset
+root and removes it afterward. It downloads the official BERT tokenizer and the
+matching Lindera Jieba dictionary, then reloads both from that root. Run it explicitly:
+
+```sh
+cargo test -p ldaca-rs --all-features --locked downloaded_tokenizers_reuse_host_cache -- --ignored
+```
+
+The regular `model_assets` loopback test separately verifies anonymous downloads,
+cache ownership and offline reuse after its mock server stops.
+
 Quotation browser and native E2E scenarios run by default. E2E launchers clean
 Test caches and preferences before each run and provision the pinned UDPipe model
 with SHA-256 verification. The model pin comes from the native extractor.
