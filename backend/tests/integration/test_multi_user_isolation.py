@@ -313,3 +313,39 @@ def test_a_project_removed_on_disk_is_still_unloaded(
     )
     slot = users.runtime.workspace_service._residency._slots.get(uuid.UUID(ws))
     assert slot is None or slot.workspace is None
+
+
+def test_a_hosted_upload_is_bounded_by_the_users_quota_not_a_fixed_cap(
+    users: Users, tmp_path: Path
+) -> None:
+    """No 512 MiB cap any more; the user's own storage quota decides (issues 248, 260)."""
+
+    import sqlite3
+
+    from ldaca_wordflow.infrastructure.storage.layout import deployment_database_path
+
+    alice = users.sign_in("alice")
+    user_id = _ok(users.request(alice, "GET", "/api/session"))["user"]["id"]
+    with sqlite3.connect(deployment_database_path(users.runtime.settings)) as db:
+        db.execute(
+            "UPDATE users SET storage_quota_bytes = ? WHERE id = ?",
+            (5 * 1024 * 1024, user_id),
+        )
+
+    def upload(name: str, size: int):
+        return users.request(
+            alice,
+            "POST",
+            "/api/user-files/uploads",
+            params={"path": name},
+            content=b"x" * size,
+            headers={"Content-Type": "application/octet-stream"},
+        )
+
+    assert upload("fits.bin", 1024 * 1024).status_code == 201
+    refused = upload("too-big.bin", 8 * 1024 * 1024)
+    assert refused.status_code == 507
+    assert refused.json()["code"] == "storage_quota_exceeded"
+    files = tmp_path / "users" / user_id / "files"
+    assert not (files / "too-big.bin").exists()
+    assert list(files.glob(".*.upload")) == []

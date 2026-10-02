@@ -1,8 +1,13 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commonUploadFolder, useUploadState } from '../useUploadState';
 import { UploadCancelledError, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
+
+const reminderMock = vi.hoisted(() => ({ needed: false }));
+vi.mock('../../utils/largeUploadReminder', () => ({
+  needsLargeUploadReminder: () => reminderMock.needed,
+}));
 
 function pickerFile(name: string, relativePath = '') {
   const value = new File([name], name);
@@ -255,5 +260,61 @@ describe('useUploadState upload tasks (issue 260)', () => {
     expect(commonUploadFolder(['corpus/nested/z.csv', 'corpus/a.csv'])).toBe('corpus');
     expect(commonUploadFolder(['a.csv', 'corpus/b.csv'])).toBe('');
     expect(commonUploadFolder(['x/y/a.csv'])).toBe('x/y');
+  });
+});
+
+describe('useUploadState large upload reminder (issue 260)', () => {
+  afterEach(() => {
+    reminderMock.needed = false;
+  });
+
+  it('waits for "Upload anyway" before creating anything', async () => {
+    reminderMock.needed = true;
+    useUploadTasksStore.setState({ uploads: [] });
+    const state = setup([[], []]);
+
+    let running: Promise<void> = Promise.resolve();
+    act(() => {
+      running = state.result.current.uploadSelectedFiles([pickerFile('corpus.zip')]);
+    });
+    await waitFor(() => {
+      expect(state.result.current.largeUploadReminder).toEqual({ totalBytes: 10, fileCount: 1 });
+    });
+    expect(state.uploadFileAtPath).not.toHaveBeenCalled();
+    expect(useUploadTasksStore.getState().uploads).toEqual([]);
+
+    act(() => {
+      state.result.current.acceptLargeUpload();
+    });
+    await act(async () => {
+      await running;
+    });
+    expect(state.result.current.largeUploadReminder).toBeNull();
+    expect(state.uploadFileAtPath).toHaveBeenCalledTimes(1);
+  });
+
+  it('uploads nothing when the reminder is cancelled', async () => {
+    reminderMock.needed = true;
+    useUploadTasksStore.setState({ uploads: [] });
+    const state = setup([[], []]);
+
+    let running: Promise<void> = Promise.resolve();
+    act(() => {
+      running = state.result.current.uploadSelectedFiles([pickerFile('corpus.zip')]);
+    });
+    await waitFor(() => {
+      expect(state.result.current.largeUploadReminder).not.toBeNull();
+    });
+    act(() => {
+      state.result.current.declineLargeUpload();
+    });
+    await act(async () => {
+      await running;
+    });
+
+    expect(state.uploadFileAtPath).not.toHaveBeenCalled();
+    expect(state.createUploadDirectory).not.toHaveBeenCalled();
+    expect(useUploadTasksStore.getState().uploads).toEqual([]);
+    expect(state.notify).toHaveBeenCalledWith('info', 'Upload cancelled. Nothing was uploaded.');
   });
 });

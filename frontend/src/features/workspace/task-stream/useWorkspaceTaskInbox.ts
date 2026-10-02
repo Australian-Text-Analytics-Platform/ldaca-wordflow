@@ -18,7 +18,13 @@ import { workspaceAnalysesQueryOptions } from '@/features/workspace/common/hooks
 import { invalidateNodeWorkspaceQueries } from '@/features/workspace/common/hooks/workspaceMutationCache';
 import { queryKeys } from '@/lib/queryKeys';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
-import { analysisToTask, importToTask, sortTasks, type TaskItem, uploadToTask } from './taskProjection';
+import {
+  analysisToTask,
+  importToTask,
+  sortTasks,
+  type TaskItem,
+  uploadToTask,
+} from './taskProjection';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 import {
   type BackendEvent,

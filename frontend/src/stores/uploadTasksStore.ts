@@ -69,11 +69,7 @@ const movingSpeed = (id: string, bytes: number, at: number): number | null => {
   return ((bytes - first.bytes) * 1000) / (at - first.at);
 };
 
-const finished = (
-  uploads: UploadTask[],
-  id: string,
-  patch: Partial<UploadTask>,
-): UploadTask[] => {
+const finished = (uploads: UploadTask[], id: string, patch: Partial<UploadTask>): UploadTask[] => {
   cancels.delete(id);
   samples.delete(id);
   return uploads.map((upload) =>

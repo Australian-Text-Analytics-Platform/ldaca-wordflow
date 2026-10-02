@@ -20,7 +20,6 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # The upload limit of a multi-user server unless MAX_FILE_UPLOAD_BYTES says
 # otherwise (issue 248).
-DEFAULT_SERVER_MAX_FILE_UPLOAD_BYTES = 512 * 1024 * 1024
 
 class RemoteQuotationEngineSetting(BaseModel):
     """One operator-owned remote quotation v2 origin."""
@@ -60,12 +59,14 @@ class Settings(BaseSettings):
         description="Operator-provided root data folder",
     )
 
-    # Empty: 512 MiB on a multi-user server, no limit on the desktop and other
-    # single-user runs (issue 248). See ``effective_max_file_upload_bytes``.
+    # Empty: no per-file limit anywhere (issues 248, 260). On a hosted server the
+    # user's storage quota and the free-disk check bound uploads instead, and
+    # the browser reminds people before a large upload. Operators may still set
+    # a limit. See ``effective_max_file_upload_bytes``.
     max_file_upload_bytes: int | None = Field(
         default=None,
         ge=1,
-        description="Maximum bytes in one user file upload; empty uses the mode default",
+        description="Optional maximum bytes in one user file upload; empty means no limit",
     )
     max_workspace_archive_bytes: int = Field(
         default=512 * 1024 * 1024,
@@ -511,15 +512,15 @@ class Settings(BaseSettings):
         return self.get_data_root() / "users"
 
     def effective_max_file_upload_bytes(self) -> int | None:
-        """The upload limit: the setting, else 512 MiB multi-user, else none (issue 248).
+        """The upload limit: only what the operator set, otherwise none.
 
-        The desktop app and other single-user runs keep files on the user's own
-        machine, so they have no upload limit; a shared server keeps one.
+        A hosted server used to default to 512 MiB (issue 248). Chao decided on
+        2026-10-02 to drop that arbitrary cap: how users spend their storage
+        quota is their decision, and the browser reminds them before a large
+        upload on a shared server (issue 260).
         """
 
-        if self.max_file_upload_bytes is not None:
-            return self.max_file_upload_bytes
-        return DEFAULT_SERVER_MAX_FILE_UPLOAD_BYTES if self.multi_user else None
+        return self.max_file_upload_bytes
 
     def get_trusted_hosts(self) -> tuple[str, ...]:
         """Return the explicit API Host allowlist without conflating CORS clients."""

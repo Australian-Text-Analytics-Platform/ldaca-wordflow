@@ -125,10 +125,10 @@ def test_a_folder_is_bounded_by_the_data_block_storage_limit(tmp_path: Path) -> 
         )
 
 
-def test_the_upload_limit_is_none_on_the_desktop_and_512_mb_on_a_server(
+def test_there_is_no_upload_limit_unless_the_operator_sets_one(
     tmp_path: Path,
 ) -> None:
-    """Issue 248: single-user (desktop) has no upload limit; multi-user keeps one."""
+    """Issues 248, 260: no default limit on the desktop or a server; the quota applies."""
     desktop = Settings(data_root=tmp_path, multi_user=False)
     server = Settings(
         data_root=tmp_path,
@@ -138,7 +138,7 @@ def test_the_upload_limit_is_none_on_the_desktop_and_512_mb_on_a_server(
         trusted_hosts=("wordflow.example",),
     )
     assert desktop.effective_max_file_upload_bytes() is None
-    assert server.effective_max_file_upload_bytes() == 512 * 1024 * 1024
+    assert server.effective_max_file_upload_bytes() is None
     assert (
         Settings(
             data_root=tmp_path, multi_user=False, max_file_upload_bytes=1_000

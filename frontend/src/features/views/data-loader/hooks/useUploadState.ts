@@ -3,6 +3,7 @@ import type { FileResource } from '@/api';
 import { isExternalFileDrag } from '@/lib/externalFileDropGuard';
 import { isUploadCancelled, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
+import { needsLargeUploadReminder } from '../utils/largeUploadReminder';
 import type { FileTreeNode } from '../types';
 import {
   collectDroppedSelection,
@@ -20,6 +21,12 @@ type Notify = (
   description?: string,
   cause?: unknown,
 ) => void;
+
+/** A large upload waiting for the user's go-ahead on a shared server (issue 260). */
+export interface LargeUploadReminder {
+  totalBytes: number;
+  fileCount: number;
+}
 
 export type UploadActivity =
   | { phase: 'idle' }
@@ -92,6 +99,22 @@ export function useUploadState({
   const [activity, setActivity] = useState<UploadActivity>({ phase: 'idle' });
   const [isFileDropActive, setIsFileDropActive] = useState(false);
   const [conflicts, setConflicts] = useState<string[]>([]);
+  const [largeUploadReminder, setLargeUploadReminder] = useState<LargeUploadReminder | null>(null);
+  const reminderAnswerRef = useRef<((accepted: boolean) => void) | null>(null);
+
+  /** Waits for "Upload anyway" or Cancel in the large-upload reminder. */
+  const askAboutLargeUpload = (reminder: LargeUploadReminder) =>
+    new Promise<boolean>((resolve) => {
+      reminderAnswerRef.current = resolve;
+      setLargeUploadReminder(reminder);
+    });
+
+  const answerLargeUpload = (accepted: boolean) => {
+    const answer = reminderAnswerRef.current;
+    reminderAnswerRef.current = null;
+    setLargeUploadReminder(null);
+    answer?.(accepted);
+  };
 
   const openFilePicker = () => fileInputRef.current?.click();
   const openFolderPicker = () => folderInputRef.current?.click();
@@ -141,13 +164,26 @@ export function useUploadState({
       return;
     }
 
+    const totalBytes = selection.files.reduce((sum, candidate) => sum + candidate.file.size, 0);
+    // A shared server reminds the user before a large upload instead of
+    // refusing it with a fixed limit (issue 260).
+    if (needsLargeUploadReminder(totalBytes)) {
+      const accepted = await askAboutLargeUpload({
+        totalBytes,
+        fileCount: selection.files.length,
+      });
+      if (!accepted) {
+        notify('info', 'Upload cancelled. Nothing was uploaded.');
+        return;
+      }
+    }
+
     const missingDirectories = getMissingUploadDirectories(selection, completeTree);
     // The upload becomes a task in the Tasks panel (issue 260).
     const uploads = useUploadTasksStore.getState();
     const uploadId = newUploadId();
     const controller = new AbortController();
     abortRef.current = controller;
-    const totalBytes = selection.files.reduce((sum, candidate) => sum + candidate.file.size, 0);
     const onlyFile = selection.files.length === 1 ? selection.files[0] : undefined;
     uploads.start({
       id: uploadId,
@@ -402,6 +438,13 @@ export function useUploadState({
     isBusy: activity.phase !== 'idle',
     isFileDropActive,
     conflicts,
+    largeUploadReminder,
+    acceptLargeUpload: () => {
+      answerLargeUpload(true);
+    },
+    declineLargeUpload: () => {
+      answerLargeUpload(false);
+    },
     openFilePicker,
     openFolderPicker,
     cancelUpload,

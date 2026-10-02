@@ -107,7 +107,10 @@ export function uploadFileWithProgress(
 
     xhr.upload.onprogress = (event: ProgressEvent) => {
       lastProgressAt = now();
-      onProgress?.({ loaded: event.loaded, total: event.lengthComputable ? event.total : file.size });
+      onProgress?.({
+        loaded: event.loaded,
+        total: event.lengthComputable ? event.total : file.size,
+      });
     };
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
@@ -115,7 +118,11 @@ export function uploadFileWithProgress(
           try {
             resolve(JSON.parse(xhr.responseText) as FileResource);
           } catch (error) {
-            reject(new ApiError('The upload finished, but the reply could not be read.', { detail: error }));
+            reject(
+              new ApiError('The upload finished, but the reply could not be read.', {
+                detail: error,
+              }),
+            );
           }
         });
         return;
@@ -129,12 +136,21 @@ export function uploadFileWithProgress(
     };
     xhr.onerror = () => {
       finish(() => {
-        reject(new ApiError('The upload could not reach Wordflow. Check your connection and try again.', { code: 'NETWORK' }));
+        reject(
+          new ApiError(
+            'The upload could not reach Wordflow. Check your connection and try again.',
+            { code: 'NETWORK' },
+          ),
+        );
       });
     };
     xhr.onabort = () => {
       finish(() => {
-        reject(stalled ? new ApiError(UPLOAD_STALLED_MESSAGE, { code: 'UPLOAD_STALLED' }) : new UploadCancelledError());
+        reject(
+          stalled
+            ? new ApiError(UPLOAD_STALLED_MESSAGE, { code: 'UPLOAD_STALLED' })
+            : new UploadCancelledError(),
+        );
       });
     };
 

@@ -241,6 +241,9 @@ function DataLoaderFeature() {
     isBusy: uploadBusy,
     progressText,
     conflicts: uploadConflicts,
+    largeUploadReminder,
+    acceptLargeUpload,
+    declineLargeUpload,
     isFileDropActive,
     openFilePicker,
     openFolderPicker,
@@ -712,6 +715,11 @@ function DataLoaderFeature() {
         uploadConflicts={{
           paths: uploadConflicts,
           onClose: closeConflictDialog,
+        }}
+        largeUpload={{
+          reminder: largeUploadReminder,
+          onAccept: acceptLargeUpload,
+          onDecline: declineLargeUpload,
         }}
       />
     </div>

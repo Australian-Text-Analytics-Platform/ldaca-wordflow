@@ -24,6 +24,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { FileTreeDirectory } from '@/features/views/data-loader/types';
 import { LdacaImportDialog, type LdacaImportDialogProps } from './LdacaImportDialog';
+import type { LargeUploadReminder } from '../hooks/useUploadState';
+import { DESKTOP_APP_URL } from '../utils/largeUploadReminder';
+import { formatBytes } from '../utils/format';
 
 export interface DataLoaderDialogsProps {
   workspaceNameAlert: {
@@ -62,6 +65,12 @@ export interface DataLoaderDialogsProps {
     paths: string[];
     onClose: () => void;
   };
+  /** The reminder before a large upload on a shared server (issue 260). */
+  largeUpload?: {
+    reminder: LargeUploadReminder | null;
+    onAccept: () => void;
+    onDecline: () => void;
+  };
 }
 
 /**
@@ -80,9 +89,44 @@ export function DataLoaderDialogs({
   createFolder,
   citation,
   uploadConflicts,
+  largeUpload,
 }: DataLoaderDialogsProps) {
   return (
     <>
+      <AlertDialog
+        open={Boolean(largeUpload?.reminder)}
+        onOpenChange={(open) => {
+          if (!open) largeUpload?.onDecline();
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              This is a large upload ({formatBytes(largeUpload?.reminder?.totalBytes)})
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  This Wordflow server is for trying out the software. It is shared with other
+                  people, and it is not fast enough for a full corpus of this size: some tools may
+                  run very slowly.
+                </p>
+                <p>
+                  For large corpora, install the{' '}
+                  <a href={DESKTOP_APP_URL} target="_blank" rel="noreferrer" className="underline">
+                    Wordflow desktop app
+                  </a>{' '}
+                  and work on your own computer. Or upload anyway and expect some tools to be slow.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={largeUpload?.onDecline}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={largeUpload?.onAccept}>Upload anyway</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       <AlertDialog
         open={Boolean(workspaceNameAlert.message)}
         onOpenChange={(open) => {

@@ -77,13 +77,23 @@ duplicate destinations, and conflicts with existing User Files. If any path
 conflicts, nothing is uploaded and the dialog lists every path to resolve.
 Existing folders can be reused, but existing files are never overwritten.
 
-The desktop app accepts files of any size. On a shared Wordflow server, each
-file can be up to 512 MB; a larger file is refused with a message saying so.
+Wordflow does not limit the size of a file. On a shared Wordflow server, your
+uploads count toward your storage space, and an upload larger than the space
+you have left is refused when it starts. Before uploading more than 50 MB on a
+shared server, Wordflow reminds you that the server is for trying Wordflow out:
+it is shared with other people and slow with a full corpus of that size. For
+large corpora, install the [desktop app](https://sih.tools/wordflow) and work
+on your own computer; or choose **Upload anyway** and expect some tools to run
+slowly.
 
-During a large upload, the panel shows whether it is preparing, creating
-folders, or uploading files. **Cancel** finishes the current request and stops
-before the next one. Files and folders already created are retained if an
-upload is cancelled or fails. Dot-prefixed files and folders and `Thumbs.db`
+Each upload appears in the **Tasks** panel as **L - Upload**, with how much has
+been sent, the speed, and the time left; for several files it also shows which
+file is being sent. It keeps going while you work in other views. **Stop** (in
+Tasks) or **Cancel** (in the Data Loader) ends it at once; a file that was only
+partly sent is not kept, while files and folders already completed are. If an
+upload makes no progress for a minute, it stops and says so: some networks,
+such as campus networks, hold large uploads. Reloading or closing the page
+ends an upload, so Wordflow asks first. Dot-prefixed files and folders and `Thumbs.db`
 files are skipped and reported in the completion message. Source folders that
 contain no uploadable files are not created.
 
