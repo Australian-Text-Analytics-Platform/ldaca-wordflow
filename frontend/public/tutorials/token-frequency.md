@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-token-frequency-section">Frequency tutorial</h1>
+<h1 id="help-token-frequency-section">Frequency</h1>
 
 ![Frequency screenshot](tutorials/assets/token_frequency.png)
 
@@ -199,4 +199,4 @@ stay editable but Run stays off until you choose **Clear**. See [How Preview, Ru
 7. Sort the statistics table by **LogRatio** to find the words most distinctively associated with each Data Block.
 8. Left-click one of the top distinctive words to jump to Concordance and inspect it in context.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

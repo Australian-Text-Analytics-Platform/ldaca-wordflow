@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-topic-modeling-section">Topic Modelling tutorial</h1>
+<h1 id="help-topic-modeling-section">Topic Modelling</h1>
 
 ![Topic modelling parameter panel](tutorials/assets/topic_modelling.png)
 
@@ -350,4 +350,4 @@ available for the next run.
    sample and seed.
 5. Compare the topic map, representative words, and how many segments have No topic.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
 <h1 id="help-ui-overview">User Interface Overview</h1>
 
@@ -330,4 +330,4 @@ Some characters have a special meaning: `. ? * + ( ) [ ] { } ^ $ | \`. To match 
 
 Wordflow's patterns follow the [Rust regular expression syntax](https://docs.rs/regex/latest/regex/#syntax). It covers everyday patterns, but it does not support look-ahead or look-behind (such as `(?=...)` or `(?<=...)`). For a quick overview of the symbols, see the [MDN regular expressions cheat sheet](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_expressions/Cheatsheet). To try a pattern on your own text before using it, paste both into [regex101.com](https://regex101.com/) and choose the **Rust** flavour.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

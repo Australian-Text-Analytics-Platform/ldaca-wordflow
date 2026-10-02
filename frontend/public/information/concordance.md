@@ -63,5 +63,5 @@ analysis without loading a whole-corpus result into the browser.
   `CONC_extraction`. With two Data Blocks, you can include either or both.
 
 - **Where can I get help?**
-  See the full Concordance tutorial in Help, or use the Feedback button in the
+  See the full Concordance page in Help, or use the Feedback button in the
   sidebar to contact the Sydney Informatics Hub development team.

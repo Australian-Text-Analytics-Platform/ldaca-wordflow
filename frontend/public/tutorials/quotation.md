@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-quotation-section">Quotation Extraction tutorial</h1>
+<h1 id="help-quotation-section">Quotation Extraction</h1>
 
 Quotation Extraction identifies quoted speech, speakers, and speech verbs in
 English news-style text. The built-in rule-based engine is based on the
@@ -167,4 +167,4 @@ until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-u
 5. Run, inspect **Quotation Results**, and use **Add to Project** if you need a new
    Data Block.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

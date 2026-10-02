@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-data-loader-section">Data Loader tutorial</h1>
+<h1 id="help-data-loader-section">Data Loader</h1>
 
 The Data Loader is the entry point of the application and must be configured before any analysis can be performed. It comprises three main panels: the active Project panel, the Project manager, and the files and uploads section.
 
@@ -295,4 +295,4 @@ Some folders (particularly those created by the LDaCA importer) display a small 
 4. Rename the Project to **Practice Corpus v1**.
 5. Close the Project and open it again from the Project manager.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

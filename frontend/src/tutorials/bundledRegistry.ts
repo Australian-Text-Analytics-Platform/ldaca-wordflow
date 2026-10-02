@@ -637,5 +637,5 @@ export type BundledReferenceKey = keyof typeof reference;
 export const TUTORIAL_INDEX_TARGET: DocTarget = {
   file: 'tutorials/index.md',
   anchor: 'help-tutorial-index',
-  label: 'Tutorial index',
+  label: 'Help home',
 };

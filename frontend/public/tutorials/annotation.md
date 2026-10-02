@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
-<h1 id="help-annotation-section">Annotation tutorial</h1>
+[← Back to Help home](./index.md)
+<h1 id="help-annotation-section">Annotation</h1>
 
 Use Annotation to apply one of the codes in a Codebook to each source row,
 either directly or with predictions from a configured AI provider.
@@ -166,4 +166,4 @@ Before using labels downstream, sample every code, inspect uncertain or costly
 errors, and record who or what produced the labels. Treat AI predictions and
 agreement scores as evidence for review rather than proof of correctness.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

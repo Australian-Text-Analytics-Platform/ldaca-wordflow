@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-export-section">Export tutorial</h1>
+<h1 id="help-export-section">Export</h1>
 
 ![Export screenshot](tutorials/assets/export.png)
 
@@ -97,4 +97,4 @@ text in CSV and Excel files; Parquet keeps them as they are.
 3. Open the ZIP and confirm that it contains one CSV per selected Data Block.
 4. Choose **Parquet**, use **Add all**, and export every Data Block together.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

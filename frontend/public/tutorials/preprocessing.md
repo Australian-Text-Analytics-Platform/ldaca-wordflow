@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-preprocessing-section">Data Builder tutorial</h1>
+<h1 id="help-preprocessing-section">Data Builder</h1>
 
 ![Data Builder screenshot](tutorials/assets/preprocessing.png)
 

@@ -73,6 +73,6 @@ Data Builder tools (such as filtering, grouping, joining, sampling, and stacking
 
 A Project is a saved container for your Data Blocks, settings, and analysis outputs. Think of it as a project folder inside the app.
 
-**Q: Why are there separate tutorial pages?**
+**Q: Why are there separate Help pages?**
 
 Each page focuses on a single area so you can learn in small steps and jump directly from a help icon.

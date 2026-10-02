@@ -20,7 +20,7 @@ const DOCUMENT_PRESENTATION: Record<
 > = {
   tutorial: {
     docType: 'tutorial',
-    title: 'Tutorial',
+    title: 'Help',
     spinnerColor: 'border-button',
   },
   info: {

@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-concordance-section">Concordance tutorial</h1>
+<h1 id="help-concordance-section">Concordance</h1>
 
 Concordance searches one or two Data Blocks for a word or phrase and shows each
 match in context. It is useful for comparing how terms are used and where they
@@ -356,4 +356,4 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 6. Change a setting, then choose **Preview** again and compare the new matches
    with the earlier ones.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

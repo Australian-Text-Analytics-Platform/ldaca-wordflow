@@ -1,8 +1,8 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)
 
-<h1 id="help-sequential-section">Trends tutorial</h1>
+<h1 id="help-sequential-section">Trends</h1>
 
 ![Trends screenshot](tutorials/assets/sequential_analysis.png)
 
@@ -266,4 +266,4 @@ visibility.
 5. Zoom into a period of high activity, click one period, then **Shift-click** another to select every period between them.
 6. Download the chart in the format you need and compare it with the monthly view.
 
-[← Back to tutorial index](./index.md)
+[← Back to Help home](./index.md)

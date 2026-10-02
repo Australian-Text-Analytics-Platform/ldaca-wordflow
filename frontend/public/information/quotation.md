@@ -34,7 +34,7 @@ working with another genre or English variety.
 - **Where can I read more?**
   See the [open access article](https://doi.org/10.1515/cllt-2023-0104), the
   [ATAP overview](https://www.atap.edu.au/posts/quotation-tool/), or the full
-  Quotation tutorial in Help.
+  Quotation page in Help.
 
 - **Where can I get help?**
   Use the Feedback button in the sidebar to contact the Sydney Informatics Hub
