@@ -1,4 +1,4 @@
-import { CircleHelp, LoaderCircle, Plus } from 'lucide-react';
+import { LoaderCircle, Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type {
   TopicClustering,
@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { Slider } from '@/components/ui/slider';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnalysisCardLayout } from '@/features/views/common/components/AnalysisCardLayout';
 import { AnalysisRunningStateCard } from '@/features/views/common/components/AnalysisRunningStateCard';
 import { TopicModelingBubbleChartSection } from '../results/TopicModelingBubbleChartSection';
@@ -402,21 +401,12 @@ function TopNTopicsControl({
         <label htmlFor="topic-top-n" className="font-medium">
           Per document
         </label>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <button
-              type="button"
-              aria-label="About Top topics per document"
-              className="inline-flex size-5 shrink-0 items-center justify-center rounded-full text-description transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-            >
-              <CircleHelp className="h-3.5 w-3.5" />
-            </button>
-          </TooltipTrigger>
-          <TooltipContent side="top" className="max-w-72">
-            Top topics per document: each row counts toward this many bubbles. Cutoff ties can
-            include more than this number.
-          </TooltipContent>
-        </Tooltip>
+        <HelpIcon
+          targetKey="analysis.topic-modeling.top-topics-per-row"
+          label="About Top topics per document"
+          tooltip="Top topics per document: each row counts toward this many bubbles. Cutoff ties can include more than this number."
+          className="size-5 shrink-0 text-description"
+        />
       </div>
       <input
         id="topic-top-n"

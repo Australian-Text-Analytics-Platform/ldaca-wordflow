@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { useUIStore } from '@/stores/uiStore';
 
 import { TopicModelingResultsPanel } from '../TopicModelingResultsPanel';
 
@@ -537,6 +538,11 @@ describe('TopicModelingResultsPanel', () => {
 
     await user.hover(screen.getByRole('button', { name: 'About Top topics per document' }));
     expect(await screen.findByRole('tooltip')).toHaveTextContent(explanation);
+
+    await user.click(screen.getByRole('button', { name: 'About Top topics per document' }));
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      anchor: 'help-topic-modeling-top-topics-per-row',
+    });
   });
 
   it('keeps filtering off while stop-word configuration remains editable', () => {

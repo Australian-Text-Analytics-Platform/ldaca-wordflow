@@ -16,3 +16,6 @@ export const DOC_ZOOM_STEP = 0.1;
 
 /** Anchor highlight duration in ms (tutorial anchor scroll highlight). */
 export const ANCHOR_HIGHLIGHT_DURATION_MS = 3500;
+
+/** How long an opened help section is kept in view while its images load (ms). */
+export const ANCHOR_SETTLE_DURATION_MS = 10_000;

@@ -411,6 +411,16 @@ const tutorial = {
     anchor: 'help-topic-modeling-max-segment-tokens',
     label: 'Maximum tokens per segment',
   },
+  'analysis.topic-modeling.topic-size': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-min-cluster-size',
+    label: 'Topic size',
+  },
+  'analysis.topic-modeling.top-topics-per-row': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-top-topics-per-row',
+    label: 'Top topics per document',
+  },
   'analysis.topic-modeling.number-of-clusters': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-number-of-clusters',

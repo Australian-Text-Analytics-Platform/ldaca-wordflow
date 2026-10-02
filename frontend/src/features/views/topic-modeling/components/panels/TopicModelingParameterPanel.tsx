@@ -1,5 +1,5 @@
 import { useState, type FocusEvent } from 'react';
-import { CircleHelp } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,6 +16,7 @@ import {
   type NodeInputColumnAddonArgs,
 } from '@/features/views/common/components/NodeInputsPanel';
 import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
+import type { DocumentKey } from '@/tutorials/documentationRegistry';
 import {
   effectiveSampleDocumentCount,
   sanitizeMaxClusterSize,
@@ -74,38 +75,45 @@ interface Props {
 }
 const INTEGER_INPUT = 'h-8 w-20 px-2 text-right text-body tabular-nums';
 
-/** A short visible label with its full explanation in a help tooltip. */
+const LABEL_TEXT = 'text-label-secondary font-medium text-description';
+
+/** A short visible label with its full explanation in a tooltip and a link to the tutorial section. */
 function ParameterLabel({
   htmlFor,
   help,
+  helpKey,
   as = 'label',
   children,
 }: {
   htmlFor?: string;
   help: string;
+  helpKey: DocumentKey<'tutorial'>;
   as?: 'label' | 'legend';
   children: string;
 }) {
-  const content = (
-    <>
-      {children}
-      <span
-        aria-label={help}
-        title={help}
-        className="inline-flex h-4 w-4 shrink-0 items-center justify-center text-description"
-      >
-        <CircleHelp className="h-3.5 w-3.5" />
-      </span>
-    </>
+  const className = `flex items-center gap-1 whitespace-nowrap ${LABEL_TEXT}`;
+  // The icon opens the tutorial section; it sits beside the label, not in it,
+  // so clicking it never focuses the input instead.
+  const helpIcon = (
+    <HelpIcon
+      targetKey={helpKey}
+      label={`About ${children}`}
+      tooltip={help}
+      className="size-5 shrink-0 text-description"
+    />
   );
-  const className =
-    'flex items-center gap-1 whitespace-nowrap text-label-secondary font-medium text-description';
   return as === 'legend' ? (
-    <legend className={className}>{content}</legend>
+    <legend className={className}>
+      {children}
+      {helpIcon}
+    </legend>
   ) : (
-    <Label htmlFor={htmlFor} className={className}>
-      {content}
-    </Label>
+    <div className={className}>
+      <Label htmlFor={htmlFor} className={LABEL_TEXT}>
+        {children}
+      </Label>
+      {helpIcon}
+    </div>
   );
 }
 
@@ -304,6 +312,7 @@ export function TopicModelingParameterPanel({
         <div className="flex flex-wrap items-start gap-x-5 gap-y-3">
           <div className="space-y-1">
             <ParameterLabel
+              helpKey="analysis.topic-modeling.segmentation-method"
               htmlFor="topic-segmentation-method"
               help="Which text spans become Topic Segments. Automatic starts from paragraphs (blank-line blocks, or single lines when the text has no blank lines). Paragraph treats every non-empty line as a paragraph. Sentence starts from Unicode sentence boundaries. A unit that fits the token budget is one segment; an oversized unit is split into sentences, then at the clause punctuation nearest its middle."
             >
@@ -332,6 +341,7 @@ export function TopicModelingParameterPanel({
 
           <div className="space-y-1">
             <ParameterLabel
+              helpKey="analysis.topic-modeling.max-segment-tokens"
               htmlFor="topic-max-segment-tokens"
               help="Maximum tokens per segment, from 32 to 256. Tokens are model units and may be words or parts of words. Oversized Line and Sentence units are split into complete non-overlapping segments."
             >
@@ -358,6 +368,7 @@ export function TopicModelingParameterPanel({
 
           <fieldset className="space-y-1">
             <ParameterLabel
+              helpKey="analysis.topic-modeling.topic-size"
               as="legend"
               help="The smallest and largest topic, counted in Topic Segments (not documents). A smaller Min finds more, smaller topics. Leave Max empty for Auto: Wordflow then splits a topic only when it holds more than half of all segments. A fixed Max must be larger than Min. Changing Topic size needs a new Run; Number of topics only merges the topics found."
             >
@@ -414,6 +425,7 @@ export function TopicModelingParameterPanel({
 
           <div className="space-y-1">
             <ParameterLabel
+              helpKey="analysis.topic-modeling.random-seed"
               htmlFor="random-seed"
               help="Random seed. The same seed and settings give the same topics."
             >

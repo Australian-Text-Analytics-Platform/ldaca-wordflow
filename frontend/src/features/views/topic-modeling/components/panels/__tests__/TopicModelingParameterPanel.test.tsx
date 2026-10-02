@@ -1,10 +1,14 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render as renderUi, screen } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TopicModelingParameterPanel } from '../TopicModelingParameterPanel';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useUIStore } from '@/stores/uiStore';
+
+const render = (ui: React.ReactElement) => renderUi(ui, { wrapper: TooltipProvider });
 
 vi.mock('../../../../../../components/help/InfoIcon', () => ({
   default: () => null,
@@ -135,6 +139,23 @@ describe('TopicModelingParameterPanel', () => {
     expect(screen.getByLabelText('Maximum tokens per segment')).toHaveValue(256);
     expect(screen.getByLabelText('Min topic size')).toHaveValue(10);
     expect(screen.queryByText('Topic Modelling Options')).not.toBeInTheDocument();
+  });
+
+  it('opens the tutorial section from each parameter help icon', () => {
+    render(<TopicModelingParameterPanel {...baseProps} />);
+
+    for (const [label, anchor] of [
+      ['About Segments', 'help-topic-modeling-segmentation-method'],
+      ['About Max tokens', 'help-topic-modeling-max-segment-tokens'],
+      ['About Topic size', 'help-topic-modeling-min-cluster-size'],
+      ['About Seed', 'help-topic-modeling-random-seed'],
+    ]) {
+      fireEvent.click(screen.getByRole('button', { name: label }));
+      expect(useUIStore.getState().documentTarget).toMatchObject({
+        file: 'tutorials/topic-modeling.md',
+        anchor,
+      });
+    }
   });
 
   it('commits maximum tokens per segment within the supported model window', () => {
