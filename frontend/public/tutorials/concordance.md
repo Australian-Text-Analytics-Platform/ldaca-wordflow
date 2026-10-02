@@ -305,6 +305,8 @@ is treated the same way. If the text you search is itself one of them, for
 example stacked `CONC_extraction` text, the Result keeps it as `CONC_source`
 (or `CONC_source_2` if that name is taken).
 
+![Add to Project after searching the CONC_extraction text of a Data Block made from a Concordance Result: the searched text is kept as CONC_source, with one fresh set of Concordance columns](tutorials/assets/concordance/search_again.png)
+
 ![Add Concordance Documents to Project, from Dispersion view](tutorials/assets/concordance/add_to_project.png)
 
 <h3 id="help-concordance-clear-results">Clear results</h3>

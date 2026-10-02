@@ -106,6 +106,8 @@ treated the same way. If the text you search is itself one of them, for example
 `QUOTE_extraction`, the Result keeps it as `QUOTE_source` (or `QUOTE_source_2`
 if that name is taken).
 
+![Add to Project after running Quotation on the QUOTE_extraction text of a Data Block made from a Quotation Result: the text is kept as QUOTE_source, with one fresh set of Quotation columns](tutorials/assets/quotation/run_again.png)
+
 <h3 id="help-quotation-quote-types">Quote types</h3>
 
 Each extract has a **Quote type** (`QUOTE_quote_type`), which Row Details also
