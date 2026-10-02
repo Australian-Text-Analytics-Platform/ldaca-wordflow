@@ -239,15 +239,16 @@
   scroll-margin-top: var(--doc-header-offset, 96px);
 }
 
-/* Screenshots are light; in the dark theme dim them so white areas do not
-   glare, keeping text and controls legible. Hover shows full brightness. */
-[data-theme="dark-2026"] .doc-prose img {
-  filter: brightness(0.8) contrast(1.1);
-  transition: filter 150ms ease-out;
+/* Screenshots: a gamma curve (DocumentView's #doc-image-gamma) darkens faint
+   light greys, such as 1px graph edges, while white stays white; contrast()
+   would push them to white instead. The dark theme also dims the image so
+   white areas do not glare. */
+.doc-prose img {
+  filter: url(#doc-image-gamma);
 }
 
-[data-theme="dark-2026"] .doc-prose img:hover {
-  filter: none;
+[data-theme="dark-2026"] .doc-prose img {
+  filter: url(#doc-image-gamma) brightness(0.8);
 }
 
 .tutorial-highlight {

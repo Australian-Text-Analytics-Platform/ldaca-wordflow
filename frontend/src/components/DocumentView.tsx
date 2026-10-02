@@ -98,6 +98,9 @@ const resolveAssetUrl = (
   }
 };
 
+/** Above 1 darkens light greys in screenshots; white and black stay put. */
+const DOC_IMAGE_GAMMA = 1.4;
+
 /** Height of the pinned header, so anchors scroll to just below it. */
 const useElementHeight = (ref: React.RefObject<HTMLElement | null>): number => {
   const [height, setHeight] = useState(0);
@@ -313,6 +316,18 @@ function DocumentView({
       className="min-h-screen bg-editor"
       style={{ '--doc-header-offset': `${String(headerHeight + 16)}px` } as React.CSSProperties}
     >
+      {/* Gamma curve for screenshots (see .doc-prose img in index.css). */}
+      <svg aria-hidden="true" width="0" height="0" className="absolute">
+        <defs>
+          <filter id="doc-image-gamma" colorInterpolationFilters="sRGB">
+            <feComponentTransfer>
+              <feFuncR type="gamma" exponent={DOC_IMAGE_GAMMA} />
+              <feFuncG type="gamma" exponent={DOC_IMAGE_GAMMA} />
+              <feFuncB type="gamma" exponent={DOC_IMAGE_GAMMA} />
+            </feComponentTransfer>
+          </filter>
+        </defs>
+      </svg>
       {/* Pinned while the page scrolls: title, partner logos, then window controls. */}
       <header
         ref={headerRef}
