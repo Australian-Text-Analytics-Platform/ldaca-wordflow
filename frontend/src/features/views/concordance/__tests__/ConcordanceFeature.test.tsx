@@ -784,7 +784,10 @@ describe('ConcordanceFeature', () => {
     unmount();
   });
 
-  it('shares exact legend exclusions across sources and Combined View', async () => {
+  // A heavy render: 0.8 s locally, but it once took just over 5 s on a CI runner.
+  it('shares exact legend exclusions across sources and Combined View', {
+    timeout: 15_000,
+  }, async () => {
     mockAnalysisState = 'successful';
     mockInitialResult = { state: 'successful', message: 'ok', data: {} };
     mockRunAllAnalysis = {

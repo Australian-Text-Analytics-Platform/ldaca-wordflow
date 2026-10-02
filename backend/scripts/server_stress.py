@@ -46,7 +46,7 @@ class Recorder:
 
 
 class Participant:
-    def __init__(self, number: int, run: "Run") -> None:
+    def __init__(self, number: int, run: Run) -> None:
         self.number = number
         self.run = run
         self.client = run.client
