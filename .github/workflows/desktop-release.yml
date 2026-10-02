@@ -22,12 +22,18 @@ on:
         description: "Release tag to publish when publish_release is enabled"
         required: false
         type: string
+      publish_from_run:
+        description: "Run ID of an earlier successful run of this workflow whose tested artifacts to publish, without rebuilding (needs publish_release and release_tag)"
+        required: false
+        type: string
+        default: ""
 
 concurrency:
   group: desktop-release-${{ inputs.ref != '' && inputs.ref || github.ref_name }}
   cancel-in-progress: false
 
 permissions:
+  actions: read
   contents: write
 
 jobs:
@@ -62,9 +68,26 @@ jobs:
             exit 1
           fi
 
+      # A later run can publish this run's artifacts (publish_from_run) only
+      # when they were built from the commit its release tag names.
+      - name: Record the built commit
+        if: inputs.publish_from_run == ''
+        shell: bash
+        run: git rev-parse HEAD > desktop-build-commit.txt
+
+      - name: Upload the built commit
+        if: inputs.publish_from_run == ''
+        uses: actions/upload-artifact@v7.0.1
+        with:
+          name: desktop-build-commit
+          path: desktop-build-commit.txt
+          if-no-files-found: error
+          retention-days: 14
+
   build-desktop:
     name: Build ${{ matrix.name }}
     needs: verify-versions
+    if: inputs.publish_from_run == ''
     strategy:
       fail-fast: false
       matrix:
@@ -83,23 +106,54 @@ jobs:
 
   publish-release:
     name: Publish Desktop Assets
-    if: ${{ inputs.publish_release }}
-    needs: build-desktop
+    if: >-
+      ${{ always() && inputs.publish_release
+      && needs.verify-versions.result == 'success'
+      && (needs.build-desktop.result == 'success'
+      || (inputs.publish_from_run != '' && needs.build-desktop.result == 'skipped')) }}
+    needs: [verify-versions, build-desktop]
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ github.token }}
+      ARTIFACT_RUN_ID: ${{ inputs.publish_from_run != '' && inputs.publish_from_run || github.run_id }}
     steps:
+      - name: Check the earlier run built the release tag
+        if: inputs.publish_from_run != ''
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -Eeuo pipefail
+          read -r run_path run_conclusion < <(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$ARTIFACT_RUN_ID" --jq '"\(.path) \(.conclusion)"')
+          case "$run_path" in .github/workflows/desktop-release.yml*) ;; *) run_conclusion="wrong workflow" ;; esac
+          if [ "$run_conclusion" != "success" ]; then
+            echo "Run $ARTIFACT_RUN_ID is not a successful Manual Desktop Release run ($run_path, $run_conclusion)" >&2
+            exit 1
+          fi
+          gh run download "$ARTIFACT_RUN_ID" --repo "$GITHUB_REPOSITORY" --name desktop-build-commit --dir built-commit
+          built_sha="$(tr -d '[:space:]' < built-commit/desktop-build-commit.txt)"
+          release_sha="$(gh api "repos/$GITHUB_REPOSITORY/commits/$RELEASE_TAG" --jq .sha)"
+          if [ "$built_sha" != "$release_sha" ]; then
+            echo "Run $ARTIFACT_RUN_ID built $built_sha, but $RELEASE_TAG is $release_sha" >&2
+            exit 1
+          fi
+          echo "Publishing the artifacts run $ARTIFACT_RUN_ID built from $built_sha"
+
       - name: Download Windows artifacts
         uses: actions/download-artifact@v8.0.1
         with:
           name: ldaca-desktop-windows-msi
           path: release-assets/windows
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: Download macOS artifacts
         uses: actions/download-artifact@v8.0.1
         with:
           name: ldaca-desktop-macos-apple-silicon
           path: release-assets/macos
+          run-id: ${{ env.ARTIFACT_RUN_ID }}
+          github-token: ${{ github.token }}
 
       - name: Create signed updater manifest
         shell: bash

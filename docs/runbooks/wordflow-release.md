@@ -78,6 +78,30 @@ updater archives, and signatures without rebuilding. Its backend runtime uses
 normal source-aware locked sync; it does not require the Python package to have
 already reached PyPI.
 
+### Test the installers, then publish the same files
+
+To publish exactly the installers that were tested:
+
+1. Dispatch `Manual Desktop Release` on the release branch with **ref** set to
+   the release commit's full SHA and **Publish artifacts** disabled. The run
+   uploads the signed, notarized MSI, DMG and updater archives as artifacts
+   (kept 14 days) plus `desktop-build-commit`, the commit it built.
+2. Download the artifacts from that run and test them.
+3. Tag that commit `vX.Y.Z` and create the GitHub Release with its notes.
+4. Dispatch `Manual Desktop Release` again with **ref** `vX.Y.Z`, **Publish
+   artifacts** enabled, **release_tag** `vX.Y.Z`, and **publish_from_run** set
+   to the run ID from step 1. It skips the builds, checks that run succeeded and
+   built the commit the tag names, then publishes its artifacts with a new
+   `latest.json`.
+
+```bash
+gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ldaca-wordflow \
+  --ref v0.7 -f ref=<sha> -f publish_release=false
+gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ldaca-wordflow \
+  --ref v0.7 -f ref=vX.Y.Z -f publish_release=true -f release_tag=vX.Y.Z \
+  -f publish_from_run=<run id>
+```
+
 ## Post-release
 
 - Install the exact backend version with `uvx --from ldaca-wordflow==<semver>
