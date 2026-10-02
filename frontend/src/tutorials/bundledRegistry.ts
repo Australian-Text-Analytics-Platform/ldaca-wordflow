@@ -471,6 +471,16 @@ const tutorial = {
     anchor: 'help-sequential-frequency',
     label: 'Frequency selector',
   },
+  'analysis.sequential-analysis.spacing': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-x-axis',
+    label: 'Spacing',
+  },
+  'analysis.sequential-analysis.legend': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-legend',
+    label: 'Legend',
+  },
   'analysis.quotation.tab': {
     file: 'tutorials/quotation.md',
     anchor: 'help-quotation-section',

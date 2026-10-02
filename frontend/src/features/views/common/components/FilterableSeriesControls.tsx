@@ -1,10 +1,10 @@
 import { useId, type ReactNode } from 'react';
-import { Info } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import HelpIcon from '@/components/help/HelpIcon';
+import type { DocumentKey } from '@/tutorials/documentationRegistry';
 import { FilterableSeriesLegend, type FilterableSeriesLegendItem } from './FilterableSeriesLegend';
 
 interface Props {
@@ -17,8 +17,8 @@ interface Props {
   controlsAfterUncased?: ReactNode;
   onClearSelection?: () => void;
   clearSelectionDisabled?: boolean;
-  /** Plain explanation of what each legend entry shows, behind an info icon. */
-  legendHelp?: string;
+  /** What each legend entry shows: a tooltip on a help icon that opens `targetKey`. */
+  legendHelp?: { tooltip: string; targetKey: DocumentKey<'tutorial'> };
 }
 
 /** Result-level series visibility and optional case-folding controls. */
@@ -41,20 +41,12 @@ export function FilterableSeriesControls({
       <CardContent className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3 text-body text-description">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           {legendHelp ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="About the legend"
-                    className="inline-flex shrink-0 items-center text-description/70 hover:text-description"
-                  >
-                    <Info className="h-3.5 w-3.5" aria-hidden="true" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent className="max-w-80">{legendHelp}</TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            <HelpIcon
+              targetKey={legendHelp.targetKey}
+              label="About the legend"
+              tooltip={legendHelp.tooltip}
+              className="size-5 shrink-0 text-description"
+            />
           ) : null}
           <FilterableSeriesLegend
             items={items}

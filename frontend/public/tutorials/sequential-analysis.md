@@ -127,10 +127,12 @@ When there are too many periods to draw bars at a readable width (side-by-side b
 
 <h3 id="help-sequential-x-axis">Spacing: Even or To scale</h3>
 
-The **Spacing** list next to **Chart** sets how periods are placed along the horizontal axis. Hover the information icon beside it for a short reminder.
+The **Spacing** list next to **Chart** sets how periods are placed along the horizontal axis. Hover the **?** beside it for a short reminder, or click it to open this section.
 
 - **Even (hide empty periods)** *(default)*: every period with data gets the same width, whatever the real time between periods. Periods with no data are left out. Best when periods are dense and you want a clean view. When the chart is too narrow for every label, some labels in the middle are hidden, but the first and last periods are always labelled.
 - **To scale (show gaps)**: periods are placed by their real time or value, so empty periods show as gaps. Useful for spotting uneven events or comparing rates of change across long spans.
+
+**Which to choose.** Start with **Even** to read the shape of the data. Switch to **To scale** when the time between periods matters. For example, monthly posts with data in January, February and June: Even shows three equal steps, January, February, June, so the four quiet months vanish; To scale leaves room for March to May, so the June posts appear after a visible pause. With a number column (such as a page or chapter number), To scale spaces the values by their size, so 1, 2 and 10 do not sit at equal distances. Spacing changes only the chart: the counts, the legend and **Add to Project** are the same in both.
 
 Dates on the chart and in its tooltip read the same in both spacings, in the time column's own time zone: *18 Oct 2020* for days (a week shows its Monday), *18 Oct 2020 14:05* for hours and minutes, *Oct 2020* for months, *2020 Q4* for quarters and *2020* for years. Tables and downloads keep the year-first form, for example 2020-10-18. In To scale mode the tool aims for about ten labels across the visible range, dropping labels automatically if the chart is too narrow.
 
@@ -159,12 +161,22 @@ Click the download button (↓ icon) in the results header to export the chart. 
 
 The legend below the chart lists groups that meet the minimum group count, with
 their colours, full-result count, and share of the counts across every listed
-group, hidden ones included, for example *Speeches (40 · 30.0%)*. Hover the information icon
-at the start of the legend for a reminder of this format. Percentages use one decimal place and do not change when periods
+group, hidden ones included, for example *Speeches (40 · 30.0%)*. Hover the **?**
+at the start of the legend for a reminder of this format, or click it to open this section. Percentages use one decimal place and do not change when periods
 are selected or groups are hidden. When periods are selected, each visible label shows *selected/total*
 before the percentage, for example *(12/40 · 30.0%)*. Click any legend item to hide or show that group.
 Hidden groups retain their count and share, show **Hidden**, and use a strikethrough
 label with reduced opacity.
+
+**Reading an entry.** Say the legend lists three groups with 40, 80 and 13 rows:
+133 rows in all. *Speeches (40 · 30.1%)* means 40 of those rows are speeches, 30.1% of
+the 133. The counts come from the whole result, not from the visible part of the
+chart, so zooming does not change them. Hiding *Speeches* keeps it at 40 and 30.1%,
+and the other shares stay the same too, so the percentages always describe the same
+total. Raising **Minimum group count** above 13 removes the smallest group from the
+legend; the shares are then counted from the 120 rows that remain. Selecting periods
+adds the rows in those periods before the slash: *(12/40 · 30.1%)* means 12 of the 40
+speeches fall in the selected periods.
 
 Use this to focus on a subset of groups. Hidden groups are not plotted and are
 marked hidden in chart exports, while their legend entry retains its

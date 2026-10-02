@@ -1,6 +1,6 @@
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import React from 'react';
-import { Download, Info } from 'lucide-react';
+import { Download } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
@@ -114,21 +114,15 @@ export function SequentialAnalysisResultsPanel({
                   <SelectItem value="area">Area</SelectItem>
                 </SelectContent>
               </Select>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="flex shrink-0 cursor-help items-center gap-1 text-body text-description">
-                      Spacing
-                      <Info className="h-3.5 w-3.5 text-description/70" aria-hidden="true" />
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent className="max-w-80">
-                    Even gives every period with data the same width and hides empty periods, which
-                    is easier to read. To scale places periods by their real time, so empty periods
-                    show as gaps.
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <span className="flex shrink-0 items-center gap-1 text-body text-description">
+                Spacing
+                <HelpIcon
+                  targetKey="analysis.sequential-analysis.spacing"
+                  label="About Spacing"
+                  tooltip="Even gives every period with data the same width and hides empty periods, which is easier to read. To scale places periods by their real time, so empty periods show as gaps."
+                  className="size-5 shrink-0 text-description"
+                />
+              </span>
               <Select
                 value={model.xAxisType}
                 onValueChange={(value) => {

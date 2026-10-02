@@ -1,9 +1,13 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { createRef } from 'react';
+import { fireEvent, render as renderUi, screen, within } from '@testing-library/react';
+import { createRef, type ReactElement } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { SequentialChart } from '../SequentialChart';
 import { buildSequentialChartModel } from '../../hooks/sequentialChartModel';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { useUIStore } from '@/stores/uiStore';
+
+const render = (ui: ReactElement) => renderUi(ui, { wrapper: TooltipProvider });
 
 vi.mock('@/features/views/common/components/EChartsView', () => ({
   EChartsView: () => <div data-testid="echarts-view" />,
@@ -75,6 +79,29 @@ describe('SequentialChart', () => {
       }),
     ).toBeEnabled();
     expect(screen.queryByText(/data points but only/)).not.toBeInTheDocument();
+  });
+
+  it('opens the legend section of the tutorial from the legend help icon', () => {
+    render(
+      <SequentialChart
+        model={model}
+        minimumGroupCount={0}
+        onMinimumGroupCountChange={vi.fn()}
+        onToggleGroupIndices={vi.fn()}
+        onUncasedChange={vi.fn()}
+        onPeriodClick={vi.fn()}
+        onClearSelection={vi.fn()}
+        dataResetKey="task-1"
+        containerRef={createRef<HTMLDivElement>()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'About the legend' }));
+
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      file: 'tutorials/sequential-analysis.md',
+      anchor: 'help-sequential-legend',
+    });
   });
 
   it('shows the shared Uncased control for string-valued result groups', () => {
