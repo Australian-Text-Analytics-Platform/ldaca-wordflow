@@ -611,7 +611,9 @@ function DataLoaderFeature() {
                             void handleDownloadFile(file);
                           }}
                           onDeleteFile={(file) => {
-                            void handleDeleteFile(file);
+                            void handleDeleteFile(file, (error) => {
+                              notify('error', "Couldn't delete the file.", undefined, error);
+                            });
                           }}
                           onCreateFolderInside={openCreateFolderDialog}
                           onOpenCitation={(directory, readmePath) => {

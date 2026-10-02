@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import shutil
+import sys
 import uuid
 from pathlib import Path
 
@@ -597,7 +599,37 @@ async def test_slow_upload_does_not_block_the_users_file_list(tmp_path: Path) ->
     assert list((tmp_path / "alice").glob(".*.upload")) == []
 
 
-async def test_upload_into_a_folder_deleted_meanwhile_fails_cleanly(tmp_path: Path) -> None:
+async def test_folder_receiving_an_upload_cannot_be_deleted_or_moved(tmp_path: Path) -> None:
+    # On Windows the open temporary blocks deleting or moving its folder, which
+    # failed with a server error part way through; refuse first on every platform.
+    store = _store(tmp_path)
+    await store.create_folder("alice", name="corpus", parent_path="")
+    await store.create_folder("alice", name="archive", parent_path="")
+    source = GatedSource(b"id,", b"text")
+
+    async with anyio.create_task_group() as tasks:
+        tasks.start_soon(store.upload, "alice", "corpus/data.csv", source)
+        await source.waiting.wait()
+        with anyio.fail_after(2):
+            for attempt in (
+                store.delete("alice", "corpus"),
+                store.delete_many("alice", ["archive", "corpus"]),
+                store.move("alice", source_path="corpus", target_directory_path="archive"),
+            ):
+                with pytest.raises(ResourceConflictError, match="receiving an upload"):
+                    await attempt
+        assert (tmp_path / "alice" / "archive").is_dir()
+        source.release.set()
+
+    assert (tmp_path / "alice" / "corpus" / "data.csv").read_bytes() == b"id,text"
+    await store.delete("alice", "corpus")
+    assert not (tmp_path / "alice" / "corpus").exists()
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Windows keeps a folder with an open file")
+async def test_upload_into_a_folder_removed_outside_wordflow_fails_cleanly(
+    tmp_path: Path,
+) -> None:
     store = _store(tmp_path)
     await store.create_folder("alice", name="corpus", parent_path="")
     source = GatedSource(b"id,", b"text")
@@ -612,11 +644,9 @@ async def test_upload_into_a_folder_deleted_meanwhile_fails_cleanly(tmp_path: Pa
     async with anyio.create_task_group() as tasks:
         tasks.start_soon(upload)
         await source.waiting.wait()
-        with anyio.fail_after(2):
-            await store.delete("alice", "corpus")
+        shutil.rmtree(tmp_path / "alice" / "corpus")
         source.release.set()
 
     assert len(errors) == 1
     assert "moved or deleted during the upload" in str(errors[0])
-    assert not (tmp_path / "alice" / "corpus").exists()
     assert list((tmp_path / "alice").rglob(".*.upload")) == []

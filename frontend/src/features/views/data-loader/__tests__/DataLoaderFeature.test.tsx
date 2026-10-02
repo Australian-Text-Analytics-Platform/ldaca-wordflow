@@ -445,7 +445,7 @@ describe('DataLoaderFeature citation UI', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /^delete folder$/i }));
 
-    expect(mockHandleDeleteFile).toHaveBeenCalledWith('sample_data/ADO');
+    expect(mockHandleDeleteFile).toHaveBeenCalledWith('sample_data/ADO', expect.any(Function));
   });
 
   it('persists folder collapsed state in localStorage', () => {

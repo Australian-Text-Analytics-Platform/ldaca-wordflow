@@ -82,6 +82,10 @@ _UPLOAD_FOLDER_GONE = (
     "Destination folder not found. If it was moved or deleted during the upload, "
     "upload the file again."
 )
+_UPLOAD_IN_FOLDER = (
+    "{name} is receiving an upload. Wait for it to finish, or stop it in the Tasks "
+    "panel, then try again."
+)
 
 
 class AsyncUploadSource(Protocol):
@@ -126,6 +130,10 @@ class UserFileStore:
         self._all_users_root = all_users_root
         self._response_snapshots = response_snapshots
         self._user_locks: dict[str, _UserGate] = {}
+        # Temporaries of uploads still receiving their body, per user. Their
+        # folders cannot be deleted or moved meanwhile: on Windows the open
+        # file blocks it, and refusing everywhere keeps platforms alike.
+        self._active_uploads: dict[str, set[Path]] = {}
         self._pending_archives: dict[str, _PendingArchive] = {}
         self._lock_registry = anyio.Lock()
 
@@ -272,6 +280,8 @@ class UserFileStore:
                 target_directory == source or target_directory.is_relative_to(source)
             ):
                 raise InvalidInputError("A folder cannot be moved into itself")
+            if is_folder:
+                self._require_no_upload_inside(user_id, source)
             target_relative = (
                 source.name
                 if target_directory == resolver.root
@@ -357,6 +367,8 @@ class UserFileStore:
                 resolver.create_temporary_file,
                 destination,
             )
+            active_uploads = self._active_uploads.setdefault(user_id, set())
+            active_uploads.add(temporary_path)
 
         # The body is read without the per-user lock: it can take minutes to
         # arrive, and the user's file list and other file actions must not wait
@@ -405,6 +417,7 @@ class UserFileStore:
             # the next request chunk. Shield cleanup so the same-filesystem
             # temp never survives an interrupted upload.
             with anyio.CancelScope(shield=True):
+                active_uploads.discard(temporary_path)
                 if descriptor_open:
                     try:
                         await self._run_sync(os.close, descriptor)
@@ -431,6 +444,15 @@ class UserFileStore:
         if await self._run_sync(destination.exists):
             raise ResourceConflictError(f"File {destination.name} already exists")
 
+    def _require_no_upload_inside(self, user_id: str, folder: Path) -> None:
+        """Refuse, under the user's lock, to change a folder an upload is writing into."""
+
+        if any(
+            temporary.is_relative_to(folder)
+            for temporary in self._active_uploads.get(user_id, ())
+        ):
+            raise ResourceConflictError(_UPLOAD_IN_FOLDER.format(name=folder.name))
+
     async def delete(self, user_id: str, relative_path: str) -> None:
         """Delete exactly one file or directory resource."""
 
@@ -440,6 +462,7 @@ class UserFileStore:
             target = resolver.resolve(relative_path)
             if not await self._run_sync(target.exists):
                 raise FileResourceNotFoundError(f"File {relative_path} not found")
+            self._require_no_upload_inside(user_id, target)
             try:
                 await self._run_sync(_delete_checked, resolver, target)
             except OSError as exc:
@@ -465,6 +488,9 @@ class UserFileStore:
         deleted = 0
         async with self._lock_for(user_id):
             resolver = await self._resolver_for(user_id)
+            # Checked for every folder first, so a refusal deletes nothing.
+            for relative_path in roots:
+                self._require_no_upload_inside(user_id, resolver.resolve(relative_path))
             for relative_path in roots:
                 target = resolver.resolve(relative_path)
                 if not await self._run_sync(target.exists):

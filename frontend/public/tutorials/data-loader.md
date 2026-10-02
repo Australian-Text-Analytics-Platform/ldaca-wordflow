@@ -93,7 +93,8 @@ Tasks) or **Cancel** (in the Data Loader) ends it at once; a file that was only
 partly sent is not kept, while files and folders already completed are. If an
 upload makes no progress for a minute, it stops and says so: some networks,
 such as campus networks, hold large uploads. Reloading or closing the page
-ends an upload, so Wordflow asks first. Dot-prefixed files and folders and `Thumbs.db`
+ends an upload, so Wordflow asks first. A folder that is receiving an upload
+cannot be deleted or moved until the upload finishes or you stop it. Dot-prefixed files and folders and `Thumbs.db`
 files are skipped and reported in the completion message. Source folders that
 contain no uploadable files are not created.
 

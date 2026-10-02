@@ -82,13 +82,14 @@ export const useFiles = ({ enabled = true }: UseFilesProps = {}) => {
 
   /** Deletes a user file and clears selection if the deleted file was active. */
   /** Returned to: `DataLoaderFeature` for the file-tree delete action. */
-  const handleDeleteFile = async (filename: string) => {
+  const handleDeleteFile = async (filename: string, onError?: (error: unknown) => void) => {
     try {
       await deleteMutation.mutateAsync(filename);
       if (selectedFile === filename) setSelectedFile(null);
       return true;
     } catch (error) {
       console.error("Couldn't delete file:", error);
+      onError?.(error);
       return false;
     }
   };

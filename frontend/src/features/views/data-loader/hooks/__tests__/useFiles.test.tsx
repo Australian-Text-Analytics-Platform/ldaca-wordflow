@@ -108,6 +108,27 @@ describe('useFiles cache policy', () => {
     expect(mocks.listUserFiles).toHaveBeenCalledTimes(readsBeforeRefresh + 1);
   });
 
+  it('hands a refused delete to the caller so the Data Loader can say why', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    const refusal = new Error('corpus is receiving an upload.');
+    mocks.deleteFile.mockRejectedValue(refusal);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const onError = vi.fn();
+    const { result } = renderHook(() => useFiles(), {
+      wrapper: makeWrapper(queryClient),
+    });
+
+    let deleted: boolean | undefined;
+    await act(async () => {
+      deleted = await result.current.handleDeleteFile('corpus', onError);
+    });
+
+    expect(deleted).toBe(false);
+    expect(onError).toHaveBeenCalledWith(refusal);
+  });
+
   it('keeps directories but hides User Files that are not loadable', async () => {
     mocks.listUserFiles.mockResolvedValue({
       data: [
