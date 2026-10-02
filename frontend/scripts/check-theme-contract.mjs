@@ -9,6 +9,8 @@ const allowedFunctionalGradients = new Set([
   'features/workspace/data-view/components/WorkspaceDataHeader.tsx',
 ]);
 const allowedRawColorFiles = new Set([
+  // Partner logos are drawn for light backgrounds, so their strip stays light in every theme.
+  'components/help/PartnerLogos.tsx',
   'features/theme/themeRuntime.ts',
   'features/views/common/components/MultiSeriesChart.tsx',
   'features/views/common/components/NodeColorPicker.tsx',
