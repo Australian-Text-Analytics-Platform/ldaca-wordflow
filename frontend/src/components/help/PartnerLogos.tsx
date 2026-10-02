@@ -29,7 +29,7 @@ const FUNDERS: readonly PartnerLogo[] = [
     src: ncrisLogo,
     alt: 'Australian Government, NCRIS, National Research Infrastructure for Australia',
     href: 'https://www.education.gov.au/ncris',
-    className: 'h-8',
+    className: 'h-7',
   },
 ];
 
@@ -44,7 +44,7 @@ const DEVELOPERS: readonly PartnerLogo[] = [
     src: sihLogo,
     alt: 'The University of Sydney, Sydney Informatics Hub',
     href: 'https://informatics.sydney.edu.au/',
-    className: 'h-9',
+    className: 'h-8',
   },
 ];
 

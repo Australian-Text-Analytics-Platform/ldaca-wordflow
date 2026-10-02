@@ -213,8 +213,45 @@
   }
 }
 
+/* Help pages follow the theme: the typography plugin's colours map to theme
+   tokens, and anchors stop below the pinned header. */
+.doc-prose {
+  --tw-prose-body: var(--vscode-foreground);
+  --tw-prose-headings: var(--vscode-foreground);
+  --tw-prose-lead: var(--vscode-descriptionForeground);
+  --tw-prose-links: var(--vscode-textLink-foreground);
+  --tw-prose-bold: var(--vscode-foreground);
+  --tw-prose-counters: var(--vscode-descriptionForeground);
+  --tw-prose-bullets: var(--vscode-descriptionForeground);
+  --tw-prose-hr: var(--vscode-surface-border);
+  --tw-prose-quotes: var(--vscode-foreground);
+  --tw-prose-quote-borders: var(--vscode-surface-border);
+  --tw-prose-captions: var(--vscode-descriptionForeground);
+  --tw-prose-kbd: var(--vscode-foreground);
+  --tw-prose-code: var(--vscode-foreground);
+  --tw-prose-pre-code: var(--vscode-foreground);
+  --tw-prose-pre-bg: var(--vscode-panel-background);
+  --tw-prose-th-borders: var(--vscode-surface-border);
+  --tw-prose-td-borders: var(--vscode-surface-border);
+}
+
+.doc-prose [id] {
+  scroll-margin-top: var(--doc-header-offset, 96px);
+}
+
+/* Screenshots are light; in the dark theme dim them so white areas do not
+   glare, keeping text and controls legible. Hover shows full brightness. */
+[data-theme="dark-2026"] .doc-prose img {
+  filter: brightness(0.8) contrast(1.1);
+  transition: filter 150ms ease-out;
+}
+
+[data-theme="dark-2026"] .doc-prose img:hover {
+  filter: none;
+}
+
 .tutorial-highlight {
-  scroll-margin-top: 96px;
+  scroll-margin-top: var(--doc-header-offset, 96px);
   border-radius: var(--vscode-cornerRadius-large);
   background-color: color-mix(in srgb, var(--vscode-focusBorder) 12%, transparent);
   outline: 2px solid color-mix(in srgb, var(--vscode-focusBorder) 32%, transparent);

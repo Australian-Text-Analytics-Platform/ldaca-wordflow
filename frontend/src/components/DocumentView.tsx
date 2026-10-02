@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
@@ -98,6 +98,23 @@ const resolveAssetUrl = (
   }
 };
 
+/** Height of the pinned header, so anchors scroll to just below it. */
+const useElementHeight = (ref: React.RefObject<HTMLElement | null>): number => {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      setHeight(element.getBoundingClientRect().height);
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+    };
+  }, [ref]);
+  return height;
+};
+
 /**
  * Markdown document reader used by help dialogs and standalone documentation
  * routes. It owns loading, intra-doc navigation, anchor highlighting, and zoom
@@ -129,6 +146,8 @@ function DocumentView({
   const activeAnchor = currentTarget.anchor;
 
   const { zoom, zoomIn, zoomOut, zoomReset } = useZoom({ keyboardShortcuts: true });
+  const headerRef = useRef<HTMLElement | null>(null);
+  const headerHeight = useElementHeight(headerRef);
 
   useDocumentAnchor({ activeAnchor, loading, error });
 
@@ -290,14 +309,21 @@ function DocumentView({
   };
 
   return (
-    <div className="min-h-screen bg-editor">
-      <header className="bg-surface border-b border-surface-border px-6 py-4 pr-12">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+    <div
+      className="min-h-screen bg-editor"
+      style={{ '--doc-header-offset': `${String(headerHeight + 16)}px` } as React.CSSProperties}
+    >
+      {/* Pinned while the page scrolls: title, partner logos, then window controls. */}
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-10 bg-surface border-b border-surface-border px-10 py-3"
+      >
+        <div className="flex flex-col gap-3 md:grid md:grid-cols-[minmax(max-content,1fr)_auto_minmax(max-content,1fr)] md:items-center md:gap-x-2">
+          <h1 className="text-heading-2 font-semibold text-foreground">{config.title}</h1>
+          <div className="flex justify-start md:justify-center">
             <PartnerLogos />
-            <h1 className="text-heading-2 font-semibold text-foreground">{config.title}</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-3 md:flex-nowrap md:justify-end">
             <button
               type="button"
               className="text-body text-link hover:text-link whitespace-nowrap"
@@ -345,7 +371,7 @@ function DocumentView({
       </header>
       <main className="max-w-4xl mx-auto bg-surface rounded-lg border border-surface-border mt-6 mb-10 p-6">
         <div
-          className="prose prose-slate prose-img:mx-auto mx-auto"
+          className="prose doc-prose prose-img:mx-auto mx-auto"
           style={{
             transform: `scale(${String(zoom)})`,
             transformOrigin: 'top center',
