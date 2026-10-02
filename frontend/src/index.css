@@ -214,7 +214,8 @@
 }
 
 /* Help pages follow the theme: the typography plugin's colours map to theme
-   tokens, and anchors stop below the pinned header. */
+   tokens, and anchors stop below the pinned header. Why each rule exists:
+   issue 262; src/__tests__/docProseStyles.test.ts guards them. */
 .doc-prose {
   --tw-prose-body: var(--vscode-foreground);
   --tw-prose-headings: var(--vscode-foreground);

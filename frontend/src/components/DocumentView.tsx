@@ -316,7 +316,7 @@ function DocumentView({
       className="min-h-screen bg-editor"
       style={{ '--doc-header-offset': `${String(headerHeight + 16)}px` } as React.CSSProperties}
     >
-      {/* Gamma curve for screenshots (see .doc-prose img in index.css). */}
+      {/* Gamma curve for screenshots (see .doc-prose img in index.css; why: issue 262). */}
       <svg aria-hidden="true" width="0" height="0" className="absolute">
         <defs>
           <filter id="doc-image-gamma" colorInterpolationFilters="sRGB">
@@ -328,7 +328,7 @@ function DocumentView({
           </filter>
         </defs>
       </svg>
-      {/* Pinned while the page scrolls: title, partner logos, then window controls. */}
+      {/* Pinned while the page scrolls: title, partner logos, then window controls (issue 262). */}
       <header
         ref={headerRef}
         className="sticky top-0 z-10 bg-surface border-b border-surface-border px-10 py-3"
