@@ -5,6 +5,7 @@ import type {
   UserFileImport,
 } from '@/api';
 import { formatBytes } from '@/features/views/data-loader/utils/format';
+import type { UploadTask } from '@/stores/uploadTasksStore';
 
 type TaskState = 'queued' | 'running' | 'successful' | 'failed' | 'cancelled';
 
@@ -43,7 +44,13 @@ interface UserFileImportTaskItem extends TaskItemBase {
   outcome?: { destination_path: string; file_count: number; bytes_written: number } | null;
 }
 
-export type TaskItem = AnalysisTaskItem | UserFileImportTaskItem;
+/** A browser upload (issue 260); it has no server resource, only the upload store. */
+interface UploadTaskItem extends TaskItemBase {
+  resource_type: 'upload';
+  outcome?: { destination_path: string; file_count: number; bytes_written: number } | null;
+}
+
+export type TaskItem = AnalysisTaskItem | UserFileImportTaskItem | UploadTaskItem;
 
 const PENDING_TASK_STATES: ReadonlySet<string> = new Set(['queued']);
 const RUNNING_TASK_STATES: ReadonlySet<string> = new Set(['running']);
@@ -179,6 +186,68 @@ export const importToTask = (resource: UserFileImport | UnavailableUserFileImpor
     finished_at: resource.finished_at,
     error: failureMessage(resource.error) ?? null,
     error_detail: failureDiagnostic(resource.error),
+  };
+};
+
+/** "about 1 min left", from bytes still to send at the current speed. */
+const timeLeft = (bytes: number, perSecond: number): string => {
+  const seconds = bytes / perSecond;
+  if (seconds < 60) return 'under a minute left';
+  const minutes = Math.round(seconds / 60);
+  return minutes < 60
+    ? `about ${String(minutes)} min left`
+    : `about ${(seconds / 3600).toFixed(1)} h left`;
+};
+
+/** "180 MB of 460 MB · 5.1 MB/s · about 1 min left", plus "file 3 of 24" for several files. */
+export const uploadProgressMessage = (upload: UploadTask): string => {
+  const sent = upload.sentBytes > 0 ? formatBytes(upload.sentBytes) : '0 B';
+  const parts = [`${sent} of ${formatBytes(upload.totalBytes)}`];
+  if (upload.bytesPerSecond && upload.bytesPerSecond > 0) {
+    parts.push(`${formatBytes(upload.bytesPerSecond)}/s`);
+    parts.push(timeLeft(Math.max(0, upload.totalBytes - upload.sentBytes), upload.bytesPerSecond));
+  }
+  if (upload.fileCount > 1) {
+    parts.push(`file ${String(upload.currentFile)} of ${String(upload.fileCount)}`);
+  }
+  return parts.join(' · ');
+};
+
+export const uploadToTask = (upload: UploadTask): TaskItem => {
+  const outcome =
+    upload.state === 'successful'
+      ? {
+          destination_path: upload.destinationFolder,
+          file_count: upload.completedFiles,
+          bytes_written: upload.totalBytes,
+        }
+      : null;
+  const where = upload.destinationFolder ? ` to ${upload.destinationFolder}` : '';
+  const message =
+    upload.state === 'running'
+      ? undefined
+      : upload.state === 'successful'
+        ? `Uploaded ${plural(upload.completedFiles, 'file')} (${formatBytes(upload.totalBytes)})${where}`
+        : upload.state === 'cancelled'
+          ? upload.fileCount === 1
+            ? 'Upload cancelled. The file was not kept.'
+            : `Upload cancelled after ${String(upload.completedFiles)} of ${String(upload.fileCount)} files. Files not fully sent were not kept.`
+          : (upload.error ?? undefined);
+  return {
+    resource_type: 'upload',
+    task_id: upload.id,
+    task_type: 'upload',
+    name: upload.name,
+    state: upload.state,
+    progress: upload.totalBytes > 0 ? upload.sentBytes / upload.totalBytes : undefined,
+    progress_message: upload.state === 'running' ? uploadProgressMessage(upload) : undefined,
+    message,
+    outcome,
+    created_at: upload.createdAt,
+    started_at: upload.createdAt,
+    finished_at: upload.finishedAt,
+    error: upload.error,
+    error_detail: upload.errorDetail,
   };
 };
 

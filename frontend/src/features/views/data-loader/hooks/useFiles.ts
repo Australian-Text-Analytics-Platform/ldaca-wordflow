@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { uploadFileWithProgress, type UploadOptions } from '@/lib/backend/uploadTransport';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createFolder,
@@ -6,7 +7,6 @@ import {
   downloadFile,
   getUserFileResource,
   listUserFiles,
-  uploadFile,
 } from '@/api';
 import { saveBackendDownload } from '@/lib/download';
 import { type FileTreeNode } from '../types';
@@ -63,9 +63,13 @@ export const useFiles = ({ enabled = true }: UseFilesProps = {}) => {
    */
   const refreshFiles = async () => (await filesQuery.refetch()).data ?? null;
 
-  /** Uploads one file at its preflighted destination without refreshing mid-batch. */
-  const uploadFileAtPath = async (file: File, path: string) => {
-    await uploadFile({ body: file, query: { path }, throwOnError: true });
+  /**
+   * Uploads one file at its preflighted destination without refreshing
+   * mid-batch, reporting bytes sent (issue 260). Not the generated client: its
+   * fetch has no upload progress and a 30 s timeout.
+   */
+  const uploadFileAtPath = async (file: File, path: string, options?: UploadOptions) => {
+    await uploadFileWithProgress(file, path, options);
   };
 
   /** Creates one preflighted destination directory without refreshing mid-batch. */

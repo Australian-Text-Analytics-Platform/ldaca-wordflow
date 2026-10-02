@@ -1,6 +1,8 @@
 import { useRef, useState, type ChangeEvent, type DragEvent } from 'react';
 import type { FileResource } from '@/api';
 import { isExternalFileDrag } from '@/lib/externalFileDropGuard';
+import { isUploadCancelled, type UploadOptions } from '@/lib/backend/uploadTransport';
+import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 import type { FileTreeNode } from '../types';
 import {
   collectDroppedSelection,
@@ -30,8 +32,26 @@ interface UseUploadStateParams {
   getUploadResource: (path: string) => Promise<FileResource>;
   notify: Notify;
   refreshFiles: () => Promise<FileTreeNode[] | null>;
-  uploadFileAtPath: (file: File, path: string) => Promise<void>;
+  uploadFileAtPath: (file: File, path: string, options?: UploadOptions) => Promise<void>;
 }
+
+/** The folder a set of upload paths share, for the task's "open folder" target. */
+export function commonUploadFolder(paths: readonly string[]): string {
+  const folders = paths.map((path) => path.split('/').slice(0, -1));
+  const first = folders[0] ?? [];
+  let length = first.length;
+  for (const folder of folders.slice(1)) {
+    let index = 0;
+    while (index < length && folder[index] === first[index]) index += 1;
+    length = index;
+  }
+  return first.slice(0, length).join('/');
+}
+
+const newUploadId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `upload-${String(Date.now())}-${Math.random().toString(36).slice(2)}`;
 
 function errorMessage(error: unknown) {
   if (error instanceof Error && error.message) return error.message;
@@ -66,6 +86,8 @@ export function useUploadState({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const cancelRequestedRef = useRef(false);
+  /** Aborts the file being sent, so Cancel stops at once rather than after it (issue 260). */
+  const abortRef = useRef<AbortController | null>(null);
   const busyRef = useRef(false);
   const [activity, setActivity] = useState<UploadActivity>({ phase: 'idle' });
   const [isFileDropActive, setIsFileDropActive] = useState(false);
@@ -76,6 +98,7 @@ export function useUploadState({
 
   const cancelUpload = () => {
     cancelRequestedRef.current = true;
+    abortRef.current?.abort();
   };
 
   const closeConflictDialog = () => {
@@ -119,6 +142,24 @@ export function useUploadState({
     }
 
     const missingDirectories = getMissingUploadDirectories(selection, completeTree);
+    // The upload becomes a task in the Tasks panel (issue 260).
+    const uploads = useUploadTasksStore.getState();
+    const uploadId = newUploadId();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const totalBytes = selection.files.reduce((sum, candidate) => sum + candidate.file.size, 0);
+    const onlyFile = selection.files.length === 1 ? selection.files[0] : undefined;
+    uploads.start({
+      id: uploadId,
+      name: onlyFile
+        ? (onlyFile.relativePath.split('/').pop() ?? onlyFile.relativePath)
+        : `${String(selection.files.length)} files`,
+      destinationFolder: commonUploadFolder(selection.files.map((file) => file.relativePath)),
+      fileCount: selection.files.length,
+      totalBytes,
+      cancel: cancelUpload,
+    });
+    let sentBeforeCurrent = 0;
     let attemptedMutation = false;
     let createdFolders = 0;
     let uploadedFiles = 0;
@@ -175,10 +216,34 @@ export function useUploadState({
           path: candidate.relativePath,
         });
         attemptedMutation = true;
+        const fileIndex = index + 1;
+        const doneFiles = uploadedFiles;
+        const doneBytes = sentBeforeCurrent;
+        uploads.progress(uploadId, {
+          sentBytes: doneBytes,
+          currentFile: fileIndex,
+          currentFileName: candidate.relativePath,
+          completedFiles: doneFiles,
+        });
         try {
-          await uploadFileAtPath(candidate.file, candidate.relativePath);
+          await uploadFileAtPath(candidate.file, candidate.relativePath, {
+            signal: controller.signal,
+            onProgress: ({ loaded }) => {
+              uploads.progress(uploadId, {
+                sentBytes: doneBytes + loaded,
+                currentFile: fileIndex,
+                currentFileName: candidate.relativePath,
+                completedFiles: doneFiles,
+              });
+            },
+          });
           uploadedFiles += 1;
+          sentBeforeCurrent += candidate.file.size;
         } catch (error) {
+          if (isUploadCancelled(error)) {
+            cancelled = true;
+            break;
+          }
           failure = { path: candidate.relativePath, error };
           break;
         }
@@ -196,6 +261,15 @@ export function useUploadState({
       } catch (error) {
         refreshFailure = error;
       }
+    }
+
+    if (abortRef.current === controller) abortRef.current = null;
+    if (failure) {
+      uploads.fail(uploadId, `${failure.path}: ${errorMessage(failure.error)}`);
+    } else if (cancelled) {
+      uploads.markCancelled(uploadId);
+    } else {
+      uploads.succeed(uploadId, uploadedFiles);
     }
 
     const skips = skippedSummary(selection.skipped);

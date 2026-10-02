@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   getUserFileResource: vi.fn(),
   listUserFiles: vi.fn(),
   uploadFile: vi.fn(),
+  uploadFileWithProgress: vi.fn(),
 }));
 
 vi.mock('@/api', async (importOriginal) => ({
@@ -25,6 +26,9 @@ vi.mock('@/api', async (importOriginal) => ({
   uploadFile: mocks.uploadFile,
 }));
 vi.mock('@/lib/download', () => ({ saveBackendDownload: mocks.saveBackendDownload }));
+vi.mock('@/lib/backend/uploadTransport', () => ({
+  uploadFileWithProgress: mocks.uploadFileWithProgress,
+}));
 
 /** Creates the real query-cache boundary used by useFiles mutation tests. */
 function makeWrapper(queryClient: QueryClient) {
@@ -69,13 +73,13 @@ describe('useFiles cache policy', () => {
       await result.current.getUploadResource('corpus');
     });
 
-    expect(mocks.uploadFile).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.any(File),
-        query: { path: 'corpus/a.csv' },
-        throwOnError: true,
-      }),
+    // Uploads go through the progress transport, not the generated client (issue 260).
+    expect(mocks.uploadFileWithProgress).toHaveBeenCalledWith(
+      expect.any(File),
+      'corpus/a.csv',
+      undefined,
     );
+    expect(mocks.uploadFile).not.toHaveBeenCalled();
     expect(mocks.createFolder).toHaveBeenCalledWith({
       body: { name: 'nested', parent_path: 'corpus' },
       throwOnError: true,

@@ -1,6 +1,8 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { useUploadState } from '../useUploadState';
+import { commonUploadFolder, useUploadState } from '../useUploadState';
+import { UploadCancelledError, type UploadOptions } from '@/lib/backend/uploadTransport';
+import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 
 function pickerFile(name: string, relativePath = '') {
   const value = new File([name], name);
@@ -155,7 +157,11 @@ describe('useUploadState', () => {
     });
 
     expect(state.getUploadResource).toHaveBeenCalledWith('corpus');
-    expect(state.uploadFileAtPath).toHaveBeenCalledWith(expect.any(File), 'corpus/a.csv');
+    expect(state.uploadFileAtPath).toHaveBeenCalledWith(
+      expect.any(File),
+      'corpus/a.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
     expect(state.refreshFiles).toHaveBeenCalledTimes(2);
   });
 
@@ -183,5 +189,71 @@ describe('useUploadState', () => {
       'Upload failed at corpus after 0 of 1 files: already exists',
     );
     expect(state.refreshFiles).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('useUploadState upload tasks (issue 260)', () => {
+  it('reports a finished upload to the Tasks panel with its folder and bytes', async () => {
+    useUploadTasksStore.setState({ uploads: [] });
+    const state = setup([[], []]);
+    state.uploadFileAtPath.mockImplementation(
+      (_file: File, _path: string, options?: UploadOptions) => {
+        options?.onProgress?.({ loaded: 3, total: 5 });
+        return Promise.resolve();
+      },
+    );
+
+    await act(async () => {
+      await state.result.current.uploadSelectedFiles([
+        pickerFile('a.csv', 'corpus/a.csv'),
+        pickerFile('bb.csv', 'corpus/bb.csv'),
+      ]);
+    });
+
+    const [task] = useUploadTasksStore.getState().uploads;
+    expect(task).toMatchObject({
+      name: '2 files',
+      destinationFolder: 'corpus',
+      fileCount: 2,
+      totalBytes: 11,
+      completedFiles: 2,
+      state: 'successful',
+    });
+  });
+
+  it('stops the file being sent when Stop is pressed in the Tasks panel', async () => {
+    useUploadTasksStore.setState({ uploads: [] });
+    const state = setup([[], []]);
+    state.uploadFileAtPath.mockImplementation(
+      (_file: File, _path: string, options?: UploadOptions) =>
+        new Promise<void>((_resolve, reject) => {
+          options?.signal?.addEventListener('abort', () => {
+            reject(new UploadCancelledError());
+          });
+        }),
+    );
+
+    let running: Promise<void> = Promise.resolve();
+    act(() => {
+      running = state.result.current.uploadSelectedFiles([pickerFile('big.zip')]);
+    });
+    await waitFor(() => {
+      expect(useUploadTasksStore.getState().uploads[0]?.state).toBe('running');
+    });
+    act(() => {
+      useUploadTasksStore.getState().cancel(useUploadTasksStore.getState().uploads[0]!.id);
+    });
+    await act(async () => {
+      await running;
+    });
+
+    expect(useUploadTasksStore.getState().uploads[0]?.state).toBe('cancelled');
+    expect(state.notify).toHaveBeenCalledWith('info', 'Upload cancelled after 0 of 1 files.');
+  });
+
+  it('shares the parent folder of every path, or the top level', () => {
+    expect(commonUploadFolder(['corpus/nested/z.csv', 'corpus/a.csv'])).toBe('corpus');
+    expect(commonUploadFolder(['a.csv', 'corpus/b.csv'])).toBe('');
+    expect(commonUploadFolder(['x/y/a.csv'])).toBe('x/y');
   });
 });

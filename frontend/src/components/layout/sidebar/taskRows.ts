@@ -83,6 +83,8 @@ const timestamp = (task: TaskItem): number => {
 const IMPORT_LABELS: Record<string, string> = {
   data_portal_import: 'LDaCA collection import',
   sample_import: 'Sample data import',
+  // "L - Upload: data.zip" (issue 260).
+  upload: 'Upload',
 };
 
 /**
@@ -156,7 +158,7 @@ export function buildTaskRows(
         primary: task,
         steps: [step(task)],
         blockResults: [],
-        // A finished import opens the folder its files went to (issue 235).
+        // A finished import or upload opens the folder its files went to (issues 235, 260).
         target: task.outcome
           ? { kind: 'data-loader', folder: task.outcome.destination_path }
           : { kind: 'data-loader' },

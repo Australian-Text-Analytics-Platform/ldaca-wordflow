@@ -18,7 +18,8 @@ import { workspaceAnalysesQueryOptions } from '@/features/workspace/common/hooks
 import { invalidateNodeWorkspaceQueries } from '@/features/workspace/common/hooks/workspaceMutationCache';
 import { queryKeys } from '@/lib/queryKeys';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
-import { analysisToTask, importToTask, sortTasks, type TaskItem } from './taskProjection';
+import { analysisToTask, importToTask, sortTasks, type TaskItem, uploadToTask } from './taskProjection';
+import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 import {
   type BackendEvent,
   useWorkspaceTaskStreamClient,
@@ -83,10 +84,12 @@ export const useTaskResources = (workspaceId: string | null) => {
       )
     : [];
   const imports = (importsQuery.data?.pages.flatMap((page) => page.items) ?? []).map(importToTask);
+  // Browser uploads appear beside imports (issue 260).
+  const uploads = useUploadTasksStore((state) => state.uploads).map(uploadToTask);
   const error = analysesQuery.error ?? importsQuery.error;
 
   return {
-    tasks: sortTasks([...analyses, ...imports]),
+    tasks: sortTasks([...analyses, ...imports, ...uploads]),
     error: error?.message ?? null,
   } as const;
 };

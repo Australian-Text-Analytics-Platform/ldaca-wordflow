@@ -1,4 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { useUploadLeaveGuard } from '@/hooks/useUploadLeaveGuard';
 import { useShallow } from 'zustand/react/shallow';
 import {
   Sidebar as SidebarRoot,
@@ -142,6 +143,8 @@ function Sidebar() {
     clearingImportId,
     clearingAnalysisTabId,
   } = useWorkspaceTaskInbox(currentWorkspaceId);
+  // Uploads show in Tasks; leaving the page would end them (issue 260).
+  useUploadLeaveGuard();
   const { workspaceGraph } = useWorkspaceData();
   // Task names use the tab names; the go-to button opens the tab (issue 199).
   const tabsQuery = useWorkspaceTabResources(currentWorkspaceId);

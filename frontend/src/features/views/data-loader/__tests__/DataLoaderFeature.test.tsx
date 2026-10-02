@@ -994,8 +994,14 @@ describe('DataLoaderFeature citation UI', () => {
     await waitFor(() => {
       expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
     });
-    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(1, firstFile, 'first.csv');
-    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(2, secondFile, 'second.csv');
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
+      1, firstFile, 'first.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
+      2, secondFile, 'second.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 
   it('offers a single-folder picker alongside the multi-file picker', () => {
@@ -1103,7 +1109,13 @@ describe('DataLoaderFeature citation UI', () => {
     await waitFor(() => {
       expect(mockUploadFileAtPath).toHaveBeenCalledTimes(2);
     });
-    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(1, firstFile, 'dragged-a.csv');
-    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(2, secondFile, 'dragged-b.csv');
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
+      1, firstFile, 'dragged-a.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+    expect(mockUploadFileAtPath).toHaveBeenNthCalledWith(
+      2, secondFile, 'dragged-b.csv',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
   });
 });

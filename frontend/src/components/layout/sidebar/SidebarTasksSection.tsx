@@ -18,6 +18,7 @@ import { MiddleFadeLabel } from './MiddleFadeLabel';
 import { buildTaskRows, type TaskRowTarget, type TaskTab } from './taskRows';
 import { ErrorDetails } from '@/components/errors/ErrorDetails';
 import { presentError, presentFailureMessage } from '@/lib/errorPresentation';
+import { useUploadTasksStore } from '@/stores/uploadTasksStore';
 
 /** Task states treated as attention-worthy in the sidebar task list. */
 const PROBLEMATIC_STATES = new Set(['failed', 'cancelled']);
@@ -175,13 +176,16 @@ function SidebarTasksSection({
               const label = row.label;
               const combined = row.steps.length > 1;
               const isUserFileImport = task.resource_type === 'user_file_import';
+              // Browser uploads stop and clear through the upload store (issue 260).
+              const isUpload = task.resource_type === 'upload';
+              const isFinished =
+                task.state === 'successful' ||
+                task.state === 'failed' ||
+                task.state === 'cancelled';
               const canStop =
-                isUserFileImport && (task.state === 'queued' || task.state === 'running');
-              const canClearImport =
-                isUserFileImport &&
-                (task.state === 'successful' ||
-                  task.state === 'failed' ||
-                  task.state === 'cancelled');
+                (isUserFileImport || isUpload) &&
+                (task.state === 'queued' || task.state === 'running');
+              const canClearImport = (isUserFileImport || isUpload) && isFinished;
               const canClearAnalysis =
                 task.resource_type === 'analysis' && task.task_type === 'analysis_unavailable';
               const canClear = canClearImport || canClearAnalysis;
@@ -365,7 +369,8 @@ function SidebarTasksSection({
                               className="h-7 px-2 text-[11px]"
                               disabled={isStopping || isClearing}
                               onClick={() => {
-                                onStopUserFileImport(task.task_id);
+                                if (isUpload) useUploadTasksStore.getState().cancel(task.task_id);
+                                else onStopUserFileImport(task.task_id);
                               }}
                             >
                               {isStopping ? 'Stopping…' : 'Stop'}
@@ -381,6 +386,8 @@ function SidebarTasksSection({
                               onClick={() => {
                                 if (task.resource_type === 'analysis') {
                                   onClearUnavailableAnalysis(task.workspace_id, task.tab_id);
+                                } else if (isUpload) {
+                                  useUploadTasksStore.getState().clear(task.task_id);
                                 } else {
                                   onClearUserFileImport(task.task_id);
                                 }
