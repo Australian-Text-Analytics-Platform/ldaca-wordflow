@@ -101,7 +101,9 @@ def _collect_source_input_from_snapshot(
     from ..shared.unsupported_columns import supported_metadata_columns
 
     snapshot_node = load_snapshot_node(input_snapshot_dir, node_id)
-    node_data = without_previous_concordance_columns(
+    # A text column named like a Concordance column becomes CONC_source, and
+    # that name is what the Result records (issue 244).
+    node_data, document_column = without_previous_concordance_columns(
         snapshot_node.data, document_column
     )
     tokenization_column: str | None = None
@@ -469,6 +471,13 @@ def run_concordance_run_all(
             include_all_metadata=True,
             search_mode=search_mode,
             tokenizer_model=tokenizer_model,
+        )
+        # The collector renamed a text column named like a Concordance column
+        # to CONC_source; the Result stores and reports that name (issue 244).
+        from ..analysis.generated_columns import source_text_column_name
+
+        document_column = source_text_column_name(
+            snapshot_node.data.collect_schema().names(), document_column, "CONC"
         )
 
         if progress_callback:

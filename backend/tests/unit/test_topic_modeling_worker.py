@@ -724,3 +724,30 @@ def test__compute_topic_modeling_forwards_requested_minimum_cluster_size(
 
     assert captured_kwargs["min_cluster_size"] == 4
     assert result["clustering"]["max_cluster_count"] == 2
+
+
+def test_a_topic_column_as_the_text_is_refused_in_plain_words(
+    tmp_path, worker_snapshot
+):
+    """A TOPIC_ column holds an earlier run's topics, not documents (issue 246)."""
+    from ldaca_wordflow.shared.errors import InvalidInputError
+
+    node_id = uuid.UUID("44444444-4444-4444-8444-444444444444")
+    snapshot = worker_snapshot(
+        node_id=str(node_id),
+        columns={"text": ["a document"], "TOPIC_topic_meaning": ["housing"]},
+    )
+    with pytest.raises(
+        InvalidInputError, match="holds topics from an earlier Topic Modelling run"
+    ):
+        topic_modeling._load_corpora_from_snapshot(
+            str(snapshot),
+            [
+                TopicNodeInfo(
+                    node_id=node_id,
+                    node_name="Topics",
+                    text_column="TOPIC_topic_meaning",
+                    original_columns=(),
+                )
+            ],
+        )

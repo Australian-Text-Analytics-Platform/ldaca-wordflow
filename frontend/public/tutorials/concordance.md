@@ -296,9 +296,14 @@ Submitting the checked sources is atomic, including when a source has no
 qualifying rows and therefore creates a schema-only Data Block.
 
 You can search a Data Block made this way again. The new search replaces its
-`CONC_` columns with its own, in the usual order, so the Data Block keeps one
-set however many times you repeat this. The text column cannot itself be a
-`CONC_` column; rename it first in the Data Editor.
+Concordance columns with its own, in the usual order, so the Data Block keeps
+one set however many times you repeat this. The Concordance columns are
+`CONC_left_context`, `CONC_matched_text`, `CONC_right_context`,
+`CONC_start_idx`, `CONC_end_idx`, `CONC_l1`, `CONC_r1`, `CONC_l1_freq`,
+`CONC_r1_freq` and `CONC_extraction`; a column of yours with one of these names
+is treated the same way. If the text you search is itself one of them, for
+example stacked `CONC_extraction` text, the Result keeps it as `CONC_source`
+(or `CONC_source_2` if that name is taken).
 
 ![Add Concordance Documents to Project, from Dispersion view](tutorials/assets/concordance/add_to_project.png)
 

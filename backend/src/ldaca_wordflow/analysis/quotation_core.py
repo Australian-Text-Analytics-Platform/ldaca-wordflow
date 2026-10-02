@@ -255,7 +255,8 @@ async def _compute_on_demand_page(
     )
     # A Data Block made from a Quotation Result: this search replaces its
     # QUOTE_ columns (issue 245).
-    lazy_df = await run_blocking(
+    # A text column named like a Quotation column becomes QUOTE_source.
+    lazy_df, column = await run_blocking(
         partial(without_previous_quotation_columns, lazy_df, column)
     )
     schema = await run_blocking(lazy_df.collect_schema)

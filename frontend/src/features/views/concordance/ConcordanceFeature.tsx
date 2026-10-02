@@ -1,4 +1,5 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
+import { sourceTextColumnName } from '@/features/views/common/generatedColumns';
 import { useState, useEffect, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -369,10 +370,22 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           column: source.document_column,
         }))
       : previewResultNodeIds.length > 0
-        ? previewResultNodeIds.map((nodeId) => ({
-            nodeId,
-            column: serverRequest?.node_columns[nodeId] ?? '',
-          }))
+        ? previewResultNodeIds.map((nodeId) => {
+            // A text column named like a Concordance column is CONC_source in
+            // the Result, as the backend names it (issue 244).
+            const nodeInfo = nodeInfoById[nodeId];
+            const node = nodeInfo
+              ? projectWorkspaceNodeMetadata(nodeInfo)
+              : panelSelectedNodes.find((item) => item.id === nodeId);
+            return {
+              nodeId,
+              column: sourceTextColumnName(
+                getColumnInfos(node).map((column) => column.name),
+                serverRequest?.node_columns[nodeId] ?? '',
+                'CONC',
+              ),
+            };
+          })
         : nodeColumnSelections;
   const submittedResultRequest =
     concordanceRunAll?.state === 'succeeded' &&

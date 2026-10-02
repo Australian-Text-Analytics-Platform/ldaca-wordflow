@@ -99,9 +99,12 @@ show the Preview page summary.
 Use **Add to Project** to publish selected Result columns as a new Data
 Block. The document column is required, metadata columns start unselected, and
 analysis columns start selected. You can run Quotation on that Data Block again:
-the new run replaces its `QUOTE_` columns with its own, so it keeps one set. The
-text column cannot itself be a `QUOTE_` column; rename it first in the Data
-Editor.
+the new run replaces its Quotation columns (`QUOTE_extraction`, `QUOTE_speaker`,
+`QUOTE_quote`, `QUOTE_verb`, `QUOTE_quote_type` and the other `QUOTE_` fields)
+with its own, so it keeps one set; a column of yours with one of these names is
+treated the same way. If the text you search is itself one of them, for example
+`QUOTE_extraction`, the Result keeps it as `QUOTE_source` (or `QUOTE_source_2`
+if that name is taken).
 
 <h3 id="help-quotation-quote-types">Quote types</h3>
 

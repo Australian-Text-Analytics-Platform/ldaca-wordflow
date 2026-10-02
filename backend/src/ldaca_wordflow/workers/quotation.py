@@ -55,7 +55,11 @@ def _collect_quotation_source_from_snapshot(
 
     # A Data Block made from a Quotation Result: this run replaces its QUOTE_
     # columns instead of carrying them as metadata (issue 245).
-    node_data = without_previous_quotation_columns(snapshot_node.data, document_column)
+    # A text column named like a Quotation column becomes QUOTE_source, and
+    # that name is what the Result records (issue 245).
+    node_data, document_column = without_previous_quotation_columns(
+        snapshot_node.data, document_column
+    )
     schema = node_data.collect_schema()
     if SOURCE_ROW_ID_COLUMN in schema:
         raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")
@@ -137,6 +141,13 @@ def run_quotation_run_all(
                 snapshot_node=source_snapshot,
                 document_column=document_column,
             )
+        )
+        # The collector renamed a text column named like a Quotation column to
+        # QUOTE_source; the Result stores and reports that name (issue 245).
+        from ..analysis.generated_columns import source_text_column_name
+
+        document_column = source_text_column_name(
+            source_snapshot.data.collect_schema().names(), document_column, "QUOTE"
         )
         progress_callback(0.6, "Finding quotations…")
 

@@ -1,4 +1,5 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
+import { sourceTextColumnName } from '@/features/views/common/generatedColumns';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -235,11 +236,22 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   });
   const runAllSource = runAllResultQuery.data?.source ?? null;
   const resultNodeId = serverRequest?.node_id ?? displayedNodes[0]?.id ?? '';
-  const resultColumn =
-    serverRequest?.column ??
-    activeSelections.find((selection) => selection.nodeId === resultNodeId)?.column ??
-    '';
   const previewResultNodeInfo = nodeInputs.nodeInfoById[resultNodeId];
+  // A text column named like a Quotation column is QUOTE_source in the
+  // Result, as the backend names it (issue 245).
+  const resultColumn = serverRequest
+    ? sourceTextColumnName(
+        nodeInputs
+          .getColumnInfos(
+            previewResultNodeInfo
+              ? projectWorkspaceNodeMetadata(previewResultNodeInfo)
+              : displayedNodes.find((node) => node.id === resultNodeId),
+          )
+          .map((column) => column.name),
+        serverRequest.column,
+        'QUOTE',
+      )
+    : (activeSelections.find((selection) => selection.nodeId === resultNodeId)?.column ?? '');
   const previewResultNode = previewResultNodeInfo
     ? projectWorkspaceNodeMetadata(previewResultNodeInfo)
     : displayedNodes.find((node) => node.id === resultNodeId);

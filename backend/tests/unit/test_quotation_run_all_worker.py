@@ -157,7 +157,9 @@ def test_quotation_result_added_to_project_can_be_quoted_again(
         fake_quotation_groups,
     )
     node_id = uuid.UUID("22222222-2222-4222-8222-222222222222")
-    previous = {column: ["old"] for column in (QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_NAMES)}
+    previous = {
+        column: ["old"] for column in (QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_NAMES)
+    }
     result = run_quotation_run_all(
         artifact_dir=str(tmp_path),
         input_snapshot_dir=str(
@@ -203,3 +205,90 @@ def test_quotation_result_added_to_project_can_be_quoted_again(
     assert row["speaker"] == "narrator"
     assert row["QUOTE_speaker"] == "Ada"
     assert row[QUOTE_EXTRACTION_COLUMN] == 'Ada said "Hello"'
+
+
+def test_quotation_on_a_quote_extraction_keeps_its_text_as_quote_source(
+    tmp_path,
+    monkeypatch,
+    worker_snapshot,
+):
+    """A text column named like a Quotation column becomes QUOTE_source (decided 2026-10-02)."""
+    from ldaca_wordflow.workers.result_data_block_creation import (
+        run_result_data_block_creation,
+    )
+
+    def fake_quotation_groups(input_df: pl.DataFrame, source_column: str):
+        return input_df.with_columns(
+            pl.Series(
+                "quotation",
+                [
+                    [
+                        {
+                            "speaker": "Ada",
+                            "speaker_start_idx": 0,
+                            "speaker_end_idx": 3,
+                            "quote": "Hello",
+                            "quote_start_idx": 5,
+                            "quote_end_idx": 10,
+                            "verb": "said",
+                            "verb_start_idx": 11,
+                            "verb_end_idx": 15,
+                            "quote_type": "direct",
+                            "quote_token_count": 1,
+                            "is_floating_quote": False,
+                            "quote_row_idx": 0,
+                        }
+                    ]
+                ],
+            )
+        )
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.analysis.quotation_core.quotation_groups_via_quote_extractor",
+        fake_quotation_groups,
+    )
+    node_id = uuid.UUID("33333333-3333-4333-8333-333333333333")
+    result = run_quotation_run_all(
+        artifact_dir=str(tmp_path),
+        input_snapshot_dir=str(
+            worker_snapshot(
+                node_id=str(node_id),
+                columns={
+                    QUOTE_EXTRACTION_COLUMN: ['Ada said "Hello"'],
+                    "QUOTE_speaker": ["old"],
+                },
+            )
+        ),
+        parent_node_id=node_id,
+        document_column=QUOTE_EXTRACTION_COLUMN,
+        engine=LocalResolvedQuotationEngine(),
+        quotation_service_max_batch_size=100,
+        quotation_service_timeout=30,
+        progress_callback=lambda progress, message: None,
+    )
+    assert result["state"] == "successful", result
+    assert result["source"]["document_column"] == "QUOTE_source"
+    assert result["source"]["metadata_columns"] == []
+
+    output_dir = tmp_path / "added"
+    output_dir.mkdir()
+    selected = ["QUOTE_source", QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_NAMES]
+    created = run_result_data_block_creation(
+        artifact_dir=str(output_dir),
+        request_payload={
+            "kind": "quotation_result_data_block_creation",
+            "source": {
+                "source_node_id": str(node_id),
+                "selected_columns": selected,
+                "new_node_name": "Quotes of quotes",
+            },
+        },
+        result_paths={node_id: str(tmp_path / result["source"]["table"]["artifact"])},
+        document_columns={node_id: result["source"]["document_column"]},
+    )
+    output = created["outputs"][0]["data"]
+    frame = pl.read_parquet(output_dir / output["parquet_path"])
+    assert frame.columns == selected
+    row = frame.row(0, named=True)
+    assert row["QUOTE_source"] == 'Ada said "Hello"'
+    assert row["QUOTE_speaker"] == "Ada"

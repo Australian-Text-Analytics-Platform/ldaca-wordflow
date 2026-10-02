@@ -385,7 +385,8 @@ def compute_node_concordance_page(
     tokenization_column = src.get("tokenization_column")
     # Topic Coverage is not shown as Concordance metadata (issue 200).
     base_lf = without_unsupported_columns(src["lf"], keep=(column, tokenization_column))
-    base_lf = without_previous_concordance_columns(base_lf, column)
+    # A text column named like a Concordance column becomes CONC_source (issue 244).
+    base_lf, column = without_previous_concordance_columns(base_lf, column)
     search_mode = str(request.get("search_mode") or "regex")
 
     node_request: dict[str, Any] = dict(request)

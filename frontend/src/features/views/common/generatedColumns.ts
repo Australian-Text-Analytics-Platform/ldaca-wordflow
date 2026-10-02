@@ -59,12 +59,41 @@ export const QUOTATION_COLUMN_KEYS = {
 
 export const QUOTATION_DOCUMENT_COLUMN = QUOTATION_COLUMN_KEYS.document;
 
+/** Every column a rerun of the tool replaces, by column-name prefix (issues 244, 245). */
+const GENERATED_BY_PREFIX: Readonly<Record<'CONC' | 'QUOTE', ReadonlySet<string>>> = {
+  CONC: new Set<string>(CONCORDANCE_RUN_ALL_GENERATED_COLUMNS),
+  QUOTE: new Set<string>(Object.values(QUOTATION_COLUMN_KEYS)),
+};
+
+/**
+ * The name the text column has in a Result (issue 244, decided 2026-10-02).
+ * A text column that is itself a column the tool adds (for example a stacked
+ * CONC_extraction) becomes CONC_source, or CONC_source_2 and so on when that
+ * name is taken. Mirrors `source_text_column_name` in the backend's
+ * analysis/generated_columns.py; keep the two in step.
+ */
+export function sourceTextColumnName(
+  columnNames: readonly string[],
+  column: string,
+  prefix: 'CONC' | 'QUOTE',
+): string {
+  if (!GENERATED_BY_PREFIX[prefix].has(column)) return column;
+  const taken = new Set(columnNames);
+  let candidate = `${prefix}_source`;
+  for (let number = 2; taken.has(candidate); number += 1) {
+    candidate = `${prefix}_source_${String(number)}`;
+  }
+  return candidate;
+}
+
 /**
  * Plain explanations shown small and grey under the stored names of generated
  * columns (issue 205). The stored names stay as they are, because they are the
  * column names in created Data Blocks and exports.
  */
 export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
+  CONC_source: 'The searched text, renamed from a Concordance column',
+  QUOTE_source: 'The text searched for quotes, renamed from a Quotation column',
   CONC_left_context: 'Text before the match',
   CONC_matched_text: 'The match',
   CONC_right_context: 'Text after the match',

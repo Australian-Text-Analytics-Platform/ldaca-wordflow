@@ -53,7 +53,9 @@ def test_build_concordance_search_pattern_wraps_whole_word_literals():
     ],
 )
 def test_whole_word_skips_boundaries_next_to_unspaced_scripts(term, text, expected):
-    pattern, use_regex = build_concordance_search_pattern(term, regex=False, whole_word=True)
+    pattern, use_regex = build_concordance_search_pattern(
+        term, regex=False, whole_word=True
+    )
 
     assert use_regex is True
     assert pl.Series([text]).str.contains(pattern).item() is expected
@@ -137,9 +139,7 @@ def test_compute_concordance_page_ignores_punctuation_in_context_counts() -> Non
         "case_sensitive": False,
         "ignore_punctuation": True,
     }
-    source = pl.DataFrame(
-        {"text": ["alpha one , , , target . . three omega"]}
-    ).lazy()
+    source = pl.DataFrame({"text": ["alpha one , , , target . . three omega"]}).lazy()
 
     result = compute_concordance_page(
         source,
@@ -272,13 +272,60 @@ def test_a_concordance_replaces_the_columns_of_a_previous_one():
     assert hit["CONC_l1"] == "and"
 
 
-def test_a_text_column_named_like_a_concordance_column_is_explained():
-    from ldaca_wordflow.analysis.generated_columns import (
-        without_previous_concordance_columns,
-    )
-    from ldaca_wordflow.shared.errors import InvalidInputError
+def test_a_text_column_named_like_a_concordance_column_becomes_conc_source():
+    """A stacked CONC_extraction searched again keeps its text as CONC_source (issue 244)."""
+    from ldaca_wordflow.analysis.concordance_core import compute_node_concordance_page
 
-    with pytest.raises(InvalidInputError, match="Rename it in the Data Editor"):
-        without_previous_concordance_columns(
-            _data_block_from_a_previous_concordance(), "CONC_extraction"
+    frame = _data_block_from_a_previous_concordance().with_columns(
+        pl.lit("the housing crisis and affordability").alias("CONC_extraction")
+    )
+    page = compute_node_concordance_page(
+        {"lf": frame, "column": "CONC_extraction"},
+        {
+            "search_word": "affordability",
+            "regex": False,
+            "num_left_tokens": 5,
+            "num_right_tokens": 5,
+            "case_sensitive": False,
+        },
+        page=1,
+        page_size=10,
+        sort_by=None,
+        descending=False,
+    )
+
+    # The renamed text keeps its place among the source columns.
+    assert page["columns"][:3] == ["text", "speaker", "CONC_source"]
+    assert page["columns"].count("CONC_extraction") == 1
+    assert len(page["columns"]) == len(set(page["columns"]))
+    hit = page["data"][0][0]
+    assert hit["CONC_source"] == "the housing crisis and affordability"
+    assert hit["CONC_matched_text"] == "affordability"
+
+
+def test_the_source_text_name_skips_names_already_taken():
+    from ldaca_wordflow.analysis.generated_columns import source_text_column_name
+
+    assert source_text_column_name(["text"], "text", "CONC") == "text"
+    assert (
+        source_text_column_name(["CONC_extraction"], "CONC_extraction", "CONC")
+        == "CONC_source"
+    )
+    assert (
+        source_text_column_name(
+            ["CONC_source", "CONC_extraction"], "CONC_extraction", "CONC"
         )
+        == "CONC_source_2"
+    )
+    assert (
+        source_text_column_name(
+            ["CONC_source", "CONC_source_2", "QUOTE_extraction"],
+            "QUOTE_extraction",
+            "QUOTE",
+        )
+        == "QUOTE_source"
+    )
+    # The renamed text is an ordinary column: a later run keeps it as it is.
+    assert (
+        source_text_column_name(["CONC_source"], "CONC_source", "CONC") == "CONC_source"
+    )

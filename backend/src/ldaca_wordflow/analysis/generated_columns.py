@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import polars as pl
 
 CONC_LEFT_CONTEXT_COLUMN = "CONC_left_context"
@@ -40,41 +42,63 @@ CONCORDANCE_GENERATED_COLUMNS = frozenset(
 )
 
 
+def source_text_column_name(
+    column_names: Sequence[str], document_column: str, prefix: str
+) -> str:
+    """The name the text column takes in a Result (issue 244, decided 2026-10-02).
+
+    Normally the column keeps its name. A text column that is itself a column
+    the tool adds (for example a stacked ``CONC_extraction``) would clash with
+    the new one, so it becomes ``<PREFIX>_source``, or ``<PREFIX>_source_2``,
+    ``_3`` and so on when that name is taken. The frontend mirrors this rule in
+    ``sourceTextColumnName`` (frontend/src/features/views/common/generatedColumns.ts).
+    """
+
+    generated = _GENERATED_BY_PREFIX[prefix]
+    if document_column not in generated:
+        return document_column
+    taken = set(column_names)
+    candidate = f"{prefix}_source"
+    number = 2
+    while candidate in taken:
+        candidate = f"{prefix}_source_{number}"
+        number += 1
+    return candidate
+
+
 def _without_previous_generated_columns(
     frame: pl.LazyFrame,
     document_column: str,
-    generated: frozenset[str],
-    tool: str,
-) -> pl.LazyFrame:
+    prefix: str,
+) -> tuple[pl.LazyFrame, str]:
     """Drop the columns an earlier run of the same tool added (issues 244, 245).
 
     A Data Block made from a Result already has these columns. Running the tool
     on it again replaces them, so the new Result keeps one set, in the usual
-    order, instead of failing on duplicate names. The text column cannot be one
-    of them, because the new Result adds a column of the same name.
+    order, instead of failing on duplicate names. When the text column itself
+    is one of them, it is kept and renamed (see ``source_text_column_name``).
+    Returns the frame and the text column's name in it.
     """
-    from ..shared.errors import InvalidInputError
 
-    if document_column in generated:
-        raise InvalidInputError(
-            f"The text column {document_column} has the same name as a column "
-            f"{tool} adds. Rename it in the Data Editor, for example to text, "
-            "then try again."
-        )
+    names = frame.collect_schema().names()
+    generated = _GENERATED_BY_PREFIX[prefix]
     previous = [
-        column for column in frame.collect_schema().names() if column in generated
+        column for column in names if column in generated and column != document_column
     ]
-    return frame.drop(previous) if previous else frame
+    if previous:
+        frame = frame.drop(previous)
+    text_column = source_text_column_name(names, document_column, prefix)
+    if text_column != document_column:
+        frame = frame.rename({document_column: text_column})
+    return frame, text_column
 
 
 def without_previous_concordance_columns(
     frame: pl.LazyFrame, document_column: str
-) -> pl.LazyFrame:
+) -> tuple[pl.LazyFrame, str]:
     """Called by the Concordance Preview page and the Run worker (issue 244)."""
 
-    return _without_previous_generated_columns(
-        frame, document_column, CONCORDANCE_GENERATED_COLUMNS, "Concordance"
-    )
+    return _without_previous_generated_columns(frame, document_column, "CONC")
 
 
 def concordance_extraction_expr(
@@ -217,12 +241,17 @@ QUOTATION_GENERATED_COLUMNS = frozenset((QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_
 
 def without_previous_quotation_columns(
     frame: pl.LazyFrame, document_column: str
-) -> pl.LazyFrame:
+) -> tuple[pl.LazyFrame, str]:
     """Called by the Quotation Preview page and the Run worker (issue 245)."""
 
-    return _without_previous_generated_columns(
-        frame, document_column, QUOTATION_GENERATED_COLUMNS, "Quotation"
-    )
+    return _without_previous_generated_columns(frame, document_column, "QUOTE")
+
+
+# Tools whose generated columns a rerun replaces, by column-name prefix.
+_GENERATED_BY_PREFIX: dict[str, frozenset[str]] = {
+    "CONC": CONCORDANCE_GENERATED_COLUMNS,
+    "QUOTE": QUOTATION_GENERATED_COLUMNS,
+}
 
 
 # ----------------------------------------------------------------------------

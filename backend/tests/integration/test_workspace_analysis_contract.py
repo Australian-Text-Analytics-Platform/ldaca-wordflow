@@ -88,9 +88,12 @@ def test_quotation_preview_page_is_native_arrow_ipc(
         workspace_id = client.post(
             "/api/workspaces", json={"name": "Quotation IPC"}, headers=unsafe
         ).json()["id"]
-        assert client.put(
-            f"/api/workspaces/{workspace_id}/open", headers=unsafe
-        ).status_code == 200
+        assert (
+            client.put(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
+            == 200
+        )
         node = client.post(
             f"/api/workspaces/{workspace_id}/nodes",
             json={"kind": "file", "file_path": "quotes.csv"},
@@ -168,20 +171,26 @@ def test_topic_modeling_schema_mismatch_keeps_tables_and_other_results_usable(
     ) as client:
         csrf = client.get("/api/session").json()["csrf_token"]
         unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
-        assert client.post(
-            "/api/user-files/uploads",
-            params={"path": "quotes.csv"},
-            content=b'text\n"Alice said hello."\n',
-            headers={**unsafe, "Content-Type": "application/octet-stream"},
-        ).status_code == 201
+        assert (
+            client.post(
+                "/api/user-files/uploads",
+                params={"path": "quotes.csv"},
+                content=b'text\n"Alice said hello."\n',
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            ).status_code
+            == 201
+        )
         workspace_id = client.post(
             "/api/workspaces",
             json={"name": "Granular versions"},
             headers=unsafe,
         ).json()["id"]
-        assert client.put(
-            f"/api/workspaces/{workspace_id}/open", headers=unsafe
-        ).status_code == 200
+        assert (
+            client.put(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
+            == 200
+        )
         node_id = client.post(
             f"/api/workspaces/{workspace_id}/nodes",
             json={"kind": "file", "file_path": "quotes.csv"},
@@ -211,9 +220,12 @@ def test_topic_modeling_schema_mismatch_keeps_tables_and_other_results_usable(
             json={"kind": "topic_modeling", "name": "Topics"},
             headers=unsafe,
         ).json()["id"]
-        assert client.delete(
-            f"/api/workspaces/{workspace_id}/open", headers=unsafe
-        ).status_code == 204
+        assert (
+            client.delete(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
+            == 204
+        )
 
         workspace_root = tmp_path / "workspaces" / workspace_id
         manifest = json.loads((workspace_root / "workspace.json").read_text())
@@ -225,18 +237,22 @@ def test_topic_modeling_schema_mismatch_keeps_tables_and_other_results_usable(
         topic_envelope["schema_version"] = 2
         topic_path.write_text(json.dumps(topic_envelope))
 
-        assert client.put(
-            f"/api/workspaces/{workspace_id}/open", headers=unsafe
-        ).status_code == 200
+        assert (
+            client.put(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
+            == 200
+        )
         tabs = client.get(f"/api/workspaces/{workspace_id}/tabs").json()
         incompatible = next(tab for tab in tabs if tab["id"] == topic_tab_id)
         assert incompatible["reason"] == "incompatible_schema"
         assert incompatible["analysis_kind"] == "topic_modeling"
         assert incompatible["stored_schema_version"] == 2
         assert incompatible["supported_schema_version"] == 1
-        assert next(tab for tab in tabs if tab["id"] == quotation_tab_id)[
-            "availability"
-        ] == "available"
+        assert (
+            next(tab for tab in tabs if tab["id"] == quotation_tab_id)["availability"]
+            == "available"
+        )
 
         table = client.post(
             f"/api/workspaces/{workspace_id}/sql",
@@ -469,8 +485,7 @@ def test_analysis_artifacts_publish_under_the_analysis_directory(
         assert pl.read_ipc_stream(BytesIO(download.content)).height > 0
 
         artifact_path = (
-            analysis_dir
-            / record["payload"]["artifact_references"][0]["relative_path"]
+            analysis_dir / record["payload"]["artifact_references"][0]["relative_path"]
         )
         artifact_path.unlink()
         gone = client.get(
@@ -755,8 +770,7 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
         assert root_result.json()["kind"] == "concordance_run_all"
         assert root_result.json()["result"]["variant"] == "group"
         assert [
-            source["analysis_id"]
-            for source in root_result.json()["result"]["sources"]
+            source["analysis_id"] for source in root_result.json()["result"]["sources"]
         ] == [child["id"] for child in children]
 
         for child in children:
@@ -870,9 +884,7 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
         output_node_ids = cast(list[str], published["output_node_ids"])
         assert len(output_node_ids) == 2
         published_nodes = [
-            client.get(
-                f"/api/workspaces/{workspace_id}/nodes/{node_id}"
-            ).json()
+            client.get(f"/api/workspaces/{workspace_id}/nodes/{node_id}").json()
             for node_id in output_node_ids
         ]
         assert [node["name"] for node in published_nodes] == [
@@ -933,7 +945,9 @@ def test_concordance_runs_again_on_a_data_block_made_from_its_result(
             "/api/workspaces", json={"name": "Loop"}, headers=unsafe
         ).json()["id"]
         assert (
-            client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe).status_code
+            client.put(
+                f"/api/workspaces/{workspace_id}/open", headers=unsafe
+            ).status_code
             == 200
         )
         node_id = client.post(
@@ -995,3 +1009,135 @@ def test_concordance_runs_again_on_a_data_block_made_from_its_result(
             info = client.get(f"/api/workspaces/{workspace_id}/nodes/{node_id}").json()
             # One set of Concordance columns, however many times it runs.
             assert info["shape"][1] == 2 + len(CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS)
+
+
+def test_concordance_on_a_stacked_extraction_keeps_its_text_as_conc_source(
+    tmp_path: Path,
+) -> None:
+    """The #244 workflow: the text column is itself CONC_extraction (decided 2026-10-02).
+
+    The Result calls the searched text CONC_source, offers no old Concordance
+    column, and the Data Blocks made from it use CONC_source as their document.
+    """
+    from ldaca_wordflow.analysis.generated_columns import (
+        CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS,
+    )
+
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        assert (
+            client.post(
+                "/api/user-files/uploads",
+                params={"path": "stacked.csv"},
+                content=(
+                    b"CONC_extraction,speaker,CONC_l1\n"
+                    b"the housing crisis needs affordability,A,old\n"
+                    b"an affordability crisis in rental housing,B,old\n"
+                ),
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            ).status_code
+            == 201
+        )
+        workspace_id = client.post(
+            "/api/workspaces", json={"name": "Stacked"}, headers=unsafe
+        ).json()["id"]
+        client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe)
+        node_id = client.post(
+            f"/api/workspaces/{workspace_id}/nodes",
+            json={"kind": "file", "file_path": "stacked.csv", "name": "Stacked"},
+            headers=unsafe,
+        ).json()["id"]
+        tab_id = client.post(
+            f"/api/workspaces/{workspace_id}/tabs",
+            json={"kind": "concordance", "name": "affordability"},
+            headers=unsafe,
+        ).json()["id"]
+        run = client.post(
+            f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",
+            json={
+                "execution_scope": "run_all",
+                "request": {
+                    "kind": "concordance_run_all",
+                    "source": {
+                        "kind": "concordance",
+                        "node_ids": [node_id],
+                        "node_columns": {node_id: "CONC_extraction"},
+                        "search_word": "affordability",
+                    },
+                },
+            },
+            headers=unsafe,
+        )
+        assert run.status_code == 201, run.text
+        assert (
+            _wait_analysis(client, workspace_id, run.json()["id"])["state"]
+            == "succeeded"
+        )
+        source = client.get(
+            f"/api/workspaces/{workspace_id}/analyses/{run.json()['id']}/result"
+        ).json()["result"]["sources"][0]
+        assert source["document_column"] == "CONC_source"
+        # The old CONC_l1 is replaced, so Add to Project does not offer it.
+        assert source["metadata_columns"] == ["speaker"]
+
+        for kind, selection in (
+            (
+                "concordance_match_data_block_creation",
+                {
+                    "selected_columns": [
+                        "CONC_source",
+                        "speaker",
+                        *CONCORDANCE_DATA_BLOCK_CREATION_COLUMNS,
+                    ],
+                },
+            ),
+            (
+                "concordance_document_data_block_creation",
+                {"selected_metadata_columns": ["speaker"]},
+            ),
+        ):
+            added = client.post(
+                f"/api/workspaces/{workspace_id}/tabs/{tab_id}/analyses",
+                json={
+                    "execution_scope": "supporting",
+                    "parent_analysis_id": run.json()["id"],
+                    "request": {
+                        "kind": kind,
+                        "sources": [
+                            {
+                                "source_node_id": node_id,
+                                "new_node_name": kind,
+                                **selection,
+                            }
+                        ],
+                    },
+                },
+                headers=unsafe,
+            )
+            assert added.status_code == 201, added.text
+            published = _wait_analysis(client, workspace_id, added.json()["id"])
+            assert published["state"] == "succeeded", (kind, published)
+            output_id = cast(list[str], published["output_node_ids"])[0]
+            info = client.get(
+                f"/api/workspaces/{workspace_id}/nodes/{output_id}"
+            ).json()
+            assert info["document"] == "CONC_source", kind
+            schema = client.get(
+                f"/api/workspaces/{workspace_id}/nodes/{output_id}/schema"
+            )
+            assert schema.status_code == 200, schema.text
+            # The schema arrives as Arrow IPC.
+            names = pl.read_ipc_stream(BytesIO(schema.content)).columns
+            assert names[0] == "CONC_source", names
+            assert len(names) == len(set(names)), names

@@ -277,7 +277,8 @@ sync is active, and an unchecked source keeps its independent selection.
 `TOPIC_top1` remains required and is not synchronised. If fewer than two sources
 remain checked, Sync columns turns off automatically. When the source Data Block
 was itself made by Topic Modelling, its old `TOPIC_` columns are not offered: the
-new ones replace them.
+new ones replace them. A `TOPIC_` column cannot be the text to model, because it
+holds topics from an earlier run rather than documents; Wordflow says so.
 
 ![Add Topic Modelling results to Project, with the Rows choice at the top](tutorials/assets/topic_modelling/add_to_project.png)
 

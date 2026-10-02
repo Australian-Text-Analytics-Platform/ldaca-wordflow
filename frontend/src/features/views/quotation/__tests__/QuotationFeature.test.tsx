@@ -70,6 +70,7 @@ vi.mock('../../common/nodeInputs', () => ({
     selectedNodes: quotationHydrationMocks.selectedNodes,
     resolvedNodes: quotationHydrationMocks.resolvedNodes,
     nodeInfoById: {},
+    getColumnInfos: () => [],
     availableNodes: [],
     canAddMore: true,
     addNodes: vi.fn(() => []),

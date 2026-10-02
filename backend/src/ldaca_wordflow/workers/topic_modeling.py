@@ -465,6 +465,17 @@ def _load_corpora_from_snapshot(
     for node_info in node_payloads:
         if not node_info.text_column:
             raise ValueError("Choose a text column for each Data Block")
+        from ..analysis.generated_columns import TOPIC_MODELING_GENERATED_COLUMNS
+
+        if node_info.text_column in TOPIC_MODELING_GENERATED_COLUMNS:
+            # These hold topics from an earlier run, not documents (issue 246).
+            from ..shared.errors import InvalidInputError
+
+            raise InvalidInputError(
+                f"{node_info.text_column} holds topics from an earlier Topic "
+                "Modelling run, not documents. Choose the column with the text "
+                "to model."
+            )
         snapshot_node = load_snapshot_node(input_snapshot_dir, node_info.node_id)
         resolved_infos.append(
             TopicNodeInfo(
