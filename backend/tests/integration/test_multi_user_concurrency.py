@@ -5,19 +5,35 @@ uploads a file, creates and opens a Project, makes a Data Block, runs
 concordance and word frequency, reads result pages and renames the Project.
 Every request must succeed, every analysis must finish, and no user may see
 another user's Projects.
+
+Optional: WORDFLOW_STRESS_CSV=path uses a real file (needs a `text` column)
+instead of the built-in 40 rows, WORDFLOW_STRESS_TOPIC_USERS=K makes the first K
+users also run topic modelling, and WORDFLOW_STRESS_TIMEOUT sets the per-analysis
+limit in seconds. Each analysis's queue and run time is printed at the end.
 """
 
 from __future__ import annotations
 
 import os
+import statistics
 import time
 from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from pathlib import Path
 
 import pytest
 
 from .test_multi_user_isolation import CSV, Identity, Users, _ok, users  # noqa: F401
 
 USERS = int(os.environ.get("WORDFLOW_STRESS_USERS", "0"))
+TOPIC_USERS = int(os.environ.get("WORDFLOW_STRESS_TOPIC_USERS", "0"))
+TIMEOUT = float(os.environ.get("WORDFLOW_STRESS_TIMEOUT", "300"))
+DATA = (
+    Path(os.environ["WORDFLOW_STRESS_CSV"]).read_bytes()
+    if os.environ.get("WORDFLOW_STRESS_CSV")
+    else CSV
+)
+TIMINGS: list[tuple[str, float, float]] = []
 
 pytestmark = pytest.mark.skipif(USERS < 2, reason="set WORDFLOW_STRESS_USERS to run")
 
@@ -40,7 +56,7 @@ def _run_analysis(
         ),
         201,
     )
-    deadline = time.monotonic() + 300
+    deadline = time.monotonic() + TIMEOUT
     while True:
         state = _ok(
             server.request(who, "GET", f"/api/workspaces/{ws}/analyses/{created['id']}")
@@ -50,6 +66,20 @@ def _run_analysis(
         assert time.monotonic() < deadline, f"{kind} still {state['state']}"
         time.sleep(0.2)
     assert state["state"] == "succeeded", state
+    started = datetime.fromisoformat(state["started_at"].replace("Z", "+00:00"))
+    TIMINGS.append(
+        (
+            kind,
+            (
+                started
+                - datetime.fromisoformat(state["created_at"].replace("Z", "+00:00"))
+            ).total_seconds(),
+            (
+                datetime.fromisoformat(state["finished_at"].replace("Z", "+00:00"))
+                - started
+            ).total_seconds(),
+        )
+    )
     return created["id"]
 
 
@@ -64,7 +94,7 @@ def _participant(server: Users, who: Identity, number: int) -> str:
             "POST",
             "/api/user-files/uploads",
             params={"path": "corpus/tax.csv"},
-            content=CSV,
+            content=DATA,
             headers={"Content-Type": "application/octet-stream"},
         ),
         201,
@@ -135,6 +165,18 @@ def _participant(server: Users, who: Identity, number: int) -> str:
         # Result tables are Arrow IPC, not JSON.
         table = server.request(who, "GET", node["table"]["url"])
         assert table.status_code == 200, table.text
+    if number < TOPIC_USERS:
+        _run_analysis(
+            server,
+            who,
+            ws,
+            "topic_modeling",
+            {
+                "kind": "topic_modeling",
+                "node_ids": [nid],
+                "node_columns": {nid: "text"},
+            },
+        )
     _ok(
         server.request(
             who,
@@ -157,6 +199,13 @@ def test_many_users_work_at_once_without_errors_or_crosstalk(users: Users) -> No
         )
     elapsed = time.monotonic() - started
     print(f"\n{USERS} users finished in {elapsed:.1f} s")
+    for kind in sorted({timing[0] for timing in TIMINGS}):
+        queued = sorted(t[1] for t in TIMINGS if t[0] == kind)
+        ran = sorted(t[2] for t in TIMINGS if t[0] == kind)
+        print(
+            f"{kind:16} n={len(queued):3}  queue p50 {statistics.median(queued):6.1f} s"
+            f"  max {queued[-1]:6.1f} s  run p50 {statistics.median(ran):6.1f} s  max {ran[-1]:6.1f} s"
+        )
 
     for number, (who, ws) in enumerate(zip(people, projects, strict=True)):
         listed = _ok(users.request(who, "GET", "/api/workspaces"))
