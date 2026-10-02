@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-concordance-overview">About Concordance Search</h2>
+<h1 id="info-concordance-overview">About Concordance Search</h1>
 
 A concordance shows every match from the current source-document page with its
 left and right context. It supports close reading, comparison, and dispersion

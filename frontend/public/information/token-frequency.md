@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-token-frequency-overview">About Frequency Analysis</h2>
+<h1 id="info-token-frequency-overview">About Frequency Analysis</h1>
 
 - **What is this?**
   This tool retrieves each token (~word) in your text / text collection. It creates a word cloud visualisation as well as a frequency list (= a list of each word and the raw/absolute frequency with which it occurs). You can download both to your Downloads folder.

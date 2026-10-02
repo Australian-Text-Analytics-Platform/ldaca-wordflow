@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-quotation-overview">About Quotation Extraction</h2>
+<h1 id="info-quotation-overview">About Quotation Extraction</h1>
 
 Quotation Extraction identifies quoted speech, speakers, and speech verbs in
 English news-style text. The built-in rules are based on the

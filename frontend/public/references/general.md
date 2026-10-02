@@ -7,7 +7,7 @@
 
 If you use Wordflow in your research, please include the following statement (or an appropriate variation):
 
-> This study has utilised **Wordflow**, developed by the Sydney Informatics Hub (SIH) for the Language Data Commons of Australia (LDaCA), available at [https://sih.tools/wordflow](https://sih.tools/wordflow).
+> This study has utilised **Wordflow**, developed by the Sydney Informatics Hub (SIH) for the Language Data Commons of Australia (LDaCA), available at [https://doi.org/10.5281/zenodo.20408328](https://doi.org/10.5281/zenodo.20408328).
 
 Where relevant, please also cite specific tools, notebooks, datasets, or software releases used in your analysis (e.g. via provided DOIs or repository references). For the latest version or updates, please visit the [GitHub repository](https://github.com/Australian-Text-Analytics-Platform/Ldaca_Text_Analytics_Tools).
 

@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-annotation-overview">About Annotation</h2>
+<h1 id="info-annotation-overview">About Annotation</h1>
 
 Annotation assigns a controlled label to each text row. Use it to build reviewed
 training data, apply a Codebook consistently, compare coders or models, and keep

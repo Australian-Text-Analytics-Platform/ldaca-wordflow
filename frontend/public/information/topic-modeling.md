@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-topic-modeling-overview">About Topic Modelling</h2>
+<h1 id="info-topic-modeling-overview">About Topic Modelling</h1>
 
 Topic modelling is an exploratory way to find recurring language patterns in a
 large collection without reading every document first. Wordflow groups similar

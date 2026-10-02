@@ -2,7 +2,7 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-topic-modeling-section">Topic modelling tutorial</h1>
+<h1 id="help-topic-modeling-section">Topic Modelling tutorial</h1>
 
 ![Topic modelling parameter panel](tutorials/assets/topic_modelling.png)
 

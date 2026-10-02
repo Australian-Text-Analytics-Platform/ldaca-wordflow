@@ -2,10 +2,6 @@
 
 <h1 id="help-tutorial-index">Wordflow Help</h1>
 
-<p align="center">
-  <img src="/LDaCA_logo_Dark.png" alt="LDaCA" width="360" />
-</p>
-
 Welcome to Wordflow. This Help guide provides written instructions for
 the interface and each analysis feature. Open it at any time from **Help** in
 the sidebar or jump directly to a section with a **?** icon.

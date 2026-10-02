@@ -27,7 +27,7 @@ interface NavigationState {
 /** Document viewer presentation keyed by canonical help/info/reference kind. */
 const DOC_CONFIG: Record<DocumentType, { title: string }> = {
   tutorial: { title: 'Help' },
-  information: { title: 'About' },
+  information: { title: 'Information' },
   reference: { title: 'References' },
 };
 

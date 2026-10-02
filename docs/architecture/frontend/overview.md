@@ -138,6 +138,9 @@ current app's `v{major}.{minor}` tag. Markdown from that tag is tried before the
 bundled copy; network and HTTP failures fall back locally. Registry caches are
 scoped to the resolved origin and tag so one minor version cannot shadow
 another.
+Development servers clear `VITE_DOCS_ORIGIN` (`frontend/.env.development` and
+`.env.tauri`), so they read Help from the checkout and doc edits show at once;
+release builds read the published docs first.
 
 ## Backend Contract Transition
 

@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-sequential-analysis-overview">About Trends Analysis</h2>
+<h1 id="info-sequential-analysis-overview">About Trends Analysis</h1>
 
 - **What is this?**
 
