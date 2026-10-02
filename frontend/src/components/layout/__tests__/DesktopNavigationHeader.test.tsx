@@ -59,7 +59,7 @@ describe('DesktopNavigationHeaderView', () => {
     const quickAccess = screen.getByRole('button', { name: 'Open quick access' });
     const settings = screen.getByRole('button', { name: 'Open settings' });
     const about = screen.getByRole('button', { name: 'About Wordflow' });
-    const citation = screen.getByRole('button', { name: 'Cite LDaCA Wordflow' });
+    const citation = screen.getByRole('button', { name: 'Cite Wordflow' });
 
     expect(header).toHaveAttribute('data-tauri-drag-region', 'deep');
     expect(header).not.toHaveClass('border-b');

@@ -242,7 +242,7 @@ describe('Sidebar view visibility menu', () => {
     expect(screen.queryByTestId('sidebar-title')).not.toBeInTheDocument();
     expect(screen.queryByRole('img', { name: 'LDaCA Logo' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'About Wordflow' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Cite LDaCA Wordflow' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Cite Wordflow' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Open settings' })).not.toBeInTheDocument();
   });
 

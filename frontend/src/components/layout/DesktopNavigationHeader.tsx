@@ -160,7 +160,7 @@ export function DesktopNavigationHeaderView({
         >
           <ReferenceIcon
             targetKey="general.platform"
-            label="Cite LDaCA Wordflow"
+            label="Cite Wordflow"
             className="size-[22px] text-[var(--vscode-charts-green)]"
             iconClassName="!size-[18px]"
           />

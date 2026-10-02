@@ -610,7 +610,7 @@ const reference = {
   'general.platform': {
     file: 'references/general.md',
     anchor: 'ref-general-platform',
-    label: 'Cite LDaCA Wordflow',
+    label: 'Cite Wordflow',
   },
   'general.stop-word-lists': {
     file: 'references/general.md',

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import DocumentView from '@/components/DocumentView';
 
 const docsConfig = vi.hoisted(() => ({
@@ -139,7 +139,26 @@ describe('DocumentView (docType="tutorial")', () => {
 
     render(<DocumentView docType="tutorial" target={target} />);
 
-    expect(await screen.findByText('Version 0.7.1 - released on 04/Aug/2026.')).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    const versionLine = await screen.findByText('Version 0.7.1 - released on 04/Aug/2026.');
+    expect(within(versionLine).queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('links each partner logo in the header to its home page', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve('# Doc'),
+    }) as unknown as typeof fetch;
+
+    render(<DocumentView docType="reference" target={target} />);
+
+    const logos = within(await screen.findByTestId('partner-logos')).getAllByRole('link');
+    expect(logos.map((link) => link.getAttribute('href'))).toEqual([
+      'https://www.ldaca.edu.au/',
+      'https://ardc.edu.au/',
+      'https://www.education.gov.au/ncris',
+      'https://sydneycorpuslab.com/',
+      'https://informatics.sydney.edu.au/',
+    ]);
+    expect(screen.getByRole('heading', { level: 1, name: 'References' })).toBeInTheDocument();
   });
 });

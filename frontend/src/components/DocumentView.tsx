@@ -4,7 +4,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
-import logo from '../logo.png';
+import { PartnerLogos } from '@/components/help/PartnerLogos';
 import 'katex/dist/katex.min.css';
 import { BUNDLED_DOCUMENT_FILES, type DocumentTarget } from '@/tutorials/documentationRegistry';
 import {
@@ -26,9 +26,9 @@ interface NavigationState {
 
 /** Document viewer presentation keyed by canonical help/info/reference kind. */
 const DOC_CONFIG: Record<DocumentType, { title: string }> = {
-  tutorial: { title: 'LDaCA Help' },
-  information: { title: 'LDaCA Information' },
-  reference: { title: 'LDaCA References' },
+  tutorial: { title: 'Help' },
+  information: { title: 'About' },
+  reference: { title: 'References' },
 };
 
 /** Called by: DocumentView link handlers when resolving local markdown hrefs. */
@@ -291,8 +291,8 @@ function DocumentView({
     <div className="min-h-screen bg-editor">
       <header className="bg-surface border-b border-surface-border px-6 py-4 pr-12">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="LDaCA Logo" className="h-8 w-auto object-contain" />
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <PartnerLogos />
             <h1 className="text-heading-2 font-semibold text-foreground">{config.title}</h1>
           </div>
           <div className="flex flex-wrap items-center gap-3 sm:justify-end">
