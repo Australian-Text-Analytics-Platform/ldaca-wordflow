@@ -110,7 +110,9 @@ describe('DocumentView (docType="tutorial")', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () =>
-        Promise.resolve('Version {{VERSION}} - released on {{BUILD_DATE}}{{BUILD_COMMIT}}.'),
+        Promise.resolve(
+          'Version {{VERSION}} - released on {{BUILD_DATE}}<span data-build-commit></span>.',
+        ),
     }) as unknown as typeof fetch;
 
     render(<DocumentView docType="tutorial" target={target} />);
@@ -134,7 +136,9 @@ describe('DocumentView (docType="tutorial")', () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: true,
       text: () =>
-        Promise.resolve('Version {{VERSION}} - released on {{BUILD_DATE}}{{BUILD_COMMIT}}.'),
+        Promise.resolve(
+          'Version {{VERSION}} - released on {{BUILD_DATE}}<span data-build-commit></span>.',
+        ),
     }) as unknown as typeof fetch;
 
     render(<DocumentView docType="tutorial" target={target} />);

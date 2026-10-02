@@ -176,11 +176,13 @@ function DocumentView({
         // `references/general.md` can show the current app version /
         // build date without manual edits per release. Inserted via
         // Vite's `define` (see vite.config.ts).
-        // `{{BUILD_COMMIT}}` links the exact commit, or disappears when the
-        // build has none.
+        // `<span data-build-commit></span>` links the exact commit, or
+        // disappears when the build has none. It is an empty element rather
+        // than a {{...}} placeholder because the published docs also reach
+        // older 0.7 apps, which render an empty span as nothing.
         const buildCommit = APP_COMMIT_URL ? `, commit [${APP_BUILD}](${APP_COMMIT_URL})` : '';
         const rendered = text
-          .replace(/\{\{\s*BUILD_COMMIT\s*\}\}/g, buildCommit)
+          .replace(/<span data-build-commit><\/span>/g, buildCommit)
           .replace(/\{\{\s*VERSION\s*\}\}/g, APP_VERSION)
           .replace(/\{\{\s*BUILD_DATE\s*\}\}/g, APP_BUILD_DATE)
           .replace(/\{\{\s*BUILD\s*\}\}/g, APP_BUILD);
