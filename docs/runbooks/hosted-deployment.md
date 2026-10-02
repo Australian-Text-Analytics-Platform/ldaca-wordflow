@@ -98,10 +98,19 @@ EnvironmentFile=/etc/ldaca-wordflow/secrets.env
 ExecStart=/srv/ldaca-wordflow/backend/.venv/bin/ldaca-wordflow --port 8001
 Restart=on-failure
 RestartSec=5
+# Signal only the backend on stop; it stops its own analysis workers and marks
+# them interrupted. Leftovers are killed when the stop completes (issue 258).
+KillMode=mixed
+# Covers the 5 s connection drain plus SHUTDOWN_GRACE_SECONDS (default 10 s).
+TimeoutStopSec=30
 
 [Install]
 WantedBy=multi-user.target
 ```
+
+With the default `KillMode=control-group`, systemd sends SIGTERM to the
+analysis worker processes at the same moment as the backend, so a restart
+records running analyses as failures instead of interruptions.
 
 Run one service process. Do not add Uvicorn workers; see
 [ADR 0001](../adr/0001-single-process-lifespan-owned-backend.md).
