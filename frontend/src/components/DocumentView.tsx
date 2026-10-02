@@ -7,7 +7,13 @@ import rehypeRaw from 'rehype-raw';
 import logo from '../logo.png';
 import 'katex/dist/katex.min.css';
 import { BUNDLED_DOCUMENT_FILES, type DocumentTarget } from '@/tutorials/documentationRegistry';
-import { APP_VERSION, APP_BUILD_DATE, APP_BUILD, getDocsBaseUrl } from '@/config/env';
+import {
+  APP_VERSION,
+  APP_BUILD_DATE,
+  APP_BUILD,
+  APP_COMMIT_URL,
+  getDocsBaseUrl,
+} from '@/config/env';
 import { useZoom } from '@/hooks/useZoom';
 import { useDocumentAnchor } from '@/hooks/useDocumentAnchor';
 
@@ -170,7 +176,11 @@ function DocumentView({
         // `references/general.md` can show the current app version /
         // build date without manual edits per release. Inserted via
         // Vite's `define` (see vite.config.ts).
+        // `{{BUILD_COMMIT}}` links the exact commit, or disappears when the
+        // build has none.
+        const buildCommit = APP_COMMIT_URL ? `, commit [${APP_BUILD}](${APP_COMMIT_URL})` : '';
         const rendered = text
+          .replace(/\{\{\s*BUILD_COMMIT\s*\}\}/g, buildCommit)
           .replace(/\{\{\s*VERSION\s*\}\}/g, APP_VERSION)
           .replace(/\{\{\s*BUILD_DATE\s*\}\}/g, APP_BUILD_DATE)
           .replace(/\{\{\s*BUILD\s*\}\}/g, APP_BUILD);

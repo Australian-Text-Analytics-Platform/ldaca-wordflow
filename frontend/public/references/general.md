@@ -78,4 +78,4 @@ The lists for about 60 languages come from the open-source [`stopword`](https://
 
 © Language Data Commons of Australia (LDaCA)
 
-Version {{VERSION}} - released on {{BUILD_DATE}}.
+Version {{VERSION}} - released on {{BUILD_DATE}}{{BUILD_COMMIT}}.

@@ -2,12 +2,18 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import DocumentView from '@/components/DocumentView';
 
-const docsConfig = vi.hoisted(() => ({ baseUrl: 'https://docs.example.com/wordflow/v0.7' }));
+const docsConfig = vi.hoisted(() => ({
+  baseUrl: 'https://docs.example.com/wordflow/v0.7',
+  commitUrl: 'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/commit/abc1234',
+}));
 
 vi.mock('@/config/env', () => ({
   APP_VERSION: '0.7.1',
   APP_BUILD_DATE: '04/Aug/2026',
   APP_BUILD: 'abc1234',
+  get APP_COMMIT_URL() {
+    return docsConfig.commitUrl;
+  },
   getDocsBaseUrl: () => docsConfig.baseUrl,
 }));
 
@@ -27,6 +33,8 @@ describe('DocumentView (docType="tutorial")', () => {
 
   beforeEach(() => {
     docsConfig.baseUrl = 'https://docs.example.com/wordflow/v0.7';
+    docsConfig.commitUrl =
+      'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/commit/abc1234';
   });
 
   afterEach(() => {
@@ -96,5 +104,42 @@ describe('DocumentView (docType="tutorial")', () => {
       'src',
       'https://docs.example.com/wordflow/v0.7/tutorials/assets/chart.png',
     );
+  });
+
+  it('names and links the exact commit in the version footer', async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve('Version {{VERSION}} - released on {{BUILD_DATE}}{{BUILD_COMMIT}}.'),
+    }) as unknown as typeof fetch;
+
+    render(<DocumentView docType="tutorial" target={target} />);
+
+    const link = await screen.findByRole('link', { name: 'abc1234' });
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/commit/abc1234',
+    );
+    expect(
+      screen.getByText(
+        (_content, element) =>
+          element?.tagName === 'P' &&
+          element.textContent === 'Version 0.7.1 - released on 04/Aug/2026, commit abc1234.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the commit out when the build has none', async () => {
+    docsConfig.commitUrl = '';
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: () =>
+        Promise.resolve('Version {{VERSION}} - released on {{BUILD_DATE}}{{BUILD_COMMIT}}.'),
+    }) as unknown as typeof fetch;
+
+    render(<DocumentView docType="tutorial" target={target} />);
+
+    expect(await screen.findByText('Version 0.7.1 - released on 04/Aug/2026.')).toBeInTheDocument();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 });

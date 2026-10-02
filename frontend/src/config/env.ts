@@ -13,6 +13,18 @@ export const APP_BUILD_DATE: string = import.meta.env.VITE_APP_BUILD_DATE ?? '';
 /** Git short SHA, injected at build time. */
 export const APP_BUILD: string = import.meta.env.VITE_APP_BUILD ?? '';
 
+/** Wordflow's source repository. */
+const SOURCE_REPOSITORY_URL =
+  'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow';
+
+/**
+ * The commit this build was made from, on GitHub, so testers and developers
+ * know exactly what they are running. Empty when the build has no commit hash.
+ */
+export const APP_COMMIT_URL: string = /^[0-9a-f]{7,40}$/.test(APP_BUILD)
+  ? `${SOURCE_REPOSITORY_URL}/commit/${APP_BUILD}`
+  : '';
+
 /** Deployment identifier used by the feedback panel. */
 export const DEPLOYMENT_ID: string = import.meta.env.VITE_DEPLOYMENT_ID ?? '';
 
