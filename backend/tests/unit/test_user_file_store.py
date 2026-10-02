@@ -553,3 +553,70 @@ async def test_selection_downloads_as_one_zip_with_structure(tmp_path: Path) -> 
         await snapshot.cleanup()
     assert filename == "2020.zip"
     assert names == ["2020/b.txt"]
+
+
+class GatedSource:
+    """Send one chunk, wait until released, then send the rest (a slow upload)."""
+
+    def __init__(self, first: bytes, rest: bytes) -> None:
+        self.waiting = anyio.Event()
+        self.release = anyio.Event()
+        self._chunks = [first, rest]
+
+    async def read(self, size: int) -> bytes:
+        if len(self._chunks) == 2:
+            return self._chunks.pop(0)
+        if self._chunks:
+            self.waiting.set()
+            await self.release.wait()
+            return self._chunks.pop(0)
+        return b""
+
+
+async def test_slow_upload_does_not_block_the_users_file_list(tmp_path: Path) -> None:
+    """A browser upload can take minutes; the Files page must stay usable (issue 260)."""
+
+    store = _store(tmp_path)
+    source = GatedSource(b"id,", b"text")
+    stored: list[dict] = []
+
+    async def upload() -> None:
+        stored.append(await store.upload("alice", "slow.csv", source))
+
+    async with anyio.create_task_group() as tasks:
+        tasks.start_soon(upload)
+        await source.waiting.wait()
+        with anyio.fail_after(2):
+            listing = await store.list_tree("alice")
+        # The in-flight temporary stays hidden until it is published.
+        assert [item["name"] for item in listing] == []
+        source.release.set()
+
+    assert stored and stored[0]["path"] == "slow.csv"
+    assert (tmp_path / "alice" / "slow.csv").read_bytes() == b"id,text"
+    assert list((tmp_path / "alice").glob(".*.upload")) == []
+
+
+async def test_upload_into_a_folder_deleted_meanwhile_fails_cleanly(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    await store.create_folder("alice", name="corpus", parent_path="")
+    source = GatedSource(b"id,", b"text")
+    errors: list[BaseException] = []
+
+    async def upload() -> None:
+        try:
+            await store.upload("alice", "corpus/data.csv", source)
+        except NotFoundError as exc:
+            errors.append(exc)
+
+    async with anyio.create_task_group() as tasks:
+        tasks.start_soon(upload)
+        await source.waiting.wait()
+        with anyio.fail_after(2):
+            await store.delete("alice", "corpus")
+        source.release.set()
+
+    assert len(errors) == 1
+    assert "moved or deleted during the upload" in str(errors[0])
+    assert not (tmp_path / "alice" / "corpus").exists()
+    assert list((tmp_path / "alice").rglob(".*.upload")) == []

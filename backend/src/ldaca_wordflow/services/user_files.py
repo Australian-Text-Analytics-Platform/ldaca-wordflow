@@ -78,6 +78,12 @@ T = TypeVar("T")
 logger = logging.getLogger(__name__)
 
 
+_UPLOAD_FOLDER_GONE = (
+    "Destination folder not found. If it was moved or deleted during the upload, "
+    "upload the file again."
+)
+
+
 class AsyncUploadSource(Protocol):
     """Minimal streaming input accepted from HTTP adapters and tests."""
 
@@ -346,62 +352,84 @@ class UserFileStore:
         async with self._lock_for(user_id):
             resolver = await self._resolver_for(user_id)
             destination = resolver.resolve(relative_path)
-            if not await self._run_sync(_is_real_directory, destination.parent):
-                raise NotFoundError("Destination folder not found")
-            if await self._run_sync(destination.exists):
-                raise ResourceConflictError(f"File {destination.name} already exists")
-
+            await self._require_upload_destination(destination)
             descriptor, temporary_path = await self._run_sync(
                 resolver.create_temporary_file,
                 destination,
             )
-            total = 0
-            descriptor_open = True
-            try:
-                while True:
-                    chunk = await source.read(self._upload_chunk_size)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if total > byte_limit:
-                        if self._max_upload_bytes is None:
-                            raise InvalidInputError(
-                                "The upload was larger than it said. Try again."
-                            )
-                        raise UploadTooLargeError(
-                            upload_too_large_message(self._max_upload_bytes)
-                        )
-                    await self._run_sync(_write_all, descriptor, chunk)
 
-                await self._run_sync(os.fsync, descriptor)
-                await self._run_sync(os.close, descriptor)
-                descriptor_open = False
+        # The body is read without the per-user lock: it can take minutes to
+        # arrive, and the user's file list and other file actions must not wait
+        # for it (issue 260). The temporary has a hidden dot name until it is
+        # published under the lock below.
+        total = 0
+        descriptor_open = True
+        try:
+            while True:
+                chunk = await source.read(self._upload_chunk_size)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > byte_limit:
+                    if self._max_upload_bytes is None:
+                        raise InvalidInputError(
+                            "The upload was larger than it said. Try again."
+                        )
+                    raise UploadTooLargeError(
+                        upload_too_large_message(self._max_upload_bytes)
+                    )
+                await self._run_sync(_write_all, descriptor, chunk)
+
+            await self._run_sync(os.fsync, descriptor)
+            await self._run_sync(os.close, descriptor)
+            descriptor_open = False
+
+            async with self._lock_for(user_id):
+                # The folder may have been moved or deleted while the body arrived.
+                if not await self._run_sync(temporary_path.exists):
+                    raise NotFoundError(_UPLOAD_FOLDER_GONE)
                 await reservation.recheck_path(temporary_path)
-                await self._run_sync(resolver.publish_file, temporary_path, destination)
+                await self._require_upload_destination(destination)
+                try:
+                    await self._run_sync(
+                        resolver.publish_file, temporary_path, destination
+                    )
+                except FileExistsError as exc:
+                    raise ResourceConflictError(
+                        f"File {destination.name} already exists"
+                    ) from exc
                 metadata = await self._run_sync(destination.stat)
                 return _file_resource(resolver.root, destination, metadata=metadata)
-            finally:
-                # Cancellation can arrive while waiting for the next request
-                # chunk. Shield cleanup so the same-filesystem temp never
-                # survives an interrupted upload.
-                with anyio.CancelScope(shield=True):
-                    if descriptor_open:
-                        try:
-                            await self._run_sync(os.close, descriptor)
-                        except OSError:
-                            logger.warning(
-                                "Could not close interrupted User File upload",
-                                exc_info=True,
-                            )
+        finally:
+            # Cancellation or a dropped connection can arrive while waiting for
+            # the next request chunk. Shield cleanup so the same-filesystem
+            # temp never survives an interrupted upload.
+            with anyio.CancelScope(shield=True):
+                if descriptor_open:
                     try:
-                        if await self._run_sync(temporary_path.exists):
-                            await self._run_sync(resolver.delete, temporary_path)
-                    except OSError, UnsafePathError:
+                        await self._run_sync(os.close, descriptor)
+                    except OSError:
                         logger.warning(
-                            "Could not remove interrupted User File upload path=%s",
-                            temporary_path,
+                            "Could not close interrupted User File upload",
                             exc_info=True,
                         )
+                try:
+                    if await self._run_sync(temporary_path.exists):
+                        await self._run_sync(resolver.delete, temporary_path)
+                except OSError, UnsafePathError:
+                    logger.warning(
+                        "Could not remove interrupted User File upload path=%s",
+                        temporary_path,
+                        exc_info=True,
+                    )
+
+    async def _require_upload_destination(self, destination: Path) -> None:
+        """Check, under the user's lock, that an upload can land at destination."""
+
+        if not await self._run_sync(_is_real_directory, destination.parent):
+            raise NotFoundError(_UPLOAD_FOLDER_GONE)
+        if await self._run_sync(destination.exists):
+            raise ResourceConflictError(f"File {destination.name} already exists")
 
     async def delete(self, user_id: str, relative_path: str) -> None:
         """Delete exactly one file or directory resource."""

@@ -1,10 +1,12 @@
 """Thin direct-resource adapters for runtime-owned user file storage."""
 
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Query, Request, Response, status
 from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
+from starlette.requests import ClientDisconnect
 
 from ...models.files import (
     BatchDeleteFilesRequest,
@@ -15,11 +17,13 @@ from ...models.files import (
     FileResource,
     MoveFileRequest,
 )
-from ...shared.errors import UnsupportedMediaTypeError
+from ...shared.errors import UnsupportedMediaTypeError, UploadInterruptedError
 from ..request_stream import RequestByteStream
 from ..responses import api_errors, route_path_with_query
 from ..security import CurrentSessionSecurityDep
 from .dependencies import UserFileStoreDep
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -151,12 +155,20 @@ async def upload_file(
         declared_bytes = int(request.headers.get("content-length", ""))
     except ValueError:
         declared_bytes = None
-    stored = await file_store.upload(
-        principal.user.id,
-        path,
-        RequestByteStream(request),
-        declared_bytes=declared_bytes,
-    )
+    try:
+        stored = await file_store.upload(
+            principal.user.id,
+            path,
+            RequestByteStream(request),
+            declared_bytes=declared_bytes,
+        )
+    except ClientDisconnect as exc:
+        # The browser or a proxy gave up mid-upload. The store has already
+        # removed its temporary, so this is not a server failure (issue 260).
+        logger.info("User File upload interrupted by the client path=%s", path)
+        raise UploadInterruptedError(
+            "The upload stopped before it finished. Try again."
+        ) from exc
     resource = FileResource.model_validate(stored)
     response.headers["Location"] = route_path_with_query(
         request,

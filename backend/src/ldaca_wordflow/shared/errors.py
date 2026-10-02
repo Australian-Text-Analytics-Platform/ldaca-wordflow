@@ -156,6 +156,13 @@ class UnsafePathError(InvalidInputError):
     code = "unsafe_path"
 
 
+class UploadInterruptedError(AppError):
+    """The browser or a proxy stopped sending an upload before it finished (issue 260)."""
+
+    status_code = 400
+    code = "upload_interrupted"
+
+
 class UploadTooLargeError(AppError):
     """An upload exceeded the configured byte limit while being streamed."""
 
