@@ -1,5 +1,6 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
+import { adjustColor } from './theme-adjust.mjs';
 
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url));
 const manifestPath = `${frontendRoot}/theme/vscode-2026.json`;
@@ -13,11 +14,17 @@ const declarationBlock = (tokens) =>
     .map(([name, value]) => `  ${cssName(name)}: ${value};`)
     .join('\n');
 
+const adjustTokens = (tokens, adjustment) =>
+  adjustment
+    ? Object.fromEntries(Object.entries(tokens).map(([name, value]) => [name, adjustColor(value, adjustment)]))
+    : tokens;
+
 const metricBlock = declarationBlock(manifest.metrics);
 const themeBlocks = Object.entries(manifest.themes)
   .map(([theme, tokens]) => {
     const selector = theme === 'light-2026' ? `:root,\n[data-theme="${theme}"]` : `[data-theme="${theme}"]`;
-    return `${selector} {\n${declarationBlock(tokens)}\n  color-scheme: ${theme === 'dark-2026' ? 'dark' : 'light'};\n}`;
+    const adjusted = adjustTokens(tokens, manifest.adjustments?.[theme]);
+    return `${selector} {\n${declarationBlock(adjusted)}\n  color-scheme: ${theme === 'dark-2026' ? 'dark' : 'light'};\n}`;
   })
   .join('\n\n');
 

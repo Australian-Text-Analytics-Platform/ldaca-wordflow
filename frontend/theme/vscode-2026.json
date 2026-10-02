@@ -248,5 +248,11 @@
       "modernTab.hoverForeground": "#bfbfbf",
       "modernEditorTab.inactiveBackground": "#00000000"
     }
+  },
+  "adjustments": {
+    "light-2026": {
+      "gamma": 1.3,
+      "brightness": 0.95
+    }
   }
 }
