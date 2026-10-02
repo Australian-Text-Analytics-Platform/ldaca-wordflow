@@ -91,6 +91,11 @@ const INITIAL_SECTION_RATIOS: Record<SectionKey, number> = {
   nodes: (1 - TASKS_SECTION_DEFAULT_RATIO) / 2,
   tasks: TASKS_SECTION_DEFAULT_RATIO,
 };
+/**
+ * Views starts each session at the height of its list, following it as views
+ * are shown or hidden, until its boundary is dragged.
+ */
+const FIT_CONTENT_SECTIONS: readonly SectionKey[] = ['views'];
 /** Per-section minimum heights let the compact task stream shrink independently of larger sections. */
 const SECTION_MIN_HEIGHTS: Partial<Record<SectionKey, number>> = {
   tasks: TASKS_SECTION_MIN_HEIGHT,
@@ -210,12 +215,14 @@ function Sidebar() {
     toggleSection,
     getSectionFlexStyle,
     assignSectionScrollRef,
+    assignSectionRef,
     resizingLowerKey,
     handleResizeStart,
   } = useStackedSplits<SectionKey>(SECTION_KEYS, {
     minSectionPx: MIN_SECTION_HEIGHT,
     sectionMinPx: SECTION_MIN_HEIGHTS,
     initialRatios: INITIAL_SECTION_RATIOS,
+    fitContentKeys: FIT_CONTENT_SECTIONS,
   });
 
   const isWorkspaceLoaded = Boolean(currentWorkspaceId);
@@ -285,6 +292,9 @@ function Sidebar() {
               return (
                 <div
                   key={key}
+                  ref={(node) => {
+                    assignSectionRef(key, node);
+                  }}
                   className={cn(
                     'relative flex min-h-0 flex-col',
                     index > 0 && 'border-t border-surface-border/60',

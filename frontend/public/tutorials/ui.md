@@ -30,6 +30,8 @@ The pencil icon next to the heading (**Edit visible views**) opens a list of the
 
 ![The Edit visible views list](tutorials/assets/ui/edit_visible_views.png)
 
+When Wordflow starts, the **Views** list is as tall as its entries, and it grows or shrinks when you show or hide a view with the pencil button beside the heading. Drag the line below it to choose a height yourself; that height then stays until Wordflow is started again. In a short window the list keeps the space the other sections need and scrolls.
+
 <h2 id="help-ui-data-selection">2. Data Blocks</h2>
 
 Below the tool list, the **Data Blocks** panel shows every Data Block in the active Project. It is both a quick selector and a live indicator of what is selected in the [Project Graph](#help-ui-workspace-graph-view) (section 4): selecting a Data Block here is equivalent to clicking the corresponding node in the graph, and the two panels always stay in sync. It is especially useful when the right column is hidden.

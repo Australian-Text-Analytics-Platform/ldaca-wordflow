@@ -16,6 +16,12 @@ interface UseStackedSplitsOptions {
   initialRatios?: Record<string, number>;
   /** Initial collapsed map. Defaults to all-expanded. */
   initialCollapsed?: Record<string, boolean>;
+  /**
+   * Sections that start sized to their content (the sidebar's Views list), so
+   * showing or hiding an entry resizes them. Dragging a boundary next to one
+   * fixes its height for the rest of the session.
+   */
+  fitContentKeys?: readonly string[];
 }
 
 export interface StackedSplitsApi<KeyT extends string> {
@@ -35,6 +41,8 @@ export interface StackedSplitsApi<KeyT extends string> {
    * push overflow into the right pane when the cursor moves past min/max.
    */
   assignSectionScrollRef: (key: KeyT, node: HTMLDivElement | null) => void;
+  /** Pass to each section's outer element; fitted sections are measured from it. */
+  assignSectionRef: (key: KeyT, node: HTMLDivElement | null) => void;
   /** Lower section key for the boundary currently being dragged. */
   resizingLowerKey: KeyT | null;
   /**
@@ -63,7 +71,13 @@ export const useStackedSplits = <KeyT extends string>(
   keys: readonly KeyT[],
   options: UseStackedSplitsOptions = {},
 ): StackedSplitsApi<KeyT> => {
-  const { minSectionPx = 120, sectionMinPx, initialRatios, initialCollapsed } = options;
+  const {
+    minSectionPx = 120,
+    sectionMinPx,
+    initialRatios,
+    initialCollapsed,
+    fitContentKeys,
+  } = options;
 
   const defaultRatio = keys.length > 0 ? 1 / keys.length : 0;
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -82,9 +96,79 @@ export const useStackedSplits = <KeyT extends string>(
   });
 
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const sectionRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const sectionScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [containerHeight, setContainerHeight] = useState(0);
   const [resizingLowerKey, setResizingLowerKey] = useState<KeyT | null>(null);
+  // Not persisted: every start fits the content again.
+  const [fittedSections, setFittedSections] = useState<Record<string, boolean>>(() => {
+    const seed: Record<string, boolean> = {};
+    keys.forEach((key) => {
+      seed[key] = fitContentKeys?.includes(key) ?? false;
+    });
+    return seed;
+  });
+  const [fitHeights, setFitHeights] = useState<Record<string, number>>({});
+  const fittedSectionsRef = useRef(fittedSections);
+  const fitObserverRef = useRef<ResizeObserver | null>(null);
+
+  /** Height a fitted section needs to show its whole content without scrolling. */
+  const measureFittedSections = useCallback(() => {
+    setFitHeights((previous) => {
+      let next = previous;
+      for (const [key, fitted] of Object.entries(fittedSectionsRef.current)) {
+        if (!fitted) continue;
+        const section = sectionRefs.current[key];
+        const scroll = sectionScrollRefs.current[key];
+        const content = scroll?.firstElementChild;
+        if (!section || !scroll || !(content instanceof HTMLElement)) continue;
+        const style = getComputedStyle(scroll);
+        const padding =
+          (Number.parseFloat(style.paddingTop) || 0) +
+          (Number.parseFloat(style.paddingBottom) || 0);
+        // The section's own chrome (header, borders) plus the content at full height.
+        const chrome = section.getBoundingClientRect().height - scroll.clientHeight;
+        const contentHeight = content.getBoundingClientRect().height;
+        if (contentHeight <= 0) continue;
+        const needed = Math.ceil(chrome + padding + contentHeight);
+        if (Math.abs((next[key] ?? 0) - needed) < 1) continue;
+        next = next === previous ? { ...previous } : next;
+        next[key] = needed;
+      }
+      return next;
+    });
+  }, []);
+
+  // Watch each fitted section's scroll area and content; attach after every
+  // commit because the content mounts and unmounts as the section collapses.
+  useLayoutEffect(() => {
+    fittedSectionsRef.current = fittedSections;
+    if (typeof ResizeObserver === 'undefined') return;
+    const anyFitted = Object.values(fittedSections).some(Boolean);
+    if (!anyFitted) {
+      fitObserverRef.current?.disconnect();
+      fitObserverRef.current = null;
+      return;
+    }
+    fitObserverRef.current ??= new ResizeObserver(() => {
+      measureFittedSections();
+    });
+    const observer = fitObserverRef.current;
+    for (const [key, fitted] of Object.entries(fittedSections)) {
+      if (!fitted) continue;
+      const scroll = sectionScrollRefs.current[key];
+      const content = scroll?.firstElementChild;
+      if (scroll) observer.observe(scroll);
+      if (content) observer.observe(content);
+    }
+  });
+
+  useLayoutEffect(
+    () => () => {
+      fitObserverRef.current?.disconnect();
+    },
+    [],
+  );
 
   useLayoutEffect(() => {
     const container = containerRef.current;
@@ -104,9 +188,11 @@ export const useStackedSplits = <KeyT extends string>(
     };
   }, []);
 
+  // Fitted sections take their own height, so only the others share the rest.
   const activeSectionTotal =
     keys.reduce((sum, key) => {
-      if (collapsedSections[key]) return sum;
+      if (collapsedSections[key] || (fittedSections[key] && fitHeights[key] !== undefined))
+        return sum;
       return sum + (sectionHeights[key] ?? 0);
     }, 0) || 1;
 
@@ -120,6 +206,20 @@ export const useStackedSplits = <KeyT extends string>(
     if (collapsedSections[key]) {
       return { flex: '0 0 auto' };
     }
+    if (fittedSections[key]) {
+      const needed = fitHeights[key];
+      if (needed === undefined) return { flex: '0 1 auto' };
+      // Leave the other open sections at least their minimum height.
+      const othersMinimum = keys.reduce(
+        (sum, other) =>
+          other === key || collapsedSections[other]
+            ? sum
+            : sum + (sectionMinPx?.[other] ?? minSectionPx),
+        0,
+      );
+      const available = containerHeight > 0 ? containerHeight - othersMinimum : needed;
+      return { flex: '0 0 auto', height: Math.min(needed, Math.max(available, minSectionPx)) };
+    }
     const ratio = (sectionHeights[key] ?? 0) / activeSectionTotal;
     return { flexGrow: ratio, flexShrink: 0, flexBasis: 0 };
   };
@@ -129,6 +229,10 @@ export const useStackedSplits = <KeyT extends string>(
   // share one captured interaction until mouseup removes them.
   const assignSectionScrollRef = useCallback((key: KeyT, node: HTMLDivElement | null) => {
     sectionScrollRefs.current[key] = node;
+  }, []);
+
+  const assignSectionRef = useCallback((key: KeyT, node: HTMLDivElement | null) => {
+    sectionRefs.current[key] = node;
   }, []);
 
   const scrollSection = useCallback((key: KeyT, deltaPixels: number) => {
@@ -155,8 +259,22 @@ export const useStackedSplits = <KeyT extends string>(
       const handle = event.currentTarget;
       const pointerId = event.pointerId;
       const startY = event.clientY;
-      const startUpper = sectionHeights[upperKey] ?? 0;
-      const startLower = sectionHeights[lowerKey] ?? 0;
+      // A drag next to a fitted section fixes it: every open section's current
+      // height becomes its ratio, so nothing moves until the pointer does.
+      let ratios = sectionHeights;
+      if (fittedSections[upperKey] || fittedSections[lowerKey]) {
+        const measured: Record<string, number> = { ...sectionHeights };
+        for (const key of keys) {
+          const section = sectionRefs.current[key];
+          if (collapsedSections[key] || !section) continue;
+          measured[key] = section.getBoundingClientRect().height / height;
+        }
+        ratios = measured;
+        setSectionHeights(measured);
+        setFittedSections((previous) => ({ ...previous, [upperKey]: false, [lowerKey]: false }));
+      }
+      const startUpper = ratios[upperKey] ?? 0;
+      const startLower = ratios[lowerKey] ?? 0;
       const pairTotal = startUpper + startLower;
       if (pairTotal <= 0) return;
 
@@ -239,7 +357,16 @@ export const useStackedSplits = <KeyT extends string>(
       window.addEventListener('pointerup', onEnd);
       window.addEventListener('pointercancel', onEnd);
     },
-    [collapsedSections, containerHeight, sectionHeights, minSectionPx, sectionMinPx, scrollSection],
+    [
+      collapsedSections,
+      containerHeight,
+      fittedSections,
+      keys,
+      sectionHeights,
+      minSectionPx,
+      sectionMinPx,
+      scrollSection,
+    ],
   );
 
   return {
@@ -248,6 +375,7 @@ export const useStackedSplits = <KeyT extends string>(
     toggleSection,
     getSectionFlexStyle,
     assignSectionScrollRef,
+    assignSectionRef,
     resizingLowerKey,
     handleResizeStart,
   };

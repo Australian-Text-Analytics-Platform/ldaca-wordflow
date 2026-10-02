@@ -115,4 +115,54 @@ describe('useStackedSplits', () => {
 
     expect(result.current.resizingLowerKey).toBeNull();
   });
+
+  it('fits a section to its content until its boundary is dragged', () => {
+    const withHeight = (element: HTMLElement, height: number) => {
+      Object.defineProperty(element, 'getBoundingClientRect', { value: () => ({ height }) });
+      return element;
+    };
+    const { result, rerender } = renderHook(() =>
+      useStackedSplits(['views', 'nodes'] as const, {
+        minSectionPx: 120,
+        initialRatios: { views: 0.5, nodes: 0.5 },
+        fitContentKeys: ['views'],
+      }),
+    );
+    expect(result.current.getSectionFlexStyle('views')).toEqual({ flex: '0 1 auto' });
+
+    // Section 200 px tall showing 150 px of a 300 px list: it needs 350 px.
+    const scroll = document.createElement('div');
+    Object.defineProperty(scroll, 'clientHeight', { value: 150 });
+    scroll.appendChild(withHeight(document.createElement('ul'), 300));
+    act(() => {
+      result.current.containerRef.current = withHeight(document.createElement('div'), 800);
+      result.current.assignSectionRef('views', withHeight(document.createElement('div'), 200));
+      result.current.assignSectionRef('nodes', withHeight(document.createElement('div'), 600));
+      result.current.assignSectionScrollRef('views', scroll);
+    });
+    rerender();
+
+    expect(result.current.getSectionFlexStyle('views')).toEqual({ flex: '0 0 auto', height: 350 });
+    expect(result.current.getSectionFlexStyle('nodes')).toMatchObject({ flexGrow: 1 });
+
+    const handle = document.createElement('div');
+    handle.setPointerCapture = vi.fn();
+    handle.releasePointerCapture = vi.fn();
+    act(() => {
+      result.current.handleResizeStart('views', 'nodes', {
+        button: 0,
+        clientY: 0,
+        pointerId: 9,
+        currentTarget: handle,
+        preventDefault: vi.fn(),
+      } as unknown as React.PointerEvent<HTMLDivElement>);
+    });
+    act(() => {
+      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 9 }));
+    });
+
+    // The measured heights (200 and 600 of 800 px) become the ratios.
+    expect(result.current.getSectionFlexStyle('views')).toMatchObject({ flexGrow: 0.25 });
+    expect(result.current.getSectionFlexStyle('nodes')).toMatchObject({ flexGrow: 0.75 });
+  });
 });
