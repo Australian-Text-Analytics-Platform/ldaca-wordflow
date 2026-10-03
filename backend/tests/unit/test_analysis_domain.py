@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from typing import Literal
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -179,16 +180,19 @@ def test_concordance_tokens_mode_is_always_case_insensitive() -> None:
     """Tokens are lowercased at tokenisation, so a stored or submitted Tokens
     request never carries case_sensitive=True (issue 272); Text mode keeps it."""
     node = uuid.uuid4()
-    common = {
-        "node_ids": [node],
-        "node_columns": {node: "text"},
-        "node_tokenizer_models": {node: "native:plain_words_en"},
-        "search_word": "Australian",
-        "case_sensitive": True,
-    }
 
-    tokens_request = ConcordanceAnalysisRequest(**common, search_mode="tokens")
-    text_request = ConcordanceAnalysisRequest(**common, search_mode="regex")
+    def request(search_mode: Literal["regex", "tokens"]) -> ConcordanceAnalysisRequest:
+        return ConcordanceAnalysisRequest(
+            node_ids=[node],
+            node_columns={node: "text"},
+            node_tokenizer_models={node: "native:plain_words_en"},
+            search_word="Australian",
+            case_sensitive=True,
+            search_mode=search_mode,
+        )
+
+    tokens_request = request("tokens")
+    text_request = request("regex")
 
     assert tokens_request.case_sensitive is False
     assert text_request.case_sensitive is True

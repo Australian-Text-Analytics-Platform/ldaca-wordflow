@@ -765,7 +765,7 @@ def test_concordance_l1_sort_breaks_ties_by_source_then_position(
     # #266: the guarantee comes from the sort keys, not from Polars' current
     # behaviour on ties, so check the keys themselves.
     path = _tied_concordance_artifact(tmp_path)
-    sort_calls: list[object] = []
+    sort_calls: list[Any] = []
     original_sort = pl.LazyFrame.sort
 
     def recording_sort(self, by, *more_by, **options):
