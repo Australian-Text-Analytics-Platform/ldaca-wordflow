@@ -1,4 +1,4 @@
-import { DateDay, Field, TimestampMicrosecond } from 'apache-arrow';
+import { DateDay, Field, Float64, Int64, TimestampMicrosecond } from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 
 import { buildFilterRequestPayload } from '../serializers';
@@ -49,5 +49,32 @@ describe('buildFilterRequestPayload (issue 187)', () => {
       'and',
     );
     expect(payload.conditions[0]?.value).toBe(iso);
+  });
+});
+
+describe('numeric between ranges (issue 277)', () => {
+  it('sends typed and prefilled edges as text, keeping 0 and an open end', () => {
+    const payload = buildFilterRequestPayload(
+      [
+        {
+          id: 'a',
+          column: 'resp_age',
+          operator: 'between',
+          value: { start: '26', end: '30.5' },
+          field: new Field('resp_age', new Float64()),
+        },
+        {
+          id: 'b',
+          column: 'count',
+          operator: 'between',
+          value: { start: 0, end: null },
+          field: new Field('count', new Int64()),
+        },
+      ],
+      'and',
+    );
+
+    expect(payload.conditions[0]?.value).toEqual({ start: '26', end: '30.5' });
+    expect(payload.conditions[1]?.value).toEqual({ start: '0', end: null });
   });
 });

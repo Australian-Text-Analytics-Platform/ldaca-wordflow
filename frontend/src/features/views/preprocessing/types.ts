@@ -23,8 +23,8 @@ export interface FilterRequest {
  * the API accepts.
  */
 export interface ConditionRange {
-  start: string | Date | null;
-  end: string | Date | null;
+  start: string | number | Date | null;
+  end: string | number | Date | null;
 }
 /** Value shape for a Topic Coverage filter condition. */
 interface TopicCoverageConditionValue {

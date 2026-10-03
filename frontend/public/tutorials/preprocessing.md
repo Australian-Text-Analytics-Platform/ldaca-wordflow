@@ -67,6 +67,9 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 - Click **Add condition** to add more conditions.
 - Select **AND** or **OR** to control how conditions are combined.
 - Check **Negate** on any individual condition to invert it.
+- For a number or a date column, **between** keeps the rows from the first
+  value to the second, both included; leave one end empty for an open range
+  (for example, ages from 26).
 - For a text column with the *contains* operator, tick **regular expression** to match a pattern instead of the exact text (see [Regular expressions](./ui.md#help-ui-regular-expressions)), and **case sensitive** to keep letter case distinct.
 - When a selected column contains missing values, a warning reports how many.
   Ordinary filter conditions do not match those rows; choose **is empty** to
@@ -185,7 +188,7 @@ The Stack sub-tab puts two or more Data Blocks one below the other. Use it when 
 
 ![Column check screenshot](tutorials/assets/preprocessing/concat_schema_status.png)
 
-The **Column check** panel tells you whether all the Data Blocks share the same columns. If they don't, **These columns don't match** lists, for each Data Block, the columns it is missing, the extra columns it has, and any column whose type is different. Fix the column differences (e.g. by renaming or removing columns) before stacking.
+The **Column check** panel tells you whether all the Data Blocks share the same columns. If they don't, **These columns don't match** lists, for each Data Block, the columns it is missing, the extra columns it has, and any column whose type is different. Category columns match whatever their values; a category column and a text column of the same name do not, so change one of them in the Data Editor first. Fix the column differences (e.g. by renaming or removing columns) before stacking.
 
 <h3 id="help-preprocessing-concat-deduplicate">Deduplicate</h3>
 

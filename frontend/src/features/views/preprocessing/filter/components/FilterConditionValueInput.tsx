@@ -357,6 +357,40 @@ export function FilterConditionValueInput({
 
   if (field && (isArrowIntegerField(field) || isArrowFloatField(field))) {
     const integer = isArrowIntegerField(field);
+    if (condition.operator === 'between') {
+      // Numeric range, both ends included; either end may be left empty
+      // (issue 277), as for dates.
+      const rangeValue: ConditionRange =
+        condition.value && typeof condition.value === 'object' && 'start' in condition.value
+          ? condition.value
+          : { start: null, end: null };
+      const edgeText = (edge: ConditionRange['start']) =>
+        typeof edge === 'number' || typeof edge === 'string' ? String(edge) : '';
+      const rangeInput = (side: 'start' | 'end', label: string) => (
+        <input
+          type="number"
+          step={integer ? '1' : 'any'}
+          aria-label={label}
+          value={edgeText(rangeValue[side])}
+          onChange={(event) => {
+            onConditionChange(condition.id, 'value', {
+              ...rangeValue,
+              [side]: event.target.value === '' ? null : event.target.value,
+            });
+          }}
+          placeholder={side === 'start' ? 'From' : 'To'}
+          className="w-28 rounded-md border border-input-border px-2 py-1 text-body text-foreground"
+          disabled={disabled}
+        />
+      );
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          {rangeInput('start', 'From (included)')}
+          <span className="text-body text-description">and</span>
+          {rangeInput('end', 'To (included)')}
+        </div>
+      );
+    }
     return (
       <input
         type="number"

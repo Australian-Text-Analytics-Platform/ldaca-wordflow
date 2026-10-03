@@ -5,6 +5,13 @@ import { TOPIC_COVERAGE_EXTENSION } from '@/lib/arrow/semanticTypes';
 import { getOperatorsForField } from '../typeUtils';
 
 describe('preprocessing type utils', () => {
+  it('offers between for whole and decimal number columns (issue 277)', () => {
+    for (const type of [new Int64(), new Float64()]) {
+      const values = getOperatorsForField(new Field('age', type)).map((option) => option.value);
+      expect(values).toEqual(['eq', 'gte', 'lte', 'between', 'is_null']);
+    }
+  });
+
   it('offers checklist operators directly from an Arrow list-of-strings field', () => {
     const field = new Field('words', new LargeList(new Field('item', new Utf8View())));
     expect(getOperatorsForField(field)).toEqual([{ value: 'in', label: 'contains any of' }]);

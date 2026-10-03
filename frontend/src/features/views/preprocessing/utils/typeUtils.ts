@@ -43,6 +43,7 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
       { value: 'eq', label: 'equals' },
       { value: 'gte', label: 'greater than or equal' },
       { value: 'lte', label: 'less than or equal' },
+      { value: 'between', label: 'between' },
       { value: 'is_null', label: 'is empty' },
     ];
   }

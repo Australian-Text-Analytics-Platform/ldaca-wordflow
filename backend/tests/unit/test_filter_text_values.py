@@ -95,3 +95,37 @@ def test_filter_compares_date_columns(
         .to_list()
     )
     assert matched == expected
+
+
+NUMBER_FRAME = pl.LazyFrame(
+    {"age": [18, 26, 30, 31, None], "score": [0.0, 2.5, 30.5, -1.0, None]}
+)
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "expected"),
+    [
+        ("age", {"start": "26", "end": "30"}, [1, 2]),
+        ("age", {"start": "26", "end": None}, [1, 2, 3]),
+        ("age", {"start": None, "end": "26"}, [0, 1]),
+        ("score", {"start": "0", "end": "30.5"}, [0, 1, 2]),
+        ("score", {"start": "-1", "end": "0"}, [0, 3]),
+    ],
+)
+def test_filter_between_on_number_columns(
+    column: str, value: dict[str, str | None], expected: list[int]
+) -> None:
+    """Issue 277: numeric between, both ends included, either end optional;
+    the Filter sends the edges as text."""
+
+    schema = dict(NUMBER_FRAME.collect_schema())
+    condition = FilterCondition.model_validate(
+        {"column": column, "operator": "between", "value": value}
+    )
+    matched = (
+        NUMBER_FRAME.with_row_index()
+        .filter(_condition_expression(condition, schema))
+        .collect()["index"]
+        .to_list()
+    )
+    assert matched == expected

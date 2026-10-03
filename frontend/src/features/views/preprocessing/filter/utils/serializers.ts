@@ -62,6 +62,9 @@ const serializeConditionsForRequest = (conditions: FilterConditionWithId[]) => {
        * Called for both `start` and `end` while serializing a between condition.
        */
       const normalizeEdge = (edge: ConditionRange['start']): string | null => {
+        // A numeric edge (issue 277), including 0, is sent as text; the
+        // backend reads it back as a number.
+        if (typeof edge === 'number') return Number.isFinite(edge) ? String(edge) : null;
         if (!edge) return null;
         if (edge instanceof Date) return edge.toISOString();
         const trimmed = typeof edge === 'string' ? edge.trim() : '';
