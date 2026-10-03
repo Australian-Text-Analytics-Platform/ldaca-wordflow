@@ -417,6 +417,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     isReview,
     reviewError,
     handleReviewSort,
+    handleReviewResetSort,
     handleReviewPageChange,
   } = useConcordanceResultSession({
     workspaceId: currentWorkspaceId,
@@ -487,7 +488,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     });
   }, [availableMetadataColumns, availableMetadataColumnsKey]);
 
-  const { handleSearch, handleSort, handlePageChange, persistResultPreferences } =
+  const { handleSearch, handleSort, handleResetSort, handlePageChange, persistResultPreferences } =
     useConcordanceTaskFlow({
       state: {
         currentWorkspaceId,
@@ -950,6 +951,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
                   handleReviewSort(columnKey, paginationKey);
                 }
               : handleSort,
+            handleResetSort: isReview ? handleReviewResetSort : handleResetSort,
             handlePageChange: isReview
               ? (newPage, paginationKey) => {
                   handleReviewPageChange(newPage, paginationKey);

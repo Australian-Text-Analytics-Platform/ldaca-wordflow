@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
-import { ArrowUpDown } from 'lucide-react';
+import { ArrowUpDown, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import type { SourceRowPagination } from '@/api';
 import {
   Table,
@@ -45,6 +46,8 @@ export interface QuotationNodeBlockProps {
   onHoverChange: (state: QuotationHoverState | null) => void;
   /** Toggles backend sorting for a column. */
   onSort: (nodeId: string, column: string) => void;
+  /** Clears the column sort, back to the Data Block order. */
+  onResetSort?: () => void;
   /** Requests a different source-document page. */
   onPageChange: (page: number) => void;
   /** Requests a different server page size. */
@@ -101,6 +104,7 @@ function QuotationNodeBlockContent({
   hoverState,
   onHoverChange,
   onSort,
+  onResetSort,
   onPageChange,
   onPageSizeChange,
   onRowClick,
@@ -200,9 +204,23 @@ function QuotationNodeBlockContent({
 
   return (
     <section className="space-y-4">
-      <p className="text-label-secondary text-description">
-        Text column: {textCol || 'Select a text column to view highlighted quotations.'}
-      </p>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-label-secondary text-description">
+          Text column: {textCol || 'Select a text column to view highlighted quotations.'}
+        </p>
+        {onResetSort && sortBy ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            title="Show the rows in Data Block order again"
+            onClick={onResetSort}
+          >
+            <RotateCcw className="h-4 w-4" aria-hidden="true" />
+            Original order
+          </Button>
+        ) : null}
+      </div>
 
       <AnalysisTableFrame
         resultKey="quotation.table"

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { DataBlockName } from '@/components/DataBlockName';
 import { CardHeader, CardTitle } from '@/components/ui/card';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
@@ -8,17 +9,19 @@ interface SourceHeaderProps {
   name: string;
   color?: string | null;
   testId: string;
+  /** Optional controls at the right of the header, such as Original order. */
+  actions?: ReactNode;
 }
 
 /** Shared quiet Data Block identity header for separated Concordance results. */
-export function ConcordanceSourceResultHeader({ name, color, testId }: SourceHeaderProps) {
+export function ConcordanceSourceResultHeader({ name, color, testId, actions }: SourceHeaderProps) {
   const sourceColor = normalizeNodeColor(color) ?? GREY;
   const sourceSurfaceColor = toNodeSurfaceColor(sourceColor);
 
   return (
     <CardHeader
       data-testid={testId}
-      className="space-y-0 px-4 py-3 text-foreground"
+      className="flex flex-row items-center justify-between gap-3 space-y-0 px-4 py-3 text-foreground"
       style={{ backgroundColor: sourceSurfaceColor }}
     >
       <CardTitle className="min-w-0 text-body">
@@ -31,6 +34,7 @@ export function ConcordanceSourceResultHeader({ name, color, testId }: SourceHea
           title={name}
         />
       </CardTitle>
+      {actions ? <div className="shrink-0">{actions}</div> : null}
     </CardHeader>
   );
 }

@@ -235,6 +235,12 @@ export function useQuotationTaskFlow({
     });
   };
 
+  /** Clears a column sort, back to the Data Block order. */
+  const handleResetSort = () => {
+    if (!hasLoaded) return;
+    setPreviewRequest({ ...previewRequest, page: 1, sort_by: null, descending: false });
+  };
+
   return {
     resolveLockedNodeContext,
     fetchQuotations,
@@ -243,5 +249,6 @@ export function useQuotationTaskFlow({
     handlePageChange,
     handlePageSizeChange,
     handleSort,
+    handleResetSort,
   };
 }

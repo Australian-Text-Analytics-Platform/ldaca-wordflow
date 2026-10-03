@@ -192,6 +192,23 @@ export function useConcordanceTaskFlow({
     }));
   };
 
+  /**
+   * Returns a node block to the Data Block order (by document, then position)
+   * after a column sort. Header clicks only switch direction, so this is the
+   * way back to the original order.
+   */
+  const handleResetSort = (nodeKey: string) => {
+    setNodePagination((prev) => ({
+      ...prev,
+      [nodeKey]: {
+        ...(prev[nodeKey] ?? { pageSize: globalPageSize }),
+        currentPage: 1,
+        sortBy: '',
+        descending: false,
+      },
+    }));
+  };
+
   /** Moves a node block to a new source page; the keyed Query fetches it. */
   /**
    * Returned to `ConcordanceFeature` by `useConcordanceTaskFlow`.
@@ -239,6 +256,7 @@ export function useConcordanceTaskFlow({
   return {
     handleSearch,
     handleSort,
+    handleResetSort,
     handlePageChange,
     persistResultPreferences,
   };

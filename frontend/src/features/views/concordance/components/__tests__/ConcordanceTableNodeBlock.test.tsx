@@ -344,6 +344,26 @@ describe('ConcordanceTableNodeBlock', () => {
     expect(screen.getByText('AFTER', { selector: 'mark' })).toBeInTheDocument();
   });
 
+  it('offers Original order only while sorted, and clears the sort', () => {
+    const handleResetSort = vi.fn();
+    const { rerender } = render(
+      <ConcordanceTableNodeBlock {...buildProps(vi.fn())} handleResetSort={handleResetSort} />,
+    );
+    expect(screen.queryByRole('button', { name: 'Original order' })).not.toBeInTheDocument();
+
+    rerender(
+      <ConcordanceTableNodeBlock
+        {...buildProps(vi.fn())}
+        nodePagination={{
+          'node-1': { currentPage: 2, pageSize: 20, sortBy: 'CONC_l1', descending: true },
+        }}
+        handleResetSort={handleResetSort}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Original order' }));
+    expect(handleResetSort).toHaveBeenCalledWith('node-1');
+  });
+
   it('uses the palette fallback for highlighted cells in combined tables', () => {
     const combinedData: ConcordanceNodeResult = {
       ...nodeData,

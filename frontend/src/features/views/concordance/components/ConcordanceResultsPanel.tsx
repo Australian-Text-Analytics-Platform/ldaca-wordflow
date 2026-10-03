@@ -162,6 +162,7 @@ export function ConcordanceSourceSummaries({
 
 interface ConcordanceResultsCommands {
   handleSort: (columnKey: string, paginationKey: string, requestNodeId: string) => void;
+  handleResetSort: (paginationKey: string) => void;
   handlePageChange: (newPage: number, paginationKey: string, requestNodeId: string) => void;
 }
 
@@ -244,7 +245,7 @@ export function ConcordanceResultsPanel({
     nodeLoading,
     reviewDensityByNode,
   },
-  commands: { handleSort, handlePageChange },
+  commands: { handleSort, handleResetSort, handlePageChange },
 }: ConcordanceResultsPanelProps) {
   const showDispersion = concordanceView === 'dispersion';
   const previewTermLabels = Object.values(results.data).flatMap((node) =>
@@ -491,6 +492,7 @@ export function ConcordanceResultsPanel({
                       key={nodeName}
                       {...sharedProps}
                       handleSort={handleSort}
+                      handleResetSort={handleResetSort}
                     />
                   );
                 })}

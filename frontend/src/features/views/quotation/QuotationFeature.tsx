@@ -420,7 +420,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
 
   const [hoverState, setHoverState] = useState<QuotationHoverState | null>(null);
 
-  const { handleSearchAll, handlePageChange, handlePageSizeChange, handleSort } =
+  const { handleSearchAll, handlePageChange, handlePageSizeChange, handleSort, handleResetSort } =
     useQuotationTaskFlow({
       state: {
         currentWorkspaceId,
@@ -532,6 +532,20 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       return;
     }
     handleSort(nodeId, columnName);
+  };
+
+  /** Returns the result table to the Data Block order after a column sort. */
+  const effHandleResetSort = () => {
+    if (runAllSource) {
+      setRunAllReviewQuery((current) => ({
+        ...current,
+        page: 1,
+        sort_by: null,
+        descending: false,
+      }));
+      return;
+    }
+    handleResetSort();
   };
 
   useProgressiveContextualHints([
@@ -705,6 +719,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             hoverState={hoverState}
             onHoverChange={setHoverState}
             onSort={effHandleSort}
+            onResetSort={effHandleResetSort}
             onPageChange={effHandlePageChange}
             onPageSizeChange={effHandlePageSizeChange}
             onRowClick={openQuotationDetailAt}

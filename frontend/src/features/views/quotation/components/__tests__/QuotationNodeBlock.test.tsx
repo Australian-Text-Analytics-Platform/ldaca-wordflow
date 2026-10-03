@@ -9,6 +9,38 @@ import { type QuotationHoverState } from '../QuotationHighlightedCell';
 import { QuotationNodeBlock } from '../QuotationNodeBlock';
 
 describe('QuotationNodeBlock', () => {
+  it('offers Original order only while sorted', async () => {
+    const user = userEvent.setup();
+    const onResetSort = vi.fn();
+    const nodeBlock = (sortBy: string | null) => (
+      <QuotationNodeBlock
+        nodeId="node-1"
+        textCol="text"
+        cols={[QUOTATION_DOCUMENT_COLUMN, 'speaker']}
+        sortableColumns={['text', 'speaker']}
+        rows={[]}
+        pagination={null}
+        sortBy={sortBy}
+        contextLength={10}
+        hoverState={null}
+        onHoverChange={vi.fn()}
+        onSort={vi.fn()}
+        onResetSort={onResetSort}
+        onPageChange={vi.fn()}
+        onPageSizeChange={vi.fn()}
+        onRowClick={vi.fn()}
+        pageSizeOptions={[20]}
+        loading={false}
+      />
+    );
+    const { rerender } = render(nodeBlock(null));
+    expect(screen.queryByRole('button', { name: 'Original order' })).not.toBeInTheDocument();
+
+    rerender(nodeBlock('speaker'));
+    await user.click(screen.getByRole('button', { name: 'Original order' }));
+    expect(onResetSort).toHaveBeenCalledTimes(1);
+  });
+
   it('translates the virtual document sort and limits other sorting to source metadata', async () => {
     const user = userEvent.setup();
     const onSort = vi.fn();

@@ -1,6 +1,8 @@
 import { useEffect, useRef } from 'react';
 import type { ConcordanceNodeResult as ConcordanceResultEntry } from '@/api';
 import type { ReactNode } from 'react';
+import { RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { AnalysisTableFrame } from '@/features/views/common/components/AnalysisTableScrollArea';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
@@ -70,6 +72,8 @@ export interface ConcordanceTableNodeBlockProps {
 
   // Handlers
   handleSort: (columnKey: string, paginationKey: string, requestNodeId: string) => void;
+  /** Clears a column sort, back to the Data Block order. */
+  handleResetSort?: (paginationKey: string) => void;
   handlePageChange: (newPage: number, paginationKey: string, requestNodeId: string) => void;
   setCombinedPage: (page: number) => void;
 }
@@ -284,6 +288,7 @@ function PerNodeConcordanceTable({
   onPageSizeChange,
   nodeLoading,
   handleSort,
+  handleResetSort,
   handlePageChange,
   reviewRowUnit,
   highlightL1R1,
@@ -400,6 +405,22 @@ function PerNodeConcordanceTable({
             name={dataBlockLabel}
             color={sourceColor}
             testId="concordance-table-source-header"
+            actions={
+              handleResetSort && currentNodePagination?.sortBy ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  title="Show the rows in Data Block order again: by document, then position"
+                  onClick={() => {
+                    handleResetSort(paginationKey);
+                  }}
+                >
+                  <RotateCcw className="h-4 w-4" aria-hidden="true" />
+                  Original order
+                </Button>
+              ) : null
+            }
           />
           <CardContent className="bg-panel/20 p-3">
             <AnalysisTableFrame

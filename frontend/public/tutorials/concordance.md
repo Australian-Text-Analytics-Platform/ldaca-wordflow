@@ -277,13 +277,19 @@ to each source. After Run, there is no page-local Found summary.
 After Run, separated Table view can sort selected metadata, the left and right
 contexts (by L1 and R1 while **Highlight L1/R1 for sorting** is on), matched
 text, L1/R1 and their frequencies across the complete Result. Sorting is
-case-sensitive, except that L1 and R1 (and the contexts sorted by them) ignore
-capitals unless **Case sensitive** was on for the search. Empty values come
+case-sensitive, except that the matched text, L1 and R1 (and the contexts
+sorted by them) ignore capitals unless **Case sensitive** was on for the
+search, so *The* and *the* sort as one word. Empty values come
 first in either direction. Rows with equal values keep their order in the Data
 Block: by document, then by position in it, so matches of one word from one
 document stay together in reading order. Rows are shaded in alternate bands by
-source document, so consecutive matches from one document read as a group. The document header remains plain, and the
-combined table remains unsorted.
+source document, so consecutive matches from one document read as a group.
+Clicking a header again reverses the order; **Original order** in the source's
+header returns to the Data Block order. The document header remains plain, and
+the combined table remains unsorted.
+
+Sorting changes only how the table is shown. **Add to Project** always writes
+rows in the Data Block order, whatever the table is sorted by.
 
 After Run, the density chart always summarises the complete result, not only
 the visible page.

@@ -837,9 +837,14 @@ def _projected_artifact_page(
         # Ties break by source document, then match position (#266): without
         # them Polars' sort-then-slice gave pages that repeated or skipped
         # matches sharing an L1/R1 word, and rows with one word were not in
-        # reading order. With Case sensitive off, L1/R1 sort ignores case (#267).
+        # reading order. With Case sensitive off, L1/R1 and the matched text
+        # sort ignoring case (#267), so "The" and "the" mix in Data Block order.
         key = pl.col(sort_by)
-        if not case_sensitive and sort_by in {CONC_L1_COLUMN, CONC_R1_COLUMN}:
+        if not case_sensitive and sort_by in {
+            CONC_L1_COLUMN,
+            CONC_R1_COLUMN,
+            CONC_MATCHED_TEXT_COLUMN,
+        }:
             key = key.str.to_lowercase()
         ties = [column for column in stable_columns if column in schema]
         frame = frame.sort(

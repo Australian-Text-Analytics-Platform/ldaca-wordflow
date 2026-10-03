@@ -539,6 +539,23 @@ export function useConcordanceResultSession({
         },
       });
     },
+    // Back to the Data Block order: the server's default sort is by document,
+    // then match position.
+    handleReviewResetSort: (paginationKey: string) => {
+      if (!isReview) return;
+      dispatch({
+        type: 'set-node-pagination',
+        value: (current) => ({
+          ...current,
+          [paginationKey]: {
+            ...(current[paginationKey] ?? { pageSize: state.globalPageSize }),
+            currentPage: 1,
+            sortBy: undefined,
+            descending: false,
+          },
+        }),
+      });
+    },
     handleReviewPageChange: (newPage: number, paginationKey: string) => {
       if (!isReview) return;
       dispatch({

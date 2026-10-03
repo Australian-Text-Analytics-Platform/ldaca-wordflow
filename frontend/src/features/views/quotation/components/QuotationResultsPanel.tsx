@@ -39,6 +39,7 @@ interface QuotationResultsPanelProps {
   hoverState: QuotationHoverState | null;
   onHoverChange: (state: QuotationHoverState | null) => void;
   onSort: (nodeId: string, columnName: string) => void;
+  onResetSort?: () => void;
   onPageChange: (page: number) => void;
   onPageSizeChange: (pageSize: number) => void;
   onRowClick: (rowIndex: number) => void;
@@ -75,6 +76,7 @@ export function QuotationResultsPanel({
   hoverState,
   onHoverChange,
   onSort,
+  onResetSort,
   onPageChange,
   onPageSizeChange,
   onRowClick,
@@ -185,6 +187,7 @@ export function QuotationResultsPanel({
               hoverState={hoverState}
               onHoverChange={onHoverChange}
               onSort={onSort}
+              onResetSort={onResetSort}
               onPageChange={onPageChange}
               onPageSizeChange={onPageSizeChange}
               onRowClick={onRowClick}

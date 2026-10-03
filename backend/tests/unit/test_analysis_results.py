@@ -805,6 +805,43 @@ def test_concordance_l1_sort_ignores_case_when_the_search_did(tmp_path) -> None:
     assert order == sorted(order)
 
 
+def test_concordance_matched_text_sort_ignores_case_when_the_search_did(tmp_path) -> None:
+    # #267: a case-insensitive search for "the" finds "The" and "the"; sorting
+    # by matched text keeps them as one group in Data Block order. A
+    # case-sensitive search keeps the capitalised group first.
+    path = tmp_path / "matched.parquet"
+    forms = ["The", "the", "THE", "the"]
+    pl.DataFrame(
+        {
+            "__wordflow_source_row_id": list(range(4)),
+            "text": [f"doc {row}" for row in range(4)],
+            "concordance": [
+                [
+                    {
+                        "CONC_matched_text": forms[(row + offset) % 4],
+                        "CONC_start_idx": offset,
+                        "CONC_l1": "a",
+                        "CONC_r1": "b",
+                    }
+                    for offset in range(2)
+                ]
+                for row in range(4)
+            ],
+        }
+    ).write_parquet(path)
+
+    insensitive = _tied_pages(path, "CONC_matched_text", case_sensitive=False)
+    order = list(
+        zip(insensitive["__wordflow_source_row_id"], insensitive["CONC_start_idx"], strict=True)
+    )
+    assert order == sorted(order)
+
+    sensitive = _tied_pages(path, "CONC_matched_text", case_sensitive=True)
+    assert sensitive["CONC_matched_text"].to_list() == sorted(
+        sensitive["CONC_matched_text"].to_list()
+    )
+
+
 def test_concordance_match_rows_band_by_source_document_across_pages(tmp_path) -> None:
     # #268: the band flips whenever the source document changes, computed over
     # the whole sorted Result so page boundaries do not reset it.
