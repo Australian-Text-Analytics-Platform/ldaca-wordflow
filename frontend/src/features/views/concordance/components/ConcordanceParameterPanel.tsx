@@ -307,6 +307,12 @@ export function ConcordanceParameterPanel({
                     />
                     <span className="text-body text-foreground">Case sensitive</span>
                   </label>
+                  <HelpIcon
+                    targetKey="analysis.concordance.regex-toggle"
+                    label="About Case sensitive"
+                    tooltip="Keeps capitals distinct in the search, and in the L1/R1 counts and sorting. Off: The and the count as one word."
+                    className="size-5 shrink-0 text-description"
+                  />
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"

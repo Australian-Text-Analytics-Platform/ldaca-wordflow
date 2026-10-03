@@ -37,6 +37,8 @@ from ..analysis.topic_projection import (
     project_rust_topic_projection_basis,
 )
 from ..analysis.generated_columns import (
+    CONC_L1_COLUMN,
+    CONC_R1_COLUMN,
     CONC_MATCHED_TEXT_COLUMN,
     CONC_START_IDX_COLUMN,
     QUOTE_COLUMN_NAMES,
@@ -272,7 +274,7 @@ class AnalysisResultService:
         sort_by: str | None,
         descending: bool,
     ) -> IpcTablePage:
-        snapshot, source, kind = await self._projected_table_snapshot(
+        snapshot, source, kind, case_sensitive = await self._projected_table_snapshot(
             user_id, workspace_id, analysis_id, table_id
         )
         try:
@@ -288,6 +290,7 @@ class AnalysisResultService:
                 page_size,
                 sort_by,
                 descending,
+                case_sensitive,
             )
         finally:
             with anyio.CancelScope(shield=True):
@@ -302,7 +305,7 @@ class AnalysisResultService:
         *,
         row_unit: str,
     ) -> bytes:
-        snapshot, _source, kind = await self._projected_table_snapshot(
+        snapshot, _source, kind, _case_sensitive = await self._projected_table_snapshot(
             user_id, workspace_id, analysis_id, table_id
         )
         try:
@@ -323,7 +326,7 @@ class AnalysisResultService:
         analysis_id: uuid.UUID,
         table_id: str,
     ) -> ConcordanceDensityResult:
-        snapshot, source, kind = await self._projected_table_snapshot(
+        snapshot, source, kind, _case_sensitive = await self._projected_table_snapshot(
             user_id, workspace_id, analysis_id, table_id
         )
         try:
@@ -348,7 +351,7 @@ class AnalysisResultService:
         table_id: str,
         query: ConcordanceDocumentProjectionQuery,
     ) -> IpcTablePage:
-        snapshot, source, kind = await self._projected_table_snapshot(
+        snapshot, source, kind, _case_sensitive = await self._projected_table_snapshot(
             user_id, workspace_id, analysis_id, table_id
         )
         try:
@@ -377,6 +380,7 @@ class AnalysisResultService:
         ResponseSnapshot,
         RunAllSourceTable[StoredArtifactIdentity],
         str,
+        bool,
     ]:
         async with self._analyses.successful_record_context(
             user_id,
@@ -397,7 +401,10 @@ class AnalysisResultService:
                 record,
                 source.table.artifact.name,
             )
-            return snapshot, source, record.request.kind
+            # Concordance's Case sensitive also governs L1/R1 sorting (#267).
+            source_request = getattr(record.request, "source", None)
+            case_sensitive = bool(getattr(source_request, "case_sensitive", True))
+            return snapshot, source, record.request.kind, case_sensitive
 
     async def quotation_preview_page(
         self,
@@ -770,6 +777,10 @@ def _projected_artifact_lazyframe(
     raise AnalysisKindMismatchError("Analysis Result table is not projected")
 
 
+DOCUMENT_BAND_COLUMN = "__wordflow_document_band"
+"""0 or 1, flipping whenever a match row's source document changes (#268)."""
+
+
 def _projected_artifact_page(
     path: Path,
     kind: str,
@@ -781,6 +792,7 @@ def _projected_artifact_page(
     page_size: int,
     sort_by: str | None,
     descending: bool,
+    case_sensitive: bool = True,
 ) -> IpcTablePage:
     """Return one document or match page from a materialized Result artifact.
 
@@ -822,10 +834,18 @@ def _projected_artifact_page(
             else QUOTE_ROW_IDX_COLUMN
         )
     if sort_by is not None and concordance_match_projection:
-        # Review deliberately exposes Polars' direct, case-sensitive scalar
-        # ordering. Equal-key order is unspecified; no hidden secondary keys are
-        # added to the user's requested sort.
-        frame = frame.sort(sort_by, descending=descending)
+        # Ties break by source document, then match position (#266): without
+        # them Polars' sort-then-slice gave pages that repeated or skipped
+        # matches sharing an L1/R1 word, and rows with one word were not in
+        # reading order. With Case sensitive off, L1/R1 sort ignores case (#267).
+        key = pl.col(sort_by)
+        if not case_sensitive and sort_by in {CONC_L1_COLUMN, CONC_R1_COLUMN}:
+            key = key.str.to_lowercase()
+        ties = [column for column in stable_columns if column in schema]
+        frame = frame.sort(
+            [key, *ties],
+            descending=[descending, *([False] * len(ties))],
+        )
     else:
         order = [sort_by, *stable_columns] if sort_by is not None else stable_columns
         order = [column for column in order if column in schema]
@@ -834,6 +854,16 @@ def _projected_artifact_page(
             descending=[descending, *([False] * (len(order) - 1))]
             if sort_by is not None
             else False,
+        )
+    if concordance_match_projection and "__wordflow_source_row_id" in schema:
+        # Rows alternate bands by source document (#268), computed over the
+        # whole sorted Result so bands carry across page boundaries.
+        source_row = pl.col("__wordflow_source_row_id")
+        frame = frame.with_columns(
+            ((source_row != source_row.shift(1)).fill_null(True).cum_sum() - 1)
+            .mod(2)
+            .cast(pl.UInt8)
+            .alias(DOCUMENT_BAND_COLUMN)
         )
     page_frame = frame.slice((page - 1) * page_size, page_size + 1).collect()
     has_next = page_frame.height > page_size

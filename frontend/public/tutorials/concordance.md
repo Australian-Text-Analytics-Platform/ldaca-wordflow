@@ -60,7 +60,10 @@ In Text mode, tick **Use regular expression** to search for a pattern instead of
 
 Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test unfamiliar patterns. **Whole
 word** excludes partial-word matches, and **Case sensitive** keeps letter case
-distinct: with it ticked, *Apple* finds *Apple* but not *apple*. You can also
+distinct: with it ticked, *Apple* finds *Apple* but not *apple*. It also decides
+how the words just before and after a match (L1 and R1) are counted and sorted:
+with it off, the default, *The* and *the* count as one word and sort together;
+their text keeps its own capitals. You can also
 ask a generative AI tool to write a pattern for you, but carefully review and
 test it before relying on the results. Whole word relies on spaces between words, so it does not apply to
 Japanese, Chinese, Thai, or other text written without them: there it matches
@@ -269,8 +272,12 @@ to each source. After Run, there is no page-local Found summary.
 After Run, separated Table view can sort selected metadata, the left and right
 contexts (by L1 and R1 while **Highlight L1/R1 for sorting** is on), matched
 text, L1/R1 and their frequencies across the complete Result. Sorting is
-case-sensitive, and empty values come first in either direction. Equal values
-have no guaranteed secondary order. The document header remains plain, and the
+case-sensitive, except that L1 and R1 (and the contexts sorted by them) ignore
+capitals unless **Case sensitive** was on for the search. Empty values come
+first in either direction. Rows with equal values keep their order in the Data
+Block: by document, then by position in it, so matches of one word from one
+document stay together in reading order. Rows are shaded in alternate bands by
+source document, so consecutive matches from one document read as a group. The document header remains plain, and the
 combined table remains unsorted.
 
 After Run, the density chart always summarises the complete result, not only
@@ -336,7 +343,7 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 | Left / Right context | 10 tokens each | Range 0–50 |
 | Whole word | Off | Text mode only |
 | Regular expression | Off | Text mode only |
-| Case sensitive | Off | Text mode only |
+| Case sensitive | Off | Text mode only; also decides whether L1/R1 counts and sorting ignore capitals |
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |

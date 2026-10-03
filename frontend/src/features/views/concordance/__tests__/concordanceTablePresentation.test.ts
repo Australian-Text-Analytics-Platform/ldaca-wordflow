@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  concordanceRowBand,
   concordanceHeaderMode,
   concordanceSortColumn,
   concordanceSortHint,
@@ -72,5 +73,17 @@ describe('concordanceSortColumn', () => {
     expect(concordanceSortHint('CONC_right_context', true)).toMatch(/^Sorts by R1/);
     expect(concordanceSortHint('CONC_left_context', false)).toBeUndefined();
     expect(concordanceSortHint('speaker', true)).toBeUndefined();
+  });
+});
+
+describe('concordanceRowBand (issue 268)', () => {
+  it('uses the backend document band when the row has one', () => {
+    expect(concordanceRowBand({ __wordflow_document_band: 1 }, 0)).toBe(1);
+    expect(concordanceRowBand({ __wordflow_document_band: 0 }, 1)).toBe(0);
+  });
+
+  it('alternates by row on Preview pages, which have no band', () => {
+    expect(concordanceRowBand({}, 0)).toBe(0);
+    expect(concordanceRowBand({}, 3)).toBe(1);
   });
 });

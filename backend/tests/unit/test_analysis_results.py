@@ -660,10 +660,111 @@ def test_concordance_match_review_rejects_non_public_or_nested_sort_columns(
         )
 
 
-def test_concordance_match_review_uses_only_requested_sort_key(
+def _tied_concordance_artifact(tmp_path):
+    """Six documents, three matches each, with L1 words that repeat in mixed case."""
+
+    words = ["the", "The", "a", "The", "the", "a"]
+    path = tmp_path / "tied.parquet"
+    pl.DataFrame(
+        {
+            "__wordflow_source_row_id": list(range(6)),
+            "text": [f"doc {row}" for row in range(6)],
+            "concordance": [
+                [
+                    {
+                        "CONC_matched_text": "x",
+                        "CONC_start_idx": offset,
+                        "CONC_l1": words[(row + offset) % len(words)],
+                        "CONC_r1": "y",
+                    }
+                    for offset in range(3)
+                ]
+                for row in range(6)
+            ],
+        }
+    ).write_parquet(path)
+    return path
+
+
+def _tied_pages(path, sort_by, *, descending=False, case_sensitive=True, size=4):
+    frames = []
+    for page in range(1, 6):
+        content = _projected_artifact_page(
+            path,
+            "concordance_run_all",
+            "matches",
+            "text",
+            [],
+            ["CONC_matched_text", "CONC_start_idx", "CONC_l1", "CONC_r1"],
+            page,
+            size,
+            sort_by,
+            descending,
+            case_sensitive,
+        ).content
+        frames.append(pl.read_ipc_stream(BytesIO(content)))
+    return pl.concat(frames)
+
+
+def test_concordance_l1_sort_pages_show_every_match_once_in_reading_order(tmp_path) -> None:
+    # #266: every match once, and rows sharing a word in Data Block order on
+    # every page. Polars happens to do this without tie-breakers today, but a
+    # sort without maintain_order promises nothing about ties.
+    path = tmp_path / "many.parquet"
+    words = ["the", "The", "a", "and"]
+    pl.DataFrame(
+        {
+            "__wordflow_source_row_id": list(range(100)),
+            "text": [f"doc {row}" for row in range(100)],
+            "concordance": [
+                [
+                    {
+                        "CONC_matched_text": "x",
+                        "CONC_start_idx": offset,
+                        "CONC_l1": words[(row * 7 + offset * 3) % 4],
+                        "CONC_r1": "y",
+                    }
+                    for offset in range(20)
+                ]
+                for row in range(100)
+            ],
+        }
+    ).write_parquet(path)
+    frames = [
+        pl.read_ipc_stream(
+            BytesIO(
+                _projected_artifact_page(
+                    path,
+                    "concordance_run_all",
+                    "matches",
+                    "text",
+                    [],
+                    ["CONC_matched_text", "CONC_start_idx", "CONC_l1", "CONC_r1"],
+                    page,
+                    50,
+                    "CONC_l1",
+                    False,
+                ).content
+            )
+        )
+        for page in range(1, 41)
+    ]
+    rows = pl.concat(frames)
+
+    pairs = list(zip(rows["__wordflow_source_row_id"], rows["CONC_start_idx"], strict=True))
+    assert len(pairs) == 2000 and len(set(pairs)) == 2000
+    assert rows["CONC_l1"].to_list() == sorted(rows["CONC_l1"].to_list())
+    for _word, group in rows.group_by("CONC_l1", maintain_order=True):
+        order = list(zip(group["__wordflow_source_row_id"], group["CONC_start_idx"], strict=True))
+        assert order == sorted(order)
+
+
+def test_concordance_l1_sort_breaks_ties_by_source_then_position(
     tmp_path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    path = _concordance_sort_artifact(tmp_path)
+    # #266: the guarantee comes from the sort keys, not from Polars' current
+    # behaviour on ties, so check the keys themselves.
+    path = _tied_concordance_artifact(tmp_path)
     sort_calls: list[object] = []
     original_sort = pl.LazyFrame.sort
 
@@ -673,9 +774,48 @@ def test_concordance_match_review_uses_only_requested_sort_key(
 
     monkeypatch.setattr(pl.LazyFrame, "sort", recording_sort)
 
-    _read_projected_sort(path, "CONC_l1")
+    _tied_pages(path, "CONC_l1", size=50)
 
-    assert sort_calls == ["CONC_l1"]
+    keys = [str(key) for key in sort_calls[-1]]
+    assert len(keys) == 3
+    assert "CONC_l1" in keys[0]
+    assert "__wordflow_source_row_id" in keys[1]
+    assert "CONC_start_idx" in keys[2]
+
+
+def test_concordance_l1_sort_descending_reverses_words_not_reading_order(tmp_path) -> None:
+    rows = _tied_pages(_tied_concordance_artifact(tmp_path), "CONC_l1", descending=True)
+
+    assert rows["CONC_l1"].to_list() == sorted(rows["CONC_l1"].to_list(), reverse=True)
+    for _word, group in rows.group_by("CONC_l1", maintain_order=True):
+        order = list(zip(group["__wordflow_source_row_id"], group["CONC_start_idx"], strict=True))
+        assert order == sorted(order)
+
+
+def test_concordance_l1_sort_ignores_case_when_the_search_did(tmp_path) -> None:
+    # #267: with Case sensitive off, "The" and "the" form one group, mixed in
+    # Data Block order; the L1 text keeps its case.
+    rows = _tied_pages(_tied_concordance_artifact(tmp_path), "CONC_l1", case_sensitive=False)
+
+    lowered = [word.lower() for word in rows["CONC_l1"].to_list()]
+    assert lowered == sorted(lowered)
+    the_rows = rows.filter(pl.col("CONC_l1").str.to_lowercase() == "the")
+    assert set(the_rows["CONC_l1"].to_list()) == {"the", "The"}
+    order = list(zip(the_rows["__wordflow_source_row_id"], the_rows["CONC_start_idx"], strict=True))
+    assert order == sorted(order)
+
+
+def test_concordance_match_rows_band_by_source_document_across_pages(tmp_path) -> None:
+    # #268: the band flips whenever the source document changes, computed over
+    # the whole sorted Result so page boundaries do not reset it.
+    rows = _tied_pages(_tied_concordance_artifact(tmp_path), None, size=4)
+
+    sources = rows["__wordflow_source_row_id"].to_list()
+    bands = rows["__wordflow_document_band"].to_list()
+    assert bands[0] == 0
+    for previous in range(len(sources) - 1):
+        changed = sources[previous + 1] != sources[previous]
+        assert bands[previous + 1] == (1 - bands[previous] if changed else bands[previous])
 
 
 def test_concordance_match_review_preserves_default_source_and_offset_order(

@@ -69,3 +69,16 @@ export function concordanceSortHint(columnKey: string, highlightL1R1: boolean): 
     ? 'Sorts by L1, the word before the match. Turn off Highlight L1/R1 for sorting to sort by the text.'
     : 'Sorts by R1, the word after the match. Turn off Highlight L1/R1 for sorting to sort by the text.';
 }
+
+/**
+ * Background band for a Run results row (issue 268): the backend flips
+ * `__wordflow_document_band` whenever the source document changes, so
+ * consecutive matches from one document share a shade. Preview rows have no
+ * band and alternate by row as before.
+ * Used by: ConcordanceTableNodeBlock.
+ */
+export function concordanceRowBand(row: Record<string, unknown>, index: number): 0 | 1 {
+  const band = row.__wordflow_document_band;
+  if (band === 0 || band === 1) return band;
+  return index % 2 === 0 ? 0 : 1;
+}

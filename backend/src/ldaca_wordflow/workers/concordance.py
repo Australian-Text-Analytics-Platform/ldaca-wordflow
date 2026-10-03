@@ -422,6 +422,26 @@ def _build_tokens_concordance_occurrence_dataframe(
 
 
 @process_entrypoint
+def _context_frequency(column: str, case_sensitive: bool):
+    """How many matches share this row's L1 or R1 word (#267).
+
+    With Case sensitive off (the default) the word is compared lower-cased,
+    so "The" and "the" share one count; the L1/R1 text keeps its case. Rows
+    without a word keep no count, as before.
+    """
+
+    import polars as pl
+
+    word = pl.col(column)
+    key = word if case_sensitive else word.str.to_lowercase()
+    return (
+        pl.when(word.is_null())
+        .then(None)
+        .otherwise(pl.len().over(key))
+        .cast(pl.UInt32)
+    )
+
+
 def run_concordance_run_all(
     artifact_dir: str,
     input_snapshot_dir: str,
@@ -516,18 +536,13 @@ def run_concordance_run_all(
                 extra_columns_dtypes=extra_columns_dtypes,
             )
 
-        l1_freq = (
-            result.group_by(CONC_L1_COLUMN)
-            .len()
-            .rename({"len": CONC_L1_FREQ_COLUMN})
-        )
-        r1_freq = (
-            result.group_by(CONC_R1_COLUMN)
-            .len()
-            .rename({"len": CONC_R1_FREQ_COLUMN})
-        )
-        result = result.join(l1_freq, on=CONC_L1_COLUMN, how="left").join(
-            r1_freq, on=CONC_R1_COLUMN, how="left"
+        result = result.with_columns(
+            _context_frequency(CONC_L1_COLUMN, case_sensitive).alias(
+                CONC_L1_FREQ_COLUMN
+            ),
+            _context_frequency(CONC_R1_COLUMN, case_sensitive).alias(
+                CONC_R1_FREQ_COLUMN
+            ),
         )
         output_columns = output_columns + [CONC_L1_FREQ_COLUMN, CONC_R1_FREQ_COLUMN]
         result = result.sort([SOURCE_ROW_ID_COLUMN, CONC_START_IDX_COLUMN])

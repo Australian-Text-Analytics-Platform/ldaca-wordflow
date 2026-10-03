@@ -163,3 +163,55 @@ def test_concordance_run_all_ignores_punctuation_but_preserves_raw_context(
         2,
         2,
     )
+
+
+def _context_counts(tmp_path, worker_snapshot, *, case_sensitive: bool):
+    """L1/R1 text and counts per match for a search where L1 differs only in case."""
+
+    result = run_concordance_run_all(
+        artifact_dir=str(tmp_path),
+        input_snapshot_dir=str(
+            worker_snapshot(
+                node_id="11111111-1111-4111-8111-111111111111",
+                columns={
+                    "document": [
+                        "The vote counts",
+                        "and the vote counts",
+                        "THE vote Counts",
+                    ]
+                },
+            )
+        ),
+        parent_node_id=uuid.UUID("11111111-1111-4111-8111-111111111111"),
+        document_column="document",
+        search_word="vote",
+        num_left_tokens=1,
+        num_right_tokens=1,
+        regex=False,
+        whole_word=True,
+        case_sensitive=case_sensitive,
+    )
+    table = pl.read_parquet(tmp_path / result["source"]["table"]["artifact"])
+    hits = [hit for matches in table.get_column("concordance").to_list() for hit in matches]
+    return [(hit["CONC_l1"], hit["CONC_l1_freq"], hit["CONC_r1"], hit["CONC_r1_freq"]) for hit in hits]
+
+
+def test_context_counts_ignore_case_when_the_search_does(tmp_path, worker_snapshot):
+    # #267: with Case sensitive off, "The", "the" and "THE" share one L1 count,
+    # and "counts"/"Counts" one R1 count; the text keeps its own case.
+    assert _context_counts(tmp_path, worker_snapshot, case_sensitive=False) == [
+        ("The", 3, "counts", 3),
+        ("the", 3, "counts", 3),
+        ("THE", 3, "Counts", 3),
+    ]
+
+
+def test_context_counts_keep_case_when_the_search_does(tmp_path, worker_snapshot):
+    rows = _context_counts(tmp_path, worker_snapshot, case_sensitive=True)
+    # "vote" in "THE vote Counts" still matches: the search term itself is
+    # lower case in every document here.
+    assert rows == [
+        ("The", 1, "counts", 2),
+        ("the", 1, "counts", 2),
+        ("THE", 1, "Counts", 1),
+    ]

@@ -17,6 +17,7 @@ import {
   concordanceHeaderMode,
   concordanceSortColumn,
   concordanceSortHint,
+  concordanceRowBand,
 } from '../concordanceTablePresentation';
 import { GREY } from '../../common/vizPalette';
 import { normalizeNodeColor } from '@/lib/nodeColor';
@@ -437,8 +438,8 @@ function PerNodeConcordanceTable({
                     />
                   );
                 }}
-                getRowClassName={(_row, index) =>
-                  `cursor-pointer ${index % 2 === 0 ? 'bg-surface' : 'bg-panel'}`
+                getRowClassName={(row, index) =>
+                  `cursor-pointer ${concordanceRowBand(row, index) === 0 ? 'bg-surface' : 'bg-panel'}`
                 }
                 onRowClick={(_row, index) => {
                   if (actualNodeId && column) openDetailAt(index);

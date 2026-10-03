@@ -101,8 +101,10 @@ export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
   CONC_end_idx: 'Where the match ends (character)',
   CONC_l1: 'Word just before (L1)',
   CONC_r1: 'Word just after (R1)',
-  CONC_l1_freq: 'How often that L1 word occurs',
-  CONC_r1_freq: 'How often that R1 word occurs',
+  CONC_l1_freq:
+    'How often that L1 word occurs (ignoring capitals unless the search was case sensitive)',
+  CONC_r1_freq:
+    'How often that R1 word occurs (ignoring capitals unless the search was case sensitive)',
   CONC_dispersion: 'Where the matches occur in the document',
   CONC_extraction: 'The matches found in this document',
   QUOTE_extraction: 'Document, with quotes highlighted',
