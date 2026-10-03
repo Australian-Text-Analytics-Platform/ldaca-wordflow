@@ -175,6 +175,25 @@ def test_tokenizer_mappings_follow_each_analysis_mode_contract() -> None:
     assert set(tokens_request.node_tokenizer_models) == {first, second}
 
 
+def test_concordance_tokens_mode_is_always_case_insensitive() -> None:
+    """Tokens are lowercased at tokenisation, so a stored or submitted Tokens
+    request never carries case_sensitive=True (issue 272); Text mode keeps it."""
+    node = uuid.uuid4()
+    common = {
+        "node_ids": [node],
+        "node_columns": {node: "text"},
+        "node_tokenizer_models": {node: "native:plain_words_en"},
+        "search_word": "Australian",
+        "case_sensitive": True,
+    }
+
+    tokens_request = ConcordanceAnalysisRequest(**common, search_mode="tokens")
+    text_request = ConcordanceAnalysisRequest(**common, search_mode="regex")
+
+    assert tokens_request.case_sensitive is False
+    assert text_request.case_sensitive is True
+
+
 def test_topic_modeling_data_block_creation_request_preserves_ordered_sources() -> None:
     first = uuid.uuid4()
     second = uuid.uuid4()

@@ -4,6 +4,7 @@ import {
   concordanceHeaderMode,
   concordanceSortColumn,
   concordanceSortHint,
+  findContextAnchor,
 } from '../concordanceTablePresentation';
 
 const modeFor = (
@@ -85,5 +86,36 @@ describe('concordanceRowBand (issue 268)', () => {
   it('alternates by row on Preview pages, which have no band', () => {
     expect(concordanceRowBand({}, 0)).toBe(0);
     expect(concordanceRowBand({}, 3)).toBe(1);
+  });
+});
+
+describe('findContextAnchor', () => {
+  it('prefers the exact L1 (last) and R1 (first) occurrence', () => {
+    expect(findContextAnchor('the cat and the dog', 'the', 'last')).toEqual({
+      index: 12,
+      length: 3,
+    });
+    expect(findContextAnchor('the cat and the dog', 'the', 'first')).toEqual({
+      index: 0,
+      length: 3,
+    });
+  });
+
+  it('ignores case for lowercased Tokens-mode anchors (issue 272)', () => {
+    expect(findContextAnchor('a proud Australian', 'australian', 'last')).toEqual({
+      index: 8,
+      length: 10,
+    });
+    expect(findContextAnchor('But then. But', 'but', 'last')).toEqual({ index: 10, length: 3 });
+    expect(findContextAnchor('But then. But', 'but', 'first')).toEqual({ index: 0, length: 3 });
+  });
+
+  it('treats the anchor as literal text and reports misses', () => {
+    expect(findContextAnchor('costs $5 (approx.)', '(approx.)', 'first')).toEqual({
+      index: 9,
+      length: 9,
+    });
+    expect(findContextAnchor('nothing here', 'cat', 'first')).toBeNull();
+    expect(findContextAnchor('anything', '', 'first')).toBeNull();
   });
 });

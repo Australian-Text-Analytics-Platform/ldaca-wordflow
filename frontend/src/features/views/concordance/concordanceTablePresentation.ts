@@ -82,3 +82,30 @@ export function concordanceRowBand(row: Record<string, unknown>, index: number):
   if (band === 0 || band === 1) return band;
   return index % 2 === 0 ? 0 : 1;
 }
+
+const REGEX_SPECIAL_CHARS = /[.*+?^${}()|[\]\\]/g;
+
+/**
+ * Locates the L1 (last) or R1 (first) word inside its context cell for the
+ * L1/R1 tint. An exact match wins; otherwise the match ignores case, because
+ * Tokens mode takes L1/R1 from lowercased tokens while the contexts keep the
+ * original text ("australian" must tint "Australian", issue 272). Returns the
+ * matched span so the original casing is shown.
+ * Used by: ConcordanceRowsTable.
+ */
+export function findContextAnchor(
+  context: string,
+  anchor: string,
+  occurrence: 'first' | 'last',
+): { index: number; length: number } | null {
+  if (!anchor) return null;
+  const exact = occurrence === 'last' ? context.lastIndexOf(anchor) : context.indexOf(anchor);
+  if (exact >= 0) return { index: exact, length: anchor.length };
+  const pattern = new RegExp(anchor.replace(REGEX_SPECIAL_CHARS, '\\$&'), 'giu');
+  let found: RegExpExecArray | null = null;
+  for (let match = pattern.exec(context); match; match = pattern.exec(context)) {
+    found = match;
+    if (occurrence === 'first') break;
+  }
+  return found ? { index: found.index, length: found[0].length } : null;
+}

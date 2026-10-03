@@ -282,6 +282,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     effectiveNodeColumnSelections: nodeColumnSelections,
     nodeInfoById,
   });
+  // Tokens are lowercased at tokenisation (except case-free scripts), so a
+  // Tokens search is always case-insensitive and its panel hides the Case
+  // sensitive checkbox (issue 272). The Text-mode checkbox value is kept for
+  // when the user switches back.
+  const requestCaseSensitive = searchMode === 'tokens' ? false : caseSensitive;
 
   const {
     request: serverRequest,
@@ -498,7 +503,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         numRightTokens,
         regex,
         wholeWord,
-        caseSensitive,
+        caseSensitive: requestCaseSensitive,
         ignorePunctuation,
         searchMode,
         tokenizerModelsByNode: effectiveTokenizerModelsByNode,
@@ -525,6 +530,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   const lastRunRequest = serverRequest ?? null;
   const currentRequestParams = {
     ...currentConcordanceParams,
+    case_sensitive: requestCaseSensitive,
     node_ids: activeNodeIds.slice(0, 2),
     node_columns: Object.fromEntries(
       nodeColumnSelections
@@ -669,7 +675,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       num_right_tokens: numRightTokens,
       regex,
       whole_word: wholeWord,
-      case_sensitive: caseSensitive,
+      case_sensitive: requestCaseSensitive,
       ignore_punctuation: ignorePunctuation,
       search_mode: searchMode,
     };

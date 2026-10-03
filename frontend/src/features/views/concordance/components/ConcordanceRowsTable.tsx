@@ -16,6 +16,7 @@ import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { alignmentClassForColumn, type ConcordanceRow } from './concordanceTableModel';
 import { CONCORDANCE_COLUMN_KEYS } from '../../common/generatedColumns';
 import { toCellText } from '../concordanceTableDomain';
+import { findContextAnchor } from '../concordanceTablePresentation';
 import type {
   ServerTableHeader,
   ServerTableInstance,
@@ -66,9 +67,9 @@ function renderContextWithAnchor(
   const anchorText = toCellText(anchor);
   if (!enabled || !anchorText) return contextText;
 
-  const matchIndex =
-    occurrence === 'last' ? contextText.lastIndexOf(anchorText) : contextText.indexOf(anchorText);
-  if (matchIndex < 0) return contextText;
+  const match = findContextAnchor(contextText, anchorText, occurrence);
+  if (!match) return contextText;
+  const { index: matchIndex, length: matchLength } = match;
 
   return (
     <>
@@ -79,9 +80,9 @@ function renderContextWithAnchor(
         className="concordance-context-anchor font-semibold"
         style={{ '--concordance-anchor-color': sourceColor ?? GREY } as CSSProperties}
       >
-        {contextText.slice(matchIndex, matchIndex + anchorText.length)}
+        {contextText.slice(matchIndex, matchIndex + matchLength)}
       </mark>
-      {contextText.slice(matchIndex + anchorText.length)}
+      {contextText.slice(matchIndex + matchLength)}
     </>
   );
 }

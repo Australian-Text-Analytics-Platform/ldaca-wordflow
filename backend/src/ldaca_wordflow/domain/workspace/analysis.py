@@ -187,6 +187,11 @@ class ConcordanceAnalysisRequest(_StrictModel):
             raise ValueError(
                 "Tokens mode tokenizer models must exactly match requested inputs"
             )
+        if self.search_mode == "tokens":
+            # Tokenised text is lowercased (except case-free scripts), so a
+            # case-sensitive Tokens search could only miss capitalised forms.
+            # Tokens mode is always case-insensitive (issue 272).
+            self.case_sensitive = False
         return self
 
 

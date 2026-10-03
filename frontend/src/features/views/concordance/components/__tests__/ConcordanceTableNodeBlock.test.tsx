@@ -302,9 +302,8 @@ describe('ConcordanceTableNodeBlock', () => {
   });
 
   it.each([
-    ['empty', '', 'after'],
-    ['missing', 'missing', 'after'],
-    ['case mismatch', 'Before', 'after'],
+    ['empty', '', ''],
+    ['missing', 'missing', 'gone'],
   ])('leaves %s anchors unmarked', (_caseName, leftAnchor, rightAnchor) => {
     const fallbackData: ConcordanceNodeResult = {
       ...nodeData,
@@ -323,6 +322,26 @@ describe('ConcordanceTableNodeBlock', () => {
 
     expect(screen.queryByText('before', { selector: 'mark' })).not.toBeInTheDocument();
     expect(screen.queryByText('AFTER', { selector: 'mark' })).not.toBeInTheDocument();
+  });
+
+  it('marks lowercased Tokens-mode anchors in their original case (issue 272)', () => {
+    const tokensData: ConcordanceNodeResult = {
+      ...nodeData,
+      data: [
+        [
+          {
+            ...nodeData.data[0]![0]!,
+            CONC_l1: 'Before',
+            CONC_r1: 'after',
+            CONC_right_context: 'AFTER',
+          },
+        ],
+      ],
+    };
+    render(<ConcordanceTableNodeBlock {...buildProps(vi.fn())} nodeData={tokensData} />);
+
+    expect(screen.getByText('before', { selector: 'mark' })).toBeInTheDocument();
+    expect(screen.getByText('AFTER', { selector: 'mark' })).toBeInTheDocument();
   });
 
   it('uses the palette fallback for highlighted cells in combined tables', () => {

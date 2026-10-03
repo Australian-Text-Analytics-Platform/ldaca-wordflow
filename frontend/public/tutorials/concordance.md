@@ -32,7 +32,10 @@ choose to display.
   it. A space, comma, or `|` between terms means *any of them*, not a phrase:
   `cat dog` finds every *cat* and every *dog*. A different word form is a
   different token (*went* does not find *go*). For a phrase or several word
-  forms, use Text mode with a regular expression.
+  forms, use Text mode with a regular expression. The tokeniser lowercases
+  tokens and drops punctuation, so Tokens mode always ignores capitals
+  (*apple* also finds *Apple*) and has no **Case sensitive** or **Ignore
+  punctuation** option.
 
 Running Tokens mode requires a tokeniser model for every selected Data Block.
 The selector saves each model as that Data Block's Tokeniser Preference,
@@ -135,9 +138,11 @@ the table.
 **L1** (`CONC_l1`) is the token immediately left of the match and **R1**
 (`CONC_r1`) is the token immediately right. Their frequency columns count each
 value across the complete Run Result. The matched-text cell always uses
-strong source-colour emphasis. The last exact, case-sensitive L1 occurrence in
-the left context and the first R1 occurrence in the right context are shown in
-bold text in the source colour. Empty or unmatched anchors remain plain. The direct L1/R1
+strong source-colour emphasis. The last L1 occurrence in the left context and
+the first R1 occurrence in the right context are shown in bold text in the
+source colour. An exact match is used when there is one; otherwise capitals are
+ignored, because in Tokens mode L1 and R1 are lowercased tokens (*australian*
+marks *Australian* in the context). Empty or unmatched anchors remain plain. The direct L1/R1
 cells remain plain and available for sorting, frequencies, export, and
 **Add to Project**.
 
@@ -343,7 +348,7 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 | Left / Right context | 10 tokens each | Range 0–50 |
 | Whole word | On | Text mode only; off while Use regular expression is ticked |
 | Regular expression | Off | Text mode only |
-| Case sensitive | Off | Text mode only; also decides whether L1/R1 counts and sorting ignore capitals |
+| Case sensitive | Off | Text mode only (Tokens mode always ignores capitals); also decides whether L1/R1 counts and sorting ignore capitals |
 | Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens or become L1/R1; it never changes what the search or a regular expression matches |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |

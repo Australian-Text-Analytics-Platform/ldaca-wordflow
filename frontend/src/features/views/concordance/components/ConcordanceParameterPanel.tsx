@@ -264,6 +264,36 @@ export function ConcordanceParameterPanel({
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
+                        checked={caseSensitive}
+                        onChange={(e) => {
+                          setCaseSensitive(e.target.checked);
+                        }}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-body text-foreground">Case sensitive</span>
+                    </label>
+                    <HelpIcon
+                      targetKey="analysis.concordance.regex-toggle"
+                      label="About Case sensitive"
+                      tooltip="Keeps capitals distinct in the search, and in the L1/R1 counts and sorting. Off: The and the count as one word."
+                      className="size-5 shrink-0 text-description"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={ignorePunctuation}
+                      onChange={(e) => {
+                        setIgnorePunctuation(e.target.checked);
+                      }}
+                      className="h-4 w-4"
+                    />
+                    <span className="text-body text-foreground">Ignore punctuation</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
                         checked={wholeWord}
                         onChange={(e) => {
                           setWholeWord(e.target.checked);
@@ -296,34 +326,6 @@ export function ConcordanceParameterPanel({
                       tooltip="Match a pattern instead of the exact text. Examples and a cheat sheet in Help."
                     />
                   </div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={caseSensitive}
-                      onChange={(e) => {
-                        setCaseSensitive(e.target.checked);
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-body text-foreground">Case sensitive</span>
-                  </label>
-                  <HelpIcon
-                    targetKey="analysis.concordance.regex-toggle"
-                    label="About Case sensitive"
-                    tooltip="Keeps capitals distinct in the search, and in the L1/R1 counts and sorting. Off: The and the count as one word."
-                    className="size-5 shrink-0 text-description"
-                  />
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={ignorePunctuation}
-                      onChange={(e) => {
-                        setIgnorePunctuation(e.target.checked);
-                      }}
-                      className="h-4 w-4"
-                    />
-                    <span className="text-body text-foreground">Ignore punctuation</span>
-                  </label>
                 </>
               )}
             </div>
