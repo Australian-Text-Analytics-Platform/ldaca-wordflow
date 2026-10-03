@@ -341,10 +341,10 @@ Preview and Run stay off until you choose **Clear**. See [How Preview, Run and C
 |---|---|---|
 | Search mode | Text | Select Tokens explicitly to enable tokeniser selection |
 | Left / Right context | 10 tokens each | Range 0–50 |
-| Whole word | Off | Text mode only |
+| Whole word | On | Text mode only; off while Use regular expression is ticked |
 | Regular expression | Off | Text mode only |
 | Case sensitive | Off | Text mode only; also decides whether L1/R1 counts and sorting ignore capitals |
-| Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens |
+| Ignore punctuation | On | Text mode only; punctuation remains visible but does not consume context tokens or become L1/R1; it never changes what the search or a regular expression matches |
 | Documents per page | 20 | Controls source documents evaluated per Preview page |
 | View | Table | Returning to Concordance starts in Table view |
 | Highlight L1/R1 for sorting | On | Local table-display state: L1/R1 shown in the source colour, and context headers sort by L1/R1; off, the contexts are plain text (matched text stays emphasised) and sort by their text |
