@@ -13,11 +13,10 @@ working with another genre or English variety.
   the Data Block's document column preference when available, while a reopened
   result keeps the exact column it was made with.
 
-- **Which engine should I use?**
-  **Built-in** runs the bundled local quotation engine and requires no service
-  configuration. **Remote** uses an engine ID configured by the deployment
-  operator; it does not accept an arbitrary service URL. Ask the operator for a
-  valid ID and confirm that the service's data-handling policy is suitable.
+- **Which engine does it use?**
+  Wordflow's built-in quotation engine, which needs no setup. Versions before
+  0.7.10 also show a **Remote** option; keep **Built-in**, because Remote only
+  works where a server operator has set up a remote quotation service.
 
 - **What do Preview and Run do?**
   **Preview** works out each page you open, from the data as it was when you

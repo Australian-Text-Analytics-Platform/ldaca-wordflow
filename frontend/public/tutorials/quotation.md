@@ -21,24 +21,15 @@ Add one Data Block and choose the source text column. A fresh selector uses the
 Data Block's saved Document Column Preference when available. The Analysis
 records the exact Data Block and column used for the run.
 
-<h3 id="help-quotation-engine">Step 2: Choose the engine</h3>
+<h3 id="help-quotation-engine">The quotation engine</h3>
 
-The engine is an Analysis parameter in the Quotation panel:
+Quotation uses Wordflow's built-in engine, which needs no setup and runs where
+Wordflow runs. Versions before 0.7.10 also show a **Remote** option with an
+**Engine id**: it only works on a Wordflow server whose operator has set up a
+remote quotation service, and the public Wordflow versions do not, so keep
+**Built-in** selected.
 
-- **Built-in** is the default and runs the bundled local quotation engine. It
-  needs no separate service, URL, or user configuration.
-- **Remote** sends the work to an endpoint configured by the deployment
-  operator. Enter the operator-provided **Engine id**. Wordflow does not accept
-  arbitrary service URLs from the browser, and an unknown ID is rejected.
-
-![Quotation engine set to Remote, with the Engine id field](tutorials/assets/quotation/engine_remote.png)
-
-Use Remote only when the administrator of your Wordflow deployment has given
-you a valid engine ID and its data-handling policy is appropriate for the text.
-Each result records `Built-in` or the remote engine ID it used, never a server
-address.
-
-<h3 id="help-quotation-context-length">Step 3: Set display context</h3>
+<h3 id="help-quotation-context-length">Step 2: Set display context</h3>
 
 **Context** (words per side), in the Result panel header beside **Show
 metadata**, controls how much source text the Result table displays around the

@@ -294,8 +294,8 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
   hint(
     CONTEXTUAL_HINT_IDS.quotation.engine,
     '[data-guidance="quotation-actions"]',
-    'Choose how quotations are found',
-    'Built-in runs locally, while Remote uses a configured service; display context changes only what you review. Choose Preview for a sample or Run for the complete extraction.',
+    'Find quotations',
+    'Choose Preview to find quotations on one page of documents, or Run for the complete extraction. Display context changes only what you review.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.quotation.previewResults,

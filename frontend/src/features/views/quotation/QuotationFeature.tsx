@@ -61,6 +61,15 @@ import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWork
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { toastError } from '@/lib/toastError';
 
+/**
+ * The Built-in / Remote engine choice is hidden unless a build sets
+ * VITE_SHOW_QUOTATION_ENGINE=true: Remote needs a quotation service listed in
+ * the server's QUOTATION_REMOTE_ENGINES, which no public Wordflow build
+ * configures, so the choice only confused people. The backend still accepts
+ * operator-configured engines. Revisit with issue 270.
+ */
+const SHOW_QUOTATION_ENGINE_CHOICE = import.meta.env.VITE_SHOW_QUOTATION_ENGINE === 'true';
+
 /** Renders the Quotation Preview and Run All workflow. */
 /**
  * Rendered by: the viewComponents tabbed loader, which mounts one instance per analysis tab and feeds it tab props.
@@ -200,7 +209,9 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       onTabInputSetChange(DEFAULT_TAB_INPUT_SET_ID, [
         { node_id: request.node_id, column: request.column },
       ]);
-      hydrateEngineConfig(request.engine);
+      // With the engine choice hidden, a tab saved with Remote reopens on the
+      // built-in engine (Remote needs an operator-configured service).
+      hydrateEngineConfig(SHOW_QUOTATION_ENGINE_CHOICE ? request.engine : { type: 'local' });
       setSelectedMetadataColumns([]);
     },
     // Clears quotation-specific state after the shared lifecycle deletes the task result.
@@ -609,14 +620,16 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
               onClear={nodeInputs.clear}
               onColumnChange={handleColumnChange}
             />
-            <QuotationEngineSettingsFields
-              idPrefix="quotation-parameter-engine"
-              engineConfig={engineConfig}
-              lastRemoteEngineId={lastRemoteEngineId}
-              error={engineError}
-              onEngineConfigChange={setTaskEngineConfig}
-              onRemoteEngineIdChange={updateRemoteEngineId}
-            />
+            {SHOW_QUOTATION_ENGINE_CHOICE && (
+              <QuotationEngineSettingsFields
+                idPrefix="quotation-parameter-engine"
+                engineConfig={engineConfig}
+                lastRemoteEngineId={lastRemoteEngineId}
+                error={engineError}
+                onEngineConfigChange={setTaskEngineConfig}
+                onRemoteEngineIdChange={updateRemoteEngineId}
+              />
+            )}
           </AnalysisCardLayout>
         }
       >

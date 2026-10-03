@@ -8,6 +8,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Short git SHA at build/dev start, injected by `vite.config.ts`. */
   readonly VITE_APP_BUILD?: string;
+  /** "true" shows the Quotation Built-in / Remote engine choice (hidden by default). */
+  readonly VITE_SHOW_QUOTATION_ENGINE?: string;
   /** Build date as `DD/MMM/YYYY`, injected by `vite.config.ts`. */
   readonly VITE_APP_BUILD_DATE?: string;
   /** Root of the externally hosted docs; the app appends its `v{major}.{minor}` tag. */
