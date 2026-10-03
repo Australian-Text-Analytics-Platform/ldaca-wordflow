@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildMultiSeriesChartOption } from '../MultiSeriesChart';
+import { SLIDER_OVERVIEW_ID, sliderOverviewData } from '../../sliderOverview';
+
+/** The chart's group series, without the hidden slider overview (issue 269). */
+const groupSeries = (option: ReturnType<typeof buildMultiSeriesChartOption>) =>
+  (option.series as Record<string, unknown>[]).filter((item) => item.id !== SLIDER_OVERVIEW_ID);
 
 const data = [
   { period: '2024-01', alpha: 2, beta: 1 },
@@ -122,29 +127,29 @@ describe('buildMultiSeriesChartOption', () => {
       ]),
     );
     expect(option.grid).toMatchObject({ containLabel: true, bottom: 32 });
-    expect((option.series as Record<string, unknown>[])[0]).toMatchObject({ smooth: true });
+    expect(groupSeries(option)[0]).toMatchObject({ smooth: true });
   });
 
   it('maps bar and stacked area modes without changing the input rows', () => {
     const bar = buildMultiSeriesChartOption({ data, xKey: 'period', series, chartType: 'bar' });
-    expect((bar.series as Record<string, unknown>[])[0]).toMatchObject({
+    expect(groupSeries(bar)[0]).toMatchObject({
       type: 'bar',
       itemStyle: { color: '#123456', borderRadius: [6, 6, 0, 0] },
     });
 
     const area = buildMultiSeriesChartOption({ data, xKey: 'period', series, chartType: 'area' });
-    expect((area.series as Record<string, unknown>[])[0]).toMatchObject({
+    expect(groupSeries(area)[0]).toMatchObject({
       type: 'line',
       smooth: true,
       stack: 'wordflow-total',
     });
-    expect((area.series as Record<string, unknown>[])[0]?.areaStyle).toBeTruthy();
+    expect(groupSeries(area)[0]?.areaStyle).toBeTruthy();
     expect(data[0]).not.toHaveProperty('__wordflow_selected__');
   });
 
   it('uses native ECharts states to soften focused-series fading', () => {
     const line = buildMultiSeriesChartOption({ data, xKey: 'period', series });
-    expect((line.series as Record<string, unknown>[])[0]).toMatchObject({
+    expect(groupSeries(line)[0]).toMatchObject({
       emphasis: { focus: 'series', scale: false },
       blur: {
         itemStyle: { opacity: 0.45 },
@@ -153,13 +158,13 @@ describe('buildMultiSeriesChartOption', () => {
     });
 
     const bar = buildMultiSeriesChartOption({ data, xKey: 'period', series, chartType: 'bar' });
-    expect((bar.series as Record<string, unknown>[])[0]).toMatchObject({
+    expect(groupSeries(bar)[0]).toMatchObject({
       emphasis: { focus: 'series' },
       blur: { itemStyle: { opacity: 0.45 } },
     });
 
     const area = buildMultiSeriesChartOption({ data, xKey: 'period', series, chartType: 'area' });
-    expect((area.series as Record<string, unknown>[])[0]).toMatchObject({
+    expect(groupSeries(area)[0]).toMatchObject({
       areaStyle: { opacity: 0.35 },
       blur: {
         itemStyle: { opacity: 0.45 },
@@ -197,7 +202,7 @@ describe('buildMultiSeriesChartOption', () => {
       },
     });
     expect(line.visualMap).toBeUndefined();
-    const lineSeries = (line.series as Record<string, unknown>[])[0];
+    const lineSeries = groupSeries(line)[0];
     const symbol = lineSeries?.symbol as (value: unknown, params: { dataIndex?: number }) => string;
     const symbolSize = lineSeries?.symbolSize as (
       value: unknown,
@@ -211,7 +216,7 @@ describe('buildMultiSeriesChartOption', () => {
     );
     expect(lineSeries).toMatchObject({ itemStyle: { borderColor: '#ffffff', borderWidth: 2 } });
     // A band shades the selected period on a hidden second axis.
-    const band = (line.series as Record<string, unknown>[]).at(-1);
+    const band = groupSeries(line).at(-1);
     expect(band).toMatchObject({ type: 'bar', yAxisIndex: 1, silent: true });
     const lineDataset = line.dataset as { source: Record<string, unknown>[] };
     expect(lineDataset.source.map((row) => row.__wordflow_selection_band__)).toEqual([null, 1]);
@@ -226,7 +231,7 @@ describe('buildMultiSeriesChartOption', () => {
       xAxis: { type: 'value' },
       selection: { selectedIndices: new Set([1, 2]), onSelect: () => undefined },
     });
-    const first = (numeric.series as { markArea?: { data: unknown } }[])[0];
+    const first = groupSeries(numeric)[0] as { markArea?: { data: unknown } } | undefined;
     expect(first?.markArea?.data).toEqual([[{ xAxis: 5 }, { xAxis: 25 }]]);
   });
 
@@ -252,6 +257,74 @@ describe('buildMultiSeriesChartOption', () => {
       splitNumber: 10,
       axisLabel: { rotate: 45 },
     });
-    expect(option.yAxis).toMatchObject({ type: 'value', minInterval: 1 });
+    expect((option.yAxis as unknown[])[0]).toMatchObject({ type: 'value', minInterval: 1 });
+  });
+
+  describe('range slider overview (issue 269)', () => {
+    const day = 86_400_000;
+
+    it('is the first series, hidden from tooltips and clicks, on its own axis', () => {
+      const option = buildMultiSeriesChartOption({ data, xKey: 'period', series });
+      const first = (option.series as Record<string, unknown>[])[0];
+      expect(first).toMatchObject({
+        id: SLIDER_OVERVIEW_ID,
+        silent: true,
+        tooltip: { show: false },
+        yAxisIndex: 1,
+        data: [
+          ['2024-01', 3],
+          ['2024-02', 7],
+        ],
+      });
+      expect((option.yAxis as Record<string, unknown>[])[1]).toMatchObject({ show: false });
+    });
+
+    it('counts the amount the caller asks for, such as counts behind percentages', () => {
+      const option = buildMultiSeriesChartOption({
+        data: [{ period: 'a', alpha: 50, beta: 50, n_alpha: 2, n_beta: 6 }],
+        xKey: 'period',
+        series,
+        overviewValue: (row, key) => Number(row[`n_${key}`]),
+      });
+      expect((option.series as Record<string, unknown>[])[0]).toMatchObject({ data: [['a', 8]] });
+    });
+
+    it('shows a gap where To scale has empty periods', () => {
+      const days = [0, 1, 2, 7, 8].map((offset) => ({ x: offset * day }));
+      const samples = sliderOverviewData({
+        data: days,
+        xKey: 'x',
+        xAxisType: 'value',
+        totals: [1, 1, 1, 1, 1],
+        samples: 81,
+      }) as [number, number][];
+      const at = (offset: number) =>
+        samples.find(([x]) => Math.abs(x - offset * day) < day / 20)?.[1];
+      expect(at(1)).toBe(1);
+      expect(at(4.5)).toBe(0);
+      expect(at(7)).toBe(1);
+    });
+
+    it('leaves no false gaps between consecutive months of different lengths', () => {
+      const months = Array.from({ length: 24 }, (_, index) => ({
+        x: Date.UTC(2020, index, 1),
+      }));
+      const samples = sliderOverviewData({
+        data: months,
+        xKey: 'x',
+        xAxisType: 'value',
+        totals: months.map(() => 5),
+      }) as [number, number][];
+      expect(samples.every(([, value]) => value === 5)).toBe(true);
+    });
+
+    it('keeps one point per period on an evenly spaced axis', () => {
+      expect(
+        sliderOverviewData({ data, xKey: 'period', xAxisType: 'category', totals: [3, 7] }),
+      ).toEqual([
+        ['2024-01', 3],
+        ['2024-02', 7],
+      ]);
+    });
   });
 });

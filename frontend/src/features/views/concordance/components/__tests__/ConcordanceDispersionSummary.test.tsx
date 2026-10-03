@@ -2,6 +2,7 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConcordanceDispersionSummary } from '../ConcordanceDispersionSummary';
+import { SLIDER_OVERVIEW_ID } from '../../../common/sliderOverview';
 
 interface CapturedChart {
   option: Record<string, unknown>;
@@ -32,7 +33,11 @@ const baseRows = [
 ];
 
 const lastOption = () => charts.at(-1)?.option;
-const optionSeries = () => (lastOption()?.series ?? []) as Record<string, unknown>[];
+// The chart's own series, without the hidden slider overview (issue 269).
+const optionSeries = () =>
+  ((lastOption()?.series ?? []) as Record<string, unknown>[]).filter(
+    (item) => item.id !== SLIDER_OVERVIEW_ID,
+  );
 const optionSource = () => {
   const dataset = lastOption()?.dataset as { source?: Record<string, unknown>[] } | undefined;
   return dataset?.source ?? [];
@@ -84,6 +89,27 @@ describe('ConcordanceDispersionSummary', () => {
     fireEvent.click(screen.getByRole('combobox', { name: 'Chart' }));
     fireEvent.click(screen.getByRole('button', { name: 'Running total' }));
     expect(onChartModeChange).toHaveBeenCalledWith('cumulative');
+  });
+
+  it('feeds the range slider an overview of all sources across the full axis (issue 269)', () => {
+    render(
+      <ConcordanceDispersionSummary
+        rows={baseRows}
+        textColumn="text"
+        binCount={20}
+        splitBySource={false}
+        dataBlockLabel="Corpus"
+        searchWord="alpha"
+        chartMode="density-bar"
+      />,
+    );
+    const all = (lastOption()?.series ?? []) as Record<string, unknown>[];
+    const overview = all[0] as { id: string; yAxisIndex: number; data: [number, number][] };
+    expect(overview.id).toBe(SLIDER_OVERVIEW_ID);
+    expect(overview.yAxisIndex).toBe(1);
+    expect(overview.data[0]?.[0]).toBe(0);
+    expect(overview.data.at(-1)?.[0]).toBeCloseTo(100);
+    expect(Math.max(...overview.data.map(([, value]) => value))).toBeGreaterThan(0);
   });
 
   it('maps density line, bar, and area modes to ECharts series', () => {

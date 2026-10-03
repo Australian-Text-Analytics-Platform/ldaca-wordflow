@@ -3,6 +3,7 @@ import type { EChartsCoreOption } from 'echarts/core';
 import type { XAxisComponentOption, YAxisComponentOption } from 'echarts/types/dist/option';
 
 import { buildEChartsSeriesStates } from '../echartsSeriesStates';
+import { OVERVIEW_Y_AXIS, sliderOverviewData, sliderOverviewSeries } from '../sliderOverview';
 import { EChartsView } from './EChartsView';
 
 type MultiSeriesChartType = 'line' | 'bar' | 'stacked-bar' | 'area';
@@ -50,6 +51,11 @@ export interface MultiSeriesChartProps {
   toolbarStart?: ReactNode;
   /** Fit bars to the width, naming the points in messages (issue 225). */
   fitBarsLabel?: string;
+  /**
+   * One series' amount in one row for the range slider's overview (issue 269);
+   * defaults to the plotted value. Trends passes counts when normalised.
+   */
+  overviewValue?: (row: Record<string, unknown>, seriesKey: string) => number;
 }
 
 const SELECTION_DIMENSION = '__wordflow_selected__';
@@ -90,9 +96,18 @@ export const buildMultiSeriesChartOption = ({
   yAxis,
   tooltip,
   selection,
+  overviewValue,
 }: Pick<
   MultiSeriesChartProps,
-  'data' | 'xKey' | 'series' | 'chartType' | 'xAxis' | 'yAxis' | 'tooltip' | 'selection'
+  | 'data'
+  | 'xKey'
+  | 'series'
+  | 'chartType'
+  | 'xAxis'
+  | 'yAxis'
+  | 'tooltip'
+  | 'selection'
+  | 'overviewValue'
 >): EChartsCoreOption => {
   const hasSelection = !!selection && selection.selectedIndices.size > 0;
   const areaOpacity = hasSelection ? 0.2 : 0.35;
@@ -256,8 +271,9 @@ export const buildMultiSeriesChartOption = ({
           }
         : {}),
     },
-    // A hidden second axis carries the selection band (issue 190).
-    yAxis: bandOnCategories ? [builtYAxis, SELECTION_BAND_Y_AXIS] : builtYAxis,
+    // Hidden axes: the selection band (issue 190) and the slider overview
+    // (issue 269), so neither stretches the visible scale.
+    yAxis: [builtYAxis, ...(bandOnCategories ? [SELECTION_BAND_Y_AXIS] : []), OVERVIEW_Y_AXIS],
     // ECharts maps per-item bar opacity from the internal selection dimension.
     // Line and area modes show selection through their point symbols instead.
     ...(usesSelectionVisual
@@ -266,7 +282,8 @@ export const buildMultiSeriesChartOption = ({
             type: 'piecewise',
             show: false,
             dimension: SELECTION_DIMENSION,
-            seriesIndex: chartSeries.map((_, index) => index),
+            // The slider overview is series 0, so the groups start at 1.
+            seriesIndex: chartSeries.map((_, index) => index + 1),
             pieces: [
               { value: 1, opacity: 1 },
               { value: 0, opacity: 0.25 },
@@ -275,6 +292,22 @@ export const buildMultiSeriesChartOption = ({
         }
       : {}),
     series: [
+      // First, because ECharts draws the slider's overview from the first
+      // series on the axis (issue 269).
+      sliderOverviewSeries(
+        sliderOverviewData({
+          data,
+          xKey,
+          xAxisType,
+          totals: data.map((row) =>
+            series.reduce((sum, item) => {
+              const value = overviewValue ? overviewValue(row, item.key) : Number(row[item.key]);
+              return sum + (Number.isFinite(value) ? value : 0);
+            }, 0),
+          ),
+        }),
+        bandOnCategories ? 2 : 1,
+      ),
       ...(bandOnCategories
         ? [...chartSeries, categorySelectionBand(xKey)]
         : shadeSelection

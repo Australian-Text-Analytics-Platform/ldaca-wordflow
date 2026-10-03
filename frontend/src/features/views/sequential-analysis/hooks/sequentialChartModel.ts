@@ -207,6 +207,8 @@ export interface SequentialChartModel {
    */
   canNormalise: boolean;
   normalised: boolean;
+  /** Rows counted in one group and period, also when the chart shows percentages (issue 269). */
+  overviewValue: (row: Record<string, unknown>, seriesKey: string) => number;
   groups: SequentialChartGroup[];
   groupFilter: {
     minimumCount: number;
@@ -820,6 +822,10 @@ export function buildSequentialChartModel({
       },
     },
     canNormalise,
+    overviewValue: (row, seriesKey) => {
+      const count = row[normalised ? `${COUNT_KEY_PREFIX}${seriesKey}` : seriesKey];
+      return typeof count === 'number' ? count : 0;
+    },
     normalised,
     groups,
     groupFilter: {

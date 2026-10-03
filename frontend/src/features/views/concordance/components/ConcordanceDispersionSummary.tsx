@@ -38,6 +38,11 @@ import {
   type ConcordanceDensitySeriesInput,
 } from '../concordanceDispersionDomain';
 import { toastError } from '@/lib/toastError';
+import {
+  OVERVIEW_Y_AXIS,
+  sliderOverviewData,
+  sliderOverviewSeries,
+} from '../../common/sliderOverview';
 
 /** Soft background behind selected bins, shared with Trends (issue 191). */
 const SELECTION_BAND_COLOR = 'rgba(245, 158, 11, 0.16)';
@@ -390,18 +395,22 @@ export function ConcordanceDispersionSummary({
       nameGap: 26,
       nameTextStyle: { color: 'var(--vscode-descriptionForeground)' },
     },
-    yAxis: {
-      type: 'value',
-      minInterval: 1,
-      axisLine: { show: false },
-      axisTick: { show: false },
-      axisLabel: { margin: 8 },
-      splitLine: { lineStyle: { color: 'var(--vscode-charts-lines)' } },
-      name: chartMode === 'cumulative' ? 'Matches so far' : 'Matches',
-      nameLocation: 'middle',
-      nameGap: 34,
-      nameTextStyle: { color: 'var(--vscode-descriptionForeground)' },
-    },
+    // The second, hidden axis carries the slider overview (issue 269).
+    yAxis: [
+      {
+        type: 'value',
+        minInterval: 1,
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { margin: 8 },
+        splitLine: { lineStyle: { color: 'var(--vscode-charts-lines)' } },
+        name: chartMode === 'cumulative' ? 'Matches so far' : 'Matches',
+        nameLocation: 'middle',
+        nameGap: 34,
+        nameTextStyle: { color: 'var(--vscode-descriptionForeground)' },
+      },
+      OVERVIEW_Y_AXIS,
+    ],
     // Per-item opacity is encoded for bars. Line and area modes show selection
     // through their point symbols instead.
     ...(usesSelectionVisual
@@ -410,7 +419,8 @@ export function ConcordanceDispersionSummary({
             type: 'piecewise',
             show: false,
             dimension: SELECTION_DIMENSION,
-            seriesIndex: seriesOptions.map((_, index) => index),
+            // The slider overview is series 0, so the sources start at 1.
+            seriesIndex: seriesOptions.map((_, index) => index + 1),
             pieces: [
               { value: 1, opacity: 1 },
               { value: 0, opacity: 0.25 },
@@ -418,7 +428,26 @@ export function ConcordanceDispersionSummary({
           },
         }
       : {}),
-    series: chartSeries,
+    // First, because ECharts draws the slider's overview from the first
+    // series: the total of all sources per bin (issue 269).
+    series: [
+      sliderOverviewSeries(
+        sliderOverviewData({
+          data: chartData,
+          xKey: 'binCenter',
+          xAxisType: 'value',
+          extent: [0, 100],
+          totals: chartData.map((row) =>
+            series.reduce((sum, item) => {
+              const value = row[item.key];
+              return sum + (typeof value === 'number' && Number.isFinite(value) ? value : 0);
+            }, 0),
+          ),
+        }),
+        1,
+      ),
+      ...chartSeries,
+    ],
   };
   const getPointSummary = (index: number) => {
     const row = chartData[index];

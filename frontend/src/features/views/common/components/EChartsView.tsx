@@ -345,7 +345,13 @@ function EChartsInstance({
     const bounded = Math.max(0, Math.min(pointCount - 1, nextIndex));
     setActiveIndex(bounded);
     setLiveText(summaryRef.current?.(bounded) ?? `Point ${String(bounded + 1)}`);
-    chartRef.current?.dispatchAction({ type: 'showTip', seriesIndex: 0, dataIndex: bounded });
+    // Hidden helper series (ids starting __wordflow_, such as the slider
+    // overview) come first; the tip belongs to the first real series.
+    chartRef.current?.dispatchAction({
+      type: 'showTip',
+      seriesIndex: firstDataSeriesIndex(option),
+      dataIndex: bounded,
+    });
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -463,6 +469,17 @@ function EChartsInstance({
 }
 
 /** Resets viewport-only state by remounting the imperative boundary for a new result key. */
+/** Index of the first series that is not a hidden `__wordflow_` helper. */
+const firstDataSeriesIndex = (option: EChartsCoreOption): number => {
+  const series = (option as { series?: unknown }).series;
+  if (!Array.isArray(series)) return 0;
+  const index = series.findIndex((item: unknown) => {
+    const id = (item as { id?: unknown } | null)?.id;
+    return !(typeof id === 'string' && id.startsWith('__wordflow_'));
+  });
+  return Math.max(0, index);
+};
+
 export function EChartsView(props: EChartsViewProps) {
   return <EChartsInstance key={props.dataResetKey} {...props} />;
 }

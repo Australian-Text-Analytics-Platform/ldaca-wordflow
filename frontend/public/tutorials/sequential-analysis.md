@@ -190,7 +190,7 @@ selected periods, zoom, chart type, and axis mode.
 
 <h3 id="help-sequential-zoom">Zoom and navigation</h3>
 
-Drag the ends of the slider under the chart to zoom along the horizontal axis, or drag its middle to move the zoomed range. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. A plain scroll with the mouse wheel or trackpad scrolls the page, even over the chart. To zoom with the wheel, hold ⌘ on a Mac (Ctrl elsewhere) while scrolling over the chart. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
+Drag the ends of the slider under the chart to zoom along the horizontal axis, or drag its middle to move the zoomed range. The shape inside the slider is an overview of the whole result: the total of the groups shown, for each period, laid out like the chart, so with **To scale** spacing empty periods show as gaps there too. With **Normalise to 100%** on, the overview still shows counts. The toolbar also provides keyboard-accessible **Zoom in**, **Zoom out**, and **Reset zoom** buttons. A plain scroll with the mouse wheel or trackpad scrolls the page, even over the chart. To zoom with the wheel, hold ⌘ on a Mac (Ctrl elsewhere) while scrolling over the chart. Zoom changes only the viewport: it does not change the analysis result or clear selected periods.
 
 <h3 id="help-sequential-period-selection">Period selection</h3>
 

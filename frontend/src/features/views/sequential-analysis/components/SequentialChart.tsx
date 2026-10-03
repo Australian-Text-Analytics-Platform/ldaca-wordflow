@@ -87,6 +87,7 @@ export function SequentialChart({
                   chartType={model.chartType}
                   xAxis={model.xAxis}
                   height={chartHeight}
+                  overviewValue={model.overviewValue}
                   tooltip={{
                     labelFormatter: model.tooltip.labelFormatter,
                     valueFormatter: model.tooltip.valueFormatter,
