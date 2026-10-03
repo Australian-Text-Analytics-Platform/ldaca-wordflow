@@ -9,7 +9,7 @@ import {
   type ConcordanceAnalysisResponse,
   type ConcordanceRunAllResult,
   type ConcordanceDocumentDataBlockCreationSource,
-  type DataBlockCreationSource,
+  type SortedDataBlockCreationSource,
 } from '@/api';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
@@ -56,6 +56,7 @@ import {
 } from '@/features/workspace/common/workspaceNodeMetadata';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import { CONCORDANCE_COMBINED_NODE_KEY } from './concordanceTableDomain';
+import { concordanceDetachSort } from './concordanceTablePresentation';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -689,7 +690,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     });
   };
 
-  const handleAddToWorkspace = async (sources: DataBlockCreationSource[]) => {
+  const handleAddToWorkspace = async (sources: SortedDataBlockCreationSource[]) => {
     if (!concordanceRunAll) return;
     setIsAddingToWorkspace(true);
     try {
@@ -721,9 +722,13 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           sources: documentSources,
         });
       } else {
+        // Rows go in the order each table shows (issue 275).
         await createResultDataBlocks(host.tabId, concordanceRunAll.id, {
           kind: 'concordance_match_data_block_creation',
-          sources,
+          sources: sources.map((source) => ({
+            ...source,
+            ...concordanceDetachSort(nodePagination[source.source_node_id], viewMode),
+          })),
         });
       }
       setAddToWorkspaceDialogOpen(false);

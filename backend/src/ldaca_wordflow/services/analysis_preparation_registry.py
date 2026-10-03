@@ -251,6 +251,7 @@ def _prepare_result_data_block_creation(
         raise InvalidInputError("Run All Result is unavailable")
     result_paths: dict[uuid.UUID, str] = {}
     document_columns: dict[uuid.UUID, str | None] = {}
+    case_sensitive: dict[uuid.UUID, bool] = {}
 
     if isinstance(
         request,
@@ -265,6 +266,7 @@ def _prepare_result_data_block_creation(
             parent,
             result_paths,
             document_columns,
+            case_sensitive,
         )
     elif isinstance(request, QuotationResultDataBlockCreationAnalysisRequest):
         _prepare_quotation_data_block_source(
@@ -287,6 +289,7 @@ def _prepare_result_data_block_creation(
         request_payload=request.model_dump(mode="json"),
         result_paths=result_paths,
         document_columns=document_columns,
+        case_sensitive=case_sensitive,
     )
 
 
@@ -297,6 +300,7 @@ def _prepare_concordance_data_block_sources(
     parent: AnalysisRecord,
     result_paths: dict[uuid.UUID, str],
     document_columns: dict[uuid.UUID, str | None],
+    case_sensitive: dict[uuid.UUID, bool],
 ) -> None:
     if not isinstance(parent.request, ConcordanceRunAllAnalysisRequest):
         raise InvalidInputError("Concordance Data Block Creation parent is invalid")
@@ -334,6 +338,11 @@ def _prepare_concordance_data_block_sources(
             )
         )
         document_columns[selection.source_node_id] = descriptor.document_column
+        # The table sorted L1/R1 and matched text by this setting (issue 275).
+        source_request = getattr(child.request, "source", None)
+        case_sensitive[selection.source_node_id] = bool(
+            getattr(source_request, "case_sensitive", True)
+        )
 
 
 def _prepare_quotation_data_block_source(

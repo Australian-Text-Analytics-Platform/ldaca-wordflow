@@ -351,6 +351,7 @@ export function useConcordanceResultSession({
           (nodeId) => nodeId !== CONCORDANCE_COMBINED_NODE_KEY,
         )
       : [];
+  const unsortedRows = isReview && reviewRowUnit === 'documents';
   const projections = nodeIds.map((nodeId) => {
     const base = effectiveBaseResult?.data[nodeId];
     const stateForNode = state.nodePagination[nodeId];
@@ -359,11 +360,15 @@ export function useConcordanceResultSession({
       node_id: nodeId,
       page: viewMode === 'combined' ? combinedPage : (stateForNode?.currentPage ?? 1),
       page_size: pageSize,
+      // The Dispersion documents table cannot be sorted, so it never takes the
+      // Table view's sort (an L1 sort was refused by the documents query); the
+      // Table keeps its sort for when the user switches back (issue 275).
       sort_by:
-        viewMode === 'combined' || stateForNode?.sortBy === ''
+        viewMode === 'combined' || unsortedRows || stateForNode?.sortBy === ''
           ? null
           : (stateForNode?.sortBy ?? null),
-      descending: viewMode === 'combined' ? false : (stateForNode?.descending ?? false),
+      descending:
+        viewMode === 'combined' || unsortedRows ? false : (stateForNode?.descending ?? false),
     };
     const matchesBase =
       viewMode === 'separated' &&

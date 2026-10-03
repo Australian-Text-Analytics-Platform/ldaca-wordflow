@@ -288,8 +288,10 @@ Clicking a header again reverses the order; **Original order** in the source's
 header returns to the Data Block order. The document header remains plain, and
 the combined table remains unsorted.
 
-Sorting changes only how the table is shown. **Add to Project** always writes
-rows in the Data Block order, whatever the table is sorted by.
+What you see is what you get: **Add to Project** from Table view writes the
+matches in the order each source's table shows, sorted or in Data Block order.
+Combined view is never sorted, so its Data Blocks keep the Data Block order, as
+do Data Blocks added from Dispersion view.
 
 After Run, the density chart always summarises the complete result, not only
 the visible page.

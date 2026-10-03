@@ -361,6 +361,18 @@ class DataBlockCreationSource(_StrictModel):
         return self
 
 
+class SortedDataBlockCreationSource(DataBlockCreationSource):
+    """A selection from a sortable Result table, written in the table's order.
+
+    ``sort_by``/``descending`` repeat the table's sort when Add to Project was
+    clicked; ``None`` means Data Block order. What you see is what you get
+    (issue 275).
+    """
+
+    sort_by: ColumnName | None = Field(default=None, max_length=500)
+    descending: bool = False
+
+
 class SequentialDataBlockCreationSource(DataBlockCreationSource):
     """One immutable Trends filter and source-column selection."""
 
@@ -420,7 +432,7 @@ class ConcordanceMatchDataBlockCreationAnalysisRequest(_StrictModel):
     kind: Literal["concordance_match_data_block_creation"] = (
         "concordance_match_data_block_creation"
     )
-    sources: list[DataBlockCreationSource] = Field(min_length=1, max_length=2)
+    sources: list[SortedDataBlockCreationSource] = Field(min_length=1, max_length=2)
 
     @model_validator(mode="after")
     def validate_sources(self) -> ConcordanceMatchDataBlockCreationAnalysisRequest:
@@ -450,7 +462,7 @@ class QuotationResultDataBlockCreationAnalysisRequest(_StrictModel):
     kind: Literal["quotation_result_data_block_creation"] = (
         "quotation_result_data_block_creation"
     )
-    source: DataBlockCreationSource
+    source: SortedDataBlockCreationSource
 
 
 class SequentialDataBlockCreationAnalysisRequest(_StrictModel):

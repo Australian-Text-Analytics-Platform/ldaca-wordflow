@@ -208,6 +208,51 @@ describe('useConcordanceResultSession', () => {
     });
   });
 
+  it('never sends the Table sort to the unsortable Dispersion documents (issue 275)', async () => {
+    queryConcordanceDocumentProjectionTableMock.mockResolvedValue({
+      table: {},
+      columns: [],
+      schema: [],
+      rows: [],
+      hasNext: false,
+      etag: 'document-page',
+    });
+    getConcordanceTableDensityMock.mockResolvedValue({
+      data: { resolution: 100, document_count: 0, match_count: 0, series: [] },
+    });
+    const { result: hook } = renderHook(
+      () =>
+        useConcordanceResultSession({
+          workspaceId: 'workspace-1',
+          analysisId: 'analysis-1',
+          baseResult: null,
+          viewMode: 'separated',
+          combinedPage: 1,
+          selectedNodes: [projectWorkspaceNodeMetadata({ id: 'node-1', name: 'Corpus' })],
+          showDispersion: true,
+          reviewSources: [reviewSource],
+          selectedBinIndices: {},
+          excludedMatchedTexts: new Set(),
+          binCount: 20,
+        }),
+      { wrapper: createWrapper() },
+    );
+
+    act(() => {
+      hook.current.handleReviewSort('CONC_l1', 'node-1');
+    });
+
+    expect(hook.current.nodePagination['node-1']?.sortBy).toBe('CONC_l1');
+    await waitFor(() => {
+      expect(queryConcordanceDocumentProjectionTableMock).toHaveBeenCalled();
+    });
+    for (const [request] of queryConcordanceDocumentProjectionTableMock.mock.calls) {
+      expect(request.body.sort_by).toBeNull();
+      expect(request.body.descending).toBe(false);
+    }
+    queryConcordanceDocumentProjectionTableMock.mockClear();
+  });
+
   it('applies one exact-term exclusion set to every source projection', async () => {
     queryConcordanceDocumentProjectionTableMock.mockResolvedValue({
       table: {},

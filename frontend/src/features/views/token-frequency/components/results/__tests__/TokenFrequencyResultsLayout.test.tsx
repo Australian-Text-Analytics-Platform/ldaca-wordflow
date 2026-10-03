@@ -662,6 +662,36 @@ describe('Token frequency result layouts', () => {
     }
   });
 
+  it('exports filtered Keyword Analysis rows in the order the table shows (issue 275)', async () => {
+    const user = userEvent.setup();
+    const onDownloadFrequencyCsv = vi.fn();
+    const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
+    const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
+    render(
+      <TokenFrequencyUnifiedTokenSection
+        {...baseUnifiedSectionProps}
+        normalizedNodeResults={[nodeA, nodeB]}
+        nodeDisplayResults={[nodeA, nodeB]}
+        lastCompareNodeIds={['node-a', 'node-b']}
+        statistics={[
+          buildStatistic({ token: 'keep-low', log_likelihood_llv: 1 }),
+          buildStatistic({ token: 'drop-top', log_likelihood_llv: 9 }),
+          buildStatistic({ token: 'keep-high', log_likelihood_llv: 5 }),
+        ]}
+        tokenFilter="keep*"
+        onDownloadFrequencyCsv={onDownloadFrequencyCsv}
+        view="list"
+      />,
+    );
+
+    const statisticsCard = screen.getByRole('region', { name: 'Keyword Analysis statistics' });
+    await user.click(within(statisticsCard).getByRole('button', { name: 'Download frequencies' }));
+
+    // The table sorts by log-likelihood, highest first, after filtering.
+    const exported = onDownloadFrequencyCsv.mock.calls.at(-1)?.[1] as { token: string }[];
+    expect(exported.map((row) => row.token)).toEqual(['keep-high', 'keep-low']);
+  });
+
   it('filters the Juxtorpus cloud and Keyword Analysis CSV from one shared value', async () => {
     const user = userEvent.setup();
     const onDownloadFrequencyCsv = vi.fn();

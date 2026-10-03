@@ -1285,7 +1285,8 @@ export type CombineColumnPart = {
  *
  * Columns of any type are converted to text. ``empty_values`` decides what a
  * missing value does: ``blank`` treats it as empty text, ``empty_result``
- * leaves the whole combined value empty (null).
+ * leaves the whole combined value empty (null). A template of text only
+ * gives every row the same fixed value (issue 273).
  */
 export type CombineColumnsNodeEditRequest = {
     /**
@@ -1732,7 +1733,7 @@ export type ConcordanceMatchDataBlockCreationAnalysisRequest = {
     /**
      * Sources
      */
-    sources: Array<DataBlockCreationSource>;
+    sources: Array<SortedDataBlockCreationSource>;
 };
 
 /**
@@ -2054,26 +2055,6 @@ export type DataBlockCreationOutput = {
      * Record Count
      */
     record_count: number;
-    /**
-     * Source Node Id
-     */
-    source_node_id: string;
-};
-
-/**
- * DataBlockCreationSource
- *
- * One immutable selection for publishing a successful Analysis Result.
- */
-export type DataBlockCreationSource = {
-    /**
-     * New Node Name
-     */
-    new_node_name: string;
-    /**
-     * Selected Columns
-     */
-    selected_columns: Array<string>;
     /**
      * Source Node Id
      */
@@ -3391,7 +3372,7 @@ export type QuotationResultDataBlockCreationAnalysisRequest = {
      * Kind
      */
     kind?: 'quotation_result_data_block_creation';
-    source: DataBlockCreationSource;
+    source: SortedDataBlockCreationSource;
 };
 
 /**
@@ -4365,6 +4346,38 @@ export type SliceNodeCreateRequest = {
      * Sample Size
      */
     sample_size?: number | null;
+    /**
+     * Source Node Id
+     */
+    source_node_id: string;
+};
+
+/**
+ * SortedDataBlockCreationSource
+ *
+ * A selection from a sortable Result table, written in the table's order.
+ *
+ * ``sort_by``/``descending`` repeat the table's sort when Add to Project was
+ * clicked; ``None`` means Data Block order. What you see is what you get
+ * (issue 275).
+ */
+export type SortedDataBlockCreationSource = {
+    /**
+     * Descending
+     */
+    descending?: boolean;
+    /**
+     * New Node Name
+     */
+    new_node_name: string;
+    /**
+     * Selected Columns
+     */
+    selected_columns: Array<string>;
+    /**
+     * Sort By
+     */
+    sort_by?: string | null;
     /**
      * Source Node Id
      */

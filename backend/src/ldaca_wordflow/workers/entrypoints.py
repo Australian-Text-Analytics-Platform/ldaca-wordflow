@@ -96,6 +96,7 @@ def analysis_process(
             request_payload=invocation.request_payload,
             result_paths=invocation.result_paths,
             document_columns=invocation.document_columns,
+            case_sensitive=invocation.case_sensitive,
             progress_callback=progress,
         )
     if isinstance(invocation, ConcordanceRunAllInput):

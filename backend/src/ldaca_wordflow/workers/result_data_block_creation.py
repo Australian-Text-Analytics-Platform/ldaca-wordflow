@@ -12,6 +12,56 @@ from .utils import process_entrypoint
 logger = logging.getLogger(__name__)
 
 
+def _sort_like_the_table(
+    frame: Any,
+    path: str,
+    *,
+    nested_column: str,
+    sort_by: str | None,
+    descending: bool,
+    case_sensitive: bool,
+) -> Any:
+    """Put match rows in the order the Result table showed (issue 275).
+
+    The sortable columns are the ones the Review table offers: the document
+    and metadata columns, plus Concordance's scalar CONC_ columns.
+    """
+
+    import polars as pl
+
+    from ..analysis.result_sort import sort_result_rows
+
+    schema = frame.collect_schema()
+    if sort_by is not None:
+        source_schema = pl.scan_parquet(path).collect_schema()
+        sortable = {
+            name
+            for name in source_schema.names()
+            if name != nested_column and not name.startswith("__wordflow")
+        }
+        nested = source_schema.get(nested_column)
+        if nested_column == "concordance" and isinstance(nested, pl.List):
+            inner = nested.inner
+            if isinstance(inner, pl.Struct):
+                sortable.update(field.name for field in inner.fields)
+        if (
+            sort_by not in sortable
+            or sort_by not in schema
+            or schema[sort_by].is_nested()
+            or schema[sort_by] == pl.Object
+        ):
+            raise ValueError("Data Block Creation sort column is unavailable")
+    return sort_result_rows(
+        frame,
+        schema,
+        concordance=nested_column == "concordance",
+        matches=True,
+        sort_by=sort_by,
+        descending=descending,
+        case_sensitive=case_sensitive,
+    )
+
+
 @process_entrypoint
 def run_result_data_block_creation(
     *,
@@ -19,6 +69,7 @@ def run_result_data_block_creation(
     request_payload: dict[str, Any],
     result_paths: dict[uuid.UUID, str],
     document_columns: dict[uuid.UUID, str | None],
+    case_sensitive: dict[uuid.UUID, bool] | None = None,
     progress_callback: Callable[[float, str], None] | None = None,
 ) -> dict[str, Any]:
     """Create private output files for one atomic Data Block Creation."""
@@ -176,6 +227,14 @@ def run_result_data_block_creation(
                         )
                     )
                 frame = frame.unnest(nested_column)
+                frame = _sort_like_the_table(
+                    frame,
+                    path,
+                    nested_column=nested_column,
+                    sort_by=getattr(selection, "sort_by", None),
+                    descending=getattr(selection, "descending", False),
+                    case_sensitive=(case_sensitive or {}).get(source_id, True),
+                )
                 output_columns = selection.selected_columns
             schema = frame.collect_schema()
             if any(column not in schema for column in output_columns):

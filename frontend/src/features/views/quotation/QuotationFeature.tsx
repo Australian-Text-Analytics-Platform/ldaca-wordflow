@@ -8,7 +8,7 @@ import {
   type QuotationAnalysisRequest,
   type QuotationResult,
   type QuotationRunAllResult,
-  type DataBlockCreationSource,
+  type SortedDataBlockCreationSource,
 } from '@/api';
 import { Button } from '@/components/ui/button';
 import {
@@ -476,14 +476,20 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     });
   };
 
-  const handleAddToWorkspace = async (sources: DataBlockCreationSource[]) => {
+  const handleAddToWorkspace = async (sources: SortedDataBlockCreationSource[]) => {
     const source = sources[0];
     if (!quotationRunAll || !source || sources.length !== 1) return;
     setIsAddingToWorkspace(true);
     try {
+      // Rows go in the order the Result table shows (issue 275).
+      const sortBy = runAllReviewQuery.sort_by ?? null;
       await createResultDataBlocks(host.tabId, quotationRunAll.id, {
         kind: 'quotation_result_data_block_creation',
-        source,
+        source: {
+          ...source,
+          sort_by: sortBy,
+          descending: sortBy ? runAllReviewQuery.descending : false,
+        },
       });
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Quotation Results to the Project.');

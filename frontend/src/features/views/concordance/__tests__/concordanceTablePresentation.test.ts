@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  concordanceDetachSort,
   concordanceRowBand,
   concordanceHeaderMode,
   concordanceSortColumn,
@@ -117,5 +118,26 @@ describe('findContextAnchor', () => {
     });
     expect(findContextAnchor('nothing here', 'cat', 'first')).toBeNull();
     expect(findContextAnchor('anything', '', 'first')).toBeNull();
+  });
+});
+
+describe('concordanceDetachSort (issue 275)', () => {
+  it('keeps the separated table sort and drops it in Combined view or when unsorted', () => {
+    expect(concordanceDetachSort({ sortBy: 'CONC_l1', descending: true }, 'separated')).toEqual({
+      sort_by: 'CONC_l1',
+      descending: true,
+    });
+    expect(concordanceDetachSort({ sortBy: 'CONC_l1', descending: true }, 'combined')).toEqual({
+      sort_by: null,
+      descending: false,
+    });
+    expect(concordanceDetachSort({ sortBy: '', descending: true }, 'separated')).toEqual({
+      sort_by: null,
+      descending: false,
+    });
+    expect(concordanceDetachSort(undefined, 'separated')).toEqual({
+      sort_by: null,
+      descending: false,
+    });
   });
 });

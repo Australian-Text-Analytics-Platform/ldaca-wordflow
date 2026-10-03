@@ -2707,7 +2707,7 @@
       },
       "CombineColumnsNodeEditRequest": {
         "additionalProperties": false,
-        "description": "Build a new text column from a template of columns and text (issue 143).\n\nColumns of any type are converted to text. ``empty_values`` decides what a\nmissing value does: ``blank`` treats it as empty text, ``empty_result``\nleaves the whole combined value empty (null).",
+        "description": "Build a new text column from a template of columns and text (issue 143).\n\nColumns of any type are converted to text. ``empty_values`` decides what a\nmissing value does: ``blank`` treats it as empty text, ``empty_result``\nleaves the whole combined value empty (null). A template of text only\ngives every row the same fixed value (issue 273).",
         "properties": {
           "empty_values": {
             "default": "blank",
@@ -3470,7 +3470,7 @@
           },
           "sources": {
             "items": {
-              "$ref": "#/components/schemas/DataBlockCreationSource"
+              "$ref": "#/components/schemas/SortedDataBlockCreationSource"
             },
             "maxItems": 2,
             "minItems": 1,
@@ -4065,39 +4065,6 @@
           "record_count"
         ],
         "title": "DataBlockCreationOutput",
-        "type": "object"
-      },
-      "DataBlockCreationSource": {
-        "additionalProperties": false,
-        "description": "One immutable selection for publishing a successful Analysis Result.",
-        "properties": {
-          "new_node_name": {
-            "maxLength": 500,
-            "minLength": 1,
-            "title": "New Node Name",
-            "type": "string"
-          },
-          "selected_columns": {
-            "items": {
-              "minLength": 1,
-              "type": "string"
-            },
-            "minItems": 1,
-            "title": "Selected Columns",
-            "type": "array"
-          },
-          "source_node_id": {
-            "format": "uuid",
-            "title": "Source Node Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "source_node_id",
-          "selected_columns",
-          "new_node_name"
-        ],
-        "title": "DataBlockCreationSource",
         "type": "object"
       },
       "DataBlockExportFormat": {
@@ -6650,7 +6617,7 @@
             "type": "string"
           },
           "source": {
-            "$ref": "#/components/schemas/DataBlockCreationSource"
+            "$ref": "#/components/schemas/SortedDataBlockCreationSource"
           }
         },
         "required": [
@@ -8511,6 +8478,57 @@
           "source_node_id"
         ],
         "title": "SliceNodeCreateRequest",
+        "type": "object"
+      },
+      "SortedDataBlockCreationSource": {
+        "additionalProperties": false,
+        "description": "A selection from a sortable Result table, written in the table's order.\n\n``sort_by``/``descending`` repeat the table's sort when Add to Project was\nclicked; ``None`` means Data Block order. What you see is what you get\n(issue 275).",
+        "properties": {
+          "descending": {
+            "default": false,
+            "title": "Descending",
+            "type": "boolean"
+          },
+          "new_node_name": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "New Node Name",
+            "type": "string"
+          },
+          "selected_columns": {
+            "items": {
+              "minLength": 1,
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Selected Columns",
+            "type": "array"
+          },
+          "sort_by": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sort By"
+          },
+          "source_node_id": {
+            "format": "uuid",
+            "title": "Source Node Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "source_node_id",
+          "selected_columns",
+          "new_node_name"
+        ],
+        "title": "SortedDataBlockCreationSource",
         "type": "object"
       },
       "SourcePagePagination": {

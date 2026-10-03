@@ -71,8 +71,8 @@ date-time columns are shown as dates. The
 metadata headers can be sorted too. Generated quotation headers cannot be
 sorted in Preview, because Preview finds quotations one page at a time.
 Clicking a header again reverses the order; **Original order**, above the
-table, returns to the Data Block order. Sorting changes only how the table is
-shown: **Add to Project** always writes rows in the Data Block order.
+table, returns to the Data Block order. What you see is what you get: **Add to
+Project** writes the quotes in the order the table shows.
 
 ![Row Details for a quotation: quote type, speaker, verb, quote, and the document scrolled to the quote](tutorials/assets/quotation/row_details.png)
 

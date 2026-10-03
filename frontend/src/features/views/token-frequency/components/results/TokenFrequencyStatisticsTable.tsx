@@ -402,13 +402,14 @@ export const TokenFrequencyStatisticsTable = ({
   });
 
   /**
-   * Called by: TokenFrequencyStatisticsTable download button to export filtered or sorted keyness rows.
-   * Flow: choose sorted rows, filtered rows, or full data based on table state and token filter, then delegate CSV download with the keyness label.
+   * Called by: TokenFrequencyStatisticsTable download button.
+   * Flow: export every row the table would page through, in the order shown:
+   * the sorted row model comes after the token filter, so a filtered export
+   * keeps the sort too (issue 275, what you see is what you get).
    */
   const handleDownload = () => {
     const rows = table.getSortedRowModel().rows.map((row) => row.original);
-    const effectiveRows = table.getFilteredRowModel().rows.map((row) => row.original);
-    const downloadRows = tokenFilter.trim() ? effectiveRows : rows.length > 0 ? rows : data;
+    const downloadRows = tokenFilter.trim() || rows.length > 0 ? rows : data;
     onDownloadFrequencyCsv('token-keyness', downloadRows);
   };
 

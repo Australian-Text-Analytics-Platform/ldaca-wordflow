@@ -38,7 +38,7 @@ from ldaca_wordflow.domain.workspace import (
     QuotationResultDataBlockCreationAnalysisRequest,
     SequentialDataBlockCreationAnalysisRequest,
     SequentialDataBlockCreationSource,
-    DataBlockCreationSource,
+    SortedDataBlockCreationSource,
     persisted_submission,
     public_analysis,
 )
@@ -293,12 +293,12 @@ def test_run_all_and_data_block_creation_have_distinct_strict_requests() -> None
 
     creation = ConcordanceMatchDataBlockCreationAnalysisRequest(
         sources=[
-            DataBlockCreationSource(
+            SortedDataBlockCreationSource(
                 source_node_id=first,
                 selected_columns=["text", "CONC_matched_text"],
                 new_node_name="First concordance",
             ),
-            DataBlockCreationSource(
+            SortedDataBlockCreationSource(
                 source_node_id=second,
                 selected_columns=["body"],
                 new_node_name="Second concordance",
@@ -320,7 +320,7 @@ def test_run_all_and_data_block_creation_have_distinct_strict_requests() -> None
         engine=LocalQuotationEngineSelection(type=QuotationEngineType.LOCAL),
     )
     quotation_run_all = QuotationResultDataBlockCreationAnalysisRequest(
-        source=DataBlockCreationSource(
+        source=SortedDataBlockCreationSource(
             source_node_id=quotation_source.node_id,
             selected_columns=["text", "QUOTE_quote"],
             new_node_name="Quotations",

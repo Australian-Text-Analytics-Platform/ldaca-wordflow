@@ -1,4 +1,4 @@
-import type { DataBlockCreationSource, RunAllSourceTableResource } from '@/api';
+import type { SortedDataBlockCreationSource, RunAllSourceTableResource } from '@/api';
 import {
   AddToWorkspaceDialog,
   type AddToWorkspaceColumn,
@@ -12,7 +12,7 @@ interface Props {
   nameSuffix: string;
   sources: RunAllSourceTableResource[];
   isSubmitting: boolean;
-  onSubmit: (sources: DataBlockCreationSource[]) => void;
+  onSubmit: (sources: SortedDataBlockCreationSource[]) => void;
   mode?: 'match' | 'document';
   allowSourceSelection?: boolean;
 }

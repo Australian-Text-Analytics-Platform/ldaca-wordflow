@@ -73,6 +73,8 @@ class ResultDataBlockCreationInput:
     request_payload: dict[str, Any]
     result_paths: dict[uuid.UUID, str]
     document_columns: dict[uuid.UUID, str | None]
+    # Concordance's Case sensitive per source, for the table sort (issue 275).
+    case_sensitive: dict[uuid.UUID, bool] = field(default_factory=dict)
     kind: Literal["result_data_block_creation"] = field(
         default="result_data_block_creation",
         init=False,

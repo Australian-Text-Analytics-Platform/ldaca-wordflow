@@ -36,13 +36,11 @@ from ..analysis.topic_projection import (
     encode_topic_projection_basis,
     project_rust_topic_projection_basis,
 )
+from ..analysis.result_sort import sort_result_rows
 from ..analysis.generated_columns import (
-    CONC_L1_COLUMN,
-    CONC_R1_COLUMN,
     CONC_MATCHED_TEXT_COLUMN,
     CONC_START_IDX_COLUMN,
     QUOTE_COLUMN_NAMES,
-    QUOTE_ROW_IDX_COLUMN,
 )
 from ..domain.workspace import (
     AnalysisArtifactRecord,
@@ -826,40 +824,17 @@ def _projected_artifact_page(
     if sort_by is not None and sort_by not in sortable_columns:
         raise InvalidInputError("Result sort column not found")
 
-    stable_columns = ["__wordflow_source_row_id"]
-    if row_unit == "matches":
-        stable_columns.append(
-            CONC_START_IDX_COLUMN
-            if kind == "concordance_run_all"
-            else QUOTE_ROW_IDX_COLUMN
-        )
-    if sort_by is not None and concordance_match_projection:
-        # Ties break by source document, then match position (#266): without
-        # them Polars' sort-then-slice gave pages that repeated or skipped
-        # matches sharing an L1/R1 word, and rows with one word were not in
-        # reading order. With Case sensitive off, L1/R1 and the matched text
-        # sort ignoring case (#267), so "The" and "the" mix in Data Block order.
-        key = pl.col(sort_by)
-        if not case_sensitive and sort_by in {
-            CONC_L1_COLUMN,
-            CONC_R1_COLUMN,
-            CONC_MATCHED_TEXT_COLUMN,
-        }:
-            key = key.str.to_lowercase()
-        ties = [column for column in stable_columns if column in schema]
-        frame = frame.sort(
-            [key, *ties],
-            descending=[descending, *([False] * len(ties))],
-        )
-    else:
-        order = [sort_by, *stable_columns] if sort_by is not None else stable_columns
-        order = [column for column in order if column in schema]
-        frame = frame.sort(
-            order,
-            descending=[descending, *([False] * (len(order) - 1))]
-            if sort_by is not None
-            else False,
-        )
+    # One order shared with Add to Project (issue 275); ties and case rules
+    # are documented in analysis/result_sort.py (issues 266, 267, 274).
+    frame = sort_result_rows(
+        frame,
+        schema,
+        concordance=kind == "concordance_run_all",
+        matches=row_unit == "matches",
+        sort_by=sort_by,
+        descending=descending,
+        case_sensitive=case_sensitive,
+    )
     if concordance_match_projection and "__wordflow_source_row_id" in schema:
         # Rows alternate bands by source document (#268), computed over the
         # whole sorted Result so bands carry across page boundaries.

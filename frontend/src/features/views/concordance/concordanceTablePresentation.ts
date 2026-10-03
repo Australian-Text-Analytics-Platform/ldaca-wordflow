@@ -109,3 +109,19 @@ export function findContextAnchor(
   }
   return found ? { index: found.index, length: found[0].length } : null;
 }
+
+/**
+ * The sort a Data Block made from one source's table should keep (issue 275):
+ * what you see is what you get. Mirrors the Review page query: Combined view
+ * and an empty sort mean Data Block order.
+ * Used by: ConcordanceFeature's Add Concordance Matches to Project.
+ */
+export function concordanceDetachSort(
+  pagination: { sortBy?: string | null; descending?: boolean } | undefined,
+  viewMode: 'separated' | 'combined',
+): { sort_by: string | null; descending: boolean } {
+  // An empty sortBy is Preview's spelling of unsorted.
+  const raw = pagination?.sortBy;
+  const sortBy = viewMode === 'combined' || !raw ? null : raw;
+  return { sort_by: sortBy, descending: sortBy ? Boolean(pagination?.descending) : false };
+}
