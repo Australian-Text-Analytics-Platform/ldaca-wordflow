@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { util, type DataType, type Field, type Type, type TypeMap } from 'apache-arrow';
+import type { DataType, Field, Type, TypeMap } from 'apache-arrow';
 
 import type { NodeColumnSelection } from '@/features/views/common/nodeSelectionTypes';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
@@ -16,6 +16,7 @@ import { MAX_CONCAT_NODES } from '../../types';
 import { dedupeNodeIds } from '@/features/workspace/common/utils/selectionUtils';
 import { toast } from 'sonner';
 import { createdBlockName } from '../../builder/createdBlockName';
+import { columnTypesMatch } from '../columnTypesMatch';
 
 type ComparableArrowType = DataType<Type, TypeMap>;
 
@@ -199,7 +200,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
       return (
         !baseField ||
         !summaryField ||
-        !util.compareTypes(comparableType(baseField), comparableType(summaryField)) ||
+        !columnTypesMatch(comparableType(baseField), comparableType(summaryField)) ||
         baseField.metadata.get('ARROW:extension:name') !==
           summaryField.metadata.get('ARROW:extension:name')
       );
