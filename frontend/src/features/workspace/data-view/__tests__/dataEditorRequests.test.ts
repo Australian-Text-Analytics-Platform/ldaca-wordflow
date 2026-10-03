@@ -78,7 +78,14 @@ describe('Data Editor request builders (issue 143)', () => {
     const combine = (template: string, outputName = 'both') =>
       buildCombine({ template, outputName, emptyValues: 'blank' }, columns);
     expect(combine('{text}', 'text')).toBeNull();
-    expect(combine('just text')).toBeNull();
+    expect(combine('')).toBeNull();
+    // Text only: a fixed value for every row (issue 273).
+    expect(combine('Hansard')?.request).toEqual({
+      kind: 'combine_columns',
+      parts: [{ kind: 'text', text: 'Hansard' }],
+      output_column: 'both',
+      empty_values: 'blank',
+    });
     expect(combine('{nope} {text}')).toBeNull();
     expect(combine('{party}: {text} {{x}}')).toEqual({
       request: {

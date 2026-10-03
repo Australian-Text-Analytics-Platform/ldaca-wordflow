@@ -59,6 +59,11 @@ EDITS: list[dict[str, Any]] = [
         ],
         "output_column": "label",
     },
+    {
+        "kind": "combine_columns",
+        "parts": [{"kind": "text", "text": "Hansard"}],
+        "output_column": "corpus",
+    },
     *[
         {
             "kind": "count",

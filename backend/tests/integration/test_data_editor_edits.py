@@ -178,16 +178,19 @@ def test_combine_columns_template_handles_types_and_missing_values(
         )
         assert unknown.status_code == 400
         assert "missing" in unknown.text
+        # Text only: every row gets the same fixed value (issue 273).
         text_only = client.post(
             f"{base}/edits/preview",
             json={
                 "kind": "combine_columns",
-                "parts": [{"kind": "text", "text": "x"}],
+                "parts": [{"kind": "text", "text": "Hansard"}],
                 "output_column": "label",
             },
             headers=unsafe,
         )
-        assert text_only.status_code == 422
+        assert text_only.status_code == 200, text_only.text
+        frame = pl.read_ipc_stream(BytesIO(text_only.content))
+        assert frame["label"].to_list() == ["Hansard", "Hansard", "Hansard"]
     finally:
         client.__exit__(None, None, None)
 

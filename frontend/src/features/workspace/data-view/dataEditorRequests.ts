@@ -178,7 +178,8 @@ export function buildCombine(
   const output = newName(form.outputName, columns);
   const parsed = parseCombineTemplate(form.template, columns);
   if (!output || parsed.error || parsed.unknown.length > 0) return null;
-  if (!parsed.parts.some((part) => part.kind === 'column')) return null;
+  // Text with no column is allowed: every row gets that fixed value (issue 273).
+  if (parsed.parts.length === 0) return null;
   return {
     request: {
       kind: 'combine_columns',

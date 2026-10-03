@@ -216,6 +216,8 @@ export function CombineTemplateField({
           <>
             Uses {used.join(', ')}. Write {'{{'} or {'}}'} for a literal brace.
           </>
+        ) : parsed.parts.length > 0 ? (
+          <>No column: every row gets this text. Type {'{'} to add a column.</>
         ) : (
           <>Type {'{'} to pick a column, or use Insert column. Other text is kept as written.</>
         )}

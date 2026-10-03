@@ -28,6 +28,7 @@ import {
   defaultNewColumnName,
   COUNT_MEASURES,
   defaultCountName,
+  parseCombineTemplate,
   type CountMeasure,
   type SplitDirection,
   templateColumnToken,
@@ -227,6 +228,11 @@ export function DataEditorToolPanel() {
   const [connector, setConnector] = useState(' ');
   const [template, setTemplate] = useState(initialColumn ? templateColumnToken(initialColumn) : '');
   const [emptyValues, setEmptyValues] = useState<EmptyValues>('blank');
+  // A missing value can only come from a column; a text-only template gives
+  // every row the same fixed value (issue 273).
+  const templateUsesColumn = parseCombineTemplate(template, columns).parts.some(
+    (part) => part.kind === 'column',
+  );
   const [operation, setOperation] = useState<CleanTextOperation>(
     CLEAN_TEXT_OPERATIONS.find((option) => option.value === initialOperation)?.value ?? 'trim',
   );
@@ -382,7 +388,7 @@ export function DataEditorToolPanel() {
               value={outputName}
               onChange={touch(setOutputName)}
             />
-            <fieldset className="space-y-1">
+            <fieldset className="space-y-1 disabled:opacity-50" disabled={!templateUsesColumn}>
               <legend className="text-body font-medium">When a value is missing</legend>
               <label className="flex items-center gap-2 text-body">
                 <input

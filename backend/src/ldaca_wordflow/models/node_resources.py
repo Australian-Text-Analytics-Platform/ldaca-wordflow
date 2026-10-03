@@ -309,19 +309,14 @@ class CombineColumnsNodeEditRequest(_StrictRequest):
 
     Columns of any type are converted to text. ``empty_values`` decides what a
     missing value does: ``blank`` treats it as empty text, ``empty_result``
-    leaves the whole combined value empty (null).
+    leaves the whole combined value empty (null). A template of text only
+    gives every row the same fixed value (issue 273).
     """
 
     kind: Literal["combine_columns"] = "combine_columns"
     parts: list[CombinePart] = Field(min_length=1, max_length=200)
     output_column: str = Field(min_length=1, max_length=200)
     empty_values: Literal["blank", "empty_result"] = "blank"
-
-    @model_validator(mode="after")
-    def validate_parts(self) -> CombineColumnsNodeEditRequest:
-        if not any(isinstance(part, CombineColumnPart) for part in self.parts):
-            raise ValueError("Combine columns needs at least one column")
-        return self
 
 
 class ReplaceNodeEditRequest(ReplaceDerivation):
