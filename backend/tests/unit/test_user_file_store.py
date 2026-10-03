@@ -650,3 +650,21 @@ async def test_upload_into_a_folder_removed_outside_wordflow_fails_cleanly(
     assert len(errors) == 1
     assert "moved or deleted during the upload" in str(errors[0])
     assert list((tmp_path / "alice").rglob(".*.upload")) == []
+
+
+async def test_import_published_check_says_no_for_a_folder_owned_by_another_import(
+    tmp_path: Path,
+) -> None:
+    # The same collection imported twice: the second import's half-published
+    # record must read as "not published" so startup cleans it up, instead of
+    # an error that marked the whole import history corrupt on every restart.
+    store = _store(tmp_path)
+    first = "767a27f3-418f-4783-b52c-83d75a3dd275"
+    second = "54578997-fb53-4cff-a526-0bd627f3dac0"
+    staging = await store.prepare_import_staging("alice", first)
+    (staging / "data.parquet").write_bytes(b"complete")
+    await store.install_import_staging("alice", first, "LDaCA/corpus")
+
+    assert await store.is_import_published("alice", first, "LDaCA/corpus") is True
+    assert await store.is_import_published("alice", second, "LDaCA/corpus") is False
+    assert await store.is_import_published("alice", second, "LDaCA/missing") is False

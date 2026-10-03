@@ -704,11 +704,11 @@ class UserFileStore:
             if not await self._run_sync(destination.exists):
                 return False
             owner = await self._run_sync(_read_import_owner, destination)
-            if owner != import_id:
-                raise ResourceConflictError(
-                    f"Destination {destination_path} is not owned by this import"
-                )
-            return True
+            # Another import owns the folder (the same collection imported
+            # again): this import was never published there. Raising here made
+            # startup mark the user's whole import history corrupt on every
+            # restart, because its prepared record was never cleared.
+            return owner == import_id
 
     async def reconcile_transient_storage(self, active_import_ids: set[str]) -> None:
         """Remove orphan import stages and interrupted upload temp files."""
