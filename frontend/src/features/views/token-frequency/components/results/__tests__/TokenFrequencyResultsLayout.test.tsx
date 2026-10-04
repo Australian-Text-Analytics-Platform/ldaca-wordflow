@@ -483,17 +483,16 @@ describe('Token frequency result layouts', () => {
     );
 
     expect(screen.getByText('Juxtorpus')).toBeInTheDocument();
-    expect(screen.queryByText('Reference Data Block')).not.toBeInTheDocument();
-    expect(screen.queryByText('Study Data Block')).not.toBeInTheDocument();
+    // The scale names both Data Blocks on screen, not only on hover (issue 281).
     const colorScale = within(screen.getByLabelText('Reference to Study colour scale'));
-    expect(colorScale.getByText('Reference')).toBeInTheDocument();
-    expect(colorScale.getByText('Study')).toBeInTheDocument();
+    expect(colorScale.getByText('Reference: Reference Data Block')).toBeInTheDocument();
+    expect(colorScale.getByText('Study: Study Data Block')).toBeInTheDocument();
 
     const referenceTrigger = colorScale.getByLabelText('Reference: Reference Data Block');
     const studyTrigger = colorScale.getByLabelText('Study: Study Data Block');
 
-    expect(referenceTrigger).toHaveTextContent('Reference');
-    expect(studyTrigger).toHaveTextContent('Study');
+    expect(referenceTrigger).toHaveTextContent('Reference: Reference Data Block');
+    expect(studyTrigger).toHaveTextContent('Study: Study Data Block');
 
     await user.hover(referenceTrigger);
     expect(screen.getByRole('tooltip')).toHaveTextContent('Reference Data Block');

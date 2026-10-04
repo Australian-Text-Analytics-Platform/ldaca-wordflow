@@ -160,6 +160,48 @@ export function resolveTopicCorpusColor(
   return defaultPalette[index] ?? fallback;
 }
 
+/**
+ * Legend for two Data Blocks (issue 281): each Data Block's colour, and the
+ * blend between them, which shows a topic's share of each Data Block (sizes
+ * relative to each Data Block, as the bubble fill uses). Shown under the
+ * graph and in every download, so the colours keep their meaning outside
+ * Wordflow. Null for one Data Block.
+ */
+export function topicCorpusLegend(
+  presentation: {
+    corpusCount: number;
+    panelNodeIds: string[];
+    nodeColors: Record<string, string>;
+    defaultPalette: string[];
+  },
+  nodeNames: readonly string[],
+): { label: string; color: string }[] | null {
+  if (presentation.corpusCount !== 2) return null;
+  const { panelNodeIds, nodeColors, defaultPalette } = presentation;
+  const colorA = resolveTopicCorpusColor(
+    0,
+    defaultPalette[0] ?? '#2563eb',
+    panelNodeIds,
+    nodeColors,
+    defaultPalette,
+  );
+  const colorB = resolveTopicCorpusColor(
+    1,
+    defaultPalette[1] ?? '#dc2626',
+    panelNodeIds,
+    nodeColors,
+    defaultPalette,
+  );
+  return [
+    { label: nodeNames[0] ?? 'First Data Block', color: colorA },
+    {
+      label: 'In between: shared by both, by share of each',
+      color: interpolateColor(colorA, colorB, 0.5),
+    },
+    { label: nodeNames[1] ?? 'Second Data Block', color: colorB },
+  ];
+}
+
 /** Maps backend topic coordinates into the renderer's stable virtual plane. */
 export function normalizeTopicPositions(
   topics: TopicModelingTopic[],

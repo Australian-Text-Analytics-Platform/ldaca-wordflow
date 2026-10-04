@@ -103,7 +103,7 @@ When two Data Blocks are selected, the Juxtorpus cloud appears below the clouds 
 - **Size** reflects combined frequency across both Data Blocks.
 - **Colour** shifts toward the Data Block where the word has the higher proportional share, so differences in corpus size do not dominate the palette.
 - Words are ranked by log₁₀(O<sub>S</sub> + O<sub>R</sub>) × LogRatio; the cloud shows the highest and lowest N words by that score (up to twice the cloud display limit).
-- The colour bar at the top shows which colour stands for the **Reference** corpus and which for the **Study** corpus.
+- The colour bar at the top names the **Reference** and **Study** Data Blocks beside their colours. A downloaded Juxtorpus cloud carries the same names and colours in a header and legend, so it can be read outside Wordflow.
 
 ![Juxtorpus cloud comparing the Study corpus (blue) with the Reference corpus (green)](tutorials/assets/token_frequency/juxtorpus.png)
 

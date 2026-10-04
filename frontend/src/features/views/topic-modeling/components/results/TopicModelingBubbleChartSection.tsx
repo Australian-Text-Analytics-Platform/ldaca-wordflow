@@ -12,7 +12,11 @@ import {
 import { csvBlob, saveBlob } from '@/lib/download';
 import { buildTopicsCSV } from './topicModelingCsv';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
-import { buildTopicBubbleModels, type TopicColorScheme } from './topicModelingGraph';
+import {
+  buildTopicBubbleModels,
+  topicCorpusLegend,
+  type TopicColorScheme,
+} from './topicModelingGraph';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
 import { toastError } from '@/lib/toastError';
 import { downloadTopicBubbleHtml } from './topicBubbleHtmlExport';
@@ -59,6 +63,29 @@ function TopicColorLegend({ scheme }: { scheme: TopicColorScheme }) {
             style={{ background: group.color }}
           />
           {group.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Names each Data Block's colour and the blend between them (issue 281). */
+function TopicCorpusLegend({ items }: { items: { label: string; color: string }[] }) {
+  return (
+    <div
+      role="group"
+      aria-label="Bubble colours by Data Block"
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 text-label-secondary text-description"
+    >
+      <span className="font-medium text-foreground">Bubble colour:</span>
+      {items.map((item, index) => (
+        <span key={`${item.label}:${String(index)}`} className="inline-flex items-center gap-1">
+          <span
+            aria-hidden="true"
+            className="inline-block size-3 rounded-full"
+            style={{ background: item.color }}
+          />
+          {item.label}
         </span>
       ))}
     </div>
@@ -131,9 +158,10 @@ export function TopicModelingBubbleChartSection({
     defaultPalette,
     colorScheme: activeColorScheme,
   };
+  const corpusLegend = topicCorpusLegend(corpusPresentation, nodeNames ?? []);
   const exportLegend = activeColorScheme
     ? activeColorScheme.groups.map((group) => ({ label: group.label, color: group.color }))
-    : [];
+    : (corpusLegend ?? []);
 
   /** Chart details shown above an image or HTML download. */
   const exportHeader = (): ChartExportHeaderItem[] => [
@@ -260,6 +288,7 @@ export function TopicModelingBubbleChartSection({
       </div>
 
       {activeColorScheme ? <TopicColorLegend scheme={activeColorScheme} /> : null}
+      {!activeColorScheme && corpusLegend ? <TopicCorpusLegend items={corpusLegend} /> : null}
 
       {controlRowSlot ?? null}
 

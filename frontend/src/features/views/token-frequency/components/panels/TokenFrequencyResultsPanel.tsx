@@ -18,6 +18,7 @@ import { StopWordsLanguageSelect } from '@/features/views/common/components/Stop
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { parseStopWordsText } from '@/features/views/common/utils/stopWords';
 import { TokenFrequencyTokenFilterCard } from './TokenFrequencyTokenFilterCard';
+import type { WordCloudChartContext } from '../../hooks/useTokenFrequencyDownloads';
 
 type ResultsView = 'cloud' | 'list';
 
@@ -72,7 +73,11 @@ interface TokenFrequencyResultsPanelProps {
   computeDisplayName: (nodeId: string, fallbackKey?: string) => string;
   getColorForNode: (nodeId: string, index?: number) => string;
 
-  onDownloadWordCloud: (nodeKey: string, displayName: string) => void;
+  onDownloadWordCloud: (
+    nodeKey: string,
+    displayName: string,
+    chartContext?: WordCloudChartContext,
+  ) => void;
   onTokenClick: (token: string) => void;
   onTokenRightClick: (token: string) => void;
 

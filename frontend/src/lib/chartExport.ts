@@ -96,7 +96,9 @@ const LEGEND_ROW_H = 18;
 const SWATCH_W = 16;
 const SWATCH_H = 10;
 const SWATCH_TEXT_GAP = 6;
-const APPROX_LEGEND_ITEM_W = 140;
+const LEGEND_ITEM_GAP = 18;
+// Average glyph width of the legend font, to size entries without measuring.
+const LEGEND_CHAR_W = LEGEND_FONT * 0.58;
 
 /** Reserves vertical space for the optional export header above the chart body. */
 /** Called by: SVG and bitmap composition paths. */
@@ -106,12 +108,49 @@ const computeHeaderH = (items: ChartExportHeaderItem[]): number => {
   return PAD + HEADER_TITLE_H + (hasInfo ? HEADER_INFO_H : 0) + DIVIDER_GAP + 1 + DIVIDER_GAP;
 };
 
+/**
+ * Places legend entries in centred rows, each as wide as its label, so long
+ * Data Block names do not run into the next entry (issue 281; entries used a
+ * fixed 140 px slot). Shared by the SVG and bitmap paths so both match.
+ */
+const layoutLegend = (
+  items: ChartExportLegendItem[],
+  chartWidth: number,
+): { positions: { x: number; row: number }[]; rows: number } => {
+  const widths = items.map(
+    (item) => SWATCH_W + SWATCH_TEXT_GAP + item.label.length * LEGEND_CHAR_W + LEGEND_ITEM_GAP,
+  );
+  const rowsOfItems: number[][] = [];
+  let current: number[] = [];
+  let used = 0;
+  widths.forEach((width, index) => {
+    if (current.length > 0 && used + width > chartWidth) {
+      rowsOfItems.push(current);
+      current = [];
+      used = 0;
+    }
+    current.push(index);
+    used += width;
+  });
+  if (current.length > 0) rowsOfItems.push(current);
+  const positions: { x: number; row: number }[] = [];
+  rowsOfItems.forEach((indices, row) => {
+    const rowWidth =
+      indices.reduce((total, index) => total + (widths[index] ?? 0), 0) - LEGEND_ITEM_GAP;
+    let x = Math.max(0, (chartWidth - rowWidth) / 2);
+    for (const index of indices) {
+      positions[index] = { x, row };
+      x += widths[index] ?? 0;
+    }
+  });
+  return { positions, rows: rowsOfItems.length };
+};
+
 /** Sizes the export legend based on chart width so SVG and bitmap exports align. */
 /** Called by: SVG and bitmap composition paths. */
 const computeLegendH = (items: ChartExportLegendItem[], chartWidth: number): number => {
   if (!items.length) return 0;
-  const perRow = Math.max(1, Math.floor(chartWidth / APPROX_LEGEND_ITEM_W));
-  return Math.ceil(items.length / perRow) * LEGEND_ROW_H + PAD;
+  return layoutLegend(items, chartWidth).rows * LEGEND_ROW_H + PAD;
 };
 
 // ─── Canvas composite ────────────────────────────────────────────────────────
@@ -213,16 +252,12 @@ const renderCompositeBitmap = async (
 
   // Legend
   if (legend.length) {
-    const perRow = Math.max(1, Math.floor(svgWidth / APPROX_LEGEND_ITEM_W));
+    const { positions } = layoutLegend(legend, svgWidth);
     const startY = headerH + svgHeight + PAD / 2;
     ctx.font = `${String(LEGEND_FONT)}px system-ui,-apple-system,sans-serif`;
 
     for (const [i, item] of legend.entries()) {
-      const row = Math.floor(i / perRow);
-      const col = i % perRow;
-      const rowCount = Math.min(perRow, legend.length - row * perRow);
-      const xOffset = (svgWidth - rowCount * APPROX_LEGEND_ITEM_W) / 2;
-      const x = xOffset + col * APPROX_LEGEND_ITEM_W;
+      const { x, row } = positions[i] ?? { x: 0, row: 0 };
       const cy = startY + row * LEGEND_ROW_H + LEGEND_ROW_H / 2;
 
       if (item.hidden) ctx.globalAlpha = 0.35;
@@ -322,14 +357,10 @@ const buildCompositeSvg = (
 
   const legendLines: string[] = [];
   if (legend.length) {
-    const perRow = Math.max(1, Math.floor(svgWidth / APPROX_LEGEND_ITEM_W));
+    const { positions } = layoutLegend(legend, svgWidth);
     const startY = headerH + svgHeight + PAD / 2;
     for (const [i, item] of legend.entries()) {
-      const row = Math.floor(i / perRow);
-      const col = i % perRow;
-      const rowCount = Math.min(perRow, legend.length - row * perRow);
-      const xOffset = (svgWidth - rowCount * APPROX_LEGEND_ITEM_W) / 2;
-      const x = xOffset + col * APPROX_LEGEND_ITEM_W;
+      const { x, row } = positions[i] ?? { x: 0, row: 0 };
       const cy = startY + row * LEGEND_ROW_H + LEGEND_ROW_H / 2;
       const gAttrs = item.hidden ? ' opacity="0.35"' : '';
       legendLines.push(`<g${gAttrs}>`);

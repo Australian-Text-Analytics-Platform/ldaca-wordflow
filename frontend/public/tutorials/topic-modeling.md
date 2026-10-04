@@ -242,7 +242,10 @@ Each bubble is a discovered topic. Bubble size reflects source rows whose
 positive share for that Topic is within the displayed Top topics per document; in a
 two-corpus run, colour composition compares the Topic's share of each analysed
 corpus, then normalises those two shares for the colour blend. This prevents a
-larger corpus from dominating the colour solely because it has more rows. A row
+larger corpus from dominating the colour solely because it has more rows. With
+two Data Blocks, a **Bubble colour** legend under the graph names each Data
+Block beside its colour, and the blend between them; downloads carry the same
+legend. A row
 may count in multiple bubbles, so bubble totals need not equal the source-row
 count. Nearby bubbles have more similar topic representations. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. Segments with **No topic** have no bubble. Topics with a total
 bubble count of zero are omitted from the graph but remain available in the

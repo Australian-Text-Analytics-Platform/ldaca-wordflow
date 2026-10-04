@@ -13,6 +13,7 @@ import {
   type TokenFrequencyStatisticsEntry,
 } from '../../tokenFrequencyAdapters';
 import { TokenFrequencyStatisticsTable } from './TokenFrequencyStatisticsTable';
+import type { WordCloudChartContext } from '../../hooks/useTokenFrequencyDownloads';
 
 // Aspect ratio for the cloud SVG when sized from the container width. Keeps
 // the cloud "landscape-ish" without dominating tall corpora layouts.
@@ -32,7 +33,11 @@ interface TokenFrequencyUnifiedTokenSectionProps {
   defaultTokenLimit: number;
   computeDisplayName: (nodeId: string, fallbackKey?: string) => string;
   getColorForNode: (nodeId: string, index?: number) => string;
-  onDownloadWordCloud: (nodeKey: string, displayName: string) => void;
+  onDownloadWordCloud: (
+    nodeKey: string,
+    displayName: string,
+    chartContext?: WordCloudChartContext,
+  ) => void;
   onTokenClick: (token: string) => void;
   onTokenRightClick: (token: string) => void;
   registerWordCloudRef: (nodeKey: string, element: SVGSVGElement | null) => void;
@@ -237,7 +242,20 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
               aria-label="Download word cloud"
               title="Download word cloud"
               onClick={() => {
-                onDownloadWordCloud('unified', 'Unified word cloud');
+                // The download names both Data Blocks and their colours
+                // (issue 281), so the cloud keeps its meaning outside Wordflow.
+                onDownloadWordCloud('unified', 'Unified word cloud', {
+                  header: [
+                    { label: 'Title', value: 'Juxtorpus: Reference and Study word cloud' },
+                    { label: 'Reference', value: nodeAName },
+                    { label: 'Study', value: nodeBName },
+                  ],
+                  legend: [
+                    { label: `Reference: ${nodeAName}`, color: nodeAColor },
+                    { label: 'Used about equally, for the corpus sizes', color: blend(0.5) },
+                    { label: `Study: ${nodeBName}`, color: nodeBColor },
+                  ],
+                });
               }}
             >
               <Download className="h-4 w-4" />
@@ -261,7 +279,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
                           aria-label={`Reference: ${nodeAName}`}
                           className="inline-flex cursor-help items-center gap-1"
                         >
-                          <span>Reference</span>
+                          <span>Reference: {nodeAName}</span>
                           <span
                             aria-hidden="true"
                             className="inline-block h-4 w-4 rounded-sm"
@@ -290,7 +308,7 @@ const TokenFrequencyUnifiedTokenSectionInner = ({
                             className="inline-block h-4 w-4 rounded-sm"
                             style={{ backgroundColor: nodeBColor }}
                           />
-                          <span>Study</span>
+                          <span>Study: {nodeBName}</span>
                         </span>
                       </TooltipTrigger>
                       <TooltipContent>{nodeBName}</TooltipContent>

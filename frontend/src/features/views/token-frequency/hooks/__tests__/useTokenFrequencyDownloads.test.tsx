@@ -9,7 +9,16 @@ import {
   downloadExportBundleAsZip,
   downloadFrequencyRowsAs,
 } from '../../tokenFrequencyExport';
+import { buildChartBlob } from '@/lib/chartExport';
+import { saveBlob } from '@/lib/download';
 import { useTokenFrequencyDownloads } from '../useTokenFrequencyDownloads';
+
+vi.mock('@/lib/chartExport', () => ({
+  buildChartBlob: vi.fn(() =>
+    Promise.resolve({ filename: 'Unified_wordcloud.png', blob: new Blob(['png']) }),
+  ),
+}));
+vi.mock('@/lib/download', () => ({ saveBlob: vi.fn(() => Promise.resolve(true)) }));
 
 vi.mock('../../tokenFrequencyExport', () => ({
   buildFrequencyExportFile: vi.fn((label: string, rows: unknown[], format: string) => ({
@@ -149,5 +158,42 @@ describe('useTokenFrequencyDownloads', () => {
     );
     expect(mockedBuildFrequencyExportFile).not.toHaveBeenCalled();
     expect(mockedDownloadExportBundleAsZip).not.toHaveBeenCalled();
+  });
+
+  it('draws the Juxtorpus legend around the cloud download (issue 281)', async () => {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const { result } = renderHook(() =>
+      useTokenFrequencyDownloads({
+        analysisNodeIds: ['reference-node', 'study-node'],
+        computeDisplayName,
+        stopWords: '',
+      }),
+    );
+    const chartContext = {
+      header: [{ label: 'Title', value: 'Juxtorpus' }],
+      legend: [
+        { label: 'Reference: Reference Corpus', color: '#2563eb' },
+        { label: 'Study: Study Corpus', color: '#dc2626' },
+      ],
+    };
+
+    act(() => {
+      result.current.registerWordCloudRef('unified', svg);
+      result.current.openWordCloudDownload('unified', 'Unified word cloud', chartContext);
+    });
+    await act(async () => {
+      await result.current.confirmDownload({ format: 'png', includeStopWords: false });
+    });
+
+    expect(vi.mocked(buildChartBlob)).toHaveBeenCalledWith(svg, {
+      nodeName: 'Unified word cloud',
+      toolSuffix: 'wordcloud',
+      format: 'png',
+      scale: 3,
+      header: chartContext.header,
+      legend: chartContext.legend,
+    });
+    expect(vi.mocked(saveBlob)).toHaveBeenCalledWith(expect.any(Blob), 'Unified_wordcloud.png');
+    expect(mockedBuildWordCloudExportFile).not.toHaveBeenCalled();
   });
 });

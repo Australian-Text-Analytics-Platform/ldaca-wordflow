@@ -13,6 +13,21 @@ import {
 } from '../tokenFrequencyExport';
 import type { DownloadDialogMode } from '../components/TokenFrequencyDownloadDialog';
 import { toastError } from '@/lib/toastError';
+import {
+  buildChartBlob,
+  type ChartExportHeaderItem,
+  type ChartExportLegendItem,
+} from '@/lib/chartExport';
+import { saveBlob } from '@/lib/download';
+
+/**
+ * Header and legend to draw around a word cloud download (issue 281): the
+ * Juxtorpus cloud names its Reference and Study Data Blocks and colours.
+ */
+export interface WordCloudChartContext {
+  header: ChartExportHeaderItem[];
+  legend: ChartExportLegendItem[];
+}
 
 interface PendingDownloadContext {
   mode: DownloadDialogMode;
@@ -20,6 +35,7 @@ interface PendingDownloadContext {
   displayName?: string;
   rows?: unknown[];
   label?: string;
+  chartContext?: WordCloudChartContext;
 }
 
 interface UseTokenFrequencyDownloadsArgs {
@@ -63,11 +79,14 @@ export const useTokenFrequencyDownloads = ({
     wordCloudRefs.current[nodeKey] = element;
   }, []);
 
-  const openWordCloudDownload = useCallback((nodeKey: string, displayName: string) => {
-    pendingDownloadRef.current = { mode: 'wordcloud', nodeKey, displayName };
-    setDownloadDialogMode('wordcloud');
-    setDownloadDialogOpen(true);
-  }, []);
+  const openWordCloudDownload = useCallback(
+    (nodeKey: string, displayName: string, chartContext?: WordCloudChartContext) => {
+      pendingDownloadRef.current = { mode: 'wordcloud', nodeKey, displayName, chartContext };
+      setDownloadDialogMode('wordcloud');
+      setDownloadDialogOpen(true);
+    },
+    [],
+  );
 
   const renameStatisticsKeysForExport = useCallback(
     (rows: unknown[]): unknown[] => {
@@ -146,6 +165,28 @@ export const useTokenFrequencyDownloads = ({
             toastError(null, 'Show the word cloud, then download it again.', {
               title: "Couldn't find the word cloud to download.",
             });
+          } else if (ctx.chartContext) {
+            // A cloud with a legend is drawn like a chart download: header
+            // above, legend below, in every image format (issue 281).
+            const displayName = firstNonEmptyLabel([ctx.displayName, ctx.nodeKey], ctx.nodeKey);
+            const primaryFile = await buildChartBlob(svg, {
+              nodeName: displayName,
+              toolSuffix: 'wordcloud',
+              format: format as WordCloudFormat,
+              scale: 3,
+              header: ctx.chartContext.header,
+              legend: ctx.chartContext.legend,
+            });
+            if (shouldBundleStopWords) {
+              await downloadExportBundleAsZip(
+                ctx.nodeKey === 'unified'
+                  ? buildTokenFrequencyZipFilename(comparisonArchiveLabels)
+                  : buildTokenFrequencyZipFilename([archiveLabel]),
+                [primaryFile, buildStopWordsExportFile(stopWords, archiveLabel)],
+              );
+            } else {
+              await saveBlob(primaryFile.blob, primaryFile.filename);
+            }
           } else {
             if (shouldBundleStopWords) {
               const displayName = firstNonEmptyLabel([ctx.displayName, ctx.nodeKey], ctx.nodeKey);

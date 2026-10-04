@@ -85,4 +85,34 @@ describe('chartExport', () => {
 
     expect(findSvgInContainer(container)).toBe(chart);
   });
+
+  it('gives long legend labels their own width, wrapping rows (issue 281)', async () => {
+    const legend = [
+      { label: 'Reference: Crisis@Housing-2023-5', color: '#2563eb' },
+      { label: 'Used about equally, for the corpus sizes', color: '#888888' },
+      { label: 'Study: Crisis@Housing-2008', color: '#dc2626' },
+    ];
+    const { blob } = await buildChartBlob(createChartSvg(), {
+      nodeName: 'Corpus',
+      toolSuffix: 'wordcloud',
+      format: 'svg',
+      legend,
+    });
+    const text = await blob.text();
+    const placed = legend.map((item) => {
+      const match = new RegExp(
+        `<text x="([\\d.]+)" y="([\\d.]+)"[^>]*>${item.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}</text>`,
+      ).exec(text);
+      return { x: Number(match?.[1]), y: Number(match?.[2]), length: item.label.length };
+    });
+    // Each entry starts after the previous label ends, or on a new row.
+    for (let index = 1; index < placed.length; index += 1) {
+      const previous = placed[index - 1];
+      const current = placed[index];
+      if (!previous || !current) continue;
+      const sameRow = previous.y === current.y;
+      if (sameRow) expect(current.x).toBeGreaterThan(previous.x + previous.length * 5.8);
+      else expect(current.y).toBeGreaterThan(previous.y);
+    }
+  });
 });
