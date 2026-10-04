@@ -188,7 +188,8 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                     </Label>
                   </div>
                   <p className="text-label-secondary text-description">
-                    Use a seed to reproduce the same sampled rows.
+                    Use a seed to reproduce the same sampled rows. With No random seed, Wordflow
+                    picks one for you and records it in the new Data Block.
                   </p>
                 </div>
               </div>

@@ -56,7 +56,9 @@ def sort_result_rows(
         and not case_sensitive
         and sort_by in CASE_FOLDED_SORT_COLUMNS
     ):
-        key = key.str.to_lowercase()
+        # Cast first: an all-null L1/R1 column (every match at a document edge)
+        # has dtype Null, which has no string namespace.
+        key = key.cast(pl.String).str.to_lowercase()
     return frame.sort(
         [key, *ties],
         descending=[descending, *([False] * len(ties))],

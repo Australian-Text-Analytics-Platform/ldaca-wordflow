@@ -300,3 +300,42 @@ def test_count_and_plain_text_replace(tmp_path: Path) -> None:
         assert missing_pattern.status_code == 422
     finally:
         client.__exit__(None, None, None)
+
+
+def test_extract_output_never_replaces_another_column(tmp_path: Path) -> None:
+    """Issue 291: the output name is used as typed and must be new."""
+
+    client, unsafe, workspace_id, node_id = _setup(tmp_path)
+    try:
+        base = f"/api/workspaces/{workspace_id}/nodes/{node_id}"
+        taken = client.post(
+            f"{base}/edits/preview",
+            json={
+                "kind": "replace",
+                "source_column": "text",
+                "pattern": "a",
+                "mode": "extract",
+                "output_column": "party",
+                "literal": True,
+            },
+            headers=unsafe,
+        )
+        assert taken.status_code == 400
+        assert "already exists" in taken.text
+        spaced = client.post(
+            f"{base}/edits/preview",
+            json={
+                "kind": "replace",
+                "source_column": "text",
+                "pattern": "a",
+                "mode": "extract",
+                "output_column": "two  words",
+                "literal": True,
+            },
+            headers=unsafe,
+        )
+        assert spaced.status_code == 200, spaced.text
+        assert "two  words" in pl.read_ipc_stream(BytesIO(spaced.content)).columns
+    finally:
+        client.__exit__(None, None, None)
+

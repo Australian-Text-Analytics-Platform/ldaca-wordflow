@@ -38,9 +38,9 @@ from ..analysis.topic_projection import (
 )
 from ..analysis.result_sort import sort_result_rows
 from ..analysis.generated_columns import (
+    prefix_quote_struct_fields,
     CONC_MATCHED_TEXT_COLUMN,
     CONC_START_IDX_COLUMN,
-    QUOTE_COLUMN_NAMES,
 )
 from ..domain.workspace import (
     AnalysisArtifactRecord,
@@ -761,17 +761,11 @@ def _projected_artifact_lazyframe(
     if kind == "concordance_run_all":
         return frame.explode("concordance", empty_as_null=True).unnest("concordance")
     if kind == "quotation_run_all":
-        return (
+        # Prefix the quote fields before unnesting so a source column such as
+        # `speaker` cannot clash (issue 283).
+        return prefix_quote_struct_fields(
             frame.explode("quotation", empty_as_null=True)
-            .unnest("quotation")
-            .rename(
-                {
-                    column.removeprefix("QUOTE_"): column
-                    for column in QUOTE_COLUMN_NAMES
-                },
-                strict=False,
-            )
-        )
+        ).unnest("quotation")
     raise AnalysisKindMismatchError("Analysis Result table is not projected")
 
 
@@ -810,17 +804,20 @@ def _projected_artifact_page(
     concordance_match_projection = (
         kind == "concordance_run_all" and row_unit == "matches"
     )
-    sortable_columns = (
-        {
-            column
-            for column in {document_column, *metadata_columns, *analysis_columns}
-            if column in schema
-            and not schema[column].is_nested()
-            and schema[column] != pl.Object
-        }
+    # Nested and Object columns are never sortable, for every projection, so
+    # the table offers exactly what Add to Project accepts (issue 288).
+    candidates = (
+        {document_column, *metadata_columns, *analysis_columns}
         if concordance_match_projection
         else {document_column, *metadata_columns}
     )
+    sortable_columns = {
+        column
+        for column in candidates
+        if column in schema
+        and not schema[column].is_nested()
+        and schema[column] != pl.Object
+    }
     if sort_by is not None and sort_by not in sortable_columns:
         raise InvalidInputError("Result sort column not found")
 
@@ -1158,6 +1155,10 @@ def _topic_color_frame(
     """
 
     columns = supported_metadata_columns(data.collect_schema(), exclude=(text_column,))
+    if not columns:
+        # A text-only Data Block has nothing to colour by; an empty selection
+        # has no rows, which used to read as "rows missing" (issue 287).
+        return pl.DataFrame()
     frame = data.select(columns).collect()
     if row_indices and max(row_indices) >= frame.height:
         raise InvalidInputError(

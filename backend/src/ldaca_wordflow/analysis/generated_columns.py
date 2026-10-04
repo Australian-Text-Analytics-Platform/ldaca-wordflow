@@ -318,3 +318,31 @@ def tokens_struct_projection(struct_column: str) -> tuple[pl.Expr, ...]:
         .alias(TOKENS_START_FIELD),
         pl.col(struct_column).struct.field(TOKENS_END_FIELD).alias(TOKENS_END_FIELD),
     )
+
+
+def prefix_quote_struct_fields(frame: pl.LazyFrame, column: str = "quotation") -> pl.LazyFrame:
+    """Name a Quotation Result's nested quote fields ``QUOTE_*`` before they are unnested.
+
+    The Result stores each quote as a struct with bare field names (``speaker``,
+    ``quote``...). Unnesting them beside a source column of the same name
+    raised a DuplicateError, so the Review table failed for any corpus with a
+    ``speaker`` column (issue 283; the Add to Project worker had the same fix
+    in issue 245). Used by: ``services/analysis_results.py`` and
+    ``workers/result_data_block_creation.py``.
+    """
+
+    import polars as pl
+
+    quote_names = set(QUOTE_COLUMN_NAMES)
+    dtype = frame.collect_schema()[column]
+    if not isinstance(dtype, pl.Struct):
+        raise ValueError("Quotation Result rows are malformed")
+    return frame.with_columns(
+        pl.col(column).struct.rename_fields(
+            [
+                f"QUOTE_{field.name}" if f"QUOTE_{field.name}" in quote_names else field.name
+                for field in dtype.fields
+            ]
+        )
+    )
+

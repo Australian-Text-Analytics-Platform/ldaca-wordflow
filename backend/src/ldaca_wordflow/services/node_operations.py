@@ -11,6 +11,7 @@ replacement plan.
 from __future__ import annotations
 
 import re
+import secrets
 import uuid
 from datetime import datetime, UTC
 from typing import Any, cast
@@ -101,13 +102,9 @@ def build_derived_node(
         raise InvalidInputError(f"Invalid Data Block name: {reason}")
 
     # Schema resolution catches invalid columns, join keys, expressions, and
-    # most dtype errors before the graph is changed or persisted.
-    try:
-        lazyframe.collect_schema()
-    except Exception as exc:
-        raise InvalidInputError(
-            "This change does not produce a valid Data Block"
-        ) from exc
+    # most dtype errors; reading one row catches what only fails when the
+    # plan runs, such as an invalid regular expression (issue 285).
+    validate_plan_executes(lazyframe, "This change does not produce a valid Data Block")
 
     node = Node(
         data=lazyframe,
@@ -130,6 +127,7 @@ def build_derived_lazyframe(
 ) -> tuple[pl.LazyFrame, str, DerivationOperation, list[Node]]:
     """Return the lazy result, default name, typed operation, and parents."""
 
+    request = _with_drawn_seed(request)
     operation = derivation_operation_from_model(request)
 
     if isinstance(request, CloneNodeCreateRequest):
@@ -616,6 +614,49 @@ def _with_article(label: str) -> str:
     return "a column of another type" if label == "other" else f"a {label} column"
 
 
+def _with_drawn_seed(request: NodeDerivationRequest) -> NodeDerivationRequest:
+    """Give an unseeded Sample or Shuffle a seed drawn now, and record it.
+
+    A derived Data Block is a saved lazy plan; without a seed, Polars drew a
+    new sample on every read and after every reload, so the block's rows kept
+    changing (issue 284). "No random seed" now means "surprise me once": the
+    seed is drawn here, stored in the plan and in the provenance, and shown
+    in the Data Block's description.
+    """
+
+    if (
+        isinstance(request, SliceNodeCreateRequest)
+        and request.mode in {"shuffle", "random_sample"}
+        and request.random_seed is None
+    ):
+        return request.model_copy(update={"random_seed": secrets.randbelow(2**31)})
+    return request
+
+
+def validate_plan_executes(lazyframe: pl.LazyFrame, message: str) -> None:
+    """Refuse a plan that cannot resolve its schema or read its first row.
+
+    Schema resolution misses errors that only appear when the plan runs
+    (an invalid regular expression, a pattern Polars cannot compile); such a
+    plan used to be committed and the Data Block then failed on every read
+    (issue 285). Used by: ``build_derived_node`` and the Data Editor's edit
+    validation.
+    """
+
+    try:
+        lazyframe.collect_schema()
+        lazyframe.head(1).collect()
+    except Exception as exc:
+        text = str(exc)
+        if "regex" in text.casefold():
+            raise InvalidInputError(
+                "The pattern is not a valid regular expression. "
+                "Check it, or turn off Use regular expression to match it as text.",
+                details={"diagnostic": text},
+            ) from exc
+        raise InvalidInputError(message, details={"diagnostic": text}) from exc
+
+
 def _slice(
     source: Node,
     request: SliceNodeCreateRequest,
@@ -767,14 +808,10 @@ def _condition_expression(
     elif operator == "between":
         if not isinstance(value, dict):
             raise InvalidInputError("Between filters require start and end values")
-        start = _coerce_scalar(_parse_temporal(value.get("start")))
-        end = _coerce_scalar(_parse_temporal(value.get("end")))
+        start = _range_edge(value.get("start"), dtype)
+        end = _range_edge(value.get("end"), dtype)
         if start is None and end is None:
             raise InvalidInputError("Between filters require a start or end value")
-        if isinstance(start, datetime):
-            start = _temporal_literal(start, dtype)
-        if isinstance(end, datetime):
-            end = _temporal_literal(end, dtype)
         if start is None:
             expression = column <= cast(Any, end)
         elif end is None:
@@ -1174,9 +1211,15 @@ def _replace_expression(
     if request.source_column not in schema:
         raise InvalidInputError("The column to search is not in this Data Block")
     require_supported_columns(schema, [request.source_column], use="as text")
-    output = re.sub(r"\s+", " ", request.output_column or request.source_column).strip()
+    # The name is used as typed (trimmed), like every other Data Editor tool,
+    # and never replaces another column by surprise (issue 291): the old
+    # whitespace collapse and 120-character cut could land on an existing
+    # column and overwrite it.
+    output = (request.output_column or request.source_column).strip()
     if not output:
         raise InvalidInputError("Output column name cannot be blank")
+    if output != request.source_column and output in schema:
+        raise InvalidInputError("New column name already exists on the Data Block")
     column = pl.col(request.source_column).cast(pl.String)
     if request.mode == "extract":
         pattern = pl.escape_regex(request.pattern) if request.literal else request.pattern
@@ -1199,7 +1242,7 @@ def _replace_expression(
             literal=request.literal,
             n=request.match_limit or 1,
         )
-    return output[:120], expression.alias(output[:120])
+    return output, expression.alias(output)
 
 
 def _compile_expression(
@@ -1390,6 +1433,39 @@ def _parse_temporal(value: object) -> object:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return value
+
+
+def _range_edge(value: object, dtype: pl.DataType) -> pl.Expr | None:
+    """One end of a between range as a literal, or None when left open.
+
+    Edges arrive as text from the Filter. ``is_between`` reads a bare string
+    as an expression, so an edge the coercion could not parse (``1e3``, an
+    empty box) was looked up as a column name and failed with a generic
+    error (issue 289). Numbers and dates become literals; anything else on a
+    number or date column is refused in plain words.
+    """
+
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None
+    parsed = _coerce_scalar(_parse_temporal(value))
+    if isinstance(parsed, datetime):
+        if dtype.is_numeric():
+            raise InvalidInputError(
+                f"'{value}' is not a number. Enter a number for each end of the range."
+            )
+        return _temporal_literal(parsed, dtype)
+    if isinstance(parsed, str) and dtype.is_numeric():
+        try:
+            parsed = float(parsed)
+        except ValueError:
+            raise InvalidInputError(
+                f"'{parsed}' is not a number. Enter a number for each end of the range."
+            ) from None
+    if isinstance(parsed, str) and dtype.is_temporal():
+        raise InvalidInputError(
+            f"'{parsed}' is not a date. Enter a date for each end of the range."
+        )
+    return pl.lit(parsed)
 
 
 def _coerce_scalar(value: object) -> object:

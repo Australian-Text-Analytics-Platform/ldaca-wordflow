@@ -129,3 +129,51 @@ def test_filter_between_on_number_columns(
         .to_list()
     )
     assert matched == expected
+
+
+@pytest.mark.parametrize(
+    ("column", "value", "message"),
+    [
+        ("age", {"start": "abc", "end": "5"}, "is not a number"),
+        ("age", {"start": "2020-01-01", "end": None}, "is not a number"),
+        ("score", {"start": "", "end": ""}, "require a start or end"),
+    ],
+)
+def test_filter_between_refuses_edges_it_cannot_read(
+    column: str, value: dict[str, str | None], message: str
+) -> None:
+    """Issue 289: an unparsable edge was looked up as a column name."""
+
+    from ldaca_wordflow.shared.errors import InvalidInputError
+
+    schema = dict(NUMBER_FRAME.collect_schema())
+    condition = FilterCondition.model_validate(
+        {"column": column, "operator": "between", "value": value}
+    )
+    with pytest.raises(InvalidInputError, match=message):
+        _condition_expression(condition, schema)
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [
+        ({"start": " 30 ", "end": ""}, [2, 3]),
+        # Exponent notation, which a number box accepts, is a number too.
+        ({"start": "1e1", "end": "3E1"}, [0, 1, 2]),
+    ],
+)
+def test_filter_between_on_number_columns_reads_edges_as_numbers(
+    value: dict[str, str], expected: list[int]
+) -> None:
+    schema = dict(NUMBER_FRAME.collect_schema())
+    condition = FilterCondition.model_validate(
+        {"column": "age", "operator": "between", "value": value}
+    )
+    matched = (
+        NUMBER_FRAME.with_row_index()
+        .filter(_condition_expression(condition, schema))
+        .collect()["index"]
+        .to_list()
+    )
+    assert matched == expected
+

@@ -208,24 +208,10 @@ def run_result_data_block_creation(
                 if kind == "quotation_result_data_block_creation":
                     # Name the quote fields QUOTE_* before unnesting, so they
                     # cannot clash with a source column such as `speaker`
-                    # (issue 245).
-                    from ..analysis.generated_columns import QUOTE_COLUMN_NAMES
+                    # (issues 245 and 283).
+                    from ..analysis.generated_columns import prefix_quote_struct_fields
 
-                    quote_names = set(QUOTE_COLUMN_NAMES)
-                    quotation_dtype = frame.collect_schema()[nested_column]
-                    if not isinstance(quotation_dtype, pl.Struct):
-                        raise ValueError("Quotation Result rows are malformed")
-                    fields = quotation_dtype.fields
-                    frame = frame.with_columns(
-                        pl.col(nested_column).struct.rename_fields(
-                            [
-                                f"QUOTE_{field.name}"
-                                if f"QUOTE_{field.name}" in quote_names
-                                else field.name
-                                for field in fields
-                            ]
-                        )
-                    )
+                    frame = prefix_quote_struct_fields(frame, nested_column)
                 frame = frame.unnest(nested_column)
                 frame = _sort_like_the_table(
                     frame,

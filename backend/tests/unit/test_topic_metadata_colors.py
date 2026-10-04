@@ -152,6 +152,16 @@ def test_color_frame_reads_live_rows_in_model_order() -> None:
         _topic_color_frame(data, "text", [4])
 
 
+def test_color_frame_of_a_text_only_data_block_is_empty_not_an_error() -> None:
+    # Issue 287: with no metadata columns the empty selection has no rows,
+    # which used to read as "the rows are gone".
+    data = pl.LazyFrame({"text": ["a", "b", "c"]})
+
+    frame = _topic_color_frame(data, "text", [2, 0, 1])
+
+    assert frame.columns == []
+
+
 def test_color_groups_project_the_requested_cluster_count(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

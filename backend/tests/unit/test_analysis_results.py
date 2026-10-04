@@ -842,6 +842,73 @@ def test_concordance_matched_text_sort_ignores_case_when_the_search_did(tmp_path
     )
 
 
+def test_review_tables_never_sort_by_nested_columns(tmp_path) -> None:
+    # Issue 288: a List metadata column was sortable here but refused by
+    # Add to Project, so the two must agree.
+    path = tmp_path / "tags.parquet"
+    pl.DataFrame(
+        {
+            "__wordflow_source_row_id": [0, 1],
+            "text": ["a", "b"],
+            "tags": [["x"], ["y"]],
+            "quotation": [[{"quote": "q", "quote_row_idx": 0}], []],
+        }
+    ).write_parquet(path)
+    with pytest.raises(InvalidInputError, match="sort column"):
+        _projected_artifact_page(
+            path, "quotation_run_all", "matches", "text", ["tags"], [], 1, 10, "tags", False
+        )
+    with pytest.raises(InvalidInputError, match="sort column"):
+        _projected_artifact_page(
+            path, "quotation_run_all", "documents", "text", ["tags"], [], 1, 10, "tags", False
+        )
+
+
+def test_case_folded_sort_works_on_an_all_null_l1_without_tie_columns(tmp_path) -> None:
+    # Issue 296: every match at a document start gives a Null-typed L1.
+    frame = pl.LazyFrame({"CONC_l1": pl.Series([None, None], dtype=pl.Null), "x": [1, 2]})
+    from ldaca_wordflow.analysis.result_sort import sort_result_rows
+
+    sorted_frame = sort_result_rows(
+        frame, frame.collect_schema(), concordance=True, matches=True,
+        sort_by="CONC_l1", descending=False, case_sensitive=False,
+    )
+    assert sorted_frame.collect()["x"].to_list() == [1, 2]
+
+
+def test_quotation_match_review_works_with_a_speaker_metadata_column(tmp_path) -> None:
+    # Issue 283: the Result keeps metadata columns top level and the quote
+    # fields bare inside the struct; a `speaker` column must not clash.
+    path = tmp_path / "quotes.parquet"
+    pl.DataFrame(
+        {
+            "__wordflow_source_row_id": [0, 1],
+            "text": ["A said hi", "B said bye"],
+            "speaker": ["Member A", "Member B"],
+            "quotation": [
+                [{"speaker": "A", "quote": "hi", "quote_row_idx": 0}],
+                [{"speaker": "B", "quote": "bye", "quote_row_idx": 0}],
+            ],
+        }
+    ).write_parquet(path)
+
+    def page(sort_by):
+        return pl.read_ipc_stream(
+            BytesIO(
+                _projected_artifact_page(
+                    path, "quotation_run_all", "matches", "text", ["speaker"], [],
+                    1, 10, sort_by, False,
+                ).content
+            )
+        )
+
+    rows = page(None)
+    assert rows["speaker"].to_list() == ["Member A", "Member B"]
+    assert rows["QUOTE_speaker"].to_list() == ["A", "B"]
+    assert rows["QUOTE_quote"].to_list() == ["hi", "bye"]
+    assert page("speaker")["QUOTE_quote"].to_list() == ["hi", "bye"]
+
+
 def test_concordance_match_rows_band_by_source_document_across_pages(tmp_path) -> None:
     # #268: the band flips whenever the source document changes, computed over
     # the whole sorted Result so page boundaries do not reset it.

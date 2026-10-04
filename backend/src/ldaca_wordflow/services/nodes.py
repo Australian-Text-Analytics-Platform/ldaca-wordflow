@@ -60,6 +60,7 @@ from .node_operations import (
     empty_value_expression,
     build_derived_lazyframe,
     build_derived_node,
+    validate_plan_executes,
     build_edited_lazyframe,
 )
 from .node_projection import canonical_node_info
@@ -815,12 +816,9 @@ def _editable_node(workspace: Workspace, node_id: uuid.UUID) -> Node:
 
 
 def _validate_edit_schema(lazyframe: pl.LazyFrame) -> None:
-    try:
-        lazyframe.collect_schema()
-    except Exception as exc:
-        raise InvalidInputError(
-            "The Data Block Edit does not produce a valid schema"
-        ) from exc
+    # Also reads one row, so an edit that only fails when it runs (an invalid
+    # regular expression) is refused instead of committed (issue 285).
+    validate_plan_executes(lazyframe, "The Data Block Edit does not produce a valid schema")
 
 
 def _retarget_column_metadata(node: Node, old_name: str, new_name: str) -> None:
