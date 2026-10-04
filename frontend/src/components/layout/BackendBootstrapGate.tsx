@@ -173,6 +173,18 @@ export function BackendBootstrapGate({
   }, [reloadApplication, runtimeGenerationChanged]);
 
   if (!connection || !resource) {
+    // Before the first liveness poll has failed this is a normal start, which
+    // on the desktop can take a few minutes the first time (issue 231); the
+    // failure copy, with its restart advice, waits for a real failure (issue 300).
+    if (!connectionError) {
+      return (
+        <BlockingScreen
+          title="Starting Wordflow"
+          description="Wordflow is connecting to its server. The first start on a new computer can take a few minutes."
+          status="Connecting…"
+        />
+      );
+    }
     return (
       <BlockingScreen
         title="Can't connect to Wordflow"

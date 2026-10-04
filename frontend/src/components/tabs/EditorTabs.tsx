@@ -212,7 +212,8 @@ export function EditorTabs({
 
   // Keep the active tab in view (issue 218): a remount starts at the left end,
   // and the active tab is usually the newest, on the right. Runs when the
-  // active tab, its slot or the strip width changes, never on a manual scroll.
+  // active tab or its slot changes, never on a manual scroll and not when the
+  // strip is resized (issue 301), which used to undo a scroll the user made.
   const activeIndex = activeTabId ? orderIds.indexOf(activeTabId) : -1;
   const activeLeft = activeIndex >= 0 ? (positions[activeIndex] ?? null) : null;
   const activeWidth = activeIndex >= 0 ? (widths[activeIndex] ?? 0) : 0;
@@ -227,7 +228,11 @@ export function EditorTabs({
       element.scrollLeft = end - element.clientWidth;
     }
     updateHiddenEdges();
-  }, [activeTabId, activeLeft, activeWidth, containerWidth, dragTabId]);
+  }, [activeTabId, activeLeft, activeWidth, dragTabId]);
+  // A resize only refreshes the edge indicators.
+  useEffect(() => {
+    updateHiddenEdges();
+  }, [containerWidth]);
 
   const titlesKey = tabs.map((tab) => `${tab.id}:${tab.title}`).join('|');
   const widthsKey = widths.join(',');

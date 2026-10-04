@@ -134,8 +134,11 @@ export function buildTaskRows(
     const tool = kind ? analysisNavigationForKind(kind).shortLabel : 'Analysis';
     return {
       // Always with the tool's prefix (issue 235): F-1, or "C - yeah" for a named tab.
-      name: tab ? taskTabName(tab.name, tab.kind) : tool,
-      target: kind ? ({ kind: 'tab', tabKind: kind, tabId: task.tab_id } as const) : null,
+      // Deleting a tab removes its analyses with it; a task still listed
+      // without its tab is only the moment in between, so it is named by its
+      // tool and opens nothing (issue 302).
+      name: tab ? taskTabName(tab.name, tab.kind) : `${tool} (closed tab)`,
+      target: tab && kind ? ({ kind: 'tab', tabKind: kind, tabId: task.tab_id } as const) : null,
     };
   };
 
