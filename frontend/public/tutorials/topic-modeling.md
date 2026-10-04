@@ -140,7 +140,10 @@ show a fixed disabled control.
 
 The lower bound appears to the left of the slider. Change the topic count with
 either the slider or the number field on its right; both stay synchronised.
-Wordflow updates the topics once you finish changing either control. The current
+Wordflow updates the topics once you finish changing either control: when you
+release the slider, after a short pause in the arrow keys, or when you press
+Enter or leave the number field. The slider stays selected after each update, so
+the arrow keys can step the count again straight away. The current
 chart remains visible with
 **Updating topics…** until the new representative words, coordinates, sizes,
 and document assignments arrive. A failed request restores the previous value.
