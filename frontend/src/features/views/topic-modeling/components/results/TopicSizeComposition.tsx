@@ -41,7 +41,9 @@ export function TopicSizeComposition(props: TopicSizeChipsInput) {
           {index > 0 ? <span className="text-badge text-description">+</span> : null}
           <span
             style={{ background: chip.color, color: chip.textColor }}
-            className="rounded-sm px-1.5 py-0.5 text-badge font-medium"
+            className="rounded-sm px-1.5 py-0.5 text-badge font-medium tabular-nums"
+            title={chip.title}
+            aria-label={chip.title}
           >
             {chip.text}
           </span>

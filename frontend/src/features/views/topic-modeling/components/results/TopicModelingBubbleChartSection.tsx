@@ -157,6 +157,7 @@ export function TopicModelingBubbleChartSection({
     nodeColors,
     defaultPalette,
     colorScheme: activeColorScheme,
+    corpusSizes,
   };
   const corpusLegend = topicCorpusLegend(corpusPresentation, nodeNames ?? []);
   const exportLegend = activeColorScheme

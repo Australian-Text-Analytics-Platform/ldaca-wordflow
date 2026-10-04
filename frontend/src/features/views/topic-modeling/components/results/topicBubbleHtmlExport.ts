@@ -49,7 +49,7 @@ export function buildTopicBubblePayload(
           ...sizes,
           chips: sizes.chips.map((chip, index) =>
             sizes.kind === 'corpora' && nodeNames[index]
-              ? { ...chip, title: `${nodeNames[index]}: ${chip.text}` }
+              ? { ...chip, title: `${nodeNames[index]}: ${chip.title ?? chip.text}` }
               : chip,
           ),
         },
