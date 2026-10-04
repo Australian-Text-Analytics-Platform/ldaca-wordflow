@@ -3,7 +3,7 @@ import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
 import { Search, X } from 'lucide-react';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
-import { topicRepresentativeText } from '../../topicModelingAdapters';
+import { matchTopicWords, topicRepresentativeText } from '../../topicModelingAdapters';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 
 interface Props {
@@ -44,7 +44,11 @@ export function TopicSelectionPanel({
   const filteredTopics = sortedTopics.filter((topic) => {
     if (hasLassoFilter && !lassoTopicIds.has(topic.id)) return false;
     if (topicSearchQuery.trim()) {
-      return matchChecklistOption(topicRepresentativeText(topic), topicSearchQuery);
+      return matchTopicWords(
+        topic.representative_words.map((term) => term.word),
+        topicSearchQuery,
+        matchChecklistOption,
+      );
     }
     return true;
   });

@@ -261,7 +261,10 @@ around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the
 filter shown in **All Topics**; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
-Search further narrows the filtered list. Click a topic in the chart or in **All
+Search further narrows the filtered list and fades the other topics in the
+graph. A topic matches when the search text is found in its words; `*` (any
+letters) and `?` (one letter) match within a single word, so `gs*` and `gs?`
+both find topics with *gst* wherever it is in their list. Click a topic in the chart or in **All
 Topics** to add it to **Selected Topics**; the **×** removes it and **Clear**
 removes them all.
 
@@ -316,10 +319,10 @@ Topic count. CSV output still contains every topic and its current counts.
 Choose **Interactive HTML** to save the graph as one web page that opens in any
 browser, offline. It shows the graph exactly as on screen (positions, colours,
 selection rings and faded topics) and keeps three things to explore: hover a
-bubble for its words, sized by count, and its size in each Data Block; type in
-**Find topics** to highlight matching topics, with the same rules as the app
-(`*` and `?` wildcards match the whole word list, so use `*hous*` for a word in
-the middle); and drag to move or scroll to zoom. It cannot change the topics or
+bubble for its words, sized by count, and the same size chips as the app
+(per colour-by value, or per Data Block); type in **Find topics** to highlight
+matching topics, with the same rules as the app's search; and drag to move or
+scroll to zoom. It cannot change the topics or
 add anything to a Project.
 
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>

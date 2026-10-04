@@ -4,6 +4,25 @@ export function topicRepresentativeText(topic: TopicModelingTopic): string {
   return topic.representative_words.map((term) => term.word).join(', ');
 }
 
+/**
+ * Whether a topic matches the Find topics text (issue 280). A topic matches
+ * when the text matches its whole word list ("gst, government, tax") or any
+ * one of its words, so `gs*` and `gs?` find "gst" wherever it sits; before,
+ * a wildcard had to match the whole joined list. `matchOption` is the shared
+ * checklist matcher.
+ *
+ * Self-contained on purpose: the bubble chart's HTML download embeds this
+ * function's source, so it must not use anything outside its body.
+ */
+export function matchTopicWords(
+  words: readonly string[],
+  query: string,
+  matchOption: (label: string, query: string) => boolean,
+): boolean {
+  if (!query.trim()) return true;
+  return matchOption(words.join(', '), query) || words.some((word) => matchOption(word, query));
+}
+
 export function filterTopicRepresentativeWords(
   topics: TopicModelingTopic[],
   stopWords: ReadonlySet<string>,

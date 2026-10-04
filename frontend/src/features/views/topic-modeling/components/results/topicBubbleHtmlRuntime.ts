@@ -3,9 +3,12 @@ interface TopicBubbleHtmlTopic {
   id: number;
   /** Representative words in the app's order, with their counts. */
   words: { word: string; count: number }[];
-  /** Size per Data Block, in the app's order. */
-  sizes: { label: string; value: number }[];
-  total: number;
+  /** The size chips the app's hover card shows (issue 280). */
+  sizes: {
+    kind: 'groups' | 'corpora';
+    chips: { text: string; color: string; textColor: string; title?: string }[];
+    total: number | null | undefined;
+  } | null;
 }
 
 export interface TopicBubbleHtmlPayload {
@@ -21,12 +24,13 @@ export interface TopicBubbleHtmlPayload {
  * words do not match (the app's own matcher, embedded), a hover card shows a
  * topic's words sized by count and its sizes, and the chart pans (drag) and
  * zooms (wheel). Self-contained on purpose: the download embeds this
- * function's source and calls it with the payload and `matchChecklistOption`,
- * so it must not use anything outside its body.
+ * function's source and calls it with the payload and the app's topic
+ * matcher (`matchTopicWords` over `matchChecklistOption`), so it must not use
+ * anything outside its body.
  */
 export function runTopicBubbleHtml(
   payload: TopicBubbleHtmlPayload,
-  match: (label: string, query: string) => boolean,
+  match: (words: string[], query: string) => boolean,
 ): void {
   const FADED = '0.18';
   const MIN_FONT = 11;
@@ -44,8 +48,7 @@ export function runTopicBubbleHtml(
     let matched = 0;
     for (const group of groups) {
       const topic = topics.get(group.dataset.topicId ?? '');
-      const label = topic ? topic.words.map((entry) => entry.word).join(', ') : '';
-      const isMatch = match(label, query);
+      const isMatch = match(topic ? topic.words.map((entry) => entry.word) : [], query);
       if (isMatch) matched += 1;
       if (isMatch) group.removeAttribute('opacity');
       else group.setAttribute('opacity', FADED);
@@ -79,11 +82,31 @@ export function runTopicBubbleHtml(
       span.title = `${entry.word}: ${String(entry.count)}`;
       words.append(span);
     });
+    // The same chips as the app's card: one per colour-by value, or one per
+    // Data Block joined by "+", then "= total".
     const sizes = document.createElement('div');
     sizes.className = 'card-sizes';
-    const lines = topic.sizes.map((size) => `${size.label}: ${String(size.value)}`);
-    if (topic.sizes.length > 1) lines.push(`Total: ${String(topic.total)}`);
-    sizes.textContent = lines.join(' · ');
+    topic.sizes?.chips.forEach((chip, index) => {
+      if (index > 0 && topic.sizes?.kind === 'corpora') {
+        const plus = document.createElement('span');
+        plus.className = 'card-sum';
+        plus.textContent = '+';
+        sizes.append(plus);
+      }
+      const span = document.createElement('span');
+      span.className = 'card-chip';
+      span.style.background = chip.color;
+      span.style.color = chip.textColor;
+      span.textContent = chip.text;
+      if (chip.title) span.title = chip.title;
+      sizes.append(span);
+    });
+    if (topic.sizes) {
+      const sum = document.createElement('span');
+      sum.className = 'card-sum';
+      sum.textContent = `= ${String(topic.sizes.total ?? '')}`;
+      sizes.append(sum);
+    }
     card.append(title, words, sizes);
     card.hidden = false;
     const margin = 14;

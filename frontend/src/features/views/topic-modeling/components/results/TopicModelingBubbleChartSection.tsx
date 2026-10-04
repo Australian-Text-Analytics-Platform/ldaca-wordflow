@@ -166,6 +166,7 @@ export function TopicModelingBubbleChartSection({
         header: exportHeader(),
         legend: exportLegend,
         topics,
+        presentation: corpusPresentation,
         nodeNames: nodeNames ?? [],
         query: topicSearchQuery,
       });

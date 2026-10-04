@@ -1,124 +1,53 @@
-import { getReadableTextColor } from '../../topicModelingAdapters';
-import { resolveTopicCorpusColor, type TopicColorScheme } from './topicModelingGraph';
+import {
+  topicSizeChips,
+  type TopicCorpusPresentation,
+  type TopicSizeChipsInput,
+} from './topicSizeChips';
 
-export interface TopicCorpusPresentation {
-  corpusCount: number;
-  panelNodeIds: string[];
-  nodeColors: Record<string, string>;
-  defaultPalette: string[];
-  /** Single-corpus metadata colouring; replaces the corpus chip when set. */
-  colorScheme?: TopicColorScheme | null;
-}
-
-interface Props extends TopicCorpusPresentation {
-  sizes: number[] | undefined;
-  total?: number | null;
-  /** Needed to look up metadata colour counts. */
-  topicId?: number;
-  /** Prints each value's label beside its count (hover cards have the room). */
-  showLabels?: boolean;
-}
-
-/** One coloured count chip per metadata value, in legend order. */
-function TopicColorGroupChips({
-  scheme,
-  topicId,
-  total,
-  showLabels,
-}: {
-  scheme: TopicColorScheme;
-  topicId: number;
-  total?: number | null;
-  showLabels: boolean;
-}) {
-  const counts = scheme.topicCounts[topicId] ?? [];
-  return (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      {scheme.groups.map((group, index) => {
-        const count = counts[index] ?? 0;
-        return (
-          <span
-            key={`${group.label}:${String(index)}`}
-            style={{ background: group.color, color: getReadableTextColor(group.color) }}
-            className="rounded-sm px-1.5 py-0.5 text-badge font-medium tabular-nums"
-            title={`${group.label}: ${String(count)}`}
-            aria-label={`${group.label}: ${String(count)}`}
-          >
-            {showLabels ? `${group.label} ${String(count)}` : count}
-          </span>
-        );
-      })}
-      <span className="text-badge text-description">= {total}</span>
-    </span>
-  );
-}
+export type { TopicCorpusPresentation };
 
 /** Renders corpus counts with the same persisted colours used by graph bubbles. */
-export function TopicSizeComposition({
-  sizes,
-  total,
-  corpusCount,
-  panelNodeIds,
-  nodeColors,
-  defaultPalette,
-  colorScheme = null,
-  topicId,
-  showLabels = false,
-}: Props) {
-  if (corpusCount === 0 || !sizes) return null;
-  if (colorScheme && corpusCount === 1 && topicId !== undefined) {
+export function TopicSizeComposition(props: TopicSizeChipsInput) {
+  const model = topicSizeChips(props);
+  if (!model) return null;
+  if (model.kind === 'groups') {
     return (
-      <TopicColorGroupChips
-        scheme={colorScheme}
-        topicId={topicId}
-        total={total}
-        showLabels={showLabels}
-      />
-    );
-  }
-  const colorA = resolveTopicCorpusColor(
-    0,
-    defaultPalette[0] ?? '#2563eb',
-    panelNodeIds,
-    nodeColors,
-    defaultPalette,
-  );
-  const colorB = resolveTopicCorpusColor(
-    1,
-    defaultPalette[1] ?? '#dc2626',
-    panelNodeIds,
-    nodeColors,
-    defaultPalette,
-  );
-  if (sizes.length === 1) {
-    return (
-      <span className="inline-flex items-center gap-1">
-        <span
-          style={{ background: colorA, color: getReadableTextColor(colorA) }}
-          className="rounded-sm px-1.5 py-0.5 text-badge font-medium"
-        >
-          {sizes[0]}
-        </span>
-        <span className="text-badge text-description">= {total}</span>
+      <span className="inline-flex flex-wrap items-center gap-1">
+        {model.chips.map((chip, index) => (
+          <span
+            key={`${chip.title ?? ''}:${String(index)}`}
+            style={{ background: chip.color, color: chip.textColor }}
+            className="rounded-sm px-1.5 py-0.5 text-badge font-medium tabular-nums"
+            title={chip.title}
+            aria-label={chip.title}
+          >
+            {chip.text}
+          </span>
+        ))}
+        <span className="text-badge text-description">= {model.total}</span>
       </span>
     );
   }
   return (
-    <span className="inline-flex flex-wrap items-center gap-1">
-      <span
-        style={{ background: colorA, color: getReadableTextColor(colorA) }}
-        className="rounded-sm px-1.5 py-0.5 text-badge font-medium"
-      >
-        {sizes[0]}
-      </span>
-      <span className="text-badge text-description">+</span>
-      <span
-        style={{ background: colorB, color: getReadableTextColor(colorB) }}
-        className="rounded-sm px-1.5 py-0.5 text-badge font-medium"
-      >
-        {sizes[1]}
-      </span>
-      <span className="text-badge text-description">= {total}</span>
+    <span
+      className={
+        model.chips.length === 1
+          ? 'inline-flex items-center gap-1'
+          : 'inline-flex flex-wrap items-center gap-1'
+      }
+    >
+      {model.chips.map((chip, index) => (
+        <span key={String(index)} className="contents">
+          {index > 0 ? <span className="text-badge text-description">+</span> : null}
+          <span
+            style={{ background: chip.color, color: chip.textColor }}
+            className="rounded-sm px-1.5 py-0.5 text-badge font-medium"
+          >
+            {chip.text}
+          </span>
+        </span>
+      ))}
+      <span className="text-badge text-description">= {model.total}</span>
     </span>
   );
 }

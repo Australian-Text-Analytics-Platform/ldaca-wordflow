@@ -8,7 +8,9 @@ import {
   type ChartExportLegendItem,
 } from '@/lib/chartExport';
 import { saveBlob } from '@/lib/download';
+import { matchTopicWords } from '../../topicModelingAdapters';
 import { runTopicBubbleHtml, type TopicBubbleHtmlPayload } from './topicBubbleHtmlRuntime';
+import { topicSizeChips, type TopicCorpusPresentation } from './topicSizeChips';
 
 /**
  * Topic Modelling interactive HTML download (issue 279). What you see is what
@@ -21,24 +23,38 @@ import { runTopicBubbleHtml, type TopicBubbleHtmlPayload } from './topicBubbleHt
 /** The topics as drawn, with the words the app shows (stop words removed). */
 export function buildTopicBubblePayload(
   topics: readonly TopicModelingTopic[],
+  presentation: TopicCorpusPresentation,
   nodeNames: readonly string[],
   query: string,
   width: number,
   height: number,
 ): TopicBubbleHtmlPayload {
   return {
-    topics: topics.map((topic) => ({
-      id: topic.id,
-      words: topic.representative_words.map((term) => ({
-        word: term.word,
-        count: term.occurrence_count,
-      })),
-      sizes: topic.size.map((value, index) => ({
-        label: nodeNames[index] ?? `Data Block ${String(index + 1)}`,
-        value,
-      })),
-      total: topic.total_size,
-    })),
+    topics: topics.map((topic) => {
+      const sizes = topicSizeChips({
+        ...presentation,
+        sizes: topic.size,
+        total: topic.total_size,
+        topicId: topic.id,
+        showLabels: true,
+      });
+      return {
+        id: topic.id,
+        words: topic.representative_words.map((term) => ({
+          word: term.word,
+          count: term.occurrence_count,
+        })),
+        // Data Block chips carry no label in the app; name them on hover here.
+        sizes: sizes && {
+          ...sizes,
+          chips: sizes.chips.map((chip, index) =>
+            sizes.kind === 'corpora' && nodeNames[index]
+              ? { ...chip, title: `${nodeNames[index]}: ${chip.text}` }
+              : chip,
+          ),
+        },
+      };
+    }),
     query,
     width,
     height,
@@ -82,7 +98,7 @@ export function buildTopicBubbleHtmlDocument(
         `<span class="chip"><i style="background:${escapeHtml(item.color)}"></i>${escapeHtml(item.label)}</span>`,
     )
     .join('');
-  const run = `(${runTopicBubbleHtml.toString()})(${jsonForScript(payload)}, (${matchChecklistOption.toString()}));`;
+  const run = `(${runTopicBubbleHtml.toString()})(${jsonForScript(payload)}, (words, query) => (${matchTopicWords.toString()})(words, query, (${matchChecklistOption.toString()})));`;
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -107,7 +123,9 @@ dd{margin:0}
 #card{position:fixed;z-index:10;max-width:18rem;padding:10px 12px;border-radius:6px;background:#fff;color:#1e293b;box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none}
 .card-title{font-weight:600;margin-bottom:4px}
 .card-words{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;line-height:1.2}
-.card-sizes{margin-top:8px;font-size:12px;opacity:.8}
+.card-sizes{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:8px;font-size:12px}
+.card-chip{border-radius:3px;padding:1px 6px;font-weight:500;font-variant-numeric:tabular-nums}
+.card-sum{opacity:.7}
 footer{margin-top:12px;font-size:12px;opacity:.7}
 </style>
 </head>
@@ -136,6 +154,7 @@ interface DownloadTopicBubbleHtmlOptions {
   header: ChartExportHeaderItem[];
   legend: ChartExportLegendItem[];
   topics: readonly TopicModelingTopic[];
+  presentation: TopicCorpusPresentation;
   nodeNames: readonly string[];
   query: string;
 }
@@ -152,6 +171,7 @@ export async function downloadTopicBubbleHtml(
   const height = Number(svg.getAttribute('height')) || 600;
   const payload = buildTopicBubblePayload(
     options.topics,
+    options.presentation,
     options.nodeNames,
     options.query,
     width,

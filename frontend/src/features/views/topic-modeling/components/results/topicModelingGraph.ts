@@ -1,7 +1,7 @@
 import type { TopicColorGroups, TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
-import { interpolateColor } from '../../topicModelingAdapters';
+import { interpolateColor, matchTopicWords } from '../../topicModelingAdapters';
 
 export const TOPIC_GRAPH_WIDTH = 1000;
 export const TOPIC_GRAPH_HEIGHT = 550;
@@ -355,9 +355,10 @@ export function buildTopicBubbleModels({
       hovered: hoveredTopicId === topic.id,
       filteredOut:
         hasSearchFilter &&
-        !matchChecklistOption(
-          topic.representative_words.map((term) => term.word).join(', '),
+        !matchTopicWords(
+          topic.representative_words.map((term) => term.word),
           topicSearchQuery,
+          matchChecklistOption,
         ),
     };
   });

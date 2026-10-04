@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
+import { matchTopicWords } from '../../../topicModelingAdapters';
 import { buildTopicBubbleHtmlDocument, buildTopicBubblePayload } from '../topicBubbleHtmlExport';
 import { runTopicBubbleHtml } from '../topicBubbleHtmlRuntime';
 
@@ -15,6 +16,14 @@ const topic = (id: number, words: [string, number][], size: number[]) =>
     size,
     total_size: size.reduce((sum, value) => sum + value, 0),
   }) as unknown as TopicModelingTopic;
+
+const presentation = {
+  corpusCount: 2,
+  panelNodeIds: ['n1', 'n2'],
+  nodeColors: { n1: '#2563eb', n2: '#dc2626' },
+  defaultPalette: ['#2563eb', '#dc2626'],
+  colorScheme: null,
+};
 
 const topics = [
   topic(
@@ -52,20 +61,42 @@ const exportSvg = () => {
 
 describe('topic bubble interactive HTML (issue 279)', () => {
   it('embeds functions that run without the app', () => {
-    const match = standalone<typeof matchChecklistOption>(matchChecklistOption);
-    expect(match('climate, policy', 'POL')).toBe(true);
-    expect(match('climate, policy', 'clim*')).toBe(true);
-    expect(match('housing, rent', 'clim*')).toBe(false);
-    expect(match('climate, policy', 'c?imate*')).toBe(true);
+    const option = standalone<typeof matchChecklistOption>(matchChecklistOption);
+    const topicMatch = standalone<typeof matchTopicWords>(matchTopicWords);
+    const match = (words: string[], query: string) => topicMatch(words, query, option);
+    expect(match(['climate', 'policy'], 'POL')).toBe(true);
+    expect(match(['climate', 'policy'], 'clim*')).toBe(true);
+    expect(match(['housing', 'rent'], 'clim*')).toBe(false);
     expect(standalone(runTopicBubbleHtml)).toBeTypeOf('function');
   });
 
+  it('matches wildcards against any one word, as in the app (issue 280)', () => {
+    const words = ['government', 'gst', 'tax'];
+    expect(matchTopicWords(words, 'gst', matchChecklistOption)).toBe(true);
+    expect(matchTopicWords(words, 'gs*', matchChecklistOption)).toBe(true);
+    expect(matchTopicWords(words, 'gs?', matchChecklistOption)).toBe(true);
+    expect(matchTopicWords(words, 'govern*, gst*', matchChecklistOption)).toBe(true);
+    expect(matchTopicWords(words, 'gs??', matchChecklistOption)).toBe(false);
+    expect(matchTopicWords(words, '', matchChecklistOption)).toBe(true);
+  });
+
   it('writes the bubble picture, header and filter into one document', () => {
-    const payload = buildTopicBubblePayload(topics, ['Senate', 'House'], 'clim*', 400, 300);
-    expect(payload.topics[1]?.sizes).toEqual([
-      { label: 'Senate', value: 3 },
-      { label: 'House', value: 7 },
-    ]);
+    const payload = buildTopicBubblePayload(
+      topics,
+      presentation,
+      ['Senate', 'House'],
+      'clim*',
+      400,
+      300,
+    );
+    expect(payload.topics[1]?.sizes).toEqual({
+      kind: 'corpora',
+      total: 10,
+      chips: [
+        { text: '3', color: '#2563eb', textColor: '#ffffff', title: 'Senate: 3' },
+        { text: '7', color: '#dc2626', textColor: '#ffffff', title: 'House: 7' },
+      ],
+    });
     const html = buildTopicBubbleHtmlDocument(exportSvg(), payload, {
       title: 'Topic Modelling: <Senate>',
       header: [{ label: 'Number of topics', value: '2' }],
@@ -86,9 +117,11 @@ describe('topic bubble interactive HTML (issue 279)', () => {
       '<input id="filter"><span id="filter-status"></span><button id="reset"></button><div id="chart"></div><div id="card" hidden></div>';
     document.querySelector('#chart')?.append(exportSvg());
     const run = standalone<typeof runTopicBubbleHtml>(runTopicBubbleHtml);
+    const option = standalone<typeof matchChecklistOption>(matchChecklistOption);
+    const topicMatch = standalone<typeof matchTopicWords>(matchTopicWords);
     run(
-      buildTopicBubblePayload(topics, ['Senate', 'House'], 'clim*', 400, 300),
-      standalone(matchChecklistOption),
+      buildTopicBubblePayload(topics, presentation, ['Senate', 'House'], 'clim*', 400, 300),
+      (words, query) => topicMatch(words, query, option),
     );
 
     const group = (id: number) => document.querySelector(`[data-topic-id="${String(id)}"]`);
@@ -108,7 +141,12 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     const card = document.querySelector<HTMLElement>('#card');
     expect(card?.hidden).toBe(false);
     expect(card?.textContent).toContain('Topic 0');
-    expect(card?.textContent).toContain('Senate: 10 · House: 5 · Total: 15');
+    const chips = Array.from(card?.querySelectorAll<HTMLElement>('.card-chip') ?? []);
+    expect(chips.map((chip) => [chip.textContent, chip.style.background])).toEqual([
+      ['10', 'rgb(37, 99, 235)'],
+      ['5', 'rgb(220, 38, 38)'],
+    ]);
+    expect(card?.querySelector('.card-sizes')?.textContent).toBe('10+5= 15');
     const sizes = Array.from(card?.querySelectorAll<HTMLElement>('.card-words span') ?? []).map(
       (span) => span.style.fontSize,
     );
