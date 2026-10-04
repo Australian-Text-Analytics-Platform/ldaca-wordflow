@@ -5,6 +5,7 @@ import { MultiSeriesChart } from '@/features/views/common/components/MultiSeries
 import { FilterableSeriesControls } from '@/features/views/common/components/FilterableSeriesControls';
 import { Input } from '@/components/ui/input';
 import type { SequentialChartModel } from '../hooks/sequentialChartModel';
+import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
 
 interface SequentialChartProps {
   model: SequentialChartModel;
@@ -100,7 +101,9 @@ export function SequentialChart({
                           ...(model.chartType === 'area' || model.chartType === 'stacked-bar'
                             ? { max: 100 }
                             : {}),
-                          axisLabel: { formatter: (value: number) => `${String(value)}%` },
+                          axisLabel: {
+                            formatter: portableFormatter({ kind: 'percent', round: false }),
+                          },
                         }
                       : undefined
                   }

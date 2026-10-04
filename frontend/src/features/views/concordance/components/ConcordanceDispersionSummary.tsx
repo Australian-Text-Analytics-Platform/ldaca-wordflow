@@ -38,6 +38,8 @@ import {
   type ConcordanceDensitySeriesInput,
 } from '../concordanceDispersionDomain';
 import { toastError } from '@/lib/toastError';
+import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
+import { downloadChartAsHtml } from '@/lib/chartHtml/chartHtmlExport';
 import {
   OVERVIEW_Y_AXIS,
   sliderOverviewData,
@@ -133,11 +135,6 @@ const formatBinRange = (binCenter: number, binCount: number): string => {
 };
 
 /** Used by: ConcordanceDispersionSummary chart axis to format ticks as relative-position percentages. */
-const formatTickLabel = (value: number): string => {
-  if (!Number.isFinite(value)) return '';
-  return `${String(Math.round(value))}%`;
-};
-
 /** Builds cumulative running totals from the density-bin rows for the stepped cumulative figure. */
 const buildCumulativeChartData = (
   bins: readonly Record<string, unknown>[],
@@ -388,7 +385,7 @@ export function ConcordanceDispersionSummary({
       interval: 20,
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { formatter: (value: number) => formatTickLabel(value), margin: 8 },
+      axisLabel: { formatter: portableFormatter({ kind: 'percent', round: true }), margin: 8 },
       splitLine: { show: false },
       name: 'Position in document (%)',
       nameLocation: 'middle',
@@ -459,6 +456,38 @@ export function ConcordanceDispersionSummary({
   };
   const dataResetKey = `${String(binCount)}:${JSON.stringify(bins)}`;
 
+  /** Chart details shown above an image or HTML download. */
+  const exportHeader = (): ChartExportHeaderItem[] => [
+    { label: 'Title', value: titleText },
+    { label: 'Mode', value: CHART_MODE_LABELS[chartMode] },
+    { label: 'Search', value: searchWord || '—' },
+    { label: 'Bins', value: String(binCount) },
+    ...(splitBySource && sources.length > 0
+      ? [{ label: 'Sources', value: sources.join(' / ') }]
+      : []),
+  ];
+
+  /**
+   * Interactive HTML download (issue 278): the chart as shown, with tooltips,
+   * legend toggles and zoom, in one offline file.
+   */
+  const handleDownloadHtml = async () => {
+    if (!chartContainerRef.current) {
+      toast.error('Chart not available for export.');
+      return;
+    }
+    try {
+      await downloadChartAsHtml(chartContainerRef.current, {
+        nodeName: dataBlockLabel,
+        toolSuffix: 'concordance_dispersion',
+        title: titleText,
+        header: exportHeader(),
+      });
+    } catch (error) {
+      toastError(error, 'Try again.', { title: "Couldn't export the chart." });
+    }
+  };
+
   /**
    * Called by: ConcordanceDispersionSummary download dialog to export the rendered chart.
    * Flow: verify the chart SVG exists, assemble export header and legend metadata, then download the dispersion chart or show a toast error.
@@ -473,15 +502,7 @@ export function ConcordanceDispersionSummary({
       toast.error('Chart SVG not found.');
       return;
     }
-    const header: ChartExportHeaderItem[] = [
-      { label: 'Title', value: titleText },
-      { label: 'Mode', value: CHART_MODE_LABELS[chartMode] },
-      { label: 'Search', value: searchWord || '—' },
-      { label: 'Bins', value: String(binCount) },
-      ...(splitBySource && sources.length > 0
-        ? [{ label: 'Sources', value: sources.join(' / ') }]
-        : []),
-    ];
+    const header = exportHeader();
     const legendType: ChartExportLegendItem['type'] =
       chartMode === 'density-bar' ? 'bar' : chartMode === 'density-area' ? 'area' : 'line';
     const legend: ChartExportLegendItem[] = allSeries.map((item) => ({
@@ -643,6 +664,9 @@ export function ConcordanceDispersionSummary({
             title="Download dispersion summary"
             onConfirm={(format) => {
               void handleDownload(format);
+            }}
+            onConfirmHtml={() => {
+              void handleDownloadHtml();
             }}
           />
         </Card>

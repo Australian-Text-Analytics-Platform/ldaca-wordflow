@@ -26,7 +26,14 @@ interface Props {
   title?: string;
   onConfirm: (format: ChartImageFormat, extras: Record<string, boolean>) => void;
   extraOptions?: ChartDownloadExtraOption[];
+  /**
+   * Offers an interactive HTML file beside the image formats (issue 278);
+   * called instead of `onConfirm` when it is chosen.
+   */
+  onConfirmHtml?: () => void;
 }
+
+const HTML_FORMAT = 'html';
 
 /**
  * Dialog body used by chart result components to choose image format and export extras.
@@ -38,8 +45,14 @@ const ChartImageDownloadDialogContent = ({
   onConfirm,
   onOpenChange,
   extraOptions = [],
+  onConfirmHtml,
 }: Omit<Props, 'open'>) => {
-  const [selectedFormat, setSelectedFormat] = useState<ChartImageFormat>('png');
+  const [selectedFormat, setSelectedFormat] = useState<ChartImageFormat | typeof HTML_FORMAT>(
+    'png',
+  );
+  const formats = onConfirmHtml
+    ? [...CHART_IMAGE_FORMATS, { value: HTML_FORMAT, label: 'Interactive HTML' } as const]
+    : CHART_IMAGE_FORMATS;
   const [extraStates, setExtraStates] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(extraOptions.map((opt) => [opt.id, opt.defaultChecked ?? false])),
   );
@@ -47,7 +60,8 @@ const ChartImageDownloadDialogContent = ({
   /** Called by: ChartImageDownloadDialogContent Download action. */
   const handleConfirm = (e: React.MouseEvent) => {
     e.preventDefault();
-    onConfirm(selectedFormat, extraStates);
+    if (selectedFormat === HTML_FORMAT) onConfirmHtml?.();
+    else onConfirm(selectedFormat, extraStates);
     onOpenChange(false);
   };
 
@@ -60,13 +74,17 @@ const ChartImageDownloadDialogContent = ({
     <AlertDialogContent className="max-w-sm">
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
-        <AlertDialogDescription>Choose image format for the chart export.</AlertDialogDescription>
+        <AlertDialogDescription>
+          {onConfirmHtml
+            ? 'Choose an image format, or an interactive HTML file that keeps tooltips, legend toggles and zoom.'
+            : 'Choose image format for the chart export.'}
+        </AlertDialogDescription>
       </AlertDialogHeader>
 
       <div className="space-y-2 py-2">
         <Label className="text-body font-medium">Format</Label>
         <div className="flex flex-wrap gap-3">
-          {CHART_IMAGE_FORMATS.map((fmt) => (
+          {formats.map((fmt) => (
             <label key={fmt.value} className="flex cursor-pointer items-center gap-2">
               <Checkbox
                 checked={selectedFormat === fmt.value}
@@ -80,7 +98,7 @@ const ChartImageDownloadDialogContent = ({
         </div>
       </div>
 
-      {extraOptions.length > 0 && (
+      {extraOptions.length > 0 && selectedFormat !== HTML_FORMAT && (
         <>
           <Separator />
           <div className="space-y-2 py-1">
@@ -116,6 +134,7 @@ export const ChartImageDownloadDialog = ({
   title,
   onConfirm,
   extraOptions,
+  onConfirmHtml,
 }: Props) => (
   <AlertDialog open={open} onOpenChange={onOpenChange}>
     {open ? (
@@ -124,6 +143,7 @@ export const ChartImageDownloadDialog = ({
         onConfirm={onConfirm}
         onOpenChange={onOpenChange}
         extraOptions={extraOptions}
+        onConfirmHtml={onConfirmHtml}
       />
     ) : null}
   </AlertDialog>

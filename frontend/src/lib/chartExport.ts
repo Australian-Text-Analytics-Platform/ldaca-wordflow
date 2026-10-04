@@ -30,11 +30,11 @@ export interface DownloadChartOptions {
 }
 
 /** Builds filesystem-safe chart filenames that still identify the source node and tool. */
-/** Called by: `buildChartBlob`. */
-const toChartFilename = (
+/** Called by: `buildChartBlob` and the interactive HTML download (issue 278). */
+export const toChartFilename = (
   nodeName: string,
   toolSuffix: string,
-  format: ChartImageFormat,
+  format: ChartImageFormat | 'html',
 ): string => {
   const safe =
     (nodeName || 'data')

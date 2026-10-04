@@ -7,15 +7,29 @@
 
 export type ChartDateUnit = 'second' | 'minute' | 'day' | 'month' | 'quarter' | 'year';
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-const pad = (value: number) => String(value).padStart(2, '0');
-
 /**
  * Formats a wall-clock time held in UTC fields (for example from
  * `parsePeriodLabel`, or a UTC instant shifted by the data's zone offset).
+ *
+ * Self-contained on purpose: the interactive HTML chart download embeds this
+ * function's source (issue 278), so it must not use anything outside its body.
  */
 export function formatChartDate(wallClockMs: number, unit: ChartDateUnit): string {
+  const MONTHS = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  const pad = (value: number) => String(value).padStart(2, '0');
   const date = new Date(wallClockMs);
   if (Number.isNaN(date.getTime())) return '';
   const year = date.getUTCFullYear();

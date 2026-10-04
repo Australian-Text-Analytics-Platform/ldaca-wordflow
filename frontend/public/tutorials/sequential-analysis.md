@@ -155,7 +155,9 @@ The setting is kept for the tab while the Project is open, like **Chart**, and i
 
 <h3 id="help-sequential-download">Download chart</h3>
 
-Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, or JPEG. The exported file includes a header block with the Data Block name, time column, period, and row counts, plus a legend. When **Normalise to 100%** is on, the header also says the values are percentages of all rows in each period.
+Click the download button (↓ icon) in the results header to export the chart. A dialog lets you choose SVG, PNG, JPEG or **Interactive HTML**. The exported file includes a header block with the Data Block name, time column, period, and row counts, plus a legend. When **Normalise to 100%** is on, the header also says the values are percentages of all rows in each period.
+
+**Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected periods, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider. It is a picture you can explore, not a copy of Wordflow: it cannot change the Period, stop words or groups, or add anything to a Project.
 
 <h3 id="help-sequential-legend">Legend and group visibility</h3>
 

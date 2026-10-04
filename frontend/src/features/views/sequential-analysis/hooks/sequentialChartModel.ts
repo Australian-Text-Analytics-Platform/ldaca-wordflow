@@ -3,6 +3,7 @@ import type { SequentialAnalysisRequest, SequentialAnalysisResponse } from '@/ap
 import type { MultiSeriesChartSeries } from '@/features/views/common/components/MultiSeriesChart';
 import type { ChartExportLegendItem } from '@/lib/chartExport';
 import type { XAxisComponentOption } from 'echarts/types/dist/option';
+import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
 
 type SequentialAnalysisDatum = Record<string, unknown>;
 export type ChartTypeOption = 'line' | 'bar' | 'stacked-bar' | 'area';
@@ -750,8 +751,13 @@ export function buildSequentialChartModel({
           max: 'dataMax',
           splitNumber: 10,
           axisLabel: {
-            formatter: (value) =>
-              formatSequentialAxisTick(value, summary.columnType, formatInstant),
+            // Rebuilt in the interactive HTML download (issue 278); the same
+            // labels as formatSequentialAxisTick.
+            formatter: portableFormatter(
+              summary.columnType === 'datetime'
+                ? { kind: 'chartDate', unit: dateUnit, offsetMs: zoneOffsetMs }
+                : { kind: 'number' },
+            ),
             rotate: 45,
           },
         }

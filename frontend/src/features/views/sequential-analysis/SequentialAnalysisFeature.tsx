@@ -50,6 +50,7 @@ import type { AnalysisTabFeatureProps } from '@/features/views/common/tabs/Analy
 import type { SequentialAnalysisResponse } from '@/api';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { downloadChartAsHtml } from '@/lib/chartHtml/chartHtmlExport';
 
 const isTimeCompatibleField = (field: ArrowField): boolean =>
   isArrowTemporalField(field) || isArrowIntegerField(field) || isArrowFloatField(field);
@@ -402,6 +403,31 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     }
   };
 
+  /**
+   * Interactive HTML download (issue 278): the chart as shown, with tooltips,
+   * legend toggles and zoom, in one offline file.
+   */
+  const handleDownloadChartHtml = async () => {
+    if (!chartContainerRef.current) {
+      toast.error('Chart not available for export.');
+      return;
+    }
+    const nodeName =
+      resultNodeInfo?.name ?? panelSelectedNodes[0]?.name ?? panelSelectedNodes[0]?.id ?? 'data';
+    const { header } = buildSequentialChartExportMetadata({ nodeName, model: chartModel });
+    try {
+      await downloadChartAsHtml(chartContainerRef.current, {
+        nodeName,
+        toolSuffix: 'trends',
+        title: `Trends: ${nodeName}`,
+        header,
+      });
+    } catch (err) {
+      toast.error("Couldn't export chart.");
+      console.error(err);
+    }
+  };
+
   // Exports the rendered chart SVG with contextual title and legend metadata.
   /**
    * Passed to the results panel as its chart-download handler.
@@ -572,6 +598,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         title="Download Trends chart"
         onConfirm={(format) => {
           void handleDownloadChart(format);
+        }}
+        onConfirmHtml={() => {
+          void handleDownloadChartHtml();
         }}
       />
       {results?.source ? (
