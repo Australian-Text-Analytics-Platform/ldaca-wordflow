@@ -64,9 +64,9 @@ In Text mode, tick **Use regular expression** to search for a pattern instead of
 Use [regex101.com](https://regex101.com/) (choose the **Rust** flavour) to test unfamiliar patterns. **Whole
 word** excludes partial-word matches, and **Case sensitive** keeps letter case
 distinct: with it ticked, *Apple* finds *Apple* but not *apple*. It also decides
-how the words just before and after a match (L1 and R1) are counted and sorted:
-with it off, the default, *The* and *the* count as one word and sort together;
-their text keeps its own capitals. You can also
+how the words just before and after a match (L1 and R1) are counted, and how
+the matched text, L1 and R1 sort: with it off, the default, *The* and *the*
+count as one word and sort together; their text keeps its own capitals. You can also
 ask a generative AI tool to write a pattern for you, but carefully review and
 test it before relying on the results. Whole word relies on spaces between words, so it does not apply to
 Japanese, Chinese, Thai, or other text written without them: there it matches
@@ -237,7 +237,7 @@ Download the current chart as PNG, SVG, JPEG or **Interactive HTML**. The image
 export includes the visible term series, complete legend with hidden-state
 indication, and active bin and term-filter summary.
 
-**Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected bins, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider. It is a picture you can explore, not a copy of Wordflow: it cannot change the search or the terms, or add anything to a Project.
+**Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected bins, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the search or the terms, or add anything to a Project.
 
 <h3 id="help-concordance-metadata">Show metadata</h3>
 

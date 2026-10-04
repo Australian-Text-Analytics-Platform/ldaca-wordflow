@@ -97,29 +97,27 @@ const SWATCH_W = 16;
 const SWATCH_H = 10;
 const SWATCH_TEXT_GAP = 6;
 const LEGEND_ITEM_GAP = 18;
-// Average glyph width of the legend font, to size entries without measuring.
-const LEGEND_CHAR_W = LEGEND_FONT * 0.58;
-
-/** Reserves vertical space for the optional export header above the chart body. */
-/** Called by: SVG and bitmap composition paths. */
-const computeHeaderH = (items: ChartExportHeaderItem[]): number => {
-  if (!items.length) return 0;
-  const hasInfo = items.length > 1;
-  return PAD + HEADER_TITLE_H + (hasInfo ? HEADER_INFO_H : 0) + DIVIDER_GAP + 1 + DIVIDER_GAP;
-};
+const HEADER_ITEM_GAP = 22;
 
 /**
- * Places legend entries in centred rows, each as wide as its label, so long
- * Data Block names do not run into the next entry (issue 281; entries used a
- * fixed 140 px slot). Shared by the SVG and bitmap paths so both match.
+ * Width of a text in a system font without measuring: Latin glyphs average
+ * 0.58 em, CJK and other wide glyphs a full em (issue 299).
  */
-const layoutLegend = (
-  items: ChartExportLegendItem[],
+const estimateTextWidth = (text: string, font: number): number => {
+  let width = 0;
+  for (const char of text) {
+    const code = char.codePointAt(0) ?? 0;
+    width += (code >= 0x2e80 && !(code >= 0xff61 && code <= 0xff9f) ? 1 : 0.58) * font;
+  }
+  return width;
+};
+
+/** Centred rows of items, each as wide as its text (shared by header and legend). */
+const layoutRows = (
+  widths: number[],
   chartWidth: number,
+  gap: number,
 ): { positions: { x: number; row: number }[]; rows: number } => {
-  const widths = items.map(
-    (item) => SWATCH_W + SWATCH_TEXT_GAP + item.label.length * LEGEND_CHAR_W + LEGEND_ITEM_GAP,
-  );
   const rowsOfItems: number[][] = [];
   let current: number[] = [];
   let used = 0;
@@ -130,21 +128,56 @@ const layoutLegend = (
       used = 0;
     }
     current.push(index);
-    used += width;
+    used += width + gap;
   });
   if (current.length > 0) rowsOfItems.push(current);
   const positions: { x: number; row: number }[] = [];
   rowsOfItems.forEach((indices, row) => {
-    const rowWidth =
-      indices.reduce((total, index) => total + (widths[index] ?? 0), 0) - LEGEND_ITEM_GAP;
-    let x = Math.max(0, (chartWidth - rowWidth) / 2);
+    const rowWidth = indices.reduce((total, index) => total + (widths[index] ?? 0) + gap, 0) - gap;
+    let x = Math.max(PAD, (chartWidth - rowWidth) / 2);
     for (const index of indices) {
       positions[index] = { x, row };
-      x += widths[index] ?? 0;
+      x += (widths[index] ?? 0) + gap;
     }
   });
   return { positions, rows: rowsOfItems.length };
 };
+
+const headerInfoText = (item: ChartExportHeaderItem): string => `${item.label}: ${item.value}`;
+
+/**
+ * Places the header's info items in rows sized by their text (issue 286):
+ * equal columns with centred text overlapped once the Trends wording grew.
+ */
+const layoutHeaderInfo = (items: ChartExportHeaderItem[], chartWidth: number) =>
+  layoutRows(
+    items.map((item) => estimateTextWidth(headerInfoText(item), HEADER_INFO_FONT)),
+    chartWidth - 2 * PAD,
+    HEADER_ITEM_GAP,
+  );
+
+/** Reserves vertical space for the optional export header above the chart body. */
+/** Called by: SVG and bitmap composition paths. */
+const computeHeaderH = (items: ChartExportHeaderItem[], chartWidth: number): number => {
+  if (!items.length) return 0;
+  const infoRows = items.length > 1 ? layoutHeaderInfo(items.slice(1), chartWidth).rows : 0;
+  return PAD + HEADER_TITLE_H + infoRows * HEADER_INFO_H + DIVIDER_GAP + 1 + DIVIDER_GAP;
+};
+
+/**
+ * Places legend entries in centred rows, each as wide as its label, so long
+ * Data Block names do not run into the next entry (issue 281; entries used a
+ * fixed 140 px slot). Shared by the SVG and bitmap paths so both match.
+ */
+const layoutLegend = (
+  items: ChartExportLegendItem[],
+  chartWidth: number,
+): { positions: { x: number; row: number }[]; rows: number } =>
+  layoutRows(
+    items.map((item) => SWATCH_W + SWATCH_TEXT_GAP + estimateTextWidth(item.label, LEGEND_FONT)),
+    chartWidth,
+    LEGEND_ITEM_GAP,
+  );
 
 /** Sizes the export legend based on chart width so SVG and bitmap exports align. */
 /** Called by: SVG and bitmap composition paths. */
@@ -199,7 +232,7 @@ const renderCompositeBitmap = async (
   },
 ): Promise<Blob> => {
   const { scale, header, legend } = options;
-  const headerH = computeHeaderH(header);
+  const headerH = computeHeaderH(header, svgWidth);
   const legendH = computeLegendH(legend, svgWidth);
   const totalH = headerH + svgHeight + legendH;
 
@@ -227,16 +260,15 @@ const renderCompositeBitmap = async (
     if (infoItems.length) {
       ctx.font = `${String(HEADER_INFO_FONT)}px system-ui,-apple-system,sans-serif`;
       ctx.fillStyle = '#6b7280';
-      ctx.textAlign = 'center';
-      const colW = svgWidth / infoItems.length;
-      const infoY = PAD + HEADER_TITLE_H + HEADER_INFO_H;
-      for (const [i, item] of infoItems.entries()) {
-        ctx.fillText(`${item.label}: ${item.value}`, PAD + i * colW + colW / 2, infoY);
-      }
       ctx.textAlign = 'left';
+      const { positions } = layoutHeaderInfo(infoItems, svgWidth);
+      for (const [i, item] of infoItems.entries()) {
+        const { x, row } = positions[i] ?? { x: PAD, row: 0 };
+        ctx.fillText(headerInfoText(item), x, PAD + HEADER_TITLE_H + HEADER_INFO_H * (row + 1));
+      }
     }
 
-    const divY = computeHeaderH(header) - 1 - DIVIDER_GAP;
+    const divY = computeHeaderH(header, svgWidth) - 1 - DIVIDER_GAP;
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -323,7 +355,7 @@ const buildCompositeSvg = (
   header: ChartExportHeaderItem[],
   legend: ChartExportLegendItem[],
 ): string => {
-  const headerH = computeHeaderH(header);
+  const headerH = computeHeaderH(header, svgWidth);
   const legendH = computeLegendH(legend, svgWidth);
   const totalH = headerH + svgHeight + legendH;
 
@@ -339,17 +371,17 @@ const buildCompositeSvg = (
 
     const infoItems = header.slice(1);
     if (infoItems.length) {
-      const infoY = PAD + HEADER_TITLE_H + HEADER_INFO_H;
-      const colW = svgWidth / infoItems.length;
+      const { positions } = layoutHeaderInfo(infoItems, svgWidth);
       for (const [i, item] of infoItems.entries()) {
-        const cx = PAD + i * colW + colW / 2;
+        const { x, row } = positions[i] ?? { x: PAD, row: 0 };
+        const infoY = PAD + HEADER_TITLE_H + HEADER_INFO_H * (row + 1);
         headerLines.push(
-          `<text x="${String(cx)}" y="${String(infoY)}" text-anchor="middle" font-family="system-ui,-apple-system,sans-serif" font-size="${String(HEADER_INFO_FONT)}" fill="#6b7280">${escSvg(item.label)}: ${escSvg(item.value)}</text>`,
+          `<text x="${String(x)}" y="${String(infoY)}" font-family="system-ui,-apple-system,sans-serif" font-size="${String(HEADER_INFO_FONT)}" fill="#6b7280">${escSvg(headerInfoText(item))}</text>`,
         );
       }
     }
 
-    const divY = computeHeaderH(header) - 1 - DIVIDER_GAP;
+    const divY = computeHeaderH(header, svgWidth) - 1 - DIVIDER_GAP;
     headerLines.push(
       `<line x1="0" y1="${String(divY)}" x2="${String(svgWidth)}" y2="${String(divY)}" stroke="#e5e7eb" stroke-width="1"/>`,
     );

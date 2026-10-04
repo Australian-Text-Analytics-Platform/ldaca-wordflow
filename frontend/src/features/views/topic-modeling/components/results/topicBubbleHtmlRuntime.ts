@@ -133,18 +133,48 @@ export function runTopicBubbleHtml(
       `${String(view.x)} ${String(view.y)} ${String(view.width)} ${String(view.height)}`,
     );
   };
+  applyView();
+  // Wheel: with the platform's zoom key (Command on a Mac, Control elsewhere)
+  // it zooms about the pointer; otherwise it pans the chart while the chart
+  // is larger than its view, and scrolls the page when it is not (issue 303).
+  const zoomKeyHeld = (event: WheelEvent) =>
+    /Mac|iPhone|iPad/.test(navigator.platform) ? event.metaKey : event.ctrlKey;
+  const clampView = () => {
+    const maxX = payload.width - view.width;
+    const maxY = payload.height - view.height;
+    view.x = Math.min(Math.max(view.x, Math.min(0, maxX)), Math.max(0, maxX));
+    view.y = Math.min(Math.max(view.y, Math.min(0, maxY)), Math.max(0, maxY));
+  };
   svg.addEventListener(
     'wheel',
     (event) => {
+      const rect = svg.getBoundingClientRect();
+      // A box without layout (not yet painted) falls back to the chart size.
+      const box = {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width || payload.width,
+        height: rect.height || payload.height,
+      };
+      if (zoomKeyHeld(event)) {
+        event.preventDefault();
+        const factor = event.deltaY < 0 ? 0.9 : 1 / 0.9;
+        const px = view.x + ((event.clientX - box.left) / box.width) * view.width;
+        const py = view.y + ((event.clientY - box.top) / box.height) * view.height;
+        view.width = Math.min(payload.width, view.width * factor);
+        view.height = Math.min(payload.height, view.height * factor);
+        view.x = px - ((event.clientX - box.left) / box.width) * view.width;
+        view.y = py - ((event.clientY - box.top) / box.height) * view.height;
+        clampView();
+        applyView();
+        return;
+      }
+      const zoomedIn = view.width < payload.width - 0.5 || view.height < payload.height - 0.5;
+      if (!zoomedIn) return; // the page scrolls as usual
       event.preventDefault();
-      const box = svg.getBoundingClientRect();
-      const factor = event.deltaY < 0 ? 0.9 : 1 / 0.9;
-      const px = view.x + ((event.clientX - box.left) / box.width) * view.width;
-      const py = view.y + ((event.clientY - box.top) / box.height) * view.height;
-      view.width *= factor;
-      view.height *= factor;
-      view.x = px - ((event.clientX - box.left) / box.width) * view.width;
-      view.y = py - ((event.clientY - box.top) / box.height) * view.height;
+      view.x += (event.deltaX / box.width) * view.width;
+      view.y += (event.deltaY / box.height) * view.height;
+      clampView();
       applyView();
     },
     { passive: false },

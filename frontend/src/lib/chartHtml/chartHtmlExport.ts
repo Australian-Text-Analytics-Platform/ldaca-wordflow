@@ -110,10 +110,17 @@ export function buildChartHtmlPayload(chart: EChartsInstanceLike): ChartHtmlPayl
     })(),
   );
   const series = asArray(option.series).filter(isRecord);
+  // Helper series (slider overview, selection band, period stripes) carry a
+  // `__wordflow_` id and are not groups (issue 299).
   const dataSeries = series.filter(
-    (item) => typeof item.id === 'string' && datasetKeys.has(item.id),
+    (item) =>
+      typeof item.id === 'string' && datasetKeys.has(item.id) && !item.id.startsWith('__wordflow_'),
   );
   const dataSeriesIds = dataSeries.map((item) => String(item.id));
+  // Stacked charts draw their groups in reverse so the first group sits on
+  // top (issue 243); the legend reads them in the app's order (issue 299).
+  const stacked = dataSeries.some((item) => typeof item.stack === 'string' && item.stack);
+  const legendSeries = stacked ? [...dataSeries].reverse() : dataSeries;
 
   let tooltips: string[] | null = null;
   const portable = (value: unknown, path: string[]): unknown => {
@@ -143,7 +150,14 @@ export function buildChartHtmlPayload(chart: EChartsInstanceLike): ChartHtmlPayl
           return { [FORMATTER_MARKER]: { kind: 'lookup', labels } };
         }
       }
-      // Any other function (none today) falls back to ECharts' default.
+      // Per-point series settings (the selected period's larger solid dot,
+      // issue 298) are evaluated for every row and stored as values.
+      if (component === 'series' && (key === 'symbol' || key === 'symbolSize')) {
+        const perPoint = value as (item: unknown, params: { dataIndex: number }) => unknown;
+        const values = rows.map((row, dataIndex) => perPoint(row, { dataIndex }));
+        return { [FORMATTER_MARKER]: { kind: 'perPoint', values } };
+      }
+      // Any other function falls back to ECharts' default.
       return undefined;
     }
     if (typeof value === 'string') return resolveCssVariables(value, style);
@@ -168,7 +182,7 @@ export function buildChartHtmlPayload(chart: EChartsInstanceLike): ChartHtmlPayl
     {
       type: 'scroll',
       top: 0,
-      data: dataSeries.map((item) => String(item.name ?? item.id)),
+      data: legendSeries.map((item) => String(item.name ?? item.id)),
       textStyle: { color: foreground },
     },
   ];
@@ -220,13 +234,14 @@ dt{opacity:.7}
 dd{margin:0}
 #chart{max-width:100%;overflow-x:auto}
 footer{margin-top:12px;font-size:12px;opacity:.7}
+footer a{color:inherit}
 </style>
 </head>
 <body>
 <h1>${escapeHtml(options.title)}</h1>
 <dl>${items}</dl>
 <div id="chart"></div>
-<footer>Made with Wordflow on ${escapeHtml(options.generatedAt)}. Hover for values, click legend entries to hide or show groups, and drag the slider to zoom.</footer>
+<footer>Made with <a href="https://australian-text-analytics-platform.github.io/LDaCa_Text_Analytics_Tools/" target="_blank" rel="noopener">Wordflow</a> on ${escapeHtml(options.generatedAt)}. Hover for values, click legend entries to hide or show groups, drag the slider to zoom, or hold Command (Mac) or Control (Windows) while scrolling.</footer>
 <script>${scriptSafe(options.echartsSource)}</script>
 <script>${scriptSafe(run)}</script>
 </body>

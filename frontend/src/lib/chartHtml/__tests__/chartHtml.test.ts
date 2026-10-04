@@ -179,3 +179,118 @@ describe('buildChartHtmlDocument (issue 278)', () => {
     expect(html.match(/<\/script>/g)).toHaveLength(2);
   });
 });
+
+describe('what the file keeps (issues 298, 299, 303)', () => {
+  const base = {
+    dataset: [
+      {
+        dimensions: ['period', 'a', 'b'],
+        source: [
+          { period: 'k1', a: 1, b: 2 },
+          { period: 'k2', a: 3, b: 4 },
+        ],
+      },
+    ],
+    tooltip: [{ trigger: 'axis', formatter: appTooltip }],
+    xAxis: [{ type: 'category' }],
+    yAxis: [{ type: 'value' }],
+    grid: [{ top: 20 }],
+    dataZoom: [{ type: 'inside', zoomOnMouseWheel: 'meta', moveOnMouseWheel: true }],
+  };
+
+  it('stores per-point symbols, drops helper series, and reads stacked legends in app order', () => {
+    const selected = new Set([1]);
+    const payload = buildChartHtmlPayload(
+      fakeChart({
+        ...base,
+        series: [
+          { id: '__wordflow_slider_overview__', type: 'line' },
+          { id: 'b', name: 'Group B', type: 'bar', stack: 'wordflow-total' },
+          {
+            id: 'a',
+            name: 'Group A',
+            type: 'bar',
+            stack: 'wordflow-total',
+            symbol: (_v: unknown, p: { dataIndex: number }) =>
+              selected.has(p.dataIndex) ? 'circle' : 'emptyCircle',
+            symbolSize: (_v: unknown, p: { dataIndex: number }) =>
+              selected.has(p.dataIndex) ? 11 : 5,
+          },
+        ],
+      }),
+    );
+    expect(payload.tooltipSeriesIds).toEqual(['b', 'a']);
+    const option = payload.option as {
+      legend: { data: string[] }[];
+      series: Record<string, unknown>[];
+    };
+    expect(option.legend[0]?.data).toEqual(['Group A', 'Group B']);
+    expect(option.series[2]?.symbol).toEqual({
+      __wordflowFormatter: { kind: 'perPoint', values: ['emptyCircle', 'circle'] },
+    });
+    expect(option.series[2]?.symbolSize).toEqual({
+      __wordflowFormatter: { kind: 'perPoint', values: [5, 11] },
+    });
+  });
+
+  it('in the file: revives per-point symbols, drops hidden groups from the tooltip, and zooms with the platform key', () => {
+    const payload = buildChartHtmlPayload(
+      fakeChart({
+        ...base,
+        series: [
+          {
+            id: 'a',
+            name: 'Group A',
+            type: 'line',
+            symbolSize: (_v: unknown, p: { dataIndex: number }) => (p.dataIndex === 1 ? 11 : 5),
+          },
+          { id: 'b', name: 'Group B', type: 'line' },
+        ],
+      }),
+    );
+    const setOption = vi.fn();
+    const element = document.createElement('div');
+    standalone<typeof runChartHtml>(runChartHtml)(
+      { init: () => ({ setOption, on: vi.fn() }) },
+      element,
+      JSON.parse(JSON.stringify(payload)) as ChartHtmlPayload,
+      standalone(formatterFromSpec),
+      standalone(formatChartDate),
+    );
+    const shown = setOption.mock.calls[0]?.[0] as {
+      series: { symbolSize: (v: unknown, p: { dataIndex: number }) => number }[];
+      tooltip: { formatter: (params: unknown) => string }[];
+      dataZoom: { zoomOnMouseWheel: string; moveOnMouseWheel: boolean }[];
+    };
+    expect(shown.series[0]?.symbolSize(null, { dataIndex: 1 })).toBe(11);
+    expect(shown.series[0]?.symbolSize(null, { dataIndex: 0 })).toBe(5);
+    // Group B hidden through the legend: only Group A's line is listed.
+    expect(shown.tooltip[0]?.formatter([{ seriesId: 'a', dataIndex: 0, marker: '[A]' }])).toBe(
+      'Period k1\n[A]a: 1',
+    );
+    expect(['meta', 'ctrl']).toContain(shown.dataZoom[0]?.zoomOnMouseWheel);
+    expect(shown.dataZoom[0]?.moveOnMouseWheel).toBe(false);
+    // A plain wheel never reaches the chart, so the page scrolls.
+    const plain = new WheelEvent('wheel', { bubbles: true, cancelable: true });
+    const stop = vi.spyOn(plain, 'stopPropagation');
+    element.dispatchEvent(plain);
+    expect(stop).toHaveBeenCalled();
+  });
+
+  it('links Wordflow in the footer to its home page', () => {
+    const html = buildChartHtmlDocument(
+      { option: {}, tooltips: null, tooltipSeriesIds: [], width: 1, height: 1 },
+      {
+        title: 't',
+        header: [],
+        background: '#fff',
+        foreground: '#000',
+        echartsSource: '',
+        generatedAt: 'now',
+      },
+    );
+    expect(html).toContain(
+      '<a href="https://australian-text-analytics-platform.github.io/LDaCa_Text_Analytics_Tools/" target="_blank" rel="noopener">Wordflow</a>',
+    );
+  });
+});

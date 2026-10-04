@@ -97,8 +97,6 @@ describe('buildSequentialChartExportMetadata', () => {
       { label: 'Data Block', value: 'Interviews' },
       { label: 'Time column', value: 'date' },
       { label: 'Period', value: 'monthly' },
-      { label: 'Rows counted', value: '5' },
-      { label: 'Points in the result', value: '2 (one per period and group)' },
       { label: 'Groups', value: 'speaker' },
     ]);
     expect(metadata.legend).toEqual([

@@ -53,15 +53,38 @@ export function runChartHtml(
       (param) => typeof param.dataIndex === 'number' && tooltipIds.includes(param.seriesId ?? ''),
     );
     if (!row || typeof row.dataIndex !== 'number') return '';
-    let text = payload.tooltips?.[row.dataIndex] ?? '';
-    for (const id of tooltipIds) {
-      const marker = params.find((param) => param.seriesId === id)?.marker ?? '';
-      text = text.split(`\u0001${id}\u0002`).join(marker);
-    }
-    return text;
+    const text = payload.tooltips?.[row.dataIndex] ?? '';
+    // A group hidden through the legend is absent from params: drop its line
+    // (issue 299), and give the shown groups ECharts' own colour dots.
+    const shown = new Set(params.map((param) => param.seriesId));
+    return text
+      .split('\n')
+      .filter((line) => {
+        const hiddenId = tooltipIds.find(
+          (id) => !shown.has(id) && line.includes(`\u0001${id}\u0002`),
+        );
+        return hiddenId === undefined;
+      })
+      .map((line) => {
+        let out = line;
+        for (const id of tooltipIds) {
+          const marker = params.find((param) => param.seriesId === id)?.marker ?? '';
+          out = out.split(`\u0001${id}\u0002`).join(marker);
+        }
+        return out;
+      })
+      .join('\n');
   };
-  const toFormatter = (spec: { kind: string; labels?: Record<string, string> }) => {
+  const toFormatter = (spec: {
+    kind: string;
+    labels?: Record<string, string>;
+    values?: unknown[];
+  }) => {
     if (spec.kind === 'tooltip') return tooltipFormatter;
+    if (spec.kind === 'perPoint') {
+      const values = spec.values ?? [];
+      return (_item: unknown, params: { dataIndex?: number }) => values[params.dataIndex ?? -1];
+    }
     if (spec.kind === 'lookup') {
       const labels = spec.labels ?? {};
       return (value: unknown) => labels[String(value)] ?? String(value);
@@ -96,5 +119,25 @@ export function runChartHtml(
       parent.insertBefore(clip, next);
     }
   });
-  chart.setOption(revive(payload.option));
+  const option = revive(payload.option) as { dataZoom?: unknown };
+  // Wheel zoom holds the key natural to the viewer's own platform, not the
+  // exporter's (issues 299 and 303): Command on a Mac, Control elsewhere. A
+  // plain wheel scrolls the page: ECharts would otherwise swallow it, so it
+  // is kept from the chart (the app does the same, issue 215).
+  const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+  for (const zoom of Array.isArray(option.dataZoom) ? option.dataZoom : []) {
+    const entry = zoom as { type?: string; zoomOnMouseWheel?: unknown; moveOnMouseWheel?: unknown };
+    if (entry.type === 'inside') {
+      entry.zoomOnMouseWheel = isMac ? 'meta' : 'ctrl';
+      entry.moveOnMouseWheel = false;
+    }
+  }
+  element.addEventListener(
+    'wheel',
+    (event) => {
+      if (!(isMac ? event.metaKey : event.ctrlKey)) event.stopPropagation();
+    },
+    { capture: true },
+  );
+  chart.setOption(option);
 }

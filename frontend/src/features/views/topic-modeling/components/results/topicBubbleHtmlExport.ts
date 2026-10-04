@@ -115,6 +115,7 @@ dd{margin:0}
 .tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px}
 .tools input{font:inherit;padding:4px 8px;min-width:16rem;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit}
 .tools button{font:inherit;padding:4px 10px;border:1px solid currentColor;border-radius:4px;background:transparent;color:inherit;cursor:pointer}
+footer a{color:inherit}
 .legend{display:flex;flex-wrap:wrap;gap:6px 14px;margin:0 0 12px}
 .chip{display:inline-flex;align-items:center;gap:6px}
 .chip i{display:inline-block;width:12px;height:12px;border-radius:50%}
@@ -141,7 +142,7 @@ ${legend ? `<div class="legend">${legend}</div>` : ''}
 </div>
 <div id="chart">${visibleSvgMarkup(svg, payload.width, payload.height)}</div>
 <div id="card" hidden></div>
-<footer>Made with Wordflow on ${escapeHtml(options.generatedAt)}. Hover a bubble for its words and sizes, type in Find topics to highlight matching topics, drag to move and scroll to zoom.</footer>
+<footer>Made with <a href="https://australian-text-analytics-platform.github.io/LDaCa_Text_Analytics_Tools/" target="_blank" rel="noopener">Wordflow</a> on ${escapeHtml(options.generatedAt)}. Hover a bubble for its words and sizes, type in Find topics to highlight matching topics, drag to move, and hold Command (Mac) or Control (Windows) while scrolling to zoom.</footer>
 <script>${scriptSafe(run)}</script>
 </body>
 </html>

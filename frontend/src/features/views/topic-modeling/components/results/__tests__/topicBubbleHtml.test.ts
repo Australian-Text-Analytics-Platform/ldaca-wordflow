@@ -109,6 +109,9 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     expect(html).toContain('data-topic-id="1"');
     expect(html).not.toContain('width: 0px');
     expect(html).toContain('Labor');
+    expect(html).toContain(
+      'href="https://australian-text-analytics-platform.github.io/LDaCa_Text_Analytics_Tools/"',
+    );
     expect(html.match(/<\/script>/g)).toHaveLength(1);
   });
 
@@ -154,8 +157,29 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     expect(sizes).toEqual(['22px', '15px', '11px']);
 
     const svg = document.querySelector('#chart svg');
-    svg?.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, clientX: 0, clientY: 0 }));
+    // A plain wheel at full view leaves the chart alone, so the page scrolls (issue 303).
+    svg?.dispatchEvent(
+      new WheelEvent('wheel', { deltaY: -100, clientX: 0, clientY: 0, cancelable: true }),
+    );
+    expect(svg?.getAttribute('viewBox')).toBe('0 0 400 300');
+    const isMac = /Mac|iPhone|iPad/.test(navigator.platform);
+    svg?.dispatchEvent(
+      new WheelEvent('wheel', {
+        deltaY: -100,
+        clientX: 0,
+        clientY: 0,
+        cancelable: true,
+        metaKey: isMac,
+        ctrlKey: !isMac,
+      }),
+    );
     expect(svg?.getAttribute('viewBox')).not.toBe('0 0 400 300');
+    // Zoomed in, a plain wheel pans instead.
+    const before = svg?.getAttribute('viewBox');
+    svg?.dispatchEvent(
+      new WheelEvent('wheel', { deltaY: 40, deltaX: 0, clientX: 0, clientY: 0, cancelable: true }),
+    );
+    expect(svg?.getAttribute('viewBox')).not.toBe(before);
     document.querySelector<HTMLButtonElement>('#reset')?.click();
     expect(svg?.getAttribute('viewBox')).toBe('0 0 400 300');
   });
