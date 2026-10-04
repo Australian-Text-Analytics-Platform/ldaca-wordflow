@@ -237,20 +237,81 @@ describe('TopicModelingResultsPanel', () => {
     expect(screen.getByRole('spinbutton', { name: 'Number of topics' })).toBeDisabled();
   });
 
-  it('commits one cluster query immediately after a keyboard adjustment', () => {
-    const onClusterCountCommit = vi.fn();
-    render(
-      <TooltipProvider>
-        <TopicModelingResultsPanel {...baseProps} onClusterCountCommit={onClusterCountCommit} />
-      </TooltipProvider>,
-    );
+  it('applies arrow keys once after a pause (issue 306)', () => {
+    vi.useFakeTimers();
+    try {
+      const onClusterCountCommit = vi.fn();
+      render(
+        <TooltipProvider>
+          <TopicModelingResultsPanel {...baseProps} onClusterCountCommit={onClusterCountCommit} />
+        </TooltipProvider>,
+      );
 
-    const slider = screen.getByRole('slider', { name: 'Number of topics' });
-    fireEvent.keyDown(slider, { key: 'ArrowLeft' });
-    expect(onClusterCountCommit).toHaveBeenCalledTimes(1);
-    expect(onClusterCountCommit).toHaveBeenCalledWith(3);
-    fireEvent.keyUp(slider, { key: 'ArrowLeft' });
-    expect(onClusterCountCommit).toHaveBeenCalledTimes(1);
+      const slider = screen.getByRole('slider', { name: 'Number of topics' });
+      fireEvent.keyDown(slider, { key: 'ArrowLeft' });
+      fireEvent.keyUp(slider, { key: 'ArrowLeft' });
+      fireEvent.keyDown(slider, { key: 'ArrowRight' });
+      fireEvent.keyDown(slider, { key: 'ArrowRight' });
+      expect(slider).toHaveAttribute('aria-valuenow', '5');
+      expect(onClusterCountCommit).not.toHaveBeenCalled();
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+      expect(onClusterCountCommit).toHaveBeenCalledTimes(1);
+      expect(onClusterCountCommit).toHaveBeenCalledWith(5);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('gives the slider its focus back once the new topics are shown (issue 306)', () => {
+    vi.useFakeTimers();
+    try {
+      const { rerender } = render(
+        <TooltipProvider>
+          <TopicModelingResultsPanel {...baseProps} />
+        </TooltipProvider>,
+      );
+      const slider = screen.getByRole('slider', { name: 'Number of topics' });
+      act(() => {
+        slider.focus();
+      });
+      fireEvent.keyDown(slider, { key: 'ArrowRight' });
+      act(() => {
+        vi.advanceTimersByTime(600);
+      });
+
+      // The update runs: the control is rebuilt with the new count and the
+      // results are inert, so the slider has lost focus.
+      rerender(
+        <TooltipProvider>
+          <TopicModelingResultsPanel
+            {...baseProps}
+            projectionPending
+            clustering={{ ...baseProps.clustering, cluster_count: 5 }}
+          />
+        </TooltipProvider>,
+      );
+      // Hidden from the accessibility tree while pending; jsdom does not
+      // apply inert, so the blur stands in for it.
+      const pendingSlider = screen.getByRole('slider', { name: 'Number of topics', hidden: true });
+      act(() => {
+        pendingSlider.blur();
+      });
+      expect(pendingSlider).not.toHaveFocus();
+
+      rerender(
+        <TooltipProvider>
+          <TopicModelingResultsPanel
+            {...baseProps}
+            clustering={{ ...baseProps.clustering, cluster_count: 5 }}
+          />
+        </TooltipProvider>,
+      );
+      expect(screen.getByRole('slider', { name: 'Number of topics' })).toHaveFocus();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('commits each distinct Top-N value once on Enter or blur', () => {

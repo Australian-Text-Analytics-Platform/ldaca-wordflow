@@ -141,18 +141,27 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
   );
 }
 
+/** Pause after the last arrow key before the Topics slider applies (issue 306). */
+const KEYBOARD_COMMIT_DELAY_MS = 600;
+
 function ClusterCountControl({
   clustering,
   pending,
   error,
   onCommit,
   onRetry,
+  refocusSliderRef,
 }: {
   clustering: TopicClustering;
   pending: boolean;
   error?: string | null;
   onCommit: (value: number) => void;
   onRetry?: () => void;
+  /**
+   * Set when the slider had focus as it applied. Kept by the panel because
+   * the control is rebuilt once the new topics arrive (issue 306).
+   */
+  refocusSliderRef: React.RefObject<boolean>;
 }) {
   const applied = clustering.cluster_count;
   const [value, setValue] = useState<number[]>([applied]);
@@ -160,7 +169,26 @@ function ClusterCountControl({
   const activePointerIdRef = useRef<number | null>(null);
   const latestDraftRef = useRef(applied);
   const latestCommitRef = useRef(applied);
+  const keyboardTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sliderBoxRef = useRef<HTMLDivElement>(null);
   const displayedValue = value[0] ?? applied;
+  const sliderThumb = () => sliderBoxRef.current?.querySelector<HTMLElement>('[role="slider"]');
+
+  // The slider loses focus while the topics update (the results are inert
+  // under the overlay, and the control is rebuilt). Give it back afterwards
+  // so further arrow keys keep working (issue 306).
+  useEffect(() => {
+    if (pending || !refocusSliderRef.current) return;
+    refocusSliderRef.current = false;
+    sliderThumb()?.focus({ preventScroll: true });
+  }, [pending, refocusSliderRef]);
+
+  useEffect(
+    () => () => {
+      if (keyboardTimerRef.current !== null) clearTimeout(keyboardTimerRef.current);
+    },
+    [],
+  );
 
   const boundedTopicCount = (raw: string) => {
     const parsed = Number(raw);
@@ -178,9 +206,24 @@ function ClusterCountControl({
   };
 
   const commitTopicCount = (next: number) => {
+    if (keyboardTimerRef.current !== null) {
+      clearTimeout(keyboardTimerRef.current);
+      keyboardTimerRef.current = null;
+    }
     if (next === applied || latestCommitRef.current === next) return;
     latestCommitRef.current = next;
+    const thumb = sliderThumb();
+    refocusSliderRef.current = Boolean(thumb) && document.activeElement === thumb;
     onCommit(next);
+  };
+
+  // Arrow keys apply after a pause, so several presses make one update.
+  const scheduleKeyboardCommit = () => {
+    if (keyboardTimerRef.current !== null) clearTimeout(keyboardTimerRef.current);
+    keyboardTimerRef.current = setTimeout(() => {
+      keyboardTimerRef.current = null;
+      commitTopicCount(latestDraftRef.current);
+    }, KEYBOARD_COMMIT_DELAY_MS);
   };
 
   const commitNumberDraft = (raw: string) => {
@@ -229,7 +272,7 @@ function ClusterCountControl({
         >
           {clustering.min_cluster_count}
         </span>
-        <div className="w-40">
+        <div ref={sliderBoxRef} className="w-40">
           {clustering.adjustable ? (
             <Slider
               id="topic-cluster-count"
@@ -259,7 +302,7 @@ function ClusterCountControl({
               onValueChange={(nextValue) => {
                 const next = nextValue[0] ?? applied;
                 setTopicCountDraft(next);
-                if (activePointerIdRef.current === null) commitTopicCount(next);
+                if (activePointerIdRef.current === null) scheduleKeyboardCommit();
               }}
             />
           ) : (
@@ -481,6 +524,7 @@ export function TopicModelingResultsPanel({
   stopWordListSources = [],
   colorBy,
 }: Props) {
+  const refocusClusterSliderRef = useRef(false);
   const isRunningState = Boolean(topicWaitingBanner);
   const runningMessage =
     // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing -- an empty message should fall back to the next source, not render blank
@@ -599,6 +643,7 @@ export function TopicModelingResultsPanel({
                             error={projectionError}
                             onCommit={onClusterCountCommit}
                             onRetry={onProjectionRetry}
+                            refocusSliderRef={refocusClusterSliderRef}
                           />
                         ) : null}
                         {topicInclusion ? (
