@@ -6,6 +6,8 @@ import {
   buildTopicColorScheme,
   findTopicIdsInsideLasso,
   normalizeTopicPositions,
+  topicGraphPlaneFor,
+  DEFAULT_TOPIC_GRAPH_PLANE,
   relaxTopicPositions,
   topicColorSchemeFill,
   topicColorSchemeOpacity,
@@ -35,6 +37,24 @@ const topics = [
 ];
 
 describe('topicModelingGraph', () => {
+  it('gives the plane the canvas shape within 2.5:1 either way, keeping its area (issue 308)', () => {
+    const area = 1000 * 550;
+    const square = topicGraphPlaneFor(1);
+    expect(square.width).toBe(square.height);
+    expect(Math.abs(square.width * square.height - area) / area).toBeLessThan(0.01);
+    const portrait = topicGraphPlaneFor(0.6);
+    expect(portrait.width / portrait.height).toBeCloseTo(0.6, 2);
+    expect(topicGraphPlaneFor(10)).toEqual(topicGraphPlaneFor(2.5));
+    expect(topicGraphPlaneFor(0.1)).toEqual(topicGraphPlaneFor(0.4));
+    const tall = topicGraphPlaneFor(0.1);
+    expect(tall.height / tall.width).toBeCloseTo(2.5, 2);
+    expect(topicGraphPlaneFor(Number.NaN)).toEqual(DEFAULT_TOPIC_GRAPH_PLANE);
+    expect(normalizeTopicPositions(topics, portrait).get(1)).toEqual({
+      x: portrait.width,
+      y: portrait.height,
+    });
+  });
+
   it('normalizes every topic into a stable plane and centers flat axes', () => {
     expect(normalizeTopicPositions(topics)).toEqual(
       new Map([

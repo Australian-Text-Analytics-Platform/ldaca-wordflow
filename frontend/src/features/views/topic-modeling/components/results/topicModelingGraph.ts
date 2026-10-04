@@ -3,12 +3,41 @@ import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
 import { interpolateColor, matchTopicWords } from '../../topicModelingAdapters';
 
-export const TOPIC_GRAPH_WIDTH = 1000;
-export const TOPIC_GRAPH_HEIGHT = 550;
+const TOPIC_GRAPH_WIDTH = 1000;
+const TOPIC_GRAPH_HEIGHT = 550;
+/** The widest or tallest shape the bubble plane takes (issue 308). */
+const TOPIC_PLANE_MAX_RATIO = 2.5;
 
 export interface TopicGraphPoint {
   x: number;
   y: number;
+}
+
+/** The virtual area topics are laid out in, in graph pixels. */
+export interface TopicGraphPlane {
+  width: number;
+  height: number;
+}
+
+/** The plane used before the canvas has been measured. */
+export const DEFAULT_TOPIC_GRAPH_PLANE: TopicGraphPlane = {
+  width: TOPIC_GRAPH_WIDTH,
+  height: TOPIC_GRAPH_HEIGHT,
+};
+
+/**
+ * A plane with the canvas's shape (width ÷ height), kept between 2.5:1 and
+ * 1:2.5 and with the same area as the default, so bubble sizes stay
+ * comparable while the map fills a wide, square or tall canvas (issue 308).
+ */
+export function topicGraphPlaneFor(aspect: number): TopicGraphPlane {
+  if (!Number.isFinite(aspect) || aspect <= 0) return DEFAULT_TOPIC_GRAPH_PLANE;
+  const ratio = Math.min(TOPIC_PLANE_MAX_RATIO, Math.max(1 / TOPIC_PLANE_MAX_RATIO, aspect));
+  const area = TOPIC_GRAPH_WIDTH * TOPIC_GRAPH_HEIGHT;
+  return {
+    width: Math.round(Math.sqrt(area * ratio)),
+    height: Math.round(Math.sqrt(area / ratio)),
+  };
 }
 
 export interface TopicGraphViewport extends TopicGraphPoint {
@@ -141,6 +170,8 @@ interface BuildTopicBubbleModelsOptions {
   hoveredTopicId: number | null;
   topicSearchQuery: string;
   colorScheme?: TopicColorScheme | null;
+  /** The canvas-shaped plane to lay topics out in (issue 308). */
+  plane?: TopicGraphPlane;
 }
 
 /** Resolves one corpus colour from persisted node metadata, then palette fallback. */
@@ -202,9 +233,13 @@ export function topicCorpusLegend(
   ];
 }
 
-/** Maps backend topic coordinates into the renderer's stable virtual plane. */
+/**
+ * Maps backend topic coordinates (PaCMAP, whose axes carry no meaning) into
+ * the renderer's virtual plane, stretching each axis to fill it.
+ */
 export function normalizeTopicPositions(
   topics: TopicModelingTopic[],
+  plane: TopicGraphPlane = DEFAULT_TOPIC_GRAPH_PLANE,
 ): Map<number, TopicGraphPoint> {
   if (topics.length === 0) return new Map();
   const xs = topics.map((topic) => topic.x);
@@ -220,8 +255,8 @@ export function normalizeTopicPositions(
     topics.map((topic) => [
       topic.id,
       {
-        x: xSpan === 0 ? TOPIC_GRAPH_WIDTH / 2 : ((topic.x - xMin) / xSpan) * TOPIC_GRAPH_WIDTH,
-        y: ySpan === 0 ? TOPIC_GRAPH_HEIGHT / 2 : ((topic.y - yMin) / ySpan) * TOPIC_GRAPH_HEIGHT,
+        x: xSpan === 0 ? plane.width / 2 : ((topic.x - xMin) / xSpan) * plane.width,
+        y: ySpan === 0 ? plane.height / 2 : ((topic.y - yMin) / ySpan) * plane.height,
       },
     ]),
   );
@@ -330,18 +365,16 @@ export function buildTopicBubbleModels({
   hoveredTopicId,
   topicSearchQuery,
   colorScheme = null,
+  plane = DEFAULT_TOPIC_GRAPH_PLANE,
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
-  const projected = normalizeTopicPositions(visibleTopics);
+  const projected = normalizeTopicPositions(visibleTopics, plane);
   const maxSize = Math.max(1, ...visibleTopics.map((topic) => topic.total_size));
   const radiusFor = (topic: TopicModelingTopic) => 10 + 40 * Math.sqrt(topic.total_size / maxSize);
   const positions = relaxedPositionsFor(
     visibleTopics.map((topic) => {
-      const point = projected.get(topic.id) ?? {
-        x: TOPIC_GRAPH_WIDTH / 2,
-        y: TOPIC_GRAPH_HEIGHT / 2,
-      };
+      const point = projected.get(topic.id) ?? { x: plane.width / 2, y: plane.height / 2 };
       return { id: topic.id, x: point.x, y: point.y, radius: radiusFor(topic) };
     }),
   );
@@ -377,10 +410,7 @@ export function buildTopicBubbleModels({
     return {
       id: topic.id,
       topic,
-      position: positions.get(topic.id) ?? {
-        x: TOPIC_GRAPH_WIDTH / 2,
-        y: TOPIC_GRAPH_HEIGHT / 2,
-      },
+      position: positions.get(topic.id) ?? { x: plane.width / 2, y: plane.height / 2 },
       radius: radiusFor(topic),
       fill:
         corpusCount <= 1

@@ -23,22 +23,29 @@ import { cn } from '@/lib/utils';
 import { type TopicCorpusPresentation, TopicSizeComposition } from './TopicSizeComposition';
 import {
   findTopicIdsInsideLasso,
-  TOPIC_GRAPH_HEIGHT,
-  TOPIC_GRAPH_WIDTH,
   TOPIC_OPACITY_HOVER,
   type TopicBubbleModel,
+  type TopicGraphPlane,
   type TopicGraphPoint,
 } from './topicModelingGraph';
 
 interface TopicBubbleNodeData extends Record<string, unknown> {
   bubble: TopicBubbleModel;
   corpusPresentation: TopicCorpusPresentation;
+  plane: TopicGraphPlane;
 }
 
 export type TopicFlowNode = Node<TopicBubbleNodeData, 'topic'>;
 
 interface Props {
   bubbles: TopicBubbleModel[];
+  /** The plane the bubbles were laid out in (issue 308). */
+  plane: TopicGraphPlane;
+  /**
+   * The drawable canvas shape (width ÷ height, inside the fit padding), first
+   * as soon as it is measured, then once resizing has settled (issue 308).
+   */
+  onCanvasAspectChange?: (aspect: number) => void;
   corpusPresentation: TopicCorpusPresentation;
   projectionKey: string;
   lassoMode: boolean;
@@ -54,8 +61,17 @@ interface Props {
 
 const NODE_ORIGIN: [number, number] = [0.5, 0.5];
 const EMPTY_EDGES: [] = [];
+/**
+ * Room around the fitted map. The left side clears the control strip, which
+ * overlays the chart's top-left corner (issue 308); the hover card flips to
+ * whichever side has room, so the right needs no extra space.
+ */
+const FIT_PADDING = { top: 24, right: 24, bottom: 24, left: 64 };
+/** Wait this long after the last resize before laying the bubbles out again. */
+const RELAYOUT_DELAY_MS = 200;
 const FIT_VIEW_OPTIONS = {
-  padding: { top: '24px', right: '150px', bottom: '24px', left: '24px' },
+  // Keep in step with FIT_PADDING.
+  padding: { top: '24px', right: '24px', bottom: '24px', left: '64px' },
   minZoom: 0.05,
   maxZoom: 1.5,
   duration: 0,
@@ -111,11 +127,10 @@ function TopicGraphControlButton({
 
 /** Renders one measured React Flow node using the shared Topic bubble model. */
 function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
-  const { bubble, corpusPresentation } = data;
+  const { bubble, corpusPresentation, plane } = data;
   const outerRadius = bubble.radius + 7;
   const diameter = outerRadius * 2;
-  const tooltipPosition =
-    bubble.position.x <= TOPIC_GRAPH_WIDTH / 2 ? Position.Right : Position.Left;
+  const tooltipPosition = bubble.position.x <= plane.width / 2 ? Position.Right : Position.Left;
   return (
     <NodeTooltip className="size-full">
       <NodeTooltipTrigger
@@ -182,9 +197,9 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
       </NodeTooltipTrigger>
       <NodeTooltipContent
         align={
-          bubble.position.y < TOPIC_GRAPH_HEIGHT / 3
+          bubble.position.y < plane.height / 3
             ? 'start'
-            : bubble.position.y > (TOPIC_GRAPH_HEIGHT * 2) / 3
+            : bubble.position.y > (plane.height * 2) / 3
               ? 'end'
               : 'center'
         }
@@ -424,6 +439,8 @@ function TopicExportSvg({
 /** Renders the interactive React Flow topic plane and its native control toolbar. */
 function TopicModelingFlowChartInner({
   bubbles,
+  plane,
+  onCanvasAspectChange,
   corpusPresentation,
   projectionKey,
   lassoMode,
@@ -451,7 +468,7 @@ function TopicModelingFlowChartInner({
       id: `topic-${String(bubble.id)}`,
       type: 'topic',
       position: bubble.position,
-      data: { bubble, corpusPresentation },
+      data: { bubble, corpusPresentation, plane },
       draggable: false,
       selectable: false,
       focusable: false,
@@ -488,6 +505,65 @@ function TopicModelingFlowChartInner({
       if (frame !== null) cancelAnimationFrame(frame);
     };
   }, [fitView, getViewport, nodes.length, onViewReady, projectionKey]);
+
+  const aspectCallbackRef = useRef(onCanvasAspectChange);
+  useEffect(() => {
+    aspectCallbackRef.current = onCanvasAspectChange;
+  }, [onCanvasAspectChange]);
+
+  // The bubbles are laid out again for the canvas's shape (issue 308): at
+  // once on the first measurement, then once resizing has stopped.
+  useEffect(() => {
+    const element = flowRef.current;
+    if (!element) return;
+    let measured = false;
+    let relayoutTimer: ReturnType<typeof setTimeout> | null = null;
+    const reportAspect = (width: number, height: number) => {
+      const drawableWidth = width - FIT_PADDING.left - FIT_PADDING.right;
+      const drawableHeight = height - FIT_PADDING.top - FIT_PADDING.bottom;
+      if (drawableWidth <= 0 || drawableHeight <= 0) return;
+      const aspect = drawableWidth / drawableHeight;
+      if (relayoutTimer !== null) clearTimeout(relayoutTimer);
+      if (!measured) {
+        measured = true;
+        aspectCallbackRef.current?.(aspect);
+        return;
+      }
+      relayoutTimer = setTimeout(() => {
+        relayoutTimer = null;
+        aspectCallbackRef.current?.(aspect);
+      }, RELAYOUT_DELAY_MS);
+    };
+    const observer = new ResizeObserver(() => {
+      const bounds = element.getBoundingClientRect();
+      reportAspect(bounds.width, bounds.height);
+    });
+    observer.observe(element);
+    const bounds = element.getBoundingClientRect();
+    reportAspect(bounds.width, bounds.height);
+    return () => {
+      observer.disconnect();
+      if (relayoutTimer !== null) clearTimeout(relayoutTimer);
+    };
+  }, []);
+
+  // A new layout moves the bubbles: fit them again unless the user has
+  // panned or zoomed.
+  const planeKey = `${String(plane.width)}x${String(plane.height)}`;
+  const fittedPlaneKeyRef = useRef(planeKey);
+  useEffect(() => {
+    if (fittedPlaneKeyRef.current === planeKey) return;
+    fittedPlaneKeyRef.current = planeKey;
+    if (!fittedViewportRef.current || nodes.length === 0) return;
+    const frame = requestAnimationFrame(() => {
+      void fitView(FIT_VIEW_OPTIONS).then(() => {
+        setViewport(getViewport());
+      });
+    });
+    return () => {
+      cancelAnimationFrame(frame);
+    };
+  }, [fitView, getViewport, nodes.length, planeKey]);
 
   useEffect(() => {
     const element = flowRef.current;

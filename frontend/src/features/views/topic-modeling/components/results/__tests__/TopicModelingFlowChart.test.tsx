@@ -8,7 +8,7 @@ import {
   TopicLassoCanvas,
   TopicModelingFlowChart,
 } from '../TopicModelingFlowChart';
-import type { TopicBubbleModel } from '../topicModelingGraph';
+import { DEFAULT_TOPIC_GRAPH_PLANE, type TopicBubbleModel } from '../topicModelingGraph';
 
 const flowProps = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
@@ -181,6 +181,7 @@ describe('TopicModelingFlowChart', () => {
   it('visually mutes toolbar actions while they are disabled', () => {
     render(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[bubble]}
         corpusPresentation={{
           corpusCount: 1,
@@ -215,6 +216,7 @@ describe('TopicModelingFlowChart', () => {
   it('lets the pane scroll and zooms only with the zoom key held (issue 215)', () => {
     render(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[bubble]}
         corpusPresentation={{
           corpusCount: 1,
@@ -253,6 +255,7 @@ describe('TopicModelingFlowChart', () => {
     const onClearLassoFilter = vi.fn();
     render(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[bubble]}
         corpusPresentation={{
           corpusCount: 1,
@@ -298,6 +301,7 @@ describe('TopicModelingFlowChart', () => {
   it('keeps one node-anchored tooltip visible through pointer movement and data refreshes', () => {
     const view = render(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[bubble]}
         corpusPresentation={{
           corpusCount: 1,
@@ -334,6 +338,7 @@ describe('TopicModelingFlowChart', () => {
 
     view.rerender(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[
           {
             ...bubble,
@@ -375,6 +380,7 @@ describe('TopicModelingFlowChart', () => {
   it('keeps filtered bubbles non-interactive and puts lasso above node tooltips', () => {
     render(
       <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
         bubbles={[{ ...bubble, filteredOut: true }]}
         corpusPresentation={{
           corpusCount: 1,

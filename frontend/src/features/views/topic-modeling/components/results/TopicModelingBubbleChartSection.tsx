@@ -14,6 +14,8 @@ import { buildTopicsCSV } from './topicModelingCsv';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import {
   buildTopicBubbleModels,
+  DEFAULT_TOPIC_GRAPH_PLANE,
+  topicGraphPlaneFor,
   topicCorpusLegend,
   type TopicColorScheme,
 } from './topicModelingGraph';
@@ -137,6 +139,10 @@ export function TopicModelingBubbleChartSection({
   const lassoTopicIds =
     lassoFilter.projectionKey === projectionKey ? lassoFilter.topicIds : EMPTY_TOPIC_IDS;
   const hoveredTopicId = listHover.projectionKey === projectionKey ? listHover.topicId : null;
+  // The map takes the canvas's shape, within limits (issue 308).
+  const [canvasAspect, setCanvasAspect] = useState<number | null>(null);
+  const plane =
+    canvasAspect === null ? DEFAULT_TOPIC_GRAPH_PLANE : topicGraphPlaneFor(canvasAspect);
   const bubbles = buildTopicBubbleModels({
     topics,
     corpusSizes,
@@ -148,6 +154,7 @@ export function TopicModelingBubbleChartSection({
     hoveredTopicId,
     topicSearchQuery,
     colorScheme,
+    plane,
   });
   const activeColorScheme = corpusCount === 1 ? colorScheme : null;
 
@@ -258,6 +265,8 @@ export function TopicModelingBubbleChartSection({
         >
           <TopicModelingFlowChart
             bubbles={bubbles}
+            plane={plane}
+            onCanvasAspectChange={setCanvasAspect}
             corpusPresentation={corpusPresentation}
             projectionKey={projectionKey}
             lassoMode={lassoMode}
