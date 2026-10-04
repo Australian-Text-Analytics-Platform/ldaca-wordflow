@@ -411,6 +411,43 @@ describe('ConcordanceDispersionSummary', () => {
     });
   });
 
+  it('says a Combined chart pools both Data Blocks (issue 282)', () => {
+    const row = (source: string) => ({
+      text: 'x'.repeat(100),
+      __source_node: source,
+      CONC_dispersion: [{ CONC_start_idx: 0, CONC_end_idx: 1, CONC_matched_text: 'alpha' }],
+    });
+    const { rerender } = render(
+      <ConcordanceDispersionSummary
+        rows={[row('Left Corpus'), row('Right Corpus')]}
+        textColumn="text"
+        binCount={20}
+        splitBySource
+        dataBlockLabel="Combined"
+        searchWord="alpha"
+        termColors={{ alpha: '#aa0000' }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Combines Left Corpus and Right Corpus: each line counts the term in both. Choose Separated view for one chart per Data Block.',
+      ),
+    ).toBeInTheDocument();
+
+    rerender(
+      <ConcordanceDispersionSummary
+        rows={[row('Left Corpus')]}
+        textColumn="text"
+        binCount={20}
+        splitBySource={false}
+        dataBlockLabel="Left Corpus"
+        searchWord="alpha"
+        termColors={{ alpha: '#aa0000' }}
+      />,
+    );
+    expect(screen.queryByText(/^Combines /)).not.toBeInTheDocument();
+  });
+
   it('forwards click selection and the Shift-click hint to the ECharts boundary (issue 224)', () => {
     const onSelect = vi.fn();
     render(

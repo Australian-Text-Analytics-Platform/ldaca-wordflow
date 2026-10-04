@@ -212,6 +212,13 @@ export function ConcordanceDispersionSummary({
     : 'matches in the documents on this page';
   const titleText = `${dataBlockLabel}: ${scopeText}`;
   const chartTitle = 'Where matches occur in the documents';
+  // Combined view pools the Data Blocks on purpose (one line per term keeps
+  // the chart readable and works for area and bar charts); say so, so the
+  // chart is not read as one Data Block (issue 282).
+  const combinedNote =
+    splitBySource && sources.length > 1
+      ? `Combines ${sources.join(' and ')}: each line counts the term in both. Choose Separated view for one chart per Data Block.`
+      : null;
 
   const allSeries: DispersionChartSeries[] = useMemo(() => {
     const selected = selection?.selectedIndices ?? new Set<number>();
@@ -463,7 +470,11 @@ export function ConcordanceDispersionSummary({
     { label: 'Search', value: searchWord || '—' },
     { label: 'Bins', value: String(binCount) },
     ...(splitBySource && sources.length > 0
-      ? [{ label: 'Sources', value: sources.join(' / ') }]
+      ? [
+          sources.length > 1
+            ? { label: 'Data Blocks', value: `${sources.join(' + ')} (combined)` }
+            : { label: 'Data Block', value: sources.join('') },
+        ]
       : []),
   ];
 
@@ -552,7 +563,12 @@ export function ConcordanceDispersionSummary({
       {showChart ? (
         <Card data-testid="concordance-dispersion-chart">
           <CardHeader className="gap-3 pb-2 md:flex-row md:items-start md:justify-between">
-            <CardTitle className="text-body">{chartTitle}</CardTitle>
+            <div className="space-y-1">
+              <CardTitle className="text-body">{chartTitle}</CardTitle>
+              {combinedNote ? (
+                <p className="text-label-secondary text-description">{combinedNote}</p>
+              ) : null}
+            </div>
             <div className="flex flex-wrap items-center justify-end gap-3">
               {onBinCountChange && (
                 <div className="flex items-center gap-2 text-body text-foreground">

@@ -261,7 +261,11 @@ applied to two Data Blocks at once.
 In Separated mode, each source has independent hidden terms and selected bins.
 In Combined mode, one frontend-only filter is applied separately to both
 source Results before their pages are interleaved. Terms, rather than sources,
-remain the chart series.
+remain the chart series: each line counts its term in both Data Blocks together,
+which keeps the chart readable with several terms and works for area and bar
+charts. A note under the chart title names the combined Data Blocks, and
+downloads list them as combined. For one chart per Data Block, choose Separated
+view.
 
 <h3 id="help-concordance-run-all">Run and Concordance Results</h3>
 
