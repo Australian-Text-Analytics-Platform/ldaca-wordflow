@@ -106,6 +106,30 @@ describe('conditionState', () => {
     expect(result.condition.value).toBe('alpha');
   });
 
+  it('drops a number range when the operator leaves between, and starts one when it arrives (issue 290)', () => {
+    const back = applyFilterConditionFieldChange({
+      condition: {
+        ...baseCondition,
+        column: 'Score',
+        field: scoreField,
+        operator: 'between',
+        value: { start: '26', end: null },
+      },
+      field: 'operator',
+      value: 'eq',
+      availableColumns: columns,
+    });
+    expect(back.condition.value).toBe('');
+
+    const into = applyFilterConditionFieldChange({
+      condition: { ...baseCondition, column: 'Score', field: scoreField, value: 26 },
+      field: 'operator',
+      value: 'between',
+      availableColumns: columns,
+    });
+    expect(into.condition.value).toEqual({ start: null, end: null });
+  });
+
   it('requests datetime and numeric prefill when operators can use stats', () => {
     const datetimeResult = applyFilterConditionFieldChange({
       condition: { ...baseCondition, column: 'Created', field: createdField },

@@ -160,6 +160,16 @@ export const applyFilterConditionFieldChange = <Key extends keyof FilterConditio
     if (updated.field && isArrowTemporalField(updated.field) && updated.column) {
       updated.value = '';
     }
+    // A number range is only valid for between (issue 290): leaving between
+    // used to keep {start, end} behind a blank number box and the request
+    // then failed with a generic error.
+    const isRange =
+      updated.value !== null && typeof updated.value === 'object' && 'start' in updated.value;
+    if (operator === 'between' && !isRange) {
+      updated.value = { start: null, end: null };
+    } else if (operator !== 'between' && isRange) {
+      updated.value = '';
+    }
     prefillRequest = getPrefillRequest(condition.id, updated.field, updated.column, operator);
   }
 

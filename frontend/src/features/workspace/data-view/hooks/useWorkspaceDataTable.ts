@@ -18,6 +18,7 @@ import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
 import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
+import { presentError } from '@/lib/errorPresentation';
 
 export interface WorkspaceDataTableHeaderInfo {
   nodeLabel: string;
@@ -343,6 +344,17 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
   useEffect(() => {
     setChangedRows(previewChangedRows);
   }, [previewChangedRows, setChangedRows]);
+  // A failed preview shows its reason in the panel and holds back Apply
+  // (issue 285): before, the status stayed "Previewing…" and Apply could
+  // commit an edit the Data Block then could not read.
+  const setPreviewError = toolState.setPreviewError;
+  const previewErrorMessage =
+    previewRequest && previewQuery.error
+      ? presentError(previewQuery.error, 'The edit could not be previewed.').message
+      : null;
+  useEffect(() => {
+    setPreviewError(previewErrorMessage);
+  }, [previewErrorMessage, setPreviewError]);
   const setPreviewSample = toolState.setPreviewSample;
   const sampleColumn = toolState.highlightColumns[0];
   const previewPage = previewRequest ? previewQuery.data : undefined;

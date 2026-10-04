@@ -180,7 +180,11 @@ export function RowDetailPanel({
     return rawText;
   })();
 
-  const metadataEntries = Object.entries(record).filter(([key]) => !excludeSet.has(key));
+  // Wordflow's own bookkeeping columns (`__wordflow_document_band`,
+  // `__source_node`) are not the row's metadata (issue 292).
+  const metadataEntries = Object.entries(record).filter(
+    ([key]) => !excludeSet.has(key) && !key.startsWith('__'),
+  );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -108,6 +108,9 @@ describe('DataEditorToolPanel (issue 143)', () => {
     expect(useDataEditorToolStore.getState().tool).toBe('clean_text');
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
 
+    act(() => {
+      useDataEditorToolStore.getState().setChangedRows(3);
+    });
     await user.click(screen.getByRole('button', { name: 'Apply' }));
     expect(mocks.applyEdit).toHaveBeenCalledWith('node-1', {
       kind: 'clean_text',
@@ -115,9 +118,15 @@ describe('DataEditorToolPanel (issue 143)', () => {
       operation: 'remove_digits',
       output_column: null,
     });
+    // The fresh form previews again before Apply is offered (issue 285).
     await waitFor(() => {
-      expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled();
+      expect(screen.getByRole('status')).toHaveTextContent('Previewing…');
     });
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
+    act(() => {
+      useDataEditorToolStore.getState().setChangedRows(0);
+    });
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled();
     expect(useDataEditorToolStore.getState()).toMatchObject({
       tool: 'clean_text',
       initialColumn: 'text',
@@ -148,6 +157,9 @@ describe('DataEditorToolPanel (issue 143)', () => {
 
     await user.click(screen.getByRole('combobox', { name: 'Cleaning' }));
     await user.click(screen.getByRole('option', { name: 'lowercase' }));
+    act(() => {
+      useDataEditorToolStore.getState().setChangedRows(1);
+    });
     await user.click(screen.getByRole('button', { name: 'Apply' }));
     expect(mocks.applyEdit).toHaveBeenCalledWith(
       'node-1',
@@ -322,5 +334,36 @@ describe('DataEditorToolPanel (issue 143)', () => {
         output_column: 'text replaced v2',
       });
     });
+  });
+
+  it('shows why a preview failed and holds back Apply (issue 285)', async () => {
+    const user = userEvent.setup();
+    act(() => {
+      useDataEditorToolStore.getState().open('find_replace', 'node-1', {
+        nodeName: 'Speeches',
+        columns: ['text'],
+        column: 'text',
+      });
+    });
+    render(<DataEditorToolPanel />, { wrapper: TooltipProvider });
+    await user.type(screen.getByLabelText('Find'), '(');
+    await waitFor(() => {
+      expect(useDataEditorToolStore.getState().request).not.toBeNull();
+    });
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
+
+    act(() => {
+      useDataEditorToolStore
+        .getState()
+        .setPreviewError('The pattern is not a valid regular expression.');
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('not a valid regular expression');
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
+
+    act(() => {
+      useDataEditorToolStore.getState().setPreviewError(null);
+      useDataEditorToolStore.getState().setChangedRows(2);
+    });
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeEnabled();
   });
 });

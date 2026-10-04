@@ -52,8 +52,11 @@ const formatConditionValue = (value: FilterConditionWithId['value']): string => 
   }
 
   if (value && typeof value === 'object' && 'start' in value) {
-    const startToken = formatScalar(value.start ?? null);
-    const endToken = formatScalar(value.end ?? null);
+    // Number ranges arrive as text (issue 277); name them like numbers.
+    const asNumber = (edge: unknown) =>
+      typeof edge === 'string' && /^-?\d+(\.\d+)?$/.test(edge.trim()) ? Number(edge) : edge;
+    const startToken = formatScalar((asNumber(value.start) ?? null) as never);
+    const endToken = formatScalar((asNumber(value.end) ?? null) as never);
     return `${startToken}_and_${endToken}`;
   }
 

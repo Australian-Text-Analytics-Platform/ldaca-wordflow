@@ -213,6 +213,7 @@ export function DataEditorToolPanel() {
   const request = useDataEditorToolStore((state) => state.request);
   const changedRows = useDataEditorToolStore((state) => state.changedRows);
   const previewSample = useDataEditorToolStore((state) => state.previewSample);
+  const previewError = useDataEditorToolStore((state) => state.previewError);
   const setDraft = useDataEditorToolStore((state) => state.setDraft);
   const close = useDataEditorToolStore((state) => state.close);
   const resetForm = useDataEditorToolStore((state) => state.resetForm);
@@ -336,9 +337,12 @@ export function DataEditorToolPanel() {
 
   const status = !request
     ? 'Complete the settings to preview the result below.'
-    : changedRows === null
-      ? 'Previewing…'
-      : `${changedRows.toLocaleString()} row${changedRows === 1 ? '' : 's'} changed`;
+    : (previewError ??
+      (changedRows === null
+        ? 'Previewing…'
+        : `${changedRows.toLocaleString()} row${changedRows === 1 ? '' : 's'} changed`));
+  // Apply waits for a successful preview (issue 285).
+  const canApply = Boolean(request) && !applying && !previewError && changedRows !== null;
 
   return (
     <section
@@ -680,7 +684,7 @@ export function DataEditorToolPanel() {
         <Button
           type="button"
           size="sm"
-          disabled={!request || applying}
+          disabled={!canApply}
           onClick={() => {
             void apply();
           }}

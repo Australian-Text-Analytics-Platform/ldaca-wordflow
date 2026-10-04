@@ -109,7 +109,7 @@ export function FilterValueChecklist({
         </div>
       ) : error ? (
         <div className="rounded-md border border-error/40 bg-error/10 px-3 py-2 text-label-secondary text-error">
-          Failed to load categories: {error}
+          Couldn't load the values: {error}
         </div>
       ) : (
         <div

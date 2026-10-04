@@ -52,6 +52,8 @@ interface DataEditorToolState {
    * preview arrives, `null` when that value is empty.
    */
   previewSample: string | null | undefined;
+  /** Why the preview failed, in plain words; Apply is held back meanwhile (issue 285). */
+  previewError: string | null;
   dirty: boolean;
   /** The Project Graph can be shown again without closing the tool. */
   graphVisible: boolean;
@@ -87,6 +89,7 @@ interface DataEditorToolState {
   ) => void;
   setChangedRows: (changedRows: number | null) => void;
   setPreviewSample: (previewSample: string | null | undefined) => void;
+  setPreviewError: (previewError: string | null) => void;
   setGraphVisible: (visible: boolean) => void;
 }
 
@@ -102,6 +105,7 @@ const CLOSED = {
   scrollAnchor: null,
   changedRows: null,
   previewSample: undefined,
+  previewError: null,
   dirty: false,
   graphVisible: false,
 } satisfies Partial<DataEditorToolState>;
@@ -134,6 +138,7 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       scrollAnchor: null,
       changedRows: null,
       previewSample: undefined,
+      previewError: null,
       dirty: false,
     }));
   },
@@ -151,7 +156,7 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       highlightColumns,
       scrollAnchor,
       dirty,
-      ...(request ? {} : { changedRows: null, previewSample: undefined }),
+      ...(request ? {} : { changedRows: null, previewSample: undefined, previewError: null }),
     });
   },
   setChangedRows: (changedRows) => {
@@ -159,6 +164,9 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
   },
   setPreviewSample: (previewSample) => {
     set({ previewSample });
+  },
+  setPreviewError: (previewError) => {
+    set({ previewError });
   },
   setGraphVisible: (graphVisible) => {
     set({ graphVisible });
