@@ -25,21 +25,17 @@ export function buildSequentialChartExportMetadata({
   model,
 }: SequentialChartExportInput): SequentialChartExportMetadata {
   const { summary, counts } = model;
+  // Plain words (issue 278). The old "Total 219/29936" paired the chart's
+  // points with rows and read as a riddle; the Shown and Chosen pairs
+  // followed the filter and the selection, which a saved chart does not have.
   const header: ChartExportHeaderItem[] = [
     { label: 'Data Block', value: nodeName },
     { label: 'Time column', value: summary.timeColumn || '—' },
-    { label: 'Frequency', value: summary.frequencyDisplay },
+    { label: 'Period', value: summary.frequencyDisplay },
+    { label: 'Rows counted', value: counts.totalDocumentCount.toLocaleString() },
     {
-      label: 'Total',
-      value: `${String(counts.totalPointCount)}/${String(counts.totalDocumentCount)}`,
-    },
-    {
-      label: 'Shown',
-      value: `${String(counts.shownPointCount)}/${String(counts.shownDocumentCount)}`,
-    },
-    {
-      label: 'Chosen',
-      value: `${String(counts.chosenPointCount)}/${String(counts.chosenDocumentCount)}`,
+      label: 'Points in the result',
+      value: `${counts.totalPointCount.toLocaleString()} (one per period and group)`,
     },
     { label: 'Groups', value: summary.groupBy.length ? summary.groupBy.join(', ') : 'None' },
     // Normalise to 100% (issue 219) plots shares, not counts.

@@ -96,10 +96,9 @@ describe('buildSequentialChartExportMetadata', () => {
     expect(metadata.header).toEqual([
       { label: 'Data Block', value: 'Interviews' },
       { label: 'Time column', value: 'date' },
-      { label: 'Frequency', value: 'monthly' },
-      { label: 'Total', value: '2/5' },
-      { label: 'Shown', value: '0/0' },
-      { label: 'Chosen', value: '0/0' },
+      { label: 'Period', value: 'monthly' },
+      { label: 'Rows counted', value: '5' },
+      { label: 'Points in the result', value: '2 (one per period and group)' },
       { label: 'Groups', value: 'speaker' },
     ]);
     expect(metadata.legend).toEqual([
