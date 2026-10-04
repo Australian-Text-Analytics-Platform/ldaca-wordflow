@@ -313,6 +313,15 @@ The download control exports the current panned and zoomed graph viewport. Its
 header records Data Block, cluster count, Top topics per document, random seed, and
 Topic count. CSV output still contains every topic and its current counts.
 
+Choose **Interactive HTML** to save the graph as one web page that opens in any
+browser, offline. It shows the graph exactly as on screen (positions, colours,
+selection rings and faded topics) and keeps three things to explore: hover a
+bubble for its words, sized by count, and its size in each Data Block; type in
+**Find topics** to highlight matching topics, with the same rules as the app
+(`*` and `?` wildcards match the whole word list, so use `*hous*` for a word in
+the middle); and drag to move or scroll to zoom. It cannot change the topics or
+add anything to a Project.
+
 <h3 id="help-topic-modeling-clear-results">Clear results</h3>
 
 **Clear** removes this tab's result. The selected

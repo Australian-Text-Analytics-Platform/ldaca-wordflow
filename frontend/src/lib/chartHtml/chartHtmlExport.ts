@@ -10,6 +10,7 @@ import {
   runChartHtml,
   type ChartHtmlPayload,
 } from './chartHtmlRuntime';
+import { escapeHtml, jsonForScript, scriptSafe } from './htmlText';
 import { formatterFromSpec, portableFormatterSpec } from './portableFormatter';
 
 /**
@@ -184,18 +185,6 @@ export function buildChartHtmlPayload(chart: EChartsInstanceLike): ChartHtmlPayl
   };
 }
 
-const escapeHtml = (text: string): string =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-/** Script text that cannot close its <script> element early. */
-const scriptSafe = (text: string): string => text.replace(/<\/(script)/gi, '<\\/$1');
-
-const jsonForScript = (value: unknown): string =>
-  JSON.stringify(value)
-    .replace(/</g, '\\u003c')
-    .replace(/\u2028/g, '\\u2028')
-    .replace(/\u2029/g, '\\u2029');
-
 interface ChartHtmlDocumentOptions {
   title: string;
   header: ChartExportHeaderItem[];
@@ -246,7 +235,7 @@ footer{margin-top:12px;font-size:12px;opacity:.7}
 }
 
 /** Colours of the page behind the chart, so the file matches the app's theme. */
-function chartPageColours(element: HTMLElement): { background: string; foreground: string } {
+export function chartPageColours(element: HTMLElement): { background: string; foreground: string } {
   const style = getComputedStyle(element);
   const body = getComputedStyle(document.body);
   const background =

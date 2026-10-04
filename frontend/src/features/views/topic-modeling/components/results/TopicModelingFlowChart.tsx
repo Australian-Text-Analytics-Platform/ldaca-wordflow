@@ -381,6 +381,8 @@ function TopicExportSvg({
         {bubbles.map((bubble) => (
           <g
             key={bubble.id}
+            // The interactive HTML download finds each bubble by its topic (issue 279).
+            data-topic-id={bubble.id}
             transform={`translate(${String(bubble.position.x)} ${String(bubble.position.y)})`}
             opacity={bubble.filteredOut ? 0.18 : undefined}
           >

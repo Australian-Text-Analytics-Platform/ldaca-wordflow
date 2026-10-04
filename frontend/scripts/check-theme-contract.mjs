@@ -30,6 +30,8 @@ const allowedRawColorFiles = new Set([
   'features/views/sequential-analysis/hooks/sequentialChartModel.ts',
   'features/views/topic-modeling/components/results/TopicModelingFlowChart.tsx',
   'features/views/topic-modeling/components/results/TopicSizeComposition.tsx',
+  // The downloaded bubble chart's hover card sits on the export SVG's fixed white chart (issue 279).
+  'features/views/topic-modeling/components/results/topicBubbleHtmlExport.ts',
   'features/views/topic-modeling/components/results/topicModelingGraph.ts',
   'features/views/topic-modeling/topicModelingAdapters.ts',
   'features/views/token-frequency/TokenFrequencyFeature.tsx',

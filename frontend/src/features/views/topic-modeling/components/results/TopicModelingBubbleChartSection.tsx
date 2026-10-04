@@ -15,6 +15,7 @@ import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { buildTopicBubbleModels, type TopicColorScheme } from './topicModelingGraph';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
 import { toastError } from '@/lib/toastError';
+import { downloadTopicBubbleHtml } from './topicBubbleHtmlExport';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -134,6 +135,45 @@ export function TopicModelingBubbleChartSection({
     ? activeColorScheme.groups.map((group) => ({ label: group.label, color: group.color }))
     : [];
 
+  /** Chart details shown above an image or HTML download. */
+  const exportHeader = (): ChartExportHeaderItem[] => [
+    { label: 'Data Block', value: nodeNames?.join(', ') ?? 'data' },
+    // One name for the topic count (issue 205).
+    { label: 'Number of topics', value: clusterCount != null ? String(clusterCount) : '—' },
+    { label: 'Top topics per document', value: topNTopics != null ? String(topNTopics) : '—' },
+    { label: 'Random seed', value: randomSeed != null ? String(randomSeed) : '—' },
+    { label: 'Topics in the chart', value: String(topics.length) },
+    ...(activeColorScheme ? [{ label: 'Colour by', value: activeColorScheme.column }] : []),
+  ];
+
+  /**
+   * Interactive HTML download (issue 279): the bubble picture as shown, with
+   * a Find topics filter, hover cards and pan and zoom, in one offline file.
+   */
+  const handleDownloadChartHtml = async () => {
+    const svg = chartRef.current?.querySelector<SVGSVGElement>(
+      'svg[data-topic-modeling-export="true"]',
+    );
+    if (!svg) {
+      toast.error('Chart not available for export.');
+      return;
+    }
+    const nodeName = (nodeNames ?? []).filter(Boolean).join('_') || 'data';
+    try {
+      await downloadTopicBubbleHtml(svg, {
+        nodeName,
+        title: `Topic Modelling: ${nodeNames?.join(', ') ?? 'data'}`,
+        header: exportHeader(),
+        legend: exportLegend,
+        topics,
+        nodeNames: nodeNames ?? [],
+        query: topicSearchQuery,
+      });
+    } catch (error) {
+      toastError(error, 'Try again.', { title: "Couldn't export chart." });
+    }
+  };
+
   const handleDownloadChart = async (format: ChartImageFormat, extras: Record<string, boolean>) => {
     const svg = chartRef.current?.querySelector<SVGSVGElement>(
       'svg[data-topic-modeling-export="true"]',
@@ -143,15 +183,7 @@ export function TopicModelingBubbleChartSection({
       return;
     }
     const nodeName = (nodeNames ?? []).filter(Boolean).join('_') || 'data';
-    const header: ChartExportHeaderItem[] = [
-      { label: 'Data Block', value: nodeNames?.join(', ') ?? 'data' },
-      // One name for the topic count (issue 205).
-      { label: 'Number of topics', value: clusterCount != null ? String(clusterCount) : '—' },
-      { label: 'Top topics per document', value: topNTopics != null ? String(topNTopics) : '—' },
-      { label: 'Random seed', value: randomSeed != null ? String(randomSeed) : '—' },
-      { label: 'Topics in the chart', value: String(topics.length) },
-      ...(activeColorScheme ? [{ label: 'Colour by', value: activeColorScheme.column }] : []),
-    ];
+    const header = exportHeader();
     try {
       if (extras.includeCSV ?? false) {
         const { blob: imageBlob, filename: imageFilename } = await buildChartBlob(svg, {
@@ -252,6 +284,9 @@ export function TopicModelingBubbleChartSection({
         extraOptions={[TM_CSV_OPTION]}
         onConfirm={(format, extras) => {
           void handleDownloadChart(format, extras);
+        }}
+        onConfirmHtml={() => {
+          void handleDownloadChartHtml();
         }}
       />
     </>
