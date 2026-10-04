@@ -233,8 +233,8 @@ terms while preserving selected bins.
 
 ![Plot download dialog](tutorials/assets/concordance/download_dialog.png)
 
-Download the current chart as PNG, SVG, JPEG or **Interactive HTML**. The image
-export includes the visible term series, complete legend with hidden-state
+Download the current chart as PNG, SVG, JPEG or **Interactive HTML**. An image
+download includes the visible term series, complete legend with hidden-state
 indication, and active bin and term-filter summary.
 
 **Interactive HTML** saves the chart as one web page that opens in any browser, offline: it shows the chart exactly as it is on screen (the same groups, selected bins, zoom and theme colours), and keeps its tooltips, a legend whose entries hide or show groups, and the zoom slider (hold Command on a Mac or Control on Windows while scrolling to zoom; plain scrolling moves the page). Its last line links to the Wordflow home page. It is a picture you can explore, not a copy of Wordflow: it cannot change the search or the terms, or add anything to a Project.

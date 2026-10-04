@@ -325,7 +325,9 @@ selection rings and faded topics) and keeps three things to explore: hover a
 bubble for its words, sized by count, and the same size chips as the app
 (per colour-by value, or per Data Block); type in **Find topics** to highlight
 matching topics, with the same rules as the app's search; and drag to move, or
-hold Command (Mac) or Control (Windows) while scrolling to zoom. The last line
+hold Command (Mac) or Control (Windows) while scrolling to zoom. Once zoomed in,
+plain scrolling moves the graph in any direction; at full size it scrolls the
+page. **Reset view** returns to the whole graph. The last line
 links to the Wordflow home page. It cannot change the topics or
 add anything to a Project.
 
