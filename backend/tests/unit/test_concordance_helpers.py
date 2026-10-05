@@ -167,6 +167,32 @@ def test_compute_concordance_page_ignores_punctuation_in_context_counts() -> Non
     )
 
 
+def test_a_match_at_the_start_of_a_text_has_no_l1() -> None:
+    """Issue 312 (polars-text 0.6.2): L1 is empty for a match that starts the
+    text, as R1 is for one that ends it; it was the matched word itself."""
+
+    request = {
+        "search_word": "no",
+        "num_left_tokens": 5,
+        "num_right_tokens": 5,
+        "regex": False,
+        "case_sensitive": False,
+    }
+    source = pl.DataFrame({"text": ["No matter what", "I have no"]}).lazy()
+    result = compute_concordance_page(
+        source,
+        "text",
+        request,
+        page=1,
+        page_size=5,
+        sort_by=None,
+        descending=False,
+    )
+    start, end = result["data"][0][0], result["data"][1][0]
+    assert (start["CONC_l1"] or "", start["CONC_r1"]) == ("", "matter")
+    assert (end["CONC_l1"], end["CONC_r1"] or "") == ("have", "")
+
+
 def test_compute_concordance_page_rejects_an_unknown_sort_column() -> None:
     source = pl.DataFrame({"text": ["alpha"]}).lazy()
 
