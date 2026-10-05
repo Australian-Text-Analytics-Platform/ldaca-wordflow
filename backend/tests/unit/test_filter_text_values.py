@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 import polars as pl
 import pytest
@@ -171,6 +171,57 @@ def test_filter_between_on_number_columns_reads_edges_as_numbers(
     )
     matched = (
         NUMBER_FRAME.with_row_index()
+        .filter(_condition_expression(condition, schema))
+        .collect()["index"]
+        .to_list()
+    )
+    assert matched == expected
+
+
+DATETIME_FRAME = pl.LazyFrame(
+    {
+        "posted": [
+            datetime(2020, 12, 30, 9, 0),
+            datetime(2020, 12, 31, 0, 0),
+            datetime(2020, 12, 31, 15, 30),
+            datetime(2021, 1, 1, 0, 0),
+            None,
+        ]
+    }
+)
+
+
+@pytest.mark.parametrize(
+    ("operator", "value", "expected"),
+    [
+        # A calendar date as the upper end covers that whole day.
+        ("between", {"start": "2020-12-30", "end": "2020-12-31"}, [0, 1, 2]),
+        ("between", {"start": None, "end": "2020-12-31"}, [0, 1, 2]),
+        ("lte", "2020-12-31", [0, 1, 2]),
+        # The lower end starts at midnight, so it already includes the day.
+        ("between", {"start": "2020-12-31", "end": None}, [1, 2, 3]),
+        ("gte", "2020-12-31", [1, 2, 3]),
+        # An exact date-time is compared as typed, both ends included.
+        (
+            "between",
+            {"start": "2020-12-30T09:00:00Z", "end": "2020-12-31T15:30:00Z"},
+            [0, 1, 2],
+        ),
+        ("lte", "2020-12-31T00:00:00Z", [0, 1]),
+    ],
+)
+def test_date_ranges_include_the_whole_last_day(
+    operator: str, value: object, expected: list[int]
+) -> None:
+    """Issue 311: ranges include both ends; on a date-and-time column an end
+    given as a calendar date includes all of that day, not just midnight."""
+
+    schema = dict(DATETIME_FRAME.collect_schema())
+    condition = FilterCondition.model_validate(
+        {"column": "posted", "operator": operator, "value": value}
+    )
+    matched = (
+        DATETIME_FRAME.with_row_index()
         .filter(_condition_expression(condition, schema))
         .collect()["index"]
         .to_list()

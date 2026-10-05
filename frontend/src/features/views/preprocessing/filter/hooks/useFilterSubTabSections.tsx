@@ -506,7 +506,8 @@ export const useFilterSubTabSections = (
 
       setConditions((prev) =>
         prev.map((c) => {
-          if (c.id !== conditionId) return c;
+          // Skip if the user moved on to another operator meanwhile.
+          if (c.id !== conditionId || c.operator !== operator) return c;
 
           let newValue: ConditionValue = c.value ?? '';
 
@@ -516,6 +517,16 @@ export const useFilterSubTabSections = (
               break;
             case 'lte':
               if (describeData.max !== undefined) newValue = describeData.max;
+              break;
+            case 'between':
+              // The column's smallest and largest values, both included
+              // (issue 277); an edge the user already typed is kept.
+              if (c.value && typeof c.value === 'object' && 'start' in c.value) {
+                newValue = {
+                  start: c.value.start ?? describeData.min ?? null,
+                  end: c.value.end ?? describeData.max ?? null,
+                };
+              }
               break;
           }
 

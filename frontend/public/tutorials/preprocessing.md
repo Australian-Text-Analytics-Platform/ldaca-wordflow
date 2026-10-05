@@ -69,7 +69,13 @@ Define one or more column-based filter conditions. The behaviour of each conditi
 - Check **Negate** on any individual condition to invert it.
 - For a number or a date column, **between** keeps the rows from the first
   value to the second, both included; leave one end empty for an open range
-  (for example, ages from 26).
+  (for example, ages from 26). Choosing **between** fills **From** and **To**
+  with the column's smallest and largest values, so you only change the end
+  you need. **greater than or equal** and **less than or equal** include
+  the value too.
+- On a column with dates and times, a range that ends on a plain date, such as
+  *2020-12-31* with no time, includes the whole of that day. An end with a
+  time, such as *2020-12-31 12:00*, stops at that time.
 - For a text column with the *contains* operator, tick **regular expression** to match a pattern instead of the exact text (see [Regular expressions](./ui.md#help-ui-regular-expressions)), and **case sensitive** to keep letter case distinct.
 - When a selected column contains missing values, a warning reports how many.
   Ordinary filter conditions do not match those rows; choose **is empty** to

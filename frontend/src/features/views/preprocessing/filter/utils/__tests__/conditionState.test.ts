@@ -128,6 +128,13 @@ describe('conditionState', () => {
       availableColumns: columns,
     });
     expect(into.condition.value).toEqual({ start: null, end: null });
+    // The empty range is then filled with the column's min and max (issue 277).
+    expect(into.prefillRequest).toEqual({
+      kind: 'numeric',
+      conditionId: 'condition-1',
+      column: 'Score',
+      operator: 'between',
+    });
   });
 
   it('requests datetime and numeric prefill when operators can use stats', () => {

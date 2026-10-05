@@ -71,7 +71,7 @@ const getPrefillRequest = (
   if (
     field &&
     (isArrowIntegerField(field) || isArrowFloatField(field)) &&
-    (operator === 'gte' || operator === 'lte')
+    (operator === 'gte' || operator === 'lte' || operator === 'between')
   ) {
     return { kind: 'numeric', conditionId, column, operator };
   }

@@ -13,7 +13,7 @@ from __future__ import annotations
 import re
 import secrets
 import uuid
-from datetime import datetime, UTC
+from datetime import UTC, datetime, timedelta
 from typing import Any, cast
 
 import polars as pl
@@ -767,6 +767,9 @@ def _condition_expression(
             expression = column >= literal
         elif operator == "lt":
             expression = column < literal
+        elif (upper := _whole_day_upper_bound(value, dtype)) is not None:
+            # "On or before 31 Dec" includes all of that day (issue 311).
+            expression = column < upper
         else:
             expression = column <= literal
     elif operator == "in":
@@ -812,16 +815,19 @@ def _condition_expression(
         end = _range_edge(value.get("end"), dtype)
         if start is None and end is None:
             raise InvalidInputError("Between filters require a start or end value")
-        if start is None:
-            expression = column <= cast(Any, end)
-        elif end is None:
-            expression = column >= cast(Any, start)
+        # Ranges include both ends. A calendar date as the end of a range on
+        # a date-and-time column means the whole of that day (issue 311).
+        whole_day_end = _whole_day_upper_bound(value.get("end"), dtype)
+        upper = (
+            column < whole_day_end
+            if whole_day_end is not None
+            else (column <= cast(Any, end) if end is not None else None)
+        )
+        lower = column >= cast(Any, start) if start is not None else None
+        if lower is not None and upper is not None:
+            expression = lower & upper
         else:
-            expression = column.is_between(
-                cast(Any, start),
-                cast(Any, end),
-                closed="both",
-            )
+            expression = cast(pl.Expr, lower if lower is not None else upper)
     else:  # pragma: no cover - the request literal already constrains this
         raise InvalidInputError("Unsupported filter operator")
     return ~expression if condition.negate else expression
@@ -1433,6 +1439,27 @@ def _parse_temporal(value: object) -> object:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return value
+
+
+def _whole_day_upper_bound(value: object, dtype: pl.DataType) -> pl.Expr | None:
+    """The start of the next day, for a calendar-date upper bound on a datetime.
+
+    Ranges include both ends. On a date-and-time column, ``<= 2020-12-31``
+    compares with midnight and so drops the rest of that day; the inclusive
+    reading is ``< 2021-01-01`` (issue 311). Returns None for anything else:
+    an exact date-time, a Date column, or a non-date value.
+    """
+
+    if not isinstance(dtype, pl.Datetime) or not isinstance(value, str):
+        return None
+    text = value.strip()
+    if not _DATE_PATTERN.fullmatch(text):
+        return None
+    try:
+        day = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    return _temporal_literal(day + timedelta(days=1), dtype)
 
 
 def _range_edge(value: object, dtype: pl.DataType) -> pl.Expr | None:
