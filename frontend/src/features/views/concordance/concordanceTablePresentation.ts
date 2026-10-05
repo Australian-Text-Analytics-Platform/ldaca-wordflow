@@ -99,15 +99,23 @@ export function findContextAnchor(
   occurrence: 'first' | 'last',
 ): { index: number; length: number } | null {
   if (!anchor) return null;
+  const escaped = anchor.replace(REGEX_SPECIAL_CHARS, '\\$&');
+  const search = (pattern: RegExp) => {
+    let found: RegExpExecArray | null = null;
+    for (let match = pattern.exec(context); match; match = pattern.exec(context)) {
+      found = match;
+      if (occurrence === 'first') break;
+    }
+    return found ? { index: found.index, length: found[0].length } : null;
+  };
+  // A whole word first, ignoring case: L1 "a" in "I saw a cat. A " is the
+  // final "A", not the "a" inside "cat" (issue 295). Text without spaces
+  // (Japanese, Chinese) has no word edges, so it falls through.
+  const wholeWord = search(new RegExp(`(?<![\\p{L}\\p{N}])${escaped}(?![\\p{L}\\p{N}])`, 'giu'));
+  if (wholeWord) return wholeWord;
   const exact = occurrence === 'last' ? context.lastIndexOf(anchor) : context.indexOf(anchor);
   if (exact >= 0) return { index: exact, length: anchor.length };
-  const pattern = new RegExp(anchor.replace(REGEX_SPECIAL_CHARS, '\\$&'), 'giu');
-  let found: RegExpExecArray | null = null;
-  for (let match = pattern.exec(context); match; match = pattern.exec(context)) {
-    found = match;
-    if (occurrence === 'first') break;
-  }
-  return found ? { index: found.index, length: found[0].length } : null;
+  return search(new RegExp(escaped, 'giu'));
 }
 
 /**

@@ -111,6 +111,18 @@ describe('findContextAnchor', () => {
     expect(findContextAnchor('But then. But', 'but', 'first')).toEqual({ index: 0, length: 3 });
   });
 
+  it('prefers a whole word over a letter inside another word (issue 295)', () => {
+    // Tokens-mode L1 "a" with left context "I saw a cat. A ": the final "A".
+    expect(findContextAnchor('I saw a cat. A ', 'a', 'last')).toEqual({ index: 13, length: 1 });
+    // R1 "at" after the match: the word "At", not the "at" inside "that".
+    expect(findContextAnchor(' that. At last', 'at', 'first')).toEqual({ index: 7, length: 2 });
+    // Text without spaces has no word edges: the substring is still found.
+    expect(findContextAnchor('発表させていただきます', 'いただき', 'first')).toEqual({
+      index: 5,
+      length: 4,
+    });
+  });
+
   it('treats the anchor as literal text and reports misses', () => {
     expect(findContextAnchor('costs $5 (approx.)', '(approx.)', 'first')).toEqual({
       index: 9,
