@@ -251,6 +251,7 @@ With items selected, the bar at the top shows how many are selected and offers:
 
 
 - **Move to…**: move the whole selection into a folder or the top level. You can also drag any selected row to move them all.
+- **Add**: add the selection to the open Project. As when adding a folder, choose **Texts as one Data Block** to make every selected text file, and the text files in any selected folder, one row of one Data Block, or **Tables as separate Data Blocks** to add the selected table files one Data Block each. Rows record each file's path from the folder that holds the whole selection. To leave a few files out of a folder, tick **Select all in** the folder, untick those files, then choose **Add**.
 - **Download**: download the selection as one ZIP. Folders keep their structure, and paths start from the folder that contains the selection, so selecting `speeches` and `one.csv` gives `speeches/…` and `one.csv`.
 - **Delete**: delete the selection after a confirmation that counts the files and folders affected. Folders are deleted with everything inside them, and deletion cannot be undone.
 - **Clear**: deselect everything (or press Esc).

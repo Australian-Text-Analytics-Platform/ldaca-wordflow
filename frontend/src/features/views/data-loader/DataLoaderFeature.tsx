@@ -39,7 +39,13 @@ import { useFileBrowserActions } from './hooks/useFileBrowserActions';
 import { useFolderCreation } from './hooks/useFolderCreation';
 import { useLdacaImport } from './hooks/useLdacaImport';
 import { useUploadState } from './hooks/useUploadState';
-import { countFilesInNode, findDirectory, tableFilesInDirectory } from './utils/fileTreeHelpers';
+import {
+  commonFolder,
+  countFilesInNode,
+  filesInSelection,
+  findDirectory,
+  tableFilesInDirectory,
+} from './utils/fileTreeHelpers';
 import { toastError } from '@/lib/toastError';
 
 interface FileListShellProps {
@@ -202,6 +208,7 @@ function DataLoaderFeature() {
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
     handleAddFilesToWorkspace,
+    handleAddSelectionToWorkspace,
     workspaceLoadFailures,
     workspaceSelectionOperation,
   } = useDataLoaderWorkspaceActions({
@@ -334,19 +341,40 @@ function DataLoaderFeature() {
   const zipTables = useZipTableMembers(addBatchSource?.kind === 'zip' ? addBatchSource.path : null);
   const batchFolder =
     addBatchSource?.kind === 'folder' ? findDirectory(fileTree, addBatchSource.path) : null;
-  const batchTableFiles = batchFolder
-    ? tableFilesInDirectory(batchFolder).map((file) => ({
-        id: file.path,
-        label: file.path.slice(batchFolder.path.length + 1),
-      }))
-    : zipTables.members.map((member) => ({ id: member.path, label: member.path }));
+  // A selection (issue 309) lists its files relative to the folder that holds
+  // them all, as the Data Block's file_path column will.
+  const selectionFiles =
+    addBatchSource?.kind === 'selection'
+      ? filesInSelection(fileTree, addBatchSource.paths ?? [])
+      : null;
+  const selectionBase = addBatchSource?.kind === 'selection' ? addBatchSource.path : '';
+  const relativeToBase = (path: string) =>
+    selectionBase ? path.slice(selectionBase.length + 1) : path;
+  const batchTableFiles = selectionFiles
+    ? selectionFiles.tables.map((file) => ({ id: file.path, label: relativeToBase(file.path) }))
+    : batchFolder
+      ? tableFilesInDirectory(batchFolder).map((file) => ({
+          id: file.path,
+          label: file.path.slice(batchFolder.path.length + 1),
+        }))
+      : zipTables.members.map((member) => ({ id: member.path, label: member.path }));
+  const batchTextFiles = selectionFiles
+    ? selectionFiles.texts.map((file) => ({ id: file.path, label: relativeToBase(file.path) }))
+    : undefined;
+  const openAddSelection = (paths: string[]) => {
+    setAddBatchSource({ kind: 'selection', path: commonFolder(paths), paths });
+  };
   const closeAddBatch = () => {
     setAddBatchSource(null);
   };
   const handleAddBatchTexts = async () => {
     if (!addBatchSource) return;
     try {
-      await handleAddFileToWorkspace(addBatchSource.path);
+      if (addBatchSource.kind === 'selection') {
+        await handleAddSelectionToWorkspace(addBatchSource.paths ?? []);
+      } else {
+        await handleAddFileToWorkspace(addBatchSource.path);
+      }
     } catch (error) {
       notify('error', "Couldn't add to Project.", undefined, error);
     }
@@ -623,6 +651,7 @@ function DataLoaderFeature() {
                           onMoveMany={handleMoveMany}
                           onDeleteMany={handleDeleteMany}
                           onDownloadMany={handleDownloadMany}
+                          onAddMany={openAddSelection}
                         />
                       </div>
                     </ScrollArea>
@@ -646,9 +675,14 @@ function DataLoaderFeature() {
         }}
       />
       <AddBatchPanel
-        key={addBatchSource ? `${addBatchSource.kind}:${addBatchSource.path}` : 'none'}
+        key={
+          addBatchSource
+            ? `${addBatchSource.kind}:${addBatchSource.path}:${(addBatchSource.paths ?? []).join('|')}`
+            : 'none'
+        }
         source={addBatchSource}
         tableFiles={batchTableFiles}
+        textFiles={batchTextFiles}
         tablesLoading={addBatchSource?.kind === 'zip' && zipTables.loading}
         onClose={closeAddBatch}
         onConfirmTexts={handleAddBatchTexts}

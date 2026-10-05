@@ -93,6 +93,13 @@ const TABLE_EXTENSIONS = new Set([
   '.ods',
 ]);
 
+/** Text documents that become rows of a document Data Block. */
+const TEXT_DOCUMENT_EXTENSIONS = new Set(['.txt', '.text', '.md', '.rst', '.log']);
+
+/** Whether a path or name is a hidden or OS entry the folder loader ignores. */
+const isHiddenPath = (path: string) =>
+  path.split('/').some((part) => part === '__MACOSX' || part.startsWith('.'));
+
 function extensionOf(name: string): string {
   const dot = name.lastIndexOf('.');
   return dot > 0 ? name.slice(dot).toLowerCase() : '';
@@ -109,6 +116,44 @@ export function tableFilesInDirectory(directory: FileTreeDirectory): FileTreeFil
   };
   visit(directory.children);
   return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
+/**
+ * The files a selection covers, chosen ones and those inside chosen folders,
+ * split into text documents and table files, each listed once in path order
+ * (issue 309). Hidden and OS files are left out, as when adding a folder.
+ */
+export function filesInSelection(
+  nodes: FileTreeNode[],
+  paths: readonly string[],
+): { texts: FileTreeFile[]; tables: FileTreeFile[] } {
+  const chosen = new Set(paths);
+  const found = new Map<string, FileTreeFile>();
+  const visit = (items: FileTreeNode[], inside: boolean) => {
+    for (const node of items) {
+      const included = inside || chosen.has(node.path);
+      if (node.type === 'directory') visit(node.children, included);
+      else if (included && !isHiddenPath(node.path)) found.set(node.path, node);
+    }
+  };
+  visit(nodes, false);
+  const files = [...found.values()].sort((left, right) => left.path.localeCompare(right.path));
+  return {
+    texts: files.filter((file) => TEXT_DOCUMENT_EXTENSIONS.has(extensionOf(file.name))),
+    tables: files.filter((file) => TABLE_EXTENSIONS.has(extensionOf(file.name))),
+  };
+}
+
+/** The deepest folder containing every path, '' for the top level. */
+export function commonFolder(paths: readonly string[]): string {
+  const parents = paths.map((path) => path.split('/').slice(0, -1));
+  let common = parents[0] ?? [];
+  for (const parts of parents.slice(1)) {
+    let length = 0;
+    while (length < common.length && common[length] === parts[length]) length += 1;
+    common = common.slice(0, length);
+  }
+  return common.join('/');
 }
 
 /** Finds one directory node by its path. */

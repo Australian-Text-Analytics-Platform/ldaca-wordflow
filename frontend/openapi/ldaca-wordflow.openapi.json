@@ -5606,6 +5606,45 @@
         "title": "FileWorksheetsResource",
         "type": "object"
       },
+      "FilesNodeCreateRequest": {
+        "additionalProperties": false,
+        "description": "Create one document Data Block from chosen files and folders (issue 309).\n\nEvery text document among the paths, and inside any chosen folder, becomes\none row, as when a folder is added; rows are named relative to the folder\nthat contains the whole selection.",
+        "properties": {
+          "file_paths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 100000,
+            "minItems": 1,
+            "title": "File Paths",
+            "type": "array"
+          },
+          "kind": {
+            "const": "files",
+            "default": "files",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "required": [
+          "file_paths"
+        ],
+        "title": "FilesNodeCreateRequest",
+        "type": "object"
+      },
       "FilterCondition-Input": {
         "additionalProperties": false,
         "description": "One typed predicate used by a filter derivation.",
@@ -11492,7 +11531,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.8-dev"
+    "version": "0.7.9"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -17984,6 +18023,7 @@
                     "deduplicate": "#/components/schemas/DeduplicateNodeCreateRequest",
                     "expression": "#/components/schemas/ExpressionNodeCreateRequest",
                     "file": "#/components/schemas/FileNodeCreateRequest",
+                    "files": "#/components/schemas/FilesNodeCreateRequest",
                     "filter": "#/components/schemas/FilterNodeCreateRequest",
                     "group_summary": "#/components/schemas/GroupSummaryNodeCreateRequest",
                     "join": "#/components/schemas/JoinNodeCreateRequest",
@@ -17996,6 +18036,9 @@
                 "oneOf": [
                   {
                     "$ref": "#/components/schemas/FileNodeCreateRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/FilesNodeCreateRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CloneNodeCreateRequest"

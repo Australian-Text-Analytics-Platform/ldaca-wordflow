@@ -357,15 +357,53 @@ def _read_zip_documents(file_path: Path) -> tuple[pl.DataFrame, SkippedDocumentF
 def _read_directory_documents(
     root: Path, max_total_bytes: int | None
 ) -> tuple[pl.DataFrame, SkippedDocumentFiles]:
+    return _collect_documents([(root, PurePosixPath())], max_total_bytes)
+
+
+def _collect_documents(
+    entries: list[tuple[Path, PurePosixPath]], max_total_bytes: int | None
+) -> tuple[pl.DataFrame, SkippedDocumentFiles]:
+    """Read text documents from folders (walked) and single files.
+
+    Each entry is a real path and its row path: a folder's files are named
+    below it, a file keeps its own. The folder rules apply to everything:
+    hidden and OS files and links are ignored, only text documents become
+    rows, and the file count and total size are bounded. A file reached
+    twice (selected and inside a selected folder) is read once.
+    """
+
     collector = _DocumentCollector()
-    documents: list[tuple[PurePosixPath, Path]] = []
+    documents: dict[PurePosixPath, Path] = {}
     total_bytes = 0
     file_count = 0
-    pending: list[tuple[Path, PurePosixPath]] = [(root, PurePosixPath())]
+    pending: list[tuple[Path, PurePosixPath]] = []
+
+    def consider(path: Path, relative: PurePosixPath, size: int) -> None:
+        nonlocal total_bytes, file_count
+        if relative in documents:
+            return
+        file_count += 1
+        if file_count > MAX_DIRECTORY_DOCUMENTS:
+            raise DirectoryTooLargeError("Folder contains too many files to load")
+        if not collector.wants(relative):
+            return
+        total_bytes += size
+        if max_total_bytes is not None and total_bytes > max_total_bytes:
+            raise DirectoryTooLargeError("Folder is too large to load")
+        documents[relative] = path
+
+    for path, relative in entries:
+        metadata = path.lstat()
+        if is_link_or_reparse(metadata):
+            continue
+        if stat.S_ISDIR(metadata.st_mode):
+            pending.append((path, relative))
+        elif stat.S_ISREG(metadata.st_mode) and not _is_skipped_document_path(relative):
+            consider(path, relative, metadata.st_size)
     while pending:
         directory, relative = pending.pop()
-        with os.scandir(directory) as entries:
-            for entry in entries:
+        with os.scandir(directory) as scanned:
+            for entry in scanned:
                 child = relative / entry.name
                 if _is_skipped_document_path(child):
                     continue
@@ -377,20 +415,25 @@ def _read_directory_documents(
                     continue
                 if not stat.S_ISREG(metadata.st_mode):
                     continue
-                file_count += 1
-                if file_count > MAX_DIRECTORY_DOCUMENTS:
-                    raise DirectoryTooLargeError(
-                        "Folder contains too many files to load"
-                    )
-                if not collector.wants(child):
-                    continue
-                total_bytes += metadata.st_size
-                if max_total_bytes is not None and total_bytes > max_total_bytes:
-                    raise DirectoryTooLargeError("Folder is too large to load")
-                documents.append((child, Path(entry.path)))
-    for relative, path in sorted(documents, key=lambda item: item[0].as_posix()):
+                consider(Path(entry.path), child, metadata.st_size)
+    for relative, path in sorted(documents.items(), key=lambda item: item[0].as_posix()):
         collector.add(relative, path.read_bytes())
     return collector.result()
+
+
+def read_selected_documents(
+    entries: list[tuple[Path, PurePosixPath]], *, max_total_bytes: int | None = None
+) -> tuple[pl.DataFrame, SkippedDocumentFiles]:
+    """Read chosen files and folders as one document table (issue 309).
+
+    ``entries`` pair each real path with its row path, relative to the folder
+    that contains the whole selection. Same rules as adding a folder.
+    """
+
+    try:
+        return _collect_documents(entries, max_total_bytes)
+    except _DATA_FILE_LOAD_EXCEPTIONS as exc:
+        raise DataFileLoadError("Data file could not be loaded") from exc
 
 
 def read_zip_file(file_path: Path) -> pl.DataFrame:

@@ -70,6 +70,19 @@ class FileNodeCreateRequest(_StrictRequest):
     zip_member: str | None = Field(default=None, min_length=1, max_length=4_000)
 
 
+class FilesNodeCreateRequest(_StrictRequest):
+    """Create one document Data Block from chosen files and folders (issue 309).
+
+    Every text document among the paths, and inside any chosen folder, becomes
+    one row, as when a folder is added; rows are named relative to the folder
+    that contains the whole selection.
+    """
+
+    kind: Literal["files"] = "files"
+    file_paths: list[str] = Field(min_length=1, max_length=100_000)
+    name: NodeName | None = None
+
+
 class CloneNodeCreateRequest(CloneDerivation):
     """Create an independent lazy-plan child from one source node."""
 
@@ -143,6 +156,7 @@ class DeduplicateNodeCreateRequest(DeduplicateDerivation):
 
 NodeCreateRequest = Annotated[
     FileNodeCreateRequest
+    | FilesNodeCreateRequest
     | CloneNodeCreateRequest
     | SliceNodeCreateRequest
     | FilterNodeCreateRequest

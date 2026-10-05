@@ -54,3 +54,26 @@ describe('selection helpers', () => {
     expect(canMoveInto(['a/sub'], '')).toBe(true);
   });
 });
+
+describe('Add selected (issue 309)', () => {
+  it('collects text and table files from chosen files and folders, once each', async () => {
+    const { filesInSelection } = await import('../fileTreeHelpers');
+    const picked = filesInSelection(tree, [
+      'reddit/2020',
+      'reddit/2020/notes.txt',
+      'reddit/README.md',
+    ]);
+    expect(picked.texts.map((file) => file.path)).toEqual([
+      'reddit/2020/notes.txt',
+      'reddit/README.md',
+    ]);
+    expect(picked.tables.map((file) => file.path)).toEqual(['reddit/2020/a.xlsx']);
+  });
+
+  it('names the folder that contains the whole selection', async () => {
+    const { commonFolder } = await import('../fileTreeHelpers');
+    expect(commonFolder(['reddit/2020/a.xlsx', 'reddit/README.md'])).toBe('reddit');
+    expect(commonFolder(['reddit/2020/a.xlsx', 'reddit/2020/notes.txt'])).toBe('reddit/2020');
+    expect(commonFolder(['reddit', 'other.txt'])).toBe('');
+  });
+});

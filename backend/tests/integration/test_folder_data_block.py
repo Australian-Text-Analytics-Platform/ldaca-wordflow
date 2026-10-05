@@ -246,3 +246,100 @@ def test_selection_zip_download_round_trip(tmp_path: Path) -> None:
         assert (
             client.get(f"/api/user-files/archives/{archive['id']}").status_code == 404
         )
+
+
+def test_selected_files_and_folders_become_one_document_data_block(
+    tmp_path: Path,
+) -> None:
+    """Issue 309: Add selected loads chosen files and folders as one document
+    Data Block, with the folder rules, paths relative to the folder that
+    contains the whole selection, and each file read once."""
+
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        for name, parent in (("speeches", ""), ("2020", "speeches")):
+            assert client.post(
+                "/api/user-files/folders",
+                json={"name": name, "parent_path": parent},
+                headers=unsafe,
+            ).status_code in {200, 201}
+        for path, content in {
+            "speeches/2020/b.txt": b"second speech",
+            "speeches/a.txt": b"first speech",
+            "speeches/c.txt": b"third speech",
+            "speeches/metadata.csv": b"file,party\na.txt,Labor\n",
+            "speeches/scan.pdf": b"%PDF-1.7",
+        }.items():
+            assert (
+                client.post(
+                    "/api/user-files/uploads",
+                    params={"path": path},
+                    content=content,
+                    headers={**unsafe, "Content-Type": "application/octet-stream"},
+                ).status_code
+                == 201
+            )
+        workspace_id = client.post(
+            "/api/workspaces", json={"name": "Selection"}, headers=unsafe
+        ).json()["id"]
+        assert (
+            client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe).status_code
+            == 200
+        )
+
+        def add(paths: list[str]) -> tuple[int, dict]:
+            response = client.post(
+                f"/api/workspaces/{workspace_id}/nodes",
+                json={"kind": "files", "file_paths": paths},
+                headers=unsafe,
+            )
+            return response.status_code, response.json()
+
+        def file_paths(node_id: str) -> list[str]:
+            rows = client.post(
+                f"/api/workspaces/{workspace_id}/sql",
+                json={
+                    "mode": "query",
+                    "node_ids": [node_id],
+                    "sql": f'SELECT "file_path" FROM "{node_id}"',
+                    "page": 1,
+                    "page_size": 50,
+                },
+                headers=unsafe,
+            )
+            assert rows.status_code == 200, rows.text
+            return pl.read_ipc_stream(BytesIO(rows.content))["file_path"].to_list()
+
+        # Two files from one folder, plus a PDF that is skipped and reported.
+        status, node = add(["speeches/c.txt", "speeches/a.txt", "speeches/scan.pdf"])
+        assert status == 201, node
+        assert node["name"] == "speeches_selection"
+        assert node["shape"] == [2, 4]
+        assert node["skipped_files"] == [
+            {"extension": "pdf", "reason": "unsupported_type", "count": 1}
+        ]
+        assert file_paths(node["id"]) == ["a.txt", "c.txt"]
+
+        # A folder and a file beside it: paths start from their common folder;
+        # a file chosen twice (itself and inside its folder) is one row.
+        status, node = add(
+            ["speeches/2020", "speeches/a.txt", "speeches/2020/b.txt"]
+        )
+        assert status == 201, node
+        assert file_paths(node["id"]) == ["2020/b.txt", "a.txt"]
+
+        # Only a table file: nothing to add as texts.
+        status, error = add(["speeches/metadata.csv"])
+        assert status == 400
+        assert "no text files" in str(error)

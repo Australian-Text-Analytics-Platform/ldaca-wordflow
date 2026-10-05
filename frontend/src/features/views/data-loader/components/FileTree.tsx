@@ -148,6 +148,8 @@ export interface FileTreeProps {
   onDeleteMany?: (paths: string[]) => Promise<void> | void;
   /** Downloads a selection as one ZIP that keeps its folders (issue 139). */
   onDownloadMany?: (paths: string[]) => Promise<void> | void;
+  /** Opens the Add dialog for a selection of files and folders (issue 309). */
+  onAddMany?: (paths: string[]) => void;
 }
 
 interface FileTreeContentProps extends FileTreeProps {
@@ -191,6 +193,7 @@ function FileTreeContent({
   onMoveMany,
   onDeleteMany,
   onDownloadMany,
+  onAddMany,
 }: FileTreeContentProps) {
   const [draggingPaths, setDraggingPaths] = useState<string[]>([]);
   const [selectedPaths, setSelectedPaths] = useState<Set<string>>(() => new Set());
@@ -880,6 +883,24 @@ function FileTreeContent({
                 size="sm"
                 variant="ghost"
                 className="h-7 px-2"
+                disabled={!onAddMany || !hasWorkspaceSelected}
+                title={
+                  hasWorkspaceSelected
+                    ? 'Add the selected files to the Project'
+                    : 'Open a Project to add the selection as Data Blocks'
+                }
+                onClick={() => {
+                  onAddMany?.(summary.roots);
+                }}
+              >
+                <Plus className="mr-1 h-3.5 w-3.5" />
+                Add
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2"
                 disabled={!onDownloadMany}
                 onClick={() => {
                   void onDownloadMany?.(summary.roots);
@@ -921,7 +942,7 @@ function FileTreeContent({
             <HelpIcon
               targetKey="data-loader.file-organisation"
               label="About organising files"
-              tooltip="Tick files and folders to move, download, or delete them together, or drag them onto a folder."
+              tooltip="Tick files and folders to add, move, download, or delete them together, or drag them onto a folder."
               className="h-5 w-5 text-description"
             />
           </span>

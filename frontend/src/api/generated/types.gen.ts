@@ -2870,6 +2870,30 @@ export type FileWorksheetsResource = {
 };
 
 /**
+ * FilesNodeCreateRequest
+ *
+ * Create one document Data Block from chosen files and folders (issue 309).
+ *
+ * Every text document among the paths, and inside any chosen folder, becomes
+ * one row, as when a folder is added; rows are named relative to the folder
+ * that contains the whole selection.
+ */
+export type FilesNodeCreateRequest = {
+    /**
+     * File Paths
+     */
+    file_paths: Array<string>;
+    /**
+     * Kind
+     */
+    kind?: 'files';
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
  * FilterCondition
  *
  * One typed predicate used by a filter derivation.
@@ -9455,6 +9479,8 @@ export type CreateNodeData = {
     body: ({
         kind: 'file';
     } & FileNodeCreateRequest) | ({
+        kind: 'files';
+    } & FilesNodeCreateRequest) | ({
         kind: 'clone';
     } & CloneNodeCreateRequest) | ({
         kind: 'slice';

@@ -40,6 +40,8 @@ interface FilePreviewContentProps {
   description?: string;
   headerSlot?: React.ReactNode;
   footer: React.ReactNode;
+  /** Leaves out the preview table, for a selection that lists its files instead. */
+  hidePreview?: boolean;
 }
 
 /**
@@ -64,6 +66,7 @@ export function FilePreviewContent({
   description,
   headerSlot,
   footer,
+  hidePreview = false,
 }: FilePreviewContentProps) {
   const isOpen = open && Boolean(filename);
   const {
@@ -129,7 +132,7 @@ export function FilePreviewContent({
                 </p>
               </div>
             )}
-            <div>
+            <div hidden={hidePreview}>
               <label className="mb-2 block text-body font-medium text-foreground">
                 Preview (first rows)
               </label>

@@ -29,7 +29,7 @@ import tempfile
 import time
 import uuid
 import zipfile
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from collections.abc import Callable
@@ -611,6 +611,32 @@ class UserFileStore:
             ):
                 raise FileResourceNotFoundError(f"File {relative_path} not found")
             yield target
+
+    @asynccontextmanager
+    async def read_paths(
+        self,
+        user_id: str,
+        relative_paths: Sequence[str],
+    ) -> AsyncIterator[list[Path]]:
+        """Hold the user's file gate while a service reads several chosen paths.
+
+        Each path must be a real (no-follow) file or folder. Used to add a
+        selection of files and folders as one Data Block (issue 309).
+        """
+
+        for relative_path in relative_paths:
+            _require_public_path(relative_path)
+        async with self._lock_for(user_id):
+            resolver = await self._resolver_for(user_id)
+            targets: list[Path] = []
+            for relative_path in relative_paths:
+                target = resolver.resolve(relative_path)
+                if not await self._run_sync(
+                    _is_real_file, target
+                ) and not await self._run_sync(_is_real_directory, target):
+                    raise FileResourceNotFoundError(f"File {relative_path} not found")
+                targets.append(target)
+            yield targets
 
     async def prepare_import_staging(self, user_id: str, import_id: str) -> Path:
         """Create one private same-filesystem directory for a User File Import."""

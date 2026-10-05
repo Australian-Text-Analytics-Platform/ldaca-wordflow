@@ -7,7 +7,7 @@ import os
 import tempfile
 import uuid
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, TypeVar
 
 import anyio
@@ -23,6 +23,7 @@ from ..infrastructure.storage.data_loading import (
     extract_zip_table_member,
     materialize_data_file,
     read_documents,
+    read_selected_documents,
     normalize_dtypes,
 )
 from ..shared.errors import (
@@ -44,6 +45,7 @@ from ..models.node_resources import (
     CastNodeEditRequest,
     DeduplicateNodeCreateRequest,
     FileNodeCreateRequest,
+    FilesNodeCreateRequest,
     GroupSummaryNodeCreateRequest,
     NodeCreateRequest,
     NodeDerivationRequest,
@@ -105,7 +107,7 @@ class NodeService:
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Create a file source or immutable derived node and commit once."""
 
-        if isinstance(request, FileNodeCreateRequest):
+        if isinstance(request, (FileNodeCreateRequest, FilesNodeCreateRequest)):
             return await self._create_from_file(
                 user_id,
                 workspace_id,
@@ -121,7 +123,7 @@ class NodeService:
         self,
         user_id: str,
         workspace_id: uuid.UUID,
-        request: FileNodeCreateRequest,
+        request: FileNodeCreateRequest | FilesNodeCreateRequest,
     ) -> tuple[WorkspaceNodeInfo, int]:
         """Snapshot a user file, stage parquet, add a node, and commit once."""
 
@@ -131,6 +133,10 @@ class NodeService:
             requested_entries=1,
         )
         try:
+            if isinstance(request, FilesNodeCreateRequest):
+                return await self._create_from_files_admitted(
+                    user_id, workspace_id, request
+                )
             return await self._create_from_file_admitted(
                 user_id,
                 workspace_id,
@@ -196,7 +202,71 @@ class NodeService:
             # Two sheets of one workbook get distinct names (issue 181).
             safe_sheet = sheet_name.replace("/", "-").replace("\\", "-")
             default_name = f"{default_name}_{safe_sheet}"
-        node_name = (request.name or default_name).strip()
+        return await self._add_source_node(
+            user_id,
+            workspace_id,
+            dataframe,
+            (request.name or default_name).strip(),
+            dtype_changes,
+            skipped,
+        )
+
+    async def _create_from_files_admitted(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        request: FilesNodeCreateRequest,
+    ) -> tuple[WorkspaceNodeInfo, int]:
+        """Add chosen files and folders as one document Data Block (issue 309)."""
+
+        public = [PurePosixPath(path) for path in dict.fromkeys(request.file_paths)]
+        base = _common_folder(public)
+        async with self._files.read_paths(
+            user_id, [path.as_posix() for path in public]
+        ) as targets:
+            entries = [
+                (target, path.relative_to(base) if base.parts else path)
+                for target, path in zip(targets, public, strict=True)
+            ]
+            try:
+                dataframe, dtype_changes, skipped = await self._run_io(
+                    _load_selected_documents, entries, self._max_storage_bytes
+                )
+            except DataFileLoadError as exc:
+                if isinstance(exc.__cause__, DirectoryTooLargeError):
+                    raise ResourceTooLargeError(
+                        "The selected files are too large to add as a Data Block"
+                    ) from exc
+                raise InvalidInputError(
+                    "Couldn't load the selected files.",
+                    details={"diagnostic": format_exception_diagnostic(exc)},
+                ) from exc
+        if dataframe.height == 0:
+            raise InvalidInputError(
+                "The selection has no text files (.txt, .text, .md, .rst or .log). "
+                "Add table files one by one, or choose Tables as separate Data Blocks."
+            )
+        default_name = f"{base.name}_selection" if base.parts else "selected_files"
+        return await self._add_source_node(
+            user_id,
+            workspace_id,
+            dataframe,
+            (request.name or default_name).strip(),
+            dtype_changes,
+            skipped,
+        )
+
+    async def _add_source_node(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        dataframe: pl.DataFrame,
+        node_name: str,
+        dtype_changes: list[dict[str, str]],
+        skipped: list[dict[str, str | int]],
+    ) -> tuple[WorkspaceNodeInfo, int]:
+        """Stage a loaded source as parquet, add its node, and commit once."""
+
         valid, reason = validate_display_name(node_name)
         if not valid:
             raise InvalidInputError(f"Invalid Data Block name: {reason}")
@@ -564,6 +634,30 @@ def _load_dataframe(
     data = materialize_data_file(path, sheet_name=sheet_name)
     frame, changes = normalize_dtypes(data)
     return frame, changes, []
+
+
+def _common_folder(paths: list[PurePosixPath]) -> PurePosixPath:
+    """The deepest folder containing every path (a folder counts as its own)."""
+
+    parents = [path.parent for path in paths]
+    common = list(parents[0].parts)
+    for parent in parents[1:]:
+        parts = parent.parts
+        length = 0
+        while length < min(len(common), len(parts)) and common[length] == parts[length]:
+            length += 1
+        common = common[:length]
+    return PurePosixPath(*common) if common else PurePosixPath()
+
+
+def _load_selected_documents(
+    entries: list[tuple[Path, PurePosixPath]], max_total_bytes: int
+) -> tuple[pl.DataFrame, list[dict[str, str]], list[dict[str, str | int]]]:
+    """Read a selection's documents and normalize them like a folder's."""
+
+    data, skipped = read_selected_documents(entries, max_total_bytes=max_total_bytes)
+    frame, changes = normalize_dtypes(data)
+    return frame, changes, skipped.as_report()
 
 
 def _load_zip_member_dataframe(

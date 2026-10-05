@@ -139,19 +139,24 @@ export const useWorkspaceGraphMutations = ({
       filename,
       sheetName,
       zipMember,
+      filePaths,
     }: {
       filename: string;
       sheetName?: string;
       zipMember?: string;
+      /** Chosen files and folders, added as one document Data Block (issue 309). */
+      filePaths?: string[];
     }) =>
       createNode({
         path: { workspace_id: ensureWorkspaceSelected() },
-        body: {
-          kind: 'file',
-          file_path: filename,
-          sheet_name: sheetName,
-          ...(zipMember ? { zip_member: zipMember } : {}),
-        },
+        body: filePaths
+          ? { kind: 'files', file_paths: filePaths }
+          : {
+              kind: 'file',
+              file_path: filename,
+              sheet_name: sheetName,
+              ...(zipMember ? { zip_member: zipMember } : {}),
+            },
         throwOnError: true,
       }).then(({ data }) => {
         return data;
@@ -300,6 +305,8 @@ export const useWorkspaceGraphMutations = ({
           sheetName,
           zipMember,
         }),
+      createNodeFromFiles: (filePaths: string[]) =>
+        createNodeMutation.mutateAsync({ filename: filePaths[0] ?? '', filePaths }),
       joinNodes: (
         leftNodeId: string,
         rightNodeId: string,

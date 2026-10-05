@@ -264,6 +264,20 @@ export function useDataLoaderWorkspaceActions({
   };
 
   /**
+   * Adds the text files of a file-tree selection as one document Data Block
+   * (issue 309), with the same skipped-files report as a folder.
+   */
+  const handleAddSelectionToWorkspace = async (paths: string[]) => {
+    const node = await workspaceActions.createNodeFromFiles(paths);
+    const skipped = node.skipped_files;
+    notify(
+      'success',
+      `${node.name} added to Project.`,
+      skipped && skipped.length > 0 ? describeSkippedFiles(skipped) : undefined,
+    );
+  };
+
+  /**
    * Adds several table files as one Data Block each (a folder's Tables mode),
    * reporting one summary instead of a toast per file.
    */
@@ -322,5 +336,6 @@ export function useDataLoaderWorkspaceActions({
     handleUploadWorkspaceZip,
     handleAddFileToWorkspace,
     handleAddFilesToWorkspace,
+    handleAddSelectionToWorkspace,
   };
 }
