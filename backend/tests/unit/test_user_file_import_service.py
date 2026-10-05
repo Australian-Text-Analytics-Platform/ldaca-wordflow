@@ -383,6 +383,58 @@ async def test_restart_lists_and_deletes_one_unavailable_import_record(
         await service.close(anyio.current_time() + 1)
 
 
+async def test_one_unfinishable_prepared_import_does_not_hide_the_history(
+    tmp_path: Path,
+) -> None:
+    """Issue 310: a prepared import that cannot be reconciled at startup is
+    listed on its own as unavailable; the rest of the history stays readable,
+    and removing it also clears the prepared record so it does not return."""
+
+    samples = _Samples(tmp_path / "staging")
+    service, store = _service(tmp_path, samples)
+    timestamp = datetime.now(UTC)
+    healthy = UserFileImport.create(
+        SampleUserFileImportRequest(collection_id="healthy"),
+        timestamp=timestamp,
+    )
+    await store.save("alice", healthy)
+    running = UserFileImport.create(
+        SampleUserFileImportRequest(collection_id="demo"),
+        timestamp=timestamp,
+    ).start(timestamp)
+    succeeded = running.succeed(
+        timestamp,
+        result=SampleUserFileImportResult(
+            collection_id="demo",
+            destination_path="sample_data/demo",
+            file_count=1,
+            bytes_written=10,
+        ),
+    )
+    await store.save("alice", running)
+    await store.prepare_publication("alice", succeeded)
+
+    async def broken(*_args: object, **_kwargs: object) -> bool:
+        raise RuntimeError("cannot tell whether it was published")
+
+    cast(Any, service)._is_publication_visible = broken
+
+    async with anyio.create_task_group() as tasks:
+        await service.start(tasks)
+
+        page = await service.list("alice", page=1, page_size=10)
+        assert {item.id for item in page.items} == {healthy.id, running.id}
+        stuck = await service.get("alice", running.id)
+        assert isinstance(stuck, UnavailableUserFileImport)
+        assert "could not be finished" in stuck.warning
+
+        await service.delete("alice", running.id)
+        assert (await store.load_all()).prepared_publications == []
+        remaining = await service.list("alice", page=1, page_size=10)
+        assert [item.id for item in remaining.items] == [healthy.id]
+        await service.close(anyio.current_time() + 1)
+
+
 async def test_enqueue_rejection_compensates_record_staging_and_reservation(
     tmp_path: Path,
 ) -> None:

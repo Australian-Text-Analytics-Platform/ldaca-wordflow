@@ -59,6 +59,12 @@ ImportExecution = SampleImportExecution | DataPortalImportExecution
 _UNAVAILABLE_IMPORT_WARNING = (
     "This User File Import is unavailable because its stored record is invalid."
 )
+# One record that cannot be finished at startup must not hide the rest of the
+# user's history (issue 310); it is listed on its own and can be removed.
+_UNRECONCILED_IMPORT_WARNING = (
+    "This import could not be finished after Wordflow restarted. Remove it "
+    "from Tasks, then import the files again."
+)
 
 
 class _CancellationReady(RuntimeError):
@@ -149,7 +155,7 @@ class UserFileImportService:
                     key.import_id,
                     prepared.user_id,
                 )
-                self._corrupt_users.add(prepared.user_id)
+                self._mark_unreconciled(key)
         for stored in snapshot.unavailable_records:
             key = UserFileImportKey(stored.user_id, stored.import_id)
             self._unavailable_records[key] = UnavailableUserFileImport(
@@ -161,6 +167,8 @@ class UserFileImportService:
             self._operation_gates[key] = anyio.Lock()
         for stored in snapshot.records:
             key = UserFileImportKey(stored.user_id, stored.resource.id)
+            if key in self._unavailable_records:
+                continue  # its prepared publication could not be reconciled
             record = recovered_publications.pop(key, stored.resource)
             if record.state in {BackgroundState.QUEUED, BackgroundState.RUNNING}:
                 record = record.fail(
@@ -179,7 +187,7 @@ class UserFileImportService:
                         record.id,
                         stored.user_id,
                     )
-                    self._corrupt_users.add(stored.user_id)
+                    self._mark_unreconciled(key)
                     continue
             self._records[key] = record
             self._operation_gates[key] = anyio.Lock()
@@ -382,6 +390,18 @@ class UserFileImportService:
             async with self._lock:
                 return self._project(key, requested), True
 
+    def _mark_unreconciled(self, key: UserFileImportKey) -> None:
+        """List one import that startup could not finish as unavailable."""
+
+        self._records.pop(key, None)
+        self._unavailable_records[key] = UnavailableUserFileImport(
+            availability="unavailable",
+            id=key.import_id,
+            user_id=key.user_id,
+            warning=_UNRECONCILED_IMPORT_WARNING,
+        )
+        self._operation_gates.setdefault(key, anyio.Lock())
+
     async def delete(self, user_id: str, import_id: uuid.UUID) -> None:
         key = UserFileImportKey(user_id, import_id)
         gate = await self._gate_for(key)
@@ -400,6 +420,10 @@ class UserFileImportService:
                         "User File Import is not terminal"
                     )
             await self._store.delete(user_id, import_id)
+            if unavailable is not None:
+                # A prepared record left by an unfinished import would bring
+                # the entry back at the next start (issue 310).
+                await self._store.clear_prepared_publication(user_id, import_id)
             async with self._lock:
                 removed = self._records.pop(key, None)
                 self._unavailable_records.pop(key, None)

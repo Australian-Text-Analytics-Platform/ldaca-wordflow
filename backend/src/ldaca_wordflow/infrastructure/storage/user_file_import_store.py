@@ -302,7 +302,8 @@ def _load_user(
                 prepared.append(
                     _load_prepared_publication(path, import_id, max_record_bytes)
                 )
-            except (UserFileImportStoreError, ValueError):
+            except (UserFileImportStoreError, ValueError, FileNotFoundError):
+                # FileNotFoundError: published and cleared since the listing.
                 continue
             continue
         if path.name.startswith("."):
@@ -315,6 +316,8 @@ def _load_user(
             raise UserFileImportStoreError("Import record name is invalid")
         try:
             records.append(_load_record(path, import_id, max_record_bytes))
+        except FileNotFoundError:
+            continue  # deleted since the listing
         except UserFileImportStoreError:
             unavailable.append(import_id)
     return records, prepared, unavailable
