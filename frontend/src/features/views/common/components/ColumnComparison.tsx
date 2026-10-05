@@ -22,6 +22,7 @@ import {
   isIntercoderReliabilityMetric,
 } from '@/features/views/common/columnComparisonModel';
 import { AnnotationColumnFilterMenu } from './AnnotationColumnFilterMenu';
+import { COLUMN_MENU_CLASS, COLUMN_MENU_ITEM_CLASS } from './columnMenuStyles';
 
 export type { ConfusionCount } from '@/features/views/common/columnComparisonModel';
 
@@ -267,7 +268,7 @@ export function ColumnComparisonSelector({
           <ChevronDown className="ml-2 h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent align="end" className={COLUMN_MENU_CLASS}>
         <DropdownMenuLabel>Intercoder reliability</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={metric}
@@ -289,6 +290,7 @@ export function ColumnComparisonSelector({
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
         <DropdownMenuCheckboxItem
+          className={COLUMN_MENU_ITEM_CLASS}
           checked={allSelected}
           disabled={selectableColumns.length === 0}
           onCheckedChange={(checked) => {
@@ -304,6 +306,7 @@ export function ColumnComparisonSelector({
         {normalizedAvailableColumns.map((column) => (
           <DropdownMenuCheckboxItem
             key={column}
+            className={COLUMN_MENU_ITEM_CLASS}
             checked={normalizedSelectedColumns.includes(column)}
             disabled={disabledColumnSet.has(column)}
             onCheckedChange={(checked) => {

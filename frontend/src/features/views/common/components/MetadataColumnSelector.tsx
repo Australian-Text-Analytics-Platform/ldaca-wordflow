@@ -11,6 +11,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { normalizeMetadataColumns } from './metadataColumnSelection';
+import {
+  COLUMN_MENU_CLASS as MENU_CLASS,
+  COLUMN_MENU_ITEM_CLASS as ITEM_CLASS,
+} from './columnMenuStyles';
 
 interface MetadataColumnSection {
   columns: string[];
@@ -122,8 +126,9 @@ export function MetadataColumnSelector({
             </Button>
           </DropdownMenuTrigger>
         </DisabledReasonTooltip>
-        <DropdownMenuContent align="start" className="w-56">
+        <DropdownMenuContent align="start" className={MENU_CLASS}>
           <DropdownMenuCheckboxItem
+            className={ITEM_CLASS}
             checked={allSelectableSelected}
             // "Select all" only operates on selectable columns; selections
             // already in disabled sections are preserved untouched.
@@ -169,6 +174,7 @@ export function MetadataColumnSelector({
                       }}
                       disabled={(section.disabled ?? false) || disabledColumnSet.has(column)}
                       style={section.color ? { color: section.color } : undefined}
+                      className={ITEM_CLASS}
                     >
                       {column}
                     </DropdownMenuCheckboxItem>,
@@ -179,6 +185,7 @@ export function MetadataColumnSelector({
             : normalizedAvailableColumns.map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column}
+                  className={ITEM_CLASS}
                   checked={normalizedSelectedColumns.includes(column)}
                   disabled={disabledColumnSet.has(column)}
                   onCheckedChange={(checked) => {
