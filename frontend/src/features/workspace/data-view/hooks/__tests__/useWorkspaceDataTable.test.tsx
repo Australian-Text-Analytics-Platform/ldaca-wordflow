@@ -15,7 +15,7 @@ const toastWarningMock = vi.hoisted(() => vi.fn());
 vi.mock('@/api', () => ({
   queryWorkspaceSqlTable: queryWorkspaceSqlTableMock,
   sqlOrder: (column: string, descending: boolean) =>
-    `"${column}" ${descending ? 'DESC' : 'ASC'} NULLS FIRST`,
+    `"${column}" ${descending ? 'DESC' : 'ASC'} NULLS LAST`,
   sqlTable: (value: string) => `"${value}"`,
 }));
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({

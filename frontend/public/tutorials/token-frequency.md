@@ -154,7 +154,7 @@ For a token, O<sub>S</sub> and O<sub>R</sub> are its counts in the Study and Ref
 
 Results created before Wordflow 0.7.8 measured the Reference corpus against the Study corpus, so their %DIFF, RRisk, LogRatio, and OddsRatio are reversed. Run the analysis again to get the current direction.
 
-The table is paged: use **Words per page** and the page controls below it. Sorting always applies to the whole table before paging.
+The table is paged: use **Words per page** and the page controls below it. Sorting always applies to the whole table before paging, and N/A values stay at the bottom whichever way you sort.
 
 The full table can be downloaded as a CSV file, in the order the table is sorted; when the shared token filter is active, the download contains all matching rows. The CSV uses the same column names as the table, with each corpus's name added (for example `OR_speeches`), plus `Expected_…`, the count the token would have in that corpus if both corpora used it equally, and `Total_…`, the corpus's total number of tokens. For further reading on keyword analysis methodology, see the [Lancaster corpus linguistics resource](https://www.lancaster.ac.uk/fss/courses/ling/corpus/blue/l03_2.htm) and Paul Rayson's [log-likelihood and effect size calculator](https://ucrel.lancs.ac.uk/llwizard.html), which these formulas follow.
 

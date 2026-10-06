@@ -5,7 +5,8 @@ import { toast } from 'sonner';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWorkspaceSelection';
-import { queryWorkspaceSqlTable, sqlOrder, sqlTable } from '@/api';
+import { DataType } from 'apache-arrow';
+import { queryWorkspaceSqlTable, sqlOrder, sqlTable, type SqlEmptyKind } from '@/api';
 import { previewNodeEditTable } from '@/api/tableApi';
 import { useSelectionStore } from '@/stores/selectionStore';
 import {
@@ -15,6 +16,11 @@ import {
 } from '../dataEditorToolStore';
 import type { NodeDataResponse } from '@/api/frontendModels';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
+import {
+  type ArrowField,
+  isArrowDictionaryField,
+  isArrowStringField,
+} from '@/lib/arrow/arrowTable';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
 import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
@@ -82,7 +88,20 @@ export interface WorkspaceDataTableViewModel {
   };
 }
 
-const DEFAULT_NODE_TABLE_REQUEST = createNodeDataRequest({ page: 1, page_size: 20 });
+/** The table request plus how the sorted column's empty values are recognised (issue 317). */
+type DataViewRequest = NodeDataRequest & { sort_empty: SqlEmptyKind };
+
+const DEFAULT_NODE_TABLE_REQUEST: DataViewRequest = {
+  ...createNodeDataRequest({ page: 1, page_size: 20 }),
+  sort_empty: 'missing',
+};
+
+/** Text and category columns also hold blank text; float columns also hold NaN. */
+const sqlEmptyKind = (field: ArrowField | undefined): SqlEmptyKind => {
+  if (!field) return 'missing';
+  if (isArrowStringField(field) || isArrowDictionaryField(field)) return 'text';
+  return DataType.isFloat(field.type) ? 'float' : 'missing';
+};
 
 const EMPTY_NODE_DATA: NodeDataResponse = Object.freeze({
   page: 1,
@@ -222,14 +241,14 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
 
   const tableStateKey =
     currentWorkspaceId && activeNodeId ? `${currentWorkspaceId}\0${activeNodeId}` : '';
-  const [requestByNode, setRequestByNode] = useState<Record<string, NodeDataRequest>>({});
+  const [requestByNode, setRequestByNode] = useState<Record<string, DataViewRequest>>({});
   const nodeTableRequest = tableStateKey
     ? (requestByNode[tableStateKey] ?? DEFAULT_NODE_TABLE_REQUEST)
     : DEFAULT_NODE_TABLE_REQUEST;
   const nodeTableSql = activeNodeId
     ? `SELECT * FROM ${sqlTable(activeNodeId)}${
         nodeTableRequest.sort_by
-          ? ` ORDER BY ${sqlOrder(nodeTableRequest.sort_by, nodeTableRequest.descending)}`
+          ? ` ORDER BY ${sqlOrder(nodeTableRequest.sort_by, nodeTableRequest.descending, nodeTableRequest.sort_empty)}`
           : ''
       }`
     : '';
@@ -240,7 +259,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
    * Flow: start from the current complete request, apply one transition, and
    * retain each workspace/node's request while Data View remains mounted.
    */
-  const updateNodeTableRequest = (updater: (request: NodeDataRequest) => NodeDataRequest) => {
+  const updateNodeTableRequest = (updater: (request: DataViewRequest) => DataViewRequest) => {
     if (!tableStateKey) return;
     setRequestByNode((current) => {
       const existing = current[tableStateKey] ?? DEFAULT_NODE_TABLE_REQUEST;
@@ -493,6 +512,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
       page: 1,
       sort_by: sort?.id ?? null,
       descending: sort?.desc ?? false,
+      sort_empty: sqlEmptyKind(sort ? nodeData.columnFields[sort.id] : undefined),
     }));
   };
 

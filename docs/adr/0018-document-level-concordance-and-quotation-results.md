@@ -23,7 +23,7 @@ sort, both use stable source order; match projections additionally order by the
 Concordance start offset or quotation row index. Non-materialized Concordance
 Preview pages sort only by selected source metadata. A materialized Concordance
 match projection may instead sort directly by any public scalar Result field.
-That direct sort uses Polars' case-sensitive ordering and null defaults, adds no
+That direct sort uses Polars' case-sensitive ordering with empty values last (issue 317), adds no
 hidden secondary keys, and therefore leaves equal-key order unspecified.
 Quotation Result Data Block Creation and Concordance Match Data Block Creation explode the
 nested Result. Concordance Document Data Block Creation instead filters the nested

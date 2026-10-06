@@ -33,6 +33,7 @@ from typing import Any, cast
 import polars as pl
 
 from ..shared.serialization import serialize_json_rows
+from ..shared.empty_values import empty_last_key
 from ..shared.errors import InvalidInputError
 from .generated_columns import (
     CONC_END_IDX_COLUMN,
@@ -196,7 +197,12 @@ def compute_tokens_concordance_page(
         schema = base_lf.collect_schema()
         if sort_by not in schema or sort_by in CORE_CONCORDANCE_COLUMNS:
             raise InvalidInputError("Sort column is not available for concordance")
-        base_lf = base_lf.sort(sort_by, descending=descending)
+        # Empty values sort last in both directions (issue 317).
+        base_lf = base_lf.sort(
+            empty_last_key(sort_by, schema[sort_by]),
+            descending=descending,
+            nulls_last=True,
+        )
         effective_sort_by = sort_by
 
     start = (page - 1) * page_size

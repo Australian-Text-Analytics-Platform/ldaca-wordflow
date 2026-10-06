@@ -42,6 +42,7 @@ from ..domain.workspace.provenance import (
 
 from ..shared.topic_types import is_topic_coverage_storage_dtype
 from ..shared.unsupported_columns import require_supported_columns
+from ..shared.empty_values import empty_value_expression
 from ..shared.errors import InvalidInputError, NodeNotFoundError
 from ..shared.json_data import JsonData
 from .node_casting import cast_lazyframe_column
@@ -713,21 +714,6 @@ def _filter_expression(
     return result
 
 
-def _empty_value_expression(column: pl.Expr, dtype: pl.DataType) -> pl.Expr:
-    """Missing values, NaN, and empty or whitespace-only text count as empty.
-
-    Null and "" differ to data scientists but not to researchers reading texts,
-    so the Filter's is empty / is not empty treat them alike (issue 166).
-    """
-
-    missing = column.is_null()
-    if dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum)):
-        return missing | (column.cast(pl.String).str.strip_chars() == "")
-    if dtype.is_float():
-        return missing | column.is_nan()
-    return missing
-
-
 def _condition_expression(
     condition: FilterCondition,
     schema: dict[str, pl.DataType],
@@ -806,7 +792,7 @@ def _condition_expression(
     elif operator == "ends_with":
         expression = column.cast(pl.String).str.ends_with(str(value or ""))
     elif operator in ("is_null", "is_not_null"):
-        empty = _empty_value_expression(column, dtype)
+        empty = empty_value_expression(column, dtype)
         expression = empty if operator == "is_null" else ~empty
     elif operator == "between":
         if not isinstance(value, dict):
@@ -1384,9 +1370,11 @@ def _apply_expression(
             (_compile_item(item, columns), item.descending)
             for item in request.expressions
         ]
+        # Missing values sort last in both directions, as in every table (issue 317).
         return lazyframe.sort(
             [expression for expression, _ in pairs],
             descending=[descending for _, descending in pairs],
+            nulls_last=True,
         )
     keys = [_compile_item(item, columns) for item in request.group_by]
     aggregations = [_compile_item(item, columns) for item in request.expressions]
@@ -1518,12 +1506,6 @@ def _temporal_literal(value: datetime, dtype: pl.DataType) -> pl.Expr:
     if dtype == pl.Date:
         return pl.lit(value.date()).cast(dtype)
     return pl.lit(value)
-
-
-def empty_value_expression(column: pl.Expr, dtype: pl.DataType) -> pl.Expr:
-    """Public name for the Filter's "is empty" test, used by type-change reports."""
-
-    return _empty_value_expression(column, dtype)
 
 
 def _propagated_document(parents: list[Node], lazyframe: pl.LazyFrame) -> str | None:

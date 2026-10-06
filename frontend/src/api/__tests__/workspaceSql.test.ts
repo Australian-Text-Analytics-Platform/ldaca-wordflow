@@ -8,9 +8,15 @@ describe('project SQL builders', () => {
     expect(sqlString("O'Brien")).toBe("'O''Brien'");
   });
 
-  it('preserves Data View null ordering explicitly', () => {
-    expect(sqlOrder('score')).toBe('"score" ASC NULLS FIRST');
-    expect(sqlOrder('score', true)).toBe('"score" DESC NULLS FIRST');
+  it('sorts empty values last in both directions (issue 317)', () => {
+    expect(sqlOrder('score')).toBe('"score" ASC NULLS LAST');
+    expect(sqlOrder('score', true)).toBe('"score" DESC NULLS LAST');
+    expect(sqlOrder('name', false, 'text')).toBe(
+      `CASE WHEN TRIM(CAST("name" AS VARCHAR)) = '' THEN NULL ELSE "name" END ASC NULLS LAST`,
+    );
+    expect(sqlOrder('ratio', true, 'float')).toBe(
+      `CASE WHEN "ratio" = CAST('NaN' AS DOUBLE) THEN NULL ELSE "ratio" END DESC NULLS LAST`,
+    );
   });
 
   it('preserves checklist substring, wildcard, and escaped-literal semantics', () => {

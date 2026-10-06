@@ -183,7 +183,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   | list | List (of text, or of other values) |
   | pie chart | Topic coverage |
 
-  Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column, and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
+  Use the pin button to keep a column at the left edge, click the sort button (the up and down arrows) to sort the table by that column (empty cells stay at the bottom either way), and expand or collapse a wide text column. These operations update the selected Data Block without creating a new one.
 
 ![Column headers: pin, name, sort, data type, and settings](tutorials/assets/ui/column_header.png)
 

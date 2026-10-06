@@ -7,6 +7,7 @@ from io import BytesIO
 
 import polars as pl
 
+from .empty_values import empty_last_key
 from .errors import InvalidInputError
 from .topic_types import TOPIC_COVERAGE_EXTENSION, topic_coverage_dtype
 
@@ -64,7 +65,12 @@ def materialize_page(
     if sort_by is not None:
         if sort_by not in schema:
             raise InvalidInputError("Table sort column not found")
-        lazyframe = lazyframe.sort(sort_by, descending=descending)
+        # Empty values sort last in both directions (issue 317).
+        lazyframe = lazyframe.sort(
+            empty_last_key(sort_by, schema[sort_by]),
+            descending=descending,
+            nulls_last=True,
+        )
     frame = lazyframe.slice((page - 1) * page_size, page_size + 1).collect()
     has_next = len(frame) > page_size
     if has_next:

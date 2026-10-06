@@ -18,6 +18,7 @@ import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
+from ..shared.empty_values import empty_last_key
 from ..domain.annotation import provider_failure_message
 from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
@@ -872,18 +873,17 @@ def _concordance_document_projection_page(
     sortable_columns = {document_column, *metadata_columns}
     if query.sort_by is not None and query.sort_by not in sortable_columns:
         raise InvalidInputError("Result sort column not found")
-    order = (
-        [query.sort_by, "__wordflow_source_row_id"]
-        if query.sort_by is not None
-        else ["__wordflow_source_row_id"]
-    )
-    order = [column for column in order if column in schema]
-    frame = frame.sort(
-        order,
-        descending=[query.descending, False]
-        if query.sort_by is not None
-        else False,
-    )
+    # Empty values sort last in both directions; ties keep reading order (issue 317).
+    keys: list[pl.Expr] = []
+    descending: list[bool] = []
+    if query.sort_by is not None and query.sort_by in schema:
+        keys.append(empty_last_key(query.sort_by, schema[query.sort_by]))
+        descending.append(query.descending)
+    if "__wordflow_source_row_id" in schema:
+        keys.append(pl.col("__wordflow_source_row_id"))
+        descending.append(False)
+    if keys:
+        frame = frame.sort(keys, descending=descending, nulls_last=True)
     total_rows = frame.select(pl.len()).collect().item()
     page_frame = frame.slice(
         (query.page - 1) * query.page_size, query.page_size + 1
@@ -956,19 +956,29 @@ def _sort_rows(
     descending: bool,
     columns: set[str],
 ) -> list[dict[str, JsonData]]:
-    """Sort a complete JSON result while keeping nulls last."""
+    """Sort a complete JSON result with empty values last in both directions (issue 317)."""
 
     if sort_by is not None:
         if sort_by not in columns:
             raise InvalidInputError("Result sort column not found")
-        present = [row for row in rows if row.get(sort_by) is not None]
-        missing = [row for row in rows if row.get(sort_by) is None]
+        present = [row for row in rows if not _is_empty_json(row.get(sort_by))]
+        missing = [row for row in rows if _is_empty_json(row.get(sort_by))]
         present.sort(
             key=lambda row: _json_sort_key(row[sort_by]),
             reverse=descending,
         )
         rows = [*present, *missing]
     return rows
+
+
+def _is_empty_json(value: JsonData | None) -> bool:
+    """Missing, NaN, or blank text: Wordflow's one meaning of empty."""
+
+    if value is None:
+        return True
+    if isinstance(value, float):
+        return math.isnan(value)
+    return isinstance(value, str) and not value.strip()
 
 
 def _json_sort_key(value: JsonData) -> tuple[int, int | float | str]:

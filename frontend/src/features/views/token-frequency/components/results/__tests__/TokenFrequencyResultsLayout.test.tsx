@@ -691,6 +691,50 @@ describe('Token frequency result layouts', () => {
     expect(exported.map((row) => row.token)).toEqual(['keep-high', 'keep-low']);
   });
 
+  it('keeps N/A statistics last whichever way a column is sorted (issue 317)', async () => {
+    const user = userEvent.setup();
+    const onDownloadFrequencyCsv = vi.fn();
+    const nodeA = buildNodeResult({ nodeId: 'node-a', displayName: 'Reference Data Block' });
+    const nodeB = buildNodeResult({ nodeId: 'node-b', displayName: 'Study Data Block' });
+    render(
+      <TokenFrequencyUnifiedTokenSection
+        {...baseUnifiedSectionProps}
+        normalizedNodeResults={[nodeA, nodeB]}
+        nodeDisplayResults={[nodeA, nodeB]}
+        lastCompareNodeIds={['node-a', 'node-b']}
+        statistics={[
+          buildStatistic({ token: 'study-only', freq_reference: 0, percent_reference: 0 }),
+          buildStatistic({ token: 'low', percent_diff: -10 }),
+          buildStatistic({ token: 'high', percent_diff: 40 }),
+        ]}
+        onDownloadFrequencyCsv={onDownloadFrequencyCsv}
+        view="list"
+      />,
+    );
+
+    const statisticsCard = within(
+      screen.getByRole('region', { name: 'Keyword Analysis statistics' }),
+    );
+    const exportedTokens = async () => {
+      await user.click(statisticsCard.getByRole('button', { name: 'Download frequencies' }));
+      const rows = onDownloadFrequencyCsv.mock.calls.at(-1)?.[1] as { token: string }[];
+      return rows.map((row) => row.token);
+    };
+    const percentDiffHeader = statisticsCard.getByRole('button', { name: /%DIFF/ });
+
+    await user.click(percentDiffHeader);
+    const first = await exportedTokens();
+    await user.click(percentDiffHeader);
+    const second = await exportedTokens();
+
+    expect([first, second]).toEqual(
+      expect.arrayContaining([
+        ['low', 'high', 'study-only'],
+        ['high', 'low', 'study-only'],
+      ]),
+    );
+  });
+
   it('filters the Juxtorpus cloud and Keyword Analysis CSV from one shared value', async () => {
     const user = userEvent.setup();
     const onDownloadFrequencyCsv = vi.fn();

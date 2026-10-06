@@ -21,6 +21,7 @@ from typing import Any
 import polars as pl
 
 from ..domain.workspace import Node, QuotationEngineType
+from ..shared.empty_values import empty_last_key
 from ..shared.errors import InvalidInputError
 from ..shared.unsupported_columns import without_unsupported_columns
 from .generated_columns import without_previous_quotation_columns
@@ -266,9 +267,11 @@ async def _compute_on_demand_page(
         raise InvalidInputError("Sort column is not available for quotations")
     effective_sort_by = sort_by
     if sort_by is not None:
+        # Empty values sort last in both directions (issue 317).
         lazy_df = lazy_df.sort(
-            pl.col(sort_by),
+            empty_last_key(sort_by, schema[sort_by]),
             descending=descending,
+            nulls_last=True,
         )
 
     effective_page_size = await _resolve_quotation_page_size(

@@ -26,18 +26,19 @@ import { ServerPaginationFooter } from '@/features/views/common/components/Serve
 export type EnhancedStatisticsRow = TokenFrequencyStatisticsEntry & {
   overuse: boolean;
   signed_ll: number;
+  sort_signed_ll: number | undefined;
   sort_token: string;
-  sort_freq_reference: number;
-  sort_percent_reference: number;
-  sort_freq_study: number;
-  sort_percent_study: number;
-  sort_log_likelihood_llv: number;
-  sort_percent_diff: number;
-  sort_bayes_factor_bic: number;
-  sort_effect_size_ell: number;
-  sort_relative_risk: number;
-  sort_log_ratio: number;
-  sort_odds_ratio: number;
+  sort_freq_reference: number | undefined;
+  sort_percent_reference: number | undefined;
+  sort_freq_study: number | undefined;
+  sort_percent_study: number | undefined;
+  sort_log_likelihood_llv: number | undefined;
+  sort_percent_diff: number | undefined;
+  sort_bayes_factor_bic: number | undefined;
+  sort_effect_size_ell: number | undefined;
+  sort_relative_risk: number | undefined;
+  sort_log_ratio: number | undefined;
+  sort_odds_ratio: number | undefined;
   sort_significance: number;
 };
 
@@ -68,6 +69,13 @@ const parseStatisticsNumericValue = (value: unknown): number => {
   if (value === '-Inf') return Number.NEGATIVE_INFINITY;
   return Number(value);
 };
+
+/**
+ * Sort key for one statistic: N/A (NaN) becomes undefined so `sortUndefined: 'last'` keeps it at the
+ * bottom whichever way the column is sorted, as empty values are in every table (issue 317).
+ */
+const statisticSortKey = (value: number): number | undefined =>
+  Number.isNaN(value) ? undefined : value;
 
 /** Used by: TokenFrequencyStatisticsTable column cells to format compact statistic values. */
 const formatNumber = (
@@ -182,12 +190,14 @@ const buildColumns = (
       filterFn: tokenWildcardFilter,
     }),
     columnHelper.accessor('sort_freq_reference', {
+      sortUndefined: 'last',
       id: 'freq_reference',
       header: 'OR',
       /** Used by: TanStack Table OR column to render observed reference frequency as an integer count. */
       cell: (info) => formatNumber(info.row.original.freq_reference, { decimals: 0 }),
     }),
     columnHelper.accessor('sort_percent_reference', {
+      sortUndefined: 'last',
       id: 'percent_reference',
       header: '%R',
       /** Used by: TanStack Table %R column to render reference percentage with a percent suffix. */
@@ -195,18 +205,21 @@ const buildColumns = (
         formatNumber(info.row.original.percent_reference, { decimals: 2, suffix: '%' }),
     }),
     columnHelper.accessor('sort_freq_study', {
+      sortUndefined: 'last',
       id: 'freq_study',
       header: 'OS',
       /** Used by: TanStack Table OS column to render observed study frequency as an integer count. */
       cell: (info) => formatNumber(info.row.original.freq_study, { decimals: 0 }),
     }),
     columnHelper.accessor('sort_percent_study', {
+      sortUndefined: 'last',
       id: 'percent_study',
       header: '%S',
       /** Used by: TanStack Table %S column to render study percentage with a percent suffix. */
       cell: (info) => formatNumber(info.row.original.percent_study, { decimals: 2, suffix: '%' }),
     }),
     columnHelper.accessor('sort_log_likelihood_llv', {
+      sortUndefined: 'last',
       id: 'log_likelihood_llv',
       header: 'LL',
       /** Used by: TanStack Table LL column to render log-likelihood for the comparative token row. */
@@ -231,12 +244,17 @@ const buildColumns = (
         );
       },
     }),
-    columnHelper.accessor('signed_ll', {
+    columnHelper.accessor('sort_signed_ll', {
+      id: 'signed_ll',
+      sortUndefined: 'last',
       header: 'Signed LL',
       /** Used by: TanStack Table Signed LL column after overuse direction has been applied. */
-      cell: (info) => <span className="tabular-nums">{formatSignedLL(info.getValue())}</span>,
+      cell: (info) => (
+        <span className="tabular-nums">{formatSignedLL(info.row.original.signed_ll)}</span>
+      ),
     }),
     columnHelper.accessor('sort_percent_diff', {
+      sortUndefined: 'last',
       id: 'percent_diff',
       header: '%DIFF',
       /** Used by: TanStack Table %DIFF column to render percent difference as a percentage value. */
@@ -245,30 +263,35 @@ const buildColumns = (
         formatNumber(info.row.original.sort_percent_diff, { decimals: 2, suffix: '%' }),
     }),
     columnHelper.accessor('sort_bayes_factor_bic', {
+      sortUndefined: 'last',
       id: 'bayes_factor_bic',
       header: 'Bayes',
       /** Used by: TanStack Table Bayes column to render the Bayes factor statistic. */
       cell: (info) => formatNumber(info.row.original.bayes_factor_bic, { decimals: 2 }),
     }),
     columnHelper.accessor('sort_effect_size_ell', {
+      sortUndefined: 'last',
       id: 'effect_size_ell',
       header: 'ELL',
       /** Used by: TanStack Table ELL column to render the effect-size estimate with extra precision. */
       cell: (info) => formatNumber(info.row.original.effect_size_ell, { decimals: 4 }),
     }),
     columnHelper.accessor('sort_relative_risk', {
+      sortUndefined: 'last',
       id: 'relative_risk',
       header: 'RRisk',
       /** Used by: TanStack Table RRisk column to render relative risk for the token comparison. */
       cell: (info) => formatNumber(info.row.original.relative_risk, { decimals: 2 }),
     }),
     columnHelper.accessor('sort_log_ratio', {
+      sortUndefined: 'last',
       id: 'log_ratio',
       header: 'LogRatio',
       /** Used by: TanStack Table LogRatio column to render precision suitable for directional comparison. */
       cell: (info) => formatNumber(info.row.original.log_ratio, { decimals: 4 }),
     }),
     columnHelper.accessor('sort_odds_ratio', {
+      sortUndefined: 'last',
       id: 'odds_ratio',
       header: 'OddsRatio',
       /** Used by: TanStack Table OddsRatio column to render export-parity odds ratio values. */
@@ -319,23 +342,26 @@ const enhanceRows = (statistics: TokenFrequencyStatisticsEntry[]): EnhancedStati
       ...stat,
       overuse,
       signed_ll,
+      sort_signed_ll: statisticSortKey(signed_ll),
       sort_token: stat.token,
-      sort_freq_reference: parseStatisticsNumericValue(stat.freq_reference),
-      sort_percent_reference: parseStatisticsNumericValue(stat.percent_reference),
-      sort_freq_study: parseStatisticsNumericValue(stat.freq_study),
-      sort_percent_study: parseStatisticsNumericValue(stat.percent_study),
-      sort_log_likelihood_llv: parseStatisticsNumericValue(stat.log_likelihood_llv),
+      sort_freq_reference: statisticSortKey(parseStatisticsNumericValue(stat.freq_reference)),
+      sort_percent_reference: statisticSortKey(parseStatisticsNumericValue(stat.percent_reference)),
+      sort_freq_study: statisticSortKey(parseStatisticsNumericValue(stat.freq_study)),
+      sort_percent_study: statisticSortKey(parseStatisticsNumericValue(stat.percent_study)),
+      sort_log_likelihood_llv: statisticSortKey(
+        parseStatisticsNumericValue(stat.log_likelihood_llv),
+      ),
       // No Reference hits leaves %DIFF undefined; polars-text divides by
       // 1e-18 instead, so show N/A (issue 197).
       sort_percent_diff:
         parseStatisticsNumericValue(stat.freq_reference) === 0
-          ? NaN
-          : parseStatisticsNumericValue(stat.percent_diff),
-      sort_bayes_factor_bic: parseStatisticsNumericValue(stat.bayes_factor_bic),
-      sort_effect_size_ell: parseStatisticsNumericValue(stat.effect_size_ell),
-      sort_relative_risk: parseStatisticsNumericValue(stat.relative_risk),
-      sort_log_ratio: parseStatisticsNumericValue(stat.log_ratio),
-      sort_odds_ratio: parseStatisticsNumericValue(stat.odds_ratio),
+          ? undefined
+          : statisticSortKey(parseStatisticsNumericValue(stat.percent_diff)),
+      sort_bayes_factor_bic: statisticSortKey(parseStatisticsNumericValue(stat.bayes_factor_bic)),
+      sort_effect_size_ell: statisticSortKey(parseStatisticsNumericValue(stat.effect_size_ell)),
+      sort_relative_risk: statisticSortKey(parseStatisticsNumericValue(stat.relative_risk)),
+      sort_log_ratio: statisticSortKey(parseStatisticsNumericValue(stat.log_ratio)),
+      sort_odds_ratio: statisticSortKey(parseStatisticsNumericValue(stat.odds_ratio)),
       sort_significance: significanceRank(stat.significance),
     };
   });

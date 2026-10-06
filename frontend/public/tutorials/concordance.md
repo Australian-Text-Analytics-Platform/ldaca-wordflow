@@ -285,8 +285,8 @@ contexts (by L1 and R1 while **Highlight L1/R1 for sorting** is on), matched
 text, L1/R1 and their frequencies across the complete Result. Sorting is
 case-sensitive, except that the matched text, L1 and R1 (and the contexts
 sorted by them) ignore capitals unless **Case sensitive** was on for the
-search, so *The* and *the* sort as one word. Empty values come
-first in either direction. Rows with equal values keep their order in the Data
+search, so *The* and *the* sort as one word. Empty values (missing or blank)
+come last in either direction. Rows with equal values keep their order in the Data
 Block: by document, then by position in it, so matches of one word from one
 document stay together in reading order. Rows are shaded in alternate bands by
 source document, so consecutive matches from one document read as a group.

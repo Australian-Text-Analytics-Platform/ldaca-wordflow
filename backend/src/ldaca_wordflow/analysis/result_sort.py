@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import polars as pl
 
+from ..shared.empty_values import empty_last_key
 from .generated_columns import (
     CONC_L1_COLUMN,
     CONC_MATCHED_TEXT_COLUMN,
@@ -59,7 +60,9 @@ def sort_result_rows(
         # Cast first: an all-null L1/R1 column (every match at a document edge)
         # has dtype Null, which has no string namespace.
         key = key.cast(pl.String).str.to_lowercase()
+    # Empty values sort last in both directions (issue 317).
     return frame.sort(
-        [key, *ties],
+        [empty_last_key(sort_by, schema[sort_by], key), *ties],
         descending=[descending, *([False] * len(ties))],
+        nulls_last=True,
     )
