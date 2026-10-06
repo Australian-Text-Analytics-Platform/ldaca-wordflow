@@ -25,6 +25,20 @@ describe('category order helpers (issue 318)', () => {
     ]);
   });
 
+  it('orders by row counts, ties in A to Z order', () => {
+    const counts = new Map([
+      ['a', 1],
+      ['b', 3],
+      ['c', 1],
+    ]);
+    expect(orderedLabels(['a', 'b', 'c'], 'most', 'text', false, counts)).toEqual(['b', 'a', 'c']);
+    expect(orderedLabels(['a', 'b', 'c'], 'fewest', 'text', false, counts)).toEqual([
+      'a',
+      'c',
+      'b',
+    ]);
+  });
+
   it('moves one value to another position', () => {
     expect(moveLabel(['a', 'b', 'c'], 'c', 'a')).toEqual(['c', 'a', 'b']);
     expect(moveLabel(['a', 'b', 'c'], 'a', 'c')).toEqual(['b', 'c', 'a']);

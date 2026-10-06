@@ -86,15 +86,31 @@ describe('CategoryOrderPanel (issue 318)', () => {
     expect(onConfirm).toHaveBeenCalledWith(['Disagree', 'Neutral', 'Agree']);
   });
 
-  it('turns Custom off above 12 values', async () => {
+  it('orders by rows, most or fewest first, keeping A to Z for ties', async () => {
+    vi.mocked(getCategoryValues).mockResolvedValue({
+      data: values({ counts: [5, 2, 5] }),
+    } as never);
+    const onConfirm = showPanel();
+
+    await userEvent.click(await screen.findByRole('radio', { name: 'Most rows first' }));
+    expect(listed()).toEqual(['Agree', 'Neutral', 'Disagree', 'empty (always last)']);
+    await userEvent.click(screen.getByRole('radio', { name: 'Fewest rows first' }));
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith(['Disagree', 'Agree', 'Neutral']);
+  });
+
+  it('lets values be dragged only up to 12, with no Custom button', async () => {
     const labels = Array.from({ length: 13 }, (_value, index) => `v${String(index)}`);
     vi.mocked(getCategoryValues).mockResolvedValue({
       data: values({ labels, counts: labels.map(() => 1) }),
     } as never);
     showPanel();
 
-    expect(await screen.findByRole('radio', { name: 'Custom' })).toBeDisabled();
-    expect(screen.getByText(/Custom order is available for up to 12/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Values can be dragged when there are up to 12/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('radio', { name: 'Custom' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Press Space to move/ })).not.toBeInTheDocument();
   });
 
   it('shows why a column cannot become a category', async () => {

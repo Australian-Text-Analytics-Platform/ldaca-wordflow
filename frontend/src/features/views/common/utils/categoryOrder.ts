@@ -7,7 +7,14 @@
  */
 
 export type CategoryOrderKind = 'text' | 'value';
-export type CategoryOrderMode = 'current' | 'ascending' | 'descending' | 'custom';
+/** A preset order; 'custom' is the state after the user drags a value (issue 318). */
+export type CategoryOrderMode =
+  | 'current'
+  | 'ascending'
+  | 'descending'
+  | 'most'
+  | 'fewest'
+  | 'custom';
 
 type NaturalPart = [number, number, string];
 
@@ -36,19 +43,28 @@ export const naturalCompare = (left: string, right: string): number => {
 };
 
 /**
- * The labels in one order mode. ``defaults`` is the backend's default order;
+ * The labels in one preset order. ``defaults`` is the backend's default order;
  * ``isOrdered`` says it is the column's own order rather than A to Z or by value.
+ * ``counts`` (rows per label) orders "most" and "fewest"; ties keep A to Z or
+ * value order.
  */
 export const orderedLabels = (
   defaults: readonly string[],
   mode: Exclude<CategoryOrderMode, 'custom'>,
   kind: CategoryOrderKind,
   isOrdered: boolean,
+  counts: ReadonlyMap<string, number> = new Map(),
 ): string[] => {
   if (mode === 'current') return [...defaults];
   // An ordered category's own order is not A to Z; text sorts naturally again.
   const ascending =
     isOrdered && kind === 'text' ? [...defaults].sort(naturalCompare) : [...defaults];
+  if (mode === 'most' || mode === 'fewest') {
+    const sign = mode === 'most' ? -1 : 1;
+    return ascending.toSorted(
+      (left, right) => sign * ((counts.get(left) ?? 0) - (counts.get(right) ?? 0)),
+    );
+  }
   return mode === 'ascending' ? ascending : ascending.reverse();
 };
 

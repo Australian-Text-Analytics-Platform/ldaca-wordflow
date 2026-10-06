@@ -178,21 +178,25 @@ function CategoryOrderForm({
   const canCustomise = defaults.length <= values.max_custom_values;
   const [mode, setMode] = useState<CategoryOrderMode>(isOrdered ? 'current' : 'ascending');
   const [customLabels, setCustomLabels] = useState<string[]>(defaults);
-  const shown = mode === 'custom' ? customLabels : orderedLabels(defaults, mode, kind, isOrdered);
   const counts = new Map(defaults.map((label, index) => [label, values.counts[index] ?? 0]));
+  const shown =
+    mode === 'custom' ? customLabels : orderedLabels(defaults, mode, kind, isOrdered, counts);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  const modes: { value: CategoryOrderMode; label: string }[] = [
+  // Presets only: dragging a value at any time makes a custom order, so no
+  // preset is then selected.
+  const modes: { value: Exclude<CategoryOrderMode, 'custom'>; label: string }[] = [
     ...(isOrdered ? [{ value: 'current' as const, label: 'Current order' }] : []),
     { value: 'ascending', label: MODE_LABELS[kind].ascending },
     { value: 'descending', label: MODE_LABELS[kind].descending },
-    { value: 'custom', label: 'Custom' },
+    { value: 'most', label: 'Most rows first' },
+    { value: 'fewest', label: 'Fewest rows first' },
   ];
 
-  /** Dragging a chip switches to Custom, starting from the order shown. */
+  /** Dragging a value makes a custom order, starting from the order shown. */
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!canCustomise || !over || active.id === over.id) return;
     setCustomLabels(moveLabel(shown, String(active.id), String(over.id)));
@@ -205,36 +209,27 @@ function CategoryOrderForm({
         <fieldset>
           <legend className="mb-1.5 text-body font-medium text-foreground">Order</legend>
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Order">
-            {modes.map((option) => {
-              const disabled = option.value === 'custom' && !canCustomise;
-              return (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  role="radio"
-                  aria-checked={mode === option.value}
-                  variant={mode === option.value ? 'default' : 'outline'}
-                  disabled={disabled}
-                  title={
-                    disabled
-                      ? `Custom order is available for up to ${String(values.max_custom_values)} values.`
-                      : undefined
-                  }
-                  onClick={() => {
-                    if (option.value === 'custom' && mode !== 'custom') setCustomLabels(shown);
-                    setMode(option.value);
-                  }}
-                >
-                  {option.label}
-                </Button>
-              );
-            })}
+            {modes.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                size="sm"
+                role="radio"
+                aria-checked={mode === option.value}
+                variant={mode === option.value ? 'default' : 'outline'}
+                onClick={() => {
+                  setMode(option.value);
+                }}
+              >
+                {option.label}
+              </Button>
+            ))}
           </div>
-          <p className="mt-1.5 text-label-secondary text-description">
+          <p className="mt-1.5 text-label-secondary text-description" aria-live="polite">
+            {mode === 'custom' ? 'Your own order. ' : ''}
             {canCustomise
-              ? 'Drag a value, or focus it and use Space and the arrow keys, to set a custom order.'
-              : `This column has ${String(defaults.length)} values. Custom order is available for up to ${String(values.max_custom_values)}.`}
+              ? 'Drag a value, or focus it and use Space and the arrow keys, to move it.'
+              : `This column has ${String(defaults.length)} values. Values can be dragged when there are up to ${String(values.max_custom_values)}.`}
           </p>
         </fieldset>
         {defaults.length === 0 ? (
