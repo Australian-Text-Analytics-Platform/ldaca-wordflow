@@ -61,6 +61,17 @@ FRONTEND_PORT=3100 VITE_BACKEND_PORT=8101 pnpm dev
 The launcher derives its default CORS origins from `FRONTEND_PORT` and starts
 the backend on `VITE_BACKEND_PORT` so the two processes stay aligned.
 
+Without those variables, `pnpm dev` checks the default ports before starting.
+If `8001` or `3000` is taken (for example by another checkout), it uses the next
+free port, up to 19 above the default, prints which one, and tells both halves:
+the frontend calls the chosen backend port and the backend allows the chosen
+frontend origin. A port you set yourself, or a half started on its own with
+`pnpm dev:backend` or `pnpm dev:frontend`, never moves: if it is busy the
+launcher stops with a message naming the variable to set. Vite runs with
+`strictPort` whenever the launcher gives it a port, so it never drifts to a port
+the backend would refuse. The desktop app is unaffected: its backend always
+asks the system for a free port.
+
 Vite serves the frontend on port `3000` and connects directly to the backend on
 port `8001`.
 Use either `http://localhost:3000` or `http://127.0.0.1:3000`; the frontend

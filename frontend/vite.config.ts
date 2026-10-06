@@ -83,7 +83,9 @@ export default defineConfig(({ mode }) => ({
   server: {
     port: mode === 'tauri' ? 3001 : Number(process.env.FRONTEND_PORT ?? 3000),
     host: mode === 'tauri' ? '127.0.0.1' : '0.0.0.0',
-    strictPort: mode === 'tauri',
+    // With a port chosen by `pnpm dev` (FRONTEND_PORT), stop rather than drift
+    // to another port the backend's allowed origins would refuse.
+    strictPort: mode === 'tauri' || process.env.FRONTEND_PORT !== undefined,
     watch: {
       ignored: ['**/src-tauri/**'],
     },
