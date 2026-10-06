@@ -10,13 +10,8 @@ import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorksp
 import { useSchemaManagement } from '@/features/workspace/common/hooks/useSchemaManagement';
 
 import { arrowSchemaToFields } from '@/features/workspace/common/hooks/useSchemaManagement';
-import {
-  type ArrowField,
-  isArrowFloatField,
-  isArrowIntegerField,
-  isArrowDateField,
-  isArrowTemporalField,
-} from '@/lib/arrow/arrowTable';
+import { isArrowFloatField, isArrowIntegerField, isArrowDateField } from '@/lib/arrow/arrowTable';
+import { isTrendsAxisField, isTrendsDateField } from './trendsAxisColumns';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { fetchNodeSchema } from '@/lib/nodeSchema';
 import AnalysisTaskBanner from '@/features/views/common/components/AnalysisTaskBanner';
@@ -52,9 +47,6 @@ import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { downloadChartAsHtml } from '@/lib/chartHtml/chartHtmlExport';
 
-const isTimeCompatibleField = (field: ArrowField): boolean =>
-  isArrowTemporalField(field) || isArrowIntegerField(field) || isArrowFloatField(field);
-
 /**
  * Renders the sequential-analysis workflow for live trends and result exploration.
  *
@@ -84,7 +76,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     tabInputSets,
     onTabInputSetChange,
     constraints: {
-      fieldPredicate: isTimeCompatibleField,
+      fieldPredicate: isTrendsAxisField,
       maxNodes: 1,
       docTypeOnly: false,
     },
@@ -211,18 +203,13 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   });
 
   const timeCompatibleColumns = availableColumns
-    .filter(
-      (column) =>
-        isArrowTemporalField(column.field) ||
-        isArrowIntegerField(column.field) ||
-        isArrowFloatField(column.field),
-    )
+    .filter((column) => isTrendsAxisField(column.field))
     .sort((a, b) => {
       // Prioritizes datetime columns before numeric fallbacks in the default selector.
       /**
        * Called by the selectable-column sort comparator below.
        */
-      return Number(!isArrowTemporalField(a.field)) - Number(!isArrowTemporalField(b.field));
+      return Number(!isTrendsDateField(a.field)) - Number(!isTrendsDateField(b.field));
     });
 
   const timeColumnOptions = timeCompatibleColumns.map((column) => column.name);

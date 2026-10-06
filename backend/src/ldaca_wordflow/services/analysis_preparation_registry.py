@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 import uuid
 
+import polars as pl
+
 from ..analysis.token_cache import tokens_cache_path
 from ..domain.workspace import (
     AnalysisRecord,
@@ -177,12 +179,34 @@ def _prepare_sequential(
         require_supported_columns(
             schema, request.group_by_columns, use="to group Trends"
         )
+        _require_trends_axis(schema, request)
     return SequentialInput(
         input_snapshot_dir=str(context.snapshot_dir),
         node_id=request.node_id,
         artifact_dir=str(context.artifact_dir),
         request_payload=request.model_dump(mode="json", exclude={"kind", "node_id"}),
     )
+
+
+def _require_trends_axis(
+    schema: pl.Schema, request: SequentialAnalysisRequest
+) -> None:
+    """Refuse an axis column that Trends cannot bin with the requested mode (#316).
+
+    Dates and date-times bin by calendar period, numbers by interval; times of
+    day, durations and every other type have no supported binning.
+    """
+
+    dtype = schema.get(request.time_column)
+    if dtype is None:
+        return
+    is_date = isinstance(dtype, (pl.Date, pl.Datetime))
+    supported = is_date if request.column_type == "datetime" else dtype.is_numeric()
+    if not supported:
+        raise InvalidInputError(
+            f"Trends can't use '{request.time_column}' as its time axis. "
+            "Choose a date, date-and-time or number column."
+        )
 
 
 def _prepare_topic_data_block_creation(
