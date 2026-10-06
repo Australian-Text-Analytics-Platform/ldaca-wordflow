@@ -46,7 +46,7 @@ export const getCategoricalOptionKey = (value: CategoricalPrimitive): string => 
  * Used by: useFilterSubTabSections after lazy loading a categorical/list/topic
  * column so the value editor receives null-aware, display-ready options.
  * Steps: convert backend unique values to comparable primitives, deduplicate by
- * type-aware key, prepend null when present, and preserve display labels.
+ * type-aware key, append null when present, and preserve display labels.
  */
 export const buildCategoricalOptionEntries = (
   rawValues: unknown[],
@@ -75,7 +75,8 @@ export const buildCategoricalOptionEntries = (
     }
   });
 
-  const optionList: CategoricalOptionEntry[] = [];
+  // Empty comes last, as in every sorted list (issue 317).
+  const optionList: CategoricalOptionEntry[] = [...uniqueEntries.values()];
   if (hasNullFromResponse) {
     optionList.push({
       key: NULL_OPTION_KEY,
@@ -84,6 +85,5 @@ export const buildCategoricalOptionEntries = (
       isNull: true,
     });
   }
-  optionList.push(...uniqueEntries.values());
   return optionList;
 };

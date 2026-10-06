@@ -74,7 +74,10 @@ export function SplitByGroupSubTab({
           ? { kind: 'bins', count: Math.floor(Number(binCount)), low, high }
           : null;
   }
-  const sql = input && column && grouping ? groupCountSql(input.id, column, grouping) : null;
+  const sql =
+    input && column && grouping
+      ? groupCountSql(input.id, column, grouping, columnInfo?.typeLabel === 'category')
+      : null;
   const counts = useBuilderSql(workspaceId, input?.id ?? null, sql);
   const groups = grouping && counts.data ? toGroups(column, grouping, counts.data.rows) : [];
   const tooMany = groups.length > MAX_GROUPS;

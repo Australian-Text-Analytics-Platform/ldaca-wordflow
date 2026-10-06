@@ -36,11 +36,22 @@ export function defaultGrouping(kind: ColumnKind): Grouping {
   return { kind: 'values' };
 }
 
-/** Counts rows per group, most frequent first for values; one extra row signals "too many". */
-export function groupCountSql(nodeId: string, column: string, grouping: Grouping): string | null {
+/**
+ * Counts rows per group, most frequent first for values; one extra row signals "too many".
+ * A category column lists its values in its own order instead (issue 318).
+ */
+export function groupCountSql(
+  nodeId: string,
+  column: string,
+  grouping: Grouping,
+  isCategory = false,
+): string | null {
   const col = sqlIdentifier(column);
   const table = sqlTable(nodeId);
   const limit = MAX_GROUPS + 1;
+  if (grouping.kind === 'values' && isCategory) {
+    return `SELECT ${col} AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY value ASC NULLS LAST LIMIT ${String(limit)}`;
+  }
   if (grouping.kind === 'values') {
     // Blank text joins the empty group, matching Filter's is empty (issue 166).
     const text = `CAST(${col} AS VARCHAR)`;

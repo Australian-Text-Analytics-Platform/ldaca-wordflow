@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { toast } from 'sonner';
 
 import {
@@ -25,7 +25,12 @@ interface UseColumnMutationsArgs {
   /** Current visible column names, used for duplicate-name validation. */
   columns: string[];
   columnFields: Record<string, ArrowField>;
-  onCast?: (column: string, targetType: ColumnCastType, format?: string) => Promise<void>;
+  onCast?: (
+    column: string,
+    targetType: ColumnCastType,
+    format?: string,
+    categories?: string[],
+  ) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
   /** Returns the latest node schema; called once on mount and after every mutation. */
@@ -38,6 +43,11 @@ export interface ColumnMutationsApi {
   loadingCast: Record<string, boolean>;
   columnActionLoading: Record<string, boolean>;
   renamingColumn: string | null;
+
+  // Category order window: the column being converted or reordered (issue 318)
+  categoryColumn: string | null;
+  closeCategoryModal: () => void;
+  handleCategoryConfirm: (categories: string[]) => void;
 
   // Datetime confirmation modal (string→datetime needs a format)
   datetimeModal: DatetimeModalState;
@@ -85,6 +95,7 @@ export const useColumnMutations = ({
     columnToDelete,
   } = state;
   const deleteColumnDialogOpen = columnToDelete !== null;
+  const [categoryColumn, setCategoryColumn] = useState<string | null>(null);
   const sourceSchemaSignature = JSON.stringify(
     Object.entries(columnFields)
       .toSorted(([left], [right]) => left.localeCompare(right))
@@ -113,11 +124,11 @@ export const useColumnMutations = ({
 
   /** Runs a dtype cast and refreshes schema so headers reflect the new type. */
   const performCast = useCallback(
-    async (column: string, targetType: ColumnCastType, format?: string) => {
+    async (column: string, targetType: ColumnCastType, format?: string, categories?: string[]) => {
       if (!onCast) return;
       dispatch({ type: 'castLoadingChanged', column, active: true });
       try {
-        await onCast(column, targetType, format);
+        await onCast(column, targetType, format, categories);
         if (onRefreshSchema) {
           const schema = await onRefreshSchema();
           applySchema(schema);
@@ -137,6 +148,11 @@ export const useColumnMutations = ({
   const handleTypeChange = useCallback(
     (column: string, newType: ColumnCastType) => {
       if (!onCast) return;
+      // Category asks for the order first, also on a category column (issue 318).
+      if (newType === 'categorical') {
+        setCategoryColumn(column);
+        return;
+      }
       const currentField = mutationColumnFields[column];
       if (currentField && newType === arrowTypeName(currentField)) return;
       // Text to datetime or date asks for the format first (issue 187).
@@ -162,6 +178,21 @@ export const useColumnMutations = ({
     },
     [datetimeModal, performCast],
   );
+
+  /** Converts to category in the order chosen in the order window. */
+  const handleCategoryConfirm = useCallback(
+    (categories: string[]) => {
+      const column = categoryColumn;
+      setCategoryColumn(null);
+      if (column) void performCast(column, 'categorical', undefined, categories);
+    },
+    [categoryColumn, performCast],
+  );
+
+  /** Closes the category order window without converting. */
+  const closeCategoryModal = useCallback(() => {
+    setCategoryColumn(null);
+  }, []);
 
   /** Closes the datetime confirmation panel without casting. */
   const closeDatetimeModal = useCallback(() => {
@@ -261,6 +292,9 @@ export const useColumnMutations = ({
     loadingCast,
     columnActionLoading,
     renamingColumn,
+    categoryColumn,
+    closeCategoryModal,
+    handleCategoryConfirm,
     datetimeModal,
     closeDatetimeModal,
     handleDatetimeFormatConfirm,

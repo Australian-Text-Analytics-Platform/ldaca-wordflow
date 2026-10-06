@@ -46,6 +46,7 @@ from .category_order import (
     MAX_CATEGORY_VALUES,
     MAX_CUSTOM_ORDER_VALUES,
     category_values,
+    unreadable_order_notes,
 )
 from ..models.node_resources import (
     CategoryValuesResource,
@@ -668,7 +669,8 @@ def _load_dataframe(
         return frame, changes, skipped.as_report()
     data = materialize_data_file(path, sheet_name=sheet_name)
     frame, changes = normalize_dtypes(data)
-    return frame, changes, []
+    # A Parquet category the file marks as ordered loses its order (issue 318).
+    return frame, [*changes, *unreadable_order_notes(path, frame)], []
 
 
 def _common_folder(paths: list[PurePosixPath]) -> PurePosixPath:

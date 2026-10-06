@@ -117,6 +117,8 @@ export interface ConcatSchemaAnalysis {
   mismatches: ConcatSchemaMismatch[];
   baseColumns: string[];
   baseColumnCount: number;
+  /** Columns that are categories in every Data Block; their orders are combined (issue 318). */
+  categoryColumns: string[];
 }
 
 export const PREVIEW_PAGE_SIZE_OPTIONS = [10, 20, 50];

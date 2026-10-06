@@ -142,11 +142,14 @@ export const useWorkspaceTransformMutations = ({
     column: string,
     targetType: ColumnCastType,
     format?: string,
+    categories?: string[],
   ): CastNodeEditBody => ({
     kind: 'cast',
     column,
     target_type: targetType,
     datetime_format: format,
+    // A category's values in the chosen order (issue 318).
+    ...(categories ? { categories } : {}),
   });
 
   const invalidateEditedNode = (nodeId: string) => {
@@ -192,14 +195,16 @@ export const useWorkspaceTransformMutations = ({
       column,
       targetType,
       format,
+      categories,
     }: {
       nodeId: string;
       column: string;
       targetType: ColumnCastType;
       format?: string;
+      categories?: string[];
     }) =>
       editNode({
-        body: castEditBody(column, targetType, format),
+        body: castEditBody(column, targetType, format, categories),
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
       }).then(({ data, response }) => ({
@@ -450,8 +455,13 @@ export const useWorkspaceTransformMutations = ({
         request: PolarsExpressionRequest,
         mode: PreprocessingApplyMode = 'create',
       ) => expressionMutation.mutateAsync({ nodeId, request, mode }),
-      castColumn: (nodeId: string, column: string, targetType: ColumnCastType, format?: string) =>
-        castNodeMutation.mutateAsync({ nodeId, column, targetType, format }),
+      castColumn: (
+        nodeId: string,
+        column: string,
+        targetType: ColumnCastType,
+        format?: string,
+        categories?: string[],
+      ) => castNodeMutation.mutateAsync({ nodeId, column, targetType, format, categories }),
       renameColumn: (nodeId: string, column: string, newName: string) =>
         renameColumnMutation.mutateAsync({ nodeId, column, newName }),
       deleteColumn: (nodeId: string, column: string) =>

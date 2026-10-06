@@ -1,3 +1,4 @@
+import type { SequentialColumnType } from './sequentialChartModel';
 import { useCallback, useReducer } from 'react';
 
 import type { SequentialAnalysisRequest } from '@/api';
@@ -12,7 +13,7 @@ export interface SequentialHydratedParams {
   timeColumn: string;
   groupByColumns: string[];
   frequency: SequentialFrequency;
-  columnType: 'datetime' | 'numeric';
+  columnType: SequentialColumnType;
   numericOrigin: number | null;
   numericInterval: number | null;
   customIntervalValue: number | null;
@@ -28,7 +29,7 @@ export interface SequentialParameterValues {
   currentSequentialParams: {
     frequency: SequentialFrequency;
     group_by_columns: string[];
-    column_type: 'datetime' | 'numeric';
+    column_type: SequentialColumnType;
     numeric_origin: number | null;
     numeric_interval: number | null;
     custom_interval_value: number | null;
@@ -84,7 +85,7 @@ const parsePositiveIntegerInput = (value: string): number | null => {
  */
 export function deriveSequentialParameterValues(
   state: SequentialParameterDraftState,
-  derivedColumnType: 'datetime' | 'numeric',
+  derivedColumnType: SequentialColumnType,
 ): SequentialParameterValues {
   const numericOriginValue =
     derivedColumnType === 'numeric' ? parseNumericInput(state.numericOriginInput) : null;
@@ -212,11 +213,12 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
   nodeId: string;
   state: HydratedSequentialParameterState;
   hydratedParams: SequentialHydratedParams;
-  columnType: 'datetime' | 'numeric';
+  columnType: SequentialColumnType;
 } {
   const nodeId = req.node_id;
   const timeColumn = req.time_column;
-  const columnType = req.column_type === 'numeric' ? 'numeric' : 'datetime';
+  const columnType: SequentialColumnType =
+    req.column_type === 'numeric' || req.column_type === 'category' ? req.column_type : 'datetime';
   const numericOrigin = columnType === 'numeric' ? (req.numeric_origin ?? null) : null;
   const numericInterval = columnType === 'numeric' ? (req.numeric_interval ?? null) : null;
   const groupByColumns = normalizeStringArray(req.group_by_columns ?? []);

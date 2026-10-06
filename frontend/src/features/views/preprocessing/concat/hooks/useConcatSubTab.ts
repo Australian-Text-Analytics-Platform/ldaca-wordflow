@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { DataType, Field, Type, TypeMap } from 'apache-arrow';
+import { DataType, type Field, type Type, type TypeMap } from 'apache-arrow';
 
 import type { NodeColumnSelection } from '@/features/views/common/nodeSelectionTypes';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
@@ -17,6 +17,11 @@ import { dedupeNodeIds } from '@/features/workspace/common/utils/selectionUtils'
 import { toast } from 'sonner';
 import { createdBlockName } from '../../builder/createdBlockName';
 import { columnTypesMatch } from '../columnTypesMatch';
+import {
+  stackCategoryNoteText,
+  useStackCategoryNotes,
+  type StackCategoryNote,
+} from './useStackCategoryNotes';
 
 type ComparableArrowType = DataType<Type, TypeMap>;
 
@@ -108,6 +113,8 @@ export interface UseConcatSubTabResult {
   preview: ConcatPreviewConfig;
   apply: ConcatApplyState;
   mismatches: ConcatSchemaAnalysis['mismatches'];
+  /** How category columns with different orders will be combined (issue 318). */
+  categoryNotes: StackCategoryNote[];
   showActivityTag: boolean;
 }
 
@@ -165,6 +172,7 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
     mismatches: [],
     baseColumns: [],
     baseColumnCount: 0,
+    categoryColumns: [],
   };
 
   if (summaries.length === 0) {
@@ -226,6 +234,13 @@ const analyzeSchema = (summaries: ConcatNodeSummary[]): ConcatSchemaAnalysis => 
     }
   });
 
+  result.categoryColumns = base.normalizedColumns.filter((column) =>
+    summaries.every((summary) => {
+      const field = summary.fields[column];
+      return field !== undefined && DataType.isDictionary(field.type);
+    }),
+  );
+
   if (result.mismatches.length === 0) {
     result.ready = true;
     result.issues = `Ready to stack ${String(summaries.length)} Data Blocks (${String(result.baseColumnCount)} columns).`;
@@ -273,6 +288,11 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
   const concatNodeSummaries = buildConcatNodeSummaries(concatSelectedNodes, getColumnInfos);
 
   const concatAnalysis = analyzeSchema(concatNodeSummaries);
+  const categoryNotes = useStackCategoryNotes(
+    currentWorkspaceId,
+    concatAnalysis.summaries.map((summary) => summary.nodeId),
+    concatAnalysis.categoryColumns,
+  );
 
   const statusVariant: 'warning' | 'error' | null = (() => {
     if (concatAnalysis.ready || !concatAnalysis.issues) return null;
@@ -405,7 +425,12 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
     try {
       setIsConcatenating(true);
       const created: unknown = await concatNodes(nodeIds, requestedName, deduplicate);
-      toast.success(`Added ${createdBlockName(created, requestedName)} to the Project.`);
+      toast.success(`Added ${createdBlockName(created, requestedName)} to the Project.`, {
+        // How category orders were combined (issue 318).
+        description: categoryNotes.length
+          ? categoryNotes.map(stackCategoryNoteText).join(' ')
+          : undefined,
+      });
     } catch (error) {
       onAlert("Couldn't create the Data Block.", error);
     } finally {
@@ -433,6 +458,7 @@ export const useConcatSubTab = (props: ConcatSubTabProps): UseConcatSubTabResult
 
   return {
     selectionPanel,
+    categoryNotes,
     form: {
       value: newNodeName,
       setValue: setNewNodeName,

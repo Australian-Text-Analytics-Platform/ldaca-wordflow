@@ -1,3 +1,4 @@
+import type { SequentialColumnType } from '../../hooks/sequentialChartModel';
 import { Plus, Trash2 } from 'lucide-react';
 
 import HelpIcon from '@/components/help/HelpIcon';
@@ -72,7 +73,7 @@ export interface SequentialAnalysisParameterPanelProps {
   onColumnChange: (nodeId: string, column: string) => void;
 
   // Configuration shared
-  derivedColumnType: 'datetime' | 'numeric';
+  derivedColumnType: SequentialColumnType;
   /** The time column is a Date (no time of day): hide sub-day periods. */
   dateOnly?: boolean;
   inputsDisabled: boolean;
@@ -146,12 +147,17 @@ export function SequentialAnalysisParameterPanel({
         onRemoveNode={nodeInputs.removeNode}
         onClear={nodeInputs.clear}
         onColumnChange={onColumnChange}
-        columnLabel="Time or number column *"
+        columnLabel="Time, number or category column *"
       />
 
       <div className="space-y-4">
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-          {derivedColumnType === 'datetime' ? (
+          {derivedColumnType === 'category' ? (
+            <p className="md:col-span-2 text-label-secondary text-description">
+              Each value of a category column is one bar, in the column&apos;s order, with empty
+              values as the last bar. Choose Bars or Stacked bars for the chart.
+            </p>
+          ) : derivedColumnType === 'datetime' ? (
             <div className={frequency === 'custom' ? 'md:col-span-2' : 'md:col-span-1'}>
               <div className="mb-1 flex items-center gap-2">
                 <label className="block text-body font-medium text-foreground">Period</label>

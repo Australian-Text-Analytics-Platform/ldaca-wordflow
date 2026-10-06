@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import datetime as dt
+import json
 from types import SimpleNamespace
 from typing import Any, cast
 
@@ -15,6 +16,7 @@ from ldaca_wordflow.services.category_order import (
     merge_orders,
     natural_key,
     stacked_category_order,
+    unreadable_order_notes,
 )
 from ldaca_wordflow.services.node_casting import cast_lazyframe_column
 from ldaca_wordflow.services.node_operations import _aligned_concat_frames
@@ -157,3 +159,22 @@ def test_trends_category_axis_follows_the_order_with_empty_last() -> None:
     groups = result.unique("group_index").sort("group_index")["g"].to_list()
     assert groups == ["a", "b", None]
     assert publication.height == 5
+
+
+def test_a_parquet_order_that_cannot_be_read_is_noted(tmp_path) -> None:
+    path = tmp_path / "survey.parquet"
+    frame = pl.DataFrame({"o": ["Low", "High"], "a": ["x", "y"]}).with_columns(
+        pl.all().cast(pl.Categorical)
+    )
+    pandas = {
+        "columns": [
+            {"name": "o", "metadata": {"num_categories": 3, "ordered": True}},
+            {"name": "a", "metadata": {"num_categories": 2, "ordered": False}},
+        ]
+    }
+    frame.write_parquet(path, metadata={"pandas": json.dumps(pandas)})
+
+    notes = unreadable_order_notes(path, pl.read_parquet(path))
+
+    assert [note["column"] for note in notes] == ["o"]
+    assert "Click its type to set the order" in notes[0]["reason"]

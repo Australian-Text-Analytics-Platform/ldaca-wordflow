@@ -8,6 +8,8 @@ import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
 type SequentialAnalysisDatum = Record<string, unknown>;
 export type ChartTypeOption = 'line' | 'bar' | 'stacked-bar' | 'area';
 export type SequentialXAxisType = 'category' | 'number';
+/** What the X axis column holds; "category" is one position per category value (issue 318). */
+export type SequentialColumnType = 'datetime' | 'numeric' | 'category';
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
 
@@ -75,7 +77,7 @@ const chartDateUnitFor = (
 /** Formats a linear-axis coordinate according to the result's declared domain. */
 function formatSequentialAxisTick(
   value: unknown,
-  columnType: 'datetime' | 'numeric',
+  columnType: SequentialColumnType,
   formatInstant: (ms: number) => string,
 ): string {
   const numeric = typeof value === 'number' ? value : Number(value);
@@ -86,7 +88,7 @@ function formatSequentialAxisTick(
 export interface SequentialResultSummaryFallbacks {
   timeColumn: string;
   groupBy: string[];
-  columnType: 'datetime' | 'numeric';
+  columnType: SequentialColumnType;
   numericOrigin: number | null;
   numericInterval: number | null;
   frequency: SequentialFrequency;
@@ -111,7 +113,7 @@ type SequentialChartParameters = Partial<
 interface SequentialResultSummary {
   timeColumn: string;
   groupBy: string[];
-  columnType: 'datetime' | 'numeric';
+  columnType: SequentialColumnType;
   numericOrigin: number | null;
   numericInterval: number | null;
   rawFrequency: SequentialFrequency;
@@ -282,13 +284,15 @@ function buildSummary(
     customIntervalValue = null;
   }
   const frequencyDisplay =
-    columnType === 'numeric'
-      ? 'Numeric bins'
-      : rawFrequency === 'custom'
-        ? customIntervalValue && customIntervalUnit
-          ? `Every ${String(customIntervalValue)} ${customIntervalUnit}`
-          : 'Custom interval'
-        : rawFrequency;
+    columnType === 'category'
+      ? 'One bar per value'
+      : columnType === 'numeric'
+        ? 'Numeric bins'
+        : rawFrequency === 'custom'
+          ? customIntervalValue && customIntervalUnit
+            ? `Every ${String(customIntervalValue)} ${customIntervalUnit}`
+            : 'Custom interval'
+          : rawFrequency;
   return {
     timeColumn,
     groupBy,
@@ -309,8 +313,9 @@ function isPeriodBoundary(value: unknown): value is string | number {
   );
 }
 
-function periodCoordinate(value: string | number, columnType: 'datetime' | 'numeric'): number {
-  if (columnType === 'numeric') {
+function periodCoordinate(value: string | number, columnType: SequentialColumnType): number {
+  // A category axis is placed by its period index (normalizeRows).
+  if (columnType !== 'datetime') {
     const numeric = typeof value === 'number' ? value : Number(value);
     return Number.isFinite(numeric) ? numeric : Number.NaN;
   }
@@ -401,7 +406,12 @@ function normalizeRows(
       });
       return;
     }
-    if (!isPeriodBoundary(row.period_start) || !isPeriodBoundary(row.period_end)) {
+    // A category position has no start, end or raw value; its period index places
+    // it, and time_period_formatted labels it (issue 318).
+    const isCategory = summary.columnType === 'category';
+    const periodStart = isCategory ? Number(row.period_index) : row.period_start;
+    const periodEnd = isCategory ? Number(row.period_index) : row.period_end;
+    if (!isPeriodBoundary(periodStart) || !isPeriodBoundary(periodEnd)) {
       diagnostics.push({
         code: 'invalid-period',
         message: 'Ignored a row with missing period boundaries.',
@@ -409,8 +419,8 @@ function normalizeRows(
       });
       return;
     }
-    const startCoordinate = periodCoordinate(row.period_start, summary.columnType);
-    const endCoordinate = periodCoordinate(row.period_end, summary.columnType);
+    const startCoordinate = periodCoordinate(periodStart, summary.columnType);
+    const endCoordinate = periodCoordinate(periodEnd, summary.columnType);
     if (
       !Number.isFinite(startCoordinate) ||
       !Number.isFinite(endCoordinate) ||
@@ -444,7 +454,11 @@ function normalizeRows(
       });
       return;
     }
-    const rawTimePeriod = isPeriodBoundary(row.time_period) ? row.time_period : null;
+    const rawTimePeriod = isCategory
+      ? Number(row.period_index)
+      : isPeriodBoundary(row.time_period)
+        ? row.time_period
+        : null;
     if (
       rawTimePeriod === null ||
       !Number.isFinite(periodCoordinate(rawTimePeriod, summary.columnType))
@@ -464,8 +478,8 @@ function normalizeRows(
       periodKey: String(row.period_index),
       timePeriod,
       axisValue: rawTimePeriod,
-      periodStart: row.period_start,
-      periodEnd: row.period_end,
+      periodStart,
+      periodEnd,
       count: row.sequential_count,
       groupId: group.id,
       groupIndex: group.index,
@@ -496,8 +510,8 @@ export function buildSequentialChartModel({
   results,
   parameters,
   fallbacks,
-  chartType,
-  xAxisType,
+  chartType: requestedChartType,
+  xAxisType: requestedXAxisType,
   minimumGroupCount,
   uncased,
   excludedGroupIndices,
@@ -507,6 +521,15 @@ export function buildSequentialChartModel({
 }: BuildSequentialChartModelInput): SequentialChartModel {
   const diagnostics: SequentialChartDiagnostic[] = [];
   const summary = buildSummary(parameters, fallbacks, diagnostics);
+  // Categories have no distance between them, so they are always evenly spaced (issue 318).
+  const xAxisType: SequentialXAxisType =
+    summary.columnType === 'category' ? 'category' : requestedXAxisType;
+  // Lines and areas suggest a progression between categories; they show as bars.
+  const chartType: ChartTypeOption =
+    summary.columnType === 'category' &&
+    (requestedChartType === 'line' || requestedChartType === 'area')
+      ? 'bar'
+      : requestedChartType;
   const canonicalRows = normalizeRows(results, summary, diagnostics);
 
   const groupsById = new Map<

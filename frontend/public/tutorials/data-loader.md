@@ -150,6 +150,8 @@ how to load it:
 
   ![Add Folder dialog in Tables mode, with one of two table files ticked](tutorials/assets/data_loader/folder_add_tables.png)
 
+A Parquet file can mark a category column as ordered, for example one saved by pandas. Wordflow can't read that order, so the column's values are listed A to Z and a message names the column. Click the column's type in the Data Editor and choose **Category** to set the order.
+
 
 A ZIP inside a folder, or inside another ZIP, is never opened: it is skipped
 (and listed as skipped in Texts mode). Add the ZIP on its own to load its

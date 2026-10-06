@@ -53,7 +53,7 @@ describe('useColumnMutations', () => {
     });
 
     await waitFor(() => {
-      expect(onCast).toHaveBeenCalledWith('published_at', 'datetime', '%Y-%m-%d');
+      expect(onCast).toHaveBeenCalledWith('published_at', 'datetime', '%Y-%m-%d', undefined);
       expect(result.current.columnFields.published_at).toBe(datetimeField);
     });
     expect(result.current.datetimeModal.isOpen).toBe(false);

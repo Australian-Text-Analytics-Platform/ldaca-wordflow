@@ -86,6 +86,36 @@ describe('buildSequentialChartModel', () => {
     expect(model.series).toEqual([]);
   });
 
+  it('places category values in their order with (empty) last, as bars (issue 318)', () => {
+    const category = (index: number, value: string | null, count: number) => ({
+      period_index: index,
+      group_index: 0,
+      time_period: value,
+      time_period_formatted: value ?? '(empty)',
+      period_start: value,
+      period_end: value,
+      sequential_count: count,
+    });
+    const model = build(
+      {
+        data: [
+          category(3, null, 1),
+          category(0, 'Low', 2),
+          category(2, 'High', 4),
+          category(1, 'Mid', 3),
+        ],
+        analysis_params: { column_type: 'category' },
+      },
+      { chartType: 'line', xAxisType: 'number' },
+    );
+
+    expect(model.status).toBe('ready');
+    expect(model.axisData.map((row) => row.time_period)).toEqual(['Low', 'Mid', 'High', '(empty)']);
+    // Lines and To scale spacing do not apply to categories.
+    expect(model.chartType).toBe('bar');
+    expect(model.xAxisType).toBe('category');
+  });
+
   it('builds one ungrouped series and preserves numeric zero as the linear x value', () => {
     const model = build(
       {

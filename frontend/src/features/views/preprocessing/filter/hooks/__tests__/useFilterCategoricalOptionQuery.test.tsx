@@ -46,9 +46,9 @@ describe('useFilterCategoricalOptionQuery', () => {
   it('loads one counted SQL page, preserving null and primitive values', async () => {
     queryWorkspaceSqlTableMock.mockResolvedValue({
       rows: [
-        { value: null, count: '2' },
         { value: 'Alice', count: '5' },
         { value: 'Bob', count: '3' },
+        { value: null, count: '2' },
       ],
       columns: ['value', 'count'],
       hasNext: false,
@@ -67,19 +67,22 @@ describe('useFilterCategoricalOptionQuery', () => {
           node_ids: ['node-1'],
           page: 1,
           page_size: 500,
-          sql: expect.stringMatching(/SELECT "value", COUNT\(\*\) AS "count"/),
+          sql: expect.stringMatching(
+            /SELECT "value", COUNT\(\*\) AS "count".*ORDER BY "value" ASC NULLS LAST$/,
+          ),
         }),
       }),
     );
+    // Empty comes last (issues 317 and 318).
     expect(view.result.current.options.map((option) => option.key)).toEqual([
-      NULL_OPTION_KEY,
       'string::Alice',
       'string::Bob',
+      NULL_OPTION_KEY,
     ]);
     expect(view.result.current.options).toEqual([
-      expect.objectContaining({ key: NULL_OPTION_KEY, count: '2' }),
       expect.objectContaining({ key: 'string::Alice', count: '5' }),
       expect.objectContaining({ key: 'string::Bob', count: '3' }),
+      expect.objectContaining({ key: NULL_OPTION_KEY, count: '2' }),
     ]);
   });
 

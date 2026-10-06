@@ -1,4 +1,4 @@
-import { Dictionary, Field, Float64, Int64, List, Uint32, Utf8 } from 'apache-arrow';
+import { Dictionary, Field, Float64, Int64, List, Uint8, Uint32, Utf8 } from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 
 import { columnTypesMatch } from '../columnTypesMatch';
@@ -11,14 +11,19 @@ describe('columnTypesMatch (issue 276)', () => {
     expect(columnTypesMatch(first, shifted)).toBe(true);
   });
 
-  it('still tells a category from text, and different categories apart', () => {
+  it('still tells a category from text, and categories of different values apart', () => {
     const category = new Dictionary(new Utf8(), new Uint32(), 0);
     expect(columnTypesMatch(category, new Utf8())).toBe(false);
     expect(columnTypesMatch(new Utf8(), category)).toBe(false);
-    expect(columnTypesMatch(category, new Dictionary(new Utf8(), new Uint32(), 0, true))).toBe(
-      false,
-    );
     expect(columnTypesMatch(category, new Dictionary(new Int64(), new Uint32(), 0))).toBe(false);
+  });
+
+  it('stacks categories whatever their order or index width (issue 318)', () => {
+    const category = new Dictionary(new Utf8(), new Uint32(), 0);
+    expect(columnTypesMatch(category, new Dictionary(new Utf8(), new Uint32(), 0, true))).toBe(
+      true,
+    );
+    expect(columnTypesMatch(category, new Dictionary(new Utf8(), new Uint8(), 0))).toBe(true);
   });
 
   it('compares plain and nested types as before', () => {

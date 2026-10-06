@@ -35,7 +35,13 @@ import { WorkspaceColumnHeader } from './WorkspaceColumnHeader';
 import type { DataEditorTool } from '../dataEditorToolStore';
 import { TopicCoverageBar } from './TopicCoverageBar';
 import type { DataRow, NodeTablePagination } from '../types';
-import { arrowTypeName, arrowTypeTooltip, type ArrowField } from '@/lib/arrow/arrowTable';
+import {
+  arrowTypeName,
+  arrowTypeTooltip,
+  isArrowDictionaryField,
+  type ArrowField,
+} from '@/lib/arrow/arrowTable';
+import { CategoryOrderPanel } from '@/features/views/common/components/CategoryOrderPanel';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
 import {
   castTypeLabel,
@@ -74,7 +80,12 @@ export interface WorkspaceTableProps {
   workspaceId?: string;
   nodeId?: string;
   documentColumn?: string;
-  onCast?: (column: string, targetType: ColumnCastType, format?: string) => Promise<void>;
+  onCast?: (
+    column: string,
+    targetType: ColumnCastType,
+    format?: string,
+    categories?: string[],
+  ) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
   onRefreshSchema?: () => Promise<unknown>;
@@ -250,6 +261,9 @@ export function WorkspaceTable({
     loadingCast,
     columnActionLoading,
     renamingColumn,
+    categoryColumn,
+    closeCategoryModal,
+    handleCategoryConfirm,
     datetimeModal,
     closeDatetimeModal,
     handleDatetimeFormatConfirm,
@@ -315,7 +329,12 @@ export function WorkspaceTable({
   // Build column definitions
   const columnDefs: WorkspaceTableColumnDef[] = columns.map((column) => {
     const currentField = mutationColumnFields[column];
-    const currentType = currentField ? arrowTypeName(currentField) : 'unknown';
+    // A category column's own item reopens the order window (issue 318).
+    const currentType = currentField
+      ? isArrowDictionaryField(currentField)
+        ? 'categorical'
+        : arrowTypeName(currentField)
+      : 'unknown';
     const isColumnLoading = Boolean(loadingCast[column]);
     const isColumnMutating = Boolean(columnActionLoading[column]);
     const isColumnBusy = isColumnLoading || isColumnMutating;
@@ -687,6 +706,20 @@ export function WorkspaceTable({
           compact
         />
       </div>
+
+      <CategoryOrderPanel
+        open={categoryColumn !== null}
+        workspaceId={workspaceId}
+        nodeId={nodeId}
+        columnName={categoryColumn ?? ''}
+        isCategory={Boolean(
+          categoryColumn &&
+            mutationColumnFields[categoryColumn] &&
+            isArrowDictionaryField(mutationColumnFields[categoryColumn]),
+        )}
+        onClose={closeCategoryModal}
+        onConfirm={handleCategoryConfirm}
+      />
 
       <DatetimeFormatPanel
         open={datetimeModal.isOpen}

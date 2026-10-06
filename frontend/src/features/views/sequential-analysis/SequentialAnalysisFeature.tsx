@@ -1,3 +1,4 @@
+import type { SequentialColumnType } from './hooks/sequentialChartModel';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -10,8 +11,13 @@ import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorksp
 import { useSchemaManagement } from '@/features/workspace/common/hooks/useSchemaManagement';
 
 import { arrowSchemaToFields } from '@/features/workspace/common/hooks/useSchemaManagement';
-import { isArrowFloatField, isArrowIntegerField, isArrowDateField } from '@/lib/arrow/arrowTable';
-import { isTrendsAxisField, isTrendsDateField } from './trendsAxisColumns';
+import {
+  isArrowFloatField,
+  isArrowIntegerField,
+  isArrowDateField,
+  isArrowDictionaryField,
+} from '@/lib/arrow/arrowTable';
+import { isTrendsAxisField, trendsAxisRank } from './trendsAxisColumns';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
 import { fetchNodeSchema } from '@/lib/nodeSchema';
 import AnalysisTaskBanner from '@/features/views/common/components/AnalysisTaskBanner';
@@ -77,6 +83,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     onTabInputSetChange,
     constraints: {
       fieldPredicate: isTrendsAxisField,
+      columnRank: trendsAxisRank,
       maxNodes: 1,
       docTypeOnly: false,
     },
@@ -204,13 +211,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
 
   const timeCompatibleColumns = availableColumns
     .filter((column) => isTrendsAxisField(column.field))
-    .sort((a, b) => {
-      // Prioritizes datetime columns before numeric fallbacks in the default selector.
-      /**
-       * Called by the selectable-column sort comparator below.
-       */
-      return Number(!isTrendsDateField(a.field)) - Number(!isTrendsDateField(b.field));
-    });
+    // Dates first, then numbers, then categories, so the default axis stays a
+    // date or number where the Data Block has one (issue 318).
+    .sort((a, b) => trendsAxisRank(a.field) - trendsAxisRank(b.field));
 
   const timeColumnOptions = timeCompatibleColumns.map((column) => column.name);
   // Topic coverage cannot group Trends (issue 200).
@@ -228,11 +231,13 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
 
   const activeColumnInfo = timeCompatibleColumns.find((column) => column.name === activeTimeColumn);
   const activeColumnField = activeColumnInfo?.field ?? timeCompatibleColumns[0]?.field;
-  const derivedColumnType: 'datetime' | 'numeric' =
-    activeColumnField &&
-    (isArrowIntegerField(activeColumnField) || isArrowFloatField(activeColumnField))
+  const derivedColumnType: SequentialColumnType = !activeColumnField
+    ? 'datetime'
+    : isArrowIntegerField(activeColumnField) || isArrowFloatField(activeColumnField)
       ? 'numeric'
-      : 'datetime';
+      : isArrowDictionaryField(activeColumnField)
+        ? 'category'
+        : 'datetime';
   // A Date column has no time of day, so sub-day periods do not apply (issue 187).
   const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
   const {
@@ -365,7 +370,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
   const resultsSummary = summary.timeColumn
     ? summary.columnType === 'numeric'
       ? `Numeric bin counts for ${summary.timeColumn}`
-      : `Frequency of records grouped by ${summary.timeColumn}`
+      : summary.columnType === 'category'
+        ? `Records per value of ${summary.timeColumn}`
+        : `Frequency of records grouped by ${summary.timeColumn}`
     : 'Aggregated frequency over time';
 
   const handleAddToWorkspace = async (selection: AddToWorkspaceSelection) => {

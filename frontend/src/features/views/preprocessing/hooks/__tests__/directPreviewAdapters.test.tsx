@@ -1,3 +1,5 @@
+import type React from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook } from '@testing-library/react';
 import { Field, Utf8 } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -102,19 +104,26 @@ describe('direct preprocessing preview adapters', () => {
       projectWorkspaceNodeMetadata({ id: 'node-2', name: 'Two' }),
     ];
 
-    renderHook(() =>
-      useConcatSubTab({
-        selectedNodeIds: ['node-1', 'node-2'],
-        currentWorkspaceId: 'closure-workspace',
-        workspaceNodes,
-        getColumnInfos: () => [
-          { name: 'id', typeName: 'Utf8', field: new Field('id', new Utf8()) },
-        ],
-        concatPreview,
-        concatNodes: vi.fn(),
-        isLoading: { operations: false },
-        onAlert: vi.fn(),
-      }),
+    renderHook(
+      () =>
+        useConcatSubTab({
+          selectedNodeIds: ['node-1', 'node-2'],
+          currentWorkspaceId: 'closure-workspace',
+          workspaceNodes,
+          getColumnInfos: () => [
+            { name: 'id', typeName: 'Utf8', field: new Field('id', new Utf8()) },
+          ],
+          concatPreview,
+          concatNodes: vi.fn(),
+          isLoading: { operations: false },
+          onAlert: vi.fn(),
+        }),
+      // Stack reads category orders through TanStack Query (issue 318).
+      {
+        wrapper: ({ children }: { children: React.ReactNode }) => (
+          <QueryClientProvider client={new QueryClient()}>{children}</QueryClientProvider>
+        ),
+      },
     );
 
     const fetcher = usePreprocessingPreviewMock.mock.calls[0]?.[0].fetcher as (args: {

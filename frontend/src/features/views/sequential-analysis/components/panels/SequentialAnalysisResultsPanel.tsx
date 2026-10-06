@@ -65,6 +65,8 @@ export function SequentialAnalysisResultsPanel({
   onClearSelection,
   containerRef,
 }: SequentialAnalysisResultsPanelProps) {
+  const isCategoryAxis = model.summary.columnType === 'category';
+
   return (
     <Card className="mt-6">
       <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -108,35 +110,40 @@ export function SequentialAnalysisResultsPanel({
                   <SelectValue placeholder="Select chart" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="line">Line</SelectItem>
+                  {/* A category axis has no order in time, so only bars (issue 318). */}
+                  {isCategoryAxis ? null : <SelectItem value="line">Line</SelectItem>}
                   <SelectItem value="bar">Bars</SelectItem>
                   <SelectItem value="stacked-bar">Stacked bars</SelectItem>
-                  <SelectItem value="area">Area</SelectItem>
+                  {isCategoryAxis ? null : <SelectItem value="area">Area</SelectItem>}
                 </SelectContent>
               </Select>
-              <span className="flex shrink-0 items-center gap-1 text-body text-description">
-                Spacing
-                <HelpIcon
-                  targetKey="analysis.sequential-analysis.spacing"
-                  label="About Spacing"
-                  tooltip="Even gives every period with data the same width and hides empty periods, which is easier to read. To scale places periods by their real time, so empty periods show as gaps."
-                  className="size-5 shrink-0 text-description"
-                />
-              </span>
-              <Select
-                value={model.xAxisType}
-                onValueChange={(value) => {
-                  onXAxisTypeChange(value as SequentialXAxisType);
-                }}
-              >
-                <SelectTrigger className="w-56 shrink-0 text-body" aria-label="Spacing">
-                  <SelectValue placeholder="Spacing" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="category">Even (hide empty periods)</SelectItem>
-                  <SelectItem value="number">To scale (show gaps)</SelectItem>
-                </SelectContent>
-              </Select>
+              {isCategoryAxis ? null : (
+                <>
+                  <span className="flex shrink-0 items-center gap-1 text-body text-description">
+                    Spacing
+                    <HelpIcon
+                      targetKey="analysis.sequential-analysis.spacing"
+                      label="About Spacing"
+                      tooltip="Even gives every period with data the same width and hides empty periods, which is easier to read. To scale places periods by their real time, so empty periods show as gaps."
+                      className="size-5 shrink-0 text-description"
+                    />
+                  </span>
+                  <Select
+                    value={model.xAxisType}
+                    onValueChange={(value) => {
+                      onXAxisTypeChange(value as SequentialXAxisType);
+                    }}
+                  >
+                    <SelectTrigger className="w-56 shrink-0 text-body" aria-label="Spacing">
+                      <SelectValue placeholder="Spacing" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="category">Even (hide empty periods)</SelectItem>
+                      <SelectItem value="number">To scale (show gaps)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               {/* Only when two or more groups meet the minimum group count (issue 219). */}
               {model.canNormalise ? (
                 <TooltipProvider>

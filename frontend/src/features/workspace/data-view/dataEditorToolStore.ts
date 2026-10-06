@@ -36,6 +36,8 @@ interface DataEditorToolState {
   nodeName: string;
   /** The Data Block's columns when the tool opened. */
   columns: string[];
+  /** Each column's plain type name ("text", "category", ...), for the text-result note (issue 318). */
+  columnTypes: Record<string, string>;
   /** Column chosen from a column header menu, pre-filled in the form. */
   initialColumn: string | null;
   /** Pre-selected text cleaning operation, from the Clean text menu. */
@@ -68,6 +70,7 @@ interface DataEditorToolState {
     options: {
       nodeName: string;
       columns: string[];
+      columnTypes?: Record<string, string>;
       column?: string | null;
       operation?: string | null;
     },
@@ -80,7 +83,7 @@ interface DataEditorToolState {
    */
   resetForm: (column: string, operation?: string) => void;
   /** Follows the Data Block's columns while the tool stays open (issue 217). */
-  setColumns: (columns: string[]) => void;
+  setColumns: (columns: string[], columnTypes?: Record<string, string>) => void;
   setDraft: (
     request: DataEditorEdit | null,
     highlightColumns: string[],
@@ -98,6 +101,7 @@ const CLOSED = {
   nodeId: null,
   nodeName: '',
   columns: [],
+  columnTypes: {},
   initialColumn: null,
   initialOperation: null,
   request: null,
@@ -121,6 +125,7 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       nodeId,
       nodeName: options.nodeName,
       columns: options.columns,
+      columnTypes: options.columnTypes ?? {},
       initialColumn: options.column ?? null,
       initialOperation: options.operation ?? null,
     }));
@@ -142,13 +147,17 @@ export const useDataEditorToolStore = create<DataEditorToolState>()((set) => ({
       dirty: false,
     }));
   },
-  setColumns: (columns) => {
-    set((state) =>
-      state.columns.length === columns.length &&
-      state.columns.every((name, index) => name === columns[index])
-        ? state
-        : { columns },
-    );
+  setColumns: (columns, columnTypes) => {
+    set((state) => {
+      const sameColumns =
+        state.columns.length === columns.length &&
+        state.columns.every((name, index) => name === columns[index]);
+      const sameTypes =
+        columnTypes === undefined ||
+        JSON.stringify(state.columnTypes) === JSON.stringify(columnTypes);
+      if (sameColumns && sameTypes) return state;
+      return { columns, ...(columnTypes ? { columnTypes } : {}) };
+    });
   },
   setDraft: (request, highlightColumns, dirty, scrollAnchor = null) => {
     set({

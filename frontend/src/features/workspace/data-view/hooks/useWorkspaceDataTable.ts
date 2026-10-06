@@ -23,7 +23,11 @@ import {
 } from '@/lib/arrow/arrowTable';
 import { createNodeDataRequest, queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 import type { WorkspaceTableProps } from '../components/WorkspaceTable';
-import { castTypeLabel, type ColumnCastType } from '../services/schemaMutations';
+import {
+  castTypeLabel,
+  getTypeDisplayName,
+  type ColumnCastType,
+} from '../services/schemaMutations';
 import { presentError } from '@/lib/errorPresentation';
 
 export interface WorkspaceDataTableHeaderInfo {
@@ -160,6 +164,12 @@ const resolveNodeDisplayLabel = (
  * into table props.
  */
 /** Columns a Data Editor tool can use: topic coverage can be copied but not read as text (issue 200). */
+/** Each column's plain type name, for the Data Editor's text-result note (issue 318). */
+const toolColumnTypes = (nodeData: NodeDataResponse): Record<string, string> =>
+  Object.fromEntries(
+    nodeData.columns.map((column) => [column, getTypeDisplayName(nodeData.columnFields[column])]),
+  );
+
 const toolColumns = (tool: DataEditorTool, nodeData: NodeDataResponse): string[] =>
   tool === 'duplicate'
     ? nodeData.columns
@@ -419,9 +429,12 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     toolOnActiveBlock && nodeDataQuery.data && !nodeDataQuery.isPlaceholderData
       ? toolColumns(openToolKind, nodeData)
       : null;
-  const committedColumnsKey = committedColumns ? JSON.stringify(committedColumns) : '';
+  const committedTypes = committedColumns ? toolColumnTypes(nodeData) : null;
+  const committedColumnsKey = committedColumns
+    ? JSON.stringify([committedColumns, committedTypes])
+    : '';
   useEffect(() => {
-    if (committedColumns) setToolColumns(committedColumns);
+    if (committedColumns) setToolColumns(committedColumns, committedTypes ?? undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the key captures the columns
   }, [committedColumnsKey, setToolColumns]);
 
@@ -477,6 +490,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
           toolState.open(tool, selectedNode.id, {
             nodeName: header.nodeLabel,
             columns: toolColumns(tool, nodeData),
+            columnTypes: toolColumnTypes(nodeData),
             column: options.column ?? null,
             operation: options.operation ?? null,
           });
@@ -527,7 +541,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
 
   /** Casts a column on the active node. */
   const handleCast = useCallback(
-    async (column: string, targetType: ColumnCastType, format?: string) => {
+    async (column: string, targetType: ColumnCastType, format?: string, categories?: string[]) => {
       if (!selectedNodeIdForCallbacks) return;
       const nodeId = selectedNodeIdForCallbacks;
       const { emptied, rows, firstRow, firstValue } = await castColumn(
@@ -535,6 +549,7 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
         column,
         targetType,
         format,
+        categories,
       );
       // Values that cannot be converted are left empty rather than refusing
       // the change; say how many, and where the first one is (issue 183).

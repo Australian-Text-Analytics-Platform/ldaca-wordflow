@@ -16,12 +16,13 @@ You can break a single trend into multiple lines by grouping on one or more cate
 
 Use the Data Block selector to pick the corpus you want to analyse. Only one Data Block can be selected at a time.
 
-<h3 id="help-sequential-time-column">Step 2: Choose a time or number column</h3>
+<h3 id="help-sequential-time-column">Step 2: Choose a time, number or category column</h3>
 
-The **Time or number column** dropdown lists every column in the selected Data Block that holds a date and time, date, whole number, or decimal value. Pick the column that represents the order or time axis you want to plot along.
+The **Time, number or category column** dropdown lists every column in the selected Data Block that holds a date and time, date, whole number, decimal, or category value. Pick the column that represents the order or time axis you want to plot along. Dates come first in the list, then numbers, then categories.
 
 - **Date and time columns** are grouped by a calendar period (hourly, daily, weekly, and so on). A **date** column (no time of day) offers daily and longer periods only.
 - **Number columns** (whole number or decimal) are grouped by a fixed width you specify (the **Step**).
+- **Category columns** give one bar per value, in the column's order (set it by clicking the column's type in the Data Editor), with empty values as the last bar, **(empty)**. Only **Bars** and **Stacked bars** are offered, and every bar has the same width. Date and number columns leave out rows with an empty value.
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 
@@ -71,7 +72,7 @@ Click **Add group** to add a column selector row. A badge next to each selector 
 
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
-When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.
+Groups follow the values' order: A to Z for text, the column's own order for a category column, and rows with an empty value form the last group. When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.
 
 Trends retains exact group values in its result. After the analysis finishes,
 use **Ignore capitals** beside the result legend when values that differ only in

@@ -208,6 +208,7 @@ export function DataEditorToolPanel() {
   const nodeId = useDataEditorToolStore((state) => state.nodeId);
   const nodeName = useDataEditorToolStore((state) => state.nodeName);
   const columns = useDataEditorToolStore((state) => state.columns);
+  const columnTypes = useDataEditorToolStore((state) => state.columnTypes);
   const initialColumn = useDataEditorToolStore((state) => state.initialColumn);
   const initialOperation = useDataEditorToolStore((state) => state.initialOperation);
   const request = useDataEditorToolStore((state) => state.request);
@@ -218,7 +219,7 @@ export function DataEditorToolPanel() {
   const close = useDataEditorToolStore((state) => state.close);
   const resetForm = useDataEditorToolStore((state) => state.resetForm);
   const setGraphVisible = useDataEditorToolStore((state) => state.setGraphVisible);
-  const { applyEdit } = useWorkspaceActions();
+  const { applyEdit, undoNode } = useWorkspaceActions();
 
   const [column, setColumn] = useState(initialColumn ?? '');
   const [pattern, setPattern] = useState('');
@@ -323,7 +324,20 @@ export function DataEditorToolPanel() {
     setApplying(true);
     try {
       await applyEdit(nodeId, request);
-      toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`);
+      if (becomesTextFrom) {
+        // The column is now text; Undo restores its type and values (issue 318).
+        toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`, {
+          description: `"${column}" is now a text column. Undo restores it as a ${becomesTextFrom} column with its earlier values.`,
+          action: {
+            label: 'Undo',
+            onClick: () => {
+              void undoNode(nodeId);
+            },
+          },
+        });
+      } else {
+        toast.success(`${DATA_EDITOR_TOOL_LABELS[tool]} applied to ${nodeName}.`);
+      }
       // Stay open on the same column for the next edit (issue 217); the fresh
       // form stops the applied edit from being previewed a second time. Clean
       // text keeps the operation just applied (issue 230): cleaning twice
@@ -341,6 +355,16 @@ export function DataEditorToolPanel() {
       (changedRows === null
         ? 'Previewing…'
         : `${changedRows.toLocaleString()} row${changedRows === 1 ? '' : 's'} changed`));
+  // Writing text back into a category, number or date column makes it a text
+  // column; say so before and after Apply (issue 318).
+  const sourceType = columnTypes[column];
+  const becomesTextFrom =
+    (tool === 'find_replace' || tool === 'clean_text') &&
+    target === 'same' &&
+    sourceType !== undefined &&
+    sourceType !== 'text'
+      ? sourceType
+      : null;
   // Apply waits for a successful preview (issue 285).
   const canApply = Boolean(request) && !applying && !previewError && changedRows !== null;
 
@@ -661,6 +685,15 @@ export function DataEditorToolPanel() {
         ) : null}
       </div>
 
+      {becomesTextFrom ? (
+        <p
+          role="note"
+          className="border-t border-surface-border px-3 py-2 text-label-secondary text-description"
+        >
+          &ldquo;{column}&rdquo; is a {becomesTextFrom} column. Saving the result to the same column
+          makes it a text column. Undo restores the {becomesTextFrom} column and its values.
+        </p>
+      ) : null}
       <footer className="flex flex-wrap items-center gap-2 border-t border-surface-border px-3 py-2">
         <p role="status" className="min-w-0 flex-1 text-label-secondary text-description">
           {status}

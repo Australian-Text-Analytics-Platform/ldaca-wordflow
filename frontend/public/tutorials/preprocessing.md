@@ -86,8 +86,9 @@ Define one or more column-based filter conditions. The behaviour of each conditi
   filter on the server, and use **Select all** to select every value listed so
   far (values not loaded yet are not selected), or **Select none** to clear
   them. Existing selections remain selected across searches.
-- In a value list, missing values are listed as **(empty)** and text that is
-  empty or only spaces as **(blank text)**.
+- In a value list, missing values are listed last as **(empty)** and text that is
+  empty or only spaces as **(blank text)**. A category column lists its values in
+  its own order.
 
 <h3 id="help-preprocessing-filter-new-node-name">New Data Block name</h3>
 
@@ -194,7 +195,7 @@ The Stack sub-tab puts two or more Data Blocks one below the other. Use it when 
 
 ![Column check screenshot](tutorials/assets/preprocessing/concat_schema_status.png)
 
-The **Column check** panel tells you whether all the Data Blocks share the same columns. If they don't, **These columns don't match** lists, for each Data Block, the columns it is missing, the extra columns it has, and any column whose type is different. Category columns match whatever their values; a category column and a text column of the same name do not, so change one of them in the Data Editor first. Fix the column differences (e.g. by renaming or removing columns) before stacking.
+The **Column check** panel tells you whether all the Data Blocks share the same columns. If they don't, **These columns don't match** lists, for each Data Block, the columns it is missing, the extra columns it has, and any column whose type is different. Category columns match whatever their values and orders; a category column and a text column of the same name do not, so change one of them in the Data Editor first. When category columns have different orders, a note says what the stacked column will use: the combined order when the orders agree, or A to Z when they contradict each other. Fix the column differences (e.g. by renaming or removing columns) before stacking.
 
 <h3 id="help-preprocessing-concat-deduplicate">Deduplicate</h3>
 
@@ -235,7 +236,7 @@ Group makes one Data Block per group of a column (not to be confused with Aggreg
 
 Choose the column under **Split by**; the choices below it depend on the column's type.
 
-- For **text** and **category** columns, each value is a group. Values are listed with their row counts, most frequent first.
+- For **text** and **category** columns, each value is a group. Values are listed with their row counts: text most frequent first, a category in its own order, with **(empty)** last.
 - For **dates**, group by year, year and month, or day.
 - For **numbers**, use ranges of a fixed size from a start value, or split the full range into a number of equal ranges.
 

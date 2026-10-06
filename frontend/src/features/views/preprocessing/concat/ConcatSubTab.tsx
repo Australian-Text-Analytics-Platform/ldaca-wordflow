@@ -1,3 +1,4 @@
+import { stackCategoryNoteText } from './hooks/useStackCategoryNotes';
 import type { ReactNode } from 'react';
 import { Layers, Loader2, Plus } from 'lucide-react';
 
@@ -27,7 +28,7 @@ type ConcatSubTabComponentProps = ConcatSubTabProps & {
  */
 export function ConcatSubTab(props: ConcatSubTabComponentProps) {
   const { renderNodeInputsPanel } = props;
-  const { form, statusMessage, preview, apply, mismatches, showActivityTag } =
+  const { form, statusMessage, preview, apply, mismatches, categoryNotes, showActivityTag } =
     useConcatSubTab(props);
 
   return (
@@ -51,6 +52,20 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
         </CardHeader>
         <CardContent className="space-y-4 pt-0">
           {renderNodeInputsPanel?.()}
+
+          {categoryNotes.length > 0 ? (
+            <div
+              role="note"
+              className="space-y-1 rounded-md border border-surface-border bg-panel p-3 text-body"
+            >
+              <div className="font-medium">Category columns with different orders</div>
+              {categoryNotes.map((note) => (
+                <p key={note.column} className="text-description">
+                  {stackCategoryNoteText(note)}
+                </p>
+              ))}
+            </div>
+          ) : null}
 
           {mismatches.length > 0 && (
             <div className="space-y-2 rounded-md border border-error/40 bg-error/10 p-3 text-body text-error">

@@ -37,6 +37,7 @@ const topicIds = (column: ConditionColumnOption | undefined): number[] => {
   return Array.from({ length: type.listSize }, (_value, index) => index - 1);
 };
 
+// A category column lists its values in its own order, and empty comes last (issues 317, 318).
 const optionSql = (
   nodeId: string,
   column: string,
@@ -54,7 +55,7 @@ const optionSql = (
     : '';
   return `SELECT ${value}, COUNT(*) AS ${count} FROM (${source}) AS ${sqlIdentifier(
     'values',
-  )}${where} GROUP BY ${value} ORDER BY ${value} ASC NULLS FIRST`;
+  )}${where} GROUP BY ${value} ORDER BY ${value} ASC NULLS LAST`;
 };
 
 const categoricalCount = (value: unknown): string | undefined => {

@@ -36,6 +36,11 @@ export interface NodeInputConstraints {
    * filtered set leaves the selected column blank for the user to resolve.
    */
   fieldPredicate?: (field: ArrowField) => boolean;
+  /**
+   * Orders the allowed columns, lowest first; the first becomes the default.
+   * Trends uses it to prefer dates, then numbers, then categories (issue 318).
+   */
+  columnRank?: (field: ArrowField) => number;
   /** Maximum number of input nodes the view supports. Undefined = unbounded. */
   maxNodes?: number;
   /** When true, only a backend-declared document column is an acceptable pick. */
@@ -101,9 +106,11 @@ function allowedColumnsForNode(
   getColumnInfos?: ColumnInfoGetter,
 ): ColumnInfo[] {
   const infos = getColumnInfos?.(node) ?? [];
-  const { fieldPredicate } = constraints;
-  if (!fieldPredicate) return infos;
-  return infos.filter((column) => fieldPredicate(column.field));
+  const { fieldPredicate, columnRank } = constraints;
+  const allowed = fieldPredicate ? infos.filter((column) => fieldPredicate(column.field)) : infos;
+  return columnRank
+    ? allowed.toSorted((left, right) => columnRank(left.field) - columnRank(right.field))
+    : allowed;
 }
 
 /**

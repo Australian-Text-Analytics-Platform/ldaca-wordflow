@@ -107,6 +107,10 @@ describe('Data Builder request models (issues 148 to 151)', () => {
 
   it('turns counted values, dates and ranges into filter groups', () => {
     expect(groupCountSql('n1', 'party', { kind: 'values' })).toContain('ORDER BY n DESC');
+    // A category column lists its values in its own order, empty last (issue 318).
+    expect(groupCountSql('n1', 'party', { kind: 'values' }, true)).toContain(
+      'GROUP BY value ORDER BY value ASC NULLS LAST',
+    );
     expect(
       toGroups('party', { kind: 'values' }, [
         { value: 'Labor', n: 2 },

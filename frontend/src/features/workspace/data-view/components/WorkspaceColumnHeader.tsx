@@ -235,14 +235,18 @@ export function WorkspaceColumnHeader({
           </TooltipProvider>
         )}
         <DropdownMenuContent align="start" className="w-40 p-1">
-          <DropdownMenuRadioGroup
-            value={currentType}
-            onValueChange={(v) => {
-              if (!isColumnBusy && isColumnCastType(v)) onTypeChange(v);
-            }}
-          >
+          <DropdownMenuRadioGroup value={currentType}>
             {availableTypes.map((t) => (
-              <DropdownMenuRadioItem key={t.value} value={t.value} className="text-label-secondary">
+              <DropdownMenuRadioItem
+                key={t.value}
+                value={t.value}
+                className="text-label-secondary"
+                // onSelect, not onValueChange: choosing "category" on a category
+                // column opens its order window again (issue 318).
+                onSelect={() => {
+                  if (!isColumnBusy && isColumnCastType(t.value)) onTypeChange(t.value);
+                }}
+              >
                 {typeName(t.label)}
               </DropdownMenuRadioItem>
             ))}

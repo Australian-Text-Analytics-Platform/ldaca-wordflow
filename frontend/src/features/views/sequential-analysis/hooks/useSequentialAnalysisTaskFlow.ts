@@ -1,3 +1,4 @@
+import type { SequentialColumnType } from './sequentialChartModel';
 import { toast } from 'sonner';
 import { submitTabAnalysis } from '@/api';
 import type { Analysis, SequentialAnalysisRequest } from '@/api';
@@ -17,7 +18,7 @@ interface SequentialAnalysisState {
   timeColumn: string;
   groupByColumns: string[];
   frequency: SequentialFrequency;
-  derivedColumnType: 'datetime' | 'numeric';
+  derivedColumnType: SequentialColumnType;
   numericOriginValue: number | null;
   numericIntervalValue: number | null;
   numericOriginInput: string;

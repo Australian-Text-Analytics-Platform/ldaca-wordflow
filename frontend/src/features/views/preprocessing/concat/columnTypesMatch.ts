@@ -9,16 +9,15 @@ import { DataType, util, type Field } from 'apache-arrow';
  * category columns of its table. Changing one column to a category in one
  * Data Block then shifted the ids of every later category column, and Stack
  * listed them all as different types (issue 276). Compare what the column
- * holds instead: value type, index type and ordering, recursively through
- * nested columns.
+ * holds instead, recursively through nested columns. Two category columns
+ * stack whatever their orders: Stack combines the orders (issue 318), so only
+ * their value type counts, not their ordering or index width.
  */
 export function columnTypesMatch(left: DataType, right: DataType): boolean {
   if (DataType.isDictionary(left) || DataType.isDictionary(right)) {
     return (
       DataType.isDictionary(left) &&
       DataType.isDictionary(right) &&
-      left.isOrdered === right.isOrdered &&
-      columnTypesMatch(left.indices as DataType, right.indices as DataType) &&
       columnTypesMatch(left.dictionary as DataType, right.dictionary as DataType)
     );
   }

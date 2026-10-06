@@ -13,6 +13,8 @@ edit (``node_casting``), and Stack, which merges two orders.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
+from pathlib import Path
 import re
 from typing import Literal
 
@@ -239,3 +241,45 @@ def stacked_category_order(
     merged, kept = merge_orders(ordered) if ordered else ([], True)
     extra = sorted(unordered - set(merged), key=natural_key)
     return merged + extra, kept
+
+
+UNREADABLE_ORDER_REASON = (
+    "the file gives it an order Wordflow can't read, so its values are listed A to Z. "
+    "Click its type to set the order"
+)
+
+
+def unreadable_order_notes(path: Path, frame: pl.DataFrame) -> list[dict[str, str]]:
+    """Load notes for category columns a Parquet file marks as ordered.
+
+    pandas records which categories are ordered, but the order itself sits in
+    the file's data pages, which Polars does not read, so the column loads as
+    an unordered category. Used by: NodeService when a Parquet file is added.
+    """
+
+    if path.suffix.lower() != ".parquet":
+        return []
+    try:
+        metadata = pl.read_parquet_metadata(path)
+        pandas = json.loads(metadata.get("pandas", "{}"))
+    except Exception:
+        return []
+    notes = []
+    for column in pandas.get("columns", []):
+        name = column.get("name")
+        ordered = (column.get("metadata") or {}).get("ordered") is True
+        if (
+            ordered
+            and isinstance(name, str)
+            and name in frame.columns
+            and is_category_dtype(frame.schema[name])
+        ):
+            notes.append(
+                {
+                    "column": name,
+                    "from_dtype": "ordered category",
+                    "to_dtype": "category",
+                    "reason": UNREADABLE_ORDER_REASON,
+                }
+            )
+    return notes

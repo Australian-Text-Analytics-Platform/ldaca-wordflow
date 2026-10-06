@@ -22,16 +22,17 @@ describe('categoricalOptions', () => {
     expect(toCategoricalPrimitive({ topic: 3 })).toBe('[object Object]');
   });
 
-  it('deduplicates by type-aware key and prepends null when the backend reports nulls', () => {
+  it('deduplicates by type-aware key and appends null when the backend reports nulls', () => {
     const options = buildCategoricalOptionEntries(['1', 1, '1', null, false], true);
 
+    // Empty comes last (issue 317).
     expect(options.map((option) => option.key)).toEqual([
-      NULL_OPTION_KEY,
       'string::1',
       'number::1',
       'boolean::false',
+      NULL_OPTION_KEY,
     ]);
-    expect(options[0]).toMatchObject({
+    expect(options[3]).toMatchObject({
       value: null,
       label: '(empty)',
       isNull: true,
@@ -42,10 +43,10 @@ describe('categoricalOptions', () => {
     const options = buildCategoricalOptionEntries(['', '  ', 'a'], true);
 
     expect(options.map((option) => option.label)).toEqual([
-      '(empty)',
       '(blank text)',
       '(blank text)',
       'a',
+      '(empty)',
     ]);
   });
 });
