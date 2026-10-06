@@ -136,9 +136,12 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
       <NodeTooltipTrigger
         data-testid={`topic-flow-node-${String(bubble.id)}`}
         data-topic-id={bubble.id}
+        // Only the drawn circle takes the pointer (issue 314): the node box is
+        // a square with room for the rings, so boxes of neighbouring or faded
+        // bubbles used to catch the hover meant for a highlighted bubble.
         className={cn(
-          'group relative size-full',
-          bubble.filteredOut && 'pointer-events-none opacity-[0.18]',
+          'group pointer-events-none relative size-full',
+          bubble.filteredOut && 'opacity-[0.18]',
         )}
         aria-hidden="true"
       >
@@ -152,6 +155,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
               stroke="#7c3aed"
               strokeWidth={2.5}
               strokeDasharray="5 3"
+              pointerEvents="none"
               data-testid={`topic-lasso-ring-${String(bubble.id)}`}
             />
           ) : null}
@@ -164,6 +168,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
               stroke="#16a34a"
               strokeWidth={2}
               strokeOpacity={0.7}
+              pointerEvents="none"
             />
           ) : null}
           <circle
@@ -177,6 +182,9 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             fillOpacity={bubble.hovered ? TOPIC_OPACITY_HOVER : bubble.fillOpacity}
             stroke={bubble.selected ? '#16a34a' : bubble.hovered ? '#3b82f6' : '#94a3b8'}
             strokeWidth={bubble.selected || bubble.hovered ? 2 : 1}
+            // A faded bubble ignores the pointer, so the bubble under it can be hovered.
+            pointerEvents={bubble.filteredOut ? 'none' : 'visiblePainted'}
+            data-testid={`topic-bubble-circle-${String(bubble.id)}`}
             className={cn(
               'transition-[fill-opacity,stroke,stroke-width] duration-100',
               !bubble.filteredOut &&
@@ -473,7 +481,8 @@ function TopicModelingFlowChartInner({
       selectable: false,
       focusable: false,
       zIndex: bubble.selected ? 3 : bubble.lassoed ? 2 : 1,
-      style: { width: diameter, height: diameter },
+      // The square node box never takes the pointer; its circle does (issue 314).
+      style: { width: diameter, height: diameter, pointerEvents: 'none' },
     };
   });
 

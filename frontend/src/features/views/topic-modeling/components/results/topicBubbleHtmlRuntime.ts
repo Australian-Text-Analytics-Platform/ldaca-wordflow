@@ -52,6 +52,9 @@ export function runTopicBubbleHtml(
       if (isMatch) matched += 1;
       if (isMatch) group.removeAttribute('opacity');
       else group.setAttribute('opacity', FADED);
+      // A faded topic ignores the pointer, so a matching one under it can be
+      // hovered (issue 314).
+      group.style.pointerEvents = isMatch ? '' : 'none';
     }
     status.textContent = query.trim()
       ? `${String(matched)} of ${String(groups.length)} topics match`

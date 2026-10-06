@@ -401,9 +401,42 @@ describe('TopicModelingFlowChart', () => {
       />,
     );
 
-    expect(screen.getByTestId('topic-flow-node-7')).toHaveClass('pointer-events-none');
+    // Only a highlighted bubble's drawn circle takes the pointer (issue 314).
+    expect(screen.getByTestId('topic-bubble-circle-7')).toHaveAttribute('pointer-events', 'none');
     expect(screen.getByLabelText('Draw an additive lasso around topic bubbles')).toHaveClass(
       'z-10',
+    );
+  });
+
+  it('lets only the drawn circle of a highlighted bubble take the pointer (issue 314)', () => {
+    render(
+      <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
+        bubbles={[bubble]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+      />,
+    );
+
+    // The square node box around the bubble never catches the pointer.
+    expect(screen.getByTestId('topic-flow-node-7')).toHaveClass('pointer-events-none');
+    expect(screen.getByTestId('topic-bubble-circle-7')).toHaveAttribute(
+      'pointer-events',
+      'visiblePainted',
     );
   });
 });

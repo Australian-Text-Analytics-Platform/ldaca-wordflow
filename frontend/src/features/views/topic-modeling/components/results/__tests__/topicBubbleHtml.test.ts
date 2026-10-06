@@ -130,6 +130,9 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     const group = (id: number) => document.querySelector(`[data-topic-id="${String(id)}"]`);
     expect(group(0)?.getAttribute('opacity')).toBeNull();
     expect(group(1)?.getAttribute('opacity')).toBe('0.18');
+    // A faded topic ignores the pointer (issue 314).
+    expect(group(1)?.style.pointerEvents).toBe('none');
+    expect(group(0)?.style.pointerEvents).toBe('');
     expect(document.querySelector('#filter-status')?.textContent).toBe('1 of 2 topics match');
 
     const input = document.querySelector<HTMLInputElement>('#filter');
