@@ -62,11 +62,11 @@ def test_an_ordered_category_lists_its_own_order() -> None:
     assert values.is_ordered
 
 
-def test_more_than_fifty_values_is_refused() -> None:
-    frame = pl.LazyFrame({"x": [f"v{i}" for i in range(51)]})
+def test_hundreds_of_values_are_listed_but_not_more_than_ten_thousand() -> None:
+    assert len(category_values(pl.LazyFrame({"x": [f"v{i}" for i in range(500)]}), "x").labels) == 500
 
-    with pytest.raises(InvalidInputError, match="at most 50"):
-        category_values(frame, "x")
+    with pytest.raises(InvalidInputError, match="at most 10,000"):
+        category_values(pl.LazyFrame({"x": [f"v{i}" for i in range(10_001)]}), "x")
 
 
 def test_conversion_uses_the_chosen_order_and_empties_blank_text() -> None:
@@ -178,3 +178,34 @@ def test_a_parquet_order_that_cannot_be_read_is_noted(tmp_path) -> None:
 
     assert [note["column"] for note in notes] == ["o"]
     assert "Click its type to set the order" in notes[0]["reason"]
+
+
+def test_a_text_like_column_is_sampled_before_it_is_read_in_full() -> None:
+    frame = pl.LazyFrame({"x": [f"document {i}" for i in range(20_000)]})
+
+    first = category_values(frame, "x", read_all=False)
+    assert not first.complete
+    assert (first.sample_rows, first.sample_distinct) == (10_000, 10_000)
+    assert first.labels == []
+
+    # Reading on finds more than the 10,000 ceiling, so it is refused.
+    with pytest.raises(InvalidInputError, match="at most 10,000"):
+        category_values(frame, "x", read_all=True)
+
+
+def test_a_short_column_is_listed_on_the_first_read() -> None:
+    frame = pl.LazyFrame({"x": [f"code {i}" for i in range(500)]})
+
+    values = category_values(frame, "x", read_all=False)
+
+    assert values.complete
+    assert len(values.labels) == 500
+
+
+def test_few_values_and_document_columns_on_the_first_read() -> None:
+    frame = pl.LazyFrame({"x": ["Agree", "Disagree"] * 10})
+
+    assert category_values(frame, "x", read_all=False).labels == ["Agree", "Disagree"]
+    documents = category_values(frame, "x", read_all=False, sample_only=True)
+    assert not documents.complete
+    assert documents.sample_distinct == 2

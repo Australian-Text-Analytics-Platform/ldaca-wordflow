@@ -246,7 +246,7 @@ class CastDerivation(_StrictModel):
     strict: bool = False
     # For "categorical": the values in the chosen order (issue 318). Without
     # it the default order applies (A to Z, or by value for numbers and dates).
-    categories: list[str] | None = Field(default=None, max_length=50)
+    categories: list[str] | None = Field(default=None, max_length=10_000)
 
 
 class SegmentDerivation(_StrictModel):

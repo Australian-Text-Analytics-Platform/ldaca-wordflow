@@ -44,7 +44,7 @@ from .user_files import UserFileStore
 from ..shared.unsupported_columns import require_supported_columns
 from .category_order import (
     MAX_CATEGORY_VALUES,
-    MAX_CUSTOM_ORDER_VALUES,
+    WARN_CATEGORY_VALUES,
     category_values,
     unreadable_order_notes,
 )
@@ -617,8 +617,14 @@ class NodeService:
         workspace_id: uuid.UUID,
         node_id: uuid.UUID,
         column: str,
+        read_all: bool = False,
     ) -> CategoryValuesResource:
-        """List one column's values in default category order (issue 318)."""
+        """List one column's values in default category order (issue 318).
+
+        Without ``read_all``, a column whose first rows already hold many
+        values, or the Data Block's document column, is only sampled, so the
+        window can ask before the whole column is read.
+        """
 
         async with self._workspaces.read_context(user_id, workspace_id) as lease:
             node = lease.workspace.nodes.get(node_id)
@@ -627,16 +633,28 @@ class NodeService:
             require_supported_columns(
                 node.data.collect_schema(), [column], use="as a category"
             )
-            values = await self._run_io(category_values, node.data, column)
+            is_document = node.document == column
+            values = await self._run_io(
+                lambda: category_values(
+                    node.data,
+                    column,
+                    read_all=read_all,
+                    sample_only=is_document and not read_all,
+                )
+            )
         return CategoryValuesResource(
             column=column,
+            complete=values.complete,
+            sample_rows=values.sample_rows,
+            sample_distinct=values.sample_distinct,
+            is_document=is_document,
             kind=values.kind,
             labels=values.labels,
             counts=values.counts,
             empty_count=values.empty_count,
             is_ordered=values.is_ordered,
+            warn_values=WARN_CATEGORY_VALUES,
             max_values=MAX_CATEGORY_VALUES,
-            max_custom_values=MAX_CUSTOM_ORDER_VALUES,
         )
 
     async def _run_io(

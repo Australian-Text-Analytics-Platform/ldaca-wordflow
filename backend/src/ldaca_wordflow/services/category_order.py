@@ -23,8 +23,15 @@ import polars as pl
 from ..shared.empty_values import empty_value_expression
 from ..shared.errors import InvalidInputError
 
-MAX_CATEGORY_VALUES = 50
-MAX_CUSTOM_ORDER_VALUES = 12
+# The window warns above this many values: the list is long to scroll and
+# adjust, but the user decides (Chao, 2026-10-07).
+WARN_CATEGORY_VALUES = 150
+# A technical ceiling, so a free-text column (every row different) cannot put
+# hundreds of thousands of values into the window and the column's type.
+MAX_CATEGORY_VALUES = 10_000
+# Rows read first, so a column that is clearly not a category (a document
+# column, free text) is noticed before the whole column is read.
+PROBE_ROWS = 10_000
 
 # Date-and-time values become readable labels rather than Polars' text form
 # ("2020-01-01 09:00:00.000000+00:00").
@@ -43,6 +50,11 @@ class CategoryValues:
     counts: list[int]
     empty_count: int
     is_ordered: bool
+    # False when only the first rows were read because they already held more
+    # than WARN_CATEGORY_VALUES values; the window asks before reading the rest.
+    complete: bool = True
+    sample_rows: int = 0
+    sample_distinct: int = 0
 
 
 def is_category_dtype(dtype: pl.DataType) -> bool:
@@ -99,8 +111,19 @@ def natural_key(label: str) -> tuple:
     return key, label
 
 
-def category_values(lazyframe: pl.LazyFrame, column: str) -> CategoryValues:
-    """List a column's labels in default order, refusing more than 50 values.
+def category_values(
+    lazyframe: pl.LazyFrame,
+    column: str,
+    *,
+    read_all: bool = True,
+    sample_only: bool = False,
+) -> CategoryValues:
+    """List a column's labels in default order, refusing more than 10,000 values.
+
+    Without ``read_all``, the first 10,000 rows are read first; when they hold
+    more than 150 values the column is probably not a category, so the result
+    stops there (``complete`` False) and the window asks before reading on.
+    ``sample_only`` always stops there (the Data Block's document column).
 
     An existing ordered category keeps its order (its categories, including
     any not present in the rows). Text and unordered categories sort A to Z in
@@ -113,6 +136,22 @@ def category_values(lazyframe: pl.LazyFrame, column: str) -> CategoryValues:
     dtype = schema[column]
     label = category_label_expression(column, dtype)
     kind = order_kind(dtype)
+    if not read_all and not isinstance(dtype, pl.Enum):
+        sample = lazyframe.head(PROBE_ROWS).select(label.alias("label")).collect()
+        distinct = sample["label"].drop_nulls().n_unique()
+        # A column shorter than the sample has been read already: list it.
+        whole_column = sample.height < PROBE_ROWS
+        if sample_only or (distinct > WARN_CATEGORY_VALUES and not whole_column):
+            return CategoryValues(
+                kind=kind,
+                labels=[],
+                counts=[],
+                empty_count=0,
+                is_ordered=False,
+                complete=False,
+                sample_rows=sample.height,
+                sample_distinct=int(distinct),
+            )
     sort_key = pl.col(column) if kind == "value" else label
     frame = (
         lazyframe.select(label.alias("label"), sort_key.alias("key"))
@@ -126,7 +165,7 @@ def category_values(lazyframe: pl.LazyFrame, column: str) -> CategoryValues:
     if present.height > MAX_CATEGORY_VALUES:
         raise InvalidInputError(
             f'"{column}" has {present.height:,} different values. A category column can '
-            f"have at most {MAX_CATEGORY_VALUES}. Group or clean the values first."
+            f"have at most {MAX_CATEGORY_VALUES:,}, so it is better kept as text."
         )
     counts = dict(zip(present["label"].to_list(), present["count"].to_list(), strict=True))
     if isinstance(dtype, pl.Enum):
@@ -145,13 +184,13 @@ def category_values(lazyframe: pl.LazyFrame, column: str) -> CategoryValues:
 
 
 def validate_order(categories: list[str]) -> list[str]:
-    """Check a chosen order: non-empty, distinct labels, at most 50."""
+    """Check a chosen order: non-empty, distinct labels, at most 10,000."""
 
     if not categories:
         raise InvalidInputError("Choose an order with at least one value.")
     if len(categories) > MAX_CATEGORY_VALUES:
         raise InvalidInputError(
-            f"A category column can have at most {MAX_CATEGORY_VALUES} values."
+            f"A category column can have at most {MAX_CATEGORY_VALUES:,} values."
         )
     if any(not label.strip() for label in categories):
         raise InvalidInputError("Empty values can't be a category; they always come last.")

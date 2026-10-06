@@ -2214,7 +2214,7 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 50,
+                "maxItems": 10000,
                 "type": "array"
               },
               {
@@ -2492,7 +2492,7 @@
                 "items": {
                   "type": "string"
                 },
-                "maxItems": 50,
+                "maxItems": 10000,
                 "type": "array"
               },
               {
@@ -2556,6 +2556,10 @@
             "title": "Column",
             "type": "string"
           },
+          "complete": {
+            "title": "Complete",
+            "type": "boolean"
+          },
           "counts": {
             "items": {
               "type": "integer"
@@ -2566,6 +2570,10 @@
           "empty_count": {
             "title": "Empty Count",
             "type": "integer"
+          },
+          "is_document": {
+            "title": "Is Document",
+            "type": "boolean"
           },
           "is_ordered": {
             "title": "Is Ordered",
@@ -2586,12 +2594,20 @@
             "title": "Labels",
             "type": "array"
           },
-          "max_custom_values": {
-            "title": "Max Custom Values",
-            "type": "integer"
-          },
           "max_values": {
             "title": "Max Values",
+            "type": "integer"
+          },
+          "sample_distinct": {
+            "title": "Sample Distinct",
+            "type": "integer"
+          },
+          "sample_rows": {
+            "title": "Sample Rows",
+            "type": "integer"
+          },
+          "warn_values": {
+            "title": "Warn Values",
             "type": "integer"
           }
         },
@@ -2602,8 +2618,12 @@
           "counts",
           "empty_count",
           "is_ordered",
+          "warn_values",
           "max_values",
-          "max_custom_values"
+          "complete",
+          "sample_rows",
+          "sample_distinct",
+          "is_document"
         ],
         "title": "CategoryValuesResource",
         "type": "object"
@@ -19047,7 +19067,7 @@
     },
     "/api/workspaces/{workspace_id}/nodes/{node_id}/category-values": {
       "get": {
-        "description": "List a column's values in default category order for the conversion window.",
+        "description": "List a column's values in default category order for the conversion window.\n\nWithout ``read_all`` a column that looks like text is only sampled first.",
         "operationId": "get_category_values",
         "parameters": [
           {
@@ -19078,6 +19098,16 @@
               "minLength": 1,
               "title": "Column",
               "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "read_all",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Read All",
+              "type": "boolean"
             }
           }
         ],

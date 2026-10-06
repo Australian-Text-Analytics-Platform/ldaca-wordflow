@@ -452,5 +452,13 @@ class CategoryValuesResource(BaseModel):
     counts: list[int]
     empty_count: int
     is_ordered: bool
+    # Above warn_values the window asks before listing; max_values is the ceiling.
+    warn_values: int
     max_values: int
-    max_custom_values: int
+    # False when only the first sample_rows rows were read (they held
+    # sample_distinct values, or this is the document column): no labels yet,
+    # and the window asks before reading every value with read_all.
+    complete: bool
+    sample_rows: int
+    sample_distinct: int
+    is_document: bool

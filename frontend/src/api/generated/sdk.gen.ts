@@ -1170,6 +1170,8 @@ export const updateNode = <ThrowOnError extends boolean = false>(options: Option
  * Get Category Values
  *
  * List a column's values in default category order for the conversion window.
+ *
+ * Without ``read_all`` a column that looks like text is only sampled first.
  */
 export const getCategoryValues = <ThrowOnError extends boolean = false>(options: Options<GetCategoryValuesData, ThrowOnError>): RequestResult<GetCategoryValuesResponses, GetCategoryValuesErrors, ThrowOnError> => (options.client ?? client).get<GetCategoryValuesResponses, GetCategoryValuesErrors, ThrowOnError>({
     security: [{

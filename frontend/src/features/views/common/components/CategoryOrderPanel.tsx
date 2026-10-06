@@ -80,6 +80,9 @@ function CategoryOrderPanelContent({
   onClose,
   onConfirm,
 }: Omit<CategoryOrderPanelProps, 'open'>) {
+  // The first read samples a column that looks like text; every value is read
+  // only after the user continues (Chao, 2026-10-07).
+  const [readAll, setReadAll] = useState(false);
   const valuesQuery = useQuery({
     queryKey: [
       'workspaces',
@@ -88,15 +91,18 @@ function CategoryOrderPanelContent({
       nodeId ?? '',
       'category-values',
       columnName,
+      readAll,
     ],
     enabled: Boolean(workspaceId && nodeId),
     staleTime: 0,
     gcTime: 0,
     retry: false,
-    queryFn: async () => {
+    // Cancel closes the window, which drops the request.
+    queryFn: async ({ signal }) => {
       const { data } = await getCategoryValues({
         path: { workspace_id: workspaceId ?? '', node_id: nodeId ?? '' },
-        query: { column: columnName },
+        query: { column: columnName, read_all: readAll },
+        signal,
         throwOnError: true,
       });
       return data;
@@ -129,11 +135,21 @@ function CategoryOrderPanelContent({
             come last.
           </CardDescription>
         </CardHeader>
-        {values ? (
+        {values && !values.complete ? (
+          <SampleWarning
+            values={values}
+            columnName={columnName}
+            onClose={onClose}
+            onContinue={() => {
+              setReadAll(true);
+            }}
+          />
+        ) : values ? (
           <CategoryOrderForm
             key={values.labels.join('\u0000')}
             values={values}
             isCategory={isCategory}
+            longListAccepted={readAll}
             onClose={onClose}
             onConfirm={onConfirm}
           />
@@ -146,7 +162,11 @@ function CategoryOrderPanelContent({
                   fallback="Couldn't read the column's values."
                 />
               ) : (
-                <p className="text-body text-description">Reading the values…</p>
+                <p className="text-body text-description" aria-live="polite">
+                  {readAll
+                    ? 'Reading every value. A long column can take a while; Cancel stops.'
+                    : 'Reading the values…'}
+                </p>
               )}
             </CardContent>
             <CardFooter className="border-t border-surface-border/70 pt-4">
@@ -163,19 +183,70 @@ function CategoryOrderPanelContent({
   );
 }
 
+/**
+ * Asks before reading a whole column that looks like text: its first rows
+ * already hold many values, or it is the Data Block's document column.
+ */
+function SampleWarning({
+  values,
+  columnName,
+  onClose,
+  onContinue,
+}: {
+  values: CategoryValuesResource;
+  columnName: string;
+  onClose: () => void;
+  onContinue: () => void;
+}) {
+  const manyValues = values.sample_distinct > values.warn_values;
+  return (
+    <>
+      <CardContent className="space-y-2">
+        <p role="alert" className="text-body text-foreground">
+          {values.is_document
+            ? `"${columnName}" is this Data Block's document column. Each different text would become its own category.`
+            : `"${columnName}" has many different values for a category.`}{' '}
+          {manyValues
+            ? `Its first ${values.sample_rows.toLocaleString()} rows already have ${values.sample_distinct.toLocaleString()} different values.`
+            : ''}
+        </p>
+        <p className="text-body text-description">
+          Continue reads every value, which can take a while for a long column, and lists them all.
+        </p>
+      </CardContent>
+      <CardFooter className="border-t border-surface-border/70 pt-4">
+        <div className="flex w-full items-center justify-end gap-2">
+          <Button variant="outline" type="button" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" onClick={onContinue}>
+            Continue
+          </Button>
+        </div>
+      </CardFooter>
+    </>
+  );
+}
+
 function CategoryOrderForm({
   values,
   isCategory,
+  longListAccepted: alreadyAccepted,
   onClose,
   onConfirm,
 }: {
   values: CategoryValuesResource;
   isCategory: boolean;
+  /** True when the user already continued past the sample warning. */
+  longListAccepted: boolean;
   onClose: () => void;
   onConfirm: (categories: string[]) => void;
 }) {
   const { kind, is_ordered: isOrdered, labels: defaults } = values;
-  const canCustomise = defaults.length <= values.max_custom_values;
+  // A long list is the user's call: warn first, then list every value (Chao, 2026-10-07).
+  const [longListAccepted, setLongListAccepted] = useState(
+    alreadyAccepted || defaults.length <= values.warn_values,
+  );
   const [mode, setMode] = useState<CategoryOrderMode>(isOrdered ? 'current' : 'ascending');
   const [customLabels, setCustomLabels] = useState<string[]>(defaults);
   const counts = new Map(defaults.map((label, index) => [label, values.counts[index] ?? 0]));
@@ -198,10 +269,39 @@ function CategoryOrderForm({
 
   /** Dragging a value makes a custom order, starting from the order shown. */
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!canCustomise || !over || active.id === over.id) return;
+    if (!over || active.id === over.id) return;
     setCustomLabels(moveLabel(shown, String(active.id), String(over.id)));
     setMode('custom');
   };
+
+  if (!longListAccepted) {
+    return (
+      <>
+        <CardContent>
+          <p role="alert" className="text-body text-foreground">
+            This column has {defaults.length.toLocaleString()} different values. Each becomes a
+            category, so the list will be long to scroll and arrange, and lists and charts that show
+            every value (such as Filter&apos;s value list or a Trends axis) will be long too.
+          </p>
+        </CardContent>
+        <CardFooter className="border-t border-surface-border/70 pt-4">
+          <div className="flex w-full items-center justify-end gap-2">
+            <Button variant="outline" type="button" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => {
+                setLongListAccepted(true);
+              }}
+            >
+              Continue
+            </Button>
+          </div>
+        </CardFooter>
+      </>
+    );
+  }
 
   return (
     <>
@@ -227,9 +327,7 @@ function CategoryOrderForm({
           </div>
           <p className="mt-1.5 text-label-secondary text-description" aria-live="polite">
             {mode === 'custom' ? 'Your own order. ' : ''}
-            {canCustomise
-              ? 'Drag a value, or focus it and use Space and the arrow keys, to move it.'
-              : `This column has ${String(defaults.length)} values. Values can be dragged when there are up to ${String(values.max_custom_values)}.`}
+            Drag a value, or focus it and use Space and the arrow keys, to move it.
           </p>
         </fieldset>
         {defaults.length === 0 ? (
@@ -246,12 +344,7 @@ function CategoryOrderForm({
                 className="max-h-80 space-y-1 overflow-y-auto rounded-md border border-surface-border p-1.5"
               >
                 {shown.map((label) => (
-                  <SortableValue
-                    key={label}
-                    label={label}
-                    count={counts.get(label) ?? 0}
-                    draggable={canCustomise}
-                  />
+                  <SortableValue key={label} label={label} count={counts.get(label) ?? 0} />
                 ))}
                 {values.empty_count > 0 ? (
                   <li
@@ -287,18 +380,9 @@ function CategoryOrderForm({
   );
 }
 
-function SortableValue({
-  label,
-  count,
-  draggable,
-}: {
-  label: string;
-  count: number;
-  draggable: boolean;
-}) {
+function SortableValue({ label, count }: { label: string; count: number }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: label,
-    disabled: !draggable,
   });
   return (
     <li
@@ -306,11 +390,12 @@ function SortableValue({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`flex items-center gap-2 rounded-sm border border-surface-border bg-editor px-2 py-1 text-body ${
         isDragging ? 'relative z-10 shadow-md' : ''
-      } ${draggable ? 'cursor-grab touch-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus' : ''}`}
-      {...(draggable ? { ...attributes, ...listeners } : {})}
-      aria-label={draggable ? `${label}, ${String(count)} rows. Press Space to move.` : undefined}
+      } cursor-grab touch-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus`}
+      {...attributes}
+      {...listeners}
+      aria-label={`${label}, ${String(count)} rows. Press Space to move.`}
     >
-      {draggable ? <GripVertical aria-hidden="true" className="size-3.5 text-description" /> : null}
+      <GripVertical aria-hidden="true" className="size-3.5 text-description" />
       <span className="flex-1 [overflow-wrap:anywhere]">{label}</span>
       <span className="tabular-nums text-description">{count.toLocaleString()}</span>
     </li>

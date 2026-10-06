@@ -372,14 +372,19 @@ async def get_category_values(
     principal: CurrentSessionSecurityDep,
     runtime: RuntimeDep,
     column: str = Query(min_length=1),
+    read_all: bool = False,
 ) -> CategoryValuesResource:
-    """List a column's values in default category order for the conversion window."""
+    """List a column's values in default category order for the conversion window.
+
+    Without ``read_all`` a column that looks like text is only sampled first.
+    """
 
     return await runtime.node_service.category_values(
         principal.user.id,
         workspace_id,
         node_id,
         column,
+        read_all,
     )
 
 

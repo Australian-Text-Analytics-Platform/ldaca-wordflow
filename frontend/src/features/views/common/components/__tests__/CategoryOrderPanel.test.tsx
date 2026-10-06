@@ -17,8 +17,12 @@ const values = (overrides: Partial<CategoryValuesResource> = {}): CategoryValues
   counts: [5, 2, 3],
   empty_count: 4,
   is_ordered: false,
-  max_values: 50,
-  max_custom_values: 12,
+  warn_values: 150,
+  max_values: 10000,
+  complete: true,
+  sample_rows: 0,
+  sample_distinct: 0,
+  is_document: false,
   ...overrides,
 });
 
@@ -99,27 +103,55 @@ describe('CategoryOrderPanel (issue 318)', () => {
     expect(onConfirm).toHaveBeenCalledWith(['Disagree', 'Agree', 'Neutral']);
   });
 
-  it('lets values be dragged only up to 12, with no Custom button', async () => {
-    const labels = Array.from({ length: 13 }, (_value, index) => `v${String(index)}`);
+  it('warns above 150 values and lists them all after Continue, all draggable', async () => {
+    const labels = Array.from({ length: 151 }, (_value, index) => `v${String(index)}`);
     vi.mocked(getCategoryValues).mockResolvedValue({
       data: values({ labels, counts: labels.map(() => 1) }),
     } as never);
     showPanel();
 
-    expect(
-      await screen.findByText(/Values can be dragged when there are up to 12/),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('151 different values');
+    expect(screen.queryByRole('list', { name: 'Values in order' })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(screen.getAllByRole('button', { name: /Press Space to move/ })).toHaveLength(151);
     expect(screen.queryByRole('radio', { name: 'Custom' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Press Space to move/ })).not.toBeInTheDocument();
+  });
+
+  it('asks before reading a whole column that looks like text, then lists it', async () => {
+    vi.mocked(getCategoryValues)
+      .mockResolvedValueOnce({
+        data: values({
+          labels: [],
+          counts: [],
+          complete: false,
+          sample_rows: 10000,
+          sample_distinct: 9876,
+          is_document: true,
+        }),
+      } as never)
+      .mockResolvedValueOnce({
+        data: values({ labels: ['a', 'b'], counts: [1, 1] }),
+      } as never);
+    showPanel();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      /document column.*first 10,000 rows already have 9,876 different values/,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Continue' }));
+    expect(await screen.findByRole('list', { name: 'Values in order' })).toBeInTheDocument();
+    expect(vi.mocked(getCategoryValues).mock.calls.map((call) => call[0].query)).toEqual([
+      { column: 'answer', read_all: false },
+      { column: 'answer', read_all: true },
+    ]);
   });
 
   it('shows why a column cannot become a category', async () => {
     vi.mocked(getCategoryValues).mockRejectedValue(
-      new Error('"answer" has 80 different values. A category column can have at most 50.'),
+      new Error('"answer" has 20,000 different values. A category column can have at most 10,000.'),
     );
     showPanel();
 
-    expect(await screen.findByText(/at most 50/)).toBeInTheDocument();
+    expect(await screen.findByText(/at most 10,000/)).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Convert' })).not.toBeInTheDocument();
   });
 });

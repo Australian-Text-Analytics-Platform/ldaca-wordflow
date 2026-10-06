@@ -1575,6 +1575,8 @@ export const getCategoryValuesQueryKey = (options: Options<GetCategoryValuesData
  * Get Category Values
  *
  * List a column's values in default category order for the conversion window.
+ *
+ * Without ``read_all`` a column that looks like text is only sampled first.
  */
 export const getCategoryValuesOptions = (options: Options<GetCategoryValuesData>) => queryOptions<GetCategoryValuesResponse, GetCategoryValuesError, GetCategoryValuesResponse, ReturnType<typeof getCategoryValuesQueryKey>>({
     queryFn: async ({ queryKey, signal }) => {

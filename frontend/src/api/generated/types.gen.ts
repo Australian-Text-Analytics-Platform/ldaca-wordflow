@@ -1199,6 +1199,10 @@ export type CategoryValuesResource = {
      */
     column: string;
     /**
+     * Complete
+     */
+    complete: boolean;
+    /**
      * Counts
      */
     counts: Array<number>;
@@ -1206,6 +1210,10 @@ export type CategoryValuesResource = {
      * Empty Count
      */
     empty_count: number;
+    /**
+     * Is Document
+     */
+    is_document: boolean;
     /**
      * Is Ordered
      */
@@ -1219,13 +1227,21 @@ export type CategoryValuesResource = {
      */
     labels: Array<string>;
     /**
-     * Max Custom Values
-     */
-    max_custom_values: number;
-    /**
      * Max Values
      */
     max_values: number;
+    /**
+     * Sample Distinct
+     */
+    sample_distinct: number;
+    /**
+     * Sample Rows
+     */
+    sample_rows: number;
+    /**
+     * Warn Values
+     */
+    warn_values: number;
 };
 
 /**
@@ -9980,6 +9996,10 @@ export type GetCategoryValuesData = {
          * Column
          */
         column: string;
+        /**
+         * Read All
+         */
+        read_all?: boolean;
     };
     url: '/api/workspaces/{workspace_id}/nodes/{node_id}/category-values';
 };
