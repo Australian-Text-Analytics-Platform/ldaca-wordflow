@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from ...models.node_resources import (
+    CategoryValuesResource,
     DataBlockExportRequest,
     NodeCreateRequest,
     NodeDerivationRequest,
@@ -357,6 +358,28 @@ async def delete_node(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
         headers={"ETag": workspace_etag(revision)},
+    )
+
+
+@router.get(
+    "/{node_id}/category-values",
+    response_model=CategoryValuesResource,
+    responses=api_errors(400, 404, 422),
+)
+async def get_category_values(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    column: str = Query(min_length=1),
+) -> CategoryValuesResource:
+    """List a column's values in default category order for the conversion window."""
+
+    return await runtime.node_service.category_values(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        column,
     )
 
 

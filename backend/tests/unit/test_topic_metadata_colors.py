@@ -217,3 +217,20 @@ def test_color_groups_project_the_requested_cluster_count(
             "text",
             context_path,
         )
+
+
+def test_category_groups_follow_the_category_order(  # issue 318
+) -> None:
+    grouped = group_topic_counts(
+        ["Labor", None, "Liberal", "Labor"],
+        _DOCUMENTS,
+        topic_count=2,
+        top_n_topics=1,
+        category_order=["Liberal", "Labor"],
+    )
+
+    assert [group["label"] for group in grouped["groups"]] == [
+        "Liberal",
+        "Labor",
+        "(missing)",
+    ]

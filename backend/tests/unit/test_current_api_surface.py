@@ -195,6 +195,11 @@ EXPECTED_OPERATIONS = {
         "/api/workspaces/{workspace_id}/nodes/{node_id}/redo",
         "redo_node",
     ),
+    (
+        "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/category-values",
+        "get_category_values",
+    ),
     ("GET", "/api/workspaces/{workspace_id}/nodes/{node_id}/schema", "get_node_schema"),
     ("GET", "/api/workspaces/{workspace_id}/tabs", "list_tabs"),
     ("POST", "/api/workspaces/{workspace_id}/tabs", "create_tab"),

@@ -70,11 +70,14 @@ def group_topic_counts(
     *,
     topic_count: int,
     top_n_topics: int,
+    category_order: Sequence[str] | None = None,
 ) -> dict[str, Any]:
     """Count, per value, the documents whose Top-N Topics include each Topic.
 
     ``values[i]`` is the colour column value of model document ``i``. Groups
     are ordered by document count (largest first) with missing values last.
+    For a category column, ``category_order`` gives its order instead
+    (issue 318).
     ``topic_counts[topic_id][group_index]`` uses the same Top-N-with-ties rule
     as the corpus counts on each bubble.
     """
@@ -89,10 +92,21 @@ def group_topic_counts(
         MAX_TOPIC_COLOR_GROUPS
     ):
         raise ValueError("Colour column has too many distinct values")
-    ordered = sorted(
-        document_counts,
-        key=lambda key: (key is None, -document_counts[key], _group_label(key)),
-    )
+    if category_order is not None:
+        position = {label: index for index, label in enumerate(category_order)}
+        ordered = sorted(
+            document_counts,
+            key=lambda key: (
+                key is None,
+                position.get(str(key), len(position)),
+                _group_label(key),
+            ),
+        )
+    else:
+        ordered = sorted(
+            document_counts,
+            key=lambda key: (key is None, -document_counts[key], _group_label(key)),
+        )
     group_index = {key: index for index, key in enumerate(ordered)}
     topic_counts = [[0] * len(ordered) for _ in range(topic_count)]
     for document in documents:

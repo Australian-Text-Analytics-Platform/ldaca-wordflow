@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import polars as pl
 
+from ..shared.empty_values import empty_value_expression
 from ..shared.unsupported_columns import supported_metadata_columns
 
 SEQUENTIAL_PERIOD_INDEX_COLUMN = "period_index"
@@ -42,9 +43,10 @@ def _build_sequential_result_frames(
     """
 
     normalized_column_type = (column_type or "datetime").lower()
-    if normalized_column_type not in {"datetime", "numeric"}:
+    if normalized_column_type not in {"datetime", "numeric", "category"}:
         raise ValueError(
-            "Unsupported column_type. Use 'datetime' or 'numeric' for sequential analysis"
+            "Unsupported column_type. Use 'datetime', 'numeric' or 'category' for "
+            "sequential analysis"
         )
 
     # The worker writes both outputs immediately after this computation, so the
@@ -125,6 +127,15 @@ def _build_sequential_result_frames(
             raise ValueError("Unsupported datetime frequency")
 
         df = df.filter(pl.col(time_column).is_not_null()).with_columns(time_expr)
+    elif normalized_column_type == "category":
+        # One position per category value, in the column's order; empty values
+        # are kept and become the last position, "(empty)" (issue 318).
+        df = df.with_columns(
+            pl.when(empty_value_expression(pl.col(time_column), df.schema[time_column]))
+            .then(None)
+            .otherwise(pl.col(time_column))
+            .alias("time_period")
+        )
     else:
         # Numeric binning
         if numeric_interval is None or numeric_interval <= 0:
@@ -172,15 +183,18 @@ def _build_sequential_result_frames(
     period_indices = (
         df.select("time_period")
         .unique()
-        .sort("time_period")
+        .sort("time_period", nulls_last=True)
         .with_row_index(SEQUENTIAL_PERIOD_INDEX_COLUMN)
     )
-    df = df.join(period_indices, on="time_period", how="left")
+    # nulls_equal: the "(empty)" category position is a real period (issue 318).
+    df = df.join(period_indices, on="time_period", how="left", nulls_equal=True)
     if group_by_columns:
         group_indices = (
             df.select(group_by_columns)
             .unique()
-            .sort(group_by_columns)
+            # Category columns follow their order; the missing group comes last
+            # (issues 317 and 318).
+            .sort(group_by_columns, nulls_last=True)
             .with_row_index(SEQUENTIAL_GROUP_INDEX_COLUMN)
         )
         df = df.join(
@@ -193,6 +207,9 @@ def _build_sequential_result_frames(
         df = df.with_columns(pl.lit(0, dtype=pl.UInt32).alias(SEQUENTIAL_GROUP_INDEX_COLUMN))
 
     # Perform aggregation
+    if normalized_column_type == "category":
+        # A category has no start or end; Data Block Creation selects by index.
+        df = df.with_columns(pl.col("time_period").cast(pl.String).alias(time_column))
     result_df = df.group_by(
         [
             *group_cols,
@@ -208,7 +225,15 @@ def _build_sequential_result_frames(
     )
 
     # Add formatted time period for display
-    if normalized_column_type == "datetime":
+    if normalized_column_type == "category":
+        result_df = result_df.with_columns(
+            pl.col("time_period")
+            .cast(pl.String)
+            .fill_null("(empty)")
+            .alias("time_period_formatted"),
+            pl.col("time_period").cast(pl.String),
+        )
+    elif normalized_column_type == "datetime":
         if frequency == "weekly":
             result_df = result_df.with_columns(
                 pl.col("time_period")

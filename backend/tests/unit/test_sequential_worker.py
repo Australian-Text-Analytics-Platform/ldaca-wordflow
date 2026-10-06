@@ -113,9 +113,10 @@ def test_sequential_frames_share_stable_indices_and_preserve_original_groups() -
         SEQUENTIAL_GROUP_INDEX_COLUMN,
         "group",
     ).rows() == [
-        (0, 1, "A"),
-        (1, 2, "B"),
-        (2, 0, None),
+        # The missing group comes last (issue 317).
+        (0, 0, "A"),
+        (1, 1, "B"),
+        (2, 2, None),
     ]
     assert publication["text"].to_list() == ["fifteen", "five", "twenty-five"]
     assert publication["group"].to_list() == ["B", "A", None]
@@ -125,9 +126,9 @@ def test_sequential_frames_share_stable_indices_and_preserve_original_groups() -
         2,
     ]
     assert publication[SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN].to_list() == [
-        2,
         1,
         0,
+        2,
     ]
 
 

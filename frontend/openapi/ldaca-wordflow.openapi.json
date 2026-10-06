@@ -2208,6 +2208,21 @@
       "CastDerivation": {
         "additionalProperties": false,
         "properties": {
+          "categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories"
+          },
           "column": {
             "minLength": 1,
             "title": "Column",
@@ -2471,6 +2486,21 @@
         "additionalProperties": false,
         "description": "Cast one column on the target Data Block.",
         "properties": {
+          "categories": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "maxItems": 50,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Categories"
+          },
           "column": {
             "minLength": 1,
             "title": "Column",
@@ -2516,6 +2546,66 @@
           "target_type"
         ],
         "title": "CastNodeEditRequest",
+        "type": "object"
+      },
+      "CategoryValuesResource": {
+        "additionalProperties": false,
+        "description": "A column's values as category labels, for the conversion window (issue 318).\n\n``labels`` is the default order: an ordered category's own order, text A to\nZ (numbers inside labels compare as numbers), or numbers, dates and\ntrue/false by value. Empty values are counted but never listed.",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "counts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "empty_count": {
+            "title": "Empty Count",
+            "type": "integer"
+          },
+          "is_ordered": {
+            "title": "Is Ordered",
+            "type": "boolean"
+          },
+          "kind": {
+            "enum": [
+              "text",
+              "value"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "max_custom_values": {
+            "title": "Max Custom Values",
+            "type": "integer"
+          },
+          "max_values": {
+            "title": "Max Values",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "kind",
+          "labels",
+          "counts",
+          "empty_count",
+          "is_ordered",
+          "max_values",
+          "max_custom_values"
+        ],
+        "title": "CategoryValuesResource",
         "type": "object"
       },
       "CleanTextNodeEditRequest": {
@@ -7841,7 +7931,8 @@
             "default": "datetime",
             "enum": [
               "datetime",
-              "numeric"
+              "numeric",
+              "category"
             ],
             "title": "Column Type",
             "type": "string"
@@ -11531,7 +11622,7 @@
   "info": {
     "description": "Workspace-oriented text analysis API",
     "title": "LDaCA Wordflow API",
-    "version": "0.7.9"
+    "version": "0.7.8-dev"
   },
   "openapi": "3.1.0",
   "paths": {
@@ -18949,6 +19040,105 @@
           }
         ],
         "summary": "Update Node",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/category-values": {
+      "get": {
+        "description": "List a column's values in default category order for the conversion window.",
+        "operationId": "get_category_values",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryValuesResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Category Values",
         "tags": [
           "nodes"
         ]

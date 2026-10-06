@@ -46,6 +46,7 @@ from ..shared.empty_values import empty_value_expression
 from ..shared.errors import InvalidInputError, NodeNotFoundError
 from ..shared.json_data import JsonData
 from .node_casting import cast_lazyframe_column
+from .category_order import is_category_dtype, stacked_category_order
 from ..models.node_resources import (
     AnnotationClassesNodeEditRequest,
     CastNodeEditRequest,
@@ -261,6 +262,7 @@ def build_edited_lazyframe(
             source_type,
             request.target_type,
             datetime_format=request.datetime_format,
+            categories=request.categories,
         ):
             return node.data, None
         result = cast_lazyframe_column(
@@ -268,6 +270,7 @@ def build_edited_lazyframe(
             column_name=request.column,
             target_type=request.target_type,
             datetime_format=request.datetime_format,
+            categories=request.categories,
             strict=request.strict,
         )
         return result.lazyframe, None
@@ -519,6 +522,7 @@ def _cast_is_no_op(
     target_type: str,
     *,
     datetime_format: str | None,
+    categories: list[str] | None = None,
 ) -> bool:
     """Return whether the requested canonical cast preserves the current dtype."""
 
@@ -529,7 +533,12 @@ def _cast_is_no_op(
     if target_type == "float":
         return source_type == pl.Float64
     if target_type == "categorical":
-        return source_type == pl.Categorical
+        # A chosen order is a change unless the column already has it (issue 318).
+        if categories is None:
+            return isinstance(source_type, (pl.Categorical, pl.Enum))
+        return isinstance(source_type, pl.Enum) and (
+            source_type.categories.to_list() == categories
+        )
     if target_type == "date":
         return source_type == pl.Date
     return (
@@ -1389,10 +1398,16 @@ def _aligned_concat_frames(nodes: list[Node]) -> list[pl.LazyFrame]:
         schema = node.data.collect_schema()
         missing = sorted(set(base_names) - set(schema.names()))
         extra = sorted(set(schema.names()) - set(base_names))
+        # Category columns stack whatever their orders (issue 318); the orders
+        # are combined below.
         mismatched = sorted(
             name
             for name in base_names
-            if name in schema and schema[name] != base_schema[name]
+            if name in schema
+            and schema[name] != base_schema[name]
+            and not (
+                is_category_dtype(schema[name]) and is_category_dtype(base_schema[name])
+            )
         )
         if missing or extra or mismatched:
             raise InvalidInputError(
@@ -1408,6 +1423,39 @@ def _aligned_concat_frames(nodes: list[Node]) -> list[pl.LazyFrame]:
                 ),
             )
         frames.append(node.data.select(base_names))
+    return _with_stacked_category_orders(frames, base_names)
+
+
+def _with_stacked_category_orders(
+    frames: list[pl.LazyFrame], names: list[str]
+) -> list[pl.LazyFrame]:
+    """Give each category column one order across the stacked Data Blocks.
+
+    Ordered categories keep their combined order where they agree, otherwise
+    A to Z. Values only found in unordered categories follow in A to Z order.
+    Columns whose types already match are left alone.
+    """
+
+    schemas = [frame.collect_schema() for frame in frames]
+    for name in names:
+        dtypes = [schema[name] for schema in schemas]
+        if not is_category_dtype(dtypes[0]) or all(d == dtypes[0] for d in dtypes):
+            continue
+        ordered = [d.categories.to_list() for d in dtypes if isinstance(d, pl.Enum)]
+        unordered: set[str] = set()
+        for frame, dtype in zip(frames, dtypes, strict=True):
+            if not isinstance(dtype, pl.Enum):
+                unordered.update(
+                    frame.select(pl.col(name).cast(pl.String).drop_nulls().unique())
+                    .collect()[name]
+                    .to_list()
+                )
+        order, _kept = stacked_category_order(ordered, unordered)
+        target = pl.Enum(order)
+        frames = [
+            frame.with_columns(pl.col(name).cast(pl.String).cast(target))
+            for frame in frames
+        ]
     return frames
 
 

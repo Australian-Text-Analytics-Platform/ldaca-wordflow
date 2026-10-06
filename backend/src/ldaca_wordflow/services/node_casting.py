@@ -19,6 +19,7 @@ from dataclasses import dataclass
 import polars as pl
 
 from ..shared.errors import AppError, InvalidInputError, format_exception_diagnostic
+from .category_order import default_order_expression, ordered_category_expression
 
 
 SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical"
@@ -90,11 +91,12 @@ def _datetime_cast_expr(
             # not parsed as text (issue 165).
             parsed = pl.col(column_name).cast(pl.Datetime("us"))
         elif datetime_format:
-            parsed = pl.col(column_name).str.to_datetime(
+            # Cast first so category columns parse too (issue 318).
+            parsed = pl.col(column_name).cast(pl.String).str.to_datetime(
                 format=datetime_format, strict=bool(strict_flag)
             )
         else:
-            parsed = pl.col(column_name).str.to_datetime(strict=bool(strict_flag))
+            parsed = pl.col(column_name).cast(pl.String).str.to_datetime(strict=bool(strict_flag))
 
         format_has_tz = datetime_format and any(
             token in datetime_format for token in TIMEZONE_FORMAT_TOKENS
@@ -135,7 +137,7 @@ def _date_cast_expr(
         return column.alias(column_name)
     if orig_lower.startswith("datetime"):
         return column.dt.date().alias(column_name)
-    if orig_lower in ("string", "str", "utf8") or orig_lower.startswith("categorical"):
+    if orig_lower in ("string", "str", "utf8") or orig_lower.startswith(("categorical", "enum")):
         text = column.cast(pl.String)
         if datetime_format:
             return text.str.to_date(
@@ -163,7 +165,6 @@ def _cast_expr(
     """
 
     target_lower = target_type.lower()
-    orig_lower = original_type.lower()
 
     if target_lower == "datetime":
         return _datetime_cast_expr(
@@ -189,22 +190,6 @@ def _cast_expr(
         # Like integer: values that are not numbers become empty, and the
         # Data Editor warns with Undo (issues 183 and 187).
         return pl.col(column_name).cast(pl.Float64, strict=False).alias(column_name)
-    if target_lower == "categorical":
-        if any(
-            token in orig_lower for token in ["utf8", "string", "str", "categorical"]
-        ):
-            return (
-                pl.col(column_name)
-                .cast(pl.Categorical, strict=False)
-                .alias(column_name)
-            )
-        return (
-            pl.col(column_name)
-            .cast(pl.Utf8, strict=False)
-            .cast(pl.Categorical, strict=False)
-            .alias(column_name)
-        )
-
     raise InvalidInputError(
         f"Wordflow can't convert columns to {target_type} yet. Choose text, category, "
         "whole number, decimal, date, or date and time."
@@ -218,6 +203,7 @@ def cast_lazyframe_column(
     target_type: str,
     datetime_format: str | None = None,
     strict: bool | None = None,
+    categories: list[str] | None = None,
 ) -> CastLazyFrameColumnResult:
     """Return a new LazyFrame with one column cast to the requested dtype.
 
@@ -237,13 +223,21 @@ def cast_lazyframe_column(
         schema = lazyframe.collect_schema()
         original_type = str(schema[column_name])
         target_lower = target_type.lower()
-        cast_expr = _cast_expr(
-            column_name,
-            original_type=original_type,
-            target_type=target_type,
-            datetime_format=datetime_format,
-            strict_flag=bool(strict_flag),
-        )
+        if target_lower == "categorical":
+            # An ordered category in the chosen or default order (issue 318).
+            cast_expr = (
+                ordered_category_expression(lazyframe, column_name, categories)
+                if categories is not None
+                else default_order_expression(lazyframe, column_name)
+            )
+        else:
+            cast_expr = _cast_expr(
+                column_name,
+                original_type=original_type,
+                target_type=target_type,
+                datetime_format=datetime_format,
+                strict_flag=bool(strict_flag),
+            )
 
         try:
             lazyframe.head(50).with_columns(cast_expr).collect()

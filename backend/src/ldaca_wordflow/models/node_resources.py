@@ -434,3 +434,23 @@ class NodeUpdateRequest(_StrictRequest):
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("A Data Block name is required")
         return self
+
+
+class CategoryValuesResource(BaseModel):
+    """A column's values as category labels, for the conversion window (issue 318).
+
+    ``labels`` is the default order: an ordered category's own order, text A to
+    Z (numbers inside labels compare as numbers), or numbers, dates and
+    true/false by value. Empty values are counted but never listed.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    kind: Literal["text", "value"]
+    labels: list[str]
+    counts: list[int]
+    empty_count: int
+    is_ordered: bool
+    max_values: int
+    max_custom_values: int

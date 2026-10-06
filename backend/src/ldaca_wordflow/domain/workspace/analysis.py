@@ -219,7 +219,8 @@ class SequentialAnalysisRequest(_StrictModel):
         "custom",
     ] = "monthly"
     sort_by_time: bool = True
-    column_type: Literal["datetime", "numeric"] = "datetime"
+    # "category": one X position per category value, in its order (issue 318).
+    column_type: Literal["datetime", "numeric", "category"] = "datetime"
     numeric_origin: float | None = Field(default=None, allow_inf_nan=False)
     numeric_interval: float | None = Field(default=None, allow_inf_nan=False)
     custom_interval_value: int | None = Field(default=None, ge=1)

@@ -40,6 +40,7 @@ from ..models.analysis_results import (
 from ..settings import Settings
 from ..shared.errors import InvalidInputError
 from ..shared.unsupported_columns import require_supported_columns
+from .category_order import is_category_dtype
 from ..workers.invocations import (
     AnalysisWorkerInput,
     AnnotationInput,
@@ -200,12 +201,16 @@ def _require_trends_axis(
     dtype = schema.get(request.time_column)
     if dtype is None:
         return
-    is_date = isinstance(dtype, (pl.Date, pl.Datetime))
-    supported = is_date if request.column_type == "datetime" else dtype.is_numeric()
+    if request.column_type == "category":
+        supported = is_category_dtype(dtype)
+    elif request.column_type == "datetime":
+        supported = isinstance(dtype, (pl.Date, pl.Datetime))
+    else:
+        supported = dtype.is_numeric()
     if not supported:
         raise InvalidInputError(
             f"Trends can't use '{request.time_column}' as its time axis. "
-            "Choose a date, date-and-time or number column."
+            "Choose a date, date-and-time, number or category column."
         )
 
 

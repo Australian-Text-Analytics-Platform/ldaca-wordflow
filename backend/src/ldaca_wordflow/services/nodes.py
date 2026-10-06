@@ -41,7 +41,14 @@ from ..shared.table_transport import (
     materialize_page,
 )
 from .user_files import UserFileStore
+from ..shared.unsupported_columns import require_supported_columns
+from .category_order import (
+    MAX_CATEGORY_VALUES,
+    MAX_CUSTOM_ORDER_VALUES,
+    category_values,
+)
 from ..models.node_resources import (
+    CategoryValuesResource,
     CastNodeEditRequest,
     DeduplicateNodeCreateRequest,
     FileNodeCreateRequest,
@@ -602,6 +609,34 @@ class NodeService:
                 node.data.collect_schema(),
             )
             return content, lease.revision
+
+    async def category_values(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        column: str,
+    ) -> CategoryValuesResource:
+        """List one column's values in default category order (issue 318)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            require_supported_columns(
+                node.data.collect_schema(), [column], use="as a category"
+            )
+            values = await self._run_io(category_values, node.data, column)
+        return CategoryValuesResource(
+            column=column,
+            kind=values.kind,
+            labels=values.labels,
+            counts=values.counts,
+            empty_count=values.empty_count,
+            is_ordered=values.is_ordered,
+            max_values=MAX_CATEGORY_VALUES,
+            max_custom_values=MAX_CUSTOM_ORDER_VALUES,
+        )
 
     async def _run_io(
         self,

@@ -1051,6 +1051,10 @@ export type BodyGoogleCallback = {
  */
 export type CastDerivation = {
     /**
+     * Categories
+     */
+    categories?: Array<string> | null;
+    /**
      * Column
      */
     column: string;
@@ -1155,6 +1159,10 @@ export type CastExpressionOutput = {
  */
 export type CastNodeEditRequest = {
     /**
+     * Categories
+     */
+    categories?: Array<string> | null;
+    /**
      * Column
      */
     column: string;
@@ -1174,6 +1182,50 @@ export type CastNodeEditRequest = {
      * Target Type
      */
     target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
+};
+
+/**
+ * CategoryValuesResource
+ *
+ * A column's values as category labels, for the conversion window (issue 318).
+ *
+ * ``labels`` is the default order: an ordered category's own order, text A to
+ * Z (numbers inside labels compare as numbers), or numbers, dates and
+ * true/false by value. Empty values are counted but never listed.
+ */
+export type CategoryValuesResource = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Counts
+     */
+    counts: Array<number>;
+    /**
+     * Empty Count
+     */
+    empty_count: number;
+    /**
+     * Is Ordered
+     */
+    is_ordered: boolean;
+    /**
+     * Kind
+     */
+    kind: 'text' | 'value';
+    /**
+     * Labels
+     */
+    labels: Array<string>;
+    /**
+     * Max Custom Values
+     */
+    max_custom_values: number;
+    /**
+     * Max Values
+     */
+    max_values: number;
 };
 
 /**
@@ -4029,7 +4081,7 @@ export type SequentialAnalysisRequest = {
     /**
      * Column Type
      */
-    column_type?: 'datetime' | 'numeric';
+    column_type?: 'datetime' | 'numeric' | 'category';
     /**
      * Custom Interval Unit
      */
@@ -9910,6 +9962,57 @@ export type UpdateNodeResponses = {
 };
 
 export type UpdateNodeResponse = UpdateNodeResponses[keyof UpdateNodeResponses];
+
+export type GetCategoryValuesData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Column
+         */
+        column: string;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/category-values';
+};
+
+export type GetCategoryValuesErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetCategoryValuesError = GetCategoryValuesErrors[keyof GetCategoryValuesErrors];
+
+export type GetCategoryValuesResponses = {
+    /**
+     * Successful Response
+     */
+    200: CategoryValuesResource;
+};
+
+export type GetCategoryValuesResponse = GetCategoryValuesResponses[keyof GetCategoryValuesResponses];
 
 export type EditNodeData = {
     /**

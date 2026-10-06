@@ -19,6 +19,7 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from ..shared.empty_values import empty_last_key
+from .category_order import natural_key
 from ..domain.annotation import provider_failure_message
 from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
@@ -1177,6 +1178,17 @@ def _topic_color_frame(
     return frame[row_indices]
 
 
+def _category_order(values: pl.Series) -> list[str] | None:
+    """A category column's order: its own, or A to Z when unordered (issue 318)."""
+
+    if isinstance(values.dtype, pl.Enum):
+        return values.dtype.categories.to_list()
+    if isinstance(values.dtype, pl.Categorical):
+        labels = values.cast(pl.String).drop_nulls().unique().to_list()
+        return sorted(labels, key=natural_key)
+    return None
+
+
 def _topic_color_groups(
     stored: TopicModelingStoredResult,
     query: TopicColorGroupsQuery,
@@ -1233,6 +1245,7 @@ def _topic_color_groups(
             projection["documents"],
             topic_count=query.cluster_count,
             top_n_topics=query.top_n_topics,
+            category_order=_category_order(frame[query.column]),
         )
     except ValueError as exc:
         raise AnalysisCorruptError("Topic projection context is corrupt") from exc
