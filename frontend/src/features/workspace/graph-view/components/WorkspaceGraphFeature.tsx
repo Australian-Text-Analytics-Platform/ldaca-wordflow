@@ -195,8 +195,8 @@ function WorkspaceGraphDeleteControl() {
               {toDelete.length === 1 ? '' : 's'}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This cannot be undone. The ticked Data Blocks will be removed. Untick any you want to
-              keep; they stay selected.
+              This cannot be undone. The ticked Data Blocks will be removed, and analysis tabs that
+              use them close with their results. Untick any you want to keep; they stay selected.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <ul

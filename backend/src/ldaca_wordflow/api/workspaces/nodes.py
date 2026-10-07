@@ -348,8 +348,12 @@ async def delete_node(
     principal: CurrentSessionSecurityDep,
     runtime: RuntimeDep,
 ) -> Response:
-    """Delete one node under the workspace gate and return an empty body."""
+    """Delete one node, closing the Tabs that analysed it (issue 320)."""
 
+    await runtime.node_service.ensure_deletable(principal.user.id, workspace_id, node_id)
+    await runtime.analysis_service.close_tabs_using_node(
+        principal.user.id, workspace_id, node_id
+    )
     revision = await runtime.node_service.delete(
         principal.user.id,
         workspace_id,

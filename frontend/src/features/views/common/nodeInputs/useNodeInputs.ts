@@ -92,12 +92,15 @@ export function useNodeInputs(config: UseNodeInputsConfig): UseNodeInputsResult 
     [allNodes, selectedIds],
   );
 
-  const canAddMore = constraints.maxNodes == null || value.length < constraints.maxNodes;
+  // Inputs whose Data Block was deleted no longer count, so a one-block tool
+  // can take another and adding drops them (issue 320).
+  const liveValue = useMemo(() => value.filter((i) => nodeMap.has(i.node_id)), [value, nodeMap]);
+  const canAddMore = constraints.maxNodes == null || liveValue.length < constraints.maxNodes;
 
   const addNodes = useCallback(
     (ids: string[]): NodeAddRejection[] => {
       const rejections: NodeAddRejection[] = [];
-      const next = [...value];
+      const next = [...liveValue];
       for (const id of ids) {
         const reason = validateAdd(id, next, nodeMap, constraints);
         if (reason) {
@@ -108,10 +111,10 @@ export function useNodeInputs(config: UseNodeInputsConfig): UseNodeInputsResult 
         const node = nodeMap.get(id)!;
         next.push({ node_id: id, column: defaultColumnForNode(node, constraints, getColumnInfos) });
       }
-      if (next.length !== value.length) onChange(next);
+      if (next.length !== liveValue.length || liveValue.length !== value.length) onChange(next);
       return rejections;
     },
-    [value, nodeMap, constraints, getColumnInfos, onChange],
+    [value, liveValue, nodeMap, constraints, getColumnInfos, onChange],
   );
 
   const removeNode = useCallback(

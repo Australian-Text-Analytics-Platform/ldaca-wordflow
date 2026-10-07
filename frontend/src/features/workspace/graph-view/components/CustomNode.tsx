@@ -415,7 +415,8 @@ function CustomNode({ id, data, selected }: NodeProps<ReactFlowNode<CustomNodeDa
             Delete &ldquo;{nodeName}&rdquo;?
           </AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete this Data Block and its data. This action cannot be undone.
+            This will permanently delete this Data Block and its data. Analysis tabs that use it
+            close too, with their results. This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

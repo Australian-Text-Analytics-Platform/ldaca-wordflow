@@ -8,6 +8,30 @@ import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/worksp
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 
 describe('useNodeInputs', () => {
+  it('lets a one-block tool take a new Data Block after its input was deleted (issue 320)', () => {
+    const live = projectWorkspaceNodeMetadata({ id: 'node-live', name: 'Live' });
+    const { result } = renderHook(() => {
+      const [value, setValue] = useState<NodeInput[]>([
+        { node_id: 'node-deleted', column: 'text' },
+      ]);
+      return {
+        value,
+        inputs: useNodeInputs({
+          value,
+          onChange: setValue,
+          allNodes: [live],
+          constraints: { fieldPredicate: isArrowStringField, maxNodes: 1 },
+        }),
+      };
+    });
+
+    expect(result.current.inputs.canAddMore).toBe(true);
+    act(() => {
+      expect(result.current.inputs.addNodes(['node-live'])).toEqual([]);
+    });
+    expect(result.current.value.map((input) => input.node_id)).toEqual(['node-live']);
+  });
+
   it.each([
     { maxNodes: 2, initialCount: 1 },
     { maxNodes: 6, initialCount: 5 },

@@ -574,6 +574,21 @@ class NodeService:
             info = await self._run_io(canonical_node_info, node)
         return WorkspaceNodeInfo.model_validate(info), lease.revision
 
+    async def ensure_deletable(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+    ) -> None:
+        """Refuse before anything else changes when ``delete`` would refuse."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            affected = lease.workspace.node_removal_affected_ids(node_id)
+            if not affected:
+                raise NodeNotFoundError("Data Block not found")
+            if affected & lease.workspace.reserved_node_ids():
+                raise DataBlockInUseError("Data Block is reserved by an Analysis")
+
     async def delete(
         self,
         user_id: str,

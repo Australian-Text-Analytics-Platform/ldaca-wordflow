@@ -501,18 +501,16 @@ def test_analysis_artifacts_publish_under_the_analysis_directory(
             ).status_code
             == 204
         )
-        invalid = client.get(f"/api/workspaces/{workspace_id}/analyses/{analysis_id}")
-        assert invalid.status_code == 200
-        assert invalid.json()["integrity"] == {
-            "status": "invalid",
-            "code": "analysis_input_missing",
-            "missing_input_ids": [node_id],
-        }
-        unusable = client.get(
-            f"/api/workspaces/{workspace_id}/analyses/{analysis_id}/result"
+        # Deleting the Data Block closes the Tab that analysed it, with its
+        # Analyses, rather than leaving them pointing at nothing (issue 320).
+        tabs = client.get(f"/api/workspaces/{workspace_id}/tabs").json()
+        assert tab_id not in [tab["id"] for tab in tabs]
+        assert (
+            client.get(
+                f"/api/workspaces/{workspace_id}/analyses/{analysis_id}"
+            ).status_code
+            == 404
         )
-        assert unusable.status_code == 410
-        assert unusable.json()["code"] == "analysis_input_missing"
 
 
 def test_concordance_result_uses_the_completed_analysis_snapshot(

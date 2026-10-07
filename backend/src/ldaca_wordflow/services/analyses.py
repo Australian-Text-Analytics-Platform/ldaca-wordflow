@@ -724,6 +724,37 @@ class AnalysisService:
         for key in keys_to_cancel:
             await self._execution.cancel(key)
 
+    async def close_tabs_using_node(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+    ) -> list[uuid.UUID]:
+        """Close every Tab whose Analyses read ``node_id`` (issue 320).
+
+        Called before a Data Block is deleted: those Tabs would otherwise keep
+        Analyses and inputs that point at a missing Data Block. Each Tab closes
+        as ``delete_tab`` does, results included.
+        """
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            tab_ids = sorted(
+                {
+                    record.tab_id
+                    for record in lease.workspace.analyses.values()
+                    if node_id in analysis_input_ids(record.request)
+                },
+                key=str,
+            )
+        closed: list[uuid.UUID] = []
+        for tab_id in tab_ids:
+            try:
+                await self.delete_tab(user_id, workspace_id, tab_id)
+            except TabNotFoundError:
+                continue
+            closed.append(tab_id)
+        return closed
+
     async def delete_tab(
         self,
         user_id: str,
