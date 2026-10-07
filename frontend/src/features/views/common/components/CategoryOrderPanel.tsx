@@ -71,7 +71,7 @@ export function CategoryOrderPanel({ open, onClose, ...contentProps }: CategoryO
  * The window lists at most this many values so it stays responsive; the rest
  * follow in the chosen order (Chao, 2026-10-07).
  */
-export const SHOWN_CATEGORY_VALUES = 300;
+const SHOWN_CATEGORY_VALUES = 300;
 
 const MODE_LABELS: Record<'text' | 'value', Record<'ascending' | 'descending', string>> = {
   text: { ascending: 'A to Z', descending: 'Z to A' },
@@ -417,7 +417,7 @@ function SortableValue({ label, count }: { label: string; count: number }) {
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`flex items-center gap-2 rounded-sm border border-surface-border bg-editor px-2 py-1 text-body ${
-        isDragging ? 'relative z-10 shadow-md' : ''
+        isDragging ? 'relative z-10 border-focus' : ''
       } cursor-grab touch-none focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus`}
       {...attributes}
       {...listeners}
