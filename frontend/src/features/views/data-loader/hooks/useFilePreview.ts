@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { listFileWorksheets, previewFileTable } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
+import { isWorkbookPath } from '../utils/fileTreeHelpers';
 
 /** Manages paginated file preview state for the data-loader preview dialog. */
 /**
@@ -13,6 +14,11 @@ export const useFilePreview = (
   isOpen: boolean,
   /** A table file inside the ZIP named by `filename` (issue 136). */
   member: string | null = null,
+  /**
+   * A sheet chosen elsewhere (a row of the Add window, issue 323): previews
+   * that sheet, or the first with null, and offers no Sheet menu.
+   */
+  fixedSheet?: string | null,
 ) => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -27,7 +33,9 @@ export const useFilePreview = (
   }, [isOpen, filename]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  const isExcel = !member && Boolean(filename && /\.(xlsx?|xlsb)$/i.test(filename));
+  const hasFixedSheet = fixedSheet !== undefined;
+  // Every workbook format, .xlsm and .ods included (issue 323).
+  const isExcel = !member && !hasFixedSheet && Boolean(filename && isWorkbookPath(filename));
   const worksheetsQuery = useQuery({
     queryKey: queryKeys.fileWorksheets(filename ?? ''),
     queryFn: async () => {
@@ -42,8 +50,9 @@ export const useFilePreview = (
     staleTime: 5 * 60 * 1000,
   });
 
+  const sheet = hasFixedSheet ? fixedSheet : selectedSheet;
   const { data, isLoading, isError, error } = useQuery({
-    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, selectedSheet, member),
+    queryKey: queryKeys.filePreview(filename ?? '', page, pageSize, sheet, member),
     /** Loads the current preview page only when the dialog has a filename to display. */
     /** Called by: TanStack Query inside useFilePreview. */
     queryFn: async () => {
@@ -53,7 +62,7 @@ export const useFilePreview = (
           path: filename,
           page,
           page_size: pageSize,
-          sheet_name: selectedSheet,
+          sheet_name: sheet,
           member,
         },
       });

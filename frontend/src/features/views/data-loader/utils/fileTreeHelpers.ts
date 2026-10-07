@@ -105,6 +105,30 @@ function extensionOf(name: string): string {
   return dot > 0 ? name.slice(dot).toLowerCase() : '';
 }
 
+const WORKBOOK_EXTENSIONS = new Set(['.xlsx', '.xls', '.xlsm', '.xlsb', '.ods']);
+
+/** Whether a path is a spreadsheet workbook, whose sheets can be listed (issue 323). */
+export const isWorkbookPath = (path: string) => WORKBOOK_EXTENSIONS.has(extensionOf(path));
+
+const isArchive = (file: FileTreeFile) =>
+  extensionOf(file.name) === '.zip' && !isHiddenPath(file.path);
+
+/**
+ * ZIP archives below a folder, in path order. Adding a folder never opens
+ * them (issue 323: one level only), so the Add window names them.
+ */
+export function archivesInDirectory(directory: FileTreeDirectory): FileTreeFile[] {
+  const files: FileTreeFile[] = [];
+  const visit = (nodes: FileTreeNode[]) => {
+    for (const node of nodes) {
+      if (node.type === 'directory') visit(node.children);
+      else if (isArchive(node)) files.push(node);
+    }
+  };
+  visit(directory.children);
+  return files.sort((left, right) => left.path.localeCompare(right.path));
+}
+
 /** Returns every table file below a folder, in path order, including subfolders. */
 export function tableFilesInDirectory(directory: FileTreeDirectory): FileTreeFile[] {
   const files: FileTreeFile[] = [];
@@ -120,13 +144,13 @@ export function tableFilesInDirectory(directory: FileTreeDirectory): FileTreeFil
 
 /**
  * The files a selection covers, chosen ones and those inside chosen folders,
- * split into text documents and table files, each listed once in path order
- * (issue 309). Hidden and OS files are left out, as when adding a folder.
+ * split into text documents, table files and ZIP archives, each listed once in
+ * path order (issue 309). Hidden and OS files are left out, as when adding a folder.
  */
 export function filesInSelection(
   nodes: FileTreeNode[],
   paths: readonly string[],
-): { texts: FileTreeFile[]; tables: FileTreeFile[] } {
+): { texts: FileTreeFile[]; tables: FileTreeFile[]; archives: FileTreeFile[] } {
   const chosen = new Set(paths);
   const found = new Map<string, FileTreeFile>();
   const visit = (items: FileTreeNode[], inside: boolean) => {
@@ -141,6 +165,8 @@ export function filesInSelection(
   return {
     texts: files.filter((file) => TEXT_DOCUMENT_EXTENSIONS.has(extensionOf(file.name))),
     tables: files.filter((file) => TABLE_EXTENSIONS.has(extensionOf(file.name))),
+    // ZIPs are not opened when added with other files (issue 323).
+    archives: files.filter(isArchive),
   };
 }
 

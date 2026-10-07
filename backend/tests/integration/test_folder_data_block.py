@@ -343,3 +343,122 @@ def test_selected_files_and_folders_become_one_document_data_block(
         status, error = add(["speeches/metadata.csv"])
         assert status == 400
         assert "no text files" in str(error)
+
+
+def _workbook_bytes() -> bytes:
+    import xlsxwriter
+
+    buffer = BytesIO()
+    workbook = xlsxwriter.Workbook(buffer, {"in_memory": True})
+    responses = workbook.add_worksheet("Responses")
+    responses.write_row(0, 0, ["id", "answer"])
+    responses.write_row(1, 0, [1, "Agree"])
+    codes = workbook.add_worksheet("Codes")
+    codes.write_row(0, 0, ["code"])
+    codes.write_row(1, 0, ["A"])
+    codes.write_row(2, 0, ["B"])
+    workbook.add_worksheet("Empty")
+    workbook.close()
+    return buffer.getvalue()
+
+
+def test_workbook_sheets_are_listed_and_added_one_by_one(tmp_path: Path) -> None:
+    """Issue 323: every sheet of a workbook, also inside a ZIP, is a table."""
+
+    workbook = _workbook_bytes()
+    archive = _zip_bytes(
+        {
+            "survey.xlsx": workbook,
+            "notes.csv": b"x\n1\n",
+            "inner/nested.zip": _zip_bytes({"a.csv": b"x\n1\n"}),
+        }
+    )
+    settings = Settings(
+        data_root=tmp_path,
+        multi_user=False,
+        session_cookie_secure=False,
+        cors_allowed_origins=("http://testserver",),
+        trusted_hosts=("testserver",),
+    )
+    with TestClient(
+        create_app(settings, serve_frontend=False),
+        base_url="http://testserver",
+    ) as client:
+        csrf = client.get("/api/session").json()["csrf_token"]
+        unsafe = {"Origin": "http://testserver", "X-CSRF-Token": csrf}
+        for path, content in {
+            "survey.xlsx": workbook,
+            "bundle.zip": archive,
+            "broken.xlsx": b"not a workbook",
+        }.items():
+            uploaded = client.post(
+                "/api/user-files/uploads",
+                params={"path": path},
+                content=content,
+                headers={**unsafe, "Content-Type": "application/octet-stream"},
+            )
+            assert uploaded.status_code == 201, uploaded.text
+
+        sheets = client.post(
+            "/api/user-files/workbook-sheets",
+            json={"paths": ["survey.xlsx", "broken.xlsx"]},
+            headers=unsafe,
+        )
+        assert sheets.status_code == 200, sheets.text
+        listed = sheets.json()["workbooks"]
+        assert listed[0] == {
+            "path": "survey.xlsx",
+            "sheets": ["Responses", "Codes", "Empty"],
+            "error": None,
+        }
+        assert listed[1]["sheets"] == [] and listed[1]["error"]
+
+        members = client.get("/api/user-files/zip-tables", params={"path": "bundle.zip"})
+        assert members.status_code == 200, members.text
+        assert members.json() == {
+            "members": [
+                {"path": "notes.csv", "size": 4, "sheets": None},
+                {
+                    "path": "survey.xlsx",
+                    "size": len(workbook),
+                    "sheets": ["Responses", "Codes", "Empty"],
+                },
+            ],
+            "nested_archives": ["inner/nested.zip"],
+        }
+
+        preview = client.get(
+            "/api/user-files/preview",
+            params={"path": "bundle.zip", "member": "survey.xlsx", "sheet_name": "Codes"},
+        )
+        assert preview.status_code == 200, preview.text
+        assert pl.read_ipc_stream(BytesIO(preview.content))["code"].to_list() == ["A", "B"]
+
+        workspace_id = client.post(
+            "/api/workspaces", json={"name": "Sheets"}, headers=unsafe
+        ).json()["id"]
+        assert (
+            client.put(f"/api/workspaces/{workspace_id}/open", headers=unsafe).status_code
+            == 200
+        )
+        member_sheet = client.post(
+            f"/api/workspaces/{workspace_id}/nodes",
+            json={
+                "kind": "file",
+                "file_path": "bundle.zip",
+                "zip_member": "survey.xlsx",
+                "sheet_name": "Codes",
+            },
+            headers=unsafe,
+        )
+        assert member_sheet.status_code in {200, 201}, member_sheet.text
+        assert member_sheet.json()["name"] == "survey_Codes"
+        assert member_sheet.json()["shape"] == [2, 1]
+
+        empty = client.post(
+            f"/api/workspaces/{workspace_id}/nodes",
+            json={"kind": "file", "file_path": "survey.xlsx", "sheet_name": "Empty"},
+            headers=unsafe,
+        )
+        assert empty.status_code == 400, empty.text
+        assert "The sheet is empty." in empty.text

@@ -11,9 +11,14 @@ export function useZipTableMembers(zipPath: string | null) {
         query: { path: zipPath ?? '' },
         throwOnError: true,
       });
-      return data.members;
+      return data;
     },
     enabled: Boolean(zipPath),
   });
-  return { members: query.data ?? [], loading: query.isLoading };
+  return {
+    members: query.data?.members ?? [],
+    // ZIPs inside, which are not opened (issue 323).
+    nestedArchives: query.data?.nested_archives ?? [],
+    loading: query.isLoading,
+  };
 }

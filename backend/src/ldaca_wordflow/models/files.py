@@ -44,12 +44,37 @@ class ZipTableMember(_StrictModel):
 
     path: str
     size: int = Field(ge=0)
+    # A workbook's sheet names (issue 323); None for other tables, or when the
+    # workbook can't be read (it then loads its first sheet as before).
+    sheets: list[str] | None = None
 
 
 class ZipTableMembersResource(_StrictModel):
     """Table files inside one ZIP, each loadable as its own Data Block."""
 
     members: list[ZipTableMember]
+    # ZIPs inside this ZIP: not opened (issue 323), listed so users know.
+    nested_archives: list[str] = Field(default_factory=list)
+
+
+class WorkbookSheetsRequest(_StrictModel):
+    """Workbooks whose sheet names a folder or selection Add window lists."""
+
+    paths: list[str] = Field(min_length=1, max_length=1_000)
+
+
+class WorkbookSheets(_StrictModel):
+    """One workbook's sheet names, or why they couldn't be read."""
+
+    path: str
+    sheets: list[str]
+    error: str | None = None
+
+
+class WorkbookSheetsResource(_StrictModel):
+    """Sheet names of several workbooks, in request order (issue 323)."""
+
+    workbooks: list[WorkbookSheets]
 
 
 class CreateFolderRequest(_StrictModel):

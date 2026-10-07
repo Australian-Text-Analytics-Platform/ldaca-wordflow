@@ -142,20 +142,23 @@ how to load it:
 
 - **Tables as separate Data Blocks** lists every table file in the folder and
   its subfolders, or inside the ZIP (CSV, TSV, JSON/JSONL, Parquet, Avro,
-  Arrow/IPC, and spreadsheets, which use their first sheet). Tick the files
-  you want, or use **Select all** or **Select none**, and select a file name to
-  preview it. Each ticked file becomes its own Data Block named after the file
-  (a spreadsheet in a folder also adds its sheet name). No file is ticked at
-  first, and the button shows how many Data Blocks will be added.
+  Arrow/IPC, and spreadsheets). A spreadsheet with several sheets is listed
+  once per sheet, such as _survey.xlsx › Responses_ and _survey.xlsx › Codes_.
+  Tick the tables you want, or use **Select all** or **Select none**, and click
+  a name to preview it; the preview's heading says which table it shows. Each
+  ticked table becomes its own Data Block named after the file (and the sheet,
+  for a spreadsheet). No table is ticked at first, and the button shows how
+  many Data Blocks will be added. An empty sheet can't be added: Wordflow
+  says so after adding the others.
 
   ![Add Folder dialog in Tables mode, with one of two table files ticked](tutorials/assets/data_loader/folder_add_tables.png)
 
 A Parquet file can mark a category column as ordered, for example one saved by pandas. Wordflow can't read that order, so the column's values are listed A to Z and a message names the column. Click the column's type in the Data Editor and choose **Category** to set the order.
 
 
-A ZIP inside a folder, or inside another ZIP, is never opened: it is skipped
-(and listed as skipped in Texts mode). Add the ZIP on its own to load its
-contents.
+A ZIP inside a folder, or inside another ZIP, is never opened: the window
+names it, and it is listed as skipped in Texts mode. Add the ZIP on its own to
+load its contents.
 
 To use a metadata table that sits beside the texts, add the texts in Texts
 mode and the CSV in Tables mode (from the same folder or ZIP), then join them
@@ -215,9 +218,11 @@ click the refresh button in the top-right corner of the panel.
 Once a file is uploaded or imported, its row offers the following actions:
 
 - **Preview** the file contents before adding it to the Project.
-- **Add** opens the add panel, where you can check the preview (and choose a
-  sheet for a spreadsheet) and click **Add to Project** to load the file as a
-  Data Block in the active Project. A Project must be open first.
+- **Add** opens the add panel, where you can check the preview and click
+  **Add to Project** to load the file as a Data Block in the active Project. A
+  Project must be open first. A spreadsheet with several sheets opens a list
+  of its sheets instead: tick the sheets to add, click a sheet to preview it,
+  and each ticked sheet becomes its own Data Block.
 
   ![Add File dialog with a preview of the first rows](tutorials/assets/data_loader/add_file_dialog.png)
 
@@ -253,7 +258,7 @@ With items selected, the bar at the top shows how many are selected and offers:
 
 
 - **Move to…**: move the whole selection into a folder or the top level. You can also drag any selected row to move them all.
-- **Add**: add the selection to the open Project. As when adding a folder, choose **Texts as one Data Block** to make every selected text file, and the text files in any selected folder, one row of one Data Block, or **Tables as separate Data Blocks** to add the selected table files one Data Block each. Rows record each file's path from the folder that holds the whole selection. To leave a few files out of a folder, tick **Select all in** the folder, untick those files, then choose **Add**.
+- **Add**: add the selection to the open Project. As when adding a folder, choose **Texts as one Data Block** to make every selected text file, and the text files in any selected folder, one row of one Data Block, or **Tables as separate Data Blocks** to add the selected table files one Data Block each (each sheet of a spreadsheet with several sheets is its own table). Rows record each file's path from the folder that holds the whole selection. To leave a few files out of a folder, tick **Select all in** the folder, untick those files, then choose **Add**.
 - **Download**: download the selection as one ZIP. Folders keep their structure, and paths start from the folder that contains the selection, so selecting `speeches` and `one.csv` gives `speeches/…` and `one.csv`.
 - **Delete**: delete the selection after a confirmation that counts the files and folders affected. Folders are deleted with everything inside them, and deletion cannot be undone.
 - **Clear**: deselect everything (or press Esc).

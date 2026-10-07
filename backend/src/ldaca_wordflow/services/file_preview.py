@@ -7,7 +7,6 @@ from functools import partial
 from pathlib import Path
 
 import anyio
-import fastexcel
 import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
@@ -19,10 +18,12 @@ from ..infrastructure.storage.data_loading import (
     extract_zip_table_member,
     zip_table_members,
     load_data_file_preview,
-    validate_spreadsheet_container,
+    workbook_sheet_names,
 )
 from ..models.files import (
     FileWorksheetsResource,
+    WorkbookSheets,
+    WorkbookSheetsResource,
     ZipTableMember,
     ZipTableMembersResource,
 )
@@ -74,7 +75,8 @@ class FileReadService:
             user_id, relative_path, allow_directory=True
         ) as path:
             if member is not None:
-                # A table member of a ZIP, extracted within the preview limit.
+                # A table member of a ZIP, extracted within the preview limit;
+                # a workbook member previews the chosen sheet (issue 323).
                 return await self._run_sync(
                     _materialize_zip_member_page,
                     path,
@@ -82,6 +84,7 @@ class FileReadService:
                     page,
                     page_size,
                     self._max_expanded_bytes,
+                    sheet_name,
                 )
             return await self._run_sync(
                 _materialize_file_page,
@@ -99,12 +102,38 @@ class FileReadService:
             if detect_file_type(path.name) != "zip":
                 raise InvalidInputError("File is not a ZIP archive")
             try:
-                members = await self._run_sync(zip_table_members, path)
+                listing = await self._run_sync(
+                    zip_table_members,
+                    path,
+                    max_workbook_bytes=self._max_expanded_bytes,
+                )
             except ValueError as exc:
                 raise InvalidInputError("ZIP archive could not be read") from exc
         return ZipTableMembersResource(
-            members=[ZipTableMember(path=name, size=size) for name, size in members]
+            members=[
+                ZipTableMember(path=name, size=size, sheets=sheets)
+                for name, size, sheets in listing.members
+            ],
+            nested_archives=listing.nested_archives,
         )
+
+    async def workbook_sheets(
+        self, user_id: str, relative_paths: list[str]
+    ) -> WorkbookSheetsResource:
+        """Sheet names of several workbooks (issue 323); one unreadable
+        workbook reports its error instead of failing the list."""
+
+        workbooks: list[WorkbookSheets] = []
+        for relative_path in relative_paths:
+            try:
+                async with self._file_store.read_path(user_id, relative_path) as path:
+                    sheets = await self._run_sync(_excel_worksheets, path)
+                workbooks.append(WorkbookSheets(path=relative_path, sheets=sheets))
+            except InvalidInputError as exc:
+                workbooks.append(
+                    WorkbookSheets(path=relative_path, sheets=[], error=str(exc))
+                )
+        return WorkbookSheetsResource(workbooks=workbooks)
 
     async def schema(
         self,
@@ -220,6 +249,7 @@ def _materialize_zip_member_page(
     page: int,
     page_size: int,
     max_bytes: int,
+    sheet_name: str | None = None,
 ) -> IpcTablePage:
     with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
         try:
@@ -230,7 +260,7 @@ def _materialize_zip_member_page(
             raise ResourceTooLargeError("ZIP member is too large to preview") from exc
         except ValueError as exc:
             raise InvalidInputError("ZIP member could not be read") from exc
-        return _materialize_file_page(extracted, page, page_size, None)
+        return _materialize_file_page(extracted, page, page_size, sheet_name)
 
 
 def _file_schema(
@@ -251,9 +281,8 @@ def _excel_worksheets(path: Path) -> list[str]:
     if detect_file_type(path.name) != "excel":
         raise InvalidInputError("File is not an Excel workbook")
     try:
-        validate_spreadsheet_container(path)
-        sheets = [str(name) for name in fastexcel.read_excel(path).sheet_names]
-    except (OSError, ValueError, fastexcel.FastExcelError) as exc:
+        sheets = workbook_sheet_names(path)
+    except (OSError, ValueError) as exc:
         raise InvalidInputError("Excel workbook could not be read") from exc
     if not sheets:
         raise InvalidInputError("Excel workbook contains no sheets")

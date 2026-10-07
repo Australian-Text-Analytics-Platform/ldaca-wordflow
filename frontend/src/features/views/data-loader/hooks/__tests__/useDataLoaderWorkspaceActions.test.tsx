@@ -63,11 +63,21 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     );
 
     await act(async () => {
-      await result.current.handleAddFilesToWorkspace(['a.csv', 'b.csv', 'c.parquet']);
+      await result.current.handleAddFilesToWorkspace([
+        { id: 'a.csv', label: 'a.csv', path: 'a.csv' },
+        { id: 'w\u0000Empty', label: 'w.xlsx › Empty', path: 'w.xlsx', sheet: 'Empty' },
+        { id: 'c.parquet', label: 'c.parquet', path: 'c.parquet' },
+      ]);
     });
 
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('w.xlsx', 'Empty');
     expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
-    expect(notify).toHaveBeenCalledWith('error', '1 file could not be added.', 'b.csv');
+    // The reason is given, such as an empty sheet (issue 323).
+    expect(notify).toHaveBeenCalledWith(
+      'error',
+      '1 table could not be added.',
+      'w.xlsx › Empty: bad file',
+    );
   });
 
   it('adds ZIP table members through their archive', async () => {
@@ -85,10 +95,17 @@ describe('useDataLoaderWorkspaceActions add file', () => {
     );
 
     await act(async () => {
-      await result.current.handleAddFilesToWorkspace(['tables/a.csv'], 'bundle.zip');
+      await result.current.handleAddFilesToWorkspace(
+        [
+          { id: 'tables/a.csv', label: 'tables/a.csv', path: 'tables/a.csv' },
+          { id: 's', label: 'book.ods › Two', path: 'book.ods', sheet: 'Two' },
+        ],
+        'bundle.zip',
+      );
     });
 
     expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', undefined, 'tables/a.csv');
-    expect(notify).toHaveBeenCalledWith('success', '1 Data Block added to Project.');
+    expect(mocks.createNodeFromFile).toHaveBeenCalledWith('bundle.zip', 'Two', 'book.ods');
+    expect(notify).toHaveBeenCalledWith('success', '2 Data Blocks added to Project.');
   });
 });

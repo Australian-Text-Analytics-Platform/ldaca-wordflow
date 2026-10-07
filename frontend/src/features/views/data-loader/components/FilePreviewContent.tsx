@@ -42,6 +42,10 @@ interface FilePreviewContentProps {
   footer: React.ReactNode;
   /** Leaves out the preview table, for a selection that lists its files instead. */
   hidePreview?: boolean;
+  /** What the preview shows, named after its heading (issue 323). */
+  previewLabel?: string;
+  /** A line under the preview heading, such as how to choose what it shows. */
+  previewHint?: string;
 }
 
 /**
@@ -67,6 +71,8 @@ export function FilePreviewContent({
   headerSlot,
   footer,
   hidePreview = false,
+  previewLabel,
+  previewHint,
 }: FilePreviewContentProps) {
   const isOpen = open && Boolean(filename);
   const {
@@ -133,9 +139,14 @@ export function FilePreviewContent({
               </div>
             )}
             <div hidden={hidePreview}>
-              <label className="mb-2 block text-body font-medium text-foreground">
-                Preview (first rows)
-              </label>
+              <div className="mb-2">
+                <p className="truncate text-body font-medium text-foreground">
+                  {previewLabel ? `Preview: ${previewLabel}` : 'Preview (first rows)'}
+                </p>
+                {previewHint ? (
+                  <p className="text-label-secondary text-description">{previewHint}</p>
+                ) : null}
+              </div>
               <div className="max-h-60 w-full min-w-0 max-w-full overflow-x-auto overflow-y-auto rounded-sm border border-surface-border">
                 {loading ? (
                   <div className="p-4 text-body text-description">Loading…</div>

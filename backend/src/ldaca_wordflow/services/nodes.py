@@ -183,6 +183,7 @@ class NodeService:
                         source_path,
                         request.zip_member,
                         self._max_storage_bytes,
+                        request.sheet_name,
                     )
                     skipped: list[dict[str, str | int]] = []
                 else:
@@ -213,8 +214,9 @@ class NodeService:
             ):
                 sheet_name = await self._run_io(_first_sheet_name, source_path)
         default_name = _node_name_from_path(request.zip_member or request.file_path)
-        if sheet_name and request.zip_member is None:
-            # Two sheets of one workbook get distinct names (issue 181).
+        if sheet_name:
+            # Two sheets of one workbook get distinct names (issue 181), also
+            # for a workbook inside a ZIP when a sheet is chosen (issue 323).
             safe_sheet = sheet_name.replace("/", "-").replace("\\", "-")
             default_name = f"{default_name}_{safe_sheet}"
         return await self._add_source_node(
@@ -801,9 +803,10 @@ def _load_selected_documents(
 
 
 def _load_zip_member_dataframe(
-    zip_path: Path, member: str, max_member_bytes: int
+    zip_path: Path, member: str, max_member_bytes: int, sheet_name: str | None = None
 ) -> tuple[pl.DataFrame, list[dict[str, str]]]:
-    """Load one table member of a ZIP (first sheet for spreadsheets)."""
+    """Load one table member of a ZIP (the chosen sheet of a workbook, else
+    its first)."""
 
     with tempfile.TemporaryDirectory(prefix="wordflow-zip-member-") as scratch:
         try:
@@ -814,7 +817,7 @@ def _load_zip_member_dataframe(
             raise ResourceTooLargeError("That file in the ZIP is too large to add as a Data Block") from exc
         except ValueError as exc:
             raise DataFileLoadError("ZIP member could not be loaded") from exc
-        data = materialize_data_file(extracted)
+        data = materialize_data_file(extracted, sheet_name=sheet_name)
     return normalize_dtypes(data)
 
 

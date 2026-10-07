@@ -60,6 +60,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/user-files/preview", "preview_file"),
     ("GET", "/api/user-files/preview/schema", "preview_file_schema"),
     ("GET", "/api/user-files/worksheets", "list_file_worksheets"),
+    ("POST", "/api/user-files/workbook-sheets", "list_workbook_sheets"),
     ("GET", "/api/user-files/zip-tables", "list_zip_table_members"),
     ("GET", "/api/user-files/raw", "get_raw_file"),
     ("POST", "/api/user-files/archives", "prepare_file_archive"),

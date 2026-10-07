@@ -9,7 +9,7 @@ interface AddFilePanelProps {
   filename: string | null;
   open: boolean;
   onClose: () => void;
-  onConfirm: (selectedSheet?: string | null) => Promise<void> | void;
+  onConfirm: () => Promise<void> | void;
 }
 
 /**
@@ -26,9 +26,10 @@ export function AddFilePanel({ filename, open, onClose, onConfirm }: AddFilePane
 }
 
 /**
- * File-add dialog body. Shows preview rows and optional Excel sheet selection
- * before delegating the actual add operation back to the data-loader feature
- * via FilePreviewContent.
+ * File-add dialog body. Shows preview rows before delegating the actual add
+ * operation back to the data-loader feature via FilePreviewContent. A
+ * workbook with several sheets opens the Add window with one row per sheet
+ * instead (issue 323), so this window shows no Sheet menu.
  */
 function AddFilePanelBody({
   filename,
@@ -44,14 +45,14 @@ function AddFilePanelBody({
     sheetNames,
     selectedSheet,
     setSelectedSheet,
-  } = useFilePreview(filename, true);
+  } = useFilePreview(filename, true, null, null);
 
   const [submitting, setSubmitting] = useState(false);
 
   const handleConfirm = async () => {
     try {
       setSubmitting(true);
-      await onConfirm(selectedSheet);
+      await onConfirm();
       onClose();
     } finally {
       setSubmitting(false);
@@ -103,7 +104,7 @@ function AddFilePanelBody({
         setSelectedSheet,
       }}
       title={`Add File: ${filename}`}
-      description="Files are added as Data Blocks automatically. Choose an optional sheet, inspect the preview, and confirm before adding it to the Project."
+      description="Check the preview, then add the file to the Project as a Data Block."
       footer={footer}
     />
   );

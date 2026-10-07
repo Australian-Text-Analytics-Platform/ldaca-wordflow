@@ -6,39 +6,44 @@ import { CardFooter } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useFilePreview } from '../hooks/useFilePreview';
+import type { BatchTableFile } from '../utils/batchTables';
 import { FilePreviewContent } from './FilePreviewContent';
 
 type BatchMode = 'texts' | 'tables';
 
 /**
- * A folder, or a ZIP archive, whose files load together (issue 136), or a
+ * A folder, or a ZIP archive, whose files load together (issue 136), a
  * file-tree selection (issue 309), whose `path` is the folder holding it all
- * ('' for the top level) and `paths` the chosen files and folders.
+ * ('' for the top level) and `paths` the chosen files and folders, or a
+ * workbook with several sheets (issue 323).
  */
 export interface BatchSource {
   path: string;
-  kind: 'folder' | 'zip' | 'selection';
+  kind: 'folder' | 'zip' | 'selection' | 'workbook';
   paths?: string[];
 }
 
-/** One table file: a user-file path (folder) or a member path (ZIP). */
-interface BatchTableFile {
+/** One text file of a selection. */
+interface BatchTextFile {
   id: string;
   label: string;
 }
 
 interface AddBatchPanelProps {
   source: BatchSource | null;
-  /** Table files in the folder or ZIP, in path order. */
+  /** Tables in the folder, selection, ZIP or workbook, in path order; a
+   * workbook with several sheets gives one per sheet (issue 323). */
   tableFiles: BatchTableFile[];
   /** A selection's text files, listed in Texts mode (issue 309). */
-  textFiles?: BatchTableFile[];
+  textFiles?: BatchTextFile[];
+  /** ZIPs inside, which are not opened (issue 323). */
+  skippedArchives?: string[];
   tablesLoading?: boolean;
   onClose: () => void;
   /** Texts mode: all text files become one document Data Block. */
   onConfirmTexts: () => Promise<void> | void;
-  /** Tables mode: each selected table file becomes its own Data Block. */
-  onConfirmTables: (ids: string[]) => Promise<void> | void;
+  /** Tables mode: each selected table becomes its own Data Block. */
+  onConfirmTables: (files: BatchTableFile[]) => Promise<void> | void;
 }
 
 const TEXTS_DESCRIPTION = {
@@ -47,9 +52,13 @@ const TEXTS_DESCRIPTION = {
   zip: 'Every .txt, .text, .md, .rst and .log file in this ZIP becomes one row of one Data Block. Other files, including nested ZIP archives, are skipped and listed after adding.',
   selection:
     'Every .txt, .text, .md, .rst and .log file you selected, and in any folder you selected, becomes one row of one Data Block. Other files are skipped and listed after adding.',
+  workbook: '',
 };
 const TABLES_DESCRIPTION =
-  'Each selected table file becomes its own Data Block, named after the file. Select a file name to preview it.';
+  'Each ticked table becomes its own Data Block, named after the file, and after the sheet for a workbook with several sheets.';
+const WORKBOOK_DESCRIPTION =
+  'Each ticked sheet becomes its own Data Block, named after the file and the sheet.';
+const PREVIEW_HINT = 'Click a table in the list to preview it.';
 
 /**
  * Add dialog for a folder or a ZIP archive, with two modes (issue 136): all
@@ -65,27 +74,43 @@ function AddBatchPanelBody({
   source,
   tableFiles,
   textFiles,
+  skippedArchives = [],
   tablesLoading = false,
   onClose,
   onConfirmTexts,
   onConfirmTables,
 }: AddBatchPanelProps & { source: BatchSource }) {
   const isSelection = source.kind === 'selection';
-  const textCount = textFiles?.length ?? null;
+  const isWorkbook = source.kind === 'workbook';
+  const textCount = isWorkbook ? 0 : (textFiles?.length ?? null);
   const [mode, setMode] = useState<BatchMode>(() =>
-    isSelection && textCount === 0 && tableFiles.length > 0 ? 'tables' : 'texts',
+    isWorkbook || (isSelection && textCount === 0 && tableFiles.length > 0) ? 'tables' : 'texts',
   );
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [chosenPreview, setChosenPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const isZip = source.kind === 'zip';
-  const previewId = chosenPreview ?? tableFiles[0]?.id ?? null;
-  // A ZIP member previews through its archive; a folder file previews itself.
-  // A selection lists its text files instead of a preview.
-  const previewPath =
-    mode === 'texts' ? (isSelection ? null : source.path) : isZip ? source.path : previewId;
-  const previewMember = mode === 'tables' && isZip ? previewId : null;
-  const preview = useFilePreview(previewPath, true, previewMember);
+  const previewTable =
+    tableFiles.find((file) => file.id === chosenPreview) ?? tableFiles[0] ?? null;
+  const previewId = previewTable?.id ?? null;
+  // A ZIP member previews through its archive; a folder file previews itself,
+  // at the row's sheet for a workbook (issue 323). A selection lists its text
+  // files instead of a preview.
+  const tablesMode = mode === 'tables';
+  const previewPath = !tablesMode
+    ? isSelection
+      ? null
+      : source.path
+    : isZip
+      ? source.path
+      : (previewTable?.path ?? null);
+  const previewMember = tablesMode && isZip ? (previewTable?.path ?? null) : null;
+  const preview = useFilePreview(
+    previewPath,
+    true,
+    previewMember,
+    tablesMode ? (previewTable?.sheet ?? null) : undefined,
+  );
 
   const toggle = (id: string, checked: boolean) => {
     setSelected((current) => {
@@ -102,9 +127,7 @@ function AddBatchPanelBody({
       if (mode === 'texts') {
         await onConfirmTexts();
       } else {
-        await onConfirmTables(
-          tableFiles.filter((file) => selected.has(file.id)).map((file) => file.id),
-        );
+        await onConfirmTables(tableFiles.filter((file) => selected.has(file.id)));
       }
       onClose();
     } finally {
@@ -112,7 +135,17 @@ function AddBatchPanelBody({
     }
   };
 
-  const modeSwitch = (
+  const archivesNote =
+    skippedArchives.length > 0 ? (
+      <p role="note" className="text-body text-description">
+        {skippedArchives.length === 1
+          ? `1 ZIP archive inside is not opened: ${skippedArchives[0] ?? ''}.`
+          : `${String(skippedArchives.length)} ZIP archives inside are not opened: ${skippedArchives.join(', ')}.`}{' '}
+        Add each ZIP on its own.
+      </p>
+    ) : null;
+
+  const modeSwitch = isWorkbook ? null : (
     <div className="flex flex-wrap items-center gap-1">
       <Tabs
         value={mode}
@@ -268,14 +301,25 @@ function AddBatchPanelBody({
       title={
         isZip
           ? `Add ZIP: ${source.path}`
-          : isSelection
-            ? `Add selection${source.path ? ` from ${source.path}` : ''}`
-            : `Add Folder: ${source.path}`
+          : isWorkbook
+            ? `Add Workbook: ${source.path}`
+            : isSelection
+              ? `Add selection${source.path ? ` from ${source.path}` : ''}`
+              : `Add Folder: ${source.path}`
       }
-      description={mode === 'texts' ? TEXTS_DESCRIPTION[source.kind] : TABLES_DESCRIPTION}
+      description={
+        isWorkbook
+          ? WORKBOOK_DESCRIPTION
+          : mode === 'texts'
+            ? TEXTS_DESCRIPTION[source.kind]
+            : TABLES_DESCRIPTION
+      }
+      previewLabel={tablesMode ? previewTable?.label : undefined}
+      previewHint={tablesMode && tableFiles.length > 1 ? PREVIEW_HINT : undefined}
       headerSlot={
         <div className="space-y-3">
           {modeSwitch}
+          {archivesNote}
           {textList}
           {tablePicker}
         </div>

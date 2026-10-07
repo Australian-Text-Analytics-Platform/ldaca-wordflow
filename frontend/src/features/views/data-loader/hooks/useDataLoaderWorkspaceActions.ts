@@ -5,7 +5,9 @@ import { importWorkspaceArchive } from '@/api';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { describeSkippedFiles } from '@/features/workspace/common/skippedFiles';
 import { getInvalidWorkspaceNameMessage } from '@/features/workspace/common/workspaceName';
+import { presentError } from '@/lib/errorPresentation';
 import { queryKeys } from '@/lib/queryKeys';
+import type { BatchTableFile } from '../utils/batchTables';
 
 type Notify = (
   type: 'success' | 'error' | 'info',
@@ -278,29 +280,31 @@ export function useDataLoaderWorkspaceActions({
   };
 
   /**
-   * Adds several table files as one Data Block each (a folder's Tables mode),
-   * reporting one summary instead of a toast per file.
+   * Adds several tables as one Data Block each (a folder's Tables mode, or the
+   * sheets of a workbook, issue 323), reporting one summary instead of a
+   * toast per table.
    */
-  const handleAddFilesToWorkspace = async (paths: string[], zipPath?: string) => {
+  const handleAddFilesToWorkspace = async (files: BatchTableFile[], zipPath?: string) => {
     const failed: string[] = [];
-    for (const path of paths) {
+    for (const file of files) {
       try {
         // With `zipPath`, each path is a table member inside that ZIP.
-        if (zipPath) await workspaceActions.createNodeFromFile(zipPath, undefined, path);
-        else await workspaceActions.createNodeFromFile(path);
-      } catch {
-        failed.push(path);
+        if (zipPath) await workspaceActions.createNodeFromFile(zipPath, file.sheet, file.path);
+        else await workspaceActions.createNodeFromFile(file.path, file.sheet);
+      } catch (error) {
+        // Say why, such as "The sheet is empty." (issue 323).
+        failed.push(`${file.label}: ${presentError(error, "Couldn't add it.").message}`);
       }
     }
-    const added = paths.length - failed.length;
+    const added = files.length - failed.length;
     if (added > 0) {
       notify('success', `${String(added)} Data Block${added === 1 ? '' : 's'} added to Project.`);
     }
     if (failed.length > 0) {
       notify(
         'error',
-        `${String(failed.length)} file${failed.length === 1 ? '' : 's'} could not be added.`,
-        failed.join(', '),
+        `${String(failed.length)} table${failed.length === 1 ? '' : 's'} could not be added.`,
+        failed.join('\n'),
       );
     }
   };

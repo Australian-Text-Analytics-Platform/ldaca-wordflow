@@ -19,6 +19,8 @@ const tree: FileTreeNode[] = [
         children: [
           { type: 'file', name: 'a.xlsx', path: 'reddit/2020/a.xlsx', size: 1 },
           { type: 'file', name: 'notes.txt', path: 'reddit/2020/notes.txt', size: 1 },
+          { type: 'file', name: 'old.zip', path: 'reddit/2020/old.zip', size: 1 },
+          { type: 'file', name: '._old.zip', path: 'reddit/2020/._old.zip', size: 1 },
         ],
       },
     ],
@@ -68,6 +70,22 @@ describe('Add selected (issue 309)', () => {
       'reddit/README.md',
     ]);
     expect(picked.tables.map((file) => file.path)).toEqual(['reddit/2020/a.xlsx']);
+    // ZIPs are named, not opened (issue 323); hidden ones are left out.
+    expect(picked.archives.map((file) => file.path)).toEqual(['reddit/2020/old.zip']);
+  });
+
+  it('finds ZIPs in subfolders and knows workbook formats (issue 323)', async () => {
+    const { archivesInDirectory, isWorkbookPath } = await import('../fileTreeHelpers');
+    const folder = findDirectory(tree, 'reddit');
+    expect(archivesInDirectory(folder!).map((file) => file.path)).toEqual(['reddit/2020/old.zip']);
+    expect(['a.xlsx', 'b.XLS', 'c.xlsm', 'd.xlsb', 'e.ods', 'f.csv'].map(isWorkbookPath)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+    ]);
   });
 
   it('names the folder that contains the whole selection', async () => {

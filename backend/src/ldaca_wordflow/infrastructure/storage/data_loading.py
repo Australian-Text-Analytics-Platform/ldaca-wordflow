@@ -6,6 +6,7 @@ File preview instead preserves raw CSV/TSV lexemes as strings; JSON-family
 previews use the same full-file inference as source creation.
 """
 
+import io
 import os
 import stat
 import unicodedata
@@ -180,6 +181,8 @@ def describe_load_failure(exc: BaseException, filename: str = "") -> str:
         )
     if any(issubclass(kind, zipfile.BadZipFile) for kind in kinds):
         return "The ZIP file is damaged or incomplete. Create it again and upload it."
+    if "empty excel sheet" in text:
+        return "The sheet is empty."
     if any(issubclass(kind, pl.exceptions.NoDataError) for kind in kinds) or "empty" in text:
         return "The file is empty."
     if file_type == "excel" or any(issubclass(kind, fastexcel.FastExcelError) for kind in kinds):
@@ -490,24 +493,88 @@ def is_table_path(name: str) -> bool:
     return PurePosixPath(name).suffix.lower() in TABLE_EXTENSIONS
 
 
-def zip_table_members(file_path: Path) -> list[tuple[str, int]]:
-    """List ``(member path, size)`` for every table file inside a ZIP.
+@dataclass(frozen=True)
+class ZipTableListing:
+    """The table files inside a ZIP, and the ZIPs inside it that were not opened."""
 
-    Nested ZIPs are not opened; hidden and OS metadata members are ignored.
+    # (member path, size, sheet names for a workbook, else None)
+    members: list[tuple[str, int, list[str] | None]]
+    nested_archives: list[str]
+
+
+def zip_table_members(file_path: Path, *, max_workbook_bytes: int) -> ZipTableListing:
+    """List every table file inside a ZIP, with the sheet names of workbooks.
+
+    Nested ZIPs are not opened (issue 323: one level only, for cost) but are
+    listed so the window can say they were skipped; hidden and OS metadata
+    members are ignored. A workbook's sheet names come from reading the member
+    into memory (bounded by ``max_workbook_bytes``); no sheet is loaded.
     """
 
     try:
         with zipfile.ZipFile(file_path) as archive:
             members = _validate_zip_members(archive, label="ZIP archive")
+            visible = [
+                member
+                for member in members
+                if not member.is_dir()
+                and not _is_skipped_document_path(PurePosixPath(member.filename))
+            ]
+            tables = []
+            for member in sorted(visible, key=lambda item: item.filename):
+                if not is_table_path(member.filename):
+                    continue
+                sheets = None
+                if detect_file_type(member.filename) == "excel":
+                    sheets = _member_sheet_names(archive, member, max_workbook_bytes)
+                tables.append((member.filename, member.file_size, sheets))
+            nested = sorted(
+                member.filename
+                for member in visible
+                if detect_file_type(member.filename) == "zip"
+            )
     except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
         raise ValueError("ZIP archive is invalid") from exc
-    return sorted(
-        (member.filename, member.file_size)
-        for member in members
-        if not member.is_dir()
-        and not _is_skipped_document_path(PurePosixPath(member.filename))
-        and is_table_path(member.filename)
-    )
+    return ZipTableListing(members=tables, nested_archives=nested)
+
+
+def _member_sheet_names(
+    archive: zipfile.ZipFile, member: zipfile.ZipInfo, max_bytes: int
+) -> list[str] | None:
+    """Sheet names of a workbook inside a ZIP, or None when it can't be read."""
+
+    if member.file_size > max_bytes:
+        return None
+    try:
+        with archive.open(member) as source:
+            content = source.read(max_bytes + 1)
+        if len(content) > max_bytes:
+            return None
+        return workbook_sheet_names(content, PurePosixPath(member.filename).suffix)
+    except (OSError, ValueError, zipfile.BadZipFile, fastexcel.FastExcelError):
+        return None
+
+
+def workbook_sheet_names(source: Path | bytes, suffix: str | None = None) -> list[str]:
+    """The sheet names of a workbook, without loading any sheet.
+
+    ``source`` is a file, or a workbook's bytes with its ``suffix``. Raises
+    ValueError when the workbook can't be read.
+    """
+
+    extension = (source.suffix if isinstance(source, Path) else suffix or "").lower()
+    if extension != ".xls":
+        # Bound the workbook's own ZIP container before parsing it.
+        try:
+            container = source if isinstance(source, Path) else io.BytesIO(source)
+            with zipfile.ZipFile(container) as workbook:
+                _validate_zip_members(workbook, label="Spreadsheet")
+        except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile) as exc:
+            raise ValueError("Spreadsheet container is invalid") from exc
+    try:
+        return [str(name) for name in fastexcel.read_excel(source).sheet_names]
+    except fastexcel.FastExcelError as exc:
+        raise ValueError("Excel workbook could not be read") from exc
 
 
 def extract_zip_table_member(

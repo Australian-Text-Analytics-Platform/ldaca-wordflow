@@ -5921,6 +5921,50 @@ export type ValidAnalysisIntegrity = {
 };
 
 /**
+ * WorkbookSheets
+ *
+ * One workbook's sheet names, or why they couldn't be read.
+ */
+export type WorkbookSheets = {
+    /**
+     * Error
+     */
+    error?: string | null;
+    /**
+     * Path
+     */
+    path: string;
+    /**
+     * Sheets
+     */
+    sheets: Array<string>;
+};
+
+/**
+ * WorkbookSheetsRequest
+ *
+ * Workbooks whose sheet names a folder or selection Add window lists.
+ */
+export type WorkbookSheetsRequest = {
+    /**
+     * Paths
+     */
+    paths: Array<string>;
+};
+
+/**
+ * WorkbookSheetsResource
+ *
+ * Sheet names of several workbooks, in request order (issue 323).
+ */
+export type WorkbookSheetsResource = {
+    /**
+     * Workbooks
+     */
+    workbooks: Array<WorkbookSheets>;
+};
+
+/**
  * WorkspaceCreateRequest
  *
  * Create one workspace resource.
@@ -6146,6 +6190,10 @@ export type ZipTableMember = {
      */
     path: string;
     /**
+     * Sheets
+     */
+    sheets?: Array<string> | null;
+    /**
      * Size
      */
     size: number;
@@ -6161,6 +6209,10 @@ export type ZipTableMembersResource = {
      * Members
      */
     members: Array<ZipTableMember>;
+    /**
+     * Nested Archives
+     */
+    nested_archives?: Array<string>;
 };
 
 /**
@@ -8342,6 +8394,43 @@ export type UploadFileResponses = {
 };
 
 export type UploadFileResponse = UploadFileResponses[keyof UploadFileResponses];
+
+export type ListWorkbookSheetsData = {
+    body: WorkbookSheetsRequest;
+    path?: never;
+    query?: never;
+    url: '/api/user-files/workbook-sheets';
+};
+
+export type ListWorkbookSheetsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ListWorkbookSheetsError = ListWorkbookSheetsErrors[keyof ListWorkbookSheetsErrors];
+
+export type ListWorkbookSheetsResponses = {
+    /**
+     * Successful Response
+     */
+    200: WorkbookSheetsResource;
+};
+
+export type ListWorkbookSheetsResponse = ListWorkbookSheetsResponses[keyof ListWorkbookSheetsResponses];
 
 export type ListFileWorksheetsData = {
     body?: never;

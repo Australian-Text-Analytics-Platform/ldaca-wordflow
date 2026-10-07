@@ -259,6 +259,9 @@ export const queryKeys = {
       { page, pageSize, sheet: selectedSheet, member },
     ] as const,
 
+  /** Sheet names of the workbooks a folder or selection Add window lists. */
+  workbookSheets: (paths: readonly string[]) => ['files', 'workbook-sheets', [...paths]] as const,
+
   /** Table files inside one ZIP archive. */
   zipTableMembers: (filename: string) => [...queryKeys.file(filename), 'zip-tables'] as const,
 

@@ -236,7 +236,7 @@ def test_excel_preview_returns_sheet_names_for_selector(files_test_client, tmp_p
             return FakeReader()
 
     with (
-        patch("ldaca_wordflow.services.file_preview.fastexcel", FakeFastExcel),
+        patch("ldaca_wordflow.infrastructure.storage.data_loading.fastexcel", FakeFastExcel),
         patch(
             "ldaca_wordflow.services.file_preview.pl.read_excel",
             side_effect=fake_read_excel,

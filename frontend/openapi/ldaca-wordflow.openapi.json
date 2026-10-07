@@ -11528,6 +11528,78 @@
         "title": "ValidAnalysisIntegrity",
         "type": "object"
       },
+      "WorkbookSheets": {
+        "additionalProperties": false,
+        "description": "One workbook's sheet names, or why they couldn't be read.",
+        "properties": {
+          "error": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "sheets": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sheets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "sheets"
+        ],
+        "title": "WorkbookSheets",
+        "type": "object"
+      },
+      "WorkbookSheetsRequest": {
+        "additionalProperties": false,
+        "description": "Workbooks whose sheet names a folder or selection Add window lists.",
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "maxItems": 1000,
+            "minItems": 1,
+            "title": "Paths",
+            "type": "array"
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "title": "WorkbookSheetsRequest",
+        "type": "object"
+      },
+      "WorkbookSheetsResource": {
+        "additionalProperties": false,
+        "description": "Sheet names of several workbooks, in request order (issue 323).",
+        "properties": {
+          "workbooks": {
+            "items": {
+              "$ref": "#/components/schemas/WorkbookSheets"
+            },
+            "title": "Workbooks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workbooks"
+        ],
+        "title": "WorkbookSheetsResource",
+        "type": "object"
+      },
       "WorkspaceCreateRequest": {
         "additionalProperties": false,
         "description": "Create one workspace resource.",
@@ -11938,6 +12010,20 @@
             "title": "Path",
             "type": "string"
           },
+          "sheets": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sheets"
+          },
           "size": {
             "minimum": 0.0,
             "title": "Size",
@@ -11960,6 +12046,13 @@
               "$ref": "#/components/schemas/ZipTableMember"
             },
             "title": "Members",
+            "type": "array"
+          },
+          "nested_archives": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Nested Archives",
             "type": "array"
           }
         },
@@ -15501,6 +15594,83 @@
           }
         ],
         "summary": "Upload File",
+        "tags": [
+          "user-files"
+        ]
+      }
+    },
+    "/api/user-files/workbook-sheets": {
+      "post": {
+        "description": "Sheet names of several workbooks, for a folder or selection Add window.",
+        "operationId": "list_workbook_sheets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WorkbookSheetsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkbookSheetsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Workbook Sheets",
         "tags": [
           "user-files"
         ]

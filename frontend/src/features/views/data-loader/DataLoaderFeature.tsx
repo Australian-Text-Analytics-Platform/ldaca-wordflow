@@ -15,8 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import { AddFilePanel, FilePreviewPanel } from '@/features/views/data-loader/components';
+import { useQueryClient } from '@tanstack/react-query';
 import { AddBatchPanel, type BatchSource } from './components/AddBatchPanel';
 import { useZipTableMembers } from './hooks/useZipTableMembers';
+import { useWorkbookSheets, workbookSheetsQuery } from './hooks/useWorkbookSheets';
+import { expandSheets, type BatchTableFile, type TableSource } from './utils/batchTables';
 import { useFiles } from '@/features/views/data-loader/hooks/useFiles';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
@@ -40,10 +43,12 @@ import { useFolderCreation } from './hooks/useFolderCreation';
 import { useLdacaImport } from './hooks/useLdacaImport';
 import { useUploadState } from './hooks/useUploadState';
 import {
+  archivesInDirectory,
   commonFolder,
   countFilesInNode,
   filesInSelection,
   findDirectory,
+  isWorkbookPath,
   tableFilesInDirectory,
 } from './utils/fileTreeHelpers';
 import { toastError } from '@/lib/toastError';
@@ -140,6 +145,7 @@ function DataLoaderFeature() {
   const [previewFile, setPreviewFile] = useState<string | null>(null);
   const [addFileName, setAddFileName] = useState<string | null>(null);
   const [addBatchSource, setAddBatchSource] = useState<BatchSource | null>(null);
+  const queryClient = useQueryClient();
   const filesPaneRef = useRef<HTMLDivElement | null>(null);
   const [filesPaneHeight, setFilesPaneHeight] = useState<number | null>(null);
   const {
@@ -327,10 +333,10 @@ function DataLoaderFeature() {
    * workspace action hook, report any failure through the feature toast adapter,
    * then clear the pending filename so the dialog cannot resubmit stale state.
    */
-  const handleAddToWorkspace = async (selectedSheet?: string | null) => {
+  const handleAddToWorkspace = async () => {
     if (!addFileName) return;
     try {
-      await handleAddFileToWorkspace(addFileName, selectedSheet);
+      await handleAddFileToWorkspace(addFileName);
     } catch (error) {
       notify('error', "Couldn't add file to Project.", undefined, error);
     } finally {
@@ -350,14 +356,35 @@ function DataLoaderFeature() {
   const selectionBase = addBatchSource?.kind === 'selection' ? addBatchSource.path : '';
   const relativeToBase = (path: string) =>
     selectionBase ? path.slice(selectionBase.length + 1) : path;
-  const batchTableFiles = selectionFiles
-    ? selectionFiles.tables.map((file) => ({ id: file.path, label: relativeToBase(file.path) }))
+  // Table files before their sheets are known; a workbook with several
+  // sheets becomes one row per sheet (issue 323).
+  const batchTableSources: TableSource[] = selectionFiles
+    ? selectionFiles.tables.map((file) => ({ path: file.path, label: relativeToBase(file.path) }))
     : batchFolder
       ? tableFilesInDirectory(batchFolder).map((file) => ({
-          id: file.path,
+          path: file.path,
           label: file.path.slice(batchFolder.path.length + 1),
         }))
-      : zipTables.members.map((member) => ({ id: member.path, label: member.path }));
+      : addBatchSource?.kind === 'workbook'
+        ? [{ path: addBatchSource.path, label: addBatchSource.path }]
+        : zipTables.members.map((member) => ({ path: member.path, label: member.path }));
+  const workbookPaths =
+    addBatchSource && addBatchSource.kind !== 'zip'
+      ? batchTableSources.map((source) => source.path).filter(isWorkbookPath)
+      : [];
+  const workbookSheets = useWorkbookSheets(workbookPaths);
+  const zipSheets = new Map(zipTables.members.map((member) => [member.path, member.sheets]));
+  const batchTableFiles = expandSheets(batchTableSources, (path) =>
+    addBatchSource?.kind === 'zip' ? zipSheets.get(path) : workbookSheets.sheetsOf(path),
+  );
+  // ZIPs inside are never opened (issue 323: one level only).
+  const skippedArchives = selectionFiles
+    ? selectionFiles.archives.map((file) => relativeToBase(file.path))
+    : batchFolder
+      ? archivesInDirectory(batchFolder).map((file) => file.path.slice(batchFolder.path.length + 1))
+      : addBatchSource?.kind === 'zip'
+        ? zipTables.nestedArchives
+        : [];
   const batchTextFiles = selectionFiles
     ? selectionFiles.texts.map((file) => ({ id: file.path, label: relativeToBase(file.path) }))
     : undefined;
@@ -379,12 +406,33 @@ function DataLoaderFeature() {
       notify('error', "Couldn't add to Project.", undefined, error);
     }
   };
-  const handleAddBatchTables = async (ids: string[]) => {
+  const handleAddBatchTables = async (files: BatchTableFile[]) => {
     if (!addBatchSource) return;
     await handleAddFilesToWorkspace(
-      ids,
+      files,
       addBatchSource.kind === 'zip' ? addBatchSource.path : undefined,
     );
+  };
+  /**
+   * A workbook with several sheets opens the Add window with one row per
+   * sheet (issue 323); other files, and workbooks whose sheets can't be read,
+   * open the single-file Add window.
+   */
+  const openAddFile = async (path: string) => {
+    if (!isWorkbookPath(path)) {
+      setAddFileName(path);
+      return;
+    }
+    try {
+      const sheets = await queryClient.query(workbookSheetsQuery([path]));
+      if ((sheets.get(path)?.length ?? 0) > 1) {
+        setAddBatchSource({ path, kind: 'workbook' });
+        return;
+      }
+    } catch {
+      // Unreadable: the single-file window shows why.
+    }
+    setAddFileName(path);
   };
 
   const workspaceBusy = isLoading.workspaces || isLoading.currentWorkspace;
@@ -632,7 +680,7 @@ function DataLoaderFeature() {
                             // Folders and ZIPs open the batch dialog (issue 136).
                             if (isFolder) setAddBatchSource({ path, kind: 'folder' });
                             else if (/\.zip$/i.test(path)) setAddBatchSource({ path, kind: 'zip' });
-                            else setAddFileName(path);
+                            else void openAddFile(path);
                           }}
                           onSelectFile={setSelectedFile}
                           onDownloadFile={(file) => {
@@ -683,7 +731,10 @@ function DataLoaderFeature() {
         source={addBatchSource}
         tableFiles={batchTableFiles}
         textFiles={batchTextFiles}
-        tablesLoading={addBatchSource?.kind === 'zip' && zipTables.loading}
+        skippedArchives={skippedArchives}
+        tablesLoading={
+          (addBatchSource?.kind === 'zip' && zipTables.loading) || workbookSheets.loading
+        }
         onClose={closeAddBatch}
         onConfirmTexts={handleAddBatchTexts}
         onConfirmTables={handleAddBatchTables}

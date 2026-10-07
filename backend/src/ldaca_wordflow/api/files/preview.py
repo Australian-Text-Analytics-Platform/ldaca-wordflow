@@ -6,7 +6,12 @@ from fastapi import APIRouter, Query
 from fastapi.responses import FileResponse, Response
 from starlette.background import BackgroundTask
 
-from ...models.files import FileWorksheetsResource, ZipTableMembersResource
+from ...models.files import (
+    FileWorksheetsResource,
+    WorkbookSheetsRequest,
+    WorkbookSheetsResource,
+    ZipTableMembersResource,
+)
 from ..dependencies import RuntimeDep
 from ..responses import api_errors
 from ..security import CurrentSessionSecurityDep
@@ -86,6 +91,23 @@ async def list_zip_table_members(
     """List the table files inside one ZIP, for loading as separate Data Blocks."""
 
     return await runtime.file_read_service.zip_tables(principal.user.id, path)
+
+
+@router.post(
+    "/workbook-sheets",
+    response_model=WorkbookSheetsResource,
+    responses=api_errors(400, 403, 422),
+)
+async def list_workbook_sheets(
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    request: WorkbookSheetsRequest,
+) -> WorkbookSheetsResource:
+    """Sheet names of several workbooks, for a folder or selection Add window."""
+
+    return await runtime.file_read_service.workbook_sheets(
+        principal.user.id, request.paths
+    )
 
 
 @router.get(
