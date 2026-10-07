@@ -470,7 +470,7 @@ function DataLoaderFeature() {
           <HelpIcon
             targetKey="data-loader.tab"
             label="Data loader overview"
-            tooltip="Manage Projects, upload text data, and add files to the active Project. Use this tab before running downstream analyses."
+            tooltip="Manage Projects and add your files to the open Project."
           />
         </div>
       </div>

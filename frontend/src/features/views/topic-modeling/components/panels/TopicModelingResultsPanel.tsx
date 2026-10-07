@@ -107,7 +107,7 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
         <HelpIcon
           targetKey="analysis.topic-modeling.color-by"
           label="About Colour by"
-          tooltip="Colour bubbles by a column with 2 to 8 values. Each bubble blends the two values most over-represented in its documents, relative to how common each value is. A more solid bubble is concentrated in few values; a paler one is spread evenly."
+          tooltip="Colour bubbles by a column with 2 to 8 values. Solid: concentrated in few values; pale: spread out."
           className="size-5 shrink-0 text-description"
         />
       </div>

@@ -24,7 +24,7 @@ const CHART_HEIGHT_PX = 400;
 const TRENDS_LEGEND_HELP = {
   targetKey: 'analysis.sequential-analysis.legend',
   tooltip:
-    'Each entry shows the number of rows in that group and its share of the rows in all groups listed here, hidden ones included, for example (40 · 30.0%). Hiding a group does not change the shares. When periods are selected, the count reads selected/total, for example (12/40 · 30.0%). Click an entry to hide or show it.',
+    'Rows in each group and their share of all groups, hidden ones too. Click an entry to hide or show it.',
 };
 
 /**

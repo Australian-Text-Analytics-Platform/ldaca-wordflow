@@ -275,7 +275,7 @@ export function ConcordanceParameterPanel({
                     <HelpIcon
                       targetKey="analysis.concordance.regex-toggle"
                       label="About Case sensitive"
-                      tooltip="Keeps capitals distinct in the search, in the L1/R1 counts, and when sorting by matched text, L1 or R1. Off: The and the count as one word."
+                      tooltip="Keep capitals distinct, so The and the count as different words."
                       className="size-5 shrink-0 text-description"
                     />
                   </div>

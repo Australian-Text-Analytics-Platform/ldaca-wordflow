@@ -124,7 +124,7 @@ export function SequentialAnalysisResultsPanel({
                     <HelpIcon
                       targetKey="analysis.sequential-analysis.spacing"
                       label="About Spacing"
-                      tooltip="Even gives every period with data the same width and hides empty periods, which is easier to read. To scale places periods by their real time, so empty periods show as gaps."
+                      tooltip="Even: same width per period, empty ones hidden. To scale: real time, with gaps."
                       className="size-5 shrink-0 text-description"
                     />
                   </span>
@@ -164,8 +164,8 @@ export function SequentialAnalysisResultsPanel({
                       </label>
                     </TooltipTrigger>
                     <TooltipContent className="max-w-80">
-                      Show each group as a percentage of all rows in the same period, so periods
-                      with very different amounts of data can be compared. The counts do not change.
+                      Show each group as a share of its period's rows, to compare busy and quiet
+                      periods.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

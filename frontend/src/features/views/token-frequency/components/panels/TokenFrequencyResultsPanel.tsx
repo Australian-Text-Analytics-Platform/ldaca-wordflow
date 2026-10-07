@@ -203,7 +203,7 @@ export const TokenFrequencyResultsPanel = ({
                 <HelpIcon
                   targetKey="analysis.token-frequency.stop-words"
                   label="Stop words"
-                  tooltip="Words entered here are removed from the displayed token tables and comparison views after a run completes. Pick a language to append its default stop words (the detected language is marked Detected), or right-click a word to add it. Edits apply when you leave the text box."
+                  tooltip="Words hidden from the results. Pick a list, or right-click a word to add it."
                 />
               </div>
               <textarea
@@ -227,7 +227,7 @@ export const TokenFrequencyResultsPanel = ({
                   <HelpIcon
                     targetKey="analysis.token-frequency.token-limit"
                     label="Cloud display limit"
-                    tooltip="Maximum number of tokens shown in the word cloud (10–100). Setting this also updates the list display limit to the same value."
+                    tooltip="Most tokens in each word cloud (10–100). Also sets the list limit."
                   />
                 </div>
                 <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ export const TokenFrequencyResultsPanel = ({
                   <HelpIcon
                     targetKey="analysis.token-frequency.list-limit"
                     label="List display limit"
-                    tooltip="Maximum number of tokens shown in the list view (10–vocabulary size). Values up to 100 stay in sync with the cloud display limit; larger values keep the cloud capped at 100."
+                    tooltip="Most tokens in each list. Up to 100, it matches the cloud limit."
                   />
                 </div>
                 <div className="flex items-center gap-2">

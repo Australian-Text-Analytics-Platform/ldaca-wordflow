@@ -14,7 +14,7 @@ const Tooltip = TooltipPrimitive.Root;
 /** Tooltip trigger primitive used to attach hover/focus behavior to controls. */
 const TooltipTrigger = TooltipPrimitive.Trigger;
 
-/** Tooltip content wrapper with the app's compact dark surface styling. */
+/** Tooltip content wrapper with the app's compact surface styling; wraps at 20rem so long text never spans the window. */
 const TooltipContent = ({
   className,
   sideOffset = 4,
@@ -26,7 +26,7 @@ const TooltipContent = ({
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 overflow-hidden rounded-md border border-[var(--vscode-widget-border)] bg-widget px-2 py-1 text-label-secondary text-widget-foreground shadow-[var(--vscode-shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 origin-[--radix-tooltip-content-transform-origin]',
+        'z-50 max-w-xs overflow-hidden text-pretty break-words rounded-md border border-[var(--vscode-widget-border)] bg-widget px-2 py-1 text-label-secondary text-widget-foreground shadow-[var(--vscode-shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 origin-[--radix-tooltip-content-transform-origin]',
         className,
       )}
       {...props}

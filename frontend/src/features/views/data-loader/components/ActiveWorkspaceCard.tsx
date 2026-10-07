@@ -72,13 +72,13 @@ export function ActiveWorkspaceCard({
             <HelpIcon
               targetKey="data-loader.active-workspace.section"
               label="Active Project overview"
-              tooltip="Rename the open Project or update its description. New Data Blocks are added here, and your work is saved automatically."
+              tooltip="Rename the open Project or edit its description. Your work saves automatically."
             />
           ) : (
             <HelpIcon
               targetKey="data-loader.create-workspace.name"
               label="Create Project overview"
-              tooltip="Create a Project to hold your Data Blocks and analyses. You can upload files before or after. Add an optional description to record its purpose."
+              tooltip="Create a Project to hold your Data Blocks and analyses."
             />
           )}
         </CardTitle>

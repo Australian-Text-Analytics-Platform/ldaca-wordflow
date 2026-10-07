@@ -191,7 +191,7 @@ export function AnalysisSplitLayout({
             <HelpIcon
               targetKey="ui.analysis-layout"
               label="About resizing parameters and results"
-              tooltip="Drag the bar to share the height between parameters and results. Drag a result's bottom-right corner to size it on its own."
+              tooltip="Drag to share the height between parameters and results."
               className="h-5 w-5 text-description"
             />
           </div>
