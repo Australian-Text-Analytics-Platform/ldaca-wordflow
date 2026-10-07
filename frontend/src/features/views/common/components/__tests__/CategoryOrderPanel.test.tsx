@@ -117,6 +117,32 @@ describe('CategoryOrderPanel (issue 318)', () => {
     expect(screen.queryByRole('radio', { name: 'Custom' })).not.toBeInTheDocument();
   });
 
+  it('lists only the first 300 values but converts all of them in the chosen order', async () => {
+    const labels = Array.from(
+      { length: 400 },
+      (_value, index) => `v${String(index).padStart(3, '0')}`,
+    );
+    vi.mocked(getCategoryValues).mockResolvedValue({
+      data: values({ labels, counts: labels.map((_label, index) => (index === 399 ? 9 : 1)) }),
+    } as never);
+    const onConfirm = showPanel();
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    expect(screen.getAllByRole('button', { name: /Press Space to move/ })).toHaveLength(300);
+    expect(screen.getByRole('note')).toHaveTextContent(
+      'Showing the first 300 of 400 values. The other 100 follow in the order chosen above',
+    );
+    // A preset orders every value, including those not listed.
+    await userEvent.click(screen.getByRole('radio', { name: 'Most rows first' }));
+    expect(screen.getAllByRole('button', { name: /Press Space to move/ })[0]).toHaveAccessibleName(
+      /^v399,/,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    const sent = onConfirm.mock.calls[0]?.[0] as string[];
+    expect(sent).toHaveLength(400);
+    expect(sent[0]).toBe('v399');
+  });
+
   it('asks before reading a whole column that looks like text, then lists it', async () => {
     vi.mocked(getCategoryValues)
       .mockResolvedValueOnce({

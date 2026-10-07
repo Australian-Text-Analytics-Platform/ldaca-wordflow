@@ -67,6 +67,12 @@ export function CategoryOrderPanel({ open, onClose, ...contentProps }: CategoryO
   );
 }
 
+/**
+ * The window lists at most this many values so it stays responsive; the rest
+ * follow in the chosen order (Chao, 2026-10-07).
+ */
+export const SHOWN_CATEGORY_VALUES = 300;
+
 const MODE_LABELS: Record<'text' | 'value', Record<'ascending' | 'descending', string>> = {
   text: { ascending: 'A to Z', descending: 'Z to A' },
   value: { ascending: 'Smallest first', descending: 'Largest first' },
@@ -250,8 +256,11 @@ function CategoryOrderForm({
   const [mode, setMode] = useState<CategoryOrderMode>(isOrdered ? 'current' : 'ascending');
   const [customLabels, setCustomLabels] = useState<string[]>(defaults);
   const counts = new Map(defaults.map((label, index) => [label, values.counts[index] ?? 0]));
-  const shown =
+  // Every value in its order; only the first SHOWN_CATEGORY_VALUES are listed.
+  const order =
     mode === 'custom' ? customLabels : orderedLabels(defaults, mode, kind, isOrdered, counts);
+  const shown = order.slice(0, SHOWN_CATEGORY_VALUES);
+  const hiddenCount = order.length - shown.length;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
@@ -270,7 +279,7 @@ function CategoryOrderForm({
   /** Dragging a value makes a custom order, starting from the order shown. */
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
     if (!over || active.id === over.id) return;
-    setCustomLabels(moveLabel(shown, String(active.id), String(over.id)));
+    setCustomLabels(moveLabel(order, String(active.id), String(over.id)));
     setMode('custom');
   };
 
@@ -282,6 +291,9 @@ function CategoryOrderForm({
             This column has {defaults.length.toLocaleString()} different values. Each becomes a
             category, so the list will be long to scroll and arrange, and lists and charts that show
             every value (such as Filter&apos;s value list or a Trends axis) will be long too.
+            {defaults.length > SHOWN_CATEGORY_VALUES
+              ? ` This window shows only the first ${String(SHOWN_CATEGORY_VALUES)}. A column like this is usually better kept as text.`
+              : ''}
           </p>
         </CardContent>
         <CardFooter className="border-t border-surface-border/70 pt-4">
@@ -330,6 +342,17 @@ function CategoryOrderForm({
             Drag a value, or focus it and use Space and the arrow keys, to move it.
           </p>
         </fieldset>
+        {hiddenCount > 0 ? (
+          <p
+            role="note"
+            className="rounded-md border border-warning/50 bg-warning/10 px-2 py-1.5 text-body text-foreground"
+          >
+            Showing the first {SHOWN_CATEGORY_VALUES} of {order.length.toLocaleString()} values. The
+            other {hiddenCount.toLocaleString()} follow in the order chosen above and can&apos;t be
+            dragged. A column with this many values is usually better kept as text, so consider
+            cancelling.
+          </p>
+        ) : null}
         {defaults.length === 0 ? (
           <p className="text-body text-description">This column has only empty values.</p>
         ) : (
@@ -346,6 +369,11 @@ function CategoryOrderForm({
                 {shown.map((label) => (
                   <SortableValue key={label} label={label} count={counts.get(label) ?? 0} />
                 ))}
+                {hiddenCount > 0 ? (
+                  <li className="px-2 py-1 text-body italic text-description">
+                    … and {hiddenCount.toLocaleString()} more values
+                  </li>
+                ) : null}
                 {values.empty_count > 0 ? (
                   <li
                     className="flex items-center gap-2 rounded-sm border border-dashed border-surface-border px-2 py-1 text-body text-description"
@@ -367,9 +395,9 @@ function CategoryOrderForm({
           </Button>
           <Button
             type="button"
-            disabled={shown.length === 0}
+            disabled={order.length === 0}
             onClick={() => {
-              onConfirm(shown);
+              onConfirm(order);
             }}
           >
             {isCategory ? 'Apply order' : 'Convert'}
