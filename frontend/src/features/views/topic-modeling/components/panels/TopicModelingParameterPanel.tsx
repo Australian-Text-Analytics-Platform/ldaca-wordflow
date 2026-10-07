@@ -618,13 +618,24 @@ export function TopicModelingParameterPanel({
               className={`text-label-secondary ${topicSamplingNote.warning ? 'text-warning' : 'text-description'}`}
             >
               {topicSamplingNote.lines.join(' ')}{' '}
-              <button
-                type="button"
+              {/* A link, so it still opens help while a run locks the panel. */}
+              <a
+                href="#help-topic-modeling-topic-sampling"
+                role="button"
                 className="text-link underline underline-offset-2"
-                onClick={openTopicSamplingHelp}
+                onClick={(event) => {
+                  event.preventDefault();
+                  openTopicSamplingHelp();
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === ' ') {
+                    event.preventDefault();
+                    openTopicSamplingHelp();
+                  }
+                }}
               >
                 Learn more
-              </button>
+              </a>
             </p>
           ) : null}
         </div>

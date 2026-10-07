@@ -78,18 +78,37 @@ export function DocLinkIcon<Kind extends DocLinkKind>({
     useUIStore.getState().openDocument(target);
   };
 
+  // A link, not a <button>: analysis panels wrap their parameters in
+  // <fieldset disabled> while a run is in progress, which disables every
+  // button inside, and help must stay open-able then. It keeps the button role
+  // and answers Space as well as Enter.
+  const anchor = getDocumentTarget(kind, targetKey)?.anchor;
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
-          type="button"
+          asChild
           variant="ghost"
           size="icon"
           className={className ?? config.defaultClassName}
-          aria-label={resolvedLabel}
-          onClick={handleClick}
         >
-          <Icon className={iconClassName ?? 'h-4 w-4'} />
+          <a
+            href={anchor ? `#${anchor}` : '#'}
+            role="button"
+            aria-label={resolvedLabel}
+            onClick={(event) => {
+              event.preventDefault();
+              handleClick();
+            }}
+            onKeyDown={(event) => {
+              if (event.key === ' ') {
+                event.preventDefault();
+                handleClick();
+              }
+            }}
+          >
+            <Icon className={iconClassName ?? 'h-4 w-4'} />
+          </a>
         </Button>
       </TooltipTrigger>
       <TooltipContent side="top">{tooltipText}</TooltipContent>

@@ -166,6 +166,25 @@ describe('TopicModelingParameterPanel', () => {
     }
   });
 
+  it('keeps help open-able while a run locks the parameters', () => {
+    // AnalysisCardLayout (mocked here) wraps the parameters in this fieldset.
+    render(
+      <fieldset disabled>
+        <TopicModelingParameterPanel {...baseProps} parametersLocked clusterSample />
+      </fieldset>,
+    );
+
+    expect(screen.getByLabelText('Random seed')).toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'About Topic size' }));
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      anchor: 'help-topic-modeling-min-cluster-size',
+    });
+    fireEvent.keyDown(screen.getByRole('button', { name: 'About Seed' }), { key: ' ' });
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      anchor: 'help-topic-modeling-random-seed',
+    });
+  });
+
   it('commits maximum tokens per segment within the supported model window', () => {
     const onMaxSegmentTokensChange = vi.fn();
     render(
