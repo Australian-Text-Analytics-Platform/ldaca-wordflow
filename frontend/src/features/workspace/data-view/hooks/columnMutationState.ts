@@ -1,10 +1,13 @@
 import type { ArrowField } from '@/lib/arrow/arrowTable';
 import type { ColumnCastType } from '../services/schemaMutations';
+import type { ConversionMode } from '@/features/views/common/components/ConversionPanel';
 
+/** The conversion window (issue 322): which column, to which type, in which mode. */
 export interface DatetimeModalState {
   isOpen: boolean;
   column: string;
   targetType: ColumnCastType | '';
+  mode: ConversionMode | '';
 }
 
 export interface ColumnMutationState {
@@ -20,7 +23,7 @@ export type ColumnMutationAction =
   | { type: 'schemaApplied'; columnFields: Record<string, ArrowField> }
   | { type: 'castLoadingChanged'; column: string; active: boolean }
   | { type: 'columnActionLoadingChanged'; column: string; active: boolean }
-  | { type: 'datetimeRequested'; column: string; targetType: ColumnCastType }
+  | { type: 'datetimeRequested'; column: string; targetType: ColumnCastType; mode: ConversionMode }
   | { type: 'datetimeClosed' }
   | { type: 'renameStarted'; column: string }
   | { type: 'renameClosed' }
@@ -32,6 +35,7 @@ const closedDatetimeModal: DatetimeModalState = {
   isOpen: false,
   column: '',
   targetType: '',
+  mode: '',
 };
 
 export const createColumnMutationState = (): ColumnMutationState => ({
@@ -84,7 +88,12 @@ export const columnMutationReducer = (
     case 'datetimeRequested':
       return {
         ...state,
-        datetimeModal: { isOpen: true, column: action.column, targetType: action.targetType },
+        datetimeModal: {
+          isOpen: true,
+          column: action.column,
+          targetType: action.targetType,
+          mode: action.mode,
+        },
       };
     case 'datetimeClosed':
       return state.datetimeModal.isOpen ? { ...state, datetimeModal: closedDatetimeModal } : state;

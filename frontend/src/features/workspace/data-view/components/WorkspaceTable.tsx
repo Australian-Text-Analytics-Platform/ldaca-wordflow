@@ -27,7 +27,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { DatetimeFormatPanel } from '@/features/views/common/components/DatetimeFormatPanel';
+import { ConversionPanel } from '@/features/views/common/components/ConversionPanel';
 import { RowDetailPanel } from '@/features/views/common/components/RowDetailPanel';
 import { useRowDetailDialog } from '@/features/views/common/components/useRowDetailDialog';
 import { ServerPaginationFooter } from '@/features/views/common/components/ServerPaginationFooter';
@@ -39,6 +39,7 @@ import {
   arrowTypeName,
   arrowTypeTooltip,
   isArrowDictionaryField,
+  isArrowTimestampField,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
 import { CategoryOrderPanel } from '@/features/views/common/components/CategoryOrderPanel';
@@ -49,7 +50,7 @@ import {
   getTypeDisplayName,
   type ColumnCastType,
 } from '../services/schemaMutations';
-import { useColumnMutations } from '../hooks/useColumnMutations';
+import { useColumnMutations, type CastRequestExtras } from '../hooks/useColumnMutations';
 import {
   workspaceTableFeatures,
   type WorkspaceTableColumn,
@@ -83,8 +84,7 @@ export interface WorkspaceTableProps {
   onCast?: (
     column: string,
     targetType: ColumnCastType,
-    format?: string,
-    categories?: string[],
+    extras?: CastRequestExtras,
   ) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
@@ -721,23 +721,29 @@ export function WorkspaceTable({
         onConfirm={handleCategoryConfirm}
       />
 
-      <DatetimeFormatPanel
-        open={datetimeModal.isOpen}
-        onClose={closeDatetimeModal}
-        onConfirm={handleDatetimeFormatConfirm}
+      <ConversionPanel
+        open={datetimeModal.isOpen && datetimeModal.mode !== ''}
+        workspaceId={workspaceId}
+        nodeId={nodeId}
         columnName={datetimeModal.column}
+        mode={datetimeModal.mode || 'date'}
+        target={
+          (datetimeModal.targetType || 'datetime') as
+            | 'datetime'
+            | 'date'
+            | 'integer'
+            | 'float'
+            | 'string'
+        }
         targetLabel={
           datetimeModal.targetType ? castTypeLabel(datetimeModal.targetType) : 'date and time'
         }
-        sampleValues={sanitizedData
-          .slice(0, 25)
-          .map((row) => {
-            const v = row[datetimeModal.column];
-            // Sample values may be objects; default stringification preserves prior behavior.
-            // eslint-disable-next-line @typescript-eslint/no-base-to-string
-            return v == null ? '' : String(v);
-          })
-          .filter(Boolean)}
+        sourceHasTime={(() => {
+          const field = mutationColumnFields[datetimeModal.column];
+          return field !== undefined && isArrowTimestampField(field);
+        })()}
+        onClose={closeDatetimeModal}
+        onConfirm={handleDatetimeFormatConfirm}
       />
 
       <AlertDialog open={deleteColumnDialogOpen} onOpenChange={setDeleteColumnDialogOpen}>

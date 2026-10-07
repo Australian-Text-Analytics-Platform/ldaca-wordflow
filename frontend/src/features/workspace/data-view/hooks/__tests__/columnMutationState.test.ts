@@ -33,6 +33,7 @@ describe('columnMutationReducer', () => {
 
     const requested = columnMutationReducer(withSchema, {
       type: 'datetimeRequested',
+      mode: 'date',
       column: 'created_at',
       targetType: 'datetime',
     });
@@ -40,6 +41,7 @@ describe('columnMutationReducer', () => {
       isOpen: true,
       column: 'created_at',
       targetType: 'datetime',
+      mode: 'date',
     });
 
     const closed = columnMutationReducer(requested, { type: 'datetimeClosed' });
@@ -47,6 +49,7 @@ describe('columnMutationReducer', () => {
       isOpen: false,
       column: '',
       targetType: '',
+      mode: '',
     });
   });
 

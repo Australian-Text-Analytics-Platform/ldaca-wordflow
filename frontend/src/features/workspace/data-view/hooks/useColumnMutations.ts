@@ -3,7 +3,12 @@ import { toast } from 'sonner';
 
 import {
   arrowTypeName,
+  isArrowDateField,
+  isArrowDictionaryField,
+  isArrowFloatField,
+  isArrowIntegerField,
   isArrowStringField,
+  isArrowTimestampField,
   type ArrowColumn,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
@@ -16,6 +21,28 @@ import {
 } from './columnMutationState';
 import type { ColumnCastType } from '../services/schemaMutations';
 import { toastError } from '@/lib/toastError';
+import type {
+  CastExtras,
+  ConversionMode,
+} from '@/features/views/common/components/ConversionPanel';
+
+/** What a type change sends besides the target type (issues 318 and 322). */
+export type CastRequestExtras = CastExtras & { categories?: string[] };
+
+/**
+ * Whether a type change needs the conversion window, and in which mode
+ * (issue 322): text, category or numbers to a date; text or category to a
+ * number; a date to text. Other changes convert straight away.
+ */
+function conversionMode(field: ArrowField, target: ColumnCastType): ConversionMode | null {
+  const isText = isArrowStringField(field) || isArrowDictionaryField(field);
+  const isNumber = isArrowIntegerField(field) || isArrowFloatField(field);
+  const isDate = isArrowDateField(field) || isArrowTimestampField(field);
+  if ((target === 'datetime' || target === 'date') && (isText || isNumber)) return 'date';
+  if ((target === 'integer' || target === 'float') && isText) return 'number';
+  if (target === 'string' && isDate) return 'date-text';
+  return null;
+}
 
 interface UseColumnMutationsArgs {
   /** Current workspace id; enables schema bootstrap when paired with a node id. */
@@ -28,8 +55,7 @@ interface UseColumnMutationsArgs {
   onCast?: (
     column: string,
     targetType: ColumnCastType,
-    format?: string,
-    categories?: string[],
+    extras?: CastRequestExtras,
   ) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
@@ -52,7 +78,7 @@ export interface ColumnMutationsApi {
   // Datetime confirmation modal (string→datetime needs a format)
   datetimeModal: DatetimeModalState;
   closeDatetimeModal: () => void;
-  handleDatetimeFormatConfirm: (format?: string) => void;
+  handleDatetimeFormatConfirm: (extras: CastExtras) => void;
 
   // Delete-column confirmation dialog
   deleteColumnDialogOpen: boolean;
@@ -124,11 +150,11 @@ export const useColumnMutations = ({
 
   /** Runs a dtype cast and refreshes schema so headers reflect the new type. */
   const performCast = useCallback(
-    async (column: string, targetType: ColumnCastType, format?: string, categories?: string[]) => {
+    async (column: string, targetType: ColumnCastType, extras?: CastRequestExtras) => {
       if (!onCast) return;
       dispatch({ type: 'castLoadingChanged', column, active: true });
       try {
-        await onCast(column, targetType, format, categories);
+        await onCast(column, targetType, extras);
         if (onRefreshSchema) {
           const schema = await onRefreshSchema();
           applySchema(schema);
@@ -155,13 +181,11 @@ export const useColumnMutations = ({
       }
       const currentField = mutationColumnFields[column];
       if (currentField && newType === arrowTypeName(currentField)) return;
-      // Text to datetime or date asks for the format first (issue 187).
-      const isStringToDatetime =
-        (newType === 'datetime' || newType === 'date') &&
-        currentField !== undefined &&
-        isArrowStringField(currentField);
-      if (isStringToDatetime) {
-        dispatch({ type: 'datetimeRequested', column, targetType: newType });
+      // Conversions that depend on how the values are written open the
+      // conversion window first (issues 187 and 322).
+      const mode = currentField ? conversionMode(currentField, newType) : null;
+      if (mode) {
+        dispatch({ type: 'datetimeRequested', column, targetType: newType, mode });
         return;
       }
       void performCast(column, newType);
@@ -169,12 +193,12 @@ export const useColumnMutations = ({
     [onCast, mutationColumnFields, performCast],
   );
 
-  /** Applies the datetime format chosen in the confirmation panel. */
+  /** Converts with what the conversion window says about the values. */
   const handleDatetimeFormatConfirm = useCallback(
-    (format?: string) => {
+    (extras: CastExtras) => {
       const { column, targetType } = datetimeModal;
       dispatch({ type: 'datetimeClosed' });
-      if (column && targetType) void performCast(column, targetType, format);
+      if (column && targetType) void performCast(column, targetType, extras);
     },
     [datetimeModal, performCast],
   );
@@ -184,7 +208,7 @@ export const useColumnMutations = ({
     (categories: string[]) => {
       const column = categoryColumn;
       setCategoryColumn(null);
-      if (column) void performCast(column, 'categorical', undefined, categories);
+      if (column) void performCast(column, 'categorical', { categories });
     },
     [categoryColumn, performCast],
   );

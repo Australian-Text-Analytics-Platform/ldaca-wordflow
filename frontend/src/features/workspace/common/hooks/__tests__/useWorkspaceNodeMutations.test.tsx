@@ -234,7 +234,9 @@ describe('useWorkspaceNodeMutations', () => {
     });
 
     await act(async () => {
-      await result.current.actions.castColumn('node-1', 'published_at', 'datetime', '%Y-%m-%d');
+      await result.current.actions.castColumn('node-1', 'published_at', 'datetime', {
+        datetime_format: '%Y-%m-%d',
+      });
       await result.current.actions.renameColumn('node-1', 'published_at', 'date');
       await result.current.actions.deleteColumn('node-1', 'date');
     });

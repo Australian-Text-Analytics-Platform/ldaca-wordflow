@@ -57,6 +57,8 @@ def _cast_failure(message: str, exc: BaseException) -> InvalidInputError:
         f"{message} {_NOTHING_CHANGED}",
         details={"diagnostic": format_exception_diagnostic(exc)},
     )
+
+
 TIMEZONE_FORMAT_TOKENS = ("%z", "%:z", "%#z")
 
 
@@ -164,7 +166,9 @@ def _date_cast_expr(
             .dt.date()
             .alias(column_name)
         )
-    if orig_lower in ("string", "str", "utf8") or orig_lower.startswith(("categorical", "enum")):
+    if orig_lower in ("string", "str", "utf8") or orig_lower.startswith(
+        ("categorical", "enum")
+    ):
         text = column.cast(pl.String)
         if datetime_format and (
             options.two_digit_year_start is not None
@@ -229,7 +233,9 @@ def _cast_expr(
         dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum))
     )
     if target_lower in ("string", "utf8", "str", "text"):
-        if (original_type.startswith("Datetime") or original_type == "Date") and datetime_format:
+        if (
+            original_type.startswith("Datetime") or original_type == "Date"
+        ) and datetime_format:
             return pl.col(column_name).dt.strftime(datetime_format).alias(column_name)
         return pl.col(column_name).cast(pl.Utf8).alias(column_name)
     if target_lower == "integer":
@@ -297,8 +303,7 @@ def cast_lazyframe_column(
                 datetime_format=datetime_format,
                 strict_flag=bool(strict_flag),
                 dtype=schema[column_name],
-                options=options
-                or ConversionOptions(datetime_format=datetime_format),
+                options=options or ConversionOptions(datetime_format=datetime_format),
             )
 
         try:
@@ -383,7 +388,11 @@ def check_cast(
         lazyframe.select(
             pl.int_range(pl.len(), dtype=pl.Int64).alias("__row__"),
             empty_value_expression(before, dtype).alias("__empty__"),
-            before.cast(pl.String).alias("__before__"),
+            (
+                before.dt.strftime(_RESULT_LABEL_FORMATS["datetime"])
+                if isinstance(dtype, pl.Datetime)
+                else before.cast(pl.String)
+            ).alias("__before__"),
             after,
         )
         .with_columns(after_text.alias("__after_text__"))

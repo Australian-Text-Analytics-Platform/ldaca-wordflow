@@ -46,14 +46,17 @@ describe('useColumnMutations', () => {
       isOpen: true,
       column: 'published_at',
       targetType: 'datetime',
+      mode: 'date',
     });
 
     act(() => {
-      result.current.handleDatetimeFormatConfirm('%Y-%m-%d');
+      result.current.handleDatetimeFormatConfirm({ datetime_format: '%Y-%m-%d' });
     });
 
     await waitFor(() => {
-      expect(onCast).toHaveBeenCalledWith('published_at', 'datetime', '%Y-%m-%d', undefined);
+      expect(onCast).toHaveBeenCalledWith('published_at', 'datetime', {
+        datetime_format: '%Y-%m-%d',
+      });
       expect(result.current.columnFields.published_at).toBe(datetimeField);
     });
     expect(result.current.datetimeModal.isOpen).toBe(false);
@@ -72,8 +75,13 @@ describe('useColumnMutations', () => {
       }),
     );
 
+    // Text to a number opens the conversion window first (issue 322).
     act(() => {
       result.current.handleTypeChange('published_at', 'integer');
+    });
+    expect(result.current.datetimeModal).toMatchObject({ isOpen: true, mode: 'number' });
+    act(() => {
+      result.current.handleDatetimeFormatConfirm({ decimal_mark: '.' });
     });
 
     await waitFor(() => {

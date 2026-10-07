@@ -141,15 +141,13 @@ export const useWorkspaceTransformMutations = ({
   const castEditBody = (
     column: string,
     targetType: ColumnCastType,
-    format?: string,
-    categories?: string[],
+    extras: Omit<CastNodeEditBody, 'kind' | 'column' | 'target_type'> = {},
   ): CastNodeEditBody => ({
     kind: 'cast',
     column,
     target_type: targetType,
-    datetime_format: format,
-    // A category's values in the chosen order (issue 318).
-    ...(categories ? { categories } : {}),
+    // How the values are written (issue 322) and a category's order (issue 318).
+    ...extras,
   });
 
   const invalidateEditedNode = (nodeId: string) => {
@@ -194,17 +192,15 @@ export const useWorkspaceTransformMutations = ({
       nodeId,
       column,
       targetType,
-      format,
-      categories,
+      extras,
     }: {
       nodeId: string;
       column: string;
       targetType: ColumnCastType;
-      format?: string;
-      categories?: string[];
+      extras?: Omit<CastNodeEditBody, 'kind' | 'column' | 'target_type'>;
     }) =>
       editNode({
-        body: castEditBody(column, targetType, format, categories),
+        body: castEditBody(column, targetType, extras),
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
       }).then(({ data, response }) => ({
@@ -459,9 +455,8 @@ export const useWorkspaceTransformMutations = ({
         nodeId: string,
         column: string,
         targetType: ColumnCastType,
-        format?: string,
-        categories?: string[],
-      ) => castNodeMutation.mutateAsync({ nodeId, column, targetType, format, categories }),
+        extras?: Omit<CastNodeEditBody, 'kind' | 'column' | 'target_type'>,
+      ) => castNodeMutation.mutateAsync({ nodeId, column, targetType, extras }),
       renameColumn: (nodeId: string, column: string, newName: string) =>
         renameColumnMutation.mutateAsync({ nodeId, column, newName }),
       deleteColumn: (nodeId: string, column: string) =>

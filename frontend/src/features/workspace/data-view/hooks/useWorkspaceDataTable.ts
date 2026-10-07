@@ -29,6 +29,7 @@ import {
   type ColumnCastType,
 } from '../services/schemaMutations';
 import { presentError } from '@/lib/errorPresentation';
+import type { CastRequestExtras } from './useColumnMutations';
 
 export interface WorkspaceDataTableHeaderInfo {
   nodeLabel: string;
@@ -541,15 +542,14 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
 
   /** Casts a column on the active node. */
   const handleCast = useCallback(
-    async (column: string, targetType: ColumnCastType, format?: string, categories?: string[]) => {
+    async (column: string, targetType: ColumnCastType, extras?: CastRequestExtras) => {
       if (!selectedNodeIdForCallbacks) return;
       const nodeId = selectedNodeIdForCallbacks;
       const { emptied, rows, firstRow, firstValue } = await castColumn(
         nodeId,
         column,
         targetType,
-        format,
-        categories,
+        extras,
       );
       // Values that cannot be converted are left empty rather than refusing
       // the change; say how many, and where the first one is (issue 183).

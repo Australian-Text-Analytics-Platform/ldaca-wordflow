@@ -17,7 +17,10 @@ from ldaca_wordflow.services.node_casting import cast_lazyframe_column, check_ca
 
 def _formats(values: list) -> list[tuple]:
     detected = detect_datetime_formats(pl.LazyFrame({"x": values}), "x")
-    return [(c.kind, c.format, c.epoch_unit, c.swap_format, c.two_digit_year) for c in detected.candidates]
+    return [
+        (c.kind, c.format, c.epoch_unit, c.swap_format, c.two_digit_year)
+        for c in detected.candidates
+    ]
 
 
 def test_detection_reads_single_digit_parts_day_first_and_offers_the_swap() -> None:
@@ -27,7 +30,9 @@ def test_detection_reads_single_digit_parts_day_first_and_offers_the_swap() -> N
 
 
 def test_detection_knows_twitter_dates_and_names() -> None:
-    assert _formats(["Thu Oct 01 23:59:59 +0000 2020"])[0][1] == "%a %b %d %H:%M:%S %z %Y"
+    assert (
+        _formats(["Thu Oct 01 23:59:59 +0000 2020"])[0][1] == "%a %b %d %H:%M:%S %z %Y"
+    )
     assert _formats(["30 Jan 2020", "1 February 2021"])[0][1] == "%d %B %Y"
 
 
@@ -45,13 +50,26 @@ def test_numbers_are_unix_time_in_the_unit_that_gives_real_dates() -> None:
 
 def test_format_tokens_split_a_value_into_parts() -> None:
     assert format_tokens("30/01/2020 14:05 +1000") == [
-        "30", "/", "01", "/", "2020", " ", "14", ":", "05", " ", "+1000",
+        "30",
+        "/",
+        "01",
+        "/",
+        "2020",
+        " ",
+        "14",
+        ":",
+        "05",
+        " ",
+        "+1000",
     ]
 
 
 @pytest.mark.parametrize(
     ("start", "expected"),
-    [(1900, [dt.date(1920, 1, 30), dt.date(1969, 12, 31)]), (1950, [dt.date(2020, 1, 30), dt.date(1969, 12, 31)])],
+    [
+        (1900, [dt.date(1920, 1, 30), dt.date(1969, 12, 31)]),
+        (1950, [dt.date(2020, 1, 30), dt.date(1969, 12, 31)]),
+    ],
 )
 def test_two_digit_years_go_to_the_chosen_century(start: int, expected: list) -> None:
     frame = pl.LazyFrame({"x": ["30/01/20", "31/12/69"]})
@@ -61,7 +79,9 @@ def test_two_digit_years_go_to_the_chosen_century(start: int, expected: list) ->
         column_name="x",
         target_type="date",
         datetime_format="%d/%m/%y",
-        options=ConversionOptions(datetime_format="%d/%m/%y", two_digit_year_start=start),
+        options=ConversionOptions(
+            datetime_format="%d/%m/%y", two_digit_year_start=start
+        ),
     )
 
     assert result.lazyframe.collect()["x"].to_list() == expected
@@ -71,10 +91,16 @@ def test_excel_day_numbers_and_unix_times_become_dates() -> None:
     frame = pl.LazyFrame({"excel": [44105.5], "unix": [1601596799]})
 
     excel = cast_lazyframe_column(
-        frame, column_name="excel", target_type="datetime", options=ConversionOptions(excel_serial=True)
+        frame,
+        column_name="excel",
+        target_type="datetime",
+        options=ConversionOptions(excel_serial=True),
     ).lazyframe.collect()["excel"][0]
     unix = cast_lazyframe_column(
-        frame, column_name="unix", target_type="date", options=ConversionOptions(epoch_unit="s")
+        frame,
+        column_name="unix",
+        target_type="date",
+        options=ConversionOptions(epoch_unit="s"),
     ).lazyframe.collect()["unix"][0]
 
     assert excel == dt.datetime(2020, 10, 1, 12, tzinfo=dt.UTC)
@@ -83,10 +109,16 @@ def test_excel_day_numbers_and_unix_times_become_dates() -> None:
 
 def test_text_numbers_follow_the_chosen_marks_and_round_halves_away_from_zero() -> None:
     frame = pl.LazyFrame({"x": ["$1.234,5", "-2,5", "45 %"]})
-    options = ConversionOptions(decimal_mark=",", thousands_separator=".", ignore_symbols=True)
+    options = ConversionOptions(
+        decimal_mark=",", thousands_separator=".", ignore_symbols=True
+    )
 
-    decimals = cast_lazyframe_column(frame, column_name="x", target_type="float", options=options)
-    whole = cast_lazyframe_column(frame, column_name="x", target_type="integer", options=options)
+    decimals = cast_lazyframe_column(
+        frame, column_name="x", target_type="float", options=options
+    )
+    whole = cast_lazyframe_column(
+        frame, column_name="x", target_type="integer", options=options
+    )
 
     assert decimals.lazyframe.collect()["x"].to_list() == [1234.5, -2.5, 45.0]
     assert whole.lazyframe.collect()["x"].to_list() == [1235, -3, 45]
@@ -110,8 +142,27 @@ def test_the_check_counts_and_lists_values_that_would_not_convert() -> None:
         options=ConversionOptions(datetime_format="%d/%m/%Y"),
     )
 
-    assert (checked["total_rows"], checked["non_empty"], checked["converted"], checked["failed"]) == (4, 3, 2, 1)
+    assert (
+        checked["total_rows"],
+        checked["non_empty"],
+        checked["converted"],
+        checked["failed"],
+    ) == (4, 3, 2, 1)
     assert checked["failures"] == [{"row": 2, "value": "bad"}]
     samples = checked["samples"]
     assert isinstance(samples, list)
     assert samples[0] == {"row": 1, "value": "30/01/2020", "result": "2020-01-30"}
+
+
+def test_thousands_separators_must_group_by_three() -> None:
+    frame = pl.LazyFrame({"x": ["1,234,567", "3,5", "12,34", "-1,000.5"]})
+
+    result = cast_lazyframe_column(
+        frame,
+        column_name="x",
+        target_type="float",
+        options=ConversionOptions(thousands_separator=","),
+    )
+
+    # "3,5" is not 35: it does not convert, and the check shows it.
+    assert result.lazyframe.collect()["x"].to_list() == [1234567.0, None, None, -1000.5]

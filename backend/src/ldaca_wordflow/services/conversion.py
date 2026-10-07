@@ -63,7 +63,20 @@ def number_from_text(column: pl.Expr, options: ConversionOptions) -> pl.Expr:
         text = text.str.replace_all(r"[^0-9+\-.,eE' ]", "")
         text = text.str.strip_chars()
     if options.thousands_separator:
-        text = text.str.replace_all(options.thousands_separator, "", literal=True)
+        # Only proper groups of three count as thousands, so "3,5" with a
+        # comma separator does not quietly become 35: it fails and shows in
+        # the check instead.
+        separator = re.escape(options.thousands_separator)
+        mark = re.escape(options.decimal_mark)
+        grouped = (
+            rf"^[+-]?(?:\d{{1,3}}(?:{separator}\d{{3}})+|\d+)"
+            rf"(?:{mark}\d+)?(?:[eE][+-]?\d+)?$"
+        )
+        text = (
+            pl.when(text.str.contains(grouped))
+            .then(text.str.replace_all(options.thousands_separator, "", literal=True))
+            .otherwise(None)
+        )
     if options.decimal_mark == ",":
         text = text.str.replace_all(",", ".", literal=True)
     return text.cast(pl.Float64, strict=False)
@@ -141,15 +154,43 @@ def uses_numbers(options: ConversionOptions) -> bool:
 # --- detection -------------------------------------------------------------
 
 _DATE_PARTS = [
-    "%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d", "%d-%m-%Y", "%m-%d-%Y",
-    "%d.%m.%Y", "%Y.%m.%d", "%d %b %Y", "%d %B %Y", "%b %d, %Y", "%B %d, %Y",
-    "%b %d %Y", "%B %d %Y", "%d-%b-%Y", "%a %d %b %Y", "%A %d %B %Y",
-    "%a, %d %b %Y", "%A, %d %B %Y", "%Y%m%d",
-    "%d/%m/%y", "%m/%d/%y", "%d-%m-%y", "%d.%m.%y", "%d %b %y", "%d-%b-%y",
+    "%Y-%m-%d",
+    "%d/%m/%Y",
+    "%m/%d/%Y",
+    "%Y/%m/%d",
+    "%d-%m-%Y",
+    "%m-%d-%Y",
+    "%d.%m.%Y",
+    "%Y.%m.%d",
+    "%d %b %Y",
+    "%d %B %Y",
+    "%b %d, %Y",
+    "%B %d, %Y",
+    "%b %d %Y",
+    "%B %d %Y",
+    "%d-%b-%Y",
+    "%a %d %b %Y",
+    "%A %d %B %Y",
+    "%a, %d %b %Y",
+    "%A, %d %B %Y",
+    "%Y%m%d",
+    "%d/%m/%y",
+    "%m/%d/%y",
+    "%d-%m-%y",
+    "%d.%m.%y",
+    "%d %b %y",
+    "%d-%b-%y",
 ]
 _TIME_PARTS = [
-    "", " %H:%M", " %H:%M:%S", " %H:%M:%S%.f", " %I:%M %p", " %I:%M:%S %p",
-    "T%H:%M", "T%H:%M:%S", "T%H:%M:%S%.f",
+    "",
+    " %H:%M",
+    " %H:%M:%S",
+    " %H:%M:%S%.f",
+    " %I:%M %p",
+    " %I:%M:%S %p",
+    "T%H:%M",
+    "T%H:%M:%S",
+    "T%H:%M:%S%.f",
 ]
 _ZONE_PARTS = ["", "%z", "%:z", " %z", " %:z", "Z"]
 _WHOLE_FORMATS = [
@@ -157,7 +198,9 @@ _WHOLE_FORMATS = [
     "%a, %d %b %Y %H:%M:%S %z",  # email (RFC 2822)
 ]
 DAY_FIRST_PAIRS = {
-    "%d/%m": "%m/%d", "%d-%m": "%m-%d", "%d.%m": "%m.%d",
+    "%d/%m": "%m/%d",
+    "%d-%m": "%m-%d",
+    "%d.%m": "%m.%d",
 }
 
 
@@ -334,7 +377,9 @@ def _text_candidates(texts: pl.Series) -> list[FormatCandidate]:
         ambiguous = other is not None and other.parsed == candidate.parsed
         marked.append(replace(candidate, swap_format=swap if ambiguous else None))
     # Day first wins a tie with month first (Chao, 2026-10-07).
-    marked.sort(key=lambda c: (-c.parsed, 0 if (c.format or "").startswith("%d") else 1))
+    marked.sort(
+        key=lambda c: (-c.parsed, 0 if (c.format or "").startswith("%d") else 1)
+    )
     best = marked[0].parsed if marked else 0
     return [
         candidate
@@ -347,4 +392,4 @@ def format_tokens(sample: str) -> list[str]:
     """A value split into its parts, for the format builder: digit runs,
     letter runs, and everything else one character at a time."""
 
-    return re.findall(r"[+-]\d{4}|\d+|[A-Za-z]+|.", sample)
+    return re.findall(r"[+-]\d{2}:?\d{2}|\d+|[A-Za-z]+|.", sample)
