@@ -251,12 +251,15 @@ class CastDerivation(_StrictModel):
     # epoch_unit, or Excel day numbers. Two-digit years (%y) fall in the 100
     # years from two_digit_year_start. Numbers from text: the decimal mark,
     # the thousands separator, and whether to ignore currency or % symbols.
+    # date_in_text: the date is part of longer text, such as a file name
+    # "2021_01_17_LaurenLancaster"; text before or after it is ignored.
     epoch_unit: Literal["s", "ms", "us", "ns"] | None = None
     excel_serial: bool = False
     two_digit_year_start: int | None = Field(default=None, ge=1, le=9900)
     decimal_mark: Literal[".", ","] = "."
     thousands_separator: Literal["", ",", ".", " ", "'"] = ""
     ignore_symbols: bool = False
+    date_in_text: bool = False
 
 
 class SegmentDerivation(_StrictModel):

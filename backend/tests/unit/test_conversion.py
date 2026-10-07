@@ -166,3 +166,23 @@ def test_thousands_separators_must_group_by_three() -> None:
 
     # "3,5" is not 35: it does not convert, and the check shows it.
     assert result.lazyframe.collect()["x"].to_list() == [1234567.0, None, None, -1000.5]
+
+
+def test_dates_inside_longer_text_are_found_and_converted() -> None:
+    values = ["2021_01_17_LaurenLancaster", "2021_02_03_JoSmith", "Lauren_2020-12-31"]
+    detected = detect_datetime_formats(pl.LazyFrame({"x": values[:2]}), "x")
+    assert [(c.format, c.in_text) for c in detected.candidates] == [("%Y_%m_%d", True)]
+    # A four-digit year beats "21-01-17" read inside "2021-01-17".
+    iso = detect_datetime_formats(pl.LazyFrame({"x": ["Lauren_2021-01-17.txt"]}), "x")
+    assert [c.format for c in iso.candidates] == ["%Y-%m-%d"]
+
+    frame = pl.LazyFrame({"x": values})
+    options = ConversionOptions(datetime_format="%Y_%m_%d", date_in_text=True)
+    dates = cast_lazyframe_column(
+        frame,
+        column_name="x",
+        target_type="date",
+        datetime_format="%Y_%m_%d",
+        options=options,
+    ).lazyframe.collect()["x"]
+    assert dates.to_list() == [dt.date(2021, 1, 17), dt.date(2021, 2, 3), None]

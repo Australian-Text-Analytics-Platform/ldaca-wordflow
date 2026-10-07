@@ -28,8 +28,9 @@ import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import {
   DATE_TEXT_PARTS,
   DATE_TEXT_PRESETS,
+  buildFormat,
   describeFormat,
-  formatFromSegments,
+  IGNORE_PART,
   rolesFor,
   segmentsFromFormat,
   segmentsFromValue,
@@ -47,6 +48,7 @@ export type CastExtras = Partial<
     | 'decimal_mark'
     | 'thousands_separator'
     | 'ignore_symbols'
+    | 'date_in_text'
   >
 >;
 
@@ -245,7 +247,10 @@ function ConversionPanelContent({
 function extrasFor(candidate: DatetimeFormatCandidate): CastExtras {
   if (candidate.kind === 'excel') return { excel_serial: true };
   if (candidate.kind === 'unix') return { epoch_unit: candidate.epoch_unit ?? 's' };
-  return { datetime_format: candidate.format ?? undefined };
+  return {
+    datetime_format: candidate.format ?? undefined,
+    ...(candidate.in_text ? { date_in_text: true } : {}),
+  };
 }
 
 function isComplete(mode: ConversionMode, extras: CastExtras): boolean {
@@ -263,7 +268,8 @@ function candidateLabel(candidate: DatetimeFormatCandidate): string {
     const unit = { s: 'seconds', ms: 'milliseconds', us: 'microseconds', ns: 'nanoseconds' };
     return `Unix time (${unit[candidate.epoch_unit ?? 's']})`;
   }
-  return describeFormat(candidate.format ?? '');
+  const described = describeFormat(candidate.format ?? '');
+  return candidate.in_text ? `${described}, inside longer text` : described;
 }
 
 const UNITS = [
@@ -286,15 +292,46 @@ function DateSection({
   const format = extras.datetime_format ?? '';
   const selected = candidates.find(
     (candidate) =>
-      (candidate.kind === 'format' && candidate.format === format && !extras.epoch_unit) ||
+      (candidate.kind === 'format' &&
+        candidate.format === format &&
+        Boolean(candidate.in_text) === Boolean(extras.date_in_text) &&
+        !extras.epoch_unit) ||
       (candidate.kind === 'unix' && extras.epoch_unit != null) ||
       (candidate.kind === 'excel' && extras.excel_serial),
   );
   const usesNumbers = Boolean(extras.epoch_unit) || Boolean(extras.excel_serial);
   const sample = detected.sample_value ?? '';
-  const segments =
-    (format ? segmentsFromFormat(format, sample) : null) ??
+  const inText = Boolean(extras.date_in_text);
+  // The parts as named so far. Choices are kept here until every part is
+  // named, then become the format; a new format from elsewhere (a candidate,
+  // the swap, the code field) starts the parts again.
+  const formatKey = `${format}|${String(inText)}`;
+  const seedParts = () =>
+    (format ? segmentsFromFormat(format, sample, inText) : null) ??
     segmentsFromValue(detected.sample_parts);
+  const [draft, setDraft] = useState(() => ({ key: formatKey, segments: seedParts() }));
+  let segments = draft.segments;
+  if (draft.key !== formatKey) {
+    segments = seedParts();
+    setDraft({ key: formatKey, segments });
+  }
+  const built = buildFormat(segments);
+  const nameParts = (next: FormatSegment[]) => {
+    const result = buildFormat(next);
+    const { date_in_text: _inText, ...rest } = extras;
+    const nextExtras: CastExtras = result.format
+      ? {
+          ...rest,
+          datetime_format: result.format,
+          ...(result.inText ? { date_in_text: true } : {}),
+        }
+      : { ...rest, datetime_format: undefined };
+    setDraft({
+      key: `${nextExtras.datetime_format ?? ''}|${String(Boolean(nextExtras.date_in_text))}`,
+      segments: next,
+    });
+    onChange(nextExtras);
+  };
   const twoDigits = !usesNumbers && format.includes('%y');
 
   return (
@@ -398,17 +435,21 @@ function DateSection({
                 </span>
               ) : (
                 <label key={index} className="flex flex-col items-center gap-0.5">
-                  <span className="font-mono text-body">{segment.text}</span>
+                  <span
+                    className={`font-mono text-body ${segment.spec === IGNORE_PART ? 'text-description line-through' : ''}`}
+                  >
+                    {segment.text}
+                  </span>
                   <select
                     aria-label={`What "${segment.text}" is`}
                     className="rounded-sm border border-input-border bg-editor px-1 py-0.5 text-label-secondary"
                     value={segment.spec}
                     onChange={(event) => {
-                      const next: FormatSegment[] = segments.map((item, at) =>
-                        at === index ? { ...item, spec: event.target.value } : item,
+                      nameParts(
+                        segments.map((item, at) =>
+                          at === index ? { ...item, spec: event.target.value } : item,
+                        ),
                       );
-                      const built = formatFromSegments(next);
-                      if (built) onChange({ ...extras, datetime_format: built });
                     }}
                   >
                     <option value="" disabled>
@@ -424,6 +465,15 @@ function DateSection({
               ),
             )}
           </div>
+          {built.ignoredInside ? (
+            <p role="alert" className="mt-1 text-label-secondary text-error">
+              Only text before or after the date can be ignored, not a part in the middle of it.
+            </p>
+          ) : built.inText && built.format ? (
+            <p className="mt-1 text-label-secondary text-description">
+              Wordflow finds the date inside each value and ignores the text around it.
+            </p>
+          ) : null}
         </div>
       ) : null}
 
@@ -437,17 +487,33 @@ function DateSection({
       ) : null}
 
       {!usesNumbers ? (
-        <label className="block text-label-secondary text-description">
-          Format code (for advanced use)
-          <input
-            type="text"
-            value={format}
-            onChange={(event) => {
-              onChange({ datetime_format: event.target.value });
-            }}
-            className="mt-0.5 w-full rounded-sm border border-input-border bg-editor px-2 py-1 font-mono text-body text-foreground"
-          />
-        </label>
+        <div>
+          <label className="block text-label-secondary text-description">
+            Format code (for advanced use)
+            <input
+              type="text"
+              value={format}
+              onChange={(event) => {
+                onChange({
+                  datetime_format: event.target.value,
+                  ...(inText ? { date_in_text: true } : {}),
+                });
+              }}
+              className="mt-0.5 w-full rounded-sm border border-input-border bg-editor px-2 py-1 font-mono text-body text-foreground"
+            />
+          </label>
+          <label className="mt-1 flex items-center gap-2 text-label-secondary text-foreground">
+            <input
+              type="checkbox"
+              checked={inText}
+              onChange={(event) => {
+                const { date_in_text: _inText, ...rest } = extras;
+                onChange(event.target.checked ? { ...rest, date_in_text: true } : rest);
+              }}
+            />
+            Find the date inside longer text (ignore the rest)
+          </label>
+        </div>
       ) : null}
     </div>
   );

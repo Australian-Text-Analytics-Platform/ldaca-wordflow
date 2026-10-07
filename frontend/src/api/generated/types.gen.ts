@@ -1059,6 +1059,10 @@ export type CastDerivation = {
      */
     column: string;
     /**
+     * Date In Text
+     */
+    date_in_text?: boolean;
+    /**
      * Datetime Format
      */
     datetime_format?: string | null;
@@ -1190,6 +1194,10 @@ export type CastNodeEditRequest = {
      * Column
      */
     column: string;
+    /**
+     * Date In Text
+     */
+    date_in_text?: boolean;
     /**
      * Datetime Format
      */
@@ -2570,6 +2578,10 @@ export type DatetimeFormatCandidate = {
      * Format
      */
     format: string | null;
+    /**
+     * In Text
+     */
+    in_text?: boolean;
     /**
      * Kind
      */

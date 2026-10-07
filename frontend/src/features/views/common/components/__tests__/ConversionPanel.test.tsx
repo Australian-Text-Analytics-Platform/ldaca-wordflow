@@ -140,6 +140,74 @@ describe('ConversionPanel (issue 322)', () => {
     });
   });
 
+  it('keeps each part as it is named and ignores text after the date', async () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'base_name',
+        sample_size: 3,
+        sample_value: '2021_01_17_LaurenLancaster',
+        sample_parts: ['2021', '_', '01', '_', '17', '_', 'LaurenLancaster'],
+        candidates: [],
+      },
+    } as never);
+    const onConfirm = showPanel('date');
+
+    const name = async (part: string, role: string) => {
+      await userEvent.selectOptions(
+        await screen.findByRole('combobox', { name: `What "${part}" is` }),
+        role,
+      );
+    };
+    await name('2021', 'Year');
+    // A choice stays while other parts are still unnamed.
+    expect(screen.getByRole('combobox', { name: 'What "2021" is' })).toHaveDisplayValue('Year');
+    await name('01', 'Month');
+    await name('17', 'Day');
+    expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
+    await name('LaurenLancaster', 'Ignore (not part of the date)');
+
+    expect(screen.getByRole('textbox', { name: /Format code/ })).toHaveValue('%Y_%m_%d');
+    expect(screen.getByRole('checkbox', { name: /inside longer text/ })).toBeChecked();
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
+    });
+    expect(vi.mocked(checkConversion).mock.lastCall?.[0].body).toMatchObject({
+      datetime_format: '%Y_%m_%d',
+      date_in_text: true,
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ datetime_format: '%Y_%m_%d', date_in_text: true });
+  });
+
+  it('refuses an ignored part in the middle of the date', async () => {
+    vi.mocked(getDatetimeFormats).mockResolvedValue({
+      data: {
+        column: 'base_name',
+        sample_size: 1,
+        sample_value: '2021_x_01_17',
+        sample_parts: ['2021', '_', 'x', '_', '01', '_', '17'],
+        candidates: [],
+      },
+    } as never);
+    showPanel('date');
+
+    for (const [part, role] of [
+      ['2021', 'Year'],
+      ['x', 'Ignore (not part of the date)'],
+      ['01', 'Month'],
+      ['17', 'Day'],
+    ] as const) {
+      await userEvent.selectOptions(
+        await screen.findByRole('combobox', { name: `What "${part}" is` }),
+        role,
+      );
+    }
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Only text before or after the date can be ignored',
+    );
+    expect(screen.getByRole('button', { name: 'Convert' })).toBeDisabled();
+  });
+
   it('starts numbers with a decimal point, comma thousands and symbols ignored', async () => {
     const onConfirm = showPanel('number', 'integer');
 

@@ -529,6 +529,7 @@ def conversion_options(request: CastNodeEditRequest) -> ConversionOptions:
         decimal_mark=request.decimal_mark,
         thousands_separator=request.thousands_separator,
         ignore_symbols=request.ignore_symbols,
+        date_in_text=request.date_in_text,
     )
 
 

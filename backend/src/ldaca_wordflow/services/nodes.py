@@ -711,6 +711,7 @@ class NodeService:
                     ],
                     two_digit_year=candidate.two_digit_year,
                     swap_format=candidate.swap_format,
+                    in_text=candidate.in_text,
                 )
                 for candidate in detected.candidates
             ],

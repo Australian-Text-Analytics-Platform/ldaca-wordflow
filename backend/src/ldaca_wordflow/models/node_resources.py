@@ -486,6 +486,8 @@ class DatetimeFormatCandidate(BaseModel):
     two_digit_year: bool
     # Day first and month first both read every value: offer this swap.
     swap_format: str | None
+    # Found inside longer text (a file name, say); the rest is ignored.
+    in_text: bool = False
 
 
 class DatetimeFormatsResource(BaseModel):

@@ -2228,6 +2228,11 @@
             "title": "Column",
             "type": "string"
           },
+          "date_in_text": {
+            "default": false,
+            "title": "Date In Text",
+            "type": "boolean"
+          },
           "datetime_format": {
             "anyOf": [
               {
@@ -2566,6 +2571,11 @@
             "minLength": 1,
             "title": "Column",
             "type": "string"
+          },
+          "date_in_text": {
+            "default": false,
+            "title": "Date In Text",
+            "type": "boolean"
           },
           "datetime_format": {
             "anyOf": [
@@ -5036,6 +5046,11 @@
               }
             ],
             "title": "Format"
+          },
+          "in_text": {
+            "default": false,
+            "title": "In Text",
+            "type": "boolean"
           },
           "kind": {
             "enum": [

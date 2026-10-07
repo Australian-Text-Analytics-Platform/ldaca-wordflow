@@ -172,10 +172,12 @@ def _date_cast_expr(
         text = column.cast(pl.String)
         if datetime_format and (
             options.two_digit_year_start is not None
+            or options.date_in_text
             or any(token in datetime_format for token in ("%H", "%I", "%z", "%:z"))
         ):
-            # A date-and-time format, or a chosen century, reads through the
-            # date-and-time parser and keeps the date (issue 322).
+            # A date-and-time format, a chosen century, or a date inside
+            # longer text reads through the date-and-time parser and keeps
+            # the date (issue 322).
             return (
                 datetime_from_text(column, options, strict=bool(strict_flag))
                 .dt.date()

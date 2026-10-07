@@ -39,12 +39,16 @@ const LETTER_ROLES: PartRole[] = [
 const ZONE_ROLES: PartRole[] = [{ spec: '%z', label: 'Time zone' }];
 const FRACTION_ROLES: PartRole[] = [{ spec: '%.f', label: 'Fraction of a second' }];
 
+/** A part that is not part of the date, such as a name after it. */
+export const IGNORE_PART = 'ignore';
+const IGNORE_ROLE: PartRole = { spec: IGNORE_PART, label: 'Ignore (not part of the date)' };
+
 /** The menu for one part, by what the part looks like. */
 export function rolesFor(text: string): PartRole[] {
-  if (/^\.\d+$/.test(text)) return FRACTION_ROLES;
-  if (/^[+-]\d{2}:?\d{2}$|^Z$/.test(text)) return ZONE_ROLES;
-  if (/^\d+$/.test(text)) return DIGIT_ROLES;
-  return LETTER_ROLES;
+  if (/^\.\d+$/.test(text)) return [...FRACTION_ROLES, IGNORE_ROLE];
+  if (/^[+-]\d{2}:?\d{2}$|^Z$/.test(text)) return [...ZONE_ROLES, IGNORE_ROLE];
+  if (/^\d+$/.test(text)) return [...DIGIT_ROLES, IGNORE_ROLE];
+  return [...LETTER_ROLES, IGNORE_ROLE];
 }
 
 /** A readable name for a format code. */
@@ -78,14 +82,13 @@ function specPattern(spec: string): RegExp {
   if (spec === '%.f') return /^\.\d+/;
   if (spec === '%z' || spec === '%:z') return /^(?:[+-]\d{2}:?\d{2}|Z)/;
   if (['%b', '%B', '%a', '%A', '%p', '%Z'].includes(spec)) return /^[A-Za-z]+/;
-  return /^\d+/;
+  if (spec === '%Y') return /^\d{4}/;
+  // Day, month, hour and so on have at most two digits ("20210117").
+  return /^\d{1,2}/;
 }
 
-/**
- * Lines a format up against a value from the column. Returns null when the
- * format does not read the value, so the builder starts from the bare parts.
- */
-export function segmentsFromFormat(format: string, value: string): FormatSegment[] | null {
+/** Lines the format up from the start of the value; `rest` is what is left. */
+function align(format: string, value: string): { segments: FormatSegment[]; rest: string } | null {
   const segments: FormatSegment[] = [];
   let rest = value;
   for (const token of formatTokens(format)) {
@@ -100,7 +103,44 @@ export function segmentsFromFormat(format: string, value: string): FormatSegment
     segments.push({ kind: 'field', text: match[0], spec: token.text });
     rest = rest.slice(match[0].length);
   }
-  return rest === '' ? segments : null;
+  return { segments, rest };
+}
+
+const PART_PATTERN = /[+-]\d{2}:?\d{2}|\d+|[A-Za-z]+|./g;
+
+/** Text around a date, as parts marked Ignore. */
+function ignoredParts(text: string): FormatSegment[] {
+  return segmentsFromValue(text.match(PART_PATTERN) ?? []).map((segment) =>
+    segment.kind === 'field' ? { ...segment, spec: IGNORE_PART } : segment,
+  );
+}
+
+/**
+ * Lines a format up against a value from the column. Returns null when the
+ * format does not read the value, so the builder starts from the bare parts.
+ * With `inText`, the date may sit inside longer text, whose other parts are
+ * marked Ignore ("2021_01_17_LaurenLancaster").
+ */
+export function segmentsFromFormat(
+  format: string,
+  value: string,
+  inText = false,
+): FormatSegment[] | null {
+  if (!inText) {
+    const whole = align(format, value);
+    return whole?.rest === '' ? whole.segments : null;
+  }
+  for (const part of value.matchAll(PART_PATTERN)) {
+    const found = align(format, value.slice(part.index));
+    if (found) {
+      return [
+        ...ignoredParts(value.slice(0, part.index)),
+        ...found.segments,
+        ...ignoredParts(found.rest),
+      ];
+    }
+  }
+  return null;
 }
 
 /** The bare parts of a value: digit and letter runs become fields to name. */
@@ -114,14 +154,37 @@ export function segmentsFromValue(parts: string[]): FormatSegment[] {
   );
 }
 
-/** The format string the segments describe, or null while a part is unnamed. */
-export function formatFromSegments(segments: FormatSegment[]): string | null {
-  if (segments.some((segment) => segment.kind === 'field' && !segment.spec)) return null;
-  return segments
+export interface BuiltFormat {
+  /** The format, or null while a part is unnamed or the choices don't fit. */
+  format: string | null;
+  /** Some parts are ignored: the date is found inside longer text. */
+  inText: boolean;
+  /** An ignored part sits between parts of the date. */
+  ignoredInside: boolean;
+}
+
+/** The format string the segments describe. */
+export function buildFormat(segments: FormatSegment[]): BuiltFormat {
+  const fields = segments.flatMap((segment, index) => (segment.kind === 'field' ? [index] : []));
+  const kept = fields.filter((index) => segments[index]?.spec !== IGNORE_PART);
+  const inText = kept.length < fields.length;
+  const first = kept[0] ?? -1;
+  const last = kept[kept.length - 1] ?? -1;
+  const ignoredInside = fields.some(
+    (index) => segments[index]?.spec === IGNORE_PART && index > first && index < last,
+  );
+  const unnamed = segments.some((segment) => segment.kind === 'field' && !segment.spec);
+  if (unnamed || ignoredInside || kept.length === 0) {
+    return { format: null, inText, ignoredInside };
+  }
+  // Without ignored parts the whole value is read; with them, only the date.
+  const used = inText ? segments.slice(first, last + 1) : segments;
+  const format = used
     .map((segment) =>
       segment.kind === 'field' ? segment.spec : segment.text.replaceAll('%', '%%'),
     )
     .join('');
+  return { format, inText, ignoredInside };
 }
 
 const SHORT_NAMES: Record<string, string> = {

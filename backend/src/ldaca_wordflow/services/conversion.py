@@ -45,6 +45,8 @@ class ConversionOptions:
     decimal_mark: DecimalMark = "."
     thousands_separator: ThousandsSeparator = ""
     ignore_symbols: bool = False
+    # The date is part of longer text: find it and ignore the rest.
+    date_in_text: bool = False
 
 
 # --- numbers ---------------------------------------------------------------
@@ -138,7 +140,7 @@ def datetime_from_text(
     text = column.cast(pl.String).str.strip_chars()
     fmt = options.datetime_format
     parsed = (
-        text.str.to_datetime(format=fmt, strict=strict)
+        text.str.to_datetime(format=fmt, strict=strict, exact=not options.date_in_text)
         if fmt
         else text.str.to_datetime(strict=strict)
     )
@@ -174,6 +176,9 @@ _DATE_PARTS = [
     "%a, %d %b %Y",
     "%A, %d %B %Y",
     "%Y%m%d",
+    "%Y_%m_%d",
+    "%d_%m_%Y",
+    "%m_%d_%Y",
     "%d/%m/%y",
     "%m/%d/%y",
     "%d-%m-%y",
@@ -201,6 +206,7 @@ DAY_FIRST_PAIRS = {
     "%d/%m": "%m/%d",
     "%d-%m": "%m-%d",
     "%d.%m": "%m.%d",
+    "%d_%m": "%m_%d",
 }
 
 
@@ -224,6 +230,8 @@ class FormatCandidate:
     examples: list[tuple[str, str]]
     two_digit_year: bool = False
     swap_format: str | None = None
+    # Found inside longer text; the rest of the text is ignored.
+    in_text: bool = False
 
 
 @dataclass
@@ -333,15 +341,34 @@ def _candidate(
     )
 
 
+def _in_text_formats() -> list[str]:
+    """Formats to look for inside longer text: dates, with or without a time."""
+
+    return [date + time for date in _DATE_PARTS for time in _TIME_PARTS]
+
+
 def _text_candidates(texts: pl.Series) -> list[FormatCandidate]:
+    found = _matching_formats(texts, candidate_formats(), in_text=False)
+    if not found:
+        # Nothing reads the whole value: look for a date inside it, such as
+        # the 2021_01_17 of a file name "2021_01_17_LaurenLancaster".
+        found = _matching_formats(texts, _in_text_formats(), in_text=True)
+    return _rank(found)
+
+
+def _matching_formats(
+    texts: pl.Series, formats: list[str], *, in_text: bool
+) -> list[FormatCandidate]:
     quick = texts.head(_QUICK_VALUES)
     frame = pl.DataFrame({"v": texts})
+    exact = not in_text
     found: list[FormatCandidate] = []
     seen_results: list[pl.Series] = []
-    for fmt in candidate_formats():
-        if quick.str.to_datetime(format=fmt, strict=False).null_count() == quick.len():
+    for fmt in formats:
+        quick_parsed = quick.str.to_datetime(format=fmt, strict=False, exact=exact)
+        if quick_parsed.null_count() == quick.len():
             continue
-        converted = texts.str.to_datetime(format=fmt, strict=False)
+        converted = texts.str.to_datetime(format=fmt, strict=False, exact=exact)
         parsed = converted.len() - converted.null_count()
         if parsed == 0:
             continue
@@ -367,8 +394,23 @@ def _text_candidates(texts: pl.Series) -> list[FormatCandidate]:
                 sample_size=texts.len(),
                 examples=candidate.examples,
                 two_digit_year="%y" in fmt,
+                in_text=in_text,
             )
         )
+    return found
+
+
+def _rank(found: list[FormatCandidate]) -> list[FormatCandidate]:
+    # Inside text, "21-01-17" of "2021-01-17" also reads as a two-digit year;
+    # a four-digit year that reads as many values is the real one.
+    best_full_year = max(
+        (c.parsed for c in found if c.in_text and "%Y" in (c.format or "")), default=0
+    )
+    found = [
+        c
+        for c in found
+        if not (c.in_text and c.two_digit_year and c.parsed <= best_full_year)
+    ]
     by_format = {candidate.format: candidate for candidate in found}
     marked = []
     for candidate in found:
