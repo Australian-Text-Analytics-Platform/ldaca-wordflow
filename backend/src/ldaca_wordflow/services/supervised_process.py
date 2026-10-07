@@ -20,6 +20,19 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from ..infrastructure.storage.safe_paths import logical_tree_usage
 from ..shared.errors import AppError
 
+# The operating-system cap on any one file an analysis process writes. It is a
+# safety net against a runaway file, not the analysis's budget: that budget is
+# enforced on the analysis's own storage tree by `_receive_result`. Capping at
+# the budget (1 GiB) also capped the shared per-user tokeniser and embedding
+# caches, so once one grew past it every later analysis failed (issue 257).
+PROCESS_FILE_SIZE_CEILING_BYTES = 64 * 1024**3
+
+
+def process_file_size_limit(max_storage_bytes: int) -> int:
+    """The RLIMIT_FSIZE for an analysis process: never below its budget."""
+
+    return max(max_storage_bytes, PROCESS_FILE_SIZE_CEILING_BYTES)
+
 ProgressReporter = Callable[[object], Awaitable[None]]
 
 
@@ -94,10 +107,8 @@ def _run_process(
             try:
                 import resource
 
-                resource.setrlimit(
-                    resource.RLIMIT_FSIZE,
-                    (max_storage_bytes, max_storage_bytes),
-                )
+                limit = process_file_size_limit(max_storage_bytes)
+                resource.setrlimit(resource.RLIMIT_FSIZE, (limit, limit))
             except ImportError, OSError, ValueError:
                 pass
         result = function(**dict(kwargs), progress_queue=progress_queue)

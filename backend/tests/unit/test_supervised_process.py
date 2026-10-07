@@ -282,3 +282,17 @@ async def test_child_unexpected_error_has_no_user_message() -> None:
 
     assert captured.value.user_message is None
     await runner.close(anyio.current_time() + 1)
+
+
+def test_process_file_limit_does_not_cap_shared_caches_at_the_analysis_budget() -> None:
+    # Issue 257: the per-file OS limit used to equal the 1 GiB analysis budget,
+    # which also capped the per-user tokeniser and embedding caches.
+    from ldaca_wordflow.services.supervised_process import (
+        PROCESS_FILE_SIZE_CEILING_BYTES,
+        process_file_size_limit,
+    )
+
+    one_gib = 1024**3
+    assert process_file_size_limit(one_gib) == PROCESS_FILE_SIZE_CEILING_BYTES
+    assert process_file_size_limit(one_gib) > 10 * one_gib
+    assert process_file_size_limit(100 * one_gib) == 100 * one_gib
