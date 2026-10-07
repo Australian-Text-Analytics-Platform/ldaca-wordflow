@@ -9880,6 +9880,74 @@
         "title": "TokenizerModelResource",
         "type": "object"
       },
+      "ToolCacheClearedResource": {
+        "additionalProperties": false,
+        "description": "The result of clearing one tool cache.",
+        "properties": {
+          "freed_bytes": {
+            "minimum": 0.0,
+            "title": "Freed Bytes",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "topic_modeling",
+              "tokeniser"
+            ],
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "freed_bytes"
+        ],
+        "title": "ToolCacheClearedResource",
+        "type": "object"
+      },
+      "ToolCacheResource": {
+        "additionalProperties": false,
+        "description": "One tool cache and the bytes it uses on disk.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "topic_modeling",
+              "tokeniser"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "size_bytes": {
+            "minimum": 0.0,
+            "title": "Size Bytes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "size_bytes"
+        ],
+        "title": "ToolCacheResource",
+        "type": "object"
+      },
+      "ToolCachesResource": {
+        "additionalProperties": false,
+        "description": "Every tool cache of the current user.",
+        "properties": {
+          "caches": {
+            "items": {
+              "$ref": "#/components/schemas/ToolCacheResource"
+            },
+            "title": "Caches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "caches"
+        ],
+        "title": "ToolCachesResource",
+        "type": "object"
+      },
       "TopicClustering": {
         "additionalProperties": false,
         "properties": {
@@ -14075,6 +14143,115 @@
         "summary": "List Tokenizer Models",
         "tags": [
           "tokenizers"
+        ]
+      }
+    },
+    "/api/tool-caches": {
+      "get": {
+        "description": "Return the size of each of the current user's tool caches.",
+        "operationId": "list_tool_caches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolCachesResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "List Tool Caches",
+        "tags": [
+          "tool-caches"
+        ]
+      }
+    },
+    "/api/tool-caches/{kind}": {
+      "delete": {
+        "description": "Delete one of the current user's tool caches; 409 while an analysis uses it.",
+        "operationId": "clear_user_tool_cache",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "topic_modeling",
+                "tokeniser"
+              ],
+              "title": "Kind",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ToolCacheClearedResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Clear User Tool Cache",
+        "tags": [
+          "tool-caches"
         ]
       }
     },

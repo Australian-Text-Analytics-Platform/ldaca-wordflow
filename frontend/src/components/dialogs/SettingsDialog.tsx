@@ -1,6 +1,7 @@
 import { Bot, Eye, FolderOpen, Hash, KeyRound, Moon, RotateCcw, Sparkles, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataFolderSettingsPanel } from '@/components/dialogs/DataFolderSettingsPanel';
+import { ToolCacheSettingsPanel } from '@/components/dialogs/ToolCacheSettingsPanel';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -243,6 +244,16 @@ export function SettingsDialog({
                     </p>
                   </div>
                   <DataFolderSettingsPanel />
+                </section>
+                <section className="space-y-3 border-t border-surface-border/60 pt-4">
+                  <div>
+                    <h3 className="text-body font-semibold">Tool caches</h3>
+                    <p className="text-body text-description">
+                      Wordflow keeps the results of slow steps so later runs on the same text are
+                      faster. Clearing frees disk space; nothing in your Projects changes.
+                    </p>
+                  </div>
+                  <ToolCacheSettingsPanel />
                 </section>
                 <section className="space-y-3 border-t border-surface-border/60 pt-4">
                   <h3 className="text-body font-semibold">Favourite Projects</h3>

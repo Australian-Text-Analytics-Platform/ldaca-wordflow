@@ -285,6 +285,20 @@ The data folder is where Wordflow keeps your Projects, imported files, and setti
 - To change it later, open **Settings → Project → Data folder**. Wordflow reloads after the change and does not copy anything from the old folder.
 - On a shared server, the data folder is set by the person who runs Wordflow, and Settings says so.
 
+<h3 id="help-ui-tool-caches">Tool caches</h3>
+
+Some steps are slow, so Wordflow keeps their results and reuses them when you
+run a tool again on the same text. **Topic Modelling** keeps the text it has
+read into its model, and the **Tokeniser** keeps text already split into tokens
+by tokeniser models. The caches grow with every corpus you analyse and are not
+cleared automatically.
+
+**Settings → Project → Tool caches** shows how much space each cache uses.
+**Clear** removes one cache after you confirm. Nothing in your Projects changes;
+the next run of that tool on the same text is slower while the cache fills
+again. If an analysis is using the cache, Wordflow asks you to try again when it
+finishes.
+
 <h2 id="help-ui-appearance">8. Appearance</h2>
 
 Open **Settings** (the gear icon at the top right) **→ General → Appearance** and use the switch to change between **Light 2026** and

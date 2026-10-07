@@ -5074,6 +5074,50 @@ export type TokenizerModelResource = {
 };
 
 /**
+ * ToolCacheClearedResource
+ *
+ * The result of clearing one tool cache.
+ */
+export type ToolCacheClearedResource = {
+    /**
+     * Freed Bytes
+     */
+    freed_bytes: number;
+    /**
+     * Kind
+     */
+    kind: 'topic_modeling' | 'tokeniser';
+};
+
+/**
+ * ToolCacheResource
+ *
+ * One tool cache and the bytes it uses on disk.
+ */
+export type ToolCacheResource = {
+    /**
+     * Kind
+     */
+    kind: 'topic_modeling' | 'tokeniser';
+    /**
+     * Size Bytes
+     */
+    size_bytes: number;
+};
+
+/**
+ * ToolCachesResource
+ *
+ * Every tool cache of the current user.
+ */
+export type ToolCachesResource = {
+    /**
+     * Caches
+     */
+    caches: Array<ToolCacheResource>;
+};
+
+/**
  * TopicClustering
  */
 export type TopicClustering = {
@@ -7615,6 +7659,69 @@ export type ListTokenizerModelsResponses = {
 };
 
 export type ListTokenizerModelsResponse = ListTokenizerModelsResponses[keyof ListTokenizerModelsResponses];
+
+export type ListToolCachesData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/tool-caches';
+};
+
+export type ListToolCachesErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+};
+
+export type ListToolCachesError = ListToolCachesErrors[keyof ListToolCachesErrors];
+
+export type ListToolCachesResponses = {
+    /**
+     * Successful Response
+     */
+    200: ToolCachesResource;
+};
+
+export type ListToolCachesResponse = ListToolCachesResponses[keyof ListToolCachesResponses];
+
+export type ClearUserToolCacheData = {
+    body?: never;
+    path: {
+        /**
+         * Kind
+         */
+        kind: 'topic_modeling' | 'tokeniser';
+    };
+    query?: never;
+    url: '/api/tool-caches/{kind}';
+};
+
+export type ClearUserToolCacheErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ClearUserToolCacheError = ClearUserToolCacheErrors[keyof ClearUserToolCacheErrors];
+
+export type ClearUserToolCacheResponses = {
+    /**
+     * Successful Response
+     */
+    200: ToolCacheClearedResource;
+};
+
+export type ClearUserToolCacheResponse = ClearUserToolCacheResponses[keyof ClearUserToolCacheResponses];
 
 export type ListUserFileImportsData = {
     body?: never;

@@ -350,6 +350,17 @@ class ResourceConflictError(AppError):
     code = "resource_conflict"
 
 
+class ToolCacheBusyError(ResourceConflictError):
+    """A running analysis is reading or writing the tool cache being cleared."""
+
+    code = "tool_cache_busy"
+
+    def __init__(self) -> None:
+        super().__init__(
+            "This cache is in use by a running analysis. Try again when it finishes."
+        )
+
+
 class DataRootBusyError(ResourceConflictError):
     """A root switch would interrupt retained background work."""
 
