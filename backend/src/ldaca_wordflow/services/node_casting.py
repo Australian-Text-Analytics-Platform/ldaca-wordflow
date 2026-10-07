@@ -18,8 +18,17 @@ from dataclasses import dataclass
 
 import polars as pl
 
+from ..shared.empty_values import empty_value_expression
 from ..shared.errors import AppError, InvalidInputError, format_exception_diagnostic
 from .category_order import default_order_expression, ordered_category_expression
+from .conversion import (
+    ConversionOptions,
+    datetime_from_numbers,
+    datetime_from_text,
+    number_from_text,
+    round_to_whole,
+    uses_numbers,
+)
 
 
 SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical"
@@ -65,6 +74,8 @@ class CastLazyFrameColumnResult:
     target_type: str
     format_used: str | None
     strict_used: bool | None
+    # The column's converted values, for the conversion check (issue 322).
+    expression: pl.Expr | None = None
 
 
 def _datetime_cast_expr(
@@ -73,6 +84,8 @@ def _datetime_cast_expr(
     original_type: str,
     datetime_format: str | None,
     strict_flag: bool,
+    dtype: pl.DataType | None = None,
+    options: ConversionOptions | None = None,
 ) -> pl.Expr:
     """Build a timezone-aware UTC datetime cast expression.
 
@@ -83,6 +96,7 @@ def _datetime_cast_expr(
     """
 
     orig_lower = original_type.lower()
+    options = options or ConversionOptions(datetime_format=datetime_format)
     try:
         if orig_lower.startswith("datetime"):
             parsed = pl.col(column_name)
@@ -90,13 +104,17 @@ def _datetime_cast_expr(
             # A real Date column (such as one read from Excel) is converted,
             # not parsed as text (issue 165).
             parsed = pl.col(column_name).cast(pl.Datetime("us"))
-        elif datetime_format:
-            # Cast first so category columns parse too (issue 318).
-            parsed = pl.col(column_name).cast(pl.String).str.to_datetime(
-                format=datetime_format, strict=bool(strict_flag)
+        elif uses_numbers(options):
+            # Unix times or Excel day numbers, in UTC (issue 322).
+            parsed = datetime_from_numbers(
+                pl.col(column_name), dtype or pl.Float64(), options
             )
         else:
-            parsed = pl.col(column_name).cast(pl.String).str.to_datetime(strict=bool(strict_flag))
+            # Cast first so category columns parse too (issue 318); two-digit
+            # years go to the chosen century (issue 322).
+            parsed = datetime_from_text(
+                pl.col(column_name), options, strict=bool(strict_flag)
+            )
 
         format_has_tz = datetime_format and any(
             token in datetime_format for token in TIMEZONE_FORMAT_TOKENS
@@ -124,6 +142,8 @@ def _date_cast_expr(
     original_type: str,
     datetime_format: str | None,
     strict_flag: bool,
+    dtype: pl.DataType | None = None,
+    options: ConversionOptions | None = None,
 ) -> pl.Expr:
     """A calendar date without a time of day (issue 187).
 
@@ -133,12 +153,30 @@ def _date_cast_expr(
 
     orig_lower = original_type.lower()
     column = pl.col(column_name)
+    options = options or ConversionOptions(datetime_format=datetime_format)
     if orig_lower == "date":
         return column.alias(column_name)
     if orig_lower.startswith("datetime"):
         return column.dt.date().alias(column_name)
+    if uses_numbers(options):
+        return (
+            datetime_from_numbers(column, dtype or pl.Float64(), options)
+            .dt.date()
+            .alias(column_name)
+        )
     if orig_lower in ("string", "str", "utf8") or orig_lower.startswith(("categorical", "enum")):
         text = column.cast(pl.String)
+        if datetime_format and (
+            options.two_digit_year_start is not None
+            or any(token in datetime_format for token in ("%H", "%I", "%z", "%:z"))
+        ):
+            # A date-and-time format, or a chosen century, reads through the
+            # date-and-time parser and keeps the date (issue 322).
+            return (
+                datetime_from_text(column, options, strict=bool(strict_flag))
+                .dt.date()
+                .alias(column_name)
+            )
         if datetime_format:
             return text.str.to_date(
                 format=datetime_format, strict=bool(strict_flag)
@@ -157,6 +195,8 @@ def _cast_expr(
     target_type: str,
     datetime_format: str | None,
     strict_flag: bool,
+    dtype: pl.DataType | None = None,
+    options: ConversionOptions | None = None,
 ) -> pl.Expr:
     """Build the Polars expression for one supported target type.
 
@@ -166,12 +206,15 @@ def _cast_expr(
 
     target_lower = target_type.lower()
 
+    options = options or ConversionOptions(datetime_format=datetime_format)
     if target_lower == "datetime":
         return _datetime_cast_expr(
             column_name,
             original_type=original_type,
             datetime_format=datetime_format,
             strict_flag=strict_flag,
+            dtype=dtype,
+            options=options,
         )
     if target_lower == "date":
         return _date_cast_expr(
@@ -179,16 +222,31 @@ def _cast_expr(
             original_type=original_type,
             datetime_format=datetime_format,
             strict_flag=strict_flag,
+            dtype=dtype,
+            options=options,
         )
+    is_text = dtype is not None and (
+        dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum))
+    )
     if target_lower in ("string", "utf8", "str", "text"):
         if (original_type.startswith("Datetime") or original_type == "Date") and datetime_format:
             return pl.col(column_name).dt.strftime(datetime_format).alias(column_name)
         return pl.col(column_name).cast(pl.Utf8).alias(column_name)
     if target_lower == "integer":
+        # Text is read with the chosen marks, and decimals round to the nearest
+        # whole number, halves away from zero (issue 322).
+        if is_text:
+            return round_to_whole(number_from_text(pl.col(column_name), options)).alias(
+                column_name
+            )
+        if dtype is not None and dtype.is_float():
+            return round_to_whole(pl.col(column_name)).alias(column_name)
         return pl.col(column_name).cast(pl.Int64, strict=False).alias(column_name)
     if target_lower == "float":
         # Like integer: values that are not numbers become empty, and the
         # Data Editor warns with Undo (issues 183 and 187).
+        if is_text:
+            return number_from_text(pl.col(column_name), options).alias(column_name)
         return pl.col(column_name).cast(pl.Float64, strict=False).alias(column_name)
     raise InvalidInputError(
         f"Wordflow can't convert columns to {target_type} yet. Choose text, category, "
@@ -204,6 +262,7 @@ def cast_lazyframe_column(
     datetime_format: str | None = None,
     strict: bool | None = None,
     categories: list[str] | None = None,
+    options: ConversionOptions | None = None,
 ) -> CastLazyFrameColumnResult:
     """Return a new LazyFrame with one column cast to the requested dtype.
 
@@ -237,6 +296,9 @@ def cast_lazyframe_column(
                 target_type=target_type,
                 datetime_format=datetime_format,
                 strict_flag=bool(strict_flag),
+                dtype=schema[column_name],
+                options=options
+                or ConversionOptions(datetime_format=datetime_format),
             )
 
         try:
@@ -268,6 +330,7 @@ def cast_lazyframe_column(
             target_type=target_type,
             format_used=datetime_format if datetime_format else None,
             strict_used=bool(strict_flag) if target_lower == "datetime" else None,
+            expression=cast_expr,
         )
     except AppError:
         raise
@@ -277,3 +340,72 @@ def cast_lazyframe_column(
             "Clean its values first, or choose another type.",
             cast_error,
         ) from cast_error
+
+
+_RESULT_LABEL_FORMATS = {"datetime": "%Y-%m-%d %H:%M:%S", "date": "%Y-%m-%d"}
+
+
+def check_cast(
+    lazyframe: pl.LazyFrame,
+    *,
+    column_name: str,
+    target_type: str,
+    options: ConversionOptions,
+    sample_rows: int = 8,
+    failure_rows: int = 5,
+) -> dict[str, object]:
+    """Try a conversion on the whole column without changing it (issue 322).
+
+    The original and converted values come from one pass over the plan, so
+    their rows always line up (issue 319). Returns counts, a preview of the
+    first values, and the first values that would not convert.
+    """
+
+    result = cast_lazyframe_column(
+        lazyframe,
+        column_name=column_name,
+        target_type=target_type,
+        datetime_format=options.datetime_format,
+        options=options,
+    )
+    if result.expression is None:
+        raise InvalidInputError("This conversion can't be checked.")
+    dtype = lazyframe.collect_schema()[column_name]
+    before = pl.col(column_name)
+    label_format = _RESULT_LABEL_FORMATS.get(target_type)
+    after = result.expression.alias("__after__")
+    after_text = (
+        pl.col("__after__").dt.strftime(label_format)
+        if label_format
+        else pl.col("__after__").cast(pl.String)
+    )
+    frame = (
+        lazyframe.select(
+            pl.int_range(pl.len(), dtype=pl.Int64).alias("__row__"),
+            empty_value_expression(before, dtype).alias("__empty__"),
+            before.cast(pl.String).alias("__before__"),
+            after,
+        )
+        .with_columns(after_text.alias("__after_text__"))
+        .collect()
+    )
+    filled = frame.filter(~pl.col("__empty__"))
+    failed = filled.filter(pl.col("__after__").is_null())
+    return {
+        "total_rows": frame.height,
+        "non_empty": filled.height,
+        "converted": filled.height - failed.height,
+        "failed": failed.height,
+        "samples": [
+            {"row": int(row) + 1, "value": value, "result": text}
+            for row, value, text in filled.head(sample_rows)
+            .select("__row__", "__before__", "__after_text__")
+            .iter_rows()
+        ],
+        "failures": [
+            {"row": int(row) + 1, "value": value}
+            for row, value in failed.head(failure_rows)
+            .select("__row__", "__before__")
+            .iter_rows()
+        ],
+    }

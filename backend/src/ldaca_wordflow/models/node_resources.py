@@ -462,3 +462,68 @@ class CategoryValuesResource(BaseModel):
     sample_rows: int
     sample_distinct: int
     is_document: bool
+
+
+class DatetimeFormatExample(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    value: str
+    result: str
+
+
+class DatetimeFormatCandidate(BaseModel):
+    """One way the column's values could be written (issue 322)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["format", "unix", "excel"]
+    format: str | None
+    epoch_unit: Literal["s", "ms", "us", "ns"] | None
+    parsed: int
+    sample_size: int
+    examples: list[DatetimeFormatExample]
+    # The format uses a two-digit year (%y): the user picks the century.
+    two_digit_year: bool
+    # Day first and month first both read every value: offer this swap.
+    swap_format: str | None
+
+
+class DatetimeFormatsResource(BaseModel):
+    """Formats that read a column's first values, best first (issue 322)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    sample_size: int
+    sample_value: str | None
+    # The sample value split into parts for the format builder.
+    sample_parts: list[str]
+    candidates: list[DatetimeFormatCandidate]
+
+
+class ConversionSample(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    row: int
+    value: str | None
+    result: str | None
+
+
+class ConversionFailure(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    row: int
+    value: str | None
+
+
+class ConversionCheckResource(BaseModel):
+    """A conversion tried on the whole column without changing it (issue 322)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    total_rows: int
+    non_empty: int
+    converted: int
+    failed: int
+    samples: list[ConversionSample]
+    failures: list[ConversionFailure]

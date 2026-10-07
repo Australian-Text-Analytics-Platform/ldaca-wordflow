@@ -46,6 +46,7 @@ from ..shared.empty_values import empty_value_expression
 from ..shared.errors import InvalidInputError, NodeNotFoundError
 from ..shared.json_data import JsonData
 from .node_casting import cast_lazyframe_column
+from .conversion import ConversionOptions
 from .category_order import is_category_dtype, stacked_category_order
 from ..models.node_resources import (
     AnnotationClassesNodeEditRequest,
@@ -270,6 +271,7 @@ def build_edited_lazyframe(
             target_type=request.target_type,
             datetime_format=request.datetime_format,
             categories=request.categories,
+            options=conversion_options(request),
             strict=request.strict,
         )
         return result.lazyframe, None
@@ -513,6 +515,20 @@ def _replace_annotation_classes(
         .join(source_rows, on=row_index, how="left", maintain_order="left")
         .drop(row_index, source_marker)
         .select(list(schema))
+    )
+
+
+def conversion_options(request: CastNodeEditRequest) -> ConversionOptions:
+    """How a cast request says its values are written (issue 322)."""
+
+    return ConversionOptions(
+        datetime_format=request.datetime_format,
+        epoch_unit=request.epoch_unit,
+        excel_serial=request.excel_serial,
+        two_digit_year_start=request.two_digit_year_start,
+        decimal_mark=request.decimal_mark,
+        thousands_separator=request.thousands_separator,
+        ignore_symbols=request.ignore_symbols,
     )
 
 

@@ -247,6 +247,16 @@ class CastDerivation(_StrictModel):
     # For "categorical": the values in the chosen order (issue 318). Without
     # it the default order applies (A to Z, or by value for numbers and dates).
     categories: list[str] | None = Field(default=None, max_length=10_000)
+    # How values are written (issue 322). Dates from numbers: Unix time in
+    # epoch_unit, or Excel day numbers. Two-digit years (%y) fall in the 100
+    # years from two_digit_year_start. Numbers from text: the decimal mark,
+    # the thousands separator, and whether to ignore currency or % symbols.
+    epoch_unit: Literal["s", "ms", "us", "ns"] | None = None
+    excel_serial: bool = False
+    two_digit_year_start: int | None = Field(default=None, ge=1, le=9900)
+    decimal_mark: Literal[".", ","] = "."
+    thousands_separator: Literal["", ",", ".", " ", "'"] = ""
+    ignore_symbols: bool = False
 
 
 class SegmentDerivation(_StrictModel):

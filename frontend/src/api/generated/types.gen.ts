@@ -1063,6 +1063,22 @@ export type CastDerivation = {
      */
     datetime_format?: string | null;
     /**
+     * Decimal Mark
+     */
+    decimal_mark?: '.' | ',';
+    /**
+     * Epoch Unit
+     */
+    epoch_unit?: 's' | 'ms' | 'us' | 'ns' | null;
+    /**
+     * Excel Serial
+     */
+    excel_serial?: boolean;
+    /**
+     * Ignore Symbols
+     */
+    ignore_symbols?: boolean;
+    /**
      * Kind
      */
     kind?: 'cast';
@@ -1074,6 +1090,14 @@ export type CastDerivation = {
      * Target Type
      */
     target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
+    /**
+     * Thousands Separator
+     */
+    thousands_separator?: '' | ',' | '.' | ' ' | '\'';
+    /**
+     * Two Digit Year Start
+     */
+    two_digit_year_start?: number | null;
 };
 
 /**
@@ -1171,6 +1195,22 @@ export type CastNodeEditRequest = {
      */
     datetime_format?: string | null;
     /**
+     * Decimal Mark
+     */
+    decimal_mark?: '.' | ',';
+    /**
+     * Epoch Unit
+     */
+    epoch_unit?: 's' | 'ms' | 'us' | 'ns' | null;
+    /**
+     * Excel Serial
+     */
+    excel_serial?: boolean;
+    /**
+     * Ignore Symbols
+     */
+    ignore_symbols?: boolean;
+    /**
      * Kind
      */
     kind?: 'cast';
@@ -1182,6 +1222,14 @@ export type CastNodeEditRequest = {
      * Target Type
      */
     target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
+    /**
+     * Thousands Separator
+     */
+    thousands_separator?: '' | ',' | '.' | ' ' | '\'';
+    /**
+     * Two Digit Year Start
+     */
+    two_digit_year_start?: number | null;
 };
 
 /**
@@ -2056,6 +2104,70 @@ export type ConcordanceTabUpdate = {
 };
 
 /**
+ * ConversionCheckResource
+ *
+ * A conversion tried on the whole column without changing it (issue 322).
+ */
+export type ConversionCheckResource = {
+    /**
+     * Converted
+     */
+    converted: number;
+    /**
+     * Failed
+     */
+    failed: number;
+    /**
+     * Failures
+     */
+    failures: Array<ConversionFailure>;
+    /**
+     * Non Empty
+     */
+    non_empty: number;
+    /**
+     * Samples
+     */
+    samples: Array<ConversionSample>;
+    /**
+     * Total Rows
+     */
+    total_rows: number;
+};
+
+/**
+ * ConversionFailure
+ */
+export type ConversionFailure = {
+    /**
+     * Row
+     */
+    row: number;
+    /**
+     * Value
+     */
+    value: string | null;
+};
+
+/**
+ * ConversionSample
+ */
+export type ConversionSample = {
+    /**
+     * Result
+     */
+    result: string | null;
+    /**
+     * Row
+     */
+    row: number;
+    /**
+     * Value
+     */
+    value: string | null;
+};
+
+/**
  * CountNodeEditRequest
  *
  * Count words, characters, or matches in a text column (issue 147).
@@ -2438,6 +2550,88 @@ export type DataRootUpdateRequest = {
      * Data Root
      */
     data_root: string;
+};
+
+/**
+ * DatetimeFormatCandidate
+ *
+ * One way the column's values could be written (issue 322).
+ */
+export type DatetimeFormatCandidate = {
+    /**
+     * Epoch Unit
+     */
+    epoch_unit: 's' | 'ms' | 'us' | 'ns' | null;
+    /**
+     * Examples
+     */
+    examples: Array<DatetimeFormatExample>;
+    /**
+     * Format
+     */
+    format: string | null;
+    /**
+     * Kind
+     */
+    kind: 'format' | 'unix' | 'excel';
+    /**
+     * Parsed
+     */
+    parsed: number;
+    /**
+     * Sample Size
+     */
+    sample_size: number;
+    /**
+     * Swap Format
+     */
+    swap_format: string | null;
+    /**
+     * Two Digit Year
+     */
+    two_digit_year: boolean;
+};
+
+/**
+ * DatetimeFormatExample
+ */
+export type DatetimeFormatExample = {
+    /**
+     * Result
+     */
+    result: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * DatetimeFormatsResource
+ *
+ * Formats that read a column's first values, best first (issue 322).
+ */
+export type DatetimeFormatsResource = {
+    /**
+     * Candidates
+     */
+    candidates: Array<DatetimeFormatCandidate>;
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Sample Parts
+     */
+    sample_parts: Array<string>;
+    /**
+     * Sample Size
+     */
+    sample_size: number;
+    /**
+     * Sample Value
+     */
+    sample_value: string | null;
 };
 
 /**
@@ -10033,6 +10227,107 @@ export type GetCategoryValuesResponses = {
 };
 
 export type GetCategoryValuesResponse = GetCategoryValuesResponses[keyof GetCategoryValuesResponses];
+
+export type CheckConversionData = {
+    body: CastNodeEditRequest;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/conversion-check';
+};
+
+export type CheckConversionErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type CheckConversionError = CheckConversionErrors[keyof CheckConversionErrors];
+
+export type CheckConversionResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConversionCheckResource;
+};
+
+export type CheckConversionResponse = CheckConversionResponses[keyof CheckConversionResponses];
+
+export type GetDatetimeFormatsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Column
+         */
+        column: string;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/datetime-formats';
+};
+
+export type GetDatetimeFormatsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetDatetimeFormatsError = GetDatetimeFormatsErrors[keyof GetDatetimeFormatsErrors];
+
+export type GetDatetimeFormatsResponses = {
+    /**
+     * Successful Response
+     */
+    200: DatetimeFormatsResource;
+};
+
+export type GetDatetimeFormatsResponse = GetDatetimeFormatsResponses[keyof GetDatetimeFormatsResponses];
 
 export type EditNodeData = {
     /**

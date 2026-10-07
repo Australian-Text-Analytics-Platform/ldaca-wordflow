@@ -16,7 +16,10 @@ from fastapi.responses import FileResponse
 from starlette.background import BackgroundTask
 
 from ...models.node_resources import (
+    CastNodeEditRequest,
     CategoryValuesResource,
+    ConversionCheckResource,
+    DatetimeFormatsResource,
     DataBlockExportRequest,
     NodeCreateRequest,
     NodeDerivationRequest,
@@ -362,6 +365,44 @@ async def delete_node(
     return Response(
         status_code=status.HTTP_204_NO_CONTENT,
         headers={"ETag": workspace_etag(revision)},
+    )
+
+
+@router.get(
+    "/{node_id}/datetime-formats",
+    response_model=DatetimeFormatsResource,
+    responses=api_errors(400, 404, 422),
+)
+async def get_datetime_formats(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    column: str = Query(min_length=1),
+) -> DatetimeFormatsResource:
+    """The date formats that read a column's first values, best first."""
+
+    return await runtime.node_service.datetime_formats(
+        principal.user.id, workspace_id, node_id, column
+    )
+
+
+@router.post(
+    "/{node_id}/conversion-check",
+    response_model=ConversionCheckResource,
+    responses=api_errors(400, 403, 404, 422),
+)
+async def check_conversion(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    request: CastNodeEditRequest,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> ConversionCheckResource:
+    """Try a type change on the whole column without changing it."""
+
+    return await runtime.node_service.conversion_check(
+        principal.user.id, workspace_id, node_id, request
     )
 
 

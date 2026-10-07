@@ -42,6 +42,9 @@ from ..shared.table_transport import (
 )
 from .user_files import UserFileStore
 from ..shared.unsupported_columns import require_supported_columns
+from .conversion import detect_datetime_formats, format_tokens
+from .node_casting import check_cast
+from .node_operations import conversion_options
 from .category_order import (
     MAX_CATEGORY_VALUES,
     WARN_CATEGORY_VALUES,
@@ -50,6 +53,10 @@ from .category_order import (
 )
 from ..models.node_resources import (
     CategoryValuesResource,
+    ConversionCheckResource,
+    DatetimeFormatCandidate,
+    DatetimeFormatExample,
+    DatetimeFormatsResource,
     CastNodeEditRequest,
     DeduplicateNodeCreateRequest,
     FileNodeCreateRequest,
@@ -671,6 +678,68 @@ class NodeService:
             warn_values=WARN_CATEGORY_VALUES,
             max_values=MAX_CATEGORY_VALUES,
         )
+
+    async def datetime_formats(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        column: str,
+    ) -> DatetimeFormatsResource:
+        """The date formats that read a column's first values (issue 322)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            detected = await self._run_io(detect_datetime_formats, node.data, column)
+        return DatetimeFormatsResource(
+            column=column,
+            sample_size=detected.sample_size,
+            sample_value=detected.sample_value,
+            sample_parts=format_tokens(detected.sample_value or ""),
+            candidates=[
+                DatetimeFormatCandidate(
+                    kind=candidate.kind,
+                    format=candidate.format,
+                    epoch_unit=candidate.epoch_unit,
+                    parsed=candidate.parsed,
+                    sample_size=candidate.sample_size,
+                    examples=[
+                        DatetimeFormatExample(value=value, result=result)
+                        for value, result in candidate.examples
+                    ],
+                    two_digit_year=candidate.two_digit_year,
+                    swap_format=candidate.swap_format,
+                )
+                for candidate in detected.candidates
+            ],
+        )
+
+    async def conversion_check(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        request: CastNodeEditRequest,
+    ) -> ConversionCheckResource:
+        """Try a type change on the whole column without changing it (issue 322)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            if request.column not in node.data.collect_schema():
+                raise InvalidInputError(f'Column "{request.column}" was not found.')
+            checked = await self._run_io(
+                lambda: check_cast(
+                    node.data,
+                    column_name=request.column,
+                    target_type=request.target_type,
+                    options=conversion_options(request),
+                )
+            )
+        return ConversionCheckResource.model_validate(checked)
 
     async def _run_io(
         self,

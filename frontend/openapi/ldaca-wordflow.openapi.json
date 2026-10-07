@@ -2239,6 +2239,42 @@
             ],
             "title": "Datetime Format"
           },
+          "decimal_mark": {
+            "default": ".",
+            "enum": [
+              ".",
+              ","
+            ],
+            "title": "Decimal Mark",
+            "type": "string"
+          },
+          "epoch_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "s",
+                  "ms",
+                  "us",
+                  "ns"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Unit"
+          },
+          "excel_serial": {
+            "default": false,
+            "title": "Excel Serial",
+            "type": "boolean"
+          },
+          "ignore_symbols": {
+            "default": false,
+            "title": "Ignore Symbols",
+            "type": "boolean"
+          },
           "kind": {
             "const": "cast",
             "default": "cast",
@@ -2261,6 +2297,31 @@
             ],
             "title": "Target Type",
             "type": "string"
+          },
+          "thousands_separator": {
+            "default": "",
+            "enum": [
+              "",
+              ",",
+              ".",
+              " ",
+              "'"
+            ],
+            "title": "Thousands Separator",
+            "type": "string"
+          },
+          "two_digit_year_start": {
+            "anyOf": [
+              {
+                "maximum": 9900.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Two Digit Year Start"
           }
         },
         "required": [
@@ -2517,6 +2578,42 @@
             ],
             "title": "Datetime Format"
           },
+          "decimal_mark": {
+            "default": ".",
+            "enum": [
+              ".",
+              ","
+            ],
+            "title": "Decimal Mark",
+            "type": "string"
+          },
+          "epoch_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "s",
+                  "ms",
+                  "us",
+                  "ns"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Unit"
+          },
+          "excel_serial": {
+            "default": false,
+            "title": "Excel Serial",
+            "type": "boolean"
+          },
+          "ignore_symbols": {
+            "default": false,
+            "title": "Ignore Symbols",
+            "type": "boolean"
+          },
           "kind": {
             "const": "cast",
             "default": "cast",
@@ -2539,6 +2636,31 @@
             ],
             "title": "Target Type",
             "type": "string"
+          },
+          "thousands_separator": {
+            "default": "",
+            "enum": [
+              "",
+              ",",
+              ".",
+              " ",
+              "'"
+            ],
+            "title": "Thousands Separator",
+            "type": "string"
+          },
+          "two_digit_year_start": {
+            "anyOf": [
+              {
+                "maximum": 9900.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Two Digit Year Start"
           }
         },
         "required": [
@@ -4061,6 +4183,116 @@
         "title": "ConcordanceTabUpdate",
         "type": "object"
       },
+      "ConversionCheckResource": {
+        "additionalProperties": false,
+        "description": "A conversion tried on the whole column without changing it (issue 322).",
+        "properties": {
+          "converted": {
+            "title": "Converted",
+            "type": "integer"
+          },
+          "failed": {
+            "title": "Failed",
+            "type": "integer"
+          },
+          "failures": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionFailure"
+            },
+            "title": "Failures",
+            "type": "array"
+          },
+          "non_empty": {
+            "title": "Non Empty",
+            "type": "integer"
+          },
+          "samples": {
+            "items": {
+              "$ref": "#/components/schemas/ConversionSample"
+            },
+            "title": "Samples",
+            "type": "array"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "total_rows",
+          "non_empty",
+          "converted",
+          "failed",
+          "samples",
+          "failures"
+        ],
+        "title": "ConversionCheckResource",
+        "type": "object"
+      },
+      "ConversionFailure": {
+        "additionalProperties": false,
+        "properties": {
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "row",
+          "value"
+        ],
+        "title": "ConversionFailure",
+        "type": "object"
+      },
+      "ConversionSample": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result"
+          },
+          "row": {
+            "title": "Row",
+            "type": "integer"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "row",
+          "value",
+          "result"
+        ],
+        "title": "ConversionSample",
+        "type": "object"
+      },
       "CountNodeEditRequest": {
         "additionalProperties": false,
         "description": "Count words, characters, or matches in a text column (issue 147).\n\nThe count goes into a new column right of the source. Words are runs of\nnon-whitespace, as word processors count them. ``matches`` counts\n``pattern`` as plain text unless ``regex`` is set.",
@@ -4764,6 +4996,158 @@
           "data_root"
         ],
         "title": "DataRootUpdateRequest",
+        "type": "object"
+      },
+      "DatetimeFormatCandidate": {
+        "additionalProperties": false,
+        "description": "One way the column's values could be written (issue 322).",
+        "properties": {
+          "epoch_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "s",
+                  "ms",
+                  "us",
+                  "ns"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epoch Unit"
+          },
+          "examples": {
+            "items": {
+              "$ref": "#/components/schemas/DatetimeFormatExample"
+            },
+            "title": "Examples",
+            "type": "array"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Format"
+          },
+          "kind": {
+            "enum": [
+              "format",
+              "unix",
+              "excel"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "parsed": {
+            "title": "Parsed",
+            "type": "integer"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "swap_format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Swap Format"
+          },
+          "two_digit_year": {
+            "title": "Two Digit Year",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "kind",
+          "format",
+          "epoch_unit",
+          "parsed",
+          "sample_size",
+          "examples",
+          "two_digit_year",
+          "swap_format"
+        ],
+        "title": "DatetimeFormatCandidate",
+        "type": "object"
+      },
+      "DatetimeFormatExample": {
+        "additionalProperties": false,
+        "properties": {
+          "result": {
+            "title": "Result",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "result"
+        ],
+        "title": "DatetimeFormatExample",
+        "type": "object"
+      },
+      "DatetimeFormatsResource": {
+        "additionalProperties": false,
+        "description": "Formats that read a column's first values, best first (issue 322).",
+        "properties": {
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/DatetimeFormatCandidate"
+            },
+            "title": "Candidates",
+            "type": "array"
+          },
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "sample_parts": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sample Parts",
+            "type": "array"
+          },
+          "sample_size": {
+            "title": "Sample Size",
+            "type": "integer"
+          },
+          "sample_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Value"
+          }
+        },
+        "required": [
+          "column",
+          "sample_size",
+          "sample_value",
+          "sample_parts",
+          "candidates"
+        ],
+        "title": "DatetimeFormatsResource",
         "type": "object"
       },
       "DeduplicateDerivation": {
@@ -18736,7 +19120,7 @@
     },
     "/api/workspaces/{workspace_id}/nodes/{node_id}": {
       "delete": {
-        "description": "Delete one node under the workspace gate and return an empty body.",
+        "description": "Delete one node, closing the Tabs that analysed it (issue 320).",
         "operationId": "delete_node",
         "parameters": [
           {
@@ -19169,6 +19553,214 @@
           }
         ],
         "summary": "Get Category Values",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/conversion-check": {
+      "post": {
+        "description": "Try a type change on the whole column without changing it.",
+        "operationId": "check_conversion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CastNodeEditRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversionCheckResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Check Conversion",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/datetime-formats": {
+      "get": {
+        "description": "The date formats that read a column's first values, best first.",
+        "operationId": "get_datetime_formats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DatetimeFormatsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Datetime Formats",
         "tags": [
           "nodes"
         ]
