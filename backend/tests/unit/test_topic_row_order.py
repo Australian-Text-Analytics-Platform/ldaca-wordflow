@@ -99,7 +99,7 @@ def test_rows_get_their_own_documents_topics(tmp_path, monkeypatch) -> None:
 
 
 def test_add_to_project_refuses_when_the_documents_moved(tmp_path, monkeypatch) -> None:
-    with pytest.raises(InvalidInputError, match="no longer lists its documents"):
+    with pytest.raises(InvalidInputError, match="have changed, or are in a different order"):
         _create(tmp_path, monkeypatch, document_fingerprint(list(reversed(TEXTS))))
 
 

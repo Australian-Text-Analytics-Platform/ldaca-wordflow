@@ -18,10 +18,11 @@ import polars as pl
 from .errors import InvalidInputError
 
 ROW_ORDER_CHANGED_MESSAGE = (
-    "This Data Block no longer lists its documents in the order Topic Modelling "
-    "read them, so the topics can't be matched to its rows. This happens with "
-    "Data Blocks made by Join in Wordflow 0.7.10 or earlier. Join the Data Blocks "
-    "again, run Topic Modelling on the new Data Block, then try again."
+    "This Data Block's documents have changed, or are in a different order, since "
+    "Topic Modelling ran, so the topics can't be matched to its rows. This happens "
+    "after editing the text column, or with a Data Block made by Join in Wordflow "
+    "0.7.10 or earlier (join the Data Blocks again). Run Topic Modelling again on "
+    "the Data Block as it is now."
 )
 
 
