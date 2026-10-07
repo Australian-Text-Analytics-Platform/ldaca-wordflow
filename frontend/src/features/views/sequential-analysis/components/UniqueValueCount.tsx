@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { queryWorkspaceSqlTable, sqlIdentifier, sqlTable } from '@/api';
-import { queryKeys } from '@/lib/queryKeys';
+import { MAX_TRENDS_GROUPS, uniqueValueCountQuery } from '../trendsGroups';
 
 interface UniqueValueCountProps {
   workspaceId: string;
@@ -14,29 +13,9 @@ interface UniqueValueCountProps {
  * error, or the returned count.
  */
 export function UniqueValueCount({ workspaceId, nodeId, columnName }: UniqueValueCountProps) {
-  const { data, isLoading, error } = useQuery({
-    queryKey: queryKeys.columnUniqueValues(workspaceId, nodeId, columnName),
-    // Used by: UniqueValueCount query to fetch metadata that informs group-by decisions.
-    queryFn: async () => {
-      const column = sqlIdentifier(columnName);
-      const response = await queryWorkspaceSqlTable({
-        path: { workspace_id: workspaceId },
-        body: {
-          mode: 'query',
-          node_ids: [nodeId],
-          sql: `SELECT COUNT(DISTINCT ${column}) AS unique_count, COUNT(*) > COUNT(${column}) AS has_null FROM ${sqlTable(nodeId)}`,
-          page: 1,
-          page_size: 1,
-        },
-      });
-      const row = response.rows[0];
-      return {
-        unique_count: Number(row?.unique_count ?? 0),
-        has_null: row?.has_null === true,
-      };
-    },
-    enabled: !!workspaceId && !!nodeId && !!columnName,
-  });
+  const { data, isLoading, error } = useQuery(
+    uniqueValueCountQuery(workspaceId, nodeId, columnName),
+  );
 
   if (isLoading) {
     return <span className="text-label-secondary text-description px-2">Loading…</span>;
@@ -50,6 +29,15 @@ export function UniqueValueCount({ workspaceId, nodeId, columnName }: UniqueValu
     return null;
   }
 
+  // Too many groups to draw (issue 326): Run is blocked and this says why.
+  if (data.unique_count > MAX_TRENDS_GROUPS) {
+    return (
+      <span className="rounded-sm bg-panel px-2 py-1 text-label-secondary text-error">
+        {data.unique_count.toLocaleString()} unique: too many groups (at most{' '}
+        {MAX_TRENDS_GROUPS.toLocaleString()})
+      </span>
+    );
+  }
   return (
     <span className="text-label-secondary text-description bg-panel px-2 py-1 rounded-sm">
       {data.unique_count} unique{data.has_null ? ' + null' : ''}

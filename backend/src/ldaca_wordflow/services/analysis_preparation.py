@@ -66,7 +66,10 @@ class AnalysisExecutionPreparer:
                 abandon_on_cancel=False,
                 limiter=self._limiter,
             )
-            worker_input = prepare_analysis_worker_input(
+            # In a worker thread: preparation may read the data, such as
+            # counting Trends groups (issue 326).
+            worker_input = await run_sync_in_worker_thread(
+                prepare_analysis_worker_input,
                 AnalysisPreparationContext(
                     record=record,
                     user_id=user_id,
@@ -78,7 +81,9 @@ class AnalysisExecutionPreparer:
                     credential=credential,
                     settings=self._settings,
                     cache_root=self._cache_root(user_id),
-                )
+                ),
+                abandon_on_cancel=False,
+                limiter=self._limiter,
             )
             return AnalysisInvocation(
                 input=worker_input,

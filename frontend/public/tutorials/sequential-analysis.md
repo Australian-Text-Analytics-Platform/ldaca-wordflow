@@ -71,6 +71,8 @@ To split the trend into multiple lines (one per category), add up to three colum
 
 Click **Add group** to add a column selector row. A badge next to each selector shows the number of unique values in that column, which helps you judge how many series will be produced. **Remove** takes that column out again.
 
+Trends draws at most 1,000 groups. A column with more different values, such as the text of each line, turns its badge red and **Run** stays unavailable until you choose another column. Several group columns together can also give more than 1,000 groups; then the run stops straight away and says so. A result saved with more groups (from an earlier version) is not drawn: the tab says so, and **Clear** removes it.
+
 ![Group By Columns with gender, which has 2 unique values](tutorials/assets/sequential_analysis/group_by.png)
 
 Groups follow the values' order: A to Z for text, the column's own order for a category column, and rows with an empty value form the last group. When multiple grouping columns are added, categories are combined across all columns. Be aware this multiplies the number of series: three platforms × four genres = twelve combined series. Too many series can make the chart unreadable.

@@ -1,6 +1,6 @@
 import type { SequentialColumnType } from './hooks/sequentialChartModel';
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
@@ -53,6 +53,8 @@ import type { SequentialAnalysisResponse } from '@/api';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { downloadChartAsHtml } from '@/lib/chartHtml/chartHtmlExport';
+import { useQueries } from '@tanstack/react-query';
+import { countResultGroups, MAX_TRENDS_GROUPS, uniqueValueCountQuery } from './trendsGroups';
 
 /**
  * Renders the sequential-analysis workflow for live trends and result exploration.
@@ -353,8 +355,26 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
     ...(results ? [CONTEXTUAL_HINT_IDS.trends.results] : []),
   ]);
 
+  // A result with far too many groups freezes the page when drawn, and it
+  // reopens with the Project; say so and leave Clear working (issue 326).
+  const resultGroupCount = useMemo(() => countResultGroups(results?.data ?? []), [results]);
+  const resultTooManyGroups = resultGroupCount > MAX_TRENDS_GROUPS;
+  const drawableResults = resultTooManyGroups ? undefined : results;
+  // Group columns with more different values than Trends can draw block Run.
+  const groupCounts = useQueries({
+    queries: groupByColumns
+      .filter((name) => name.trim() !== '')
+      .map((name) => uniqueValueCountQuery(currentWorkspaceId ?? '', activeNodeId, name)),
+  });
+  const tooManyGroupsColumn = groupByColumns
+    .filter((name) => name.trim() !== '')
+    .find((_, index) => (groupCounts[index]?.data?.unique_count ?? 0) > MAX_TRENDS_GROUPS);
+  const tooManyGroupsReason = tooManyGroupsColumn
+    ? `'${tooManyGroupsColumn}' has more than ${MAX_TRENDS_GROUPS.toLocaleString()} different values, too many groups to draw. Choose another group column.`
+    : undefined;
+
   const chartModel = buildSequentialChartModel({
-    results,
+    results: drawableResults,
     parameters: serverRequest,
     fallbacks: {
       timeColumn,
@@ -502,12 +522,13 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
               parametersLocked ||
               actionState.runDisabled ||
               isLoading.operations ||
-              !activeTimeColumn,
+              !activeTimeColumn ||
+              tooManyGroupsReason !== undefined,
             runAllDisabledReason: (() => {
               if (isAnalyzing || isLoading.operations) return undefined;
               if (actionState.runDisabledReason) return actionState.runDisabledReason;
               if (!activeTimeColumn) return 'Select a time column to run';
-              return undefined;
+              return tooManyGroupsReason;
             })(),
             clearDisabled: actionState.clearDisabled,
             clearDisabledReason: actionState.clearDisabledReason,
@@ -568,7 +589,14 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         <ErrorNotice className="mt-4" error={analysisFailure} />
       ) : null}
 
-      {results && (
+      {resultTooManyGroups ? (
+        <ErrorNotice
+          className="mt-4"
+          error={`This result has ${resultGroupCount.toLocaleString()} groups, more than Trends can draw (${MAX_TRENDS_GROUPS.toLocaleString()}). Choose Clear, then run again with a group column that has fewer different values.`}
+        />
+      ) : null}
+
+      {drawableResults && (
         <SequentialAnalysisResultsPanel
           resultsSummary={resultsSummary}
           model={chartModel}
@@ -607,11 +635,11 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           void handleDownloadChartHtml();
         }}
       />
-      {results?.source ? (
+      {drawableResults?.source ? (
         <SequentialAddToWorkspaceDialog
           open={addToWorkspaceDialogOpen}
           onOpenChange={setAddToWorkspaceDialogOpen}
-          source={results.source}
+          source={drawableResults.source}
           axisColumn={summary.timeColumn}
           groupByColumns={summary.groupBy}
           filterSummary={

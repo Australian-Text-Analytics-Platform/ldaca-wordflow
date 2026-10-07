@@ -181,12 +181,44 @@ def _prepare_sequential(
             schema, request.group_by_columns, use="to group Trends"
         )
         _require_trends_axis(schema, request)
+        _require_drawable_groups(node.data, schema, request)
     return SequentialInput(
         input_snapshot_dir=str(context.snapshot_dir),
         node_id=request.node_id,
         artifact_dir=str(context.artifact_dir),
         request_payload=request.model_dump(mode="json", exclude={"kind", "node_id"}),
     )
+
+
+# Trends draws one line or bar series per group; far more freezes the page,
+# and a saved result reopens with it (issue 326).
+MAX_TRENDS_GROUPS = 1_000
+
+
+def _require_drawable_groups(
+    data: pl.LazyFrame, schema: pl.Schema, request: SequentialAnalysisRequest
+) -> None:
+    """Refuse group columns that are missing or give too many groups to draw."""
+
+    columns = request.group_by_columns
+    if not columns:
+        return
+    missing = [name for name in columns if name not in schema]
+    if missing:
+        raise InvalidInputError(
+            f"Trends can't group by '{missing[0]}': this Data Block has no such "
+            "column. Choose the group columns again."
+        )
+    groups = data.select(
+        (pl.struct(columns) if len(columns) > 1 else pl.col(columns[0])).n_unique()
+    ).collect().item()
+    if groups > MAX_TRENDS_GROUPS:
+        names = ", ".join(f"'{name}'" for name in columns)
+        raise InvalidInputError(
+            f"Grouping by {names} gives {groups:,} groups, more than Trends can "
+            f"draw ({MAX_TRENDS_GROUPS:,}). Choose group columns with fewer "
+            "different values, such as a speaker or role column."
+        )
 
 
 def _require_trends_axis(
