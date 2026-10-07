@@ -18,11 +18,12 @@ Use the Data Block selector to pick the corpus you want to analyse. Only one Dat
 
 <h3 id="help-sequential-time-column">Step 2: Choose a time, number or category column</h3>
 
-The **Time, number or category column** dropdown lists every column in the selected Data Block that holds a date and time, date, whole number, decimal, or category value. Pick the column that represents the order or time axis you want to plot along. Dates come first in the list, then numbers, then categories.
+The **Time, number or category column** dropdown lists every column in the selected Data Block that holds a date and time, date, elapsed time, whole number, decimal, or category value. Pick the column that represents the order or time axis you want to plot along. Dates and elapsed times come first in the list, then numbers, then categories.
 
 - **Date and time columns** are grouped by a calendar period (hourly, daily, weekly, and so on). A **date** column (no time of day) offers daily and longer periods only.
+- **Elapsed time columns** (time into a recording, such as a transcript's start times) are grouped per second, per minute, hourly, or every so many seconds, minutes or hours (**Customised**), counted from `0:00`. The axis reads like `7:00`, `8:00`, or `1:00:00` from an hour on.
 - **Number columns** (whole number or decimal) are grouped by a fixed width you specify (the **Step**).
-- **Category columns** give one bar per value, in the column's order (set it by clicking the column's type in the Data Editor), with empty values as the last bar, **(empty)**. Only **Bars** and **Stacked bars** are offered, and every bar has the same width. Date and number columns leave out rows with an empty value.
+- **Category columns** give one bar per value, in the column's order (set it by clicking the column's type in the Data Editor), with empty values as the last bar, **(empty)**. Only **Bars** and **Stacked bars** are offered, and every bar has the same width. Date, elapsed time and number columns leave out rows with an empty value.
 
 The tool detects the column type automatically and shows the relevant configuration controls below.
 

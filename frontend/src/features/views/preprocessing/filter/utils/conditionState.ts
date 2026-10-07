@@ -3,6 +3,7 @@ import {
   isArrowFloatField,
   isArrowIntegerField,
   isArrowStringListField,
+  isArrowDurationField,
   isArrowTemporalField,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
@@ -65,6 +66,15 @@ const getPrefillRequest = (
   operator: FilterCondition['operator'],
 ): FilterConditionPrefillRequest | null => {
   if (!column || operator === 'is_null') return null;
+  // Elapsed time fills with the column's smallest and largest values, as
+  // numbers do (issue 324).
+  if (
+    field &&
+    isArrowDurationField(field) &&
+    (operator === 'gte' || operator === 'lte' || operator === 'between')
+  ) {
+    return { kind: 'numeric', conditionId, column, operator };
+  }
   if (field && isArrowTemporalField(field)) {
     return { kind: 'datetime', conditionId, column, operator };
   }

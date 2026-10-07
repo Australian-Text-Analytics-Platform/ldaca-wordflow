@@ -2253,6 +2253,42 @@
             "title": "Decimal Mark",
             "type": "string"
           },
+          "elapsed_text": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "h:mm:ss",
+                  "h:mm:ss.fff",
+                  "mm:ss",
+                  "mm:ss.fff"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Text"
+          },
+          "elapsed_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ms",
+                  "s",
+                  "min",
+                  "h",
+                  "d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Unit"
+          },
           "epoch_unit": {
             "anyOf": [
               {
@@ -2298,7 +2334,8 @@
               "float",
               "datetime",
               "date",
-              "categorical"
+              "categorical",
+              "duration"
             ],
             "title": "Target Type",
             "type": "string"
@@ -2327,6 +2364,15 @@
               }
             ],
             "title": "Two Digit Year Start"
+          },
+          "two_part_times": {
+            "default": "minutes",
+            "enum": [
+              "minutes",
+              "hours"
+            ],
+            "title": "Two Part Times",
+            "type": "string"
           }
         },
         "required": [
@@ -2597,6 +2643,42 @@
             "title": "Decimal Mark",
             "type": "string"
           },
+          "elapsed_text": {
+            "anyOf": [
+              {
+                "enum": [
+                  "auto",
+                  "h:mm:ss",
+                  "h:mm:ss.fff",
+                  "mm:ss",
+                  "mm:ss.fff"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Text"
+          },
+          "elapsed_unit": {
+            "anyOf": [
+              {
+                "enum": [
+                  "ms",
+                  "s",
+                  "min",
+                  "h",
+                  "d"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elapsed Unit"
+          },
           "epoch_unit": {
             "anyOf": [
               {
@@ -2642,7 +2724,8 @@
               "float",
               "datetime",
               "date",
-              "categorical"
+              "categorical",
+              "duration"
             ],
             "title": "Target Type",
             "type": "string"
@@ -2671,6 +2754,15 @@
               }
             ],
             "title": "Two Digit Year Start"
+          },
+          "two_part_times": {
+            "default": "minutes",
+            "enum": [
+              "minutes",
+              "hours"
+            ],
+            "title": "Two Part Times",
+            "type": "string"
           }
         },
         "required": [
@@ -8351,7 +8443,8 @@
             "enum": [
               "datetime",
               "numeric",
-              "category"
+              "category",
+              "elapsed"
             ],
             "title": "Column Type",
             "type": "string"

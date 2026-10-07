@@ -179,6 +179,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   | `1.2` | Decimal |
   | calendar | Date (a calendar date with no time of day, useful for publication or sitting dates) |
   | clock | Date and time |
+  | timer | Elapsed time (time into a recording, such as a transcript's `7:58.5`) |
   | tick box | True / false |
   | list | List (of text, or of other values) |
   | pie chart | Topic coverage |
@@ -205,8 +206,15 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
   - A date inside longer text, such as the file name `2021_01_17_SmithInterview`, is found too, and the rest of the text is ignored. If Wordflow doesn't find it, name the date's parts and choose **Ignore (not part of the date)** for the text before or after it (a part in the middle of the date can't be ignored). **Find the date inside longer text** below the format code does the same for a typed format.
   - Two-digit years (`30/01/20`) need a century, and Wordflow never guesses it: choose **1900s**, **2000s**, or **Split at** a year (with 50, `00` to `49` are 2000s and `50` to `99` are 1900s).
 - **Numbers to a date.** A column of numbers can be Unix time (seconds, or milliseconds, microseconds or nanoseconds, since 1 January 1970) or an Excel day number (days since 30 December 1899, as Excel stores dates; `43831` is 1 January 2020). Wordflow suggests the Unix unit that fits; Excel day numbers are listed but never chosen for you, because ordinary counts can look like them.
+- **Text or numbers to elapsed time, and back.** See **Elapsed time** below.
 - **Text to a number.** Choose the **Decimal mark** (point or comma) and **Thousands separator** (comma, point, space, apostrophe, or none), and whether to **Ignore currency signs, % and other symbols**, so `$1,234.50` becomes `1234.5`. With a thousands separator, the digits must be in groups of three (`1,234` converts; `1,23` does not). Converting text or decimals to a whole number rounds to the nearest whole number, with halves away from zero (`2.5` becomes `3`, `-2.5` becomes `-3`).
 - **A date to text.** Choose how the dates are written, from examples such as `30/01/2020`, `30 January 2020` or `Thursday 30 January 2020`, or build your own from the parts (Day, Month name, Year, and so on).
+- **Elapsed time** is time into a recording, such as the start of each line of a transcript. It shows as minutes and seconds, `7:58.5`, or with hours from an hour on, `1:23:20.25`; the fraction of a second appears only when it is not zero. A spreadsheet column of times without a date (Excel keeps a cell formatted `mm:ss.0` as a time on 30 or 31 December 1899) loads as elapsed time, and a message says so. To make elapsed time from other columns:
+  - **Text** such as `7:58`, `07:58.5`, `1:23:20` or `00:07:58,542` (as in subtitle files): choose **Elapsed time**. A time with two parts, such as `7:58`, is minutes and seconds unless you choose **hours and minutes**.
+  - **Numbers**: choose what they count: milliseconds, seconds, minutes, hours, or days (as Excel stores times, so `0.25` is 6 hours).
+  - **A date and time**: its time of day becomes the elapsed time.
+
+  Elapsed time can become **Text** (written like `7:58.542`, `0:07:58`, `07:58` and so on) or a **Decimal** or **Whole number** of milliseconds, seconds, minutes or hours (`7:58.5` is `478.5` seconds; whole numbers round to the nearest). Sorting, Filter (type times like `7:58`), Group, Aggregate (sum, mean, smallest and largest) and Trends all work with it. Exports keep it: CSV writes it as text such as `7:58.5`, and Excel as a time in Excel's `[h]:mm:ss` format.
 - Dates and times show year first, for example `2020-01-30 14:05` (seconds appear only when they are not zero). Wordflow stores times in UTC. To type a date, for example in the Data Builder's Filter, use `YYYY-MM-DD`, or `YYYY-MM-DD HH:MM` for a date and time. Charts write dates for reading instead, for example *18 Oct 2020* or *Oct 2020*, the same for every user.
 - Click any row to open the **Row Details** panel, which displays the full contents of that row in a readable layout. The panel has two sections:
   - **Document**: shows the full text of the Data Block's designated document column (the column marked as the primary text when the data was loaded, e.g. the column named `text`, `document`, or `doc`). The section heading displays the column name, e.g. *Document: text*. If no document column has been configured for the Data Block, this section is omitted.

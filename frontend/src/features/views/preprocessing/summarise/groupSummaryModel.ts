@@ -20,6 +20,8 @@ export const SUMMARIES_BY_KIND: Record<ColumnKind, Summary[]> = {
   text: ['leave', 'join_text', 'count_distinct', 'distinct_values', 'first', 'last'],
   number: ['leave', 'sum', 'mean', 'min', 'max', 'count_distinct', 'first', 'last'],
   date: ['leave', 'earliest_latest', 'earliest', 'latest', 'count_distinct', 'first', 'last'],
+  // Total or average time, e.g. each speaker's speaking time (issue 324).
+  elapsed: ['leave', 'sum', 'mean', 'min', 'max', 'count_distinct', 'first', 'last'],
   boolean: ['leave', 'count_distinct', 'first', 'last'],
   other: ['leave', 'count_distinct', 'first', 'last'],
 };

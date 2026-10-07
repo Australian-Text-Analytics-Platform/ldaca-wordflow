@@ -13,7 +13,13 @@ import {
 } from 'apache-arrow';
 import { describe, expect, it } from 'vitest';
 
-import { isTrendsAxisField, isTrendsDateField } from '../trendsAxisColumns';
+import {
+  elapsedFrequency,
+  elapsedUnit,
+  isTrendsAxisField,
+  isTrendsDateField,
+  trendsAxisRank,
+} from '../trendsAxisColumns';
 
 const field = (type: ConstructorParameters<typeof Field>[1]) => new Field('column', type, true);
 
@@ -26,9 +32,18 @@ describe('Trends axis columns (issue 316)', () => {
     expect(isTrendsAxisField(field(new Decimal(2, 10)))).toBe(true);
   });
 
-  it('does not offer times of day, durations, intervals, text or booleans', () => {
+  it('offers elapsed time and ranks it with dates, before numbers (issue 324)', () => {
+    expect(isTrendsAxisField(field(new DurationMillisecond()))).toBe(true);
+    expect(trendsAxisRank(field(new DurationMillisecond()))).toBe(0);
+    expect(trendsAxisRank(field(new Int64()))).toBe(1);
+    expect(elapsedFrequency('elapsed', 'monthly')).toBe('minute');
+    expect(elapsedFrequency('elapsed', 'custom')).toBe('custom');
+    expect(elapsedFrequency('datetime', 'monthly')).toBe('monthly');
+    expect(elapsedUnit('elapsed', 'weeks')).toBe('minutes');
+  });
+
+  it('does not offer times of day, intervals, text or booleans', () => {
     expect(isTrendsAxisField(field(new TimeMicrosecond()))).toBe(false);
-    expect(isTrendsAxisField(field(new DurationMillisecond()))).toBe(false);
     expect(isTrendsAxisField(field(new IntervalDayTime()))).toBe(false);
     expect(isTrendsAxisField(field(new Utf8()))).toBe(false);
     expect(isTrendsAxisField(field(new Bool()))).toBe(false);

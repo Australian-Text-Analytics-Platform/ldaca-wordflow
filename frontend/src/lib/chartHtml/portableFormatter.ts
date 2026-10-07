@@ -11,6 +11,8 @@ import { formatChartDate, type ChartDateUnit } from '@/lib/chartDates';
 export type PortableFormatterSpec =
   | { kind: 'percent'; round: boolean }
   | { kind: 'number' }
+  // Seconds into a recording, written like 7:58 (issue 324).
+  | { kind: 'elapsed' }
   | { kind: 'chartDate'; unit: ChartDateUnit; offsetMs: number };
 
 const PORTABLE_FORMATTER_KEY = '__wordflowPortableFormatter';
@@ -28,6 +30,23 @@ export function formatterFromSpec(
       if (!spec.round) return `${String(value)}%`;
       const numeric = Number(value);
       return Number.isFinite(numeric) ? `${String(Math.round(numeric))}%` : '';
+    };
+  }
+  if (spec.kind === 'elapsed') {
+    return (value) => {
+      const seconds = typeof value === 'number' ? value : Number(value);
+      if (!Number.isFinite(seconds)) return '';
+      const sign = seconds < 0 ? '-' : '';
+      const millis = Math.round(Math.abs(seconds) * 1000);
+      const whole = Math.floor(millis / 1000);
+      const fraction = millis % 1000;
+      const hours = Math.floor(whole / 3600);
+      const minutes = Math.floor(whole / 60) % 60;
+      const rest = String(whole % 60).padStart(2, '0');
+      const tail = fraction > 0 ? `.${String(fraction).padStart(3, '0').replace(/0+$/, '')}` : '';
+      return hours > 0
+        ? `${sign}${String(hours)}:${String(minutes).padStart(2, '0')}:${rest}${tail}`
+        : `${sign}${String(minutes)}:${rest}${tail}`;
     };
   }
   return (value) => {

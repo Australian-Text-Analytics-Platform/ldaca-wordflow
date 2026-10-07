@@ -10,6 +10,8 @@ export const DATA_TYPES = [
   { value: 'datetime', label: 'date and time' },
   // A calendar date with no time of day (issue 187).
   { value: 'date', label: 'date' },
+  // Time into a recording, such as a transcript's 07:58.5 (issue 324).
+  { value: 'duration', label: 'elapsed time' },
 ] as const;
 
 export type ColumnCastType = (typeof DATA_TYPES)[number]['value'];

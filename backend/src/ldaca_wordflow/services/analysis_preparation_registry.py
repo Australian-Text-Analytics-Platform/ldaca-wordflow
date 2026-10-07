@@ -194,8 +194,9 @@ def _require_trends_axis(
 ) -> None:
     """Refuse an axis column that Trends cannot bin with the requested mode (#316).
 
-    Dates and date-times bin by calendar period, numbers by interval; times of
-    day, durations and every other type have no supported binning.
+    Dates and date-times bin by calendar period, numbers by interval, elapsed
+    time by seconds, minutes or hours (issue 324); times of day and every
+    other type have no supported binning.
     """
 
     dtype = schema.get(request.time_column)
@@ -205,12 +206,14 @@ def _require_trends_axis(
         supported = is_category_dtype(dtype)
     elif request.column_type == "datetime":
         supported = isinstance(dtype, (pl.Date, pl.Datetime))
+    elif request.column_type == "elapsed":
+        supported = isinstance(dtype, pl.Duration)
     else:
         supported = dtype.is_numeric()
     if not supported:
         raise InvalidInputError(
             f"Trends can't use '{request.time_column}' as its time axis. "
-            "Choose a date, date-and-time, number or category column."
+            "Choose a date, date-and-time, elapsed-time, number or category column."
         )
 
 

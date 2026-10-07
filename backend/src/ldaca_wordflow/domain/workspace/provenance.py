@@ -241,7 +241,9 @@ class JoinDerivation(_StrictModel):
 class CastDerivation(_StrictModel):
     kind: Literal["cast"] = "cast"
     column: str = Field(min_length=1)
-    target_type: Literal["string", "integer", "float", "datetime", "date", "categorical"]
+    target_type: Literal[
+        "string", "integer", "float", "datetime", "date", "categorical", "duration"
+    ]
     datetime_format: str | None = None
     strict: bool = False
     # For "categorical": the values in the chosen order (issue 318). Without
@@ -260,6 +262,14 @@ class CastDerivation(_StrictModel):
     thousands_separator: Literal["", ",", ".", " ", "'"] = ""
     ignore_symbols: bool = False
     date_in_text: bool = False
+    # Elapsed time ("duration", issue 324): the unit of numbers read or
+    # written, whether a two-part time such as 7:58 is minutes:seconds or
+    # hours:minutes, and how elapsed time is written as text.
+    elapsed_unit: Literal["ms", "s", "min", "h", "d"] | None = None
+    two_part_times: Literal["minutes", "hours"] = "minutes"
+    elapsed_text: (
+        Literal["auto", "h:mm:ss", "h:mm:ss.fff", "mm:ss", "mm:ss.fff"] | None
+    ) = None
 
 
 class SegmentDerivation(_StrictModel):

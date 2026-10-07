@@ -3,13 +3,16 @@ import type { SequentialAnalysisRequest, SequentialAnalysisResponse } from '@/ap
 import type { MultiSeriesChartSeries } from '@/features/views/common/components/MultiSeriesChart';
 import type { ChartExportLegendItem } from '@/lib/chartExport';
 import type { XAxisComponentOption } from 'echarts/types/dist/option';
-import { portableFormatter } from '@/lib/chartHtml/portableFormatter';
+import { formatterFromSpec, portableFormatter } from '@/lib/chartHtml/portableFormatter';
 
 type SequentialAnalysisDatum = Record<string, unknown>;
 export type ChartTypeOption = 'line' | 'bar' | 'stacked-bar' | 'area';
 export type SequentialXAxisType = 'category' | 'number';
-/** What the X axis column holds; "category" is one position per category value (issue 318). */
-export type SequentialColumnType = 'datetime' | 'numeric' | 'category';
+/**
+ * What the X axis column holds; "category" is one position per category value
+ * (issue 318), "elapsed" elapsed time in seconds, labelled like 7:58 (issue 324).
+ */
+export type SequentialColumnType = 'datetime' | 'numeric' | 'category' | 'elapsed';
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
 
@@ -82,8 +85,11 @@ function formatSequentialAxisTick(
 ): string {
   const numeric = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(numeric)) return '';
+  if (columnType === 'elapsed') return ELAPSED_TICK(numeric);
   return columnType === 'datetime' ? formatInstant(numeric) : String(numeric);
 }
+
+const ELAPSED_TICK = formatterFromSpec({ kind: 'elapsed' }, formatChartDate);
 
 export interface SequentialResultSummaryFallbacks {
   timeColumn: string;
@@ -779,7 +785,9 @@ export function buildSequentialChartModel({
             formatter: portableFormatter(
               summary.columnType === 'datetime'
                 ? { kind: 'chartDate', unit: dateUnit, offsetMs: zoneOffsetMs }
-                : { kind: 'number' },
+                : summary.columnType === 'elapsed'
+                  ? { kind: 'elapsed' }
+                  : { kind: 'number' },
             ),
             rotate: 45,
           },

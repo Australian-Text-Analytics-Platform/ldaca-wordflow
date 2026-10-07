@@ -39,6 +39,7 @@ import {
   arrowTypeName,
   arrowTypeTooltip,
   isArrowDictionaryField,
+  isArrowDurationField,
   isArrowTimestampField,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
@@ -339,9 +340,14 @@ export function WorkspaceTable({
     const isColumnMutating = Boolean(columnActionLoading[column]);
     const isColumnBusy = isColumnLoading || isColumnMutating;
     const displayLabel = getTypeDisplayName(currentField);
+    // Elapsed time becomes text or a number only (issue 324).
+    const targets =
+      currentField && isArrowDurationField(currentField)
+        ? DATA_TYPES.filter((t) => ['string', 'integer', 'float', 'duration'].includes(t.value))
+        : DATA_TYPES;
     const availableTypes = [
       { value: currentType, label: displayLabel },
-      ...DATA_TYPES.filter((t) => t.value !== currentType && t.label !== displayLabel),
+      ...targets.filter((t) => t.value !== currentType && t.label !== displayLabel),
     ];
     const isWideColumn = wideColumns.has(column);
     const isExpandedColumn = expandedColumns[column] === true;
@@ -734,6 +740,7 @@ export function WorkspaceTable({
             | 'integer'
             | 'float'
             | 'string'
+            | 'duration'
         }
         targetLabel={
           datetimeModal.targetType ? castTypeLabel(datetimeModal.targetType) : 'date and time'

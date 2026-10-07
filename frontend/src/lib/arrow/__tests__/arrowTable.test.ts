@@ -10,6 +10,7 @@ import {
   Struct,
   Table,
   DateDay,
+  DurationMicrosecond,
   TimestampMicrosecond,
   TimestampNanosecond,
   Uint32,
@@ -130,6 +131,16 @@ describe('Arrow table transport', () => {
       'Timestamp<MICROSECOND, UTC>',
     );
     expect(decoded.rows).toEqual([{ created_at: '2020-10-16T15:20:22.000Z' }]);
+  });
+
+  it('shows elapsed time as minutes and seconds (issue 324)', async () => {
+    const source = new Table({
+      start: vectorFromArray([546_154_000n, 5_000_250_000n, null], new DurationMicrosecond()),
+    });
+    const decoded = await decodeArrowTable(stream(source).buffer as ArrayBuffer);
+    expect(decoded.rows.map((row) => row.start)).toEqual(['9:06.154', '1:23:20.25', null]);
+    expect(decoded.schema[0] && arrowTypeDisplayName(decoded.schema[0].field)).toBe('elapsed time');
+    expect(decoded.schema[0] && arrowTypeTooltip(decoded.schema[0].field)).toBe('Elapsed time');
   });
 
   it('decodes date values into ISO dates, not epoch numbers (issue 165)', async () => {

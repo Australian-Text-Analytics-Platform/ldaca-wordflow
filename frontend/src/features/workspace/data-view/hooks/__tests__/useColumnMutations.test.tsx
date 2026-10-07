@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { Field, Int64, TimestampMillisecond, Utf8 } from 'apache-arrow';
+import { DurationMicrosecond, Field, Int64, TimestampMillisecond, Utf8 } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const toastMock = vi.hoisted(() => ({ error: vi.fn() }));
@@ -92,6 +92,31 @@ describe('useColumnMutations', () => {
       );
       expect(result.current.loadingCast).toEqual({});
     });
+  });
+
+  it('opens the conversion window for elapsed time in the right mode (issue 324)', () => {
+    const text = new Field('start', new Utf8());
+    const elapsed = new Field('length', new DurationMicrosecond());
+    const { result } = renderHook(() =>
+      useColumnMutations({
+        workspaceId: 'workspace-1',
+        nodeId: 'node-1',
+        columns: ['start', 'length'],
+        columnFields: { start: text, length: elapsed },
+        onCast: vi.fn().mockResolvedValue(undefined),
+      }),
+    );
+    act(() => {
+      result.current.handleTypeChange('start', 'duration');
+    });
+    expect(result.current.datetimeModal).toMatchObject({ isOpen: true, mode: 'elapsed' });
+    act(() => {
+      result.current.closeDatetimeModal();
+    });
+    act(() => {
+      result.current.handleTypeChange('length', 'float');
+    });
+    expect(result.current.datetimeModal).toMatchObject({ isOpen: true, mode: 'elapsed-out' });
   });
 
   it('renames and deletes columns through the edit callbacks', async () => {

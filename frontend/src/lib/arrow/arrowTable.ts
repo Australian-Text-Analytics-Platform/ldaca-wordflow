@@ -8,6 +8,7 @@ import {
 } from 'apache-arrow';
 import { getApiBase } from '@/lib/backend/env';
 import { parseApiErrorResponse } from '@/lib/apiError';
+import { arrowDurationMicros, formatElapsed } from '@/lib/elapsedTime';
 
 const ARROW_STREAM_MEDIA_TYPE = 'application/vnd.apache.arrow.stream';
 const ARROW_EXTENSION_NAME = 'ARROW:extension:name';
@@ -71,7 +72,9 @@ const plainTypeName = (type: ArrowDataType): string => {
   if (DataType.isTimestamp(type)) return 'date and time';
   if (DataType.isDate(type)) return 'date';
   if (DataType.isTime(type)) return 'time of day';
-  if (DataType.isDuration(type) || DataType.isInterval(type)) return 'length of time';
+  // Time into a recording, such as a transcript's 07:58.5 (issue 324).
+  if (DataType.isDuration(type)) return 'elapsed time';
+  if (DataType.isInterval(type)) return 'length of time';
   if (DataType.isBool(type)) return 'true / false';
   const child = arrowListChild(type);
   if (child) return isArrowStringType(child.type) ? 'list of text' : 'list';
@@ -112,6 +115,7 @@ const STANDARD_TYPE_SPELLINGS = new Set([
   'Float64',
   'Timestamp<MICROSECOND, UTC>',
   'Date32<DAY>',
+  'Duration<MICROSECOND>',
   'Bool',
 ]);
 
@@ -140,6 +144,9 @@ export const isArrowBooleanField = (field: ArrowField): boolean => DataType.isBo
 export const isArrowTimestampField = (field: ArrowField): boolean =>
   DataType.isTimestamp(field.type);
 
+/** Elapsed time, such as a transcript's 07:58.5 (Arrow Duration, issue 324). */
+export const isArrowDurationField = (field: ArrowField): boolean => DataType.isDuration(field.type);
+
 export const isArrowListField = (field: ArrowField): boolean =>
   arrowListChild(field.type) !== undefined;
 
@@ -156,6 +163,20 @@ export const isArrowTemporalField = (field: ArrowField): boolean =>
  * Quotation's native-value decoder (issue 177).
  */
 export const formatArrowTemporalValue = (value: unknown, type: ArrowDataType): unknown => {
+  // Elapsed time arrives as a count of the field's unit (issue 324); a row
+  // decoded as a whole has already turned that count into digits.
+  if (DataType.isDuration(type)) {
+    const count =
+      typeof value === 'bigint' || typeof value === 'number'
+        ? value
+        : typeof value === 'string' && /^-?\d+$/.test(value)
+          ? BigInt(value)
+          : null;
+    if (count !== null) {
+      return formatElapsed(arrowDurationMicros(count, (type as { unit: number }).unit));
+    }
+    return value;
+  }
   if (typeof value !== 'number') return value;
   if (DataType.isTimestamp(type)) return new Date(value).toISOString();
   if (DataType.isDate(type)) return new Date(value).toISOString().slice(0, 10);
@@ -166,6 +187,7 @@ const normalizeArrowValue = (value: unknown, type?: ArrowDataType): unknown => {
   if (type && typeof value === 'number' && (DataType.isTimestamp(type) || DataType.isDate(type))) {
     return formatArrowTemporalValue(value, type);
   }
+  if (type && DataType.isDuration(type)) return formatArrowTemporalValue(value, type);
   if (typeof value === 'bigint') return value.toString();
   if (value instanceof Date) return value.toISOString();
   if (Array.isArray(value)) return value.map((child) => normalizeArrowValue(child));

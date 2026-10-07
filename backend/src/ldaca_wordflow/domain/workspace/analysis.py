@@ -220,7 +220,8 @@ class SequentialAnalysisRequest(_StrictModel):
     ] = "monthly"
     sort_by_time: bool = True
     # "category": one X position per category value, in its order (issue 318).
-    column_type: Literal["datetime", "numeric", "category"] = "datetime"
+    # "elapsed": elapsed time binned by seconds, minutes or hours (issue 324).
+    column_type: Literal["datetime", "numeric", "category", "elapsed"] = "datetime"
     numeric_origin: float | None = Field(default=None, allow_inf_nan=False)
     numeric_interval: float | None = Field(default=None, allow_inf_nan=False)
     custom_interval_value: int | None = Field(default=None, ge=1)
@@ -250,6 +251,17 @@ class SequentialAnalysisRequest(_StrictModel):
             )
         ):
             raise ValueError("Custom datetime frequency requires a value and unit")
+        if self.column_type == "elapsed":
+            if self.frequency not in {"second", "minute", "hourly", "custom"}:
+                raise ValueError("Elapsed time bins by seconds, minutes or hours")
+            if self.frequency == "custom" and (
+                self.custom_interval_value is None
+                or self.custom_interval_unit not in {"seconds", "minutes", "hours"}
+            ):
+                raise ValueError(
+                    "A custom elapsed-time step needs a number of seconds, "
+                    "minutes or hours"
+                )
         return self
 
 

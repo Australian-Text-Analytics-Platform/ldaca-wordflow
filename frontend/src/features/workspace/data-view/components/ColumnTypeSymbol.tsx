@@ -1,8 +1,9 @@
-import { Calendar, ChartPie, CircleHelp, Clock, List, SquareCheck, Tag } from 'lucide-react';
+import { Calendar, ChartPie, CircleHelp, Clock, List, SquareCheck, Tag, Timer } from 'lucide-react';
 import {
   isArrowBooleanField,
   isArrowDateField,
   isArrowDictionaryField,
+  isArrowDurationField,
   isArrowFloatField,
   isArrowIntegerField,
   isArrowListField,
@@ -47,6 +48,8 @@ export function ColumnTypeSymbol({ field }: { field: ArrowField | undefined }) {
   }
   if (isArrowDateField(field)) return <Calendar className={ICON_CLASS} aria-hidden />;
   if (isArrowTimestampField(field)) return <Clock className={ICON_CLASS} aria-hidden />;
+  // Elapsed time, such as a transcript's 07:58.5 (issue 324).
+  if (isArrowDurationField(field)) return <Timer className={ICON_CLASS} aria-hidden />;
   if (isArrowBooleanField(field)) return <SquareCheck className={ICON_CLASS} aria-hidden />;
   if (isArrowListField(field)) return <List className={ICON_CLASS} aria-hidden />;
   return <CircleHelp className={ICON_CLASS} aria-hidden />;

@@ -40,6 +40,7 @@ from ..domain.workspace.provenance import (
     node_reference,
 )
 
+from ..shared.elapsed_time import as_text, elapsed_to_text, parse_elapsed
 from ..shared.topic_types import is_topic_coverage_storage_dtype
 from ..shared.unsupported_columns import require_supported_columns
 from ..shared.empty_values import empty_value_expression
@@ -330,7 +331,10 @@ def build_edited_lazyframe(
             raise InvalidInputError("Output column name cannot be blank")
         if output != request.column and output in names:
             raise InvalidInputError("Output column name already exists on the Data Block")
-        expression = _clean_text_expression(pl.col(request.column), request.operation)
+        expression = _clean_text_expression(
+            as_text(pl.col(request.column), node.data.collect_schema()[request.column]),
+            request.operation,
+        )
         edited = node.data.with_columns(expression.alias(output))
         if output == request.column:
             return edited, None
@@ -349,7 +353,10 @@ def build_edited_lazyframe(
             raise InvalidInputError(
                 f"Split would overwrite existing columns: {', '.join(clashes)}"
             )
-        pieces = _split_pieces(pl.col(request.column).cast(pl.String), request.delimiters)
+        pieces = _split_pieces(
+            as_text(pl.col(request.column), node.data.collect_schema()[request.column]),
+            request.delimiters,
+        )
         edited = node.data.with_columns(
             expression.alias(output)
             for expression, output in zip(
@@ -372,7 +379,10 @@ def build_edited_lazyframe(
             raise InvalidInputError("New column name cannot be blank")
         if output in names:
             raise InvalidInputError("New column name already exists on the Data Block")
-        expression = _count_expression(pl.col(request.column).cast(pl.String), request)
+        expression = _count_expression(
+            as_text(pl.col(request.column), node.data.collect_schema()[request.column]),
+            request,
+        )
         edited = node.data.with_columns(expression.alias(output))
         return _place_right_of(edited, request.column, [output]), None
 
@@ -393,8 +403,9 @@ def build_edited_lazyframe(
             raise InvalidInputError("New column name cannot be blank")
         if output in names:
             raise InvalidInputError("New column name already exists on the Data Block")
+        combine_schema = node.data.collect_schema()
         pieces = [
-            pl.col(part.column).cast(pl.String)
+            as_text(pl.col(part.column), combine_schema[part.column])
             if isinstance(part, CombineColumnPart)
             else pl.lit(part.text, dtype=pl.String)
             for part in request.parts
@@ -530,6 +541,9 @@ def conversion_options(request: CastNodeEditRequest) -> ConversionOptions:
         thousands_separator=request.thousands_separator,
         ignore_symbols=request.ignore_symbols,
         date_in_text=request.date_in_text,
+        elapsed_unit=request.elapsed_unit,
+        two_part_times=request.two_part_times,
+        elapsed_text=request.elapsed_text,
     )
 
 
@@ -557,6 +571,8 @@ def _cast_is_no_op(
         )
     if target_type == "date":
         return source_type == pl.Date
+    if target_type == "duration":
+        return isinstance(source_type, pl.Duration)
     return (
         target_type == "datetime"
         and isinstance(source_type, pl.Datetime)
@@ -627,6 +643,8 @@ def _join_dtype_label(dtype: pl.DataType) -> str:
         return "date"
     if isinstance(dtype, pl.Datetime):
         return "date and time"
+    if isinstance(dtype, pl.Duration):
+        return "elapsed time"
     if dtype.is_temporal():
         return "time"
     if isinstance(dtype, pl.List | pl.Array):
@@ -756,6 +774,9 @@ def _condition_expression(
     def coerce(item: object) -> object:
         if text_column and isinstance(item, (str, int, float)) and not isinstance(item, bool):
             return str(item)
+        if isinstance(dtype, pl.Duration):
+            # Elapsed time is typed as 7:58 or 1:23:20 (issue 324).
+            return _elapsed_value(item)
         return _coerce_scalar(_parse_temporal(item))
 
     if is_topic_coverage_storage_dtype(dtype):
@@ -994,7 +1015,9 @@ def _segment(data: pl.LazyFrame, request: SegmentNodeCreateRequest) -> pl.LazyFr
     if column not in names:
         raise InvalidInputError("Segment column is not present on the Data Block")
     require_supported_columns(data.collect_schema(), [column], use="as text")
-    text = pl.col(column).cast(pl.String).str.replace_all("\r\n", "\n")
+    text = as_text(pl.col(column), data.collect_schema()[column]).str.replace_all(
+        "\r\n", "\n"
+    )
     lead_name: str | None = None
     if request.unit == "pattern":
         pieces = text.str.replace_all(f"(?m)({request.pattern})", _SPLIT_MARK + "${1}")
@@ -1085,18 +1108,25 @@ def _group_summary(
     for item in request.summaries:
         dtype = schema[item.column]
         column = pl.col(item.column)
-        if item.summary in _NUMERIC_SUMMARIES and not dtype.is_numeric():
+        # Elapsed time sums and averages too, e.g. speaking time (issue 324).
+        if item.summary in _NUMERIC_SUMMARIES and not (
+            dtype.is_numeric() or isinstance(dtype, pl.Duration)
+        ):
             raise InvalidInputError(f"{item.column} is not numeric, so it cannot be summed or averaged")
         if item.summary in _ORDERED_SUMMARIES and dtype.is_nested():
             raise InvalidInputError(f"{item.column} has no order to take a minimum or maximum")
+        as_text = (
+            elapsed_to_text(column)
+            if isinstance(dtype, pl.Duration)
+            else column.cast(pl.String)
+        )
         if item.summary == "join_text":
-            aggregations.append(column.cast(pl.String).str.join(item.separator).alias(item.column))
+            aggregations.append(as_text.str.join(item.separator).alias(item.column))
         elif item.summary == "count_distinct":
             aggregations.append(column.n_unique().alias(f"{item.column}_count_distinct"))
         elif item.summary == "distinct_values":
             aggregations.append(
-                column.cast(pl.String)
-                .drop_nulls()
+                as_text.drop_nulls()
                 .unique(maintain_order=True)
                 .str.join(item.separator)
                 .alias(f"{item.column}_distinct_values")
@@ -1237,7 +1267,7 @@ def _replace_expression(
         raise InvalidInputError("Output column name cannot be blank")
     if output != request.source_column and output in schema:
         raise InvalidInputError("New column name already exists on the Data Block")
-    column = pl.col(request.source_column).cast(pl.String)
+    column = as_text(pl.col(request.source_column), schema[request.source_column])
     if request.mode == "extract":
         pattern = pl.escape_regex(request.pattern) if request.literal else request.pattern
         extracted = column.str.extract_all(pattern)
@@ -1568,6 +1598,8 @@ def _range_edge(value: object, dtype: pl.DataType) -> pl.Expr | None:
 
     if value is None or (isinstance(value, str) and not value.strip()):
         return None
+    if isinstance(dtype, pl.Duration):
+        return pl.lit(_elapsed_value(value), dtype=dtype)
     parsed = _coerce_scalar(_parse_temporal(value))
     if isinstance(parsed, datetime):
         if dtype.is_numeric():
@@ -1587,6 +1619,17 @@ def _range_edge(value: object, dtype: pl.DataType) -> pl.Expr | None:
             f"'{parsed}' is not a date. Enter a date for each end of the range."
         )
     return pl.lit(parsed)
+
+
+def _elapsed_value(value: object) -> timedelta:
+    """A typed elapsed time, or a plain refusal (issue 324)."""
+
+    parsed = parse_elapsed(value)
+    if parsed is None:
+        raise InvalidInputError(
+            f"'{value}' is not an elapsed time. Type it like 7:58, 7:58.5 or 1:23:20."
+        )
+    return parsed
 
 
 def _coerce_scalar(value: object) -> object:

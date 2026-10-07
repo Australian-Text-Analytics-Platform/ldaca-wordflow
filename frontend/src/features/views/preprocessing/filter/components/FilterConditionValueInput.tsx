@@ -15,6 +15,7 @@ import {
   isArrowFloatField,
   isArrowIntegerField,
   isArrowStringListField,
+  isArrowDurationField,
   isArrowTemporalField,
 } from '@/lib/arrow/arrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
@@ -289,6 +290,55 @@ export function FilterConditionValueInput({
         </SelectContent>
       </Select>
     );
+  }
+
+  if (field && isArrowDurationField(field)) {
+    // Elapsed time is typed like 7:58 or 1:23:20 (issue 324).
+    const edgeText = (edge: unknown) => (typeof edge === 'string' ? edge : '');
+    const elapsedInput = (
+      value: string,
+      label: string,
+      placeholder: string,
+      onChange: (next: string) => void,
+    ) => (
+      <input
+        type="text"
+        inputMode="decimal"
+        aria-label={label}
+        value={value}
+        onChange={(event) => {
+          onChange(event.target.value);
+        }}
+        placeholder={placeholder}
+        className="w-28 rounded-md border border-input-border px-2 py-1 text-body text-foreground"
+        disabled={disabled}
+      />
+    );
+    if (condition.operator === 'between') {
+      const rangeValue: ConditionRange =
+        condition.value && typeof condition.value === 'object' && 'start' in condition.value
+          ? condition.value
+          : { start: null, end: null };
+      return (
+        <div className="flex flex-wrap items-center gap-2">
+          {elapsedInput(
+            edgeText(rangeValue.start),
+            'From (included)',
+            'From, e.g. 7:58',
+            (next) => {
+              onConditionChange(condition.id, 'value', { ...rangeValue, start: next || null });
+            },
+          )}
+          <span className="text-body text-description">and</span>
+          {elapsedInput(edgeText(rangeValue.end), 'To (included)', 'To, e.g. 1:23:20', (next) => {
+            onConditionChange(condition.id, 'value', { ...rangeValue, end: next || null });
+          })}
+        </div>
+      );
+    }
+    return elapsedInput(edgeText(condition.value), 'Elapsed time', 'e.g. 7:58', (next) => {
+      onConditionChange(condition.id, 'value', next);
+    });
   }
 
   if (field && isArrowTemporalField(field)) {

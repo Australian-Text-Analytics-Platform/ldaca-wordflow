@@ -16,6 +16,7 @@ import {
   isArrowIntegerField,
   isArrowDateField,
   isArrowDictionaryField,
+  isArrowDurationField,
 } from '@/lib/arrow/arrowTable';
 import { isTrendsAxisField, trendsAxisRank } from './trendsAxisColumns';
 import { isSupportedColumnField } from '@/lib/arrow/semanticTypes';
@@ -237,7 +238,9 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
       ? 'numeric'
       : isArrowDictionaryField(activeColumnField)
         ? 'category'
-        : 'datetime';
+        : isArrowDurationField(activeColumnField)
+          ? 'elapsed'
+          : 'datetime';
   // A Date column has no time of day, so sub-day periods do not apply (issue 187).
   const timeColumnIsDate = Boolean(activeColumnField && isArrowDateField(activeColumnField));
   const {
@@ -312,7 +315,14 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
         activeNodeId,
         nodeColumnSelections,
         timeColumn,
-        groupByColumns,
+        // A group column from another Data Block, kept when the input was
+        // swapped, is not sent: the run failed on the missing column.
+        groupByColumns:
+          groupableColumns.length > 0
+            ? groupByColumns.filter((name) =>
+                groupableColumns.some((column) => column.name === name),
+              )
+            : groupByColumns,
         frequency,
         derivedColumnType,
         numericOriginValue,

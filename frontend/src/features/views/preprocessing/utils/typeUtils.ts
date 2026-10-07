@@ -5,6 +5,7 @@ import {
   isArrowIntegerField,
   isArrowStringField,
   isArrowStringListField,
+  isArrowDurationField,
   isArrowTemporalField,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
@@ -50,6 +51,15 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
   if (field && isArrowBooleanField(field)) {
     return [
       { value: 'eq', label: 'equals' },
+      { value: 'is_null', label: 'is empty' },
+    ];
+  }
+  if (field && isArrowDurationField(field)) {
+    // Elapsed time, typed as 7:58 or 1:23:20 (issue 324).
+    return [
+      { value: 'gte', label: 'at or after' },
+      { value: 'lte', label: 'at or before' },
+      { value: 'between', label: 'between' },
       { value: 'is_null', label: 'is empty' },
     ];
   }

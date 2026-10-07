@@ -1071,6 +1071,14 @@ export type CastDerivation = {
      */
     decimal_mark?: '.' | ',';
     /**
+     * Elapsed Text
+     */
+    elapsed_text?: 'auto' | 'h:mm:ss' | 'h:mm:ss.fff' | 'mm:ss' | 'mm:ss.fff' | null;
+    /**
+     * Elapsed Unit
+     */
+    elapsed_unit?: 'ms' | 's' | 'min' | 'h' | 'd' | null;
+    /**
      * Epoch Unit
      */
     epoch_unit?: 's' | 'ms' | 'us' | 'ns' | null;
@@ -1093,7 +1101,7 @@ export type CastDerivation = {
     /**
      * Target Type
      */
-    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
+    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical' | 'duration';
     /**
      * Thousands Separator
      */
@@ -1102,6 +1110,10 @@ export type CastDerivation = {
      * Two Digit Year Start
      */
     two_digit_year_start?: number | null;
+    /**
+     * Two Part Times
+     */
+    two_part_times?: 'minutes' | 'hours';
 };
 
 /**
@@ -1207,6 +1219,14 @@ export type CastNodeEditRequest = {
      */
     decimal_mark?: '.' | ',';
     /**
+     * Elapsed Text
+     */
+    elapsed_text?: 'auto' | 'h:mm:ss' | 'h:mm:ss.fff' | 'mm:ss' | 'mm:ss.fff' | null;
+    /**
+     * Elapsed Unit
+     */
+    elapsed_unit?: 'ms' | 's' | 'min' | 'h' | 'd' | null;
+    /**
      * Epoch Unit
      */
     epoch_unit?: 's' | 'ms' | 'us' | 'ns' | null;
@@ -1229,7 +1249,7 @@ export type CastNodeEditRequest = {
     /**
      * Target Type
      */
-    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical';
+    target_type: 'string' | 'integer' | 'float' | 'datetime' | 'date' | 'categorical' | 'duration';
     /**
      * Thousands Separator
      */
@@ -1238,6 +1258,10 @@ export type CastNodeEditRequest = {
      * Two Digit Year Start
      */
     two_digit_year_start?: number | null;
+    /**
+     * Two Part Times
+     */
+    two_part_times?: 'minutes' | 'hours';
 };
 
 /**
@@ -4303,7 +4327,7 @@ export type SequentialAnalysisRequest = {
     /**
      * Column Type
      */
-    column_type?: 'datetime' | 'numeric' | 'category';
+    column_type?: 'datetime' | 'numeric' | 'category' | 'elapsed';
     /**
      * Custom Interval Unit
      */

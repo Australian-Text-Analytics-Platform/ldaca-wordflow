@@ -20,6 +20,11 @@ from typing import Final
 import fastexcel
 import polars as pl
 
+from ...shared.elapsed_time import (
+    ELAPSED_DTYPE,
+    elapsed_from_datetime,
+    is_excel_day_zero,
+)
 from .safe_paths import is_link_or_reparse
 
 LOADABLE_FILE_TYPES: Final = MappingProxyType(
@@ -701,7 +706,35 @@ def normalize_dtypes(
     casts: list[pl.Expr] = []
 
     for col, dtype in df.schema.items():
-        if isinstance(dtype, pl.Datetime):
+        if isinstance(dtype, pl.Datetime) and is_excel_day_zero(df[col]):
+            # Times without a date, such as a transcript's 07:58.5 in a cell
+            # formatted mm:ss.0, which Excel keeps on its day zero (issue 324).
+            casts.append(elapsed_from_datetime(pl.col(col)).alias(col))
+            changes.append(
+                {
+                    "column": col,
+                    "from_dtype": str(dtype),
+                    "to_dtype": str(ELAPSED_DTYPE),
+                    "reason": (
+                        "the values are times without a date (Excel keeps them "
+                        "on 30 or 31 December 1899), so Wordflow reads them as "
+                        "elapsed time"
+                    ),
+                }
+            )
+        elif isinstance(dtype, pl.Duration):
+            if dtype.time_unit == "us":
+                continue
+            casts.append(pl.col(col).cast(ELAPSED_DTYPE).alias(col))
+            changes.append(
+                {
+                    "column": col,
+                    "from_dtype": str(dtype),
+                    "to_dtype": str(ELAPSED_DTYPE),
+                    "reason": "stored to the microsecond (a change you won't see)",
+                }
+            )
+        elif isinstance(dtype, pl.Datetime):
             time_unit = dtype.time_unit
             time_zone = dtype.time_zone
             if time_unit == "us" and time_zone == "UTC":

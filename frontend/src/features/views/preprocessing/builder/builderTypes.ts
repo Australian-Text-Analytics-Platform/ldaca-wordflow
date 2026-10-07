@@ -5,6 +5,7 @@ import {
   isArrowFloatField,
   isArrowIntegerField,
   isArrowStringField,
+  isArrowDurationField,
   isArrowTemporalField,
   type ArrowField,
 } from '@/lib/arrow/arrowTable';
@@ -12,13 +13,15 @@ import {
 /** A complete derivation body, as the create and preview endpoints take it. */
 export type DerivationBody = NonNullable<PreviewNodeCreationData['body']>;
 
-export type ColumnKind = 'text' | 'number' | 'date' | 'boolean' | 'other';
+export type ColumnKind = 'text' | 'number' | 'date' | 'elapsed' | 'boolean' | 'other';
 
 /** The broad type a Data Builder tool needs to offer the right options. */
 export function columnKind(field: ArrowField | undefined): ColumnKind {
   if (!field) return 'other';
   if (isArrowStringField(field) || isArrowDictionaryField(field)) return 'text';
   if (isArrowIntegerField(field) || isArrowFloatField(field)) return 'number';
+  // Elapsed time, such as a transcript's start time (issue 324).
+  if (isArrowDurationField(field)) return 'elapsed';
   if (isArrowTemporalField(field)) return 'date';
   if (isArrowBooleanField(field)) return 'boolean';
   return 'other';

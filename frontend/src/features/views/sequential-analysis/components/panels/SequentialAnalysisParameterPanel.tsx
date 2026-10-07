@@ -17,6 +17,7 @@ import {
 import type { SequentialAnalysisRequest } from '@/api';
 import { arrowTypeDisplayName, type ArrowField } from '@/lib/arrow/arrowTable';
 import { UniqueValueCount } from '../UniqueValueCount';
+import { elapsedFrequency, elapsedUnit } from '../../trendsAxisColumns';
 
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
@@ -157,7 +158,7 @@ export function SequentialAnalysisParameterPanel({
               Each value of a category column is one bar, in the column&apos;s order, with empty
               values as the last bar. Choose Bars or Stacked bars for the chart.
             </p>
-          ) : derivedColumnType === 'datetime' ? (
+          ) : derivedColumnType === 'datetime' || derivedColumnType === 'elapsed' ? (
             <div className={frequency === 'custom' ? 'md:col-span-2' : 'md:col-span-1'}>
               <div className="mb-1 flex items-center gap-2">
                 <label className="block text-body font-medium text-foreground">Period</label>
@@ -168,7 +169,7 @@ export function SequentialAnalysisParameterPanel({
               </div>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Select
-                  value={frequency}
+                  value={elapsedFrequency(derivedColumnType, frequency)}
                   onValueChange={(value) => {
                     onFrequencyChange(value as SequentialFrequency);
                   }}
@@ -178,8 +179,11 @@ export function SequentialAnalysisParameterPanel({
                     <SelectValue placeholder="Select frequency" />
                   </SelectTrigger>
                   <SelectContent>
-                    {DEFAULT_FREQUENCY_OPTIONS.filter(
-                      (option) => !dateOnly || !SUB_DAY_FREQUENCIES.has(option.value),
+                    {DEFAULT_FREQUENCY_OPTIONS.filter((option) =>
+                      // Elapsed time bins by seconds, minutes or hours (issue 324).
+                      derivedColumnType === 'elapsed'
+                        ? SUB_DAY_FREQUENCIES.has(option.value) || option.value === 'custom'
+                        : !dateOnly || !SUB_DAY_FREQUENCIES.has(option.value),
                     ).map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
@@ -203,7 +207,7 @@ export function SequentialAnalysisParameterPanel({
                       disabled={inputsDisabled}
                     />
                     <Select
-                      value={customIntervalUnit}
+                      value={elapsedUnit(derivedColumnType, customIntervalUnit)}
                       onValueChange={(value) => {
                         onCustomIntervalUnitChange(value as SequentialCustomIntervalUnit);
                       }}
@@ -213,8 +217,10 @@ export function SequentialAnalysisParameterPanel({
                         <SelectValue placeholder="Unit" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CUSTOM_INTERVAL_UNIT_OPTIONS.filter(
-                          (option) => !dateOnly || !SUB_DAY_UNITS.has(option.value),
+                        {CUSTOM_INTERVAL_UNIT_OPTIONS.filter((option) =>
+                          derivedColumnType === 'elapsed'
+                            ? SUB_DAY_UNITS.has(option.value)
+                            : !dateOnly || !SUB_DAY_UNITS.has(option.value),
                         ).map((option) => (
                           <SelectItem key={option.value} value={option.value}>
                             {option.label}

@@ -5,7 +5,10 @@ import { DetailsDialogButton } from '@/components/errors/ErrorDetails';
 
 /** A change users would notice: times read as UTC, or moved to UTC. */
 const isVisible = (change: DtypeNormalizationChange) =>
-  change.reason.includes('time zone') || change.reason.includes('converted from');
+  change.reason.includes('time zone') ||
+  change.reason.includes('converted from') ||
+  // Excel times without a date became elapsed time (issue 324).
+  change.reason.includes('elapsed time');
 
 /**
  * Tells users when importing a file changed how some columns are stored

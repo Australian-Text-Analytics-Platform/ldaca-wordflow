@@ -4,7 +4,10 @@
  */
 import type { FilterConditionInput } from '@/api';
 import { sqlIdentifier, sqlTable } from '@/api';
+import { formatElapsed } from '@/lib/elapsedTime';
 import type { ColumnKind } from '../builder/builderTypes';
+
+const MICROS_PER_MINUTE = 60_000_000;
 
 /** At most this many Data Blocks per run. */
 export const MAX_GROUPS = 50;
@@ -15,6 +18,8 @@ export type Grouping =
   | { kind: 'values' }
   | { kind: 'dates'; by: DateGrouping }
   | { kind: 'interval'; start: number; size: number }
+  // Elapsed time in steps of some minutes from 0:00 (issue 324).
+  | { kind: 'elapsed'; minutes: number }
   | { kind: 'bins'; count: number; low: number; high: number };
 
 export interface Group {
@@ -33,6 +38,7 @@ const DATE_FORMATS: Record<DateGrouping, string> = {
 export function defaultGrouping(kind: ColumnKind): Grouping {
   if (kind === 'date') return { kind: 'dates', by: 'year' };
   if (kind === 'number') return { kind: 'interval', start: 0, size: 10 };
+  if (kind === 'elapsed') return { kind: 'elapsed', minutes: 5 };
   return { kind: 'values' };
 }
 
@@ -56,6 +62,12 @@ export function groupCountSql(
     // Blank text joins the empty group, matching Filter's is empty (issue 166).
     const text = `CAST(${col} AS VARCHAR)`;
     return `SELECT CASE WHEN TRIM(${text}) = '' THEN NULL ELSE ${text} END AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY n DESC, value ASC NULLS LAST LIMIT ${String(limit)}`;
+  }
+  if (grouping.kind === 'elapsed') {
+    // Elapsed time casts to microseconds.
+    const step = grouping.minutes * MICROS_PER_MINUTE;
+    if (!Number.isFinite(step) || step <= 0) return null;
+    return `SELECT FLOOR(CAST(${col} AS BIGINT) / ${String(step)}) AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY value ASC NULLS LAST LIMIT ${String(limit)}`;
   }
   if (grouping.kind === 'dates') {
     return `SELECT STRFTIME(${col}, '${DATE_FORMATS[grouping.by]}') AS value, COUNT(*) AS n FROM ${table} GROUP BY value ORDER BY value ASC NULLS LAST LIMIT ${String(limit)}`;
@@ -133,6 +145,21 @@ export function toGroups(
         label: text,
         rows: count,
         conditions: [{ column, operator: 'eq', value: text }],
+      });
+      continue;
+    }
+    if (grouping.kind === 'elapsed') {
+      // "5:00 to under 10:00", selected with Filter's elapsed-time ranges.
+      const low = Number(value) * grouping.minutes * MICROS_PER_MINUTE;
+      const high = low + grouping.minutes * MICROS_PER_MINUTE;
+      groups.push({
+        key: `e:${text}`,
+        label: `${formatElapsed(low)} to under ${formatElapsed(high)}`,
+        rows: count,
+        conditions: [
+          { column, operator: 'gte', value: formatElapsed(low) },
+          { column, operator: 'lt', value: formatElapsed(high) },
+        ],
       });
       continue;
     }

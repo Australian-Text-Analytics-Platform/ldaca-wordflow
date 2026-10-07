@@ -3,6 +3,7 @@ import { useCallback, useReducer } from 'react';
 
 import type { SequentialAnalysisRequest } from '@/api';
 import { normalizeStringArray } from '../../common/parameterComparison';
+import { elapsedFrequency, elapsedUnit } from '../trendsAxisColumns';
 
 export type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 export type SequentialCustomIntervalUnit = NonNullable<
@@ -91,12 +92,15 @@ export function deriveSequentialParameterValues(
     derivedColumnType === 'numeric' ? parseNumericInput(state.numericOriginInput) : null;
   const numericIntervalValue =
     derivedColumnType === 'numeric' ? parseNumericInput(state.numericIntervalInput) : null;
-  const isCustomDatetime = derivedColumnType === 'datetime' && state.frequency === 'custom';
+  // Elapsed time uses the same periods, limited to seconds, minutes and hours (issue 324).
+  const frequency = elapsedFrequency(derivedColumnType, state.frequency);
+  const isCustomDatetime =
+    (derivedColumnType === 'datetime' || derivedColumnType === 'elapsed') && frequency === 'custom';
   const customIntervalValue = isCustomDatetime
     ? parsePositiveIntegerInput(state.customIntervalValueInput)
     : null;
   const customIntervalUnitValue: SequentialCustomIntervalUnit | null = isCustomDatetime
-    ? state.customIntervalUnit
+    ? elapsedUnit(derivedColumnType, state.customIntervalUnit)
     : null;
 
   return {
@@ -106,7 +110,7 @@ export function deriveSequentialParameterValues(
     customIntervalValue,
     customIntervalUnitValue,
     currentSequentialParams: {
-      frequency: state.frequency,
+      frequency,
       group_by_columns: normalizeStringArray(state.groupByColumns),
       column_type: derivedColumnType,
       numeric_origin: derivedColumnType === 'numeric' ? numericOriginValue : null,
@@ -192,7 +196,9 @@ const sequentialParameterReducer = (
 export function readSequentialServerParams(request: SequentialAnalysisRequest) {
   const serverColumnType = request.column_type ?? 'datetime';
   const serverFrequency = request.frequency ?? 'daily';
-  const serverIsCustomDatetime = serverColumnType === 'datetime' && serverFrequency === 'custom';
+  const serverIsCustomDatetime =
+    (serverColumnType === 'datetime' || serverColumnType === 'elapsed') &&
+    serverFrequency === 'custom';
   return {
     frequency: serverFrequency,
     group_by_columns: normalizeStringArray(request.group_by_columns ?? []),
@@ -218,13 +224,16 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
   const nodeId = req.node_id;
   const timeColumn = req.time_column;
   const columnType: SequentialColumnType =
-    req.column_type === 'numeric' || req.column_type === 'category' ? req.column_type : 'datetime';
+    req.column_type === 'numeric' || req.column_type === 'category' || req.column_type === 'elapsed'
+      ? req.column_type
+      : 'datetime';
+  const timeBins = columnType === 'datetime' || columnType === 'elapsed';
   const numericOrigin = columnType === 'numeric' ? (req.numeric_origin ?? null) : null;
   const numericInterval = columnType === 'numeric' ? (req.numeric_interval ?? null) : null;
   const groupByColumns = normalizeStringArray(req.group_by_columns ?? []);
   const frequency = req.frequency ?? 'daily';
   const customIntervalValue =
-    columnType === 'datetime' &&
+    timeBins &&
     frequency === 'custom' &&
     req.custom_interval_value != null &&
     Number.isInteger(req.custom_interval_value) &&
@@ -232,7 +241,7 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
       ? req.custom_interval_value
       : null;
   const customIntervalUnit =
-    columnType === 'datetime' && frequency === 'custom' && req.custom_interval_unit != null
+    timeBins && frequency === 'custom' && req.custom_interval_unit != null
       ? req.custom_interval_unit
       : null;
   return {
@@ -247,13 +256,11 @@ function resolveHydratedSequentialParameters(req: SequentialAnalysisRequest): {
       numericIntervalInput:
         columnType === 'numeric' && numericInterval != null ? String(numericInterval) : '1',
       customIntervalValueInput:
-        frequency === 'custom' && columnType === 'datetime' && customIntervalValue != null
+        frequency === 'custom' && timeBins && customIntervalValue != null
           ? String(customIntervalValue)
           : '1',
       customIntervalUnit:
-        frequency === 'custom' && columnType === 'datetime'
-          ? (customIntervalUnit ?? 'minutes')
-          : 'minutes',
+        frequency === 'custom' && timeBins ? (customIntervalUnit ?? 'minutes') : 'minutes',
     },
     hydratedParams: {
       timeColumn,

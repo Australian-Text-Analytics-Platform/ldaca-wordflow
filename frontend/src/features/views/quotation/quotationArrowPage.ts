@@ -86,7 +86,12 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const nativeRows = (page: ArrowTablePage): Record<string, unknown>[] => {
   const temporalFields = page.schema
     .map((column) => column.field)
-    .filter((field) => DataType.isDate(field.type) || DataType.isTimestamp(field.type));
+    .filter(
+      (field) =>
+        DataType.isDate(field.type) ||
+        DataType.isTimestamp(field.type) ||
+        DataType.isDuration(field.type),
+    );
   return page.table.toArray().flatMap((row) => {
     const value = materializeNativeArrowValue(row);
     if (!isRecord(value)) return [];

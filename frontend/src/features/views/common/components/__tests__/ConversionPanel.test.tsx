@@ -39,7 +39,7 @@ const checked: ConversionCheckResource = {
 
 const showPanel = (
   mode: ConversionMode,
-  target: 'date' | 'integer' = 'date',
+  target: 'date' | 'integer' | 'duration' | 'string' | 'float' = 'date',
   onConfirm: Mock = vi.fn(),
 ) => {
   render(
@@ -51,7 +51,7 @@ const showPanel = (
         columnName="published"
         mode={mode}
         target={target}
-        targetLabel={target === 'date' ? 'date' : 'whole number'}
+        targetLabel={target}
         onClose={vi.fn()}
         onConfirm={onConfirm}
       />
@@ -221,5 +221,40 @@ describe('ConversionPanel (issue 322)', () => {
       thousands_separator: ',',
       ignore_symbols: true,
     });
+  });
+
+  it('reads two-part times as minutes and seconds unless switched (issue 324)', async () => {
+    const onConfirm = showPanel('elapsed', 'duration');
+
+    expect(
+      screen.getByRole('radio', { name: /minutes and seconds \(7:58 is 7 minutes 58 seconds\)/ }),
+    ).toBeChecked();
+    await userEvent.click(screen.getByRole('radio', { name: /hours and minutes/ }));
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
+    });
+    expect(vi.mocked(checkConversion).mock.lastCall?.[0].body).toMatchObject({
+      target_type: 'duration',
+      two_part_times: 'hours',
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(onConfirm).toHaveBeenCalledWith({ two_part_times: 'hours' });
+  });
+
+  it('turns elapsed time into numbers of a chosen unit and into text', async () => {
+    const toNumber = showPanel('elapsed-out', 'float');
+    await userEvent.selectOptions(screen.getByRole('combobox', { name: 'Unit' }), 'minutes');
+    await vi.waitFor(() => {
+      expect(screen.getByRole('button', { name: 'Convert' })).toBeEnabled();
+    });
+    await userEvent.click(screen.getByRole('button', { name: 'Convert' }));
+    expect(toNumber).toHaveBeenCalledWith({ elapsed_unit: 'min' });
+  });
+
+  it('offers days as Excel stores times only when reading numbers', () => {
+    showPanel('elapsed-number', 'duration');
+    expect(
+      screen.getByRole('option', { name: 'days (as Excel stores times)' }),
+    ).toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@ import {
   arrowTypeName,
   isArrowDateField,
   isArrowDictionaryField,
+  isArrowDurationField,
   isArrowFloatField,
   isArrowIntegerField,
   isArrowStringField,
@@ -32,12 +33,21 @@ export type CastRequestExtras = CastExtras & { categories?: string[] };
 /**
  * Whether a type change needs the conversion window, and in which mode
  * (issue 322): text, category or numbers to a date; text or category to a
- * number; a date to text. Other changes convert straight away.
+ * number; a date to text; to and from elapsed time (issue 324). Other
+ * changes, such as a date and time's time of day as elapsed time, convert
+ * straight away.
  */
 function conversionMode(field: ArrowField, target: ColumnCastType): ConversionMode | null {
   const isText = isArrowStringField(field) || isArrowDictionaryField(field);
   const isNumber = isArrowIntegerField(field) || isArrowFloatField(field);
   const isDate = isArrowDateField(field) || isArrowTimestampField(field);
+  if (isArrowDurationField(field)) {
+    if (target === 'string') return 'elapsed-text';
+    if (target === 'integer' || target === 'float') return 'elapsed-out';
+    return null;
+  }
+  if (target === 'duration' && isText) return 'elapsed';
+  if (target === 'duration' && isNumber) return 'elapsed-number';
   if ((target === 'datetime' || target === 'date') && (isText || isNumber)) return 'date';
   if ((target === 'integer' || target === 'float') && isText) return 'number';
   if (target === 'string' && isDate) return 'date-text';

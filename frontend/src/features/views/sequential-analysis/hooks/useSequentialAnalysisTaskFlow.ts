@@ -6,6 +6,7 @@ import type { RunAnalysis } from '../../common/hooks/useAnalysisFeature';
 import type { ArrowField } from '@/lib/arrow/arrowTable';
 import type { ChartTypeOption } from './sequentialChartModel';
 import { toastError } from '@/lib/toastError';
+import { elapsedFrequency, elapsedUnit } from '../trendsAxisColumns';
 
 type SequentialFrequency = NonNullable<SequentialAnalysisRequest['frequency']>;
 type SequentialCustomIntervalUnit = NonNullable<SequentialAnalysisRequest['custom_interval_unit']>;
@@ -111,7 +112,13 @@ export function useSequentialAnalysisTaskFlow({
       }
     }
 
-    const isCustomDatetime = derivedColumnType === 'datetime' && frequency === 'custom';
+    // Elapsed time uses seconds, minutes or hours (issue 324).
+    const runFrequency = elapsedFrequency(derivedColumnType, frequency);
+    const runUnit =
+      customIntervalUnit === null ? null : elapsedUnit(derivedColumnType, customIntervalUnit);
+    const isCustomDatetime =
+      (derivedColumnType === 'datetime' || derivedColumnType === 'elapsed') &&
+      runFrequency === 'custom';
     if (isCustomDatetime) {
       if (
         customIntervalValue === null ||
@@ -121,7 +128,7 @@ export function useSequentialAnalysisTaskFlow({
         toast.error('Please enter a positive whole number for the custom interval.');
         return;
       }
-      if (customIntervalUnit === null) {
+      if (runUnit === null) {
         toast.error('Please select a unit for the custom interval.');
         return;
       }
@@ -131,13 +138,13 @@ export function useSequentialAnalysisTaskFlow({
       node_id: nodeIdForAnalysis,
       time_column: picked,
       group_by_columns: validGroupByColumns.length > 0 ? validGroupByColumns : undefined,
-      frequency,
+      frequency: runFrequency,
       sort_by_time: true,
       column_type: derivedColumnType,
       numeric_origin: derivedColumnType === 'numeric' ? numericOriginValue : undefined,
       numeric_interval: derivedColumnType === 'numeric' ? numericIntervalValue : undefined,
       custom_interval_value: isCustomDatetime ? customIntervalValue : undefined,
-      custom_interval_unit: isCustomDatetime ? customIntervalUnit : undefined,
+      custom_interval_unit: isCustomDatetime ? (runUnit ?? undefined) : undefined,
     };
 
     await runAnalysis<Analysis>({

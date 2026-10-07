@@ -266,3 +266,71 @@ def test_type_change_plan_can_be_read_back(
     if target_type == "date":
         assert reopened.schema[column] == pl.Date
         assert reopened[column][0] == dt.date(2020, 1, 31)
+
+
+ELAPSED_EDITS: list[dict[str, Any]] = [
+    {"kind": "cast", "column": "said", "target_type": "duration"},
+    {
+        "kind": "cast",
+        "column": "said",
+        "target_type": "duration",
+        "two_part_times": "hours",
+    },
+    {"kind": "cast", "column": "seconds", "target_type": "duration", "elapsed_unit": "s"},
+    {"kind": "cast", "column": "seconds", "target_type": "duration", "elapsed_unit": "d"},
+    {"kind": "cast", "column": "excel", "target_type": "duration"},
+    *[
+        {"kind": "cast", "column": "start", "target_type": "string", "elapsed_text": style}
+        for style in ("auto", "h:mm:ss", "h:mm:ss.fff", "mm:ss", "mm:ss.fff")
+    ],
+    {"kind": "cast", "column": "start", "target_type": "float", "elapsed_unit": "min"},
+    {"kind": "cast", "column": "start", "target_type": "integer", "elapsed_unit": "s"},
+    {"kind": "clean_text", "column": "start", "operation": "trim"},
+    {
+        "kind": "combine_columns",
+        "parts": [
+            {"kind": "column", "column": "start"},
+            {"kind": "text", "text": " "},
+            {"kind": "column", "column": "said"},
+        ],
+        "output_column": "label",
+    },
+    {"kind": "replace", "source_column": "start", "pattern": ":", "literal": True},
+]
+
+
+@pytest.mark.parametrize(
+    "body",
+    ELAPSED_EDITS,
+    ids=lambda body: "-".join(
+        str(body.get(key)) for key in ("kind", "column", "target_type", "elapsed_text")
+    ),
+)
+def test_elapsed_time_plans_can_be_read_back(tmp_path: Path, body: dict[str, Any]) -> None:
+    """Elapsed time (issue 324) conversions and tools reopen from a saved plan."""
+
+    import datetime as dt
+
+    source = tmp_path / "source.parquet"
+    pl.DataFrame(
+        {
+            "said": ["07:58.5", "1:23:20"],
+            "seconds": [478.5, 0.25],
+            "excel": [dt.datetime(1899, 12, 31, 0, 7, 58, 542000), None],
+            "start": pl.Series(
+                [dt.timedelta(seconds=478.5), None], dtype=pl.Duration("us")
+            ),
+        }
+    ).write_parquet(source)
+    node = SimpleNamespace(data=pl.scan_parquet(source))
+
+    edited, _ = build_edited_lazyframe(
+        cast(Any, node), EDIT_ADAPTER.validate_python(body)
+    )
+    plan = tmp_path / "plan.plbin"
+    plan.write_bytes(edited.serialize(format="binary"))
+
+    assert [Path(path).name for path in list_source_paths(str(plan))] == [
+        "source.parquet"
+    ]
+    pl.LazyFrame.deserialize(plan, format="binary").collect()

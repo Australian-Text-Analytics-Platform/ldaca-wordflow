@@ -17,6 +17,7 @@ from typing import Literal
 
 import polars as pl
 
+from ..shared.elapsed_time import ElapsedText, ElapsedUnit, TwoPartTimes
 from ..shared.empty_values import empty_value_expression
 from ..shared.errors import InvalidInputError
 
@@ -47,6 +48,11 @@ class ConversionOptions:
     ignore_symbols: bool = False
     # The date is part of longer text: find it and ignore the rest.
     date_in_text: bool = False
+    # Elapsed time (issue 324): the unit of numbers read or written, how a
+    # two-part time such as 7:58 is read, and how elapsed time is written.
+    elapsed_unit: ElapsedUnit | None = None
+    two_part_times: TwoPartTimes = "minutes"
+    elapsed_text: ElapsedText | None = None
 
 
 # --- numbers ---------------------------------------------------------------

@@ -156,4 +156,22 @@ describe('Data Builder request models (issues 148 to 151)', () => {
     expect(groupBlockName('posts', 'a/b..c\u0007')).toBe('posts · a-b.c');
     expect(groupBlockName('posts', '   ')).toBe('posts · (blank)');
   });
+
+  it('splits elapsed time into steps of minutes, selected by Filter (issue 324)', () => {
+    expect(groupCountSql('n1', 'start', { kind: 'elapsed', minutes: 5 })).toContain(
+      'FLOOR(CAST("start" AS BIGINT) / 300000000)',
+    );
+    const groups = toGroups('start', { kind: 'elapsed', minutes: 5 }, [
+      { value: 1, n: 3 },
+      { value: 12, n: 1 },
+    ]);
+    expect(groups.map((group) => group.label)).toEqual([
+      '5:00 to under 10:00',
+      '1:00:00 to under 1:05:00',
+    ]);
+    expect(groups[0]?.conditions).toEqual([
+      { column: 'start', operator: 'gte', value: '5:00' },
+      { column: 'start', operator: 'lt', value: '10:00' },
+    ]);
+  });
 });

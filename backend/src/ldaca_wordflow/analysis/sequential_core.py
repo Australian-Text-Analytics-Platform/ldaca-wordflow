@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import polars as pl
 
+from ..shared.elapsed_time import MICROSECONDS, elapsed_to_text
 from ..shared.empty_values import empty_value_expression
 from ..shared.unsupported_columns import supported_metadata_columns
 
@@ -13,6 +14,9 @@ SEQUENTIAL_GROUP_INDEX_COLUMN = "group_index"
 SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN = "__wordflow_trends_period_index"
 SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN = "__wordflow_trends_group_index"
 _SEQUENTIAL_ROW_INDEX_COLUMN = "__wordflow_trends_row_index"
+# Elapsed-time steps in microseconds (issue 324).
+_ELAPSED_STEPS = {"second": "s", "minute": "min", "hourly": "h"}
+_ELAPSED_CUSTOM_UNITS = {"seconds": "s", "minutes": "min", "hours": "h"}
 _CUSTOM_UNIT_SPEC: dict[str, tuple[str, str]] = {
     "seconds": ("s", "%Y-%m-%d %H:%M:%S"),
     "minutes": ("m", "%Y-%m-%d %H:%M"),
@@ -43,10 +47,10 @@ def _build_sequential_result_frames(
     """
 
     normalized_column_type = (column_type or "datetime").lower()
-    if normalized_column_type not in {"datetime", "numeric", "category"}:
+    if normalized_column_type not in {"datetime", "numeric", "category", "elapsed"}:
         raise ValueError(
-            "Unsupported column_type. Use 'datetime', 'numeric' or 'category' for "
-            "sequential analysis"
+            "Unsupported column_type. Use 'datetime', 'numeric', 'category' or "
+            "'elapsed' for sequential analysis"
         )
 
     # The worker writes both outputs immediately after this computation, so the
@@ -127,6 +131,25 @@ def _build_sequential_result_frames(
             raise ValueError("Unsupported datetime frequency")
 
         df = df.filter(pl.col(time_column).is_not_null()).with_columns(time_expr)
+    elif normalized_column_type == "elapsed":
+        # Time into a recording, binned from zero by a fixed step; the period
+        # is the step's start in seconds, labelled like 7:58 (issue 324).
+        if frequency == "custom":
+            unit = _ELAPSED_CUSTOM_UNITS.get(custom_interval_unit or "")
+            if unit is None or not custom_interval_value or custom_interval_value <= 0:
+                raise ValueError(
+                    "A custom elapsed-time step needs a number of seconds, minutes "
+                    "or hours"
+                )
+            step = MICROSECONDS[unit] * int(custom_interval_value)
+        elif frequency in _ELAPSED_STEPS:
+            step = MICROSECONDS[_ELAPSED_STEPS[frequency]]
+        else:
+            raise ValueError("Elapsed time bins by seconds, minutes or hours")
+        micros = pl.col(time_column).dt.total_microseconds()
+        df = df.filter(pl.col(time_column).is_not_null()).with_columns(
+            ((micros // step) * step / 1_000_000).alias("time_period")
+        )
     elif normalized_column_type == "category":
         # One position per category value, in the column's order; empty values
         # are kept and become the last position, "(empty)" (issue 318).
@@ -232,6 +255,21 @@ def _build_sequential_result_frames(
             .fill_null("(empty)")
             .alias("time_period_formatted"),
             pl.col("time_period").cast(pl.String),
+        )
+    elif normalized_column_type == "elapsed":
+        # Seconds, like the period, so the chart places each bin (issue 324).
+        result_df = result_df.with_columns(
+            (pl.col(name).dt.total_microseconds() / 1_000_000).alias(name)
+            for name in ("period_start", "period_end")
+        )
+        result_df = result_df.with_columns(
+            elapsed_to_text(
+                pl.duration(
+                    microseconds=(pl.col("time_period") * 1_000_000)
+                    .round(0)
+                    .cast(pl.Int64)
+                )
+            ).alias("time_period_formatted")
         )
     elif normalized_column_type == "datetime":
         if frequency == "weekly":

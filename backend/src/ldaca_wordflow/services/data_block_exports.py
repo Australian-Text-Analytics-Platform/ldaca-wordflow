@@ -13,6 +13,7 @@ from typing import IO, BinaryIO, cast
 
 import polars as pl
 
+from ..shared.elapsed_time import elapsed_to_text
 from ..domain.workspace import Node
 from ..models.node_resources import DataBlockExportFormat, DataBlockExportRequest
 from ..shared.errors import InvalidInputError, NodeNotFoundError, ResourceTooLargeError
@@ -190,7 +191,7 @@ def _write_lazyframe(
         if export_format is DataBlockExportFormat.CSV:
             # The byte-order mark makes Excel read the file as UTF-8, not
             # Windows-1252, so curly quotes do not show as â€™ (issue 169).
-            _flatten_nested_columns(frame).sink_csv(
+            _elapsed_as_text(_flatten_nested_columns(frame)).sink_csv(
                 cast(BinaryIO, writer), include_bom=True
             )
         elif export_format is DataBlockExportFormat.XLSX:
@@ -239,6 +240,23 @@ def _flatten_nested_columns(frame: pl.LazyFrame) -> pl.LazyFrame:
     )
 
 
+def _elapsed_as_text(frame: pl.LazyFrame) -> pl.LazyFrame:
+    """Elapsed time as Wordflow shows it ("7:58.5"): CSV has no such type (issue 324)."""
+
+    durations = [
+        name
+        for name, dtype in frame.collect_schema().items()
+        if isinstance(dtype, pl.Duration)
+    ]
+    if not durations:
+        return frame
+    return frame.with_columns(elapsed_to_text(pl.col(name)) for name in durations)
+
+
+# Excel's elapsed-time format: hours count past 24, with milliseconds.
+_EXCEL_ELAPSED_FORMAT = "[h]:mm:ss.000"
+
+
 def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
     """One worksheet named Data, within Excel's row and cell-length limits."""
 
@@ -254,6 +272,16 @@ def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
         data = data.with_columns(
             pl.col(name).dt.convert_time_zone("UTC").dt.replace_time_zone(None)
             for name in zoned
+        )
+    # Elapsed time as Excel stores times, a fraction of a day, shown with
+    # Excel's elapsed-time format so it reads back as elapsed time (issue 324).
+    durations = [
+        name for name, dtype in data.schema.items() if isinstance(dtype, pl.Duration)
+    ]
+    if durations:
+        data = data.with_columns(
+            (pl.col(name).dt.total_microseconds() / 86_400_000_000).alias(name)
+            for name in durations
         )
     if data.height + 1 > _EXCEL_MAX_ROWS:
         raise InvalidInputError(
@@ -282,6 +310,7 @@ def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
         worksheet="Data",
         autofit=False,
         include_header=True,
+        column_formats=dict.fromkeys(durations, _EXCEL_ELAPSED_FORMAT) or None,
     )
     return buffer.getvalue()
 

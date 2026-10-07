@@ -48,6 +48,7 @@ export function SplitByGroupSubTab({
   const [start, setStart] = useState('0');
   const [size, setSize] = useState('10');
   const [binCount, setBinCount] = useState('5');
+  const [stepMinutes, setStepMinutes] = useState('5');
   // Unticked groups; everything else is ticked.
   const [unticked, setUnticked] = useState<Set<string>>(new Set());
   const [name, setName] = useState('');
@@ -66,6 +67,7 @@ export function SplitByGroupSubTab({
 
   let grouping: Grouping | null = column ? defaultGrouping(kind) : null;
   if (grouping?.kind === 'dates') grouping = { kind: 'dates', by: dateBy };
+  if (grouping?.kind === 'elapsed') grouping = { kind: 'elapsed', minutes: Number(stepMinutes) };
   if (kind === 'number') {
     grouping =
       numberMode === 'interval'
@@ -178,6 +180,25 @@ export function SplitByGroupSubTab({
             </label>
           ))}
         </div>
+      ) : null}
+
+      {column && kind === 'elapsed' ? (
+        <label className="flex flex-wrap items-center gap-2 text-body">
+          One Data Block per
+          <Input
+            aria-label="Minutes per Data Block"
+            type="number"
+            min={0}
+            step="any"
+            value={stepMinutes}
+            className="h-7 w-20"
+            onChange={(event) => {
+              setStepMinutes(event.target.value);
+              resetTicks();
+            }}
+          />
+          minutes of elapsed time, from 0:00
+        </label>
       ) : null}
 
       {column && kind === 'number' ? (

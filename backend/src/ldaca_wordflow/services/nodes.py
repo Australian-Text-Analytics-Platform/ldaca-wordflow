@@ -26,6 +26,7 @@ from ..infrastructure.storage.data_loading import (
     read_selected_documents,
     normalize_dtypes,
 )
+from ..shared.elapsed_time import as_text, elapsed_to_text
 from ..shared.errors import (
     DataBlockInUseError,
     InvalidInputError,
@@ -838,9 +839,16 @@ class EmptiedValuesReport:
 def _emptied_values_report(
     before: pl.LazyFrame, after: pl.LazyFrame, column: str
 ) -> EmptiedValuesReport:
-    lost = ~empty_value_expression(
-        pl.col("__before"), before.collect_schema()[column]
-    ) & empty_value_expression(pl.col("__after"), after.collect_schema()[column])
+    before_dtype = before.collect_schema()[column]
+    lost = ~empty_value_expression(pl.col("__before"), before_dtype) & (
+        empty_value_expression(pl.col("__after"), after.collect_schema()[column])
+    )
+    # Elapsed time has no plain cast to text (issue 324).
+    before_text = (
+        elapsed_to_text(pl.col("__before"))
+        if isinstance(before_dtype, pl.Duration)
+        else pl.col("__before").cast(pl.String, strict=False)
+    )
     stats = (
         pl.concat(
             [
@@ -854,11 +862,7 @@ def _emptied_values_report(
             pl.len().alias("rows"),
             lost.sum().alias("emptied"),
             pl.col("__row").filter(lost).first().alias("first_row"),
-            pl.col("__before")
-            .cast(pl.String, strict=False)
-            .filter(lost)
-            .first()
-            .alias("first_value"),
+            before_text.filter(lost).first().alias("first_value"),
         )
         .collect()
         .row(0, named=True)
@@ -1017,13 +1021,25 @@ def _count_changed_rows(
     added = [name for name in after_names if name not in before_names]
     if not shared and not added:
         return 0
+    # Compared as text; elapsed time has no plain cast to text (issue 324).
+    before_schema = before.collect_schema()
+    after_schema = after.collect_schema()
     old = before.select(
-        [pl.col(name).cast(pl.String).alias(f"__before_{index}") for index, name in enumerate(shared)]
+        [
+            as_text(pl.col(name), before_schema[name]).alias(f"__before_{index}")
+            for index, name in enumerate(shared)
+        ]
     )
     new = after.select(
         [
-            *[pl.col(name).cast(pl.String).alias(f"__after_{index}") for index, name in enumerate(shared)],
-            *[pl.col(name).cast(pl.String).alias(f"__added_{index}") for index, name in enumerate(added)],
+            *[
+                as_text(pl.col(name), after_schema[name]).alias(f"__after_{index}")
+                for index, name in enumerate(shared)
+            ],
+            *[
+                as_text(pl.col(name), after_schema[name]).alias(f"__added_{index}")
+                for index, name in enumerate(added)
+            ],
         ]
     )
     frames = [new] if not shared else [old, new]

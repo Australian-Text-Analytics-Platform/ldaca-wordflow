@@ -29,9 +29,16 @@ from .conversion import (
     round_to_whole,
     uses_numbers,
 )
+from ..shared.elapsed_time import (
+    elapsed_from_datetime,
+    elapsed_from_numbers,
+    elapsed_from_text,
+    elapsed_to_number,
+    elapsed_to_text,
+)
 
 
-SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical"
+SUPPORTED_CAST_TARGETS = "string, integer, float, datetime, date, categorical, duration"
 
 # The Data Editor's names for each cast target (issue 205).
 _TARGET_LABELS = {
@@ -41,6 +48,7 @@ _TARGET_LABELS = {
     "float": "decimal",
     "datetime": "date and time",
     "date": "date",
+    "duration": "elapsed time",
 }
 
 _NOTHING_CHANGED = "Nothing was changed."
@@ -213,6 +221,44 @@ def _cast_expr(
     target_lower = target_type.lower()
 
     options = options or ConversionOptions(datetime_format=datetime_format)
+    column = pl.col(column_name)
+    if isinstance(dtype, pl.Duration) and target_lower != "duration":
+        # Elapsed time becomes text or a number of a unit (issue 324).
+        if target_lower in ("string", "utf8", "str", "text"):
+            return elapsed_to_text(column, options.elapsed_text or "auto").alias(
+                column_name
+            )
+        if target_lower == "float":
+            return elapsed_to_number(column, options.elapsed_unit or "s").alias(
+                column_name
+            )
+        if target_lower == "integer":
+            return round_to_whole(
+                elapsed_to_number(column, options.elapsed_unit or "s")
+            ).alias(column_name)
+        raise InvalidInputError(
+            "Elapsed time can become text, a whole number or a decimal, but not "
+            f"{_target_label(target_type)}."
+        )
+    if target_lower == "duration":
+        if isinstance(dtype, pl.Duration):
+            return column.alias(column_name)
+        if isinstance(dtype, pl.Datetime):
+            # The time of day: Excel's times without a date (issue 324).
+            return elapsed_from_datetime(column).alias(column_name)
+        if dtype is not None and dtype.is_numeric():
+            return elapsed_from_numbers(column, options.elapsed_unit or "s").alias(
+                column_name
+            )
+        if dtype is not None and (
+            dtype == pl.String or isinstance(dtype, (pl.Categorical, pl.Enum))
+        ):
+            return elapsed_from_text(column, options.two_part_times).alias(
+                column_name
+            )
+        raise InvalidInputError(
+            "Only text, numbers, and dates and times can become elapsed time."
+        )
     if target_lower == "datetime":
         return _datetime_cast_expr(
             column_name,
@@ -384,6 +430,8 @@ def check_cast(
     after_text = (
         pl.col("__after__").dt.strftime(label_format)
         if label_format
+        else elapsed_to_text(pl.col("__after__"))
+        if target_type == "duration"
         else pl.col("__after__").cast(pl.String)
     )
     frame = (
@@ -393,6 +441,8 @@ def check_cast(
             (
                 before.dt.strftime(_RESULT_LABEL_FORMATS["datetime"])
                 if isinstance(dtype, pl.Datetime)
+                else elapsed_to_text(before)
+                if isinstance(dtype, pl.Duration)
                 else before.cast(pl.String)
             ).alias("__before__"),
             after,

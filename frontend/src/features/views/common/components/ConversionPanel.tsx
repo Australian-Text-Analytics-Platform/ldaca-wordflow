@@ -49,10 +49,26 @@ export type CastExtras = Partial<
     | 'thousands_separator'
     | 'ignore_symbols'
     | 'date_in_text'
+    | 'elapsed_unit'
+    | 'two_part_times'
+    | 'elapsed_text'
   >
 >;
 
-export type ConversionMode = 'date' | 'number' | 'date-text';
+/**
+ * date: text, category or numbers to a date; number: text to a number;
+ * date-text: a date to text. Elapsed time (issue 324): elapsed (text to it),
+ * elapsed-number (numbers to it), elapsed-text (it to text), elapsed-out (it
+ * to a number).
+ */
+export type ConversionMode =
+  | 'date'
+  | 'number'
+  | 'date-text'
+  | 'elapsed'
+  | 'elapsed-number'
+  | 'elapsed-text'
+  | 'elapsed-out';
 
 interface ConversionPanelProps {
   open: boolean;
@@ -61,7 +77,7 @@ interface ConversionPanelProps {
   columnName: string;
   mode: ConversionMode;
   /** The type being converted to. */
-  target: 'datetime' | 'date' | 'integer' | 'float' | 'string';
+  target: 'datetime' | 'date' | 'integer' | 'float' | 'string' | 'duration';
   /** The plain name of that type, for the title. */
   targetLabel: string;
   /** The source holds a date and time, so time presets apply (date to text). */
@@ -100,13 +116,7 @@ function ConversionPanelContent({
   onClose,
   onConfirm,
 }: Omit<ConversionPanelProps, 'open'>) {
-  const [extras, setExtras] = useState<CastExtras>(() =>
-    mode === 'number'
-      ? { decimal_mark: '.', thousands_separator: ',', ignore_symbols: true }
-      : mode === 'date-text'
-        ? { datetime_format: sourceHasTime ? '%Y-%m-%d %H:%M' : '%Y-%m-%d' }
-        : {},
-  );
+  const [extras, setExtras] = useState<CastExtras>(() => initialExtras(mode, sourceHasTime));
   const detection = useQuery({
     queryKey: [
       'workspaces',
@@ -193,13 +203,7 @@ function ConversionPanelContent({
             Convert <span className="text-description">&ldquo;{columnName}&rdquo;</span> to{' '}
             {targetLabel}
           </CardTitle>
-          <CardDescription>
-            {mode === 'date'
-              ? 'How are the dates written? Wordflow has looked at the first values; check the result below before converting.'
-              : mode === 'number'
-                ? 'How are the numbers written? Check the result below before converting.'
-                : 'How should the dates be written as text?'}
-          </CardDescription>
+          <CardDescription>{MODE_DESCRIPTIONS[mode]}</CardDescription>
         </CardHeader>
         <CardContent className="max-h-[65vh] space-y-4 overflow-y-auto">
           {mode === 'date' ? (
@@ -212,8 +216,10 @@ function ConversionPanelContent({
             )
           ) : mode === 'number' ? (
             <NumberSection extras={extras} onChange={setExtras} />
-          ) : (
+          ) : mode === 'date-text' ? (
             <DateTextSection extras={extras} sourceHasTime={sourceHasTime} onChange={setExtras} />
+          ) : (
+            <ElapsedSection mode={mode} extras={extras} onChange={setExtras} />
           )}
           <CheckSection
             ready={ready}
@@ -253,8 +259,37 @@ function extrasFor(candidate: DatetimeFormatCandidate): CastExtras {
   };
 }
 
+const MODE_DESCRIPTIONS: Record<ConversionMode, string> = {
+  date: 'How are the dates written? Wordflow has looked at the first values; check the result below before converting.',
+  number: 'How are the numbers written? Check the result below before converting.',
+  'date-text': 'How should the dates be written as text?',
+  elapsed:
+    'Elapsed time is time into a recording, such as 7:58.5 for 7 minutes 58.5 seconds. Check the result below before converting.',
+  'elapsed-number': 'What do the numbers count? Check the result below before converting.',
+  'elapsed-text': 'How should the elapsed times be written as text?',
+  'elapsed-out': 'Which unit should the numbers count?',
+};
+
+function initialExtras(mode: ConversionMode, sourceHasTime: boolean): CastExtras {
+  switch (mode) {
+    case 'number':
+      return { decimal_mark: '.', thousands_separator: ',', ignore_symbols: true };
+    case 'date-text':
+      return { datetime_format: sourceHasTime ? '%Y-%m-%d %H:%M' : '%Y-%m-%d' };
+    case 'elapsed':
+      return { two_part_times: 'minutes' };
+    case 'elapsed-number':
+    case 'elapsed-out':
+      return { elapsed_unit: 's' };
+    case 'elapsed-text':
+      return { elapsed_text: 'auto' };
+    default:
+      return {};
+  }
+}
+
 function isComplete(mode: ConversionMode, extras: CastExtras): boolean {
-  if (mode === 'number') return true;
+  if (mode === 'number' || mode.startsWith('elapsed')) return true;
   if (extras.excel_serial || extras.epoch_unit) return true;
   const format = extras.datetime_format ?? '';
   if (!format) return false;
@@ -658,6 +693,113 @@ function NumberSection({
       </label>
       <p className="text-label-secondary text-description">
         Whole numbers round to the nearest: 2.5 becomes 3, 2.4 becomes 2.
+      </p>
+    </div>
+  );
+}
+
+const ELAPSED_UNITS = [
+  { value: 'ms', label: 'milliseconds' },
+  { value: 's', label: 'seconds' },
+  { value: 'min', label: 'minutes' },
+  { value: 'h', label: 'hours' },
+] as const;
+
+const ELAPSED_TEXT_STYLES = [
+  { value: 'auto', label: '7:58.542', note: 'as Wordflow shows it' },
+  { value: 'h:mm:ss', label: '0:07:58' },
+  { value: 'h:mm:ss.fff', label: '0:07:58.542' },
+  { value: 'mm:ss', label: '07:58', note: 'minutes count past 59' },
+  { value: 'mm:ss.fff', label: '07:58.542', note: 'minutes count past 59' },
+] as const;
+
+/** Converting to or from elapsed time (issue 324). */
+function ElapsedSection({
+  mode,
+  extras,
+  onChange,
+}: {
+  mode: ConversionMode;
+  extras: CastExtras;
+  onChange: (extras: CastExtras) => void;
+}) {
+  if (mode === 'elapsed') {
+    return (
+      <fieldset className="space-y-1 text-body">
+        <legend className="mb-1 font-medium text-foreground">
+          A time with two parts, such as 7:58, is
+        </legend>
+        {[
+          { value: 'minutes', label: 'minutes and seconds (7:58 is 7 minutes 58 seconds)' },
+          { value: 'hours', label: 'hours and minutes (7:58 is 7 hours 58 minutes)' },
+        ].map((option) => (
+          <label key={option.value} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="conversion-two-part"
+              checked={(extras.two_part_times ?? 'minutes') === option.value}
+              onChange={() => {
+                onChange({ ...extras, two_part_times: option.value as 'minutes' | 'hours' });
+              }}
+            />
+            {option.label}
+          </label>
+        ))}
+        <p className="text-label-secondary text-description">
+          Three parts are hours, minutes and seconds (1:23:20). A comma before the fraction, as in
+          subtitle files (00:07:58,542), works too.
+        </p>
+      </fieldset>
+    );
+  }
+  if (mode === 'elapsed-text') {
+    return (
+      <fieldset className="space-y-1 text-body">
+        <legend className="mb-1 font-medium text-foreground">Written like</legend>
+        {ELAPSED_TEXT_STYLES.map((style) => (
+          <label key={style.value} className="flex items-center gap-2">
+            <input
+              type="radio"
+              name="conversion-elapsed-text"
+              checked={(extras.elapsed_text ?? 'auto') === style.value}
+              onChange={() => {
+                onChange({ ...extras, elapsed_text: style.value });
+              }}
+            />
+            <span className="font-mono">{style.label}</span>
+            {'note' in style ? <span className="text-description">({style.note})</span> : null}
+          </label>
+        ))}
+      </fieldset>
+    );
+  }
+  const units =
+    mode === 'elapsed-number'
+      ? [...ELAPSED_UNITS, { value: 'd', label: 'days (as Excel stores times)' } as const]
+      : ELAPSED_UNITS;
+  return (
+    <div className="space-y-2 text-body">
+      <label className="flex items-center gap-2">
+        {mode === 'elapsed-number' ? 'The numbers count' : 'Count'}
+        <select
+          aria-label="Unit"
+          className="rounded-sm border border-input-border bg-editor px-1.5 py-0.5"
+          value={extras.elapsed_unit ?? 's'}
+          onChange={(event) => {
+            onChange({ ...extras, elapsed_unit: event.target.value as CastExtras['elapsed_unit'] });
+          }}
+        >
+          {units.map((unit) => (
+            <option key={unit.value} value={unit.value}>
+              {unit.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p className="text-label-secondary text-description">
+        {mode === 'elapsed-number'
+          ? 'For example 478.5 seconds is 7:58.5, and 7.975 minutes is 7:58.5.'
+          : 'For example 7:58.5 is 478.5 seconds or 7.975 minutes. Whole numbers round to the nearest.'}
       </p>
     </div>
   );

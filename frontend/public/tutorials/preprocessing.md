@@ -73,6 +73,9 @@ Define one or more column-based filter conditions. The behaviour of each conditi
   with the column's smallest and largest values, so you only change the end
   you need. **greater than or equal** and **less than or equal** include
   the value too.
+- For an elapsed time column, type times such as `7:58`, `7:58.5` or
+  `1:23:20` (a time with two parts is minutes and seconds). **at or after**,
+  **at or before** and **between** include the times you type.
 - On a column with dates and times, a range that ends on a plain date, such as
   *2020-12-31* with no time, includes the whole of that day. An end with a
   time, such as *2020-12-31 12:00*, stops at that time.
@@ -239,6 +242,7 @@ Choose the column under **Split by**; the choices below it depend on the column'
 - For **text** and **category** columns, each value is a group. Values are listed with their row counts: text most frequent first, a category in its own order, with **(empty)** last.
 - For **dates**, group by year, year and month, or day.
 - For **numbers**, use ranges of a fixed size from a start value, or split the full range into a number of equal ranges.
+- For **elapsed time**, choose how many minutes each Data Block covers, counted from `0:00`, for example `5:00 to under 10:00`.
 
 ![Group by party, with three small groups unticked](tutorials/assets/preprocessing/group_values.png)
 
@@ -254,7 +258,7 @@ Aggregate makes a new Data Block with one row per group, for example one documen
 - Numbers: **Sum**, **Mean**, **Minimum**, **Maximum**, **Count distinct**, **First**, **Last**
 - Dates: **Earliest & latest**, **Earliest**, **Latest**, **Count distinct**, **First**, **Last**
 
-The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Use **Find a column** to find a column in a long list.
+The defaults are cautious. The text column chosen in the inputs panel is joined, with a blank line between texts (change this under **Put between joined texts**). Dates keep their earliest and latest values. An elapsed time column can be summed or averaged, for example each speaker's total speaking time from a duration column. Every other column starts as **Leave out**, so ids are never joined or summed by surprise. A **rows** column always counts the rows in each group. Groups appear in the order they first occur. Use **Find a column** to find a column in a long list.
 
 ![Aggregate grouped by username, with a summary chosen for each column](tutorials/assets/preprocessing/aggregate.png)
 
