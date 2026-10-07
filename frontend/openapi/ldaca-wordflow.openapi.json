@@ -9955,6 +9955,35 @@
             "title": "Adjustable",
             "type": "boolean"
           },
+          "auto_decision": {
+            "anyOf": [
+              {
+                "enum": [
+                  "not_needed",
+                  "split",
+                  "kept"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Decision"
+          },
+          "auto_document_share": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Auto Document Share"
+          },
           "cluster_count": {
             "minimum": 0.0,
             "title": "Cluster Count",
@@ -9976,6 +10005,18 @@
             "minimum": 0.0,
             "title": "Default Cluster Count",
             "type": "integer"
+          },
+          "largest_topic_size": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Largest Topic Size"
           },
           "max_cluster_count": {
             "minimum": 0.0,

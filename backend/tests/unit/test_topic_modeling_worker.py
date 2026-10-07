@@ -157,6 +157,9 @@ def _fake_topic_modeling_expr_factory(
     seen_kwargs: dict[str, Any] | None = None,
     max_topic_size: int | None = None,
     clustered_segments: int | None = None,
+    auto_decision: str | None = None,
+    auto_document_share: float | None = None,
+    largest_topic_size: int | None = None,
 ):
     """Build a fake ``.text.topic_modeling`` method returning a canned struct.
 
@@ -229,6 +232,9 @@ def _fake_topic_modeling_expr_factory(
             pl.lit(n_segments, dtype=pl.UInt32).alias("n_segments"),
             pl.lit(max_topic_size, dtype=pl.UInt32).alias("max_topic_size"),
             pl.lit(clustered_segments, dtype=pl.UInt32).alias("clustered_segments"),
+            pl.lit(auto_decision, dtype=pl.String).alias("auto_decision"),
+            pl.lit(auto_document_share, dtype=pl.Float64).alias("auto_document_share"),
+            pl.lit(largest_topic_size, dtype=pl.UInt32).alias("largest_topic_size"),
             pl.lit(b"context", dtype=pl.Binary).alias("projection_context"),
         )
 
@@ -377,6 +383,47 @@ def test_run_rust_topic_modeling_forwards_and_reports_max_topic_size(
     assert seen_kwargs.get("max_topic_size") == max_cluster_size
     assert ("max_topic_size" in seen_kwargs) == (max_cluster_size is not None)
     assert result["max_topic_size"] == max_cluster_size
+
+
+@pytest.mark.parametrize(
+    ("auto_decision", "auto_document_share"),
+    [(None, None), ("not_needed", 0.31), ("split", 0.83), ("kept", 0.9)],
+)
+def test_run_rust_topic_modeling_reports_the_auto_decision(
+    monkeypatch, auto_decision: str | None, auto_document_share: float | None
+) -> None:
+    from polars_text.namespace import TextNamespace
+
+    monkeypatch.setattr(
+        TextNamespace,
+        "topic_modeling",
+        _fake_topic_modeling_expr_factory(
+            documents=[{"doc_index": 0, "dominant_topic": 0}],
+            topics=[
+                {
+                    "id": 0,
+                    "representative_words": _terms("alpha"),
+                    "x": 0.0,
+                    "y": 0.0,
+                }
+            ],
+            n_segments=3,
+            auto_decision=auto_decision,
+            auto_document_share=auto_document_share,
+            largest_topic_size=None if auto_decision is None else 1540,
+        ),
+    )
+
+    result = topic_pipeline._run_rust_topic_modeling(
+        all_docs=["one document"],
+        seed=0,
+        min_cluster_size=2,
+        vectorizer_model="native:plain_words_en",
+    )
+
+    assert result["auto_decision"] == auto_decision
+    assert result["auto_document_share"] == auto_document_share
+    assert result["largest_topic_size"] == (None if auto_decision is None else 1540)
 
 
 @pytest.mark.parametrize("cluster_sample_size", [None, 20_000])

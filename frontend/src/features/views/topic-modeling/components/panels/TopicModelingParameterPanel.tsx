@@ -69,6 +69,12 @@ interface Props {
     clusteredSegments: number | null;
     /** The seed the run used, which picked the sampled segments. */
     randomSeed: number;
+    /** What Auto max topic size decided (issue 336); `null` with a fixed Max or older runs. */
+    autoDecision: 'not_needed' | 'split' | 'kept' | null;
+    /** The largest topic's share of documents before Auto, from 0 to 1. */
+    autoDocumentShare: number | null;
+    /** Segments in the largest topic the run produced. */
+    largestTopicSize: number | null;
   } | null;
   /** Topic sampling, off by default. */
   clusterSample: boolean;
@@ -209,6 +215,13 @@ export function TopicModelingParameterPanel({
         ? ''
         : String(maxClusterSize);
   const maxTopicSizeInvalid = maxClusterSize !== null && maxClusterSize <= minClusterSize;
+  // After an Auto run the empty field shows, in grey, the size Auto worked
+  // with: the cap it applied, or the largest topic when nothing was split. A
+  // smaller fixed Max gives more, smaller topics; Tab fills it in (issue 336).
+  const autoMaxReference =
+    lastRunClustering?.requestedMaxTopicSize === null
+      ? (lastRunClustering.appliedMaxTopicSize ?? lastRunClustering.largestTopicSize)
+      : null;
 
   const handleMaxClusterSizeBlur = (event: FocusEvent<HTMLInputElement>) => {
     const next = sanitizeMaxClusterSize(event.currentTarget.value.trim());
@@ -226,9 +239,27 @@ export function TopicModelingParameterPanel({
     if (lastRunClustering.requestedMaxTopicSize !== null) {
       return `${segments}${sampled}; topics larger than ${lastRunClustering.requestedMaxTopicSize.toLocaleString()} were split`;
     }
-    return lastRunClustering.appliedMaxTopicSize === null
+    // Auto explains its decision in documents, which is what it judges by (issue 336).
+    const { autoDecision, autoDocumentShare, appliedMaxTopicSize, largestTopicSize } =
+      lastRunClustering;
+    const largest =
+      largestTopicSize === null
+        ? ''
+        : `; the largest topic has ${largestTopicSize.toLocaleString()} segments`;
+    const share =
+      autoDocumentShare === null ? null : `${String(Math.round(autoDocumentShare * 100))}%`;
+    if (autoDecision === 'not_needed') {
+      return `${segments}${sampled}; no topic was the main topic of more than half of the documents, so none was split${largest}`;
+    }
+    if (autoDecision === 'split' && share !== null && appliedMaxTopicSize !== null) {
+      return `${segments}${sampled}; one topic was the main topic of ${share} of documents, so topics larger than ${appliedMaxTopicSize.toLocaleString()} segments were split`;
+    }
+    if (autoDecision === 'kept' && share !== null) {
+      return `${segments}${sampled}; one topic is the main topic of ${share} of documents, but splitting it left most of its segments without a topic, so it was kept. Try a fixed Max topic size${largestTopicSize === null ? '' : ` below ${largestTopicSize.toLocaleString()}`}`;
+    }
+    return appliedMaxTopicSize === null
       ? `${segments}${sampled}; no topic needed splitting`
-      : `${segments}${sampled}; topics larger than ${lastRunClustering.appliedMaxTopicSize.toLocaleString()} were split`;
+      : `${segments}${sampled}; topics larger than ${appliedMaxTopicSize.toLocaleString()} were split`;
   })();
 
   // Segments to sample: empty shows the suggestion in grey; Run uses it, Tab
@@ -520,13 +551,28 @@ export function TopicModelingParameterPanel({
                 type="number"
                 min={minClusterSize + 1}
                 step={1}
-                placeholder="Auto"
+                placeholder={autoMaxReference === null ? 'Auto' : String(autoMaxReference)}
+                title={
+                  autoMaxReference === null
+                    ? undefined
+                    : `Auto worked with ${autoMaxReference.toLocaleString()} segments in the last run`
+                }
                 value={maxClusterSizeValueDraft}
                 className={INTEGER_INPUT}
                 onChange={(event) => {
                   setMaxClusterSizeDraft({
                     source: maxClusterSize,
                     value: event.target.value,
+                  });
+                }}
+                onKeyDown={(event) => {
+                  if (autoMaxReference === null) return;
+                  acceptPlaceholderOnTab({
+                    event,
+                    value: maxClusterSizeValueDraft,
+                    setValue: (value) => {
+                      setMaxClusterSizeDraft({ source: maxClusterSize, value });
+                    },
                   });
                 }}
                 onBlur={handleMaxClusterSizeBlur}

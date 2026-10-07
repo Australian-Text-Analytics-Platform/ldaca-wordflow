@@ -279,6 +279,13 @@ class TopicClustering(_StrictModel):
     max_topic_size: int | None = Field(default=None, ge=1)
     # Topic sampling: segments clustered to find the topics; None when all were.
     clustered_segments: int | None = Field(default=None, ge=1)
+    # Auto max topic size (issue 336): its decision and the largest topic's
+    # share of documents before it; None with a fixed Max or older runs.
+    auto_decision: Literal["not_needed", "split", "kept"] | None = None
+    auto_document_share: float | None = Field(default=None, ge=0, le=1)
+    # Segments in the largest topic the clustering produced: what Auto meant,
+    # shown in grey in the Max topic size field (issue 336).
+    largest_topic_size: int | None = Field(default=None, ge=1)
 
 
 class TopicInclusion(_StrictModel):

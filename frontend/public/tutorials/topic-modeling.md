@@ -107,13 +107,23 @@ value needs a new Run.
 
 Limits the largest number of Topic Segments one Topic can hold. Topic size
 counts segments, not documents. Leave it empty for **Auto**: sometimes one huge
-Topic swallows most of the corpus, especially with short segments, so Auto
-steps in only when one Topic holds more than half of all segments. It then
-splits that Topic into smaller ones, and keeps the split only if most of its
-segments still belong to a Topic afterwards. A fixed value must be larger than
-Min topic size. The number of segments is only known after a run, so after each
-run the field shows the segment count and whether any Topic was split, to help
-you choose a fixed value.
+Topic swallows most of the corpus, so Auto steps in when one Topic is the main
+topic of more than half of the documents (a document's main topic is the one
+that covers most of its text). It then splits that Topic into smaller ones, and
+keeps the split only if most of its segments still belong to a Topic
+afterwards. A fixed value must be larger than Min topic size.
+
+After a run with Auto, the empty field shows in grey the size Auto worked
+with: the cap it applied, or the size of the largest Topic when nothing was
+split. It tells you which way to go: a smaller Max gives more, smaller Topics,
+and a larger one fewer. Press **Tab** to fill it in and change it, or type a
+number.
+
+After each run, the line under the settings shows the segment count and what
+Auto decided, for example *one topic was the main topic of 83% of documents, so
+topics larger than 1,540 segments were split*. When splitting would have left
+most of that Topic's segments without a topic, Auto keeps it and says so; try a
+fixed Max topic size then, for example a few thousand segments, and compare.
 
 <h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 

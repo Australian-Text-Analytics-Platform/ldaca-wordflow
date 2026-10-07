@@ -5126,6 +5126,14 @@ export type TopicClustering = {
      */
     adjustable: boolean;
     /**
+     * Auto Decision
+     */
+    auto_decision?: 'not_needed' | 'split' | 'kept' | null;
+    /**
+     * Auto Document Share
+     */
+    auto_document_share?: number | null;
+    /**
      * Cluster Count
      */
     cluster_count: number;
@@ -5137,6 +5145,10 @@ export type TopicClustering = {
      * Default Cluster Count
      */
     default_cluster_count: number;
+    /**
+     * Largest Topic Size
+     */
+    largest_topic_size?: number | null;
     /**
      * Max Cluster Count
      */

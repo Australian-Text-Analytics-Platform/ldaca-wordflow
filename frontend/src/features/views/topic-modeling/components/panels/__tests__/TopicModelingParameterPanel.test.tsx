@@ -303,6 +303,9 @@ describe('TopicModelingParameterPanel', () => {
           requestedMaxTopicSize: null,
           clusteredSegments: null,
           randomSeed: 0,
+          autoDecision: null,
+          autoDocumentShare: null,
+          largestTopicSize: null,
         }}
       />,
     );
@@ -319,12 +322,97 @@ describe('TopicModelingParameterPanel', () => {
           requestedMaxTopicSize: null,
           clusteredSegments: null,
           randomSeed: 0,
+          autoDecision: null,
+          autoDocumentShare: null,
+          largestTopicSize: null,
         }}
       />,
     );
     expect(
       screen.getByText('Last run: 4,047 segments; topics larger than 1,540 were split'),
     ).toBeInTheDocument();
+  });
+
+  it('shows the size Auto worked with in grey, and Tab fills it in', () => {
+    const onMaxClusterSizeChange = vi.fn();
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        onMaxClusterSizeChange={onMaxClusterSizeChange}
+        lastRunClustering={{
+          segmentCount: 107_551,
+          appliedMaxTopicSize: null,
+          requestedMaxTopicSize: null,
+          clusteredSegments: null,
+          randomSeed: 0,
+          autoDecision: 'not_needed',
+          autoDocumentShare: 0.02,
+          largestTopicSize: 1540,
+        }}
+      />,
+    );
+    const input = screen.getByLabelText<HTMLInputElement>('Max topic size');
+    expect(input).toHaveAttribute('placeholder', '1540');
+    expect(input).toHaveValue(null);
+
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(input).toHaveValue(1540);
+    fireEvent.blur(input);
+    expect(onMaxClusterSizeChange).toHaveBeenLastCalledWith(1540);
+  });
+
+  it('shows Auto before any run', () => {
+    render(<TopicModelingParameterPanel {...baseProps} />);
+    expect(screen.getByLabelText('Max topic size')).toHaveAttribute('placeholder', 'Auto');
+  });
+
+  it('explains what Auto max topic size decided, in documents', () => {
+    const lastRun = {
+      segmentCount: 107_551,
+      appliedMaxTopicSize: null,
+      requestedMaxTopicSize: null,
+      clusteredSegments: null,
+      randomSeed: 0,
+      largestTopicSize: 1540,
+    };
+    const { rerender } = render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...lastRun, autoDecision: 'not_needed', autoDocumentShare: 0.31 }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 107,551 segments; no topic was the main topic of more than half of the documents, so none was split; the largest topic has 1,540 segments',
+      ),
+    ).toBeInTheDocument();
+
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{
+          ...lastRun,
+          appliedMaxTopicSize: 1540,
+          autoDecision: 'split',
+          autoDocumentShare: 0.834,
+        }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 107,551 segments; one topic was the main topic of 83% of documents, so topics larger than 1,540 segments were split',
+      ),
+    ).toBeInTheDocument();
+
+    rerender(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{ ...lastRun, autoDecision: 'kept', autoDocumentShare: 0.9 }}
+      />,
+    );
+    expect(
+      screen.getByText(/main topic of 90% of documents, but splitting it left/),
+    ).toHaveTextContent('so it was kept. Try a fixed Max topic size');
   });
 
   it('reports a last run whose topics came from a sample', () => {
@@ -337,6 +425,9 @@ describe('TopicModelingParameterPanel', () => {
           requestedMaxTopicSize: null,
           clusteredSegments: 20_000,
           randomSeed: 7,
+          autoDecision: null,
+          autoDocumentShare: null,
+          largestTopicSize: null,
         }}
       />,
     );

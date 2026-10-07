@@ -526,6 +526,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
                   appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
                   requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
                   clusteredSegments: result.clustering.clustered_segments ?? null,
+                  autoDecision: result.clustering.auto_decision ?? null,
+                  autoDocumentShare: result.clustering.auto_document_share ?? null,
+                  largestTopicSize: result.clustering.largest_topic_size ?? null,
                   randomSeed: resultRandomSeed,
                 }
               : null

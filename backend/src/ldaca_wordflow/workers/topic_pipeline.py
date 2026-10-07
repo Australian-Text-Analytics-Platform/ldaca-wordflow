@@ -328,6 +328,15 @@ def _run_rust_topic_modeling(
         max_topic_size = None if raw_max_topic_size is None else int(raw_max_topic_size)
         raw_clustered = raw_result.get("clustered_segments")
         clustered_segments = None if raw_clustered is None else int(raw_clustered)
+        # Auto max topic size: what it decided and the dominant topic's share
+        # of documents (issue 336); absent from polars-text before 0.6.4.
+        auto_decision = raw_result.get("auto_decision")
+        if auto_decision not in (None, "not_needed", "split", "kept"):
+            raise ValueError(f"unknown Auto decision {auto_decision!r}")
+        raw_share = raw_result.get("auto_document_share")
+        auto_document_share = None if raw_share is None else float(raw_share)
+        raw_largest = raw_result.get("largest_topic_size")
+        largest_topic_size = None if raw_largest is None else int(raw_largest)
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("Topic modeling native run metadata is malformed") from exc
     return {
@@ -337,6 +346,9 @@ def _run_rust_topic_modeling(
         "n_segments": n_segments,
         "max_topic_size": max_topic_size,
         "clustered_segments": clustered_segments,
+        "auto_decision": auto_decision,
+        "auto_document_share": auto_document_share,
+        "largest_topic_size": largest_topic_size,
         "projection_context": projection_context,
     }
 

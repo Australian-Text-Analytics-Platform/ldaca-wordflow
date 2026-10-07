@@ -636,6 +636,9 @@ def _compute_topic_payload(
         "adjustable": natural_count > 1,
         "max_topic_size": rust_result.get("max_topic_size"),
         "clustered_segments": rust_result.get("clustered_segments"),
+        "auto_decision": rust_result.get("auto_decision"),
+        "auto_document_share": rust_result.get("auto_document_share"),
+        "largest_topic_size": rust_result.get("largest_topic_size"),
     }
     payload["projection_context"] = {
         "version": 2,
