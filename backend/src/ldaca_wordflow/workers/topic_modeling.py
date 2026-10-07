@@ -24,7 +24,7 @@ import logging
 import os
 import uuid
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from collections.abc import Callable
 
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
@@ -38,6 +38,7 @@ from .topic_pipeline import (
     _run_rust_topic_modeling,
     _sample_corpora_for_topic_modeling,
 )
+from ..shared.document_fingerprint import document_fingerprint, require_same_documents
 from .topic_result import (
     _build_empty_topic_payload,
     _coverage_by_doc_index,
@@ -132,7 +133,19 @@ def run_topic_modeling_data_block_creation(
             for column in source.data.collect_schema().names()
             if column in TOPIC_MODELING_GENERATED_COLUMNS
         ]
-        source_data = source.data.drop(previous_topic_columns)
+        source_context = source_projection.get(source_id)
+        if source_context is None:
+            raise ValueError("Topic Modelling source projection is unavailable")
+        # Read the source once, in memory, as the run did, and check it still
+        # lists the run's documents in the same order: rows are matched by
+        # position (issue 319).
+        source_frame = source.data.drop(previous_topic_columns).collect()
+        fingerprint = cast(str | None, source_context.get("fingerprint"))
+        if fingerprint is not None:
+            require_same_documents(
+                source_frame, str(source_context["text_column"]), fingerprint
+            )
+        source_data = source_frame.lazy()
         selected_columns = [
             column
             for column in request.selected_columns[source_uuid]
@@ -142,9 +155,6 @@ def run_topic_modeling_data_block_creation(
         missing = [column for column in selected_columns if column not in schema]
         if missing:
             raise ValueError(f"Topic Modelling Data Block Creation columns not found: {missing}")
-        source_context = source_projection.get(source_id)
-        if source_context is None:
-            raise ValueError("Topic Modelling source projection is unavailable")
         offset = int(source_context["offset"])
         size = int(source_context["size"])
         row_indices = list(source_context["row_indices"])
@@ -227,7 +237,8 @@ def run_topic_modeling_data_block_creation(
         topic_data_id = uuid.uuid4()
         topic_meanings_id = uuid.uuid4()
         topic_data_path = destination / f"{topic_data_id}.parquet"
-        joined.sink_parquet(topic_data_path)
+        # Collected, not streamed, so row order is the one checked above.
+        joined.collect().write_parquet(topic_data_path)
         topic_data = pl.scan_parquet(topic_data_path)
         output_columns = topic_data.collect_schema().names()
         record_count = int(topic_data.select(pl.len()).collect().item())
@@ -627,6 +638,9 @@ def _compute_topic_payload(
         "version": 2,
         "artifact": str(context_path) if context_path is not None else None,
         "source_row_indices": sampled.active_corpora_indices,
+        "source_document_fingerprints": [
+            document_fingerprint(corpus) for corpus in corpora
+        ],
     }
     payload["segment_count"] = int(rust_result.get("n_segments") or 0)
     logger.info(

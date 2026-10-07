@@ -253,6 +253,7 @@ def _prepare_topic_data_block_creation(
         raise InvalidInputError("Topic projection context is unavailable")
     source_projection: dict[uuid.UUID, dict[str, object]] = {}
     offset = 0
+    fingerprints = stored.projection_context.source_document_fingerprints
     for index, source in enumerate(stored.sources):
         size = stored.corpus_sizes[index]
         source_projection[source.node_id] = {
@@ -260,6 +261,8 @@ def _prepare_topic_data_block_creation(
             "offset": offset,
             "size": size,
             "text_column": source.text_column,
+            # Checked before rows are matched by position (issue 319).
+            "fingerprint": fingerprints[index] if fingerprints else None,
         }
         offset += size
     return TopicDataBlockCreationInput(

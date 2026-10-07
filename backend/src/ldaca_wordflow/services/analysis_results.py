@@ -18,6 +18,7 @@ import polars as pl
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
+from ..shared.document_fingerprint import require_same_documents
 from ..shared.empty_values import empty_last_key
 from .category_order import natural_key
 from ..domain.annotation import provider_failure_message
@@ -477,8 +478,9 @@ class AnalysisResultService:
 
         Values are read from the source Data Block now, not from the run's
         snapshot, so columns added after the run (for example annotations)
-        qualify. Data Block Edits never change rows, so the run's source row
-        indices still address the same documents.
+        qualify. Data Block Edits never change rows, but a Join made before
+        0.7.11 has no fixed row order, so the documents are checked against the
+        run's fingerprint before its row indices are used (issue 319).
         """
 
         async with self._analyses.successful_record_context(
@@ -504,11 +506,13 @@ class AnalysisResultService:
             if node is None:
                 raise NodeNotFoundError("The source Data Block is no longer available")
             context_path = _topic_context_path(lease, record, stored)
+            fingerprints = stored.projection_context.source_document_fingerprints
             frame = await self._run_sync(
                 _topic_color_frame,
                 node.data,
                 source.text_column,
                 stored.projection_context.source_row_indices[0],
+                fingerprints[0] if fingerprints else None,
             )
         return await self._run_sync(
             _topic_color_groups,
@@ -1158,7 +1162,10 @@ def _topic_context_path(
 
 
 def _topic_color_frame(
-    data: pl.LazyFrame, text_column: str, row_indices: list[int]
+    data: pl.LazyFrame,
+    text_column: str,
+    row_indices: list[int],
+    fingerprint: str | None = None,
 ) -> pl.DataFrame:
     """Collect every non-text column for the model documents, in model order.
 
@@ -1170,7 +1177,9 @@ def _topic_color_frame(
         # A text-only Data Block has nothing to colour by; an empty selection
         # has no rows, which used to read as "rows missing" (issue 287).
         return pl.DataFrame()
-    frame = data.select(columns).collect()
+    frame = data.select(text_column, *columns).collect()
+    require_same_documents(frame, text_column, fingerprint)
+    frame = frame.drop(text_column)
     if row_indices and max(row_indices) >= frame.height:
         raise InvalidInputError(
             "The source Data Block no longer has the rows used by this run"

@@ -255,6 +255,9 @@ class _TopicProjectionContext[ArtifactValueT](_StrictModel):
     version: Literal[2]
     artifact: ArtifactValueT | None
     source_row_indices: list[list[int]]
+    # Per source, a fingerprint of its documents in the order the run read them
+    # (issue 319); absent in results made before 0.7.11.
+    source_document_fingerprints: list[str] | None = None
 
 
 class _TopicModelingBody(_StrictModel):

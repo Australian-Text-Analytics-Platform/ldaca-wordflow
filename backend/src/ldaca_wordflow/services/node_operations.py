@@ -195,19 +195,18 @@ def build_derived_lazyframe(
         # A column name in both gets the second Data Block's name, for example
         # "speaker_members", rather than "_right" (issue 205).
         suffix = f"_{right.name}"
-        if request.how == "cross":
-            result = left.data.join(right.data, how="cross", suffix=suffix)
-        else:
-            left_on = cast(str, request.left_on)
-            right_on = cast(str, request.right_on)
-            _validate_join_keys(left, right, left_on, right_on)
-            result = left.data.join(
-                right.data,
-                left_on=left_on,
-                right_on=right_on,
-                how=request.how,
-                suffix=suffix,
+        if request.how != "cross":
+            _validate_join_keys(
+                left, right, cast(str, request.left_on), cast(str, request.right_on)
             )
+        result = ordered_join(
+            left.data,
+            right.data,
+            how=request.how,
+            left_on=request.left_on,
+            right_on=request.right_on,
+            suffix=suffix,
+        )
         return (
             result,
             f"{left.name}_join_{right.name}",
@@ -511,7 +510,7 @@ def _replace_annotation_classes(
     )
     return (
         payload.lazy()
-        .join(source_rows, on=row_index, how="left")
+        .join(source_rows, on=row_index, how="left", maintain_order="left")
         .drop(row_index, source_marker)
         .select(list(schema))
     )
@@ -1388,6 +1387,48 @@ def _apply_expression(
     keys = [_compile_item(item, columns) for item in request.group_by]
     aggregations = [_compile_item(item, columns) for item in request.expressions]
     return lazyframe.group_by(keys).agg(aggregations)
+
+
+_LEFT_ROW = "__wordflow_join_left_row"
+_RIGHT_ROW = "__wordflow_join_right_row"
+
+
+def ordered_join(
+    left: pl.LazyFrame,
+    right: pl.LazyFrame,
+    *,
+    how: str,
+    left_on: str | None,
+    right_on: str | None,
+    suffix: str,
+) -> pl.LazyFrame:
+    """Join with one row order in every Polars engine (issue 319).
+
+    Polars does not fix a join's row order: the in-memory and streaming
+    engines returned the rows of the same Join Data Block in different orders,
+    so anything that maps rows back by position (Topic Modelling's Add to
+    Project, cell edits) put values on the wrong rows. Rows are numbered on
+    each side and sorted afterwards: left order first, then right order (right
+    order first for a right join). Unmatched rows of a full join follow the
+    left rows, in right order.
+    """
+
+    numbered_left = left.with_row_index(_LEFT_ROW)
+    numbered_right = right.with_row_index(_RIGHT_ROW)
+    if how == "cross":
+        joined = numbered_left.join(numbered_right, how="cross", suffix=suffix)
+    else:
+        joined = numbered_left.join(
+            numbered_right,
+            left_on=cast(str, left_on),
+            right_on=cast(str, right_on),
+            how=cast(Any, how),
+            suffix=suffix,
+        )
+    columns = joined.collect_schema().names()
+    order = [_RIGHT_ROW, _LEFT_ROW] if how == "right" else [_LEFT_ROW, _RIGHT_ROW]
+    order = [column for column in order if column in columns]
+    return joined.sort(order, nulls_last=True).drop(order)
 
 
 def _aligned_concat_frames(nodes: list[Node]) -> list[pl.LazyFrame]:
