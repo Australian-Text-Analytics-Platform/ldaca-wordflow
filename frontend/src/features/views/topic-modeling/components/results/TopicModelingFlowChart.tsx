@@ -11,10 +11,11 @@ import {
   ReactFlowProvider,
   useKeyPress,
   useReactFlow,
+  useStoreApi,
   type Viewport,
 } from '@xyflow/react';
 import { Download, FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react';
-import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { NodeTooltip, NodeTooltipContent, NodeTooltipTrigger } from '@/components/node-tooltip';
 import { ResponsiveWordCloud } from '@/features/views/common/components/ResponsiveWordCloud';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -466,6 +467,21 @@ function TopicModelingFlowChartInner({
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, zoom: 1 });
   const [paneSize, setPaneSize] = useState({ width: 1, height: 1 });
   const { fitView, getViewport, zoomIn, zoomOut } = useReactFlow<TopicFlowNode>();
+  const flowStore = useStoreApi<TopicFlowNode>();
+  // React Flow learns its pane size from a ResizeObserver or a window resize.
+  // The macOS desktop webview sometimes delivers neither after the chart
+  // mounts, leaving the size at zero so Fit did nothing until a page zoom
+  // (which fires resize). Read the pane's size before every fit instead.
+  const fitBubbles = useCallback(() => {
+    const pane = flowRef.current?.querySelector<HTMLElement>('.react-flow');
+    if (pane && pane.offsetWidth > 0 && pane.offsetHeight > 0) {
+      const { width, height } = flowStore.getState();
+      if (width !== pane.offsetWidth || height !== pane.offsetHeight) {
+        flowStore.setState({ width: pane.offsetWidth, height: pane.offsetHeight });
+      }
+    }
+    return fitView(FIT_VIEW_OPTIONS);
+  }, [fitView, flowStore]);
   // A plain scroll scrolls the pane; the chart takes the wheel only while the
   // zoom key is held (issue 215). React Flow ignores the zoom key when page
   // scrolling is allowed, so scroll capture follows the key.
@@ -481,6 +497,14 @@ function TopicModelingFlowChartInner({
       selectable: false,
       focusable: false,
       zIndex: bubble.selected ? 3 : bubble.lassoed ? 2 : 1,
+      // The size is known, so React Flow need not measure the node. It hides
+      // an unmeasured node, and a fit waits until every node is measured: in
+      // the macOS desktop app the webview's ResizeObserver sometimes never
+      // reported, so the chart stayed blank and Fit did nothing until a page
+      // zoom made it measure again.
+      width: diameter,
+      height: diameter,
+      measured: { width: diameter, height: diameter },
       // The square node box never takes the pointer; its circle does (issue 314).
       style: { width: diameter, height: diameter, pointerEvents: 'none' },
     };
@@ -497,7 +521,7 @@ function TopicModelingFlowChartInner({
     const fitCommittedNodes = (attemptsRemaining: number) => {
       frame = requestAnimationFrame(() => {
         frame = null;
-        void fitView(FIT_VIEW_OPTIONS).then((didFit) => {
+        void fitBubbles().then((didFit) => {
           if (cancelled) return;
           if (!didFit) {
             if (attemptsRemaining > 0) fitCommittedNodes(attemptsRemaining - 1);
@@ -513,7 +537,7 @@ function TopicModelingFlowChartInner({
       cancelled = true;
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [fitView, getViewport, nodes.length, onViewReady, projectionKey]);
+  }, [fitBubbles, getViewport, nodes.length, onViewReady, projectionKey]);
 
   const aspectCallbackRef = useRef(onCanvasAspectChange);
   useEffect(() => {
@@ -565,14 +589,14 @@ function TopicModelingFlowChartInner({
     fittedPlaneKeyRef.current = planeKey;
     if (!fittedViewportRef.current || nodes.length === 0) return;
     const frame = requestAnimationFrame(() => {
-      void fitView(FIT_VIEW_OPTIONS).then(() => {
+      void fitBubbles().then(() => {
         setViewport(getViewport());
       });
     });
     return () => {
       cancelAnimationFrame(frame);
     };
-  }, [fitView, getViewport, nodes.length, planeKey]);
+  }, [fitBubbles, getViewport, nodes.length, planeKey]);
 
   useEffect(() => {
     const element = flowRef.current;
@@ -589,7 +613,7 @@ function TopicModelingFlowChartInner({
       if (frame !== null) cancelAnimationFrame(frame);
       frame = requestAnimationFrame(() => {
         frame = null;
-        void fitView(FIT_VIEW_OPTIONS).then(() => {
+        void fitBubbles().then(() => {
           setViewport(getViewport());
         });
       });
@@ -601,7 +625,7 @@ function TopicModelingFlowChartInner({
       observer.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
     };
-  }, [fitView, getViewport, nodes.length]);
+  }, [fitBubbles, getViewport, nodes.length]);
 
   return (
     <div ref={flowRef} className="relative size-full">
@@ -677,7 +701,7 @@ function TopicModelingFlowChartInner({
               label="Fit view"
               onClick={() => {
                 fittedViewportRef.current = true;
-                void fitView(FIT_VIEW_OPTIONS).then(() => {
+                void fitBubbles().then(() => {
                   setViewport(getViewport());
                 });
               }}

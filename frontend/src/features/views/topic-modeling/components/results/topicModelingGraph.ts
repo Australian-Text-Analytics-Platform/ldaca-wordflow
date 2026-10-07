@@ -395,6 +395,7 @@ export function buildTopicBubbleModels({
     defaultPalette,
   );
   const hasSearchFilter = topicSearchQuery.trim().length > 0;
+  const hasLassoFilter = lassoTopicIds.size > 0;
 
   // Larger bubbles first, so smaller ones are drawn on top (issue 189).
   const drawOrder = [...visibleTopics].sort(
@@ -425,13 +426,17 @@ export function buildTopicBubbleModels({
       selected: selectedTopicIds.has(topic.id),
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,
+      // Faded exactly when All Topics leaves it out: outside the lasso, or
+      // not matching the search (Chao, 2026-10-08: the chart lit search
+      // matches outside the lasso while the list showed only lassoed ones).
       filteredOut:
-        hasSearchFilter &&
-        !matchTopicWords(
-          topic.representative_words.map((term) => term.word),
-          topicSearchQuery,
-          matchChecklistOption,
-        ),
+        (hasLassoFilter && !lassoTopicIds.has(topic.id)) ||
+        (hasSearchFilter &&
+          !matchTopicWords(
+            topic.representative_words.map((term) => term.word),
+            topicSearchQuery,
+            matchChecklistOption,
+          )),
     };
   });
 }

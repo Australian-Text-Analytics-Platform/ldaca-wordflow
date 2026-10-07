@@ -12,6 +12,16 @@ import { DEFAULT_TOPIC_GRAPH_PLANE, type TopicBubbleModel } from '../topicModeli
 
 const flowProps = vi.hoisted(() => ({ current: {} as Record<string, unknown> }));
 
+const flowStore = vi.hoisted(() => {
+  let state = { width: 0, height: 0 };
+  return {
+    getState: () => state,
+    setState: (next: { width: number; height: number }) => {
+      state = { ...state, ...next };
+    },
+  };
+});
+
 vi.mock('@xyflow/react', async (importOriginal) => {
   const original = await importOriginal<typeof XYFlowReact>();
   return {
@@ -94,6 +104,7 @@ vi.mock('@xyflow/react', async (importOriginal) => {
       fitView: () => Promise.resolve(true),
       getViewport: () => ({ x: 0, y: 0, zoom: 1 }),
     }),
+    useStoreApi: () => flowStore,
   };
 });
 

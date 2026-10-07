@@ -87,7 +87,8 @@ describe('topicModelingGraph', () => {
       fill: '#ff0000',
       selected: true,
       lassoed: false,
-      filteredOut: false,
+      // Matches the search but is outside the lasso, so All Topics leaves it out.
+      filteredOut: true,
       position: { x: 0, y: 0 },
     });
     expect(bubbles[1]).toMatchObject({
@@ -98,6 +99,28 @@ describe('topicModelingGraph', () => {
       position: { x: 1000, y: 550 },
     });
     expect(bubbles.every((bubble) => bubble.radius >= 10 && bubble.radius <= 50)).toBe(true);
+  });
+
+  it('lights exactly the topics All Topics lists: in the lasso and matching the search', () => {
+    const build = (lasso: number[], query: string) =>
+      buildTopicBubbleModels({
+        topics,
+        corpusSizes: [4],
+        panelNodeIds: ['corpus-a'],
+        nodeColors: {},
+        defaultPalette: ['#0000ff'],
+        selectedTopicIds: new Set(),
+        lassoTopicIds: new Set(lasso),
+        hoveredTopicId: null,
+        topicSearchQuery: query,
+      })
+        .filter((bubble) => !bubble.filteredOut)
+        .map((bubble) => bubble.id);
+
+    expect(build([], '')).toEqual([0, 1]);
+    expect(build([1], '')).toEqual([1]);
+    expect(build([], 'alpha')).toEqual([0]);
+    expect(build([0, 1], 'alpha')).toEqual([0]);
   });
 
   it('normalizes two-corpus colours by each corpus row count', () => {
