@@ -277,9 +277,15 @@ export function SequentialAnalysisParameterPanel({
 
         <div>
           <div className="flex justify-between items-center mb-2">
-            <label className="block text-body font-medium text-foreground">
-              Group By Columns (Optional, max 3)
-            </label>
+            <div className="flex items-center gap-2">
+              <label className="block text-body font-medium text-foreground">
+                Group By Columns (Optional, max 3)
+              </label>
+              <HelpIcon
+                targetKey="analysis.sequential-analysis.group-by"
+                label="Group By columns"
+              />
+            </div>
             <Button
               onClick={onAddGroupByColumn}
               disabled={inputsDisabled || groupByColumns.length >= 3}

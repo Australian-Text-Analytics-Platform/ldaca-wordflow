@@ -471,6 +471,11 @@ const tutorial = {
     anchor: 'help-sequential-frequency',
     label: 'Frequency selector',
   },
+  'analysis.sequential-analysis.group-by': {
+    file: 'tutorials/sequential-analysis.md',
+    anchor: 'help-sequential-group-by',
+    label: 'Group By columns',
+  },
   'analysis.sequential-analysis.spacing': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-x-axis',
