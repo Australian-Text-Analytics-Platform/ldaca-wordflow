@@ -328,7 +328,7 @@ def run_topic_modeling_data_block_creation(
     return {
         "state": "successful",
         "outputs": outputs,
-        "message": "Topic Modelling results added to the Workspace",
+        "message": "Topic Modelling results added to the Project",
     }
 
 

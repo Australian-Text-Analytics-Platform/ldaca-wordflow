@@ -92,7 +92,7 @@ async def import_workspace_archive(
             "content": {
                 "application/zip": {"schema": {"type": "string", "format": "binary"}}
             },
-            "description": "Portable Workspace ZIP archive or raw archival copy",
+            "description": "Portable Project ZIP archive or raw archival copy",
             "headers": {
                 OMITTED_TAB_COUNT_HEADER: {"schema": {"type": "integer"}},
                 OMITTED_ANALYSIS_COUNT_HEADER: {"schema": {"type": "integer"}},

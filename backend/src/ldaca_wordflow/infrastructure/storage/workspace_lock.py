@@ -154,7 +154,7 @@ def acquire_workspace_lock(
                     # Name the entry, as the POSIX O_NOFOLLOW path does (issue 142).
                     raise OSError(
                         errno.ELOOP,
-                        "Workspace lock entry is a link or reparse point",
+                        "Project lock entry is a link or reparse point",
                         str(path),
                     )
             descriptor = os.open(path, flags, 0o600)

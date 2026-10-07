@@ -45,7 +45,7 @@ def to_dict(
         else Path(NODE_DATA_DIR) / f"{node.id}.plbin"
     )
     if rel_data_path.is_absolute() or ".." in rel_data_path.parts:
-        raise ValueError("Node data path must be workspace-relative")
+        raise ValueError("Data Block data path must be inside the Project")
     abs_data_path = root_dir / rel_data_path
     schema = node.data.collect_schema()
     if node.document is not None and node.document not in schema.names():

@@ -18830,7 +18830,7 @@
                 }
               }
             },
-            "description": "Portable Workspace ZIP archive or raw archival copy",
+            "description": "Portable Project ZIP archive or raw archival copy",
             "headers": {
               "X-Wordflow-Omitted-Analysis-Count": {
                 "schema": {

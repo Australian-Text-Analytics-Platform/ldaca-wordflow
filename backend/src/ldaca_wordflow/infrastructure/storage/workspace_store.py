@@ -91,8 +91,8 @@ class WorkspaceSchemaVersionError(WorkspaceSnapshotInvalidError):
         workspace_metadata: Mapping[str, Any] | None = None,
     ) -> None:
         super().__init__(
-            "Workspace data schema version "
-            f"{stored_version} is incompatible with supported version {supported_version}"
+            "Project data format version "
+            f"{stored_version} is not supported by this Wordflow (it supports version {supported_version})"
         )
         self.stored_version = stored_version
         self.supported_version = supported_version
@@ -106,7 +106,7 @@ class WorkspaceRevisionConflictError(WorkspaceStoreError):
 
     def __init__(self, expected: int | None, actual: int | None) -> None:
         super().__init__(
-            f"Workspace revision conflict: expected {expected}, actual {actual}"
+            f"Project revision conflict: expected {expected}, actual {actual}"
         )
         self.expected = expected
         self.actual = actual

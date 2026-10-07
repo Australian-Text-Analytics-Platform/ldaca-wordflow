@@ -408,7 +408,9 @@ class WorkspaceInUseError(WorkspaceConflictError):
     code = "workspace_in_use"
 
     def __init__(self) -> None:
-        super().__init__("Workspace is open in another Wordflow backend process")
+        super().__init__(
+            "This Project is open in another Wordflow window or app. Close it there, then try again."
+        )
 
 
 class WorkspaceCorruptError(AppError):
@@ -517,7 +519,7 @@ class WorkspaceLockUnavailableError(AppError):
     code = "workspace_lock_unavailable"
 
     def __init__(self) -> None:
-        super().__init__("Workspace locking is unavailable")
+        super().__init__("Wordflow couldn't lock this Project, so it can't safely open it.")
 
 
 # ── 502 Bad Gateway ──────────────────────────────────────────────────────────

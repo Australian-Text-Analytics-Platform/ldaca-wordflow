@@ -113,6 +113,12 @@ class WorkspaceArchiveStorage(Protocol):
         workspace_id: uuid.UUID,
     ) -> Path: ...
 
+    def closed_read_context(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+    ) -> AbstractAsyncContextManager[Path]: ...
+
     async def install_staged_archive(
         self,
         user_id: str,
@@ -222,73 +228,94 @@ class WorkspaceArchiveService:
                         lease.path,
                         self._max_export_bytes,
                     )
-                await self._run_sync(
-                    self._workspace_store.rebase_snapshot_sources,
-                    source_snapshot,
-                )
-                loaded = await self._run_sync(self._workspace_store.load, source_snapshot)
-                detached = loaded.workspace
-                omitted_tab_count = len(detached.unavailable_tab_ids)
-                omitted_analysis_count = len(detached.unavailable_analysis_ids)
-                snapshot = await self._response_snapshots.create_generated(
-                    suffix=".zip",
-                    max_output_bytes=self._max_export_bytes,
-                    reservation_bytes=self._max_export_bytes * 2,
-                    producer=partial(
-                        _create_workspace_export,
-                        detached,
-                        source_snapshot,
-                    ),
-                )
-                filename = f"{_safe_export_name(workspace_name)}.zip"
-                return (
-                    snapshot,
-                    filename,
-                    revision,
-                    omitted_tab_count,
-                    omitted_analysis_count,
+                return await self._export_snapshot(
+                    source_snapshot, workspace_name, revision
                 )
             except WorkspaceNotOpenError as not_open:
-                path = await self._storage.resolve_owned_workspace_dir(
+                # A Project open in no Wordflow is copied while holding its
+                # cross-process lock, as Delete does: another Wordflow cannot
+                # open it mid-copy, and one that has it open makes this
+                # raise WorkspaceInUseError (issue 338).
+                async with self._storage.closed_read_context(
                     user_id,
                     workspace_id,
-                )
-                try:
-                    self._workspace_store.inspect(path)
-                except WorkspaceSchemaVersionError as incompatible:
-                    metadata = incompatible.workspace_metadata or {}
-                    workspace_name = metadata.get("name")
-                    if not isinstance(workspace_name, str) or not workspace_name:
-                        workspace_name = str(workspace_id)
+                ) as path:
+                    incompatible: WorkspaceSchemaVersionError | None = None
+                    try:
+                        await self._run_sync(self._workspace_store.inspect, path)
+                    except WorkspaceSchemaVersionError as exc:
+                        incompatible = exc
+                    except (WorkspaceCapacityError, WorkspaceSnapshotInvalidError):
+                        raise not_open from None
                     source_snapshot = await self._run_sync(
                         _snapshot_workspace_tree,
                         path,
                         self._max_export_bytes,
                     )
-                    snapshot = await self._response_snapshots.create_generated(
-                        suffix=".zip",
-                        max_output_bytes=self._max_export_bytes,
-                        reservation_bytes=self._max_export_bytes * 2,
-                        producer=partial(
-                            _create_raw_workspace_archive,
-                            source_snapshot,
-                        ),
-                    )
-                    return (
-                        snapshot,
-                        f"{_safe_export_name(workspace_name)}.zip",
-                        None,
-                        0,
-                        0,
-                    )
-                except (WorkspaceCapacityError, WorkspaceSnapshotInvalidError):
-                    raise not_open from None
-                raise not_open
+                if incompatible is None:
+                    return await self._export_snapshot(source_snapshot, None, None)
+                metadata = incompatible.workspace_metadata or {}
+                workspace_name = metadata.get("name")
+                if not isinstance(workspace_name, str) or not workspace_name:
+                    workspace_name = str(workspace_id)
+                snapshot = await self._response_snapshots.create_generated(
+                    suffix=".zip",
+                    max_output_bytes=self._max_export_bytes,
+                    reservation_bytes=self._max_export_bytes * 2,
+                    producer=partial(
+                        _create_raw_workspace_archive,
+                        source_snapshot,
+                    ),
+                )
+                return (
+                    snapshot,
+                    f"{_safe_export_name(workspace_name)}.zip",
+                    None,
+                    0,
+                    0,
+                )
         finally:
             if source_snapshot is not None:
                 await self._run_sync(shutil.rmtree, source_snapshot, True)
             with anyio.CancelScope(shield=True):
                 await source_reservation.release()
+
+    async def _export_snapshot(
+        self,
+        source_snapshot: Path,
+        workspace_name: str | None,
+        revision: int | None,
+    ) -> tuple[ResponseSnapshot, str, int | None, int, int]:
+        """Build the export ZIP from a private copy of a Workspace tree.
+
+        Without a name (a closed Project), it comes from the copied snapshot.
+        """
+
+        await self._run_sync(
+            self._workspace_store.rebase_snapshot_sources,
+            source_snapshot,
+        )
+        loaded = await self._run_sync(self._workspace_store.load, source_snapshot)
+        detached = loaded.workspace
+        if workspace_name is None:
+            workspace_name = detached.name
+        snapshot = await self._response_snapshots.create_generated(
+            suffix=".zip",
+            max_output_bytes=self._max_export_bytes,
+            reservation_bytes=self._max_export_bytes * 2,
+            producer=partial(
+                _create_workspace_export,
+                detached,
+                source_snapshot,
+            ),
+        )
+        return (
+            snapshot,
+            f"{_safe_export_name(workspace_name)}.zip",
+            revision,
+            len(detached.unavailable_tab_ids),
+            len(detached.unavailable_analysis_ids),
+        )
 
     async def import_upload(
         self,
@@ -668,7 +695,7 @@ def _workspace_root_prefix(
         and "__MACOSX" not in path.parts
     ]
     if not candidates:
-        raise InvalidWorkspaceArchiveError("ZIP must contain project workspace.json")
+        raise InvalidWorkspaceArchiveError("This ZIP is not a Wordflow Project: it has no workspace.json")
     shallowest = min(len(path.parts) for path in candidates)
     shallow_candidates = [path for path in candidates if len(path.parts) == shallowest]
     if len(shallow_candidates) != 1:

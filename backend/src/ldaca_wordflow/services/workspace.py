@@ -987,6 +987,37 @@ class WorkspaceService:
             await self._event_publisher.runtime_state(user_id, workspace_id, "closed")
 
     @asynccontextmanager
+    async def closed_read_context(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+    ) -> AsyncIterator[Path]:
+        """Hold a closed Workspace's cross-process lock while it is read.
+
+        Used by the archive export of a Project open in no backend (issue
+        338): another backend cannot open it mid-read, and one that already
+        has it open makes this raise ``WorkspaceInUseError``, as for Delete.
+        """
+
+        async with self._residency.slot(workspace_id) as slot:
+            if slot.workspace is not None:
+                raise WorkspaceConflictError(
+                    "The Project was opened while downloading. Try again."
+                )
+            path = await self._path(user_id, workspace_id)
+            if path is None:
+                raise WorkspaceNotFoundError("Project not found")
+            acquired_for_read = slot.process_lock is None
+            if acquired_for_read:
+                slot.process_lock = await self._residency.acquire_process_lock(workspace_id)
+            try:
+                yield path
+            finally:
+                if acquired_for_read and slot.workspace is None:
+                    with anyio.CancelScope(shield=True):
+                        await self._residency.clear(slot)
+
+    @asynccontextmanager
     async def deletion_context(
         self,
         user_id: str,

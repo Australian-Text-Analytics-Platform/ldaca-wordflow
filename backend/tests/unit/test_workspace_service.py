@@ -354,7 +354,8 @@ async def test_independent_services_cannot_open_the_same_workspace(
     assert exc_info.value.status_code == 409
     assert exc_info.value.code == "workspace_in_use"
     assert exc_info.value.message == (
-        "Workspace is open in another Wordflow backend process"
+        "This Project is open in another Wordflow window or app. "
+        "Close it there, then try again."
     )
 
 

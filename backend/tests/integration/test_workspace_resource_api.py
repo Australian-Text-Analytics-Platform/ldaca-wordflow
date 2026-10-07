@@ -137,9 +137,12 @@ def test_workspace_resource_uses_explicit_open_and_server_ordered_mutations(
         assert client.get(f"/api/workspaces/{workspace_id}").json()[
             "runtime_state"
         ] == "closed"
-        assert client.get(f"/api/workspaces/{workspace_id}/archive").json()[
-            "code"
-        ] == "workspace_not_open"
+        # A closed Project downloads too, read under its cross-process lock
+        # (issue 338).
+        closed_export = client.get(f"/api/workspaces/{workspace_id}/archive")
+        assert closed_export.status_code == 200
+        with zipfile.ZipFile(BytesIO(closed_export.content)) as archive:
+            assert "workspace/workspace.json" in archive.namelist()
 
 
 def test_workspace_in_use_preserves_current_open_workspace(tmp_path: Path) -> None:
@@ -173,7 +176,8 @@ def test_workspace_in_use_preserves_current_open_workspace(tmp_path: Path) -> No
         assert conflict.status_code == 409
         assert conflict.json()["code"] == "workspace_in_use"
         assert conflict.json()["message"] == (
-            "Workspace is open in another Wordflow backend process"
+            "This Project is open in another Wordflow window or app. "
+            "Close it there, then try again."
         )
         assert contender.get(f"/api/workspaces/{current['id']}").json()[
             "runtime_state"
@@ -184,6 +188,10 @@ def test_workspace_in_use_preserves_current_open_workspace(tmp_path: Path) -> No
         )
         assert delete_conflict.status_code == 409
         assert delete_conflict.json()["code"] == "workspace_in_use"
+        # Download is refused the same way while another Wordflow has it open.
+        download_conflict = contender.get(f"/api/workspaces/{target['id']}/archive")
+        assert download_conflict.status_code == 409
+        assert download_conflict.json()["code"] == "workspace_in_use"
 
         assert holder.delete(
             f"/api/workspaces/{target['id']}/open",

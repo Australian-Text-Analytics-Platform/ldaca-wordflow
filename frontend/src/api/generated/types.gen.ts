@@ -9931,7 +9931,7 @@ export type ExportWorkspaceArchiveError = ExportWorkspaceArchiveErrors[keyof Exp
 
 export type ExportWorkspaceArchiveResponses = {
     /**
-     * Portable Workspace ZIP archive or raw archival copy
+     * Portable Project ZIP archive or raw archival copy
      */
     200: Blob | File;
 };
