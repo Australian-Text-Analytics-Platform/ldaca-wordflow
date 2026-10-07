@@ -190,6 +190,7 @@ def _run_rust_topic_modeling(
     max_segment_tokens: int = 256,
     embedder_model: str | None = None,
     embedding_cache: str | os.PathLike[str] | None = None,
+    cluster_sample_size: int | None = None,
 ) -> dict:
     """Run the scalar Rust topic-modeling expression and validate its payload.
 
@@ -203,11 +204,14 @@ def _run_rust_topic_modeling(
     """
     import polars_text  # noqa: F401  (registers the ``.text`` expr namespace)
 
-    # Auto (None) is the native default, so it is only passed when fixed; this
-    # keeps Auto runs working with polars-text builds that predate the option.
-    max_topic_size_kwargs = (
-        {} if max_cluster_size is None else {"max_topic_size": int(max_cluster_size)}
-    )
+    # Auto max topic size and no topic sampling are the native defaults, so
+    # each option is only passed when set; this keeps default runs working with
+    # polars-text builds that predate the options.
+    optional_kwargs: dict[str, int] = {}
+    if max_cluster_size is not None:
+        optional_kwargs["max_topic_size"] = int(max_cluster_size)
+    if cluster_sample_size is not None:
+        optional_kwargs["cluster_sample_size"] = int(cluster_sample_size)
     result_frame = pl.DataFrame({"__doc__": all_docs}).select(
         cast(Any, pl.col("__doc__"))
         .text.topic_modeling(
@@ -219,7 +223,7 @@ def _run_rust_topic_modeling(
             min_topic_size=int(min_cluster_size),
             tokenizer_model=vectorizer_model,
             lowercase=True,
-            **max_topic_size_kwargs,
+            **optional_kwargs,
         )
         .alias("__topic__")
     )
@@ -322,6 +326,8 @@ def _run_rust_topic_modeling(
         n_segments = int(raw_result["n_segments"])
         raw_max_topic_size = raw_result.get("max_topic_size")
         max_topic_size = None if raw_max_topic_size is None else int(raw_max_topic_size)
+        raw_clustered = raw_result.get("clustered_segments")
+        clustered_segments = None if raw_clustered is None else int(raw_clustered)
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("Topic modeling native run metadata is malformed") from exc
     return {
@@ -330,6 +336,7 @@ def _run_rust_topic_modeling(
         "n_topics": len(topics),
         "n_segments": n_segments,
         "max_topic_size": max_topic_size,
+        "clustered_segments": clustered_segments,
         "projection_context": projection_context,
     }
 

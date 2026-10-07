@@ -112,6 +112,13 @@ const baseProps = {
   maxClusterSize: null,
   onMaxClusterSizeChange: vi.fn(),
   lastRunClustering: null,
+  clusterSample: false,
+  onClusterSampleChange: vi.fn(),
+  clusterSampleSize: null,
+  onClusterSampleSizeChange: vi.fn(),
+  suggestedSampleSize: 100_000,
+  estimatedSegmentCount: 3000,
+  estimatedTokenCount: 600_000,
   randomSeed: 0,
   randomSeedUserSet: false,
   onRandomSeedChange: vi.fn(),
@@ -149,6 +156,7 @@ describe('TopicModelingParameterPanel', () => {
       ['About Max tokens', 'help-topic-modeling-max-segment-tokens'],
       ['About Topic size', 'help-topic-modeling-min-cluster-size'],
       ['About Seed', 'help-topic-modeling-random-seed'],
+      ['About Topic sampling', 'help-topic-modeling-topic-sampling'],
     ]) {
       fireEvent.click(screen.getByRole('button', { name: label }));
       expect(useUIStore.getState().documentTarget).toMatchObject({
@@ -274,6 +282,8 @@ describe('TopicModelingParameterPanel', () => {
           segmentCount: 4047,
           appliedMaxTopicSize: null,
           requestedMaxTopicSize: null,
+          clusteredSegments: null,
+          randomSeed: 0,
         }}
       />,
     );
@@ -288,11 +298,133 @@ describe('TopicModelingParameterPanel', () => {
           segmentCount: 4047,
           appliedMaxTopicSize: 1540,
           requestedMaxTopicSize: null,
+          clusteredSegments: null,
+          randomSeed: 0,
         }}
       />,
     );
     expect(
       screen.getByText('Last run: 4,047 segments; topics larger than 1,540 were split'),
     ).toBeInTheDocument();
+  });
+
+  it('reports a last run whose topics came from a sample', () => {
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        lastRunClustering={{
+          segmentCount: 105_000,
+          appliedMaxTopicSize: null,
+          requestedMaxTopicSize: null,
+          clusteredSegments: 20_000,
+          randomSeed: 7,
+        }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        'Last run: 105,000 segments; topics found from a sample of 20,000 (seed 7); no topic needed splitting',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('explains topic sampling with its seed, trade-off and help link', () => {
+    const onClusterSampleChange = vi.fn();
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        clusterSample
+        onClusterSampleChange={onClusterSampleChange}
+        estimatedSegmentCount={400_000}
+        randomSeed={3}
+      />,
+    );
+
+    expect(screen.getByRole('checkbox', { name: 'Topic sampling' })).toBeChecked();
+    const note = screen.getByText(/Topics are found from 100,000 of about 400,000 segments/);
+    expect(note).toHaveTextContent('picked with seed 3');
+    // Min topic size 10 x 400,000 / 100,000.
+    expect(note).toHaveTextContent('topics smaller than about 40 segments may be missed');
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Topic sampling' }));
+    expect(onClusterSampleChange).toHaveBeenLastCalledWith(false);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Learn more' }));
+    expect(useUIStore.getState().documentTarget).toMatchObject({
+      file: 'tutorials/topic-modeling.md',
+      anchor: 'help-topic-modeling-topic-sampling',
+    });
+  });
+
+  it('shows the suggested sample in grey; Tab fills it, typing replaces it', () => {
+    const onClusterSampleSizeChange = vi.fn();
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        clusterSample
+        estimatedSegmentCount={400_000}
+        onClusterSampleSizeChange={onClusterSampleSizeChange}
+      />,
+    );
+    const input = screen.getByLabelText<HTMLInputElement>('Segments to sample');
+    expect(input).toHaveValue('');
+    expect(input).toHaveAttribute('placeholder', '100,000');
+
+    fireEvent.keyDown(input, { key: 'Tab' });
+    expect(input).toHaveValue('100,000');
+    fireEvent.blur(input);
+    expect(onClusterSampleSizeChange).toHaveBeenLastCalledWith(100_000);
+
+    fireEvent.change(input, { target: { value: '50000' } });
+    fireEvent.blur(input);
+    expect(onClusterSampleSizeChange).toHaveBeenLastCalledWith(50_000);
+
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.blur(input);
+    expect(onClusterSampleSizeChange).toHaveBeenLastCalledWith(null);
+  });
+
+  it('suggests topic sampling, unticked, when a corpus has very many segments', () => {
+    render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={400_000} />);
+
+    expect(screen.getByRole('checkbox', { name: 'Topic sampling' })).not.toBeChecked();
+    expect(screen.queryByLabelText('Segments to sample')).not.toBeInTheDocument();
+    expect(screen.getByText(/this run may take a long time/)).toHaveClass('text-warning');
+  });
+
+  it('says every segment is clustered when sampling is on but the corpus is small', () => {
+    render(<TopicModelingParameterPanel {...baseProps} clusterSample />);
+
+    expect(
+      screen.getByText(
+        /about 3,000 segments, no more than the sample, so every segment is clustered/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('shows the estimated segment count with sampling off', () => {
+    render(<TopicModelingParameterPanel {...baseProps} />);
+
+    expect(
+      screen.getByText(/About 3,000 segments \(estimated\); every segment is clustered/),
+    ).toHaveClass('text-description');
+  });
+
+  it('warns about a long first run under the Data Blocks for a large corpus', () => {
+    const { rerender } = render(
+      <TopicModelingParameterPanel {...baseProps} estimatedTokenCount={25_000_000} />,
+    );
+    expect(screen.getByText(/About 25 million tokens to read/)).toHaveTextContent(
+      'A first run may take 12 minutes or more',
+    );
+
+    rerender(<TopicModelingParameterPanel {...baseProps} estimatedTokenCount={4_000_000} />);
+    expect(screen.queryByText(/tokens to read/)).not.toBeInTheDocument();
+  });
+
+  it('shows no sampling note while the segments are being counted', () => {
+    render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={null} />);
+
+    expect(screen.queryByRole('button', { name: 'Learn more' })).not.toBeInTheDocument();
   });
 });

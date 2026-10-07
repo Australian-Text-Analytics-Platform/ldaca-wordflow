@@ -9892,6 +9892,18 @@
             "title": "Cluster Count",
             "type": "integer"
           },
+          "clustered_segments": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Clustered Segments"
+          },
           "default_cluster_count": {
             "minimum": 0.0,
             "title": "Default Cluster Count",
@@ -10177,6 +10189,18 @@
       "TopicModelingAnalysisRequest": {
         "additionalProperties": false,
         "properties": {
+          "cluster_sample_size": {
+            "anyOf": [
+              {
+                "minimum": 1000.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cluster Sample Size"
+          },
           "kind": {
             "const": "topic_modeling",
             "default": "topic_modeling",

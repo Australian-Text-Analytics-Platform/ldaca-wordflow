@@ -299,4 +299,20 @@ export const queryKeys = {
   /** Per-column unique-value counts (used by sequential-analysis). */
   columnUniqueValues: (workspaceId: string, nodeId: string, columnName: string) =>
     [...queryKeys.nodeColumns(workspaceId, nodeId), columnName, 'unique-values'] as const,
+
+  /** Estimated Topic Segments for a text column (used by topic sampling). */
+  topicSegmentEstimate: (
+    workspaceId: string,
+    nodeId: string,
+    columnName: string,
+    method: string,
+    maxTokens: number,
+  ) =>
+    [
+      ...queryKeys.nodeColumns(workspaceId, nodeId),
+      columnName,
+      'topic-segment-estimate',
+      method,
+      maxTokens,
+    ] as const,
 };

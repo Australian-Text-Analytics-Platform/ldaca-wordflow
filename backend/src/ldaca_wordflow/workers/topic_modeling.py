@@ -554,6 +554,7 @@ def _compute_topic_payload(
     sample_fractions: list[float | None] | None,
     segmentation_method: str,
     max_segment_tokens: int,
+    cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:
     """Run the full topic-modeling pipeline: sample, run Rust, build the payload.
 
@@ -602,6 +603,7 @@ def _compute_topic_payload(
         embedding_cache=embedding_cache_path,
         segmentation_method=segmentation_method,
         max_segment_tokens=max_segment_tokens,
+        cluster_sample_size=cluster_sample_size,
     )
 
     if progress_callback:
@@ -633,6 +635,7 @@ def _compute_topic_payload(
         "default_cluster_count": natural_count,
         "adjustable": natural_count > 1,
         "max_topic_size": rust_result.get("max_topic_size"),
+        "clustered_segments": rust_result.get("clustered_segments"),
     }
     payload["projection_context"] = {
         "version": 2,
@@ -668,6 +671,7 @@ def _compute_topic_modeling(
     max_segment_tokens: int = 256,
     progress_callback: Callable[[float, str], None] | None = None,
     sample_fractions: list[float | None] | None = None,
+    cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:
     """Execute topic modeling in a worker process.
 
@@ -718,6 +722,7 @@ def _compute_topic_modeling(
             sample_fractions=sample_fractions,
             segmentation_method=segmentation_method,
             max_segment_tokens=max_segment_tokens,
+            cluster_sample_size=cluster_sample_size,
         )
 
         if progress_callback:
@@ -755,6 +760,7 @@ def run_topic_modeling_analysis(
     sample_fractions: list[float | None] | None,
     progress_callback: Callable[[float, str], None] | None = None,
     max_cluster_size: int | None = None,
+    cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only topic-modeling process contract."""
 
@@ -774,5 +780,6 @@ def run_topic_modeling_analysis(
         max_segment_tokens=max_segment_tokens,
         progress_callback=progress_callback,
         sample_fractions=sample_fractions,
+        cluster_sample_size=cluster_sample_size,
         embedding_cache_path=embedding_cache_path,
     )

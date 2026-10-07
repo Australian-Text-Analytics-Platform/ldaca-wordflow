@@ -156,6 +156,7 @@ def _fake_topic_modeling_expr_factory(
     coverage: list[list[dict[str, Any]]] | None = None,
     seen_kwargs: dict[str, Any] | None = None,
     max_topic_size: int | None = None,
+    clustered_segments: int | None = None,
 ):
     """Build a fake ``.text.topic_modeling`` method returning a canned struct.
 
@@ -227,6 +228,7 @@ def _fake_topic_modeling_expr_factory(
             ),
             pl.lit(n_segments, dtype=pl.UInt32).alias("n_segments"),
             pl.lit(max_topic_size, dtype=pl.UInt32).alias("max_topic_size"),
+            pl.lit(clustered_segments, dtype=pl.UInt32).alias("clustered_segments"),
             pl.lit(b"context", dtype=pl.Binary).alias("projection_context"),
         )
 
@@ -375,6 +377,46 @@ def test_run_rust_topic_modeling_forwards_and_reports_max_topic_size(
     assert seen_kwargs.get("max_topic_size") == max_cluster_size
     assert ("max_topic_size" in seen_kwargs) == (max_cluster_size is not None)
     assert result["max_topic_size"] == max_cluster_size
+
+
+@pytest.mark.parametrize("cluster_sample_size", [None, 20_000])
+def test_run_rust_topic_modeling_forwards_and_reports_topic_sampling(
+    monkeypatch, cluster_sample_size: int | None
+) -> None:
+    from polars_text.namespace import TextNamespace
+
+    seen_kwargs: dict[str, Any] = {}
+    monkeypatch.setattr(
+        TextNamespace,
+        "topic_modeling",
+        _fake_topic_modeling_expr_factory(
+            documents=[{"doc_index": 0, "dominant_topic": 0}],
+            topics=[
+                {
+                    "id": 0,
+                    "representative_words": _terms("alpha"),
+                    "x": 0.0,
+                    "y": 0.0,
+                }
+            ],
+            n_segments=30_000,
+            seen_kwargs=seen_kwargs,
+            clustered_segments=cluster_sample_size,
+        ),
+    )
+
+    result = topic_pipeline._run_rust_topic_modeling(
+        all_docs=["one document"],
+        seed=0,
+        min_cluster_size=2,
+        vectorizer_model="native:plain_words_en",
+        cluster_sample_size=cluster_sample_size,
+    )
+
+    # Off is the native default, so it is not passed at all.
+    assert ("cluster_sample_size" in seen_kwargs) == (cluster_sample_size is not None)
+    assert seen_kwargs.get("cluster_sample_size") == cluster_sample_size
+    assert result["clustered_segments"] == cluster_sample_size
 
 
 @pytest.mark.parametrize("segmentation_method", ["automatic", "line", "sentence"])

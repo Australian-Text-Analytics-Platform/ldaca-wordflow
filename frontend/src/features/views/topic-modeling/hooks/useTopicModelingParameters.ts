@@ -52,6 +52,12 @@ export interface UseTopicModelingParametersResult {
   setSegmentationMethod: (value: TopicSegmentationMethod) => void;
   maxSegmentTokens: number;
   setMaxSegmentTokens: (value: number) => void;
+  /** Topic sampling, off by default. */
+  clusterSample: boolean;
+  setClusterSample: (value: boolean) => void;
+  /** Segments to sample; `null` (an empty field) means the grey suggestion. */
+  clusterSampleSize: number | null;
+  setClusterSampleSize: (value: number | null) => void;
   nodeDocCounts: number[];
   effectiveDocCounts: number[];
   sampleFractionsForRequest: (number | null)[];
@@ -95,6 +101,8 @@ export function useTopicModelingParameters({
     randomSeedUserSet,
     segmentationMethod,
     maxSegmentTokens,
+    clusterSample,
+    clusterSampleSize,
   } = parameterState;
 
   const activeNodeIds = panelNodeIds.slice(0, 2);
@@ -134,6 +142,14 @@ export function useTopicModelingParameters({
     dispatchParameters({ type: 'setMaxSegmentTokens', value: sanitizeMaxSegmentTokens(value) });
   };
 
+  const setClusterSample = (value: boolean) => {
+    dispatchParameters({ type: 'setClusterSample', value });
+  };
+
+  const setClusterSampleSize = (value: number | null) => {
+    dispatchParameters({ type: 'setClusterSampleSize', value });
+  };
+
   /** Restores saved request parameters when the analysis lifecycle hydrates a task. */
   // Called by: TopicModelingFeature.onRequest so historical Analyses reopen
   // with their immutable run parameters.
@@ -163,6 +179,10 @@ export function useTopicModelingParameters({
     setSegmentationMethod,
     maxSegmentTokens,
     setMaxSegmentTokens,
+    clusterSample,
+    setClusterSample,
+    clusterSampleSize,
+    setClusterSampleSize,
     nodeDocCounts,
     effectiveDocCounts,
     sampleFractionsForRequest,

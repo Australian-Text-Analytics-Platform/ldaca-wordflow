@@ -22,7 +22,11 @@ two corpora.
 
 Each Data Block has an independent sampling percentage. The default is 100%.
 Lower sampling makes exploratory runs faster but can hide rare themes or make
-small topics less stable. The label reports the effective document count, for
+small topics less stable. For a very large corpus, [Topic sampling](#help-topic-modeling-topic-sampling)
+shortens clustering and keeps every document in the result. When the selected
+text is long (over about 5 million tokens), a note under the Data Blocks gives
+a rough first-run time: reading the text into the model takes most of a first
+run, and later runs on the same text reuse that work. The label reports the effective document count, for
 example **Sampling (1,380 documents)**. The sample uses the **Seed** setting, so
 the same Seed and percentage always pick the same documents, whichever order the
 Data Blocks are in. The **Colour** square sets the Data
@@ -39,24 +43,42 @@ used for every selected Data Block.
 
 ![The Segments list](tutorials/assets/topic_modelling/segments_menu.png)
 
-| Method | Starting unit | Oversized unit |
-| --- | --- | --- |
-| **Automatic** | Each paragraph: a blank-line block when the text has blank lines, otherwise each non-empty line | Split into its sentences, then as below |
-| **Paragraph** | Each trimmed, non-empty line, treated as a paragraph | Split into its sentences, then as below |
-| **Sentence** | Each Unicode UAX #29 sentence | Split as below |
+| Method | Starting unit | Short neighbouring units | Oversized unit |
+| --- | --- | --- | --- |
+| **Automatic** | Each paragraph: a blank-line block when the text has blank lines, otherwise each non-empty line | Packed into one segment while together they fit the token cap | Split into its sentences, packed the same way within the paragraph, then as below |
+| **Paragraph** | Each trimmed, non-empty line, treated as a paragraph | Kept apart: at most one paragraph per segment | Split at the sentence boundary nearest its middle, repeatedly, then as below |
+| **Sentence** | Each Unicode UAX #29 sentence | Kept apart: one sentence per segment | Split as below |
 
-A unit that fits the token cap is always one segment; short units are never
-merged together. A sentence that is still too long is split at the clause
+**Automatic** packs neighbouring paragraphs: it adds the next paragraph to the
+current segment while the segment still fits **Max tokens**, and starts a new
+segment when it would not. A paragraph is never cut to fill a segment, so every
+segment still begins and ends at a paragraph boundary. News articles, speeches
+and transcripts often have many one- or two-sentence paragraphs; packing them
+gives each segment enough context to embed well and cuts the number of segments
+several times (about 5 times fewer on a 26,000-article news corpus at 256
+tokens), which makes the run much faster. A paragraph longer than the cap on its
+own ends the current segment and is split into its sentences, which are packed
+the same way within that paragraph, so an article stored as one long paragraph
+gives a few full segments rather than one per sentence.
+
+Choose **Paragraph** when each paragraph should be its own observation (for
+example, short survey answers or social media posts stored one per line), and
+**Sentence** for sentence-level topics. Neither packs. In Paragraph mode a
+paragraph longer than the cap is cut at the sentence boundary nearest its
+middle, and each half again if it is still too long, so a long paragraph
+becomes a few similar-sized pieces that end at full stops.
+
+A sentence that is still too long is split at the clause
 punctuation (commas, semicolons, colons, dashes) nearest its middle, repeatedly,
 so the pieces stay similar in size and end at natural pauses. Only a stretch with
 no usable punctuation is cut at the token cap, and a leftover of fewer than four
 tokens from such a cut is dropped. Segments with no letters or digits (a stray
 quotation mark or full stop) are dropped in every mode.
 
-For text whose paragraphs are separated by single line breaks, Automatic and
-Paragraph produce the same segments. They differ for text that uses blank lines
-between paragraphs: Automatic keeps each blank-line block together, while
-Paragraph starts a new segment at every line break. Sentence uses a language-independent Unicode boundary
+Automatic and Paragraph differ in two ways: Automatic packs short neighbouring
+paragraphs, and for text that uses blank lines between paragraphs it keeps each
+blank-line block together, while Paragraph starts a new segment at every line
+break. Sentence uses a language-independent Unicode boundary
 algorithm, so abbreviations may occasionally form a short segment.
 
 <h4 id="help-topic-modeling-max-segment-tokens">Max tokens (maximum tokens per segment)</h4>
@@ -65,7 +87,8 @@ Sets the maximum size of a Topic Segment in model tokens. The default is 256
 and the allowed range is 32–256. Tokens may be complete words or parts of
 words, and the cap includes special tokens added by the embedding model. A
 smaller cap gives more local observations; a larger cap gives each observation
-more context.
+more context. With **Automatic**, the cap is also how far short paragraphs are
+packed together, so a larger cap gives fewer, fuller segments.
 
 All modes split over-cap text into non-overlapping source spans. Apart from the
 tiny leftovers and letterless segments described above, no text is discarded.
@@ -94,9 +117,55 @@ you choose a fixed value.
 
 <h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 
-Controls stochastic dimensionality reduction. The default is 0. Keep the same
-seed to reproduce a configuration, or compare several seeds to assess topic
-stability. The same seed also picks each Data Block's sample.
+Controls the random steps of the run. The default is 0. The same seed always
+picks the same documents for each Data Block's sample and, with
+[Topic sampling](#help-topic-modeling-topic-sampling), the same segments.
+
+Running again with the same seed and settings gives very similar topics, but
+not always identical ones: the step that maps segments before clustering
+spreads its work over all processor cores, and the order in which they finish
+can shift a few borderline segments, and occasionally add or merge a small
+topic. The main topics stay the same. To check how stable the topics are,
+compare runs with a few different seeds.
+
+<h4 id="help-topic-modeling-topic-sampling">Topic sampling</h4>
+
+**Topic sampling** is off by default. When ticked, Wordflow finds the topics
+from a sample of Topic Segments picked at random with the **Seed**, then gives
+every other segment the topic of the sampled segment most similar to it (the
+nearest one by embedding cosine similarity). Every segment is still embedded and
+still gets a topic, or No topic when its nearest sampled segment has none, so
+document coverage and the bubble chart cover the whole corpus. After the run the
+summary line reads, for example, **topics found from a sample of 100,000
+(seed 0)**.
+
+**Segments to sample.** The field shows a suggested size in grey. **Run** uses
+it as it is; press **Tab** to fill it in and change it, or just type your own
+number (at least 1,000). The note under the checkbox shows the sample, the
+estimated number of segments in the corpus, and what the sample may miss.
+
+**Why it can help.** Clustering (HDBSCAN) compares segments with their
+neighbours, and its time grows with the square of the number of segments:
+twice the segments take about four times as long. With Automatic segments a
+corpus of 26,000 news articles makes about 107,000 segments, and clustering all
+of them takes under a minute. Corpora many times larger can take much longer,
+and that is where sampling saves time. When the estimated segment count is
+large, the note under the unticked checkbox suggests it.
+
+**What it costs.** A topic must have at least **Min topic size** segments inside
+the sample to be found, so the smallest topic a sample can find is about Min
+topic size × (all segments ÷ sample size). With 107,000 segments, a sample of
+20,000 and Min topic size 10, a theme needs about 54 segments in the corpus to
+show up. A thin sample also blurs the gaps between neighbouring themes, so they
+can merge into one large topic. Use the largest sample that runs in acceptable
+time, and compare two seeds to check that the topics are stable.
+
+**What it does not change.** Embedding takes most of a long run, and every
+segment is still embedded, so sampling only shortens clustering. Embeddings are
+saved, so a second run on the same text (for example with another Topic size)
+skips embedding. Topic sampling is also different from Step 2's sampling
+percentage, which leaves documents out of the run: with Topic sampling no
+document is left out of the result.
 
 <h2 id="help-topic-modeling-run">Step 4: Run the analysis</h2>
 
@@ -373,7 +442,7 @@ available for the next run.
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
 | A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
-| Run time is very long | Reduce the per-Data-Block sampling percentage |
+| Run time is very long | Use Automatic segments with a larger Max tokens, try [Topic sampling](#help-topic-modeling-topic-sampling), or reduce the per-Data-Block sampling percentage |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
@@ -384,6 +453,7 @@ available for the next run.
 | Max tokens | 256 |
 | Topic size | 10 to Auto |
 | Seed | 0 |
+| Topic sampling | Off; suggested for very large corpora |
 | Per document | 2, or the available Topic count when smaller |
 | Words | 15 |
 

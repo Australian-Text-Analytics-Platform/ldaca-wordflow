@@ -18,6 +18,10 @@ export interface TopicModelingParameterState {
   randomSeedUserSet: boolean;
   segmentationMethod: TopicSegmentationMethod;
   maxSegmentTokens: number;
+  /** Topic sampling; off by default (issue 330). */
+  clusterSample: boolean;
+  /** Segments to sample; `null` (an empty field) means the grey suggestion. */
+  clusterSampleSize: number | null;
 }
 
 type TopicModelingParameterAction =
@@ -27,6 +31,8 @@ type TopicModelingParameterAction =
   | { type: 'setRandomSeedFromUser'; value: number }
   | { type: 'setSegmentationMethod'; value: TopicSegmentationMethod }
   | { type: 'setMaxSegmentTokens'; value: number }
+  | { type: 'setClusterSample'; value: boolean }
+  | { type: 'setClusterSampleSize'; value: number | null }
   | { type: 'hydrateRequest'; request: TopicModelingAnalysisRequest };
 
 /**
@@ -44,6 +50,8 @@ export const createTopicModelingParameterState = (): TopicModelingParameterState
   randomSeedUserSet: false,
   segmentationMethod: 'automatic',
   maxSegmentTokens: DEFAULT_MAX_SEGMENT_TOKENS,
+  clusterSample: false,
+  clusterSampleSize: null,
 });
 
 export const sanitizeMaxSegmentTokens = (value: string | number | undefined): number => {
@@ -163,6 +171,10 @@ export const topicModelingParameterReducer = (
       return { ...state, segmentationMethod: action.value };
     case 'setMaxSegmentTokens':
       return { ...state, maxSegmentTokens: sanitizeMaxSegmentTokens(action.value) };
+    case 'setClusterSample':
+      return { ...state, clusterSample: action.value };
+    case 'setClusterSampleSize':
+      return { ...state, clusterSampleSize: action.value };
     case 'hydrateRequest': {
       const hasSampling = Array.isArray(action.request.sample_fractions);
       const samples = hasSampling
@@ -176,6 +188,8 @@ export const topicModelingParameterReducer = (
         randomSeedUserSet: true,
         segmentationMethod: normalizeSegmentationMethod(action.request.segmentation_method),
         maxSegmentTokens: sanitizeMaxSegmentTokens(action.request.max_segment_tokens),
+        clusterSample: action.request.cluster_sample_size != null,
+        clusterSampleSize: action.request.cluster_sample_size ?? null,
         corpusSamplesByNodeId: hasSampling
           ? Object.fromEntries(
               action.request.node_ids.map((nodeId, index) => [

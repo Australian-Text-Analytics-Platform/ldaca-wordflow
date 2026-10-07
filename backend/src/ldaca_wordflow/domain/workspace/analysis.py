@@ -141,6 +141,11 @@ class TopicModelingAnalysisRequest(_StrictModel):
     sample_fractions: list[float | None] | None = None
     segmentation_method: TopicSegmentationMethod = TopicSegmentationMethod.AUTOMATIC
     max_segment_tokens: int = Field(default=256, ge=32, le=256)
+    # Topic sampling (#330): cluster this many segments, picked with the run's
+    # seed, and give every other segment its nearest sampled segment's topic.
+    # None clusters every segment. Clustering time grows with the square of the
+    # segment count; a smaller sample misses smaller topics.
+    cluster_sample_size: int | None = Field(default=None, ge=1_000)
 
     @model_validator(mode="after")
     def validate_nodes_and_sampling(self) -> TopicModelingAnalysisRequest:

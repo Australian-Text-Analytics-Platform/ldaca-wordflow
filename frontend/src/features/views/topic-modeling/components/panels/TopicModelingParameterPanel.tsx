@@ -1,5 +1,6 @@
 import { useState, type FocusEvent } from 'react';
 import HelpIcon from '@/components/help/HelpIcon';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -16,7 +17,8 @@ import {
   type NodeInputColumnAddonArgs,
 } from '@/features/views/common/components/NodeInputsPanel';
 import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
-import type { DocumentKey } from '@/tutorials/documentationRegistry';
+import { useUIStore } from '@/stores';
+import { getDocumentTarget, type DocumentKey } from '@/tutorials/documentationRegistry';
 import {
   effectiveSampleDocumentCount,
   sanitizeMaxClusterSize,
@@ -25,6 +27,13 @@ import {
   sanitizeMaxSegmentTokens,
   type CorpusSample,
 } from '../../hooks/useTopicModelingParameters';
+import {
+  TOPIC_FIRST_RUN_NOTE_TOKENS,
+  TOPIC_SAMPLING_SUGGEST_ABOVE,
+  sanitizeTopicSampleSize,
+  smallestFindableTopic,
+} from '../../topicSampling';
+import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
 
 interface NumericInputDraft {
   source: number;
@@ -56,7 +65,23 @@ interface Props {
     segmentCount: number;
     appliedMaxTopicSize: number | null;
     requestedMaxTopicSize: number | null;
+    /** Segments the topics were found from, when topic sampling applied. */
+    clusteredSegments: number | null;
+    /** The seed the run used, which picked the sampled segments. */
+    randomSeed: number;
   } | null;
+  /** Topic sampling, off by default. */
+  clusterSample: boolean;
+  onClusterSampleChange: (value: boolean) => void;
+  /** Segments to sample as typed; `null` (empty) runs with the grey suggestion. */
+  clusterSampleSize: number | null;
+  onClusterSampleSizeChange: (value: number | null) => void;
+  /** The grey suggestion shown in the empty Segments to sample field. */
+  suggestedSampleSize: number;
+  /** Estimated Topic Segments across the selected Data Blocks; `null` while counting. */
+  estimatedSegmentCount: number | null;
+  /** Estimated model tokens to embed across the selected Data Blocks; `null` while counting. */
+  estimatedTokenCount: number | null;
   randomSeed: number;
   randomSeedUserSet: boolean;
   onRandomSeedChange: (value: number) => void;
@@ -138,6 +163,13 @@ export function TopicModelingParameterPanel({
   maxClusterSize,
   onMaxClusterSizeChange,
   lastRunClustering,
+  clusterSample,
+  onClusterSampleChange,
+  clusterSampleSize,
+  onClusterSampleSizeChange,
+  suggestedSampleSize,
+  estimatedSegmentCount,
+  estimatedTokenCount,
   randomSeed,
   randomSeedUserSet,
   onRandomSeedChange,
@@ -187,12 +219,91 @@ export function TopicModelingParameterPanel({
   const lastRunSummary = (() => {
     if (!lastRunClustering) return null;
     const segments = `Last run: ${lastRunClustering.segmentCount.toLocaleString()} segments`;
+    const sampled =
+      lastRunClustering.clusteredSegments === null
+        ? ''
+        : `; topics found from a sample of ${lastRunClustering.clusteredSegments.toLocaleString()} (seed ${String(lastRunClustering.randomSeed)})`;
     if (lastRunClustering.requestedMaxTopicSize !== null) {
-      return `${segments}; topics larger than ${lastRunClustering.requestedMaxTopicSize.toLocaleString()} were split`;
+      return `${segments}${sampled}; topics larger than ${lastRunClustering.requestedMaxTopicSize.toLocaleString()} were split`;
     }
     return lastRunClustering.appliedMaxTopicSize === null
-      ? `${segments}; no topic needed splitting`
-      : `${segments}; topics larger than ${lastRunClustering.appliedMaxTopicSize.toLocaleString()} were split`;
+      ? `${segments}${sampled}; no topic needed splitting`
+      : `${segments}${sampled}; topics larger than ${lastRunClustering.appliedMaxTopicSize.toLocaleString()} were split`;
+  })();
+
+  // Segments to sample: empty shows the suggestion in grey; Run uses it, Tab
+  // fills it in to edit, and typing replaces it (as for Data Block names).
+  const [sampleSizeDraft, setSampleSizeDraft] = useState<{
+    source: number | null;
+    value: string;
+  }>(() => ({
+    source: clusterSampleSize,
+    value: clusterSampleSize === null ? '' : String(clusterSampleSize),
+  }));
+  const sampleSizeValueDraft =
+    sampleSizeDraft.source === clusterSampleSize
+      ? sampleSizeDraft.value
+      : clusterSampleSize === null
+        ? ''
+        : String(clusterSampleSize);
+  const commitSampleSize = (value: string) => {
+    const next = sanitizeTopicSampleSize(value);
+    setSampleSizeDraft({ source: next, value: next === null ? '' : String(next) });
+    onClusterSampleSizeChange(next);
+  };
+
+  const sampleSize = clusterSampleSize ?? suggestedSampleSize;
+  // Embedding takes most of a first run and follows the token count; about
+  // 36,000 tokens a second on a recent Mac, so the minutes are a floor.
+  const firstRunNote =
+    estimatedTokenCount !== null && estimatedTokenCount > TOPIC_FIRST_RUN_NOTE_TOKENS
+      ? `About ${Math.round(estimatedTokenCount / 1_000_000).toLocaleString()} million tokens to read. A first run may take ${Math.max(1, Math.round(estimatedTokenCount / 36_000 / 60)).toLocaleString()} minutes or more, longer on older computers; later runs on the same text reuse this work. Lower the sampling percentage for a quicker first look.`
+      : null;
+  // Called by: the topic sampling note so the reason and the help section sit together.
+  const openTopicSamplingHelp = () => {
+    const target = getDocumentTarget('tutorial', 'analysis.topic-modeling.topic-sampling');
+    if (target) useUIStore.getState().openDocument(target);
+  };
+  const topicSamplingNote = ((): { warning: boolean; lines: string[] } | null => {
+    const total = estimatedSegmentCount;
+    if (!clusterSample) {
+      if (total === null) return null;
+      if (total <= TOPIC_SAMPLING_SUGGEST_ABOVE) {
+        return {
+          warning: false,
+          lines: [
+            `About ${total.toLocaleString()} segments (estimated); every segment is clustered.`,
+          ],
+        };
+      }
+      return {
+        warning: true,
+        lines: [
+          `About ${total.toLocaleString()} segments. Clustering time grows with the square of the number of segments, so this run may take a long time. Topic sampling shortens it, but may miss small topics.`,
+        ],
+      };
+    }
+    if (total !== null && total <= sampleSize) {
+      return {
+        warning: false,
+        lines: [
+          `This corpus has about ${total.toLocaleString()} segments, no more than the sample, so every segment is clustered.`,
+        ],
+      };
+    }
+    const from =
+      total === null
+        ? `${sampleSize.toLocaleString()} segments`
+        : `${sampleSize.toLocaleString()} of about ${total.toLocaleString()} segments`;
+    return {
+      warning: false,
+      lines: [
+        `Topics are found from ${from}, picked with seed ${String(randomSeed)}; every other segment joins the topic of the sampled segment most similar to it.`,
+        total === null
+          ? 'A smaller sample clusters much faster but may miss small topics.'
+          : `Clustering time grows with the square of the sample, so half the sample is about four times faster, but topics smaller than about ${smallestFindableTopic(minClusterSize, total, sampleSize).toLocaleString()} segments may be missed.`,
+      ],
+    };
   })();
 
   const handleMinClusterSizeBlur = (event: FocusEvent<HTMLInputElement>) => {
@@ -305,6 +416,11 @@ export function TopicModelingParameterPanel({
         columnAddonWidth="auto"
         renderColumnAddon={renderSamplingInput}
       />
+      {firstRunNote ? (
+        <p id="topic-first-run-note" className="mt-2 px-3 text-label-secondary text-warning">
+          {firstRunNote}
+        </p>
+      ) : null}
 
       {/* Compact on small screens (issue 152): short labels, integer-sized
           inputs, and one Topic size range; full wording stays in the help. */}
@@ -314,7 +430,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.segmentation-method"
               htmlFor="topic-segmentation-method"
-              help="Which text spans become Topic Segments. Automatic starts from paragraphs (blank-line blocks, or single lines when the text has no blank lines). Paragraph treats every non-empty line as a paragraph. Sentence starts from Unicode sentence boundaries. A unit that fits the token budget is one segment; an oversized unit is split into sentences, then at the clause punctuation nearest its middle."
+              help="How text is cut into segments. Automatic packs paragraphs up to Max tokens; Paragraph and Sentence keep one each."
             >
               Segments
             </ParameterLabel>
@@ -343,7 +459,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.max-segment-tokens"
               htmlFor="topic-max-segment-tokens"
-              help="Maximum tokens per segment, from 32 to 256. Tokens are model units and may be words or parts of words. Oversized Line and Sentence units are split into complete non-overlapping segments."
+              help="Largest segment, 32 to 256 tokens (words or parts of words)."
             >
               Max tokens
             </ParameterLabel>
@@ -370,7 +486,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.topic-size"
               as="legend"
-              help="The smallest and largest topic, counted in Topic Segments (not documents). A smaller Min finds more, smaller topics. Leave Max empty for Auto: Wordflow then splits a topic only when it holds more than half of all segments. A fixed Max must be larger than Min. Changing Topic size needs a new Run; Number of topics only merges the topics found."
+              help="Smallest and largest topic, counted in segments (not documents). Leave Max empty for Auto."
             >
               Topic size
             </ParameterLabel>
@@ -427,7 +543,7 @@ export function TopicModelingParameterPanel({
             <ParameterLabel
               helpKey="analysis.topic-modeling.random-seed"
               htmlFor="random-seed"
-              help="Random seed. The same seed and settings give the same topics."
+              help="Picks the samples. The same seed gives very similar topics, not always identical."
             >
               Seed
             </ParameterLabel>
@@ -444,6 +560,73 @@ export function TopicModelingParameterPanel({
               }}
             />
           </div>
+        </div>
+        <div className="mt-3 space-y-1">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="topic-cluster-sample"
+                checked={clusterSample}
+                aria-describedby={topicSamplingNote ? 'topic-cluster-sample-note' : undefined}
+                onCheckedChange={(checked) => {
+                  onClusterSampleChange(checked === true);
+                }}
+              />
+              <ParameterLabel
+                helpKey="analysis.topic-modeling.topic-sampling"
+                htmlFor="topic-cluster-sample"
+                help="Find topics from a sample of segments, then assign the rest. Faster on very large corpora; may miss small topics."
+              >
+                Topic sampling
+              </ParameterLabel>
+            </div>
+            {clusterSample ? (
+              <div className="flex items-center gap-2">
+                <Label htmlFor="topic-cluster-sample-size" className={LABEL_TEXT}>
+                  Segments to sample
+                </Label>
+                <Input
+                  id="topic-cluster-sample-size"
+                  type="text"
+                  inputMode="numeric"
+                  value={sampleSizeValueDraft}
+                  placeholder={suggestedSampleSize.toLocaleString()}
+                  className="h-8 w-28 px-2 text-right text-body tabular-nums"
+                  onChange={(event) => {
+                    setSampleSizeDraft({ source: clusterSampleSize, value: event.target.value });
+                  }}
+                  onBlur={(event) => {
+                    commitSampleSize(event.currentTarget.value);
+                  }}
+                  // Tab takes the grey suggestion so it can be edited (issue 156).
+                  onKeyDown={(event) => {
+                    acceptPlaceholderOnTab({
+                      event,
+                      value: sampleSizeValueDraft,
+                      setValue: (value) => {
+                        setSampleSizeDraft({ source: clusterSampleSize, value });
+                      },
+                    });
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
+          {topicSamplingNote ? (
+            <p
+              id="topic-cluster-sample-note"
+              className={`text-label-secondary ${topicSamplingNote.warning ? 'text-warning' : 'text-description'}`}
+            >
+              {topicSamplingNote.lines.join(' ')}{' '}
+              <button
+                type="button"
+                className="text-link underline underline-offset-2"
+                onClick={openTopicSamplingHelp}
+              >
+                Learn more
+              </button>
+            </p>
+          ) : null}
         </div>
         {/* The segment count depends on every setting in the row (Segments and
             Max tokens make the segments; Topic size groups them), so it spans

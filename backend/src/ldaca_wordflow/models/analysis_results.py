@@ -277,6 +277,8 @@ class TopicClustering(_StrictModel):
     adjustable: bool
     # Max topic size (segments) that produced the topics; None when no cap applied.
     max_topic_size: int | None = Field(default=None, ge=1)
+    # Topic sampling: segments clustered to find the topics; None when all were.
+    clustered_segments: int | None = Field(default=None, ge=1)
 
 
 class TopicInclusion(_StrictModel):

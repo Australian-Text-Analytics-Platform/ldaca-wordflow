@@ -40,6 +40,16 @@ def test_topic_modeling_request_rejects_minimum_cluster_size_below_two() -> None
         _request(min_cluster_size=1)
 
 
+def test_topic_modeling_request_defaults_topic_sampling_off() -> None:
+    assert _request().cluster_sample_size is None
+    assert _request(cluster_sample_size=50_000).cluster_sample_size == 50_000
+
+
+def test_topic_modeling_request_rejects_a_tiny_topic_sample() -> None:
+    with pytest.raises(ValidationError):
+        _request(cluster_sample_size=999)
+
+
 def test_topic_modeling_request_defaults_max_topic_size_to_auto() -> None:
     assert _request().max_cluster_size is None
 

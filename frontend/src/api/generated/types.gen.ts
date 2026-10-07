@@ -5086,6 +5086,10 @@ export type TopicClustering = {
      */
     cluster_count: number;
     /**
+     * Clustered Segments
+     */
+    clustered_segments?: number | null;
+    /**
      * Default Cluster Count
      */
     default_cluster_count: number;
@@ -5250,6 +5254,10 @@ export type TopicMeaningOverride = {
  * TopicModelingAnalysisRequest
  */
 export type TopicModelingAnalysisRequest = {
+    /**
+     * Cluster Sample Size
+     */
+    cluster_sample_size?: number | null;
     /**
      * Kind
      */

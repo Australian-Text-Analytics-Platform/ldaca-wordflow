@@ -65,6 +65,7 @@ def analysis_process(
             segmentation_method=invocation.segmentation_method,
             max_segment_tokens=invocation.max_segment_tokens,
             sample_fractions=invocation.sample_fractions,
+            cluster_sample_size=invocation.cluster_sample_size,
             progress_callback=progress,
         )
     if isinstance(invocation, SequentialInput):

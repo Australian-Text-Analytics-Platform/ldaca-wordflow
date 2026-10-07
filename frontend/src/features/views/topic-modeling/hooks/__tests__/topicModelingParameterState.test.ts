@@ -46,6 +46,33 @@ describe('topicModelingParameterReducer', () => {
     });
   });
 
+  it('keeps topic sampling off by default and restores a saved sample size', () => {
+    const initial = createTopicModelingParameterState();
+    expect(initial).toMatchObject({ clusterSample: false, clusterSampleSize: null });
+
+    const ticked = topicModelingParameterReducer(initial, {
+      type: 'setClusterSample',
+      value: true,
+    });
+    expect(
+      topicModelingParameterReducer(ticked, { type: 'setClusterSampleSize', value: 50_000 }),
+    ).toMatchObject({ clusterSample: true, clusterSampleSize: 50_000 });
+
+    const hydrate = (cluster_sample_size?: number | null) =>
+      topicModelingParameterReducer(initial, {
+        type: 'hydrateRequest',
+        request: {
+          node_ids: ['node-1'],
+          node_columns: { 'node-1': 'text' },
+          ...(cluster_sample_size === undefined ? {} : { cluster_sample_size }),
+        },
+      });
+    expect(hydrate(80_000)).toMatchObject({ clusterSample: true, clusterSampleSize: 80_000 });
+    // Runs without sampling, including those saved before it existed.
+    expect(hydrate(null)).toMatchObject({ clusterSample: false, clusterSampleSize: null });
+    expect(hydrate()).toMatchObject({ clusterSample: false, clusterSampleSize: null });
+  });
+
   it('defaults Max topic size to Auto and restores it from a saved request', () => {
     const initial = createTopicModelingParameterState();
     expect(initial.maxClusterSize).toBeNull();

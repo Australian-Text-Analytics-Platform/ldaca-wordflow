@@ -4,6 +4,7 @@ import {
   STOP_WORDS_ENABLED_SETTINGS,
 } from '@/features/views/common/utils/stopWordsToggle';
 import { useStopWordListSources } from '@/features/views/common/hooks/useStopWordListSources';
+import { useQueries } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import type { TopicModelingResponse, TopicModelingResultQuery, TopicModelingTopic } from '@/api';
@@ -40,6 +41,11 @@ import {
 import { useTopicModelingResultControls } from './hooks/useTopicModelingResultControls';
 import { useTopicColorGroups } from './hooks/useTopicColorGroups';
 import { useTopicModelingTaskFlow } from './hooks/useTopicModelingTaskFlow';
+import {
+  CHARACTERS_PER_TOKEN,
+  segmentEstimateQuery,
+  suggestedTopicSampleSize,
+} from './topicSampling';
 import {
   nextTopicProjectionAttempt,
   type TopicProjectionAttempt,
@@ -108,6 +114,10 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     setSegmentationMethod,
     maxSegmentTokens,
     setMaxSegmentTokens,
+    clusterSample,
+    setClusterSample,
+    clusterSampleSize,
+    setClusterSampleSize,
     nodeDocCounts,
     sampleFractionsForRequest,
     hasAnySampling,
@@ -228,6 +238,47 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     return !selection?.column;
   });
 
+  // Topic sampling (issue 330) is off by default; the estimate feeds its
+  // suggestion note and the grey Segments to sample suggestion.
+  const segmentEstimates = useQueries({
+    queries: panelNodeIds.map((nodeId) =>
+      segmentEstimateQuery(
+        currentWorkspaceId ?? '',
+        nodeId,
+        nodeColumnSelections.find((selection) => selection.nodeId === nodeId)?.column ?? '',
+        segmentationMethod,
+        maxSegmentTokens,
+      ),
+    ),
+  });
+  const segmentEstimateValues = segmentEstimates.map((estimate) => estimate.data);
+  const estimatedSegmentCount = segmentEstimateValues.every(
+    (value): value is { segments: number; characters: number } => value !== undefined,
+  )
+    ? Math.round(
+        segmentEstimateValues.reduce(
+          (sum, value, index) => sum + value.segments * (sampleFractionsForRequest[index] ?? 1),
+          0,
+        ),
+      )
+    : null;
+  // Embedding time follows the number of tokens, so the first-run note uses it.
+  const estimatedTokenCount =
+    estimatedSegmentCount === null
+      ? null
+      : Math.round(
+          segmentEstimateValues.reduce(
+            (sum, value, index) =>
+              sum + (value?.characters ?? 0) * (sampleFractionsForRequest[index] ?? 1),
+            0,
+          ) / CHARACTERS_PER_TOKEN,
+        );
+  const suggestedSampleSize = suggestedTopicSampleSize(estimatedSegmentCount);
+  // An empty Segments to sample field runs with the grey suggestion.
+  const clusterSampleSizeForRequest = clusterSample
+    ? (clusterSampleSize ?? suggestedSampleSize)
+    : null;
+
   const currentTopicParams = {
     node_ids: panelNodeIds,
     node_columns: Object.fromEntries(
@@ -241,6 +292,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     sample_fractions: sampleFractionsForRequest,
     segmentation_method: segmentationMethod,
     max_segment_tokens: maxSegmentTokens,
+    cluster_sample_size: clusterSampleSizeForRequest,
   };
   const serverTopicParams = (request: AnalysisRequestOfKind<'topic_modeling'>) => ({
     node_ids: request.node_ids,
@@ -257,6 +309,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         ? request.segmentation_method
         : 'automatic',
     max_segment_tokens: request.max_segment_tokens ?? DEFAULT_MAX_SEGMENT_TOKENS,
+    cluster_sample_size: request.cluster_sample_size ?? null,
   });
   const hasTopicChanges = !serverRequest
     ? true
@@ -371,6 +424,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       sampleFractions: hasAnySampling ? sampleFractionsForRequest : null,
       segmentationMethod,
       maxSegmentTokens,
+      clusterSampleSize: clusterSampleSizeForRequest,
     },
     actions: {
       runAnalysis,
@@ -471,9 +525,18 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
                   segmentCount: result.segment_count,
                   appliedMaxTopicSize: result.clustering.max_topic_size ?? null,
                   requestedMaxTopicSize: serverRequest?.max_cluster_size ?? null,
+                  clusteredSegments: result.clustering.clustered_segments ?? null,
+                  randomSeed: resultRandomSeed,
                 }
               : null
           }
+          clusterSample={clusterSample}
+          onClusterSampleChange={setClusterSample}
+          clusterSampleSize={clusterSampleSize}
+          onClusterSampleSizeChange={setClusterSampleSize}
+          suggestedSampleSize={suggestedSampleSize}
+          estimatedSegmentCount={estimatedSegmentCount}
+          estimatedTokenCount={estimatedTokenCount}
           randomSeed={randomSeed}
           randomSeedUserSet={randomSeedUserSet}
           onRandomSeedChange={setRandomSeedFromUser}

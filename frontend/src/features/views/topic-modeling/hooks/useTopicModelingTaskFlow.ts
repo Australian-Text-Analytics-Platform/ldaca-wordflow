@@ -17,6 +17,8 @@ interface TopicModelingState {
   sampleFractions?: (number | null)[] | null;
   segmentationMethod: TopicSegmentationMethod;
   maxSegmentTokens: number;
+  /** Segments to sample for Topic sampling, or `null` to cluster every segment. */
+  clusterSampleSize: number | null;
 }
 
 interface TopicModelingActions {
@@ -44,6 +46,7 @@ export function useTopicModelingTaskFlow({
     sampleFractions,
     segmentationMethod,
     maxSegmentTokens,
+    clusterSampleSize,
   },
   actions: { runAnalysis, setError, prepareBeforeRun },
 }: Params) {
@@ -70,6 +73,7 @@ export function useTopicModelingTaskFlow({
       random_seed: randomSeed,
       segmentation_method: segmentationMethod,
       max_segment_tokens: maxSegmentTokens,
+      cluster_sample_size: clusterSampleSize,
       ...(sampleFractions != null ? { sample_fractions: sampleFractions } : {}),
     };
 

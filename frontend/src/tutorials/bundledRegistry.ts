@@ -426,6 +426,11 @@ const tutorial = {
     anchor: 'help-topic-modeling-number-of-clusters',
     label: 'Number of topics',
   },
+  'analysis.topic-modeling.topic-sampling': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-topic-sampling',
+    label: 'Topic sampling',
+  },
   'analysis.topic-modeling.random-seed': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-random-seed',

@@ -164,6 +164,7 @@ def _prepare_topic_modeling(
         segmentation_method=request.segmentation_method.value,
         max_segment_tokens=request.max_segment_tokens,
         sample_fractions=request.sample_fractions,
+        cluster_sample_size=request.cluster_sample_size,
     )
 
 
