@@ -7,6 +7,7 @@
  * component owns only transient drag and inline-rename state.
  */
 
+import { StripScrollBar, type StripScrollMetrics } from './StripScrollBar';
 import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
 import {
   type KeyboardEvent,
@@ -153,9 +154,23 @@ export function EditorTabs({
   const [containerWidth, setContainerWidth] = useState(0);
   // Whether tabs are hidden past either end, for the edge indicators (issue 157).
   const [hiddenEdges, setHiddenEdges] = useState({ left: false, right: false });
+  // Scroll position for the strip's own scroll bar.
+  const [scrollMetrics, setScrollMetrics] = useState<StripScrollMetrics>({
+    scrollLeft: 0,
+    clientWidth: 0,
+    scrollWidth: 0,
+  });
   const updateHiddenEdges = () => {
     const element = scrollRef.current;
     if (!element) return;
+    const { scrollLeft, clientWidth, scrollWidth } = element;
+    setScrollMetrics((current) =>
+      current.scrollLeft === scrollLeft &&
+      current.clientWidth === clientWidth &&
+      current.scrollWidth === scrollWidth
+        ? current
+        : { scrollLeft, clientWidth, scrollWidth },
+    );
     const left = element.scrollLeft > 1;
     const right = element.scrollLeft + element.clientWidth < element.scrollWidth - 1;
     setHiddenEdges((current) =>
@@ -368,7 +383,7 @@ export function EditorTabs({
       <div className={cn('relative', className)}>
         <div
           ref={scrollRef}
-          className="relative overflow-x-auto overflow-y-hidden px-[8px] pt-[8px]"
+          className="editor-tabs-scroll relative overflow-x-auto overflow-y-hidden px-[8px] pt-[8px]"
           role="tablist"
           aria-label={ariaLabel}
           onScroll={updateHiddenEdges}
@@ -556,6 +571,7 @@ export function EditorTabs({
             ) : null}
           </div>
         </div>
+        <StripScrollBar scrollRef={scrollRef} metrics={scrollMetrics} />
         {hiddenEdges.left ? (
           <EdgeScrollButton
             side="left"

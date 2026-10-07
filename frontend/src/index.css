@@ -108,6 +108,16 @@
     background: var(--vscode-scrollbarSlider-activeBackground);
   }
 
+  /* Tab strips draw their own slim scroll bar (StripScrollBar), the same in
+     every browser, so the native one is hidden. */
+  .editor-tabs-scroll {
+    scrollbar-width: none;
+  }
+
+  .editor-tabs-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
   body {
     min-width: 320px;
     background: var(--vscode-editor-background);
