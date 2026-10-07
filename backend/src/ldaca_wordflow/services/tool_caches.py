@@ -14,6 +14,7 @@ few seconds before reporting that the cache is busy.
 from __future__ import annotations
 
 import os
+import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -53,6 +54,37 @@ def tool_cache_size(cache_root: Path, kind: ToolCacheKind) -> int:
     return total
 
 
+# The same exclusive lock polars-text takes (fs2: flock on POSIX, LockFileEx
+# on Windows). Chosen by sys.platform so type checkers on every platform see
+# only that platform's module.
+if sys.platform == "win32":
+    import msvcrt
+
+    def _try_lock(fd: int) -> bool:
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        except OSError:
+            return False
+        return True
+
+    def _unlock(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+
+else:
+    import fcntl
+
+    def _try_lock(fd: int) -> bool:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return False
+        return True
+
+    def _unlock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+
+
 @contextmanager
 def _exclusive_cache_lock(lock_path: Path, wait_seconds: float) -> Iterator[None]:
     """Hold the same exclusive lock polars-text takes, or raise when busy."""
@@ -61,40 +93,14 @@ def _exclusive_cache_lock(lock_path: Path, wait_seconds: float) -> Iterator[None
     fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o644)
     deadline = time.monotonic() + wait_seconds
     try:
-        if os.name == "nt":
-            import msvcrt
-
-            def try_lock() -> bool:
-                try:
-                    msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
-                except OSError:
-                    return False
-                return True
-
-            def unlock() -> None:
-                os.lseek(fd, 0, os.SEEK_SET)
-                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
-        else:
-            import fcntl
-
-            def try_lock() -> bool:
-                try:
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    return False
-                return True
-
-            def unlock() -> None:
-                fcntl.flock(fd, fcntl.LOCK_UN)
-
-        while not try_lock():
+        while not _try_lock(fd):
             if time.monotonic() >= deadline:
                 raise ToolCacheBusyError()
             time.sleep(0.1)
         try:
             yield
         finally:
-            unlock()
+            _unlock(fd)
     finally:
         os.close(fd)
 

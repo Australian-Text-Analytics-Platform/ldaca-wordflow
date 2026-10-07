@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -42,18 +42,19 @@ def test_clearing_one_cache_leaves_the_other(tmp_path: Path) -> None:
     assert clear_tool_cache(tmp_path, "topic_modeling") == 0
 
 
-@pytest.mark.skipif(os.name == "nt", reason="flock is POSIX only")
+@pytest.mark.skipif(sys.platform == "win32", reason="flock is POSIX only")
 def test_a_cache_locked_by_a_running_analysis_is_busy_and_kept(tmp_path: Path) -> None:
-    import fcntl
+    if sys.platform != "win32":
+        import fcntl
 
-    _write(tmp_path / "embeddings.duckdb", 1000)
-    # polars-text holds this lock while it reads or writes the cache.
-    with open(tmp_path / "embeddings.duckdb.lock", "w") as holder:
-        fcntl.flock(holder, fcntl.LOCK_EX)
-        with pytest.raises(ToolCacheBusyError):
-            clear_tool_cache(tmp_path, "topic_modeling", wait_seconds=0.2)
-    assert (tmp_path / "embeddings.duckdb").exists()
-    assert clear_tool_cache(tmp_path, "topic_modeling") == 1000
+        _write(tmp_path / "embeddings.duckdb", 1000)
+        # polars-text holds this lock while it reads or writes the cache.
+        with open(tmp_path / "embeddings.duckdb.lock", "w") as holder:
+            fcntl.flock(holder, fcntl.LOCK_EX)
+            with pytest.raises(ToolCacheBusyError):
+                clear_tool_cache(tmp_path, "topic_modeling", wait_seconds=0.2)
+        assert (tmp_path / "embeddings.duckdb").exists()
+        assert clear_tool_cache(tmp_path, "topic_modeling") == 1000
 
 
 def test_http_lists_and_clears_the_current_users_caches(tmp_path: Path) -> None:
