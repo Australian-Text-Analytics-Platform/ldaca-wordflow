@@ -116,10 +116,25 @@ class Settings(BaseSettings):
         ge=0,
         description="Physical free-space reserve kept below all admitted writes",
     )
+    # Execution lanes by cost (issue 328): each lane has its own slots, so
+    # quick Analyses never wait behind topic models or language-model calls.
     analysis_execution_capacity: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Maximum fast Analyses (word frequency, concordance, Trends, "
+            "Data Block creation) running at once"
+        ),
+    )
+    analysis_medium_capacity: int = Field(
         default=2,
         ge=1,
-        description="Maximum Analyses admitted to fresh child processes at once",
+        description="Maximum Annotation Analyses (language-model calls) running at once",
+    )
+    analysis_slow_capacity: int = Field(
+        default=2,
+        ge=1,
+        description="Maximum Topic Modelling and Quotation Analyses running at once",
     )
     user_file_import_capacity: int = Field(
         default=2,

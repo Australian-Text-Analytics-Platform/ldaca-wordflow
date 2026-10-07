@@ -15,6 +15,7 @@ from ldaca_wordflow.services.analysis_execution_types import (
 from ldaca_wordflow.services.analysis_scheduler import (
     AnalysisScheduler,
     ScheduledAnalysis,
+    analysis_lane,
 )
 
 
@@ -28,7 +29,21 @@ def _analysis_id(label: str) -> uuid.UUID:
 def _label(value: uuid.UUID) -> str:
     return next(
         label
-        for label in ("before", "after", "one", "two", "a1", "a2", "b1", "running", "queued")
+        for label in (
+            "before",
+            "after",
+            "one",
+            "two",
+            "a1",
+            "a2",
+            "b1",
+            "running",
+            "queued",
+            "topic1",
+            "topic2",
+            "topic3",
+            "words",
+        )
         if _analysis_id(label) == value
     )
 
@@ -230,4 +245,64 @@ async def test_scheduler_reports_queued_and_running_work_removal() -> None:
         release.set()
         await scheduler.wait_idle()
         assert removed == ["queued", "running"]
+        await scheduler.stop_dispatch()
+
+
+def test_analysis_kinds_map_to_lanes() -> None:
+    """Issue 328: topic models and quotation are slow, Annotation medium."""
+
+    assert analysis_lane("topic_modeling") == "slow"
+    assert analysis_lane("topic_modeling_data_block_creation") == "slow"
+    assert analysis_lane("quotation_run_all") == "slow"
+    assert analysis_lane("annotation_run_all") == "medium"
+    assert analysis_lane("token_frequency") == "fast"
+    assert analysis_lane("concordance_run_all") == "fast"
+    assert analysis_lane("sequential") == "fast"
+
+
+@pytest.mark.anyio
+async def test_a_fast_analysis_never_waits_behind_full_slow_lane() -> None:
+    """Issue 328: two topic models fill the slow lane; a third queues, but a
+    word frequency starts straight away in the fast lane."""
+
+    started: list[str] = []
+    release = anyio.Event()
+
+    async def runner(item: ScheduledAnalysis) -> None:
+        started.append(_label(item.key.analysis_id))
+        if item.lane == "slow":
+            await release.wait()
+
+    scheduler = AnalysisScheduler(
+        capacity={"fast": 4, "medium": 2, "slow": 2},
+        runner=runner,
+        cancel_running=_ignore_key,
+        work_removed=_ignore_key,
+    )
+    now = datetime.now(UTC)
+    async with anyio.create_task_group() as task_group:
+        scheduler.start(task_group)
+        for offset, label in enumerate(("topic1", "topic2", "topic3")):
+            await scheduler.enqueue(
+                _key(f"user-{label}", label),
+                created_at=now + timedelta(seconds=offset),
+                credential=None,
+                lane="slow",
+            )
+        await scheduler.enqueue(
+            _key("user-words", "words"),
+            created_at=now + timedelta(seconds=5),
+            credential=None,
+            lane="fast",
+        )
+        with anyio.fail_after(1):
+            while "words" not in started:
+                await anyio.sleep(0)
+        assert sorted(started) == ["topic1", "topic2", "words"]
+        assert len(await scheduler.active_keys()) == 2
+        release.set()
+        with anyio.fail_after(1):
+            while "topic3" not in started:
+                await anyio.sleep(0)
+        await scheduler.wait_idle()
         await scheduler.stop_dispatch()

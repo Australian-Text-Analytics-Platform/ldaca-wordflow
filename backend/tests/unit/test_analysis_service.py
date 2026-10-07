@@ -73,6 +73,7 @@ class _ExecutionControl:
         self.enqueued: list[tuple[AnalysisExecutionKey, datetime, str | None]] = []
         self.cancelled: list[AnalysisExecutionKey] = []
         self.enqueue_failure: Exception | None = None
+        self.lanes: list[str] = []
 
     async def enqueue(
         self,
@@ -80,10 +81,12 @@ class _ExecutionControl:
         *,
         created_at: datetime,
         credential: str | None,
+        lane: str = "fast",
     ) -> None:
         if self.enqueue_failure is not None:
             raise self.enqueue_failure
         self.enqueued.append((key, created_at, credential))
+        self.lanes.append(lane)
 
     async def cancel(self, key: AnalysisExecutionKey) -> None:
         self.cancelled.append(key)

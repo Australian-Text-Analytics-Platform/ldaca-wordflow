@@ -53,10 +53,17 @@ completion return to the application event loop, where `AnalysisService`
 strictly validates them and commits the kind-specific Result through
 `WorkspaceService`. Only that terminal commit writes Progress `1.0`.
 
-The positive finite `analysis_execution_capacity` bounds simultaneous Analysis
-processes. Saturation queues rather than rejects. The backend does not inject a
-native-thread limit into Polars or model libraries and does not provide thread,
-pool, retry, or alternate-executor fallbacks.
+Analyses run in three lanes by cost (issue 328), each its own fair queue with
+its own slots: **slow** (`analysis_slow_capacity`, default 2) for Topic
+Modelling, adding topic results to the Project, and Quotation; **medium**
+(`analysis_medium_capacity`, default 2) for Annotation's language-model calls;
+and **fast** (`analysis_execution_capacity`, default 4) for everything else. A
+quick word frequency therefore never waits behind topic models. The kind to
+lane map is `analysis_lane` in `services/analysis_scheduler.py`. Saturation of
+a lane queues rather than rejects. The backend does not inject a native-thread
+limit into Polars or model libraries and does not provide thread, pool, retry,
+or alternate-executor fallbacks; a server can cap each topic model's embedding
+threads with polars-text's `POLARS_TEXT_EMBEDDING_THREADS` (0.6.3 and later).
 
 ## User File Import Execution
 

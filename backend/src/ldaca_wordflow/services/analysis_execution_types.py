@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import Literal, Protocol
 import uuid
 
 from ..workers.invocations import AnalysisWorkerInput
@@ -33,6 +33,10 @@ class AnalysisInvocation:
     max_storage_files: int
 
 
+# Execution lanes by cost (issue 328); see ``analysis_scheduler.analysis_lane``.
+AnalysisLane = Literal["slow", "medium", "fast"]
+
+
 class AnalysisExecutionControl(Protocol):
     """Narrow process-local scheduler control used by Analysis commands."""
 
@@ -42,12 +46,14 @@ class AnalysisExecutionControl(Protocol):
         *,
         created_at: datetime,
         credential: str | None,
+        lane: AnalysisLane = "fast",
     ) -> None: ...
 
     async def cancel(self, key: AnalysisExecutionKey) -> None: ...
 
 
 __all__ = [
+    "AnalysisLane",
     "AnalysisExecutionControl",
     "AnalysisExecutionKey",
     "AnalysisInvocation",

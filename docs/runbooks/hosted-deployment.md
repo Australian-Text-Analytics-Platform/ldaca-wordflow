@@ -45,6 +45,25 @@ SESSION_COOKIE_SECURE=true
 The secret file supplies only `CILOGON_CLIENT_SECRET`. See
 [CILogon secrets](cilogon-secrets.md).
 
+### Analysis capacity
+
+Analyses run in three lanes, each with its own slots (issue 328), so quick
+tools never wait behind topic models:
+
+```dotenv
+ANALYSIS_SLOW_CAPACITY=2       # Topic Modelling, adding topic results, Quotation
+ANALYSIS_MEDIUM_CAPACITY=2     # Annotation (language-model calls)
+ANALYSIS_EXECUTION_CAPACITY=4  # everything else
+POLARS_TEXT_EMBEDDING_THREADS=8
+```
+
+The values shown are the defaults, except `POLARS_TEXT_EMBEDDING_THREADS`,
+which is unset by default (each topic model's embedding uses every core). On a
+shared server, set it so two slow-lane topic models leave cores for everyone
+else; with 32 cores, 8 threads each is a reasonable start (polars-text 0.6.3
+and later honour the number). A full lane queues new work rather than refusing
+it.
+
 ## Provider Credentials
 
 Do not place users' Annotation or Data Portal credentials in the service

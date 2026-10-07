@@ -955,7 +955,11 @@ async def runtime_context(settings: Settings) -> AsyncIterator[Runtime]:
             cache_root=lambda user_id: user_cache_root(settings, user_id),
         )
         analysis_execution = AnalysisExecutionRuntime(
-            capacity=settings.analysis_execution_capacity,
+            capacity={
+                "fast": settings.analysis_execution_capacity,
+                "medium": settings.analysis_medium_capacity,
+                "slow": settings.analysis_slow_capacity,
+            },
             preparer=analysis_preparer,
             limiter=io_limiter,
             workspaces=workspace_service,

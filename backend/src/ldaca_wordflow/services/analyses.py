@@ -68,8 +68,10 @@ from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
     AnalysisInvocation,
+    AnalysisLane,
     AnalysisSchedulingStopped,
 )
+from .analysis_scheduler import analysis_lane
 from .workspace import WorkspaceLease, WorkspaceService
 from .provider_credentials import ProviderCredentialStore
 
@@ -444,6 +446,7 @@ class AnalysisService:
                     self._key(user_id, workspace_id, scheduled.id),
                     created_at=scheduled.created_at,
                     credential=credential,
+                    lane=analysis_lane(scheduled.request.kind),
                 )
         except BaseException:
             if is_concordance_group:
@@ -462,6 +465,7 @@ class AnalysisService:
         *,
         created_at: datetime,
         credential: str | None,
+        lane: AnalysisLane = "fast",
     ) -> None:
         """Schedule one durable creation or compensate the complete mutation."""
 
@@ -470,6 +474,7 @@ class AnalysisService:
                 key,
                 created_at=created_at,
                 credential=credential,
+                lane=lane,
             )
         except AnalysisSchedulingStopped:
             with anyio.CancelScope(shield=True):

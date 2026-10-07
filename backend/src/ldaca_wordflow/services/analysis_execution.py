@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import shutil
 import uuid
+from collections.abc import Mapping
 from datetime import datetime
 from functools import partial
 from typing import cast
@@ -21,6 +22,7 @@ from .analyses import AnalysisService
 from .analysis_execution_types import (
     AnalysisExecutionControl,
     AnalysisExecutionKey,
+    AnalysisLane,
 )
 from .analysis_preparation import AnalysisExecutionPreparer
 from .analysis_scheduler import AnalysisScheduler, ScheduledAnalysis
@@ -42,7 +44,7 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
     def __init__(
         self,
         *,
-        capacity: int,
+        capacity: int | Mapping[AnalysisLane, int],
         preparer: AnalysisExecutionPreparer,
         limiter: anyio.CapacityLimiter,
         workspaces: WorkspaceService,
@@ -77,11 +79,13 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
         *,
         created_at: datetime,
         credential: str | None,
+        lane: AnalysisLane = "fast",
     ) -> None:
         await self._scheduler.enqueue(
             key,
             created_at=created_at,
             credential=credential,
+            lane=lane,
         )
 
     async def cancel(self, key: AnalysisExecutionKey) -> None:
