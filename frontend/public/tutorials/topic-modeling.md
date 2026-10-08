@@ -411,11 +411,10 @@ they leave out the shown topic, a note says so, with **Clear filters**.
   random) segment of each document.
 - With **Colour by** on, you can limit the examples to one of its values. For
   a two-corpus run, you can limit them to one Data Block.
-- **Label** chooses the column that names each example, such as a speaker or a
-  date; a row without a value says so, for example *(no speaker)*. By default
-  each example is named by its Data Block, in the Data Block's colour, and its
-  row. For a two-corpus run, the menu lists only the columns both Data Blocks
-  have.
+- Each example is named by its Data Block, in the Data Block's colour, and its
+  row. **Label** replaces the row with another column, such as a speaker or a
+  date; a row without a value says so, for example *(no speaker)*. For a
+  two-corpus run, the menu lists only the columns both Data Blocks have.
 
 Each example shows about three lines (**Show more** shows the whole segment),
 the topic's words in the bubble's colour, and a badge such as

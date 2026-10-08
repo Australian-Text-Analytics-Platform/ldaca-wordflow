@@ -136,9 +136,10 @@ describe('TopicExamplesPane (#353)', () => {
     await user.click(screen.getByRole('combobox', { name: 'Label each example by' }));
     await user.click(screen.getByRole('option', { name: 'Label: speaker' }));
     const cards = screen.getAllByRole('listitem');
-    expect(within(cards[0]!).getByText('Speaker 0')).toBeInTheDocument();
-    expect(within(cards[1]!).getByText('(no speaker)')).toBeInTheDocument();
-    expect(cards[1]).not.toHaveTextContent('Hansard');
+    // The Data Block's name stays; the label replaces the row.
+    expect(cards[0]).toHaveTextContent('Hansard, Speaker 0');
+    expect(cards[1]).toHaveTextContent('Hansard, (no speaker)');
+    expect(cards[1]).not.toHaveTextContent('row 2');
   });
 
   it('asks for the next page and switches to random order', async () => {

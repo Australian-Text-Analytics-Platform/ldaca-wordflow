@@ -223,22 +223,23 @@ export function TopicExamplesPane({
   const resetPage = () => {
     setPage(1);
   };
+  // Each card names its Data Block, in the Data Block's colour as in the
+  // chart, then the row or the chosen Label column's value; an empty value
+  // says so (Chao, 2026-10-08).
   const itemLabel = (item: TopicSegmentItem): ReactNode => {
-    if (labelColumn !== NO_LABEL) {
-      // An empty value says so, rather than falling back to the Data Block
-      // and row, which looked as if the Label choice did nothing (Chao, 2026-10-08).
-      const value = item.metadata[labelColumn];
-      if (value) return value;
-      return <span className="italic">(no {labelColumn})</span>;
-    }
     const blockName = nodeNames[item.corpus_index] ?? 'Data Block';
-    // The Data Block's name in its colour, as in the chart (Chao, 2026-10-08).
+    let detail: ReactNode = `row ${String(item.row_index + 1)}`;
+    if (labelColumn !== NO_LABEL) {
+      const value = item.metadata[labelColumn];
+      if (value) detail = value;
+      else detail = <span className="italic">(no {labelColumn})</span>;
+    }
     return (
       <>
         <span className="font-medium" style={{ color: corpusColors[item.corpus_index] }}>
           {blockName}
         </span>
-        , row {item.row_index + 1}
+        , {detail}
       </>
     );
   };
@@ -357,7 +358,7 @@ export function TopicExamplesPane({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={NO_LABEL}>Label: Data Block and row</SelectItem>
+              <SelectItem value={NO_LABEL}>Label: row</SelectItem>
               {data.metadata_columns.map((column) => (
                 <SelectItem key={column} value={column}>
                   Label: {column}
