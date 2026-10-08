@@ -29,12 +29,19 @@ vi.mock('@/stores/nodeInputRequestsStore', () => ({
     selector: (state: { requestAdd: typeof requestNodeInputAddMock }) => unknown,
   ) => selector({ requestAdd: requestNodeInputAddMock }),
 }));
-vi.mock('../../services/graphLayout', () => ({
-  computeDagreLayout: (nodes: { id: string }[]) =>
-    new Map(
-      nodes.map((node, index) => [node.id, { x: 0, y: (nodes.length - index - 1) * 100 + 50 }]),
-    ),
-}));
+vi.mock('../../services/graphLayout', () => {
+  const positions = (nodes: { id: string }[], x: number) =>
+    new Map(nodes.map((node, index) => [node.id, { x, y: (nodes.length - index - 1) * 100 + 50 }]));
+  const sizes = (nodes: { id: string }[]) =>
+    new Map(nodes.map((node) => [node.id, { width: 320, height: 140 }]));
+  return {
+    // The compact layout is marked by x = 7 so tests can tell the two apart.
+    buildGraphLayouts: (nodes: { id: string }[]) => ({
+      full: { positions: positions(nodes, 0), sizes: sizes(nodes) },
+      compact: { positions: positions(nodes, 7), sizes: sizes(nodes) },
+    }),
+  };
+});
 
 import { useWorkspaceGraph } from '../useWorkspaceGraph';
 
@@ -220,6 +227,26 @@ describe('useWorkspaceGraph', () => {
     expect(refreshedNode.color).toBe('#0000ff');
     expect(refreshedNode.shape).toEqual([20, 4]);
     expect(result.current.edges[0]?.label).toBe('second label');
+  });
+
+  it('switches every Data Block to the compact layout and back (issue 345)', () => {
+    useWorkspaceDataMock.mockReturnValue({
+      currentWorkspaceId: 'workspace-a',
+      workspaceGraph: makeIndependentGraph(['node-1', 'node-2']),
+    });
+    const { result } = renderHook(() => useWorkspaceGraph());
+    expect(result.current.nodes.map((node) => node.position.x)).toEqual([0, 0]);
+
+    act(() => {
+      result.current.setCompactLayout(true);
+    });
+    expect(result.current.compactLayout).toBe(true);
+    expect(result.current.nodes.map((node) => node.position.x)).toEqual([7, 7]);
+
+    act(() => {
+      result.current.setCompactLayout(false);
+    });
+    expect(result.current.nodes.map((node) => node.position.x)).toEqual([0, 0]);
   });
 
   it('re-applies the complete layout when a Data Block is added', () => {

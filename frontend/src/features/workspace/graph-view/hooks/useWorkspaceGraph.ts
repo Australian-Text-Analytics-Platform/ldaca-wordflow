@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   type Connection,
   ConnectionLineType,
@@ -6,7 +6,6 @@ import {
   type Node,
   type NodeChange,
   type NodeMouseHandler,
-  type ReactFlowInstance,
   useEdgesState,
   useNodesState,
 } from '@xyflow/react';
@@ -23,7 +22,7 @@ import {
   useNodeInputRequestsStore,
 } from '@/stores/nodeInputRequestsStore';
 import { useUIStore } from '@/stores';
-import { computeDagreLayout } from '../services/graphLayout';
+import { buildGraphLayouts, type GraphLayout } from '../services/graphLayout';
 import { projectWorkspaceGraphNodeCard, type WorkspaceGraphNodeCard } from '../graphNodeModel';
 
 const EDGE_STROKE = 'var(--vscode-charts-lines)';
@@ -53,7 +52,13 @@ export interface WorkspaceGraphViewModel {
     params: { nodeId: string | null; handleId: string | null; handleType: string | null },
   ) => void;
   handleConnectEnd: (event: MouseEvent | TouchEvent) => void;
-  handleInit: (instance: ReactFlowInstance) => void;
+  /** Full and compact layouts of the current graph, for Fit view (issue 345). */
+  layouts: { full: GraphLayout; compact: GraphLayout } | null;
+  /** Whether nodes are placed with the compact layout. */
+  compactLayout: boolean;
+  setCompactLayout: (compact: boolean) => void;
+  /** Changes when another Project is shown, so its first view can be fitted. */
+  layoutKey: string | null;
   clearSelection: (() => void) | undefined;
   connectionLineType: ConnectionLineType;
   defaultEdgeOptions: {
@@ -252,22 +257,32 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     if (currentWorkspaceId) reconcileNodeIds(currentWorkspaceId, currentGraphNodeIds);
   }, [currentGraphNodeIds, currentWorkspaceId, reconcileNodeIds]);
 
+  // Full cards need wide gaps; compact cards (zoomed out) are packed by their
+  // own size, so the zoomed-out graph stays compact (issue 345).
+  const [compactLayout, setCompactLayout] = useState(false);
+  const layouts = useMemo(
+    () =>
+      workspaceGraph?.nodes
+        ? buildGraphLayouts(
+            workspaceGraph.nodes.map((n: GraphNode) => ({ id: n.id, name: n.name })),
+            workspaceGraph.edges.map((edge: GraphEdge) => ({
+              source: edge.source,
+              target: edge.target,
+            })),
+          )
+        : null,
+    [workspaceGraph],
+  );
+
   const initialNodes = useMemo(() => {
     if (!workspaceGraph?.nodes) {
       return [];
     }
 
-    const positions = computeDagreLayout(
-      workspaceGraph.nodes.map((n: GraphNode) => ({ id: n.id })),
-      workspaceGraph.edges.map((edge: GraphEdge) => ({
-        source: edge.source,
-        target: edge.target,
-      })),
-      { rankdir: 'LR', ranksep: 140, nodesep: 100 },
-    );
+    const positions = (compactLayout ? layouts?.compact : layouts?.full)?.positions;
 
     return workspaceGraph.nodes.map((node: GraphNode, index: number) => {
-      const position = positions.get(node.id) ?? { x: index * 320, y: 50 };
+      const position = positions?.get(node.id) ?? { x: index * 320, y: 50 };
 
       return {
         id: node.id,
@@ -291,6 +306,8 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     });
   }, [
     workspaceGraph,
+    layouts,
+    compactLayout,
     selectedNodeIds,
     freshIds,
     handleDelete,
@@ -343,12 +360,15 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
   const edgesPresentationChanged = newEdgesSignature !== currentEdgesSignature;
   const topologyChanged = newTopologySignature !== currentTopologySignature;
   const renderedWorkspaceIdRef = useRef(currentWorkspaceId);
+  const renderedCompactLayoutRef = useRef(compactLayout);
 
   const updateRafRef = useRef<number | null>(null);
   useEffect(() => {
     const workspaceChanged = renderedWorkspaceIdRef.current !== currentWorkspaceId;
+    const layoutChanged = renderedCompactLayoutRef.current !== compactLayout;
     if (
       !workspaceChanged &&
+      !layoutChanged &&
       !topologyChanged &&
       !nodesPresentationChanged &&
       !edgesPresentationChanged
@@ -361,17 +381,18 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     }
 
     updateRafRef.current = requestAnimationFrame(() => {
-      if (workspaceChanged || topologyChanged) {
-        // Workspace identity and graph topology define the canonical Dagre
-        // layout. Temporary React Flow drag positions never cross either
-        // boundary.
+      if (workspaceChanged || topologyChanged || layoutChanged) {
+        // Workspace identity, graph topology and the full/compact layout
+        // define the canonical Dagre positions. Temporary React Flow drag
+        // positions never cross any of these boundaries.
         setNodes(initialNodes);
         setEdges(initialEdges);
         renderedWorkspaceIdRef.current = currentWorkspaceId;
+        renderedCompactLayoutRef.current = compactLayout;
       } else if (nodesPresentationChanged) {
         setNodes((existingNodes) => reconcileProjectedNodes(existingNodes, initialNodes));
       }
-      if (!workspaceChanged && !topologyChanged && edgesPresentationChanged) {
+      if (!workspaceChanged && !topologyChanged && !layoutChanged && edgesPresentationChanged) {
         setEdges(initialEdges);
       }
     });
@@ -382,6 +403,7 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
       }
     };
   }, [
+    compactLayout,
     currentEdgesSignature,
     currentNodesSignature,
     currentWorkspaceId,
@@ -513,15 +535,6 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     // No-op: retained for React Flow prop parity; graph edges are backend-derived.
   }, []);
 
-  /** Fits the graph into view after React Flow initializes. */
-  const handleInit = useCallback((instance: ReactFlowInstance) => {
-    try {
-      void instance.fitView({ padding: 0.2, includeHiddenNodes: false });
-    } catch {
-      // React Flow can reject fitView during teardown; layout remains usable.
-    }
-  }, []);
-
   const selectedCount = selectedNodeIds.length;
   const totalNodes = workspaceGraph?.nodes.length ?? 0;
 
@@ -544,7 +557,10 @@ export const useWorkspaceGraph = (): WorkspaceGraphViewModel => {
     handleConnect,
     handleConnectStart,
     handleConnectEnd,
-    handleInit,
+    layouts,
+    compactLayout,
+    setCompactLayout,
+    layoutKey: currentWorkspaceId ?? null,
     clearSelection,
     connectionLineType: ConnectionLineType.Bezier,
     defaultEdgeOptions: {

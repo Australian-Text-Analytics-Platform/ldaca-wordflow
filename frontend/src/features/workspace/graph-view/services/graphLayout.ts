@@ -4,6 +4,13 @@ export interface GraphLayoutOptions {
   rankdir?: 'LR' | 'TB';
   ranksep?: number;
   nodesep?: number;
+  /** Box dagre reserves for each node; defaults to the full card's slot. */
+  nodeSize?: (id: string) => GraphNodeSize;
+}
+
+export interface GraphNodeSize {
+  width: number;
+  height: number;
 }
 
 interface GraphNode {
@@ -17,6 +24,7 @@ interface GraphEdge {
 
 const DEFAULT_NODE_WIDTH = 320;
 const DEFAULT_NODE_HEIGHT = 140;
+const FULL_NODE_SIZE: GraphNodeSize = { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT };
 
 // Synthetic node id only used inside this function. We add it to dagre's
 // local graph as the parent of every real root so dagre's ranker treats
@@ -71,8 +79,10 @@ export const computeDagreLayout = (
     rootIds.forEach((rootId) => g.setEdge(SUPER_SOURCE_ID, rootId));
   }
 
+  const sizeOf = options.nodeSize ?? (() => FULL_NODE_SIZE);
   nodes.forEach((node) => {
-    g.setNode(node.id, { width: DEFAULT_NODE_WIDTH, height: DEFAULT_NODE_HEIGHT });
+    // Dagre writes x/y into the label it is given, so each node needs its own.
+    g.setNode(node.id, { ...sizeOf(node.id) });
   });
 
   edges.forEach((edge) => g.setEdge(edge.source, edge.target));
@@ -83,9 +93,10 @@ export const computeDagreLayout = (
   nodes.forEach((node, index) => {
     const layoutNode = g.node(node.id) as { x: number; y: number } | undefined;
     if (layoutNode) {
+      const size = sizeOf(node.id);
       positions.set(node.id, {
-        x: layoutNode.x - DEFAULT_NODE_WIDTH / 2,
-        y: layoutNode.y - DEFAULT_NODE_HEIGHT / 2,
+        x: layoutNode.x - size.width / 2,
+        y: layoutNode.y - size.height / 2,
       });
     } else {
       positions.set(node.id, {
@@ -96,4 +107,73 @@ export const computeDagreLayout = (
   });
 
   return positions;
+};
+
+/** Below this zoom each Data Block shows as a compact name-only card. */
+export const COMPACT_NODE_ZOOM_THRESHOLD = 0.6;
+
+// Compact card geometry (CustomNode): 220-360px wide, 12px padding, the name
+// in the heading-1 size (about 26px, leading-snug) on up to three lines.
+const COMPACT_MIN_WIDTH = 220;
+const COMPACT_MAX_WIDTH = 360;
+const COMPACT_PADDING = 12;
+const COMPACT_FONT_PX = 26;
+const COMPACT_LINE_PX = COMPACT_FONT_PX * 1.375;
+const COMPACT_MAX_LINES = 3;
+/** Average glyph width in em, slightly generous so estimates rarely undershoot. */
+const GLYPH_EM = 0.58;
+
+/**
+ * Estimates the compact card's box from the Data Block name, so the compact
+ * layout can pack cards by their real size (issue 345).
+ * Used by: buildGraphLayouts.
+ */
+export const compactNodeSize = (name: string): GraphNodeSize => {
+  const textWidth = Array.from(name).length * GLYPH_EM * COMPACT_FONT_PX;
+  const contentMax = COMPACT_MAX_WIDTH - 2 * COMPACT_PADDING;
+  const content = Math.min(
+    contentMax,
+    Math.max(COMPACT_MIN_WIDTH - 2 * COMPACT_PADDING, textWidth),
+  );
+  const lines = Math.min(COMPACT_MAX_LINES, Math.max(1, Math.ceil(textWidth / content)));
+  return {
+    width: Math.ceil(content + 2 * COMPACT_PADDING),
+    height: Math.ceil(lines * COMPACT_LINE_PX + 2 * COMPACT_PADDING),
+  };
+};
+
+export interface GraphLayout {
+  positions: Map<string, { x: number; y: number }>;
+  sizes: Map<string, GraphNodeSize>;
+}
+
+/**
+ * Lays the graph out twice: with full cards (wide gaps for the metadata
+ * cards) and with compact cards (each card's own size, narrow gaps), so the
+ * graph stays compact when it is zoomed out far enough to show compact cards
+ * (issue 345).
+ * Used by: useWorkspaceGraph for node positions and the graph controls for
+ * Fit view and for keeping the view steady when the layout switches.
+ */
+export const buildGraphLayouts = (
+  nodes: { id: string; name: string }[],
+  edges: GraphEdge[],
+): { full: GraphLayout; compact: GraphLayout } => {
+  const fullSizes = new Map(nodes.map((node) => [node.id, FULL_NODE_SIZE]));
+  const compactSizes = new Map(nodes.map((node) => [node.id, compactNodeSize(node.name)]));
+  return {
+    full: {
+      positions: computeDagreLayout(nodes, edges, { rankdir: 'LR', ranksep: 140, nodesep: 100 }),
+      sizes: fullSizes,
+    },
+    compact: {
+      positions: computeDagreLayout(nodes, edges, {
+        rankdir: 'LR',
+        ranksep: 64,
+        nodesep: 20,
+        nodeSize: (id) => compactSizes.get(id) ?? FULL_NODE_SIZE,
+      }),
+      sizes: compactSizes,
+    },
+  };
 };

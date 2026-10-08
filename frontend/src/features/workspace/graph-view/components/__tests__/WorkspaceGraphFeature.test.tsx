@@ -2,6 +2,8 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { buildGraphLayouts } from '../../services/graphLayout';
+import { fitGraphViewport } from '../../services/graphViewport';
 import { WorkspaceGraphFeature } from '../WorkspaceGraphFeature';
 
 /** Captures React Flow props so graph configuration can be asserted. */
@@ -10,12 +12,23 @@ const deleteNode = vi.fn().mockResolvedValue(undefined);
 const clearSelection = vi.fn();
 const zoomIn = vi.fn().mockResolvedValue(undefined);
 const zoomOut = vi.fn().mockResolvedValue(undefined);
-const fitView = vi.fn().mockResolvedValue(undefined);
+const setViewport = vi.fn().mockResolvedValue(true);
+const getViewport = vi.fn(() => ({ x: 0, y: 0, zoom: 1 }));
 const flowStoreState = {
   transform: [0, 0, 1] as [number, number, number],
   minZoom: 0.05,
   maxZoom: 4,
+  width: 800,
+  height: 600,
+  domNode: null,
 };
+const layouts = buildGraphLayouts(
+  [
+    { id: 'a', name: 'Source' },
+    { id: 'b', name: 'Filtered' },
+  ],
+  [{ source: 'a', target: 'b' }],
+);
 
 const graphState = {
   nodes: [],
@@ -36,7 +49,10 @@ const graphState = {
   handleConnect: vi.fn(),
   handleConnectStart: vi.fn(),
   handleConnectEnd: vi.fn(),
-  handleInit: vi.fn(),
+  layouts,
+  compactLayout: false,
+  setCompactLayout: vi.fn(),
+  layoutKey: 'project-1',
   clearSelection,
   connectionLineType: 'bezier',
   defaultEdgeOptions: {
@@ -100,7 +116,7 @@ vi.mock('@xyflow/react', () => ({
     reactFlowMock(props);
     return <div data-testid="react-flow">{children}</div>;
   },
-  useReactFlow: () => ({ zoomIn, zoomOut, fitView }),
+  useReactFlow: () => ({ zoomIn, zoomOut, setViewport, getViewport }),
   useStore: (selector: (state: typeof flowStoreState) => unknown) => selector(flowStoreState),
 }));
 
@@ -140,7 +156,7 @@ describe('WorkspaceGraphFeature', () => {
     clearSelection.mockClear();
     zoomIn.mockClear();
     zoomOut.mockClear();
-    fitView.mockClear();
+    setViewport.mockClear();
     selectionState.selectedNodeIds = [];
     graphState.selectedCount = 0;
     graphState.totalNodes = 2;
@@ -213,7 +229,10 @@ describe('WorkspaceGraphFeature', () => {
 
     expect(zoomIn).toHaveBeenCalledOnce();
     expect(zoomOut).toHaveBeenCalledOnce();
-    expect(fitView).toHaveBeenCalledWith({ padding: 0.2, includeHiddenNodes: false });
+    // Fit view places the graph with the shared fit rule (issue 345).
+    expect(setViewport).toHaveBeenLastCalledWith(
+      fitGraphViewport(layouts, { width: 800, height: 600 })?.viewport,
+    );
   });
 
   it('pans by default and switches dragging to a selection box (issue 194)', () => {

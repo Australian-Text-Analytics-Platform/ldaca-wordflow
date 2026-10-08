@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import '@xyflow/react/dist/style.css';
 
 import {
@@ -43,7 +43,9 @@ import { useWorkspaceSelection } from '@/features/workspace/common/hooks/useWork
 import { CHART_ZOOM_KEY } from '@/lib/chartZoom';
 import { cn } from '@/lib/utils';
 
-import { useWorkspaceGraph } from '../hooks/useWorkspaceGraph';
+import { useWorkspaceGraph, type WorkspaceGraphViewModel } from '../hooks/useWorkspaceGraph';
+import { COMPACT_NODE_ZOOM_THRESHOLD } from '../services/graphLayout';
+import { anchoredGraphViewport, fitGraphViewport } from '../services/graphViewport';
 
 export interface WorkspaceGraphFeatureProps {
   fallback?: ReactNode;
@@ -255,6 +257,10 @@ function WorkspaceGraphDeleteControl() {
 }
 
 interface WorkspaceGraphControlsProps {
+  layouts: WorkspaceGraphViewModel['layouts'];
+  compactLayout: boolean;
+  onCompactLayoutChange: (compact: boolean) => void;
+  layoutKey: string | null;
   selected: number;
   total: number;
   canClearSelection: boolean;
@@ -267,7 +273,78 @@ interface WorkspaceGraphControlsProps {
  * Upper-left graph rail containing viewport, drag-mode, selection, and destructive actions.
  * Flow: call React Flow's viewport APIs through explicit expandable controls so every icon and label shares one layout.
  */
+/**
+ * Keeps the graph readable when zoomed out (issue 345): below the compact-card
+ * zoom the nodes use the compact layout, with the Data Block nearest the
+ * centre held in place across the switch, and Fit view (also the first view
+ * of a Project) picks the layout and never zooms out past FIT_MIN_ZOOM.
+ */
+function useGraphViewport({
+  layouts,
+  compactLayout,
+  onCompactLayoutChange,
+  layoutKey,
+}: Pick<
+  WorkspaceGraphControlsProps,
+  'layouts' | 'compactLayout' | 'onCompactLayoutChange' | 'layoutKey'
+>) {
+  const { setViewport, getViewport } = useReactFlow();
+  const zoom = useStore((state) => state.transform[2]);
+  const paneWidth = useStore((state) => state.width);
+  const paneHeight = useStore((state) => state.height);
+  const domNode = useStore((state) => state.domNode);
+  const wantsCompact = zoom < COMPACT_NODE_ZOOM_THRESHOLD;
+  // Set when Fit view itself moves across the threshold: its viewport is
+  // already computed for the new layout, so it must not be re-anchored.
+  const fitSwitchRef = useRef(false);
+
+  const pane = useCallback(
+    () => ({
+      // The store size can stay 0 where ResizeObserver lags (issue 337).
+      width: paneWidth > 0 ? paneWidth : (domNode?.clientWidth ?? 0),
+      height: paneHeight > 0 ? paneHeight : (domNode?.clientHeight ?? 0),
+    }),
+    [domNode, paneHeight, paneWidth],
+  );
+
+  const fitGraph = useCallback(() => {
+    if (!layouts) return;
+    const fit = fitGraphViewport(layouts, pane());
+    if (!fit) return;
+    fitSwitchRef.current = fit.compact !== wantsCompact;
+    void setViewport(fit.viewport);
+    onCompactLayoutChange(fit.compact);
+  }, [layouts, onCompactLayoutChange, pane, setViewport, wantsCompact]);
+
+  useEffect(() => {
+    if (wantsCompact === compactLayout) return;
+    if (fitSwitchRef.current) {
+      fitSwitchRef.current = false;
+    } else if (layouts) {
+      const [from, to] = wantsCompact
+        ? [layouts.full, layouts.compact]
+        : [layouts.compact, layouts.full];
+      void setViewport(anchoredGraphViewport(getViewport(), pane(), from, to));
+    }
+    onCompactLayoutChange(wantsCompact);
+  }, [compactLayout, getViewport, layouts, onCompactLayoutChange, pane, setViewport, wantsCompact]);
+
+  const fittedKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!layoutKey || !layouts || fittedKeyRef.current === layoutKey) return;
+    if (pane().width <= 0) return;
+    fittedKeyRef.current = layoutKey;
+    fitGraph();
+  }, [fitGraph, layoutKey, layouts, pane]);
+
+  return fitGraph;
+}
+
 function WorkspaceGraphControls({
+  layouts,
+  compactLayout,
+  onCompactLayoutChange,
+  layoutKey,
   selected,
   total,
   canClearSelection,
@@ -275,7 +352,8 @@ function WorkspaceGraphControls({
   onClearSelection,
   onToggleDragMode,
 }: WorkspaceGraphControlsProps) {
-  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { zoomIn, zoomOut } = useReactFlow();
+  const fitGraph = useGraphViewport({ layouts, compactLayout, onCompactLayoutChange, layoutKey });
   const minZoomReached = useStore((state) => state.transform[2] <= state.minZoom);
   const maxZoomReached = useStore((state) => state.transform[2] >= state.maxZoom);
 
@@ -316,13 +394,7 @@ function WorkspaceGraphControls({
         >
           <Minus aria-hidden="true" />
         </WorkspaceGraphControlButton>
-        <WorkspaceGraphControlButton
-          accessibleLabel="Fit view"
-          label="Fit view"
-          onClick={() => {
-            void fitView({ padding: 0.2, includeHiddenNodes: false });
-          }}
-        >
+        <WorkspaceGraphControlButton accessibleLabel="Fit view" label="Fit view" onClick={fitGraph}>
           <Scan aria-hidden="true" />
         </WorkspaceGraphControlButton>
         <WorkspaceGraphControlButton
@@ -433,7 +505,6 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
         }
         connectionLineType={graph.connectionLineType}
         defaultEdgeOptions={graph.defaultEdgeOptions}
-        onInit={graph.handleInit}
         attributionPosition="bottom-left"
         // Blocks join the app selection when the box is released, so React
         // Flow's group-drag rectangle would only block clicks on them.
@@ -465,6 +536,10 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
           color="var(--vscode-charts-lines)"
         />
         <WorkspaceGraphControls
+          layouts={graph.layouts}
+          compactLayout={graph.compactLayout}
+          onCompactLayoutChange={graph.setCompactLayout}
+          layoutKey={graph.layoutKey}
           selected={graph.selectedCount}
           total={graph.totalNodes}
           canClearSelection={graph.canClearSelection}

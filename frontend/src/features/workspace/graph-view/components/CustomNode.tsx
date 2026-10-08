@@ -28,6 +28,7 @@ import { CUSTOM_NODE_TOOLBAR_BUTTON_CLASS, CustomNodeActionMenu } from './Custom
 import { DataBlockExportDialog } from '@/features/workspace/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/workspace/common/components/DataBlockRenameDialog';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
+import { COMPACT_NODE_ZOOM_THRESHOLD } from '../services/graphLayout';
 import {
   releaseToolbarOwner,
   setActiveToolbarOwner,
@@ -49,8 +50,6 @@ interface CustomNodeData extends Record<string, unknown> {
   /** Requests that this node is added to the active view's node inputs. */
   onAddToSelection: (nodeId: string, pointer?: NodeInputPointerPosition) => void;
 }
-
-const COMPACT_NODE_ZOOM_THRESHOLD = 0.6;
 
 interface CustomNodeUiState {
   showMenu: boolean;
