@@ -25,6 +25,15 @@ TOKENIZER_DOCS_URLS = {
     "lindera:ko-dic": "https://bitbucket.org/eunjeon/mecab-ko-dic",
 }
 
+# Plain words splits on spaces and punctuation with no trained vocabulary, so it
+# is a baseline for any language that separates words with spaces, not only
+# English (issue 339). "*" marks a model for any such language; the
+# frontend recommends it for every language written with spaces. polars-text
+# still names it "Plain words (English)" with ("en",).
+TOKENIZER_CATALOGUE_OVERRIDES: dict[str, tuple[str, list[str]]] = {
+    "native:plain_words_en": ("Plain words", ["*"]),
+}
+
 router = APIRouter(
     prefix="/tokenizer-models",
     tags=["tokenizers"],
@@ -40,16 +49,22 @@ router = APIRouter(
 async def list_tokenizer_models(
     _principal: CurrentSessionSecurityDep,
 ) -> list[TokenizerModelResource]:
-    return [
-        TokenizerModelResource(
-            id=model.model_id,
-            label=model.label,
-            languages=list(model.languages),
-            docs_url=TOKENIZER_DOCS_URLS.get(model.model_id),
+    resources = []
+    for model in TOKENIZER_MODELS:
+        if model.model_id in HIDDEN_TOKENIZER_MODELS:
+            continue
+        label, languages = TOKENIZER_CATALOGUE_OVERRIDES.get(
+            model.model_id, (model.label, list(model.languages))
         )
-        for model in TOKENIZER_MODELS
-        if model.model_id not in HIDDEN_TOKENIZER_MODELS
-    ]
+        resources.append(
+            TokenizerModelResource(
+                id=model.model_id,
+                label=label,
+                languages=languages,
+                docs_url=TOKENIZER_DOCS_URLS.get(model.model_id),
+            )
+        )
+    return resources
 
 
 __all__ = ["router"]

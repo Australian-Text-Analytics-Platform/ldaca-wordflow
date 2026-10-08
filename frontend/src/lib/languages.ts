@@ -15,10 +15,21 @@ export function normaliseIso6391LanguageCode(code: string | null | undefined): s
   return primary && /^[a-z]{2}$/.test(primary) ? primary : null;
 }
 
+/** A model whose languages include this works for any language written with spaces (issue 339). */
+export const ANY_SPACED_LANGUAGE = '*';
+
+/**
+ * Languages written without spaces between words: a spaces-and-punctuation
+ * tokeniser does not find their words, so it is not recommended for them.
+ */
+const LANGUAGES_WITHOUT_SPACES = new Set(['zh', 'ja', 'ko', 'th', 'lo', 'km', 'my', 'bo']);
+
 /** Splits tokenizer models into language-matching recommendations and secondary choices. */
 /**
  * Used by: src/features/views/common/components/TokenizerModelSelector.tsx, src/lib/__tests__/languages.test.ts.
- * Flow: normalize the language code, return all models as secondary when unknown, otherwise partition by model language support.
+ * Flow: normalize the language code, return all models as secondary when unknown, otherwise
+ * recommend the models made for that language, plus any-spaced-language models for languages
+ * written with spaces. Catalogue order is kept, so the first recommendation is the default.
  */
 export function partitionTokenizerModelsForLanguage(
   models: readonly LanguageModelOption[],
@@ -28,7 +39,10 @@ export function partitionTokenizerModelsForLanguage(
   if (!normalised) {
     return { recommended: [], other: [...models] };
   }
-  const recommended = models.filter((option) => option.languages.includes(normalised));
-  const other = models.filter((option) => !option.languages.includes(normalised));
+  const fits = (option: LanguageModelOption) =>
+    option.languages.includes(normalised) ||
+    (option.languages.includes(ANY_SPACED_LANGUAGE) && !LANGUAGES_WITHOUT_SPACES.has(normalised));
+  const recommended = models.filter(fits);
+  const other = models.filter((option) => !fits(option));
   return { recommended, other };
 }

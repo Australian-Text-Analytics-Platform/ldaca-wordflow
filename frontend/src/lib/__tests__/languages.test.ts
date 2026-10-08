@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { normaliseIso6391LanguageCode, partitionTokenizerModelsForLanguage } from '../languages';
 
 const TOKENIZER_MODELS = [
-  { model: 'native:plain_words_en', label: 'Plain words (English)', languages: ['en'] },
+  { model: 'native:plain_words_en', label: 'Plain words', languages: ['*'] },
   { model: 'huggingface:bert-base-uncased', label: 'BERT base uncased', languages: ['en'] },
   { model: 'lindera:cc-cedict', label: 'CC-CEDICT', languages: ['zh'] },
   { model: 'lindera:jieba', label: 'Jieba', languages: ['zh'] },
@@ -28,5 +28,16 @@ describe('tokenizer model inventory', () => {
       'huggingface:bert-base-uncased',
     ]);
     expect(other).toHaveLength(TOKENIZER_MODELS.length - 2);
+  });
+
+  it('recommends Plain words for any language written with spaces, but not for Chinese or Thai', () => {
+    const recommend = (code: string) =>
+      partitionTokenizerModelsForLanguage(TOKENIZER_MODELS, code).recommended.map(
+        (option) => option.model,
+      );
+    expect(recommend('fr')).toEqual(['native:plain_words_en']);
+    expect(recommend('id')).toEqual(['native:plain_words_en']);
+    expect(recommend('zh')).toEqual(['lindera:cc-cedict', 'lindera:jieba']);
+    expect(recommend('th')).toEqual([]);
   });
 });

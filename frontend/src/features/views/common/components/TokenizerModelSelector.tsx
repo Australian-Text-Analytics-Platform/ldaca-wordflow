@@ -14,7 +14,7 @@ import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
 import { listTokenizerModels } from '@/api';
 import type { TokenizerModelInfo } from '@/api/frontendModels';
 import { queryKeys } from '@/lib/queryKeys';
-import { partitionTokenizerModelsForLanguage } from '@/lib/languages';
+import { ANY_SPACED_LANGUAGE, partitionTokenizerModelsForLanguage } from '@/lib/languages';
 import { cn } from '@/lib/utils';
 import { useDetectedColumnLanguage } from '../hooks/useDetectedColumnLanguage';
 
@@ -47,6 +47,7 @@ const languageDisplayNames = (() => {
 function languageNames(codes: readonly string[]): string {
   return codes
     .map((code) => {
+      if (code === ANY_SPACED_LANGUAGE) return 'Any language with spaces';
       try {
         return languageDisplayNames?.of(code) ?? code;
       } catch {
