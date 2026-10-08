@@ -23,6 +23,19 @@ export function matchTopicWords(
   return matchOption(words.join(', '), query) || words.some((word) => matchOption(word, query));
 }
 
+/**
+ * The words of a topic that match the Find topics text on their own, so they
+ * can be picked out in the list and the bubble's word cloud (issue 342).
+ */
+export function matchedTopicWords(
+  words: readonly string[],
+  query: string,
+  matchOption: (label: string, query: string) => boolean,
+): Set<string> {
+  if (!query.trim()) return new Set();
+  return new Set(words.filter((word) => matchOption(word, query)));
+}
+
 export function filterTopicRepresentativeWords(
   topics: TopicModelingTopic[],
   stopWords: ReadonlySet<string>,
@@ -88,4 +101,17 @@ export function getReadableTextColor(hexColor: string): string {
   const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
 
   return luminance > 160 ? '#1e293b' : '#ffffff';
+}
+
+/** Find topics matches are bold and orange wherever topic words are listed (issue 342). */
+const MATCH_COLOR_VARIABLE = '--vscode-charts-orange';
+const MATCH_COLOR_FALLBACK = '#d18616';
+
+/** The match colour as a concrete value, for chart text that cannot read CSS variables. */
+export function topicMatchColor(): string {
+  if (typeof document === 'undefined') return MATCH_COLOR_FALLBACK;
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(MATCH_COLOR_VARIABLE)
+    .trim();
+  return value || MATCH_COLOR_FALLBACK;
 }

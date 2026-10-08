@@ -109,8 +109,19 @@ vi.mock('@xyflow/react', async (importOriginal) => {
 });
 
 vi.mock('@/features/views/common/components/ResponsiveWordCloud', () => ({
-  ResponsiveWordCloud: ({ words }: { words: { text: string; value: number }[] }) => (
-    <div>{words.map((word) => `${word.text}:${String(word.value)}`).join(', ')}</div>
+  ResponsiveWordCloud: ({
+    words,
+  }: {
+    words: { text: string; value: number; color?: string; bold?: boolean }[];
+  }) => (
+    <div>
+      {words
+        .map(
+          (word) =>
+            `${word.text}:${String(word.value)}${word.bold ? ` bold ${word.color ?? ''}` : ''}`,
+        )
+        .join(', ')}
+    </div>
   ),
 }));
 
@@ -132,6 +143,7 @@ const bubble: TopicBubbleModel = {
   lassoed: false,
   hovered: false,
   filteredOut: false,
+  matchedWords: [],
 };
 
 describe('TopicLassoCanvas', () => {
@@ -386,6 +398,48 @@ describe('TopicModelingFlowChart', () => {
 
     fireEvent.mouseLeave(screen.getByTestId('topic-flow-node-7'));
     expect(screen.queryByTestId('topic-flow-tooltip-7')).not.toBeInTheDocument();
+  });
+
+  it('shows Find topics matches bold orange in the hover word cloud (issue 342)', () => {
+    render(
+      <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
+        bubbles={[
+          {
+            ...bubble,
+            topic: {
+              ...bubble.topic,
+              representative_words: [
+                { word: 'family', occurrence_count: 5 },
+                { word: 'care', occurrence_count: 3 },
+              ],
+            },
+            matchedWords: ['family'],
+          },
+        ]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+      />,
+    );
+
+    fireEvent.mouseEnter(screen.getByTestId('topic-flow-node-7'));
+    expect(screen.getByTestId('topic-flow-tooltip-7')).toHaveTextContent(
+      'family:5 bold #d18616, care:3',
+    );
   });
 
   it('keeps filtered bubbles non-interactive and puts lasso above node tooltips', () => {

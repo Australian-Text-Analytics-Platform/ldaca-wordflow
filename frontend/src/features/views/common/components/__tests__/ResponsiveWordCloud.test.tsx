@@ -85,7 +85,7 @@ describe('ResponsiveWordCloud', () => {
       <ResponsiveWordCloud
         words={[
           { text: 'alpha', value: 100, color: '#ff0000' },
-          { text: 'beta', value: 50 },
+          { text: 'beta', value: 50, bold: true },
         ]}
         color="#0000ff"
         minWidth={320}
@@ -129,12 +129,12 @@ describe('ResponsiveWordCloud', () => {
               expect.objectContaining({
                 name: 'alpha',
                 value: 10,
-                textStyle: { color: '#ff0000' },
+                textStyle: { color: '#ff0000', fontWeight: 'normal' },
               }),
               expect.objectContaining({
                 name: 'beta',
                 value: Math.sqrt(50),
-                textStyle: { color: '#0000ff' },
+                textStyle: { color: '#0000ff', fontWeight: 'bold' },
               }),
             ],
           }),

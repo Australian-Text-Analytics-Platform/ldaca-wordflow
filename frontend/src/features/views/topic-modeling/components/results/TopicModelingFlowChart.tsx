@@ -21,6 +21,7 @@ import { ResponsiveWordCloud } from '@/features/views/common/components/Responsi
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { CHART_ZOOM_KEY } from '@/lib/chartZoom';
 import { cn } from '@/lib/utils';
+import { topicMatchColor } from '../../topicModelingAdapters';
 import { type TopicCorpusPresentation, TopicSizeComposition } from './TopicSizeComposition';
 import {
   findTopicIdsInsideLasso,
@@ -132,6 +133,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
   const outerRadius = bubble.radius + 7;
   const diameter = outerRadius * 2;
   const tooltipPosition = bubble.position.x <= plane.width / 2 ? Position.Right : Position.Left;
+  const matchColor = bubble.matchedWords.length > 0 ? topicMatchColor() : undefined;
   return (
     <NodeTooltip className="size-full">
       <NodeTooltipTrigger
@@ -225,6 +227,8 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             words={bubble.topic.representative_words.map((term) => ({
               text: term.word,
               value: term.occurrence_count,
+              // Find topics matches: bold orange, as in the topic lists (issue 342).
+              ...(bubble.matchedWords.includes(term.word) ? { color: matchColor, bold: true } : {}),
             }))}
             minWidth={180}
             aspectRatio={0.48}

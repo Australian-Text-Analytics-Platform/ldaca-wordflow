@@ -3,7 +3,8 @@ import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
 import { Search, X } from 'lucide-react';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
-import { matchTopicWords, topicRepresentativeText } from '../../topicModelingAdapters';
+import { matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
+import { TopicWordsLine } from './TopicWords';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 
 interface Props {
@@ -38,6 +39,15 @@ export function TopicSelectionPanel({
   hoveredTopicId,
   onHoveredTopicChange,
 }: Props) {
+  const topicWords = (topic: TopicModelingTopic) => {
+    const words = topic.representative_words.map((term) => term.word);
+    return (
+      <TopicWordsLine
+        words={words}
+        matched={matchedTopicWords(words, topicSearchQuery, matchChecklistOption)}
+      />
+    );
+  };
   const sortedTopics = topics.toSorted((a, b) => b.total_size - a.total_size);
   const hasLassoFilter = lassoTopicIds.size > 0;
 
@@ -111,12 +121,7 @@ export function TopicSelectionPanel({
                         <span className="text-body font-medium text-foreground">
                           Topic {topic.id}
                         </span>
-                        <div
-                          className="truncate text-label-secondary text-description"
-                          title={topicRepresentativeText(topic)}
-                        >
-                          {topicRepresentativeText(topic)}
-                        </div>
+                        {topicWords(topic)}
                       </div>
                       <button
                         type="button"
@@ -202,12 +207,7 @@ export function TopicSelectionPanel({
                         {...corpusPresentation}
                       />
                     </div>
-                    <div
-                      className="mt-0.5 truncate text-label-secondary text-description"
-                      title={topicRepresentativeText(topic)}
-                    >
-                      {topicRepresentativeText(topic)}
-                    </div>
+                    <div className="mt-0.5">{topicWords(topic)}</div>
                   </div>
                 );
               })}

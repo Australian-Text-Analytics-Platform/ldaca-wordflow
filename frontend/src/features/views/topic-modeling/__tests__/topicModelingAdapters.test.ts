@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { TopicModelingTopic } from '@/api';
+import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import {
   filterTopicRepresentativeWords,
+  matchedTopicWords,
   sliceTopicRepresentativeWords,
   topicRepresentativeText,
 } from '../topicModelingAdapters';
@@ -41,5 +43,19 @@ describe('topic representative-word projections', () => {
     expect(filtered[0]?.representative_words).toHaveLength(4);
     expect(displayed[0]?.representative_words).toHaveLength(3);
     expect(topic.representative_words).toHaveLength(5);
+  });
+});
+
+describe('matchedTopicWords (issue 342)', () => {
+  it('returns every word that matches a wildcard search', () => {
+    const words = ['family', 'care', 'familiarisation', 'home'];
+    expect([...matchedTopicWords(words, 'famil*', matchChecklistOption)]).toEqual([
+      'family',
+      'familiarisation',
+    ]);
+  });
+
+  it('returns nothing without a search', () => {
+    expect(matchedTopicWords(['family'], '  ', matchChecklistOption).size).toBe(0);
   });
 });

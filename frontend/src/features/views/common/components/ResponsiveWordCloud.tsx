@@ -13,6 +13,8 @@ interface WordCloudDatum {
   text: string;
   value: number;
   color?: string;
+  /** Bold picks a word out (Topic Modelling search matches, issue 342). */
+  bold?: boolean;
 }
 
 interface Props {
@@ -70,12 +72,12 @@ function ResponsiveWordCloudInstance({
   // saved stop-word list echoes back). Relayout only when the content changes,
   // because every relayout clears and redraws the whole cloud.
   const wordsSignature = JSON.stringify(
-    words.map((word) => [word.text, word.value, word.color ?? null]),
+    words.map((word) => [word.text, word.value, word.color ?? null, word.bold ?? false]),
   );
   const stableWords = useMemo(
     () =>
-      (JSON.parse(wordsSignature) as [string, number, string | null][]).map(
-        ([text, value, wordColor]) => ({ text, value, color: wordColor ?? undefined }),
+      (JSON.parse(wordsSignature) as [string, number, string | null, boolean][]).map(
+        ([text, value, wordColor, bold]) => ({ text, value, color: wordColor ?? undefined, bold }),
       ),
     [wordsSignature],
   );
@@ -163,6 +165,7 @@ function ResponsiveWordCloudInstance({
         value: wordCloudSizingValue(word.value),
         textStyle: {
           color: word.color ?? color,
+          fontWeight: word.bold ? 'bold' : 'normal',
         },
       })),
     };

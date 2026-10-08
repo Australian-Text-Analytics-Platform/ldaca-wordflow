@@ -1,7 +1,7 @@
 import type { TopicColorGroups, TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
-import { interpolateColor, matchTopicWords } from '../../topicModelingAdapters';
+import { interpolateColor, matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
 
 const TOPIC_GRAPH_WIDTH = 1000;
 const TOPIC_GRAPH_HEIGHT = 550;
@@ -56,6 +56,8 @@ export interface TopicBubbleModel {
   lassoed: boolean;
   hovered: boolean;
   filteredOut: boolean;
+  /** Words matching Find topics, shown bold in the bubble's word cloud (issue 342). */
+  matchedWords: string[];
 }
 
 /** One metadata value shown as a bubble colour, chip, and legend entry. */
@@ -426,6 +428,13 @@ export function buildTopicBubbleModels({
       selected: selectedTopicIds.has(topic.id),
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,
+      matchedWords: [
+        ...matchedTopicWords(
+          topic.representative_words.map((term) => term.word),
+          topicSearchQuery,
+          matchChecklistOption,
+        ),
+      ],
       // Faded exactly when All Topics leaves it out: outside the lasso, or
       // not matching the search (Chao, 2026-10-08: the chart lit search
       // matches outside the lasso while the list showed only lassoed ones).

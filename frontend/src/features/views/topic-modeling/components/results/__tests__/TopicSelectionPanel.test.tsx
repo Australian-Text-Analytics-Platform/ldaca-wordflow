@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TopicSelectionPanel } from '../TopicSelectionPanel';
@@ -87,5 +87,47 @@ describe('TopicSelectionPanel', () => {
     fireEvent.mouseLeave(topicRow);
     expect(onHoveredTopicChange).toHaveBeenNthCalledWith(1, 0);
     expect(onHoveredTopicChange).toHaveBeenNthCalledWith(2, null);
+  });
+
+  it('picks out the matching words in bold orange, with all words in a tooltip (issue 342)', async () => {
+    render(
+      <TopicSelectionPanel
+        topics={[
+          {
+            id: 5,
+            representative_words: [
+              { word: 'care', occurrence_count: 6 },
+              { word: 'family', occurrence_count: 5 },
+              { word: 'familiarisation', occurrence_count: 2 },
+            ],
+            size: [6],
+            total_size: 6,
+            x: 0,
+            y: 0,
+          },
+        ]}
+        selectedTopicIds={new Set()}
+        onToggleTopicSelection={vi.fn()}
+        onClearSelection={vi.fn()}
+        topicSearchQuery="famil*"
+        onTopicSearchQueryChange={vi.fn()}
+        lassoTopicIds={new Set()}
+        corpusPresentation={corpusPresentation}
+        hoveredTopicId={null}
+        onHoveredTopicChange={vi.fn()}
+      />,
+    );
+
+    const line = screen.getByText('care', { exact: false });
+    expect(line).toHaveTextContent('care, family, familiarisation');
+    for (const word of ['family', 'familiarisation']) {
+      const highlighted = within(line).getByText(word);
+      expect(highlighted).toHaveAttribute('data-matched-word');
+      expect(highlighted).toHaveClass('font-semibold', 'text-chart-4');
+    }
+
+    fireEvent.focus(line);
+    const tooltip = await screen.findByRole('tooltip');
+    expect(tooltip).toHaveTextContent('care, family, familiarisation');
   });
 });
