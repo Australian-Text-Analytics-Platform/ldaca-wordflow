@@ -14,12 +14,13 @@ interface TopicDocumentDialogProps {
   documentIndex: number;
   /** Code-point start of the segment that was opened, shown first. */
   startAt: number;
-  /** The shown bubble's base colour; its segments are tinted with it. */
+  /** The shown bubble's base colour: the current segment's text, and a tint for the others. */
   topicColor?: string;
   onClose: () => void;
 }
 
 const SHOWN_SEGMENT = 'rounded-sm box-decoration-clone';
+const CURRENT_SEGMENT = 'font-bold';
 const OTHER_SEGMENT = 'rounded-sm bg-[color-mix(in_srgb,var(--vscode-foreground)_8%,transparent)]';
 
 /**
@@ -38,10 +39,12 @@ export function TopicDocumentDialog({
   topicColor = 'var(--vscode-charts-orange)',
   onClose,
 }: TopicDocumentDialogProps) {
-  // The segment being read is tinted more strongly than the Topic's others.
-  const tint = (percent: number) => ({
-    background: `color-mix(in srgb, ${topicColor} ${String(percent)}%, transparent)`,
-  });
+  // The segment being read is bold in the Topic's colour; its other
+  // segments in this document have a light tint of it (Chao, 2026-10-08).
+  const currentStyle = { color: topicColor };
+  const otherStyle = {
+    background: `color-mix(in srgb, ${topicColor} 25%, transparent)`,
+  };
   const documentQuery = useQuery({
     queryKey: [
       'workspaces',
@@ -98,8 +101,8 @@ export function TopicDocumentDialog({
             title={`Topic ${String(span.topic_id)}`}
             data-row-detail-anchor={isCurrent ? '' : undefined}
             data-current-segment={isCurrent ? '' : undefined}
-            className={isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
-            style={isShown ? tint(isCurrent ? 55 : 25) : undefined}
+            className={isCurrent ? CURRENT_SEGMENT : isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
+            style={isCurrent ? currentStyle : isShown ? otherStyle : undefined}
           >
             {text.slice(start, end)}
           </span>,
@@ -138,10 +141,10 @@ export function TopicDocumentDialog({
             label: 'Highlights',
             value: (
               <span className="flex flex-wrap items-center gap-2">
-                <span className={cn(SHOWN_SEGMENT, 'px-1')} style={tint(55)}>
+                <span className={cn(CURRENT_SEGMENT, 'px-1')} style={currentStyle}>
                   Topic {topicId}, this segment
                 </span>
-                <span className={cn(SHOWN_SEGMENT, 'px-1')} style={tint(25)}>
+                <span className={cn(SHOWN_SEGMENT, 'px-1')} style={otherStyle}>
                   Topic {topicId}, others
                 </span>
                 <span className={cn(OTHER_SEGMENT, 'px-1')}>Other topics</span>
