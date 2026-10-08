@@ -199,7 +199,7 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 
 <h2 id="help-topic-modeling-results">Result panel</h2>
 
-![Topic modelling results](tutorials/assets/topic_modelling/results.png)
+![Topic Modelling results: the bubble chart, Result settings, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
 
 The **Result settings** row below the bubble chart holds **Topics**, **Per
 document**, **Words**, the stop word controls, **Colour by** for a
@@ -211,7 +211,7 @@ divider between them to widen the list (double-click it to go back to a
 third). In a narrow window the list sits above the examples. The area has its own
 resize grip, like the chart itself.
 
-![Result settings: Topics, Per document, Words, and the stop word filter](tutorials/assets/topic_modelling/result_settings.png)
+![Result settings: Topics, Per document, Words, the stop words switch and list, and Find topics](tutorials/assets/topic_modelling/result_settings.png)
 
 <h3 id="help-topic-modeling-number-of-clusters">Topics (number of topics)</h3>
 
@@ -402,6 +402,8 @@ again, or close the examples with **×**, to stop showing them. Faded bubbles
 cannot be right-clicked. Find topics and the lasso never hide the examples; if
 they leave out the shown topic, a note says so, with **Clear filters**.
 
+![The topic list, with two selected topics, beside the most typical examples of Topic 12](tutorials/assets/topic_modelling/topic_examples.png)
+
 - **Most typical** lists the segments closest to the centre of the topic
   first. **Random** lists them in a random order set by the run's seed, so the
   same run always gives the same examples.
@@ -409,10 +411,14 @@ they leave out the shown topic, a note says so, with **Clear filters**.
   random) segment of each document.
 - With **Colour by** on, you can limit the examples to one of its values. For
   a two-corpus run, you can limit them to one Data Block.
-- **Label** chooses the column that names each example; by default it is the
-  Data Block and row.
+- **Label** chooses the column that names each example, such as a speaker or a
+  date; a row without a value says so, for example *(no speaker)*. By default
+  each example is named by its Data Block, in the Data Block's colour, and its
+  row. For a two-corpus run, the menu lists only the columns both Data Blocks
+  have.
 
-Each example shows the topic's words in the bubble's colour and a badge such as
+Each example shows about three lines (**Show more** shows the whole segment),
+the topic's words in the bubble's colour, and a badge such as
 **Top 10%**: this segment is more typical of the topic than 90% of its
 segments. Green marks the top quarter, amber the middle half and grey the
 bottom quarter. Hover over the badge for the segment's similarity to the
@@ -428,6 +434,10 @@ document have a lighter tint of it, and segments of other topics a grey one. In
 the topic's segments, its words are bold and italic. Text with no topic is not
 highlighted. **Previous segment** and **Next segment** step through the shown
 topic's segments in that document.
+
+![A document opened from an example, with its segments highlighted and the topic's words in bold italic](tutorials/assets/topic_modelling/topic_document.png)
+
+<h3 id="help-topic-modeling-add-to-project">Add to Project</h3>
 
 Choose **Add to Project** to publish
 manually selected topic data and linked topic meanings as new Data Blocks.
