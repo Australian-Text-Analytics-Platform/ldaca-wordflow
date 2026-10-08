@@ -16,7 +16,7 @@ import {
   buildTopicBubbleModels,
   DEFAULT_TOPIC_GRAPH_PLANE,
   topicGraphPlaneFor,
-  resolveTopicCorpusColor,
+  topicCorpusColors,
   topicCorpusLegend,
   type TopicColorScheme,
 } from './topicModelingGraph';
@@ -190,15 +190,7 @@ export function TopicModelingBubbleChartSection({
           analysisId,
           clusterCount,
           nodeNames: nodeNames ?? [],
-          corpusColors: corpusSizes.map((_, index) =>
-            resolveTopicCorpusColor(
-              index,
-              defaultPalette[index] ?? (index === 0 ? '#2563eb' : '#dc2626'),
-              panelNodeIds,
-              nodeColors,
-              defaultPalette,
-            ),
-          ),
+          corpusColors: topicCorpusColors(corpusPresentation),
           colorScheme: activeColorScheme,
         }
       : undefined;

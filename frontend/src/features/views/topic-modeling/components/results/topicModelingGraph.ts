@@ -203,6 +203,25 @@ export function resolveTopicCorpusColor(
  * graph and in every download, so the colours keep their meaning outside
  * Wordflow. Null for one Data Block.
  */
+/** Each Data Block's colour, in run order, as the bubbles use it (issue 353). */
+export function topicCorpusColors(presentation: {
+  corpusCount: number;
+  panelNodeIds: string[];
+  nodeColors: Record<string, string>;
+  defaultPalette: string[];
+}): string[] {
+  const { panelNodeIds, nodeColors, defaultPalette } = presentation;
+  return Array.from({ length: presentation.corpusCount }, (_, index) =>
+    resolveTopicCorpusColor(
+      index,
+      defaultPalette[index] ?? (index === 0 ? '#2563eb' : '#dc2626'),
+      panelNodeIds,
+      nodeColors,
+      defaultPalette,
+    ),
+  );
+}
+
 export function topicCorpusLegend(
   presentation: {
     corpusCount: number;
