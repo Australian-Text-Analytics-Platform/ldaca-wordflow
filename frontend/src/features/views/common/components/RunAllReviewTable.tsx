@@ -1,3 +1,4 @@
+import { DataBlockDownloadButton } from './DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { ArrowRight } from 'lucide-react';
 import { AnnotationRowViewButton } from './AnnotationRowViewer';
@@ -58,6 +59,8 @@ const displayCell = (value: unknown): string => {
 interface RunAllReviewTableProps {
   workspaceId: string;
   nodeId: string;
+  /** Shows a download icon for the reviewed Data Block (issue 352). */
+  nodeName?: string;
   sql: string;
   sourceColumns: string[];
   sourceColor: string;
@@ -94,6 +97,7 @@ interface RunAllReviewTableProps {
 export function RunAllReviewTable({
   workspaceId,
   nodeId,
+  nodeName,
   sql,
   sourceColumns,
   sourceColor,
@@ -330,6 +334,14 @@ export function RunAllReviewTable({
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}
             />
+            {nodeName && workspaceId ? (
+              <DataBlockDownloadButton
+                workspaceId={workspaceId}
+                nodeId={nodeId}
+                nodeName={nodeName}
+                label="Annotation table"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

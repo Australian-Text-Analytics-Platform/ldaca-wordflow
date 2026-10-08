@@ -9,6 +9,7 @@ import {
   type ConcordanceAnalysisResponse,
   type ConcordanceRunAllResult,
   type ConcordanceDocumentDataBlockCreationSource,
+  type DataBlockExportFormat,
   type SortedDataBlockCreationSource,
 } from '@/api';
 import { useWorkspaceStatus } from '@/features/workspace/common/hooks/useWorkspaceStatus';
@@ -50,6 +51,8 @@ import { usePersistNodeTokenizerModel } from '../common/hooks/usePersistNodeToke
 import type { ConcordanceRunAllReviewSource } from './concordanceRunAllReview';
 import { queryKeys } from '@/lib/queryKeys';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
+import { downloadResultSelection } from '../common/resultDownload';
+import { Download } from 'lucide-react';
 import {
   projectWorkspaceNodeMetadata,
   type WorkspaceNodeMetadata,
@@ -241,6 +244,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   // the default L1/R1 tint without changing the immutable Analysis request.
   const [highlightL1R1, setHighlightL1R1] = useState(true);
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);
   // Metadata visibility derives from the selected columns: any selection
   // shows the corresponding metadata columns in the results table.
@@ -690,47 +695,74 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     });
   };
 
+  // One request for Add to Project and Download, so both hold the same table
+  // (issue 352).
+  const buildCreationRequest = (sources: SortedDataBlockCreationSource[]) => {
+    if (concordanceView === 'dispersion') {
+      const documentSources: ConcordanceDocumentDataBlockCreationSource[] = sources.map(
+        (source) => {
+          const descriptor = addToWorkspaceSources.find(
+            (candidate) => candidate.node_id === source.source_node_id,
+          );
+          const filterKey =
+            viewMode === 'combined' ? CONCORDANCE_COMBINED_NODE_KEY : source.source_node_id;
+          const selectedBins = Array.from(selectedBinIndices[filterKey] ?? []).sort(
+            (left, right) => left - right,
+          );
+          return {
+            source_node_id: source.source_node_id,
+            new_node_name: source.new_node_name,
+            selected_metadata_columns: source.selected_columns.filter((column) =>
+              descriptor?.metadata_columns.includes(column),
+            ),
+            excluded_matched_texts: Array.from(excludedMatchedTexts).sort(),
+            bin_count: selectedBins.length > 0 ? binCount : null,
+            selected_bins: selectedBins.length > 0 ? selectedBins : null,
+          };
+        },
+      );
+      return {
+        kind: 'concordance_document_data_block_creation' as const,
+        sources: documentSources,
+      };
+    }
+    // Rows go in the order each table shows (issue 275).
+    return {
+      kind: 'concordance_match_data_block_creation' as const,
+      sources: sources.map((source) => ({
+        ...source,
+        ...concordanceDetachSort(nodePagination[source.source_node_id], viewMode),
+      })),
+    };
+  };
+
+  const handleDownload = async (
+    sources: SortedDataBlockCreationSource[],
+    format: DataBlockExportFormat,
+  ) => {
+    if (!concordanceRunAll || !currentWorkspaceId) return;
+    setIsDownloading(true);
+    try {
+      const saved = await downloadResultSelection({
+        workspaceId: currentWorkspaceId,
+        analysisId: concordanceRunAll.id,
+        request: buildCreationRequest(sources),
+        format,
+        fallbackName: sources[0]?.new_node_name ?? 'concordance',
+      });
+      if (saved) setDownloadDialogOpen(false);
+    } catch (cause) {
+      toastError(cause, 'Try again.', { title: "Couldn't download the Concordance Results." });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleAddToWorkspace = async (sources: SortedDataBlockCreationSource[]) => {
     if (!concordanceRunAll) return;
     setIsAddingToWorkspace(true);
     try {
-      if (concordanceView === 'dispersion') {
-        const documentSources: ConcordanceDocumentDataBlockCreationSource[] = sources.map(
-          (source) => {
-            const descriptor = addToWorkspaceSources.find(
-              (candidate) => candidate.node_id === source.source_node_id,
-            );
-            const filterKey =
-              viewMode === 'combined' ? CONCORDANCE_COMBINED_NODE_KEY : source.source_node_id;
-            const selectedBins = Array.from(selectedBinIndices[filterKey] ?? []).sort(
-              (left, right) => left - right,
-            );
-            return {
-              source_node_id: source.source_node_id,
-              new_node_name: source.new_node_name,
-              selected_metadata_columns: source.selected_columns.filter((column) =>
-                descriptor?.metadata_columns.includes(column),
-              ),
-              excluded_matched_texts: Array.from(excludedMatchedTexts).sort(),
-              bin_count: selectedBins.length > 0 ? binCount : null,
-              selected_bins: selectedBins.length > 0 ? selectedBins : null,
-            };
-          },
-        );
-        await createResultDataBlocks(host.tabId, concordanceRunAll.id, {
-          kind: 'concordance_document_data_block_creation',
-          sources: documentSources,
-        });
-      } else {
-        // Rows go in the order each table shows (issue 275).
-        await createResultDataBlocks(host.tabId, concordanceRunAll.id, {
-          kind: 'concordance_match_data_block_creation',
-          sources: sources.map((source) => ({
-            ...source,
-            ...concordanceDetachSort(nodePagination[source.source_node_id], viewMode),
-          })),
-        });
-      }
+      await createResultDataBlocks(host.tabId, concordanceRunAll.id, buildCreationRequest(sources));
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Concordance Results to the Project.');
     } catch (cause) {
@@ -870,15 +902,28 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           isReview={isReview}
           headerAction={
             isReview && addToWorkspaceSources.length > 0 ? (
-              <Button
-                data-guidance="concordance-add-to-workspace"
-                type="button"
-                onClick={() => {
-                  setAddToWorkspaceDialogOpen(true);
-                }}
-              >
-                Add to Project
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  aria-label="Download Concordance Results"
+                  title="Download Concordance Results"
+                  onClick={() => {
+                    setDownloadDialogOpen(true);
+                  }}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+                <Button
+                  data-guidance="concordance-add-to-workspace"
+                  type="button"
+                  onClick={() => {
+                    setAddToWorkspaceDialogOpen(true);
+                  }}
+                >
+                  Add to Project
+                </Button>
+              </div>
             ) : null
           }
           shell={{
@@ -974,6 +1019,23 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           </CardContent>
         </Card>
       )}
+
+      {downloadDialogOpen ? (
+        <ResultAddToWorkspaceDialog
+          open
+          onOpenChange={setDownloadDialogOpen}
+          title={`Download Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'}`}
+          nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
+          sources={addToWorkspaceSources}
+          isSubmitting={isDownloading}
+          mode={concordanceView === 'dispersion' ? 'document' : 'match'}
+          allowSourceSelection
+          purpose="download"
+          onSubmit={(sources, format = 'csv') => {
+            void handleDownload(sources, format);
+          }}
+        />
+      ) : null}
 
       {addToWorkspaceDialogOpen ? (
         <ResultAddToWorkspaceDialog

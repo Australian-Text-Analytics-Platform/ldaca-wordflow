@@ -314,9 +314,37 @@ def _prepare_result_data_block_creation(
     request: ResultDataBlockCreationRequest,
     context: AnalysisPreparationContext,
 ) -> ResultDataBlockCreationInput:
-    parent = _parent_analysis(context)
+    result_paths, document_columns, case_sensitive = resolve_result_selection_inputs(
+        request,
+        workspace=context.workspace,
+        workspace_path=context.workspace_path,
+        parent=_parent_analysis(context),
+    )
+    return ResultDataBlockCreationInput(
+        artifact_dir=str(context.artifact_dir),
+        request_payload=request.model_dump(mode="json"),
+        result_paths=result_paths,
+        document_columns=document_columns,
+        case_sensitive=case_sensitive,
+    )
+
+
+def resolve_result_selection_inputs(
+    request: ResultDataBlockCreationRequest,
+    *,
+    workspace: Workspace,
+    workspace_path: Path,
+    parent: AnalysisRecord,
+) -> tuple[dict[uuid.UUID, str], dict[uuid.UUID, str | None], dict[uuid.UUID, bool]]:
+    """Check a Result selection and find its Result tables (issue 352).
+
+    Shared by Add to Project and Download: the result table path, document
+    column and case sensitivity of every selected source.
+    """
+
     if parent.result_payload is None:
         raise InvalidInputError("Run All Result is unavailable")
+    context = _ResultSources(workspace=workspace, workspace_path=workspace_path)
     result_paths: dict[uuid.UUID, str] = {}
     document_columns: dict[uuid.UUID, str | None] = {}
     case_sensitive: dict[uuid.UUID, bool] = {}
@@ -352,19 +380,21 @@ def _prepare_result_data_block_creation(
             result_paths,
             document_columns,
         )
-    return ResultDataBlockCreationInput(
-        artifact_dir=str(context.artifact_dir),
-        request_payload=request.model_dump(mode="json"),
-        result_paths=result_paths,
-        document_columns=document_columns,
-        case_sensitive=case_sensitive,
-    )
+    return result_paths, document_columns, case_sensitive
+
+
+@dataclass(frozen=True)
+class _ResultSources:
+    """The Workspace view a Result selection is resolved against."""
+
+    workspace: Workspace
+    workspace_path: Path
 
 
 def _prepare_concordance_data_block_sources(
     request: ConcordanceMatchDataBlockCreationAnalysisRequest
     | ConcordanceDocumentDataBlockCreationAnalysisRequest,
-    context: AnalysisPreparationContext,
+    context: AnalysisPreparationContext | _ResultSources,
     parent: AnalysisRecord,
     result_paths: dict[uuid.UUID, str],
     document_columns: dict[uuid.UUID, str | None],
@@ -415,7 +445,7 @@ def _prepare_concordance_data_block_sources(
 
 def _prepare_quotation_data_block_source(
     request: QuotationResultDataBlockCreationAnalysisRequest,
-    context: AnalysisPreparationContext,
+    context: AnalysisPreparationContext | _ResultSources,
     parent: AnalysisRecord,
     result_paths: dict[uuid.UUID, str],
     document_columns: dict[uuid.UUID, str | None],
@@ -439,7 +469,7 @@ def _prepare_quotation_data_block_source(
 
 def _prepare_sequential_data_block_source(
     request: SequentialDataBlockCreationAnalysisRequest,
-    context: AnalysisPreparationContext,
+    context: AnalysisPreparationContext | _ResultSources,
     parent: AnalysisRecord,
     result_paths: dict[uuid.UUID, str],
     document_columns: dict[uuid.UUID, str | None],

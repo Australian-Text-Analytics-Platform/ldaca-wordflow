@@ -115,6 +115,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "POST",
+        "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/download",
+        "download_result",
+    ),
+    (
+        "POST",
         "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/query",
         "query_analysis_result",
     ),

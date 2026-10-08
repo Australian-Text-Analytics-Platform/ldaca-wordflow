@@ -49,6 +49,8 @@ interface Props {
   columnsLabel?: string;
   /** Analysis-specific choices shown above the sources, e.g. how rows are formed. */
   options?: ReactNode;
+  /** Download the same table as a file instead of adding it (issue 352). */
+  purpose?: 'add' | 'download';
 }
 
 const defaultColumns = (source: AddToWorkspaceSource): string[] =>
@@ -104,6 +106,7 @@ export function AddToWorkspaceDialog({
   options,
   allowSourceSelection = false,
   columnsLabel = 'Columns',
+  purpose = 'add',
 }: Props) {
   const [columnsBySource, setColumnsBySource] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(sources.map((source) => [source.id, defaultColumns(source)])),
@@ -249,7 +252,7 @@ export function AddToWorkspaceDialog({
                   <>
                     <div className="space-y-1">
                       <Label htmlFor={`add-to-workspace-name-${source.id}`}>
-                        New Data Block name
+                        {purpose === 'download' ? 'File name' : 'New Data Block name'}
                       </Label>
                       <Input
                         id={`add-to-workspace-name-${source.id}`}
@@ -350,7 +353,13 @@ export function AddToWorkspaceDialog({
               );
             }}
           >
-            {isSubmitting ? 'Adding…' : 'Add to Project'}
+            {purpose === 'download'
+              ? isSubmitting
+                ? 'Preparing…'
+                : 'Download'
+              : isSubmitting
+                ? 'Adding…'
+                : 'Add to Project'}
           </Button>
         </DialogFooter>
       </DialogContent>

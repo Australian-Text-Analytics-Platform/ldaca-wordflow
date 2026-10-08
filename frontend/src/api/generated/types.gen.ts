@@ -4116,6 +4116,30 @@ export type ResultColumnMetadata = {
 };
 
 /**
+ * ResultDownloadRequest
+ *
+ * Download a Result selection as a file instead of adding it (issue 352).
+ *
+ * ``request`` is the exact Add to Project request, so the file holds the
+ * same table the Data Block would.
+ */
+export type ResultDownloadRequest = {
+    format?: DataBlockExportFormat;
+    /**
+     * Request
+     */
+    request: ({
+        kind: 'concordance_match_data_block_creation';
+    } & ConcordanceMatchDataBlockCreationAnalysisRequest) | ({
+        kind: 'concordance_document_data_block_creation';
+    } & ConcordanceDocumentDataBlockCreationAnalysisRequest) | ({
+        kind: 'quotation_result_data_block_creation';
+    } & QuotationResultDataBlockCreationAnalysisRequest) | ({
+        kind: 'sequential_data_block_creation';
+    } & SequentialDataBlockCreationAnalysisRequest);
+};
+
+/**
  * ResultSorting
  */
 export type ResultSorting = {
@@ -9391,6 +9415,64 @@ export type GetAnalysisResultResponses = {
 };
 
 export type GetAnalysisResultResponse = GetAnalysisResultResponses[keyof GetAnalysisResultResponses];
+
+export type DownloadResultData = {
+    body: ResultDownloadRequest;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Analysis Id
+         */
+        analysis_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/download';
+};
+
+export type DownloadResultErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request or resource exceeds the configured size limit
+     */
+    413: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Storage capacity is exhausted
+     */
+    507: ApiError;
+};
+
+export type DownloadResultError = DownloadResultErrors[keyof DownloadResultErrors];
+
+export type DownloadResultResponses = {
+    /**
+     * One Result table file, or a ZIP for several sources
+     */
+    200: Blob | File;
+};
+
+export type DownloadResultResponse = DownloadResultResponses[keyof DownloadResultResponses];
 
 export type QueryAnalysisResultData = {
     /**

@@ -62,6 +62,165 @@ def _sort_like_the_table(
     )
 
 
+def parse_result_selection_request(request_payload: dict[str, Any]) -> tuple[Any, list[Any], Any, str | None]:
+    """The validated request, its selections, derivation and nested column.
+
+    Shared by Add to Project and Download (issue 352), so both build the
+    same table.
+    """
+
+    from ..domain.workspace import (
+        ConcordanceDocumentDataBlockCreationAnalysisRequest,
+        ConcordanceDocumentDataBlockCreationDerivation,
+        ConcordanceMatchDataBlockCreationAnalysisRequest,
+        ConcordanceMatchDataBlockCreationDerivation,
+        QuotationResultDataBlockCreationAnalysisRequest,
+        QuotationResultDataBlockCreationDerivation,
+        SequentialDataBlockCreationAnalysisRequest,
+        SequentialDataBlockCreationDerivation,
+    )
+
+    kind = request_payload.get("kind")
+    if kind == "concordance_match_data_block_creation":
+        request = ConcordanceMatchDataBlockCreationAnalysisRequest.model_validate(
+            request_payload
+        )
+        return request, list(request.sources), ConcordanceMatchDataBlockCreationDerivation(), "concordance"
+    if kind == "concordance_document_data_block_creation":
+        request = ConcordanceDocumentDataBlockCreationAnalysisRequest.model_validate(
+            request_payload
+        )
+        return request, list(request.sources), ConcordanceDocumentDataBlockCreationDerivation(), None
+    if kind == "quotation_result_data_block_creation":
+        request = QuotationResultDataBlockCreationAnalysisRequest.model_validate(
+            request_payload
+        )
+        return request, [request.source], QuotationResultDataBlockCreationDerivation(), "quotation"
+    if kind == "sequential_data_block_creation":
+        request = SequentialDataBlockCreationAnalysisRequest.model_validate(request_payload)
+        return request, [request.source], SequentialDataBlockCreationDerivation(), None
+    raise ValueError("Data Block Creation kind is unsupported")
+
+
+def result_selection_frame(
+    *,
+    kind: str,
+    nested_column: str | None,
+    selection: Any,
+    path: str | None,
+    document_column: str | None,
+    case_sensitive: bool,
+) -> tuple[Any, list[str]]:
+    """The selected rows and columns of one Result table, in table order.
+
+    Returns a LazyFrame of exactly ``output_columns``. Used by Add to Project
+    (published as a Data Block) and Download (written as a file, issue 352).
+    """
+
+    import polars as pl
+
+    from ..domain.workspace import (
+        ConcordanceDocumentDataBlockCreationSource,
+        SequentialDataBlockCreationSource,
+    )
+
+    if path is None or (
+        document_column is None
+        and not isinstance(selection, SequentialDataBlockCreationSource)
+    ):
+        raise ValueError("Data Block Creation source artifact is unavailable")
+    if isinstance(selection, SequentialDataBlockCreationSource):
+        from ..analysis.sequential_core import (
+            SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN,
+            SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN,
+        )
+
+        frame = pl.scan_parquet(path)
+        schema = frame.collect_schema()
+        if (
+            SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN not in schema
+            or SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN not in schema
+        ):
+            raise ValueError("Trends selection identity is unavailable")
+        if selection.selected_period_indices is not None:
+            frame = frame.filter(
+                pl.col(SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN).is_in(
+                    selection.selected_period_indices
+                )
+            )
+        if selection.excluded_group_indices:
+            frame = frame.filter(
+                ~pl.col(SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN).is_in(
+                    selection.excluded_group_indices
+                )
+            )
+        output_columns = selection.selected_columns
+    elif isinstance(selection, ConcordanceDocumentDataBlockCreationSource):
+        assert document_column is not None
+        from ..analysis.concordance_projection import (
+            filter_concordance_documents,
+        )
+        from ..analysis.generated_columns import CONC_EXTRACTION_COLUMN
+
+        frame = filter_concordance_documents(
+            pl.scan_parquet(path),
+            document_column=document_column,
+            excluded_matched_texts=selection.excluded_matched_texts,
+            bin_count=selection.bin_count,
+            selected_bins=selection.selected_bins,
+        )
+        schema = frame.collect_schema()
+        if any(
+            column not in schema
+            for column in selection.selected_metadata_columns
+        ):
+            raise ValueError("Document Data Block Creation metadata is unavailable")
+        output_columns = [
+            document_column,
+            CONC_EXTRACTION_COLUMN,
+            *selection.selected_metadata_columns,
+        ]
+        frame = frame.with_columns(
+            pl.col("concordance")
+            .list.eval(
+                pl.element()
+                .struct.field(CONC_EXTRACTION_COLUMN)
+                .cast(pl.String)
+                .fill_null("")
+                .str.replace_all(r"\s+", " ")
+                .str.strip_chars()
+            )
+            .list.join("\n")
+            .alias(CONC_EXTRACTION_COLUMN)
+        )
+    else:
+        if document_column not in selection.selected_columns:
+            raise ValueError("Data Block Creation requires the document column")
+        assert nested_column is not None
+        frame = pl.scan_parquet(path).explode(nested_column)
+        if kind == "quotation_result_data_block_creation":
+            # Name the quote fields QUOTE_* before unnesting, so they
+            # cannot clash with a source column such as `speaker`
+            # (issues 245 and 283).
+            from ..analysis.generated_columns import prefix_quote_struct_fields
+
+            frame = prefix_quote_struct_fields(frame, nested_column)
+        frame = frame.unnest(nested_column)
+        frame = _sort_like_the_table(
+            frame,
+            path,
+            nested_column=nested_column,
+            sort_by=getattr(selection, "sort_by", None),
+            descending=getattr(selection, "descending", False),
+            case_sensitive=case_sensitive,
+        )
+        output_columns = selection.selected_columns
+    schema = frame.collect_schema()
+    if any(column not in schema for column in output_columns):
+        raise ValueError("Data Block Creation column is unavailable")
+    return frame.select(output_columns), output_columns
+
+
 @process_entrypoint
 def run_result_data_block_creation(
     *,
@@ -75,164 +234,36 @@ def run_result_data_block_creation(
     """Create private output files for one atomic Data Block Creation."""
 
     try:
-        import polars as pl
-
         from ..domain.workspace import (
-            ConcordanceDocumentDataBlockCreationAnalysisRequest,
-            ConcordanceDocumentDataBlockCreationDerivation,
-            ConcordanceDocumentDataBlockCreationSource,
-            ConcordanceMatchDataBlockCreationAnalysisRequest,
-            ConcordanceMatchDataBlockCreationDerivation,
             DerivationInput,
             DerivationProvenance,
-            QuotationResultDataBlockCreationAnalysisRequest,
-            QuotationResultDataBlockCreationDerivation,
-            SequentialDataBlockCreationAnalysisRequest,
-            SequentialDataBlockCreationDerivation,
-            SequentialDataBlockCreationSource,
             node_reference,
         )
         from ..infrastructure.storage.node_store import write_published_frame
 
-        kind = request_payload.get("kind")
-        if kind == "concordance_match_data_block_creation":
-            request = ConcordanceMatchDataBlockCreationAnalysisRequest.model_validate(
-                request_payload
-            )
-            selections = request.sources
-            operation = ConcordanceMatchDataBlockCreationDerivation()
-            nested_column = "concordance"
-        elif kind == "concordance_document_data_block_creation":
-            request = ConcordanceDocumentDataBlockCreationAnalysisRequest.model_validate(
-                request_payload
-            )
-            selections = request.sources
-            operation = ConcordanceDocumentDataBlockCreationDerivation()
-            nested_column = None
-        elif kind == "quotation_result_data_block_creation":
-            request = QuotationResultDataBlockCreationAnalysisRequest.model_validate(
-                request_payload
-            )
-            selections = [request.source]
-            operation = QuotationResultDataBlockCreationDerivation()
-            nested_column = "quotation"
-        elif kind == "sequential_data_block_creation":
-            request = SequentialDataBlockCreationAnalysisRequest.model_validate(
-                request_payload
-            )
-            selections = [request.source]
-            operation = SequentialDataBlockCreationDerivation()
-            nested_column = None
-        else:
-            raise ValueError("Data Block Creation kind is unsupported")
+        kind = str(request_payload.get("kind"))
+        _request, selections, operation, nested_column = parse_result_selection_request(
+            request_payload
+        )
 
         outputs: list[dict[str, Any]] = []
         for index, selection in enumerate(selections):
             source_id = selection.source_node_id
-            path = result_paths.get(source_id)
+            frame, output_columns = result_selection_frame(
+                kind=kind,
+                nested_column=nested_column,
+                selection=selection,
+                path=result_paths.get(source_id),
+                document_column=document_columns.get(source_id),
+                case_sensitive=(case_sensitive or {}).get(source_id, True),
+            )
             document_column = document_columns.get(source_id)
-            if path is None or (
-                document_column is None
-                and not isinstance(selection, SequentialDataBlockCreationSource)
-            ):
-                raise ValueError("Data Block Creation source artifact is unavailable")
-            if isinstance(selection, SequentialDataBlockCreationSource):
-                from ..analysis.sequential_core import (
-                    SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN,
-                    SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN,
-                )
-
-                frame = pl.scan_parquet(path)
-                schema = frame.collect_schema()
-                if (
-                    SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN not in schema
-                    or SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN not in schema
-                ):
-                    raise ValueError("Trends selection identity is unavailable")
-                if selection.selected_period_indices is not None:
-                    frame = frame.filter(
-                        pl.col(SEQUENTIAL_PUBLICATION_PERIOD_INDEX_COLUMN).is_in(
-                            selection.selected_period_indices
-                        )
-                    )
-                if selection.excluded_group_indices:
-                    frame = frame.filter(
-                        ~pl.col(SEQUENTIAL_PUBLICATION_GROUP_INDEX_COLUMN).is_in(
-                            selection.excluded_group_indices
-                        )
-                    )
-                output_columns = selection.selected_columns
-            elif isinstance(selection, ConcordanceDocumentDataBlockCreationSource):
-                assert document_column is not None
-                from ..analysis.concordance_projection import (
-                    filter_concordance_documents,
-                )
-                from ..analysis.generated_columns import CONC_EXTRACTION_COLUMN
-
-                frame = filter_concordance_documents(
-                    pl.scan_parquet(path),
-                    document_column=document_column,
-                    excluded_matched_texts=selection.excluded_matched_texts,
-                    bin_count=selection.bin_count,
-                    selected_bins=selection.selected_bins,
-                )
-                schema = frame.collect_schema()
-                if any(
-                    column not in schema
-                    for column in selection.selected_metadata_columns
-                ):
-                    raise ValueError("Document Data Block Creation metadata is unavailable")
-                output_columns = [
-                    document_column,
-                    CONC_EXTRACTION_COLUMN,
-                    *selection.selected_metadata_columns,
-                ]
-                frame = frame.with_columns(
-                    pl.col("concordance")
-                    .list.eval(
-                        pl.element()
-                        .struct.field(CONC_EXTRACTION_COLUMN)
-                        .cast(pl.String)
-                        .fill_null("")
-                        .str.replace_all(r"\s+", " ")
-                        .str.strip_chars()
-                    )
-                    .list.join("\n")
-                    .alias(CONC_EXTRACTION_COLUMN)
-                )
-            else:
-                if document_column not in selection.selected_columns:
-                    raise ValueError("Data Block Creation requires the document column")
-                assert nested_column is not None
-                frame = pl.scan_parquet(path).explode(nested_column)
-                if kind == "quotation_result_data_block_creation":
-                    # Name the quote fields QUOTE_* before unnesting, so they
-                    # cannot clash with a source column such as `speaker`
-                    # (issues 245 and 283).
-                    from ..analysis.generated_columns import prefix_quote_struct_fields
-
-                    frame = prefix_quote_struct_fields(frame, nested_column)
-                frame = frame.unnest(nested_column)
-                frame = _sort_like_the_table(
-                    frame,
-                    path,
-                    nested_column=nested_column,
-                    sort_by=getattr(selection, "sort_by", None),
-                    descending=getattr(selection, "descending", False),
-                    case_sensitive=(case_sensitive or {}).get(source_id, True),
-                )
-                output_columns = selection.selected_columns
-            schema = frame.collect_schema()
-            if any(column not in schema for column in output_columns):
-                raise ValueError("Data Block Creation column is unavailable")
             if progress_callback:
                 progress_callback(
                     0.1 + (0.65 * index / max(len(selections), 1)),
                     f"Preparing {selection.new_node_name}",
                 )
-            selected = frame.select(output_columns).collect(
-                engine="streaming"
-            )
+            selected = frame.collect(engine="streaming")
             node_payload = write_published_frame(
                 selected,
                 base_dir=artifact_dir,

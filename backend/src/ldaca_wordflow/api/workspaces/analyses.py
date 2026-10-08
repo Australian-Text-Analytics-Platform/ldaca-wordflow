@@ -31,11 +31,12 @@ from ...models.tables import (
     TableProjectionResource,
 )
 from ...models.analyses import AnalysisCreate, AnalysisPage
+from ...models.node_resources import ResultDownloadRequest
 from ...services.analysis_results import ResultMaterialization
 from ...shared.errors import InternalServiceError
 from ...shared.json_data import JsonData
 from ..dependencies import RuntimeDep
-from ..responses import api_errors, route_path
+from ..responses import api_errors, route_path, workspace_etag
 from ..security import CurrentSessionSecurityDep
 from ..table_responses import (
     ARROW_STREAM_RESPONSE,
@@ -338,6 +339,56 @@ async def get_analysis_result(
         allow_closing=True,
     )
     return _present_result(value, request, workspace_id, analysis_id)
+
+
+@router.post(
+    "/analyses/{analysis_id}/result/download",
+    response_class=FileResponse,
+    responses={
+        **api_errors(403, 404, 409, 413, 422, 507),
+        status.HTTP_200_OK: {
+            "content": {
+                "text/csv": {"schema": {"type": "string", "format": "binary"}},
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                    "schema": {"type": "string", "format": "binary"}
+                },
+                "application/json": {"schema": {"type": "string", "format": "binary"}},
+                "application/vnd.apache.parquet": {
+                    "schema": {"type": "string", "format": "binary"}
+                },
+                "application/zip": {"schema": {"type": "string", "format": "binary"}},
+            },
+            "description": "One Result table file, or a ZIP for several sources",
+        },
+    },
+)
+async def download_result(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    request: ResultDownloadRequest,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> FileResponse:
+    """Download the table Add to Project would create, as a file (issue 352)."""
+
+    (
+        snapshot,
+        filename,
+        media_type,
+        revision,
+    ) = await runtime.data_block_export_service.export_result(
+        principal.user.id,
+        workspace_id,
+        analysis_id,
+        request,
+    )
+    return FileResponse(
+        snapshot.path,
+        filename=filename,
+        media_type=media_type,
+        headers={"ETag": workspace_etag(revision)},
+        background=BackgroundTask(snapshot.cleanup),
+    )
 
 
 @router.post(

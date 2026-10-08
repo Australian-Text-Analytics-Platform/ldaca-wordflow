@@ -411,4 +411,47 @@ describe('ResultAddToWorkspaceDialog', () => {
         ),
     ).toBe(true);
   });
+
+  it('downloads the same table as a file, with a format choice (issue 352)', () => {
+    const onSubmit = vi.fn();
+    render(
+      <ResultAddToWorkspaceDialog
+        open
+        onOpenChange={vi.fn()}
+        title="Download Concordance Matches"
+        nameSuffix="concordance"
+        sources={[
+          {
+            node_id: 'node-1',
+            node_name: 'Tweets',
+            document_column: 'text',
+            metadata_columns: ['speaker'],
+            analysis_columns: ['CONC_matched_text'],
+            internal_columns: [],
+            record_count: 3,
+            table: { table_id: 'node-1-result', rows_url: '/rows', schema_url: '/schema' },
+          },
+        ]}
+        isSubmitting={false}
+        purpose="download"
+        onSubmit={onSubmit}
+      />,
+    );
+
+    expect(screen.getByLabelText('File name')).toHaveValue('Tweets_concordance');
+    expect(screen.getByRole('combobox', { name: 'Format' })).toHaveTextContent('CSV (.csv)');
+    expect(screen.queryByRole('button', { name: 'Add to Project' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Download' }));
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      [
+        {
+          source_node_id: 'node-1',
+          selected_columns: ['text', 'CONC_matched_text'],
+          new_node_name: 'Tweets_concordance',
+        },
+      ],
+      'csv',
+    );
+  });
 });

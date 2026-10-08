@@ -8026,6 +8026,47 @@
         "title": "ResultColumnMetadata",
         "type": "object"
       },
+      "ResultDownloadRequest": {
+        "additionalProperties": false,
+        "description": "Download a Result selection as a file instead of adding it (issue 352).\n\n``request`` is the exact Add to Project request, so the file holds the\nsame table the Data Block would.",
+        "properties": {
+          "format": {
+            "$ref": "#/components/schemas/DataBlockExportFormat",
+            "default": "csv"
+          },
+          "request": {
+            "discriminator": {
+              "mapping": {
+                "concordance_document_data_block_creation": "#/components/schemas/ConcordanceDocumentDataBlockCreationAnalysisRequest",
+                "concordance_match_data_block_creation": "#/components/schemas/ConcordanceMatchDataBlockCreationAnalysisRequest",
+                "quotation_result_data_block_creation": "#/components/schemas/QuotationResultDataBlockCreationAnalysisRequest",
+                "sequential_data_block_creation": "#/components/schemas/SequentialDataBlockCreationAnalysisRequest"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/ConcordanceMatchDataBlockCreationAnalysisRequest"
+              },
+              {
+                "$ref": "#/components/schemas/ConcordanceDocumentDataBlockCreationAnalysisRequest"
+              },
+              {
+                "$ref": "#/components/schemas/QuotationResultDataBlockCreationAnalysisRequest"
+              },
+              {
+                "$ref": "#/components/schemas/SequentialDataBlockCreationAnalysisRequest"
+              }
+            ],
+            "title": "Request"
+          }
+        },
+        "required": [
+          "request"
+        ],
+        "title": "ResultDownloadRequest",
+        "type": "object"
+      },
       "ResultSorting": {
         "additionalProperties": false,
         "properties": {
@@ -17669,6 +17710,160 @@
           }
         ],
         "summary": "Get Analysis Result",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/download": {
+      "post": {
+        "description": "Download the table Add to Project would create, as a file (issue 352).",
+        "operationId": "download_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultDownloadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/vnd.apache.parquet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "application/zip": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              },
+              "text/csv": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "One Result table file, or a ZIP for several sources"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "413": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request or resource exceeds the configured size limit"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "507": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Storage capacity is exhausted"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Download Result",
         "tags": [
           "analyses"
         ]

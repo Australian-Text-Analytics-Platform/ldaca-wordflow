@@ -17,7 +17,7 @@ export interface DataBlockExportSelection {
   name: string;
 }
 
-const filenameFromResponse = (response: Response | undefined): string | null => {
+export const filenameFromResponse = (response: Response | undefined): string | null => {
   const disposition = response?.headers.get('content-disposition');
   if (!disposition) return null;
   const encodedMatch = /filename\*=UTF-8''([^;]+)/i.exec(disposition);

@@ -8,6 +8,7 @@ import {
   type QuotationAnalysisRequest,
   type QuotationResult,
   type QuotationRunAllResult,
+  type DataBlockExportFormat,
   type SortedDataBlockCreationSource,
 } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -58,6 +59,8 @@ import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import type { QuotationReviewRowUnit } from './quotationArrowPage';
 import { filterQuotationRowsWithQuotes } from './quotationResultsModel';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
+import { downloadResultSelection } from '../common/resultDownload';
+import { Download } from 'lucide-react';
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { toastError } from '@/lib/toastError';
 
@@ -144,6 +147,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const runAllReviewRowUnit: QuotationReviewRowUnit = 'matches';
   const [isClearing, setIsClearing] = useState(false);
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
+  const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
   const [errorDialogMessage, setErrorDialogMessage] = useState<string>('');
@@ -476,21 +481,49 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     });
   };
 
+  // One request for Add to Project and Download, so both hold the same
+  // table; rows go in the order the Result table shows (issues 275, 352).
+  const buildCreationRequest = (source: SortedDataBlockCreationSource) => {
+    const sortBy = runAllReviewQuery.sort_by ?? null;
+    return {
+      kind: 'quotation_result_data_block_creation' as const,
+      source: {
+        ...source,
+        sort_by: sortBy,
+        descending: sortBy ? runAllReviewQuery.descending : false,
+      },
+    };
+  };
+
+  const handleDownload = async (
+    sources: SortedDataBlockCreationSource[],
+    format: DataBlockExportFormat,
+  ) => {
+    const source = sources[0];
+    if (!quotationRunAll || !source || sources.length !== 1 || !currentWorkspaceId) return;
+    setIsDownloading(true);
+    try {
+      const saved = await downloadResultSelection({
+        workspaceId: currentWorkspaceId,
+        analysisId: quotationRunAll.id,
+        request: buildCreationRequest(source),
+        format,
+        fallbackName: source.new_node_name,
+      });
+      if (saved) setDownloadDialogOpen(false);
+    } catch (cause) {
+      toastError(cause, 'Try again.', { title: "Couldn't download the Quotation Results." });
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleAddToWorkspace = async (sources: SortedDataBlockCreationSource[]) => {
     const source = sources[0];
     if (!quotationRunAll || !source || sources.length !== 1) return;
     setIsAddingToWorkspace(true);
     try {
-      // Rows go in the order the Result table shows (issue 275).
-      const sortBy = runAllReviewQuery.sort_by ?? null;
-      await createResultDataBlocks(host.tabId, quotationRunAll.id, {
-        kind: 'quotation_result_data_block_creation',
-        source: {
-          ...source,
-          sort_by: sortBy,
-          descending: sortBy ? runAllReviewQuery.descending : false,
-        },
-      });
+      await createResultDataBlocks(host.tabId, quotationRunAll.id, buildCreationRequest(source));
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Quotation Results to the Project.');
     } catch (cause) {
@@ -682,15 +715,28 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             }
             headerAction={
               runAllSource ? (
-                <Button
-                  data-guidance="quotation-add-to-workspace"
-                  type="button"
-                  onClick={() => {
-                    setAddToWorkspaceDialogOpen(true);
-                  }}
-                >
-                  Add to Project
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Download Quotation Results"
+                    title="Download Quotation Results"
+                    onClick={() => {
+                      setDownloadDialogOpen(true);
+                    }}
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    data-guidance="quotation-add-to-workspace"
+                    type="button"
+                    onClick={() => {
+                      setAddToWorkspaceDialogOpen(true);
+                    }}
+                  >
+                    Add to Project
+                  </Button>
+                </div>
               ) : null
             }
             displayedNodes={
@@ -734,6 +780,20 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           />
         ) : null}
       </AnalysisSplitLayout>
+      {downloadDialogOpen && runAllSource ? (
+        <ResultAddToWorkspaceDialog
+          open
+          onOpenChange={setDownloadDialogOpen}
+          title="Download Quotation Results"
+          nameSuffix="quotation"
+          sources={[runAllSource]}
+          isSubmitting={isDownloading}
+          purpose="download"
+          onSubmit={(sources, format = 'csv') => {
+            void handleDownload(sources, format);
+          }}
+        />
+      ) : null}
       {addToWorkspaceDialogOpen && runAllSource ? (
         <ResultAddToWorkspaceDialog
           open

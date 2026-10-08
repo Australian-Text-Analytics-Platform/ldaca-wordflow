@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import zipfile
+
+import io
+
 import json
 import shutil
 import time
@@ -35,7 +39,7 @@ def _wait_analysis(
 def test_quotation_preview_page_is_native_arrow_ipc(
     tmp_path: Path, monkeypatch
 ) -> None:
-    def fake_quotation_groups(input_df: pl.DataFrame, _source_column: str):
+    def fake_quotation_groups(input_df: pl.DataFrame, _source_column: str, _on_progress=None):
         return input_df.with_columns(
             pl.Series(
                 "quotation",
@@ -841,6 +845,63 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
         assert invalid_terminal["state"] == "failed"
         unchanged_nodes = client.get(f"/api/workspaces/{workspace_id}/nodes")
         assert {node["id"] for node in unchanged_nodes.json()} == {
+            first_node_id,
+            second_node_id,
+        }
+
+        # Download builds the table Add to Project would, as a file, without
+        # creating a Data Block (issue 352).
+        download_url = f"/api/workspaces/{workspace_id}/analyses/{group_id}/result/download"
+        one_source = {
+            "kind": "concordance_match_data_block_creation",
+            "sources": [
+                {
+                    "source_node_id": first_node_id,
+                    "selected_columns": ["text", "source", "CONC_matched_text"],
+                    "new_node_name": "First matches",
+                }
+            ],
+        }
+        csv_download = client.post(
+            download_url, json={"request": one_source, "format": "csv"}, headers=unsafe
+        )
+        assert csv_download.status_code == 200, csv_download.text
+        assert csv_download.headers["content-type"].startswith("text/csv")
+        assert 'filename="First_matches.csv"' in csv_download.headers["content-disposition"]
+        lines = csv_download.content.decode("utf-8-sig").splitlines()
+        assert lines[0] == "text,source,CONC_matched_text"
+        assert len(lines) == 3
+        both_sources = {
+            **one_source,
+            "sources": [
+                *one_source["sources"],
+                {
+                    "source_node_id": second_node_id,
+                    "selected_columns": ["text", "CONC_extraction"],
+                    "new_node_name": "Second matches",
+                },
+            ],
+        }
+        zip_download = client.post(
+            download_url, json={"request": both_sources, "format": "xlsx"}, headers=unsafe
+        )
+        assert zip_download.status_code == 200, zip_download.text
+        with zipfile.ZipFile(io.BytesIO(zip_download.content)) as archive:
+            assert archive.namelist() == ["First_matches.xlsx", "Second_matches.xlsx"]
+        refused = client.post(
+            download_url,
+            json={
+                "request": {
+                    **one_source,
+                    "sources": [
+                        {**one_source["sources"][0], "selected_columns": ["text", "missing"]}
+                    ],
+                }
+            },
+            headers=unsafe,
+        )
+        assert refused.status_code == 400, refused.text
+        assert {node["id"] for node in client.get(f"/api/workspaces/{workspace_id}/nodes").json()} == {
             first_node_id,
             second_node_id,
         }

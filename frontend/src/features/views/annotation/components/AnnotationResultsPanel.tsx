@@ -1,3 +1,4 @@
+import { DataBlockDownloadButton } from '@/features/views/common/components/DataBlockDownloadButton';
 import HelpIcon from '@/components/help/HelpIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { ArrowRight } from 'lucide-react';
@@ -72,6 +73,8 @@ const cellText = (value: unknown): string => {
 interface AnnotationResultsPanelProps {
   workspaceId: string | null;
   nodeId: string;
+  /** Shows a download icon for the annotated Data Block (issue 352). */
+  nodeName?: string;
   sourceColumns: string[];
   sourceColor: string;
   rowCount: number;
@@ -123,6 +126,7 @@ interface AnnotationResultsPanelProps {
 export function AnnotationResultsPanel({
   workspaceId,
   nodeId,
+  nodeName,
   sourceColumns,
   sourceColor,
   rowCount,
@@ -373,6 +377,14 @@ export function AnnotationResultsPanel({
               onSelectedColumnsChange={onMetadataColumnsChange}
               disabledColumns={activeComparisonColumns}
             />
+            {nodeName && workspaceId ? (
+              <DataBlockDownloadButton
+                workspaceId={workspaceId}
+                nodeId={nodeId}
+                nodeName={nodeName}
+                label="Annotation table"
+              />
+            ) : null}
           </div>
         ) : null}
       </div>

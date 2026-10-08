@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import HelpIcon from '@/components/help/HelpIcon';
+import { DataBlockDownloadButton } from '@/features/views/common/components/DataBlockDownloadButton';
 import { CorpusOverviewPopover } from './CorpusOverviewPopover';
 import { DeleteColumnsDialog } from './DeleteColumnsDialog';
 import { CLEAN_TEXT_OPERATIONS } from '../dataEditorRequests';
@@ -178,6 +179,15 @@ export const WorkspaceDataHeader = ({
         <div className="ml-auto flex items-center gap-1.5">
           {info.overview ? (
             <CorpusOverviewPopover {...info.overview} buttonClassName={TOOL_BUTTON} />
+          ) : null}
+          {info.overview ? (
+            <DataBlockDownloadButton
+              workspaceId={info.overview.workspaceId}
+              nodeId={info.overview.nodeId}
+              nodeName={info.nodeLabel}
+              label="Data Block"
+              className="h-[22px] px-1.5 [&_svg]:size-3"
+            />
           ) : null}
           <button
             type="button"

@@ -90,6 +90,10 @@ Details**, where the document scrolls to the quotation and the metadata below
 it shows which document the extract comes from. After Run, the results do not
 show the Preview page summary.
 
+To save the Result table as a file instead, click the download icon beside
+**Add to Project**: choose the same columns, then CSV or Excel. Nothing is
+added to the Project.
+
 Use **Add to Project** to publish selected Result columns as a new Data
 Block. The document column is required, metadata columns start unselected, and
 analysis columns start selected. You can run Quotation on that Data Block again:

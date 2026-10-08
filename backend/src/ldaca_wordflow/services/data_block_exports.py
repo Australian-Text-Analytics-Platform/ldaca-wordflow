@@ -15,8 +15,17 @@ import polars as pl
 
 from ..shared.elapsed_time import elapsed_to_text
 from ..domain.workspace import Node
-from ..models.node_resources import DataBlockExportFormat, DataBlockExportRequest
-from ..shared.errors import InvalidInputError, NodeNotFoundError, ResourceTooLargeError
+from ..models.node_resources import (
+    DataBlockExportFormat,
+    DataBlockExportRequest,
+    ResultDownloadRequest,
+)
+from ..shared.errors import (
+    AnalysisNotFoundError,
+    InvalidInputError,
+    NodeNotFoundError,
+    ResourceTooLargeError,
+)
 from ..infrastructure.storage.bounded_io import BoundedSeekableWriter
 from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from .workspace import WorkspaceService
@@ -89,9 +98,78 @@ class DataBlockExportService:
                 reservation_bytes=self._max_export_bytes,
                 producer=partial(
                     _write_export,
-                    tuple(nodes),
+                    tuple((node.name, str(node.id), node.data) for node in nodes),
                     request.format,
                 ),
+            )
+            revision = lease.revision
+        return (
+            snapshot,
+            filename,
+            "application/zip" if multiple else spec.media_type,
+            revision,
+        )
+
+    async def export_result(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        request: ResultDownloadRequest,
+    ) -> tuple[ResponseSnapshot, str, str, int]:
+        """Download a Result selection as a file instead of a Data Block (issue 352).
+
+        The table is built exactly as Add to Project builds it, from the same
+        selection, then written like a Data Block export.
+        """
+
+        from ..workers.result_data_block_creation import (
+            parse_result_selection_request,
+            result_selection_frame,
+        )
+        from .analysis_preparation_registry import resolve_result_selection_inputs
+
+        spec = _FORMAT_SPECS[request.format]
+        payload = request.request.model_dump(mode="json")
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            parent = lease.workspace.analyses.get(analysis_id)
+            if parent is None:
+                raise AnalysisNotFoundError("Analysis not found")
+            result_paths, document_columns, case_sensitive = resolve_result_selection_inputs(
+                request.request,
+                workspace=lease.workspace,
+                workspace_path=lease.path,
+                parent=parent,
+            )
+            _request, selections, _operation, nested_column = parse_result_selection_request(
+                payload
+            )
+            frames: list[tuple[str, str, pl.LazyFrame]] = []
+            for selection in selections:
+                source_id = selection.source_node_id
+                try:
+                    frame, _columns = result_selection_frame(
+                        kind=str(payload["kind"]),
+                        nested_column=nested_column,
+                        selection=selection,
+                        path=result_paths.get(source_id),
+                        document_column=document_columns.get(source_id),
+                        case_sensitive=case_sensitive.get(source_id, True),
+                    )
+                except ValueError as exc:
+                    raise InvalidInputError(str(exc)) from exc
+                frames.append((selection.new_node_name, str(source_id), frame))
+            multiple = len(frames) > 1
+            filename = (
+                f"{_safe_export_stem(frames[0][0], 'results')}_and_more.zip"
+                if multiple
+                else f"{_safe_export_stem(frames[0][0], 'results')}.{spec.extension}"
+            )
+            snapshot = await self._response_snapshots.create_generated(
+                suffix=".zip" if multiple else f".{spec.extension}",
+                max_output_bytes=self._max_export_bytes,
+                reservation_bytes=self._max_export_bytes,
+                producer=partial(_write_export, tuple(frames), request.format),
             )
             revision = lease.revision
         return (
@@ -137,7 +215,7 @@ class _BudgetedBinaryWriter:
 
 
 def _write_export(
-    nodes: tuple[Node, ...],
+    frames: tuple[tuple[str, str, pl.LazyFrame], ...],
     export_format: DataBlockExportFormat,
     target: Path,
     max_output_bytes: int,
@@ -146,9 +224,9 @@ def _write_export(
     budget = _WriteBudget(max_output_bytes)
     try:
         with target.open("xb") as raw_output:
-            if len(nodes) == 1:
+            if len(frames) == 1:
                 writer = _BudgetedBinaryWriter(raw_output, budget)
-                _write_lazyframe(nodes[0].data, export_format, writer)
+                _write_lazyframe(frames[0][2], export_format, writer)
             else:
                 zip_output = cast(
                     BinaryIO,
@@ -167,14 +245,14 @@ def _write_export(
                     compression=zipfile.ZIP_DEFLATED,
                     compresslevel=6,
                 ) as archive:
-                    for node, archive_name in zip(
-                        nodes,
-                        _archive_names(nodes, spec.extension),
+                    for (_name, _fallback, frame), archive_name in zip(
+                        frames,
+                        _archive_names(frames, spec.extension),
                         strict=True,
                     ):
                         with archive.open(archive_name, mode="w") as member:
                             writer = _BudgetedBinaryWriter(member, budget)
-                            _write_lazyframe(node.data, export_format, writer)
+                            _write_lazyframe(frame, export_format, writer)
             raw_output.flush()
             os.fsync(raw_output.fileno())
     except BaseException:
@@ -315,11 +393,13 @@ def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
     return buffer.getvalue()
 
 
-def _archive_names(nodes: tuple[Node, ...], extension: str) -> list[str]:
+def _archive_names(
+    frames: tuple[tuple[str, str, pl.LazyFrame], ...], extension: str
+) -> list[str]:
     counts: dict[str, int] = {}
     names: list[str] = []
-    for node in nodes:
-        stem = _safe_export_stem(node.name, str(node.id))
+    for name, fallback, _frame in frames:
+        stem = _safe_export_stem(name, fallback)
         occurrence = counts.get(stem, 0) + 1
         counts[stem] = occurrence
         unique_stem = stem if occurrence == 1 else f"{stem}_{occurrence}"

@@ -28,6 +28,12 @@ from ..domain.workspace.provenance import (
     SegmentDerivation,
     SliceDerivation,
 )
+from ..domain.workspace.analysis import (
+    ConcordanceDocumentDataBlockCreationAnalysisRequest,
+    ConcordanceMatchDataBlockCreationAnalysisRequest,
+    QuotationResultDataBlockCreationAnalysisRequest,
+    SequentialDataBlockCreationAnalysisRequest,
+)
 from .names import NodeName
 
 
@@ -434,6 +440,23 @@ class NodeUpdateRequest(_StrictRequest):
         if "name" in self.model_fields_set and self.name is None:
             raise ValueError("A Data Block name is required")
         return self
+
+
+class ResultDownloadRequest(_StrictRequest):
+    """Download a Result selection as a file instead of adding it (issue 352).
+
+    ``request`` is the exact Add to Project request, so the file holds the
+    same table the Data Block would.
+    """
+
+    request: Annotated[
+        ConcordanceMatchDataBlockCreationAnalysisRequest
+        | ConcordanceDocumentDataBlockCreationAnalysisRequest
+        | QuotationResultDataBlockCreationAnalysisRequest
+        | SequentialDataBlockCreationAnalysisRequest,
+        Field(discriminator="kind"),
+    ]
+    format: DataBlockExportFormat = DataBlockExportFormat.CSV
 
 
 class CategoryValuesResource(BaseModel):

@@ -152,6 +152,10 @@ clear a value.
 
 <h2 id="help-annotation-results">Results, Clear, and Undo</h2>
 
+The download icon above the Annotations table, and above the Review table
+after a Run, saves the annotated Data Block (all its columns, with your
+codes) as CSV or Excel, without going through the Export view.
+
 **Clear** removes the tab's Preview and Run results; it does not undo labels
 already written to the Data Block. Use **Undo** in the Data Editor to reverse
 the latest manual edit, AI write, or column creation. Undo history lasts only

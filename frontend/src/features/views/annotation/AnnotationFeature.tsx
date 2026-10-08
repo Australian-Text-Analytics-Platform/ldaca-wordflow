@@ -1295,6 +1295,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             key={`${manualReviewSnapshot.nodeId}:${manualReviewSnapshot.annotationColumn}`}
             workspaceId={currentWorkspaceId ?? null}
             nodeId={manualReviewSnapshot.nodeId}
+            nodeName={sourceNode?.id === manualReviewSnapshot.nodeId ? sourceNode.name : undefined}
             sourceColumns={manualReviewSnapshot.sourceColumns}
             sourceColor={manualReviewSnapshot.sourceColor}
             rowCount={manualReviewSnapshot.rowCount}
@@ -1361,6 +1362,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             <RunAllReviewTable
               workspaceId={currentWorkspaceId}
               nodeId={annotationRunAllSource.node_id}
+              nodeName={reviewSourceNode.name}
               sql={`SELECT * FROM ${sqlTable(annotationRunAllSource.node_id)}`}
               sourceColumns={reviewSourceColumns}
               sourceColor={reviewSourceNode.color ?? GREY}

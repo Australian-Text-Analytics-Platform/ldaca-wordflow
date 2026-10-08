@@ -305,6 +305,11 @@ do Data Blocks added from Dispersion view.
 After Run, the density chart always summarises the complete result, not only
 the visible page.
 
+To save the table as a file instead, click the download icon beside **Add to
+Project**. It opens the same window, with the same column choices, and saves
+the table as CSV or Excel (a ZIP when you choose several sources), in the
+order the table shows, without adding anything to the Project.
+
 Use **Add to Project** to create new Data Blocks after reviewing the
 result. From Table view, **Add Concordance Matches to Project** creates a Data
 Block with one row per match and the columns you select. From Dispersion view,
