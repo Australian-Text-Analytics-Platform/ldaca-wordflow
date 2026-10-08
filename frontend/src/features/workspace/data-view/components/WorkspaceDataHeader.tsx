@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import HelpIcon from '@/components/help/HelpIcon';
+import { CorpusOverviewPopover } from './CorpusOverviewPopover';
 import { DeleteColumnsDialog } from './DeleteColumnsDialog';
 import { CLEAN_TEXT_OPERATIONS } from '../dataEditorRequests';
 import type { DataEditorTool } from '../dataEditorToolStore';
@@ -175,6 +176,9 @@ export const WorkspaceDataHeader = ({
           )}
         </div>
         <div className="ml-auto flex items-center gap-1.5">
+          {info.overview ? (
+            <CorpusOverviewPopover {...info.overview} buttonClassName={TOOL_BUTTON} />
+          ) : null}
           <button
             type="button"
             className="inline-flex items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description enabled:hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"

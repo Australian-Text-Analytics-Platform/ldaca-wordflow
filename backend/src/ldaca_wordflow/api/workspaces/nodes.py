@@ -19,6 +19,7 @@ from ...models.node_resources import (
     CastNodeEditRequest,
     CategoryValuesResource,
     ConversionCheckResource,
+    CorpusOverviewResource,
     DatetimeFormatsResource,
     DataBlockExportRequest,
     NodeCreateRequest,
@@ -430,6 +431,28 @@ async def get_category_values(
         node_id,
         column,
         read_all,
+    )
+
+
+@router.get(
+    "/{node_id}/corpus-overview",
+    response_model=CorpusOverviewResource,
+    responses=api_errors(400, 404, 422),
+)
+async def get_corpus_overview(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    column: str = Query(min_length=1),
+) -> CorpusOverviewResource:
+    """Documents, empty and duplicate documents, and document lengths of a text column."""
+
+    return await runtime.node_service.corpus_overview(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        column,
     )
 
 

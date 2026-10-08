@@ -46,6 +46,7 @@ from ..shared.unsupported_columns import require_supported_columns
 from .conversion import detect_datetime_formats, format_tokens
 from .node_casting import check_cast
 from .node_operations import conversion_options
+from .corpus_overview import corpus_overview
 from .category_order import (
     MAX_CATEGORY_VALUES,
     WARN_CATEGORY_VALUES,
@@ -54,6 +55,7 @@ from .category_order import (
 )
 from ..models.node_resources import (
     CategoryValuesResource,
+    CorpusOverviewResource,
     ConversionCheckResource,
     DatetimeFormatCandidate,
     DatetimeFormatExample,
@@ -680,6 +682,33 @@ class NodeService:
             is_ordered=values.is_ordered,
             warn_values=WARN_CATEGORY_VALUES,
             max_values=MAX_CATEGORY_VALUES,
+        )
+
+    async def corpus_overview(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        column: str,
+    ) -> CorpusOverviewResource:
+        """Cheap statistics for one text column, computed on demand (issue 327)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            overview = await self._run_io(corpus_overview, node.data, column)
+        return CorpusOverviewResource(
+            column=column,
+            documents=overview.documents,
+            empty_documents=overview.empty_documents,
+            duplicate_documents=overview.duplicate_documents,
+            unit=overview.unit,
+            total=overview.total,
+            minimum=overview.minimum,
+            median=overview.median,
+            mean=overview.mean,
+            maximum=overview.maximum,
         )
 
     async def datetime_formats(

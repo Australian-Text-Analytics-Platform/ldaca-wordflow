@@ -2200,6 +2200,58 @@ export type ConversionSample = {
 };
 
 /**
+ * CorpusOverviewResource
+ *
+ * Cheap statistics for one text column of a Data Block (issue 327).
+ *
+ * Lengths count ``unit`` (words, or characters for a corpus with few
+ * spaces) over the non-empty documents; they are null when every document
+ * is empty.
+ */
+export type CorpusOverviewResource = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Documents
+     */
+    documents: number;
+    /**
+     * Duplicate Documents
+     */
+    duplicate_documents: number;
+    /**
+     * Empty Documents
+     */
+    empty_documents: number;
+    /**
+     * Maximum
+     */
+    maximum: number | null;
+    /**
+     * Mean
+     */
+    mean: number | null;
+    /**
+     * Median
+     */
+    median: number | null;
+    /**
+     * Minimum
+     */
+    minimum: number | null;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Unit
+     */
+    unit: 'words' | 'characters';
+};
+
+/**
  * CountNodeEditRequest
  *
  * Count words, characters, or matches in a text column (issue 147).
@@ -10529,6 +10581,57 @@ export type CheckConversionResponses = {
 };
 
 export type CheckConversionResponse = CheckConversionResponses[keyof CheckConversionResponses];
+
+export type GetCorpusOverviewData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Column
+         */
+        column: string;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/corpus-overview';
+};
+
+export type GetCorpusOverviewErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetCorpusOverviewError = GetCorpusOverviewErrors[keyof GetCorpusOverviewErrors];
+
+export type GetCorpusOverviewResponses = {
+    /**
+     * Successful Response
+     */
+    200: CorpusOverviewResource;
+};
+
+export type GetCorpusOverviewResponse = GetCorpusOverviewResponses[keyof GetCorpusOverviewResponses];
 
 export type GetDatetimeFormatsData = {
     body?: never;

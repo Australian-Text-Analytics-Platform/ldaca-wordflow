@@ -4395,6 +4395,98 @@
         "title": "ConversionSample",
         "type": "object"
       },
+      "CorpusOverviewResource": {
+        "additionalProperties": false,
+        "description": "Cheap statistics for one text column of a Data Block (issue 327).\n\nLengths count ``unit`` (words, or characters for a corpus with few\nspaces) over the non-empty documents; they are null when every document\nis empty.",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "documents": {
+            "title": "Documents",
+            "type": "integer"
+          },
+          "duplicate_documents": {
+            "title": "Duplicate Documents",
+            "type": "integer"
+          },
+          "empty_documents": {
+            "title": "Empty Documents",
+            "type": "integer"
+          },
+          "maximum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Maximum"
+          },
+          "mean": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mean"
+          },
+          "median": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Median"
+          },
+          "minimum": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minimum"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "unit": {
+            "enum": [
+              "words",
+              "characters"
+            ],
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "documents",
+          "empty_documents",
+          "duplicate_documents",
+          "unit",
+          "total",
+          "minimum",
+          "median",
+          "mean",
+          "maximum"
+        ],
+        "title": "CorpusOverviewResource",
+        "type": "object"
+      },
       "CountNodeEditRequest": {
         "additionalProperties": false,
         "description": "Count words, characters, or matches in a text column (issue 147).\n\nThe count goes into a new column right of the source. Words are runs of\nnon-whitespace, as word processors count them. ``matches`` counts\n``pattern`` as plain text unless ``regex`` is set.",
@@ -20182,6 +20274,105 @@
           }
         ],
         "summary": "Check Conversion",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/corpus-overview": {
+      "get": {
+        "description": "Documents, empty and duplicate documents, and document lengths of a text column.",
+        "operationId": "get_corpus_overview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CorpusOverviewResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Corpus Overview",
         "tags": [
           "nodes"
         ]

@@ -205,6 +205,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/corpus-overview",
+        "get_corpus_overview",
+    ),
+    (
+        "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/datetime-formats",
         "get_datetime_formats",
     ),

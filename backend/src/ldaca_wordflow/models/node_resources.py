@@ -464,6 +464,28 @@ class CategoryValuesResource(BaseModel):
     is_document: bool
 
 
+class CorpusOverviewResource(BaseModel):
+    """Cheap statistics for one text column of a Data Block (issue 327).
+
+    Lengths count ``unit`` (words, or characters for a corpus with few
+    spaces) over the non-empty documents; they are null when every document
+    is empty.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    documents: int
+    empty_documents: int
+    duplicate_documents: int
+    unit: Literal["words", "characters"]
+    total: int
+    minimum: int | None
+    median: float | None
+    mean: float | None
+    maximum: int | None
+
+
 class DatetimeFormatExample(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

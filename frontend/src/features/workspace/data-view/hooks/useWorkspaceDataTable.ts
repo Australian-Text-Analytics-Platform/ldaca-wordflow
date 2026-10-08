@@ -40,6 +40,14 @@ export interface WorkspaceDataTableHeaderInfo {
   canRedo: boolean;
   /** Column names of the Data Block, for the Delete columns dialog. */
   columns: string[];
+  /** What the corpus overview needs (issue 327); null without a Data Block. */
+  overview: {
+    workspaceId: string;
+    nodeId: string;
+    shape: readonly [number | null, number | null] | null;
+    textColumns: string[];
+    documentColumn: string | null;
+  } | null;
 }
 
 interface WorkspaceDataTableNodeActions {
@@ -475,6 +483,18 @@ export const useWorkspaceDataTable = (): WorkspaceDataTableViewModel => {
     canUndo: selectedNode?.can_undo ?? false,
     canRedo: selectedNode?.can_redo ?? false,
     columns: nodeData.columns,
+    overview:
+      currentWorkspaceId && selectedNode?.id
+        ? {
+            workspaceId: currentWorkspaceId,
+            nodeId: selectedNode.id,
+            shape: selectedNode.shape ?? null,
+            textColumns: nodeData.columns.filter(
+              (column) => getTypeDisplayName(nodeData.columnFields[column]) === 'text',
+            ),
+            documentColumn: selectedNode.document ?? null,
+          }
+        : null,
   };
 
   const nodeActions: WorkspaceDataTableNodeActions = {
