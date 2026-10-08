@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { queryTopicDocument, type TopicDocument } from '@/api';
 import { RowDetailPanel } from '@/features/views/common/components/RowDetailPanel';
 import { cn } from '@/lib/utils';
-import { codePointOffsets } from './topicExamplesModel';
+import { codePointOffsets, splitTopicWords } from './topicExamplesModel';
 
 interface TopicDocumentDialogProps {
   workspaceId: string;
@@ -22,7 +22,6 @@ interface TopicDocumentDialogProps {
 }
 
 const SHOWN_SEGMENT = 'rounded-sm box-decoration-clone';
-const CURRENT_SEGMENT = 'font-bold';
 const OTHER_SEGMENT = 'rounded-sm bg-[color-mix(in_srgb,var(--vscode-foreground)_8%,transparent)]';
 
 /**
@@ -42,8 +41,8 @@ export function TopicDocumentDialog({
   topicColor = 'var(--vscode-charts-orange)',
   onClose,
 }: TopicDocumentDialogProps) {
-  // The segment being read is bold in the Topic's colour; its other
-  // segments in this document have a light tint of it (Chao, 2026-10-08).
+  // The segment being read is in the Topic's colour; its other segments in
+  // this document have a light tint of it (Chao, 2026-10-08).
   const currentStyle = { color: topicColor };
   const otherStyle = {
     background: `color-mix(in srgb, ${topicColor} 25%, transparent)`,
@@ -104,10 +103,21 @@ export function TopicDocumentDialog({
             title={`Topic ${String(span.topic_id)}`}
             data-row-detail-anchor={isCurrent ? '' : undefined}
             data-current-segment={isCurrent ? '' : undefined}
-            className={isCurrent ? CURRENT_SEGMENT : isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
+            className={isCurrent ? undefined : isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
             style={isCurrent ? currentStyle : isShown ? otherStyle : undefined}
           >
-            {text.slice(start, end)}
+            {isShown
+              ? // The Topic's words, bold and italic within its segments (Chao, 2026-10-08).
+                splitTopicWords(text.slice(start, end), topicWords).map((piece, pieceIndex) =>
+                  piece.word ? (
+                    <strong key={pieceIndex} className="font-bold italic">
+                      {piece.text}
+                    </strong>
+                  ) : (
+                    piece.text
+                  ),
+                )
+              : text.slice(start, end)}
           </span>,
         );
       }
@@ -145,12 +155,13 @@ export function TopicDocumentDialog({
             label: 'Highlights',
             value: (
               <span className="flex flex-wrap items-center gap-2">
-                <span className={cn(CURRENT_SEGMENT, 'px-1')} style={currentStyle}>
+                <span className="px-1" style={currentStyle}>
                   Topic {topicId}, this segment
                 </span>
                 <span className={cn(SHOWN_SEGMENT, 'px-1')} style={otherStyle}>
                   Topic {topicId}, others
                 </span>
+                <strong className="px-1 font-bold italic">topic words</strong>
                 <span className={cn(OTHER_SEGMENT, 'px-1')}>Other topics</span>
                 <span className="text-description">No topic: not highlighted</span>
               </span>

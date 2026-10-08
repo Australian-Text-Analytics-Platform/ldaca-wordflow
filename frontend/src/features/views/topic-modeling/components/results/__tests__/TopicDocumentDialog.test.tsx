@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -60,10 +60,17 @@ describe('TopicDocumentDialog (#353)', () => {
       </QueryClientProvider>,
     );
 
-    const current = await screen.findByText('Rents fell again.');
-    expect(current).toHaveClass('font-bold');
+    const current = await screen.findByText(
+      (_, element) => element?.hasAttribute('data-current-segment') ?? false,
+    );
+    expect(current).toHaveTextContent('Rents fell again.');
     expect(current).toHaveStyle({ color: '#16a34a' });
-    expect(screen.getByText('Rents rose.')).not.toHaveClass('font-bold');
+    // Only the topic's words are bold and italic, in every segment of the topic.
+    expect(within(current).getByText('Rents')).toHaveClass('font-bold', 'italic');
+    expect(within(current).queryByText('fell')).toBeNull();
+    const other = screen.getByText('rose.', { exact: false });
+    expect(other).not.toHaveAttribute('data-current-segment');
+    expect(within(other).getByText('Rents')).toHaveClass('italic');
     expect(screen.getByText('😀 Parks opened.')).toHaveAttribute('title', 'Topic 2');
     expect(screen.getByText('2 of 2 in Topic 4')).toBeInTheDocument();
     expect(screen.getByText('Senator A')).toBeInTheDocument();
@@ -73,7 +80,7 @@ describe('TopicDocumentDialog (#353)', () => {
 
     await user.click(screen.getByRole('button', { name: /Previous segment/ }));
     await waitFor(() => {
-      expect(screen.getByText('Rents rose.')).toHaveClass('font-bold');
+      expect(screen.getByText('rose.', { exact: false })).toHaveAttribute('data-current-segment');
     });
     expect(screen.getByText('1 of 2 in Topic 4')).toBeInTheDocument();
   });
