@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import io
 import json
 import re
 from collections.abc import Callable
@@ -25,6 +26,7 @@ from ..infrastructure.providers.tabular_config import load_tabular_config
 from ..infrastructure.providers.oni import OniClient, jsonld_value
 from ..shared.portable_names import portable_name_error
 from .invocations import DataPortalImportInput
+from .progress import Step, StepReporter, keep_alive
 from .utils import process_entrypoint
 
 
@@ -63,8 +65,25 @@ def data_portal_import_process(
     if documents:
         _write_documents(documents, texts, destination)
     else:
-        report({"fraction": 0.25, "message": "Tabulating RO-Crate metadata"})
-        _tabulate_metadata(invocation.identifier, metadata, destination)
+        # The collection's own crate lists no text: read each item's text, named
+        # by the standard ldac:mainText / ldac:indexableText (issue 351).
+        merged, item_texts = asyncio.run(
+            _fetch_item_texts(
+                identifier=invocation.identifier,
+                api_base_url=invocation.api_base_url,
+                api_token=invocation.api_token,
+                timeout=invocation.timeout,
+                download_concurrency=invocation.download_concurrency,
+                report=report,
+                max_download_bytes=invocation.max_output_bytes,
+            )
+        )
+        if any(texts_of_item for texts_of_item in item_texts.values()):
+            report({"fraction": 0.9, "message": "Putting the items' text together"})
+            _write_item_texts(invocation.identifier, merged, item_texts, destination)
+        else:
+            report({"fraction": 0.9, "message": "Tabulating RO-Crate metadata"})
+            _tabulate_metadata(invocation.identifier, metadata, destination)
 
     if destination.stat().st_size > invocation.max_output_bytes:
         raise ValueError("Data Portal import exceeds its storage budget")
@@ -237,6 +256,205 @@ async def _fetch_portal_content(
         return metadata, documents, texts
 
 
+# Text an item names as its main or indexable text, in a format Wordflow reads.
+ITEM_TEXT_FORMATS = {"text/plain", "text/csv"}
+
+
+def _item_text_files(crate: dict[str, Any], item_id: str) -> list[dict[str, Any]]:
+    """The files holding an item's text, by the standard LDaCA terms (issue 351).
+
+    ``ldac:mainText`` first, then ``ldac:indexableText``; an item naming
+    neither falls back to its plain-text files. Only plain text and CSV are
+    kept (an ELAN or audio file is not text Wordflow can read).
+    """
+
+    entities = _metadata_entities(crate)
+    item = entities.get(item_id) or next(
+        (
+            entity
+            for entity in entities.values()
+            if "RepositoryObject" in _entity_types(entity)
+        ),
+        None,
+    )
+    named: list[str] = []
+    if item is not None:
+        for term in ("ldac:mainText", "ldac:indexableText"):
+            named = [
+                reference
+                for reference in (_reference_id(value) for value in _as_list(item.get(term)))
+                if reference
+            ]
+            if named:
+                break
+    candidates = (
+        [entities[file_id] for file_id in named if file_id in entities]
+        if named
+        else [
+            entity
+            for entity in entities.values()
+            if "File" in _entity_types(entity)
+            and "text/plain" in _encodings(entity)
+        ]
+    )
+    files: list[dict[str, Any]] = []
+    for entity in candidates:
+        encodings = _encodings(entity) & ITEM_TEXT_FORMATS
+        path = _file_path(str(entity.get("@id", "")))
+        if not encodings or not path:
+            continue
+        files.append(
+            {
+                "path": path,
+                "name": _first_string(entity.get("name")) or path.rsplit("/", 1)[-1],
+                "format": "text/csv" if "text/csv" in encodings else "text/plain",
+                "content_size": _content_size(entity.get("contentSize")),
+            }
+        )
+    return files
+
+
+def _encodings(entity: dict[str, Any]) -> set[str]:
+    return {
+        str(item).casefold()
+        for item in _as_list(jsonld_value(entity.get("encodingFormat")))
+        if isinstance(item, str)
+    }
+
+
+async def _fetch_item_texts(
+    *,
+    identifier: str,
+    api_base_url: str,
+    api_token: str | None,
+    timeout: float,
+    download_concurrency: int,
+    report: Callable[[dict[str, object]], None],
+    max_download_bytes: int,
+) -> tuple[dict[str, Any], dict[str, list[tuple[dict[str, Any], str]]]]:
+    """Read every item's crate and the text files it names (issue 351).
+
+    Returns the merged crate (for the item metadata table) and, per item id,
+    its ``(file, text)`` pairs. Downloads share one byte budget.
+    """
+
+    async with httpx.AsyncClient(
+        base_url=api_base_url.rstrip("/"),
+        timeout=timeout,
+        follow_redirects=True,
+    ) as http_client:
+        client = OniClient(
+            http_client,
+            token=api_token,
+            max_json_bytes=min(max_download_bytes, 8 * 1024 * 1024),
+        )
+        collection = await client.get_metadata(identifier)
+        item_ids = await client.list_member_object_ids(
+            identifier, max_objects=MAX_METADATA_OBJECTS
+        )
+        reporter = StepReporter(
+            lambda fraction, message, detail=None: report(
+                {"fraction": fraction, "message": message, "detail": detail}
+            ),
+            band=(0.1, 0.9),
+            steps=(Step("items", "Reading the collection's items"),),
+        )
+        reporter.update("items", done=0, total=len(item_ids), unit="items")
+        semaphore = asyncio.Semaphore(max(1, download_concurrency))
+        budget_lock = asyncio.Lock()
+        used_bytes = 0
+        done = 0
+
+        async def fetch(item_id: str) -> tuple[dict[str, Any], list[tuple[dict[str, Any], str]]]:
+            nonlocal used_bytes, done
+            async with semaphore:
+                crate = await client.get_metadata(item_id)
+                files = _item_text_files(crate, item_id)
+                pairs: list[tuple[dict[str, Any], str]] = []
+                if files:
+                    texts = await client.download_object_texts(
+                        item_id,
+                        [str(file["path"]) for file in files],
+                        concurrency=1,
+                        max_total_bytes=max_download_bytes,
+                        max_document_bytes=min(max_download_bytes, 64 * 1024 * 1024),
+                    )
+                    size = sum(len(text.encode("utf-8")) for text in texts.values())
+                    async with budget_lock:
+                        used_bytes += size
+                        if used_bytes > max_download_bytes:
+                            raise ValueError(
+                                "Data Portal documents exceed the import storage budget"
+                            )
+                    pairs = [(file, texts[str(file["path"])]) for file in files]
+            done += 1
+            reporter.update("items", done=done, total=len(item_ids), unit="items")
+            return crate, pairs
+
+        with keep_alive(reporter):
+            fetched = await asyncio.gather(*(fetch(item_id) for item_id in item_ids))
+
+    merged: dict[str, dict[str, Any]] = {}
+    for crate in (collection, *(crate for crate, _pairs in fetched)):
+        for entity in crate.get("@graph", []):
+            if isinstance(entity, dict) and isinstance(entity.get("@id"), str):
+                merged.setdefault(entity["@id"], entity)
+    texts_by_item = {
+        item_id: pairs for item_id, (_crate, pairs) in zip(item_ids, fetched, strict=True)
+    }
+    return (
+        {"@context": collection.get("@context"), "@graph": list(merged.values())},
+        texts_by_item,
+    )
+
+
+def _write_item_texts(
+    identifier: str,
+    merged: dict[str, Any],
+    texts_by_item: dict[str, list[tuple[dict[str, Any], str]]],
+    destination: Path,
+) -> None:
+    """One table of the items' text with each item's metadata (issue 351).
+
+    A plain-text file is one row (``text``); a CSV file adds one row per CSV
+    row with its own columns, all read as text, so a transcript gives one row
+    per utterance. Items without text keep one row with their metadata.
+    """
+
+    parts: list[pl.DataFrame] = []
+    for item_id, pairs in texts_by_item.items():
+        for file, text in pairs:
+            if file["format"] == "text/csv":
+                try:
+                    frame = pl.read_csv(io.StringIO(text), infer_schema=False)
+                except pl.exceptions.PolarsError as error:
+                    raise ValueError(f'Could not read "{file["name"]}" as CSV: {error}') from error
+            else:
+                frame = pl.DataFrame({"text": [text]})
+            parts.append(
+                frame.with_columns(
+                    pl.lit(item_id).alias(ITEM_ID_COLUMN),
+                    pl.lit(file["name"]).alias(ITEM_FILE_COLUMN),
+                )
+            )
+    texts = pl.concat(parts, how="diagonal_relaxed")
+    # Item metadata columns are named item_*, apart from the text's own columns.
+    items = _metadata_table(identifier, merged)
+    items = items.rename(
+        {
+            column: ITEM_ID_COLUMN if column == "entity_id" else f"item_{column}"
+            for column in items.columns
+        }
+    )
+    with_text = texts.join(items, on=ITEM_ID_COLUMN, how="left")
+    without_text = items.join(texts.select(ITEM_ID_COLUMN).unique(), on=ITEM_ID_COLUMN, how="anti")
+    pl.concat([with_text, without_text], how="diagonal_relaxed").write_parquet(destination)
+
+
+ITEM_ID_COLUMN = "item_id"
+ITEM_FILE_COLUMN = "item_file"
+
+
 def _safe_name(value: str) -> str:
     """Return one deterministic, collision-resistant portable storage name."""
 
@@ -372,6 +590,12 @@ def _tabulate_metadata(
 ) -> None:
     """Flatten the configured RO-Crate entity table without an intermediate DB."""
 
+    _metadata_table(identifier, metadata).write_parquet(destination)
+
+
+def _metadata_table(identifier: str, metadata: dict[str, Any]) -> pl.DataFrame:
+    """The configured RO-Crate entity table, one row per item (``entity_id``)."""
+
     config = load_tabular_config(identifier)
     tables = config.get("tables", {})
     if not isinstance(tables, dict) or not tables:
@@ -413,7 +637,7 @@ def _tabulate_metadata(
         )
         for entity in matching
     ]
-    pl.DataFrame(rows, strict=False).write_parquet(destination)
+    return pl.DataFrame(rows, strict=False)
 
 
 def _metadata_entities(metadata: dict[str, Any]) -> dict[str, dict[str, Any]]:

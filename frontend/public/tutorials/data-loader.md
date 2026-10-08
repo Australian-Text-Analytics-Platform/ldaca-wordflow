@@ -205,6 +205,20 @@ For these you can:
 
 ![A restricted collection, with Import metadata only and Update access token](tutorials/assets/data_loader/ldaca_restricted.png)
 
+With access, the import brings in the text. Many collections keep their text
+in their items (for example one transcript per speaker), and each item says
+which file holds its text. Wordflow reads that file for every item:
+
+- a plain-text file becomes one row, with the text in the **text** column;
+- a table of text, such as a transcript saved as CSV, adds one row per line of
+  the table (for example one row per utterance), keeping all its columns as
+  text. Choose which column holds the words in each tool.
+
+Every row also carries its item's details in columns starting with **item_**
+(for example **item_id** and **item_name**), and **item_file** names the file it
+came from. An item with no text keeps one row with its details. Audio and
+annotation formats such as ELAN are not read.
+
 Imports run in the background and may take from 30 seconds to a few minutes,
 depending on collection size and network speed. The imported collection
 appears in the files list under the **LDaCA** folder as a Parquet file (with
