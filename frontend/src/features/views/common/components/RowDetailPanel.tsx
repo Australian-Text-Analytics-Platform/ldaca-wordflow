@@ -52,6 +52,8 @@ export interface RowDetailCustomization {
    * next highlighted segment), so the box scrolls to it again (issue 353).
    */
   anchorKey?: string | number;
+  /** Plain text after the title, such as a topic's words (issue 353). */
+  titleDetail?: string;
 }
 
 export interface RowDetailNavigation {
@@ -203,6 +205,11 @@ export function RowDetailPanel({
           <DialogTitle>
             {customization?.title ?? 'Row Details'}
             {titleSuffix}
+            {customization?.titleDetail ? (
+              <span className="line-clamp-2 pr-6 font-normal text-description">
+                {customization.titleDetail}
+              </span>
+            ) : null}
           </DialogTitle>
           <DialogDescription className="sr-only">
             Full row text and metadata for the selected result.

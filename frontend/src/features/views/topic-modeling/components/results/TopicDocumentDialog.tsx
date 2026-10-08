@@ -14,6 +14,8 @@ interface TopicDocumentDialogProps {
   documentIndex: number;
   /** Code-point start of the segment that was opened, shown first. */
   startAt: number;
+  /** The Topic's words, shown after the title for reference. */
+  topicWords?: readonly string[];
   /** The shown bubble's base colour: the current segment's text, and a tint for the others. */
   topicColor?: string;
   onClose: () => void;
@@ -36,6 +38,7 @@ export function TopicDocumentDialog({
   topicId,
   documentIndex,
   startAt,
+  topicWords = [],
   topicColor = 'var(--vscode-charts-orange)',
   onClose,
 }: TopicDocumentDialogProps) {
@@ -136,6 +139,7 @@ export function TopicDocumentDialog({
         title: 'Document',
         label: `Topic ${String(topicId)}`,
         anchorKey: current?.start,
+        titleDetail: topicWords.length > 0 ? topicWords.join(', ') : undefined,
         summaryFields: [
           {
             label: 'Highlights',

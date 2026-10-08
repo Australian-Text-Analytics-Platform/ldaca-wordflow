@@ -421,7 +421,8 @@ chance that the segment belongs to the topic. Runs from Wordflow 0.7.10 or
 earlier list their examples without a badge; run Topic Modelling again to rank
 them.
 
-**Open document** shows the whole document with its metadata. The opened
+**Open document** shows the whole document with its metadata, and the topic's
+words under the title for reference. The opened
 segment is in bold, in the bubble's colour; the topic's other segments in the
 document have a light tint of that colour, and segments of other topics a grey
 one. Text with no topic is not highlighted. **Previous segment** and **Next segment** step through the shown

@@ -52,6 +52,7 @@ describe('TopicDocumentDialog (#353)', () => {
             topicId={4}
             documentIndex={9}
             startAt={28}
+            topicWords={['rents', 'housing']}
             topicColor="#16a34a"
             onClose={vi.fn()}
           />
@@ -66,6 +67,9 @@ describe('TopicDocumentDialog (#353)', () => {
     expect(screen.getByText('😀 Parks opened.')).toHaveAttribute('title', 'Topic 2');
     expect(screen.getByText('2 of 2 in Topic 4')).toBeInTheDocument();
     expect(screen.getByText('Senator A')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /Document \(Topic 4\)/ })).toHaveTextContent(
+      'rents, housing',
+    );
 
     await user.click(screen.getByRole('button', { name: /Previous segment/ }));
     await waitFor(() => {

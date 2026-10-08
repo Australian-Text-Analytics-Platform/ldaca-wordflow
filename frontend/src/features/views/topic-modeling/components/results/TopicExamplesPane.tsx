@@ -428,6 +428,7 @@ export function TopicExamplesPane({
           topicId={topic.id}
           documentIndex={openDocument.document_index}
           startAt={openDocument.start}
+          topicWords={words}
           topicColor={wordColor}
           onClose={() => {
             setOpenDocument(null);
