@@ -201,6 +201,9 @@ export const useTokenFrequencyTaskFlow = ({
             regex: false,
             whole_word: true,
             case_sensitive: false,
+            // Same default as a new Concordance tab: the context columns hold
+            // words, so sorting is not split by punctuation (issue 344).
+            ignore_punctuation: true,
             search_mode: 'regex',
           };
           await submitTabAnalysis({

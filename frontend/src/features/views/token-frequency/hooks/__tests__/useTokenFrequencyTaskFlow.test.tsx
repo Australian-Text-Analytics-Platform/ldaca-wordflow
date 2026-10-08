@@ -154,6 +154,7 @@ describe('useTokenFrequencyTaskFlow', () => {
               'node-2': 'lindera:jieba',
             },
             search_word: 'hello',
+            ignore_punctuation: true,
             search_mode: 'regex',
           }),
         }),

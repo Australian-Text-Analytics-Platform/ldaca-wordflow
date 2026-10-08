@@ -154,7 +154,9 @@ right context header sorts by R1, the usual way to read a concordance; each
 header's tooltip says so. Turn it off to show the contexts in plain text and sort each context
 alphabetically by its own text. With **Ignore punctuation** on, R1 can differ
 from the first word of the right context, so the two sorts can give different
-orders.
+orders. With it off, L1 or R1 can be a punctuation mark, and marks sort by
+character: commas, full stops and straight apostrophes come before letters,
+while curly apostrophes (’) come after them.
 
 The table leaves out where each match starts and ends in the document
 (`CONC_start_idx` and `CONC_end_idx`, character positions). A Data Block made
