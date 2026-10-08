@@ -22,6 +22,7 @@ import { toastError } from '@/lib/toastError';
 const SAVED_LIST_VALUE = '__saved__';
 const CLEAR_LIST_VALUE = '__clear__';
 const EMPTY_PROMPT_VALUE = '__prompt__';
+const STOP_USING_VALUE = '__stop_using__';
 const TAB_SOURCE_PREFIX = 'tab:';
 const CLASSIC_LIST_PREFIX = 'classic:';
 const SHOW_ALL_LANGUAGES_VALUE = '__show_all_languages__';
@@ -44,6 +45,16 @@ interface StopWordsLanguageSelectProps {
    * words filter on (issue 238). Not called for "Clear stop words".
    */
   onListAdded?: () => void;
+  /**
+   * The dropdown doubles as the switch's label (issue 353): it rests on this
+   * text while stop words are off, shows the saved list while they are on,
+   * and offers "Don't use stop words". Omitted, it keeps the language prompt.
+   */
+  restingLabel?: string;
+  /** Whether the caller's stop words switch is on; used with `restingLabel`. */
+  active?: boolean;
+  /** Turns the caller's switch off, keeping the saved list; used with `restingLabel`. */
+  onDeactivate?: () => void;
 }
 
 /**
@@ -59,7 +70,8 @@ interface StopWordsLanguageSelectProps {
  * `onListAdded` lets the caller switch its filter on.
  *
  * Rendered by: TokenFrequencyResultsPanel and TopicModelingStopWordsControl
- * beside their stop-words switches.
+ * beside their stop-words switches. Topic Modelling passes `restingLabel`, so
+ * the dropdown also names its unlabelled switch (issue 353).
  */
 export function StopWordsLanguageSelect({
   words,
@@ -70,6 +82,9 @@ export function StopWordsLanguageSelect({
   sources = [],
   disabled = false,
   onListAdded,
+  restingLabel,
+  active = false,
+  onDeactivate,
 }: StopWordsLanguageSelectProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
@@ -91,6 +106,15 @@ export function StopWordsLanguageSelect({
     .filter((language) => language.iso6391 !== detectedStopwordLanguage?.iso6391)
     .sort((left, right) => left.name.localeCompare(right.name));
   const hasWords = words.length > 0;
+  const restingMode = restingLabel !== undefined;
+  // An empty value shows the placeholder, the resting text.
+  const value = restingMode
+    ? active && hasWords
+      ? SAVED_LIST_VALUE
+      : ''
+    : hasWords
+      ? SAVED_LIST_VALUE
+      : EMPTY_PROMPT_VALUE;
 
   // Resolves true when the list was saved.
   const commit = async (next: string[]): Promise<boolean> => {
@@ -131,7 +155,7 @@ export function StopWordsLanguageSelect({
 
   return (
     <Select
-      value={hasWords ? SAVED_LIST_VALUE : EMPTY_PROMPT_VALUE}
+      value={value}
       disabled={disabled || isPending}
       open={menuOpen}
       onOpenChange={(open) => {
@@ -144,8 +168,16 @@ export function StopWordsLanguageSelect({
         if (!open) setShowAllLanguages(false);
       }}
       onValueChange={(value) => {
-        if (value === SAVED_LIST_VALUE || value === EMPTY_PROMPT_VALUE || value === DETECTING_VALUE)
+        if (value === SAVED_LIST_VALUE) {
+          // Picking the saved list puts it back to use.
+          if (restingMode && !active) onListAdded?.();
           return;
+        }
+        if (value === STOP_USING_VALUE) {
+          onDeactivate?.();
+          return;
+        }
+        if (value === EMPTY_PROMPT_VALUE || value === DETECTING_VALUE) return;
         if (value === SHOW_ALL_LANGUAGES_VALUE) {
           keepOpenRef.current = true;
           setShowAllLanguages(true);
@@ -173,25 +205,39 @@ export function StopWordsLanguageSelect({
     >
       <SelectTrigger
         className="h-9 w-56 max-w-full text-label-secondary"
-        aria-label="Stop words language"
+        aria-label={restingMode ? 'Stop words list' : 'Stop words language'}
       >
-        <SelectValue placeholder="Select language" />
+        <SelectValue placeholder={restingLabel ?? 'Select language'} />
       </SelectTrigger>
       <SelectContent>
-        <SelectGroup>
-          {hasWords ? (
-            <SelectItem value={CLEAR_LIST_VALUE}>Clear stop words</SelectItem>
-          ) : (
-            <SelectItem value={EMPTY_PROMPT_VALUE} disabled>
-              Select language
-            </SelectItem>
-          )}
-          {hasWords ? (
-            <SelectItem value={SAVED_LIST_VALUE}>
-              {`Saved list (${String(words.length)} words)`}
-            </SelectItem>
-          ) : null}
-        </SelectGroup>
+        {restingMode ? (
+          <SelectGroup>
+            {hasWords ? (
+              <SelectItem value={SAVED_LIST_VALUE}>
+                {`Saved list (${String(words.length)} words)`}
+              </SelectItem>
+            ) : null}
+            {active ? (
+              <SelectItem value={STOP_USING_VALUE}>Don&apos;t use stop words</SelectItem>
+            ) : null}
+            {hasWords ? <SelectItem value={CLEAR_LIST_VALUE}>Clear stop words</SelectItem> : null}
+          </SelectGroup>
+        ) : (
+          <SelectGroup>
+            {hasWords ? (
+              <SelectItem value={CLEAR_LIST_VALUE}>Clear stop words</SelectItem>
+            ) : (
+              <SelectItem value={EMPTY_PROMPT_VALUE} disabled>
+                Select language
+              </SelectItem>
+            )}
+            {hasWords ? (
+              <SelectItem value={SAVED_LIST_VALUE}>
+                {`Saved list (${String(words.length)} words)`}
+              </SelectItem>
+            ) : null}
+          </SelectGroup>
+        )}
         {sources.length > 0 ? (
           <SelectGroup>
             <SelectLabel>From other tabs</SelectLabel>

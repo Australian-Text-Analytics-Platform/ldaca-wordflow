@@ -87,7 +87,7 @@ describe('topicModelingGraph', () => {
       fill: '#ff0000',
       selected: true,
       lassoed: false,
-      // Matches the search but is outside the lasso, so All Topics leaves it out.
+      // Matches the search but is outside the lasso, so the topic list leaves it out.
       filteredOut: true,
       position: { x: 0, y: 0 },
     });
@@ -101,7 +101,7 @@ describe('topicModelingGraph', () => {
     expect(bubbles.every((bubble) => bubble.radius >= 10 && bubble.radius <= 50)).toBe(true);
   });
 
-  it('lights exactly the topics All Topics lists: in the lasso and matching the search', () => {
+  it('lights exactly the topics the topic list shows: in the lasso and matching the search', () => {
     const build = (lasso: number[], query: string) =>
       buildTopicBubbleModels({
         topics,

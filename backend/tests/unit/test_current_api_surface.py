@@ -120,6 +120,16 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "POST",
+        "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-segments/query",
+        "query_topic_segments",
+    ),
+    (
+        "POST",
+        "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-document/query",
+        "query_topic_document",
+    ),
+    (
+        "POST",
         "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/query",
         "query_analysis_result",
     ),

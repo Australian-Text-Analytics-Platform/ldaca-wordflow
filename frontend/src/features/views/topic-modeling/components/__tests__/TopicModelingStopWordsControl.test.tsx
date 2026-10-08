@@ -63,22 +63,24 @@ describe('TopicModelingStopWordsControl', () => {
     mocks.loadStopWords.mockResolvedValue({ merged: ['the', 'and', 'of'] });
   });
 
-  it('keeps saved controls available while filtering is off and orders action rows first', async () => {
+  const listBox = () => screen.getByRole('combobox', { name: 'Stop words list' });
+  const useSwitch = () => screen.getByRole('switch', { name: 'Use stop words' });
+
+  it('rests on "Use stop words" while off and keeps the saved list (#353)', async () => {
     const user = userEvent.setup();
     render(<Harness initialWords={['the', 'and']} />);
 
-    expect(screen.getByRole('switch', { name: 'Filter stop words' })).not.toBeChecked();
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
-      'Saved list (2 words)',
-    );
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toBeEnabled();
+    expect(useSwitch()).not.toBeChecked();
+    expect(screen.queryByText('Filter stop words')).not.toBeInTheDocument();
+    expect(listBox()).toHaveTextContent('Use stop words');
+    expect(listBox()).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Edit stop words' })).toBeEnabled();
 
-    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(listBox());
 
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'Clear stop words',
       'Saved list (2 words)',
+      'Clear stop words',
       'English (231 words)',
       'French (146 words)',
       'German (131 words)',
@@ -91,6 +93,30 @@ describe('TopicModelingStopWordsControl', () => {
     expect(mocks.detectLanguage).toHaveBeenLastCalledWith(
       expect.objectContaining({ enabled: true, nodeId: 'node-1', column: 'text' }),
     );
+
+    // Picking the saved list puts it back to use.
+    await user.click(screen.getByRole('option', { name: 'Saved list (2 words)' }));
+    expect(useSwitch()).toBeChecked();
+    expect(listBox()).toHaveTextContent('Saved list (2 words)');
+  });
+
+  it('turns stop words off from the list or the switch without losing them (#353)', async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    render(<Harness initialEnabled initialWords={['the']} onSave={onSave} />);
+
+    expect(listBox()).toHaveTextContent('Saved list (1 words)');
+    await user.click(listBox());
+    await user.click(screen.getByRole('option', { name: "Don't use stop words" }));
+
+    expect(useSwitch()).not.toBeChecked();
+    expect(listBox()).toHaveTextContent('Use stop words');
+    expect(onSave).not.toHaveBeenCalled();
+
+    await user.click(useSwitch());
+    expect(listBox()).toHaveTextContent('Saved list (1 words)');
+    await user.click(useSwitch());
+    expect(listBox()).toHaveTextContent('Use stop words');
   });
 
   it('appends a language to an empty list and switches the filter on (#238)', async () => {
@@ -101,9 +127,8 @@ describe('TopicModelingStopWordsControl', () => {
     expect(mocks.detectLanguage).toHaveBeenLastCalledWith(
       expect.objectContaining({ enabled: false }),
     );
-    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(listBox());
     expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual([
-      'Select language',
       'English (231 words)',
       'French (146 words)',
       'German (131 words)',
@@ -117,10 +142,8 @@ describe('TopicModelingStopWordsControl', () => {
 
     expect(mocks.loadStopWords).toHaveBeenCalledWith({ languages: ['en'] });
     expect(onSave).toHaveBeenCalledWith(['the', 'and', 'of']);
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
-      'Saved list (3 words)',
-    );
-    expect(screen.getByRole('switch', { name: 'Filter stop words' })).toBeChecked();
+    expect(listBox()).toHaveTextContent('Saved list (3 words)');
+    expect(useSwitch()).toBeChecked();
   });
 
   it('appends language defaults to custom words without duplicates', async () => {
@@ -128,28 +151,24 @@ describe('TopicModelingStopWordsControl', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<Harness initialWords={['university', 'the']} onSave={onSave} />);
 
-    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(listBox());
     await user.click(screen.getByRole('option', { name: 'English (Detected)' }));
 
     expect(onSave).toHaveBeenCalledWith(['university', 'the', 'and', 'of']);
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
-      'Saved list (4 words)',
-    );
+    expect(listBox()).toHaveTextContent('Saved list (4 words)');
   });
 
   it('treats an empty custom save as clearing the saved list', async () => {
     const user = userEvent.setup();
     const onSave = vi.fn().mockResolvedValue(undefined);
-    render(<Harness initialWords={['the']} onSave={onSave} />);
+    render(<Harness initialEnabled initialWords={['the']} onSave={onSave} />);
 
     await user.click(screen.getByRole('button', { name: 'Edit stop words' }));
     await user.clear(screen.getByLabelText('Stop words'));
     await user.click(screen.getByRole('button', { name: 'Save' }));
 
     expect(onSave).toHaveBeenCalledWith([]);
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
-      'Select language',
-    );
+    expect(listBox()).toHaveTextContent('Use stop words');
   });
 
   it('clears only the saved list while an enabled filter remains enabled', async () => {
@@ -157,14 +176,12 @@ describe('TopicModelingStopWordsControl', () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     render(<Harness initialEnabled initialWords={['the']} onSave={onSave} />);
 
-    await user.click(screen.getByRole('combobox', { name: 'Stop words language' }));
+    await user.click(listBox());
     await user.click(screen.getByRole('option', { name: 'Clear stop words' }));
 
     expect(onSave).toHaveBeenCalledWith([]);
-    expect(screen.getByRole('combobox', { name: 'Stop words language' })).toHaveTextContent(
-      'Select language',
-    );
-    expect(screen.getByRole('switch', { name: 'Filter stop words' })).toBeChecked();
+    expect(listBox()).toHaveTextContent('Use stop words');
+    expect(useSwitch()).toBeChecked();
   });
 
   it('normalizes a custom draft and closes only after persistence succeeds', async () => {

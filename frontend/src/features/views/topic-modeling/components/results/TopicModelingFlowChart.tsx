@@ -14,7 +14,7 @@ import {
   useStoreApi,
   type Viewport,
 } from '@xyflow/react';
-import { Download, FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react';
+import { Download, Eye, FilterX, LassoSelect, Minus, Plus, Scan } from 'lucide-react';
 import { type ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { NodeTooltip, NodeTooltipContent, NodeTooltipTrigger } from '@/components/node-tooltip';
 import { ResponsiveWordCloud } from '@/features/views/common/components/ResponsiveWordCloud';
@@ -35,6 +35,8 @@ interface TopicBubbleNodeData extends Record<string, unknown> {
   bubble: TopicBubbleModel;
   corpusPresentation: TopicCorpusPresentation;
   plane: TopicGraphPlane;
+  /** Right-click shows this Topic's examples (issue 353). */
+  examplesShortcut: boolean;
 }
 
 export type TopicFlowNode = Node<TopicBubbleNodeData, 'topic'>;
@@ -59,6 +61,8 @@ interface Props {
   onDownload: () => void;
   onViewReady: (projectionKey: string) => void;
   onToggleTopicSelection: (topicId: number) => void;
+  /** Right-click shows or stops showing a Topic's examples (issue 353). */
+  onToggleShownTopic?: (topicId: number) => void;
 }
 
 const NODE_ORIGIN: [number, number] = [0.5, 0.5];
@@ -129,7 +133,7 @@ function TopicGraphControlButton({
 
 /** Renders one measured React Flow node using the shared Topic bubble model. */
 function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
-  const { bubble, corpusPresentation, plane } = data;
+  const { bubble, corpusPresentation, plane, examplesShortcut } = data;
   const outerRadius = bubble.radius + 7;
   const diameter = outerRadius * 2;
   const tooltipPosition = bubble.position.x <= plane.width / 2 ? Position.Right : Position.Left;
@@ -204,6 +208,27 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
           >
             {`T${String(bubble.id)}`}
           </text>
+          {bubble.shown ? (
+            // The same eye as the Topic card whose examples are shown (issue 353).
+            <g data-testid={`topic-shown-eye-${String(bubble.id)}`} pointerEvents="none">
+              <circle
+                cx={outerRadius + bubble.radius * 0.72}
+                cy={outerRadius - bubble.radius * 0.72}
+                r={9}
+                fill="var(--vscode-button-background)"
+                stroke="var(--vscode-editor-background)"
+                strokeWidth={1.5}
+              />
+              <Eye
+                x={outerRadius + bubble.radius * 0.72 - 6}
+                y={outerRadius - bubble.radius * 0.72 - 6}
+                width={12}
+                height={12}
+                color="var(--vscode-button-foreground)"
+                aria-hidden="true"
+              />
+            </g>
+          ) : null}
         </svg>
       </NodeTooltipTrigger>
       <NodeTooltipContent
@@ -248,6 +273,11 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             {...corpusPresentation}
           />
         </div>
+        {examplesShortcut ? (
+          <div className="mt-2 text-description">
+            {bubble.shown ? 'Right-click to stop showing examples' : 'Right-click to show examples'}
+          </div>
+        ) : null}
       </NodeTooltipContent>
     </NodeTooltip>
   );
@@ -465,6 +495,7 @@ function TopicModelingFlowChartInner({
   onDownload,
   onViewReady,
   onToggleTopicSelection,
+  onToggleShownTopic,
 }: Props) {
   const flowRef = useRef<HTMLDivElement | null>(null);
   const fittedViewportRef = useRef(true);
@@ -496,7 +527,12 @@ function TopicModelingFlowChartInner({
       id: `topic-${String(bubble.id)}`,
       type: 'topic',
       position: bubble.position,
-      data: { bubble, corpusPresentation, plane },
+      data: {
+        bubble,
+        corpusPresentation,
+        plane,
+        examplesShortcut: onToggleShownTopic !== undefined,
+      },
       draggable: false,
       selectable: false,
       focusable: false,
@@ -657,6 +693,13 @@ function TopicModelingFlowChartInner({
           if (!lassoMode && !node.data.bubble.filteredOut) {
             onToggleTopicSelection(node.data.bubble.id);
           }
+        }}
+        onNodeContextMenu={(event, node) => {
+          // A faded bubble has no examples shortcut, like its hover card
+          // (issue 353); the examples pane's close button still works.
+          if (!onToggleShownTopic || lassoMode || node.data.bubble.filteredOut) return;
+          event.preventDefault();
+          onToggleShownTopic(node.data.bubble.id);
         }}
         onMoveStart={(event) => {
           if (event) fittedViewportRef.current = false;

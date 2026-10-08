@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
-import { Search, X } from 'lucide-react';
+import { Eye } from 'lucide-react';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
 import { TopicWordsLine } from './TopicWords';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
+import { TopicExamplesPane, type TopicExamplesContext } from './TopicExamplesPane';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -13,19 +14,125 @@ interface Props {
   onToggleTopicSelection: (id: number) => void;
   onClearSelection: () => void;
   topicSearchQuery: string;
-  onTopicSearchQueryChange: (query: string) => void;
   lassoTopicIds: Set<number>;
   corpusPresentation: TopicCorpusPresentation;
   hoveredTopicId: number | null;
   onHoveredTopicChange: (topicId: number | null) => void;
+  /** The Topic whose examples are shown on the right (issue 353). */
+  shownTopicId: number | null;
+  /** The shown bubble's base colour, used for its words in the examples. */
+  shownTopicColor?: string;
+  onToggleShownTopic: (id: number) => void;
+  onClearFilters: () => void;
+  /** Omitted when the run cannot list examples, for example in tests of the list alone. */
+  examples?: TopicExamplesContext;
+}
+
+interface TopicCardProps {
+  topic: TopicModelingTopic;
+  selected: boolean;
+  dimmed: boolean;
+  hovered: boolean;
+  shown: boolean;
+  topicSearchQuery: string;
+  corpusPresentation: TopicCorpusPresentation;
+  onToggleSelection: () => void;
+  onToggleShown: () => void;
+  onHoverChange: (hovered: boolean) => void;
 }
 
 /**
- * Renders selected and available topic lists beneath the bubble chart.
+ * One Topic in the list: a click selects it; the eye strip at its tail shows
+ * its examples (issue 353).
+ */
+function TopicCard({
+  topic,
+  selected,
+  dimmed,
+  hovered,
+  shown,
+  topicSearchQuery,
+  corpusPresentation,
+  onToggleSelection,
+  onToggleShown,
+  onHoverChange,
+}: TopicCardProps) {
+  const words = topic.representative_words.map((term) => term.word);
+  const label = `Topic ${String(topic.id)}`;
+  return (
+    <li
+      data-topic-id={topic.id}
+      className={cn(
+        'flex overflow-hidden rounded-lg border transition-colors',
+        selected
+          ? 'border-l-[3px] border-[var(--vscode-charts-green)] border-l-green-500 bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]'
+          : 'border-surface-border/60 bg-surface',
+        hovered && !selected && 'bg-list-hover/70',
+        dimmed && 'opacity-50',
+      )}
+      onMouseEnter={() => {
+        onHoverChange(true);
+      }}
+      onMouseLeave={() => {
+        onHoverChange(false);
+      }}
+    >
+      <div
+        role="button"
+        tabIndex={0}
+        aria-pressed={selected}
+        aria-label={selected ? `Deselect ${label}` : `Select ${label}`}
+        className="min-w-0 flex-1 cursor-pointer p-2 focus-visible:outline-1 focus-visible:outline-focus"
+        onClick={onToggleSelection}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            onToggleSelection();
+          }
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <span className="shrink-0 text-body font-medium text-foreground">{label}</span>
+          <TopicSizeComposition
+            sizes={topic.size}
+            total={topic.total_size}
+            topicId={topic.id}
+            {...corpusPresentation}
+          />
+        </div>
+        <div className="mt-0.5">
+          <TopicWordsLine
+            words={words}
+            matched={matchedTopicWords(words, topicSearchQuery, matchChecklistOption)}
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        aria-pressed={shown}
+        aria-label={shown ? `Stop showing ${label}` : `Show examples of ${label}`}
+        title={shown ? 'Stop showing examples' : 'Show examples'}
+        className={cn(
+          'flex w-8 shrink-0 items-center justify-center border-l border-surface-border/60 transition-colors focus-visible:outline-1 focus-visible:outline-focus',
+          shown
+            ? 'bg-button text-button-foreground'
+            : 'text-description hover:bg-list-hover hover:text-foreground',
+        )}
+        onClick={onToggleShown}
+      >
+        <Eye className="size-4" />
+      </button>
+    </li>
+  );
+}
+
+/**
+ * The Topic list beside the shown Topic's examples (issue 353).
  * Rendered by: TopicModelingBubbleChartSection, which shares list hover,
- * selection, search, and lasso-filter state with the chart.
- * Flow: sort by size, intersect lasso and search filters, then project list hover
- * into bubble emphasis while keeping bubble hover local to the graph node.
+ * selection, search, lasso, and shown-Topic state with the chart.
+ * Flow: one list in two groups that scroll separately. Selected Topics are
+ * always listed, dimmed when the search or lasso hides them; Others lists
+ * the rest that match. The right two thirds show the shown Topic's examples.
  */
 export function TopicSelectionPanel({
   topics,
@@ -33,190 +140,140 @@ export function TopicSelectionPanel({
   onToggleTopicSelection,
   onClearSelection,
   topicSearchQuery,
-  onTopicSearchQueryChange,
   lassoTopicIds,
   corpusPresentation,
   hoveredTopicId,
   onHoveredTopicChange,
+  shownTopicId,
+  shownTopicColor,
+  onToggleShownTopic,
+  onClearFilters,
+  examples,
 }: Props) {
-  const topicWords = (topic: TopicModelingTopic) => {
-    const words = topic.representative_words.map((term) => term.word);
-    return (
-      <TopicWordsLine
-        words={words}
-        matched={matchedTopicWords(words, topicSearchQuery, matchChecklistOption)}
-      />
-    );
-  };
   const sortedTopics = topics.toSorted((a, b) => b.total_size - a.total_size);
   const hasLassoFilter = lassoTopicIds.size > 0;
-
-  const filteredTopics = sortedTopics.filter((topic) => {
+  const hasSearch = topicSearchQuery.trim() !== '';
+  const matches = (topic: TopicModelingTopic) => {
     if (hasLassoFilter && !lassoTopicIds.has(topic.id)) return false;
-    if (topicSearchQuery.trim()) {
-      return matchTopicWords(
-        topic.representative_words.map((term) => term.word),
-        topicSearchQuery,
-        matchChecklistOption,
-      );
-    }
-    return true;
-  });
+    if (!hasSearch) return true;
+    return matchTopicWords(
+      topic.representative_words.map((term) => term.word),
+      topicSearchQuery,
+      matchChecklistOption,
+    );
+  };
+  const matchingIds = new Set(sortedTopics.filter(matches).map((topic) => topic.id));
+  const filtered = hasLassoFilter || hasSearch;
+  const selectedTopics = sortedTopics.filter((topic) => selectedTopicIds.has(topic.id));
+  const otherTopics = sortedTopics.filter(
+    (topic) => !selectedTopicIds.has(topic.id) && matchingIds.has(topic.id),
+  );
+  const shownTopic = topics.find((topic) => topic.id === shownTopicId) ?? null;
 
-  const selectedTopics = sortedTopics.filter((t) => selectedTopicIds.has(t.id));
+  const card = (topic: TopicModelingTopic) => (
+    <TopicCard
+      key={topic.id}
+      topic={topic}
+      selected={selectedTopicIds.has(topic.id)}
+      dimmed={!matchingIds.has(topic.id)}
+      hovered={hoveredTopicId === topic.id}
+      shown={shownTopicId === topic.id}
+      topicSearchQuery={topicSearchQuery}
+      corpusPresentation={corpusPresentation}
+      onToggleSelection={() => {
+        onToggleTopicSelection(topic.id);
+      }}
+      onToggleShown={() => {
+        onToggleShownTopic(topic.id);
+      }}
+      onHoverChange={(hovered) => {
+        onHoveredTopicChange(hovered ? topic.id : null);
+      }}
+    />
+  );
 
-  // Both lists share one frame that fills the results pane, so neither is
-  // squeezed while the other has room (issue 196).
   return (
-    <ResultFrame storageKey="topic-modeling.topic-lists" minHeight={240}>
+    <ResultFrame storageKey="topic-modeling.topic-lists" minHeight={420}>
       {(height) => (
+        // Side by side from 700px; narrower, the list stacks above the
+        // examples and the frame scrolls (issue 353).
         <div
-          className={cn(
-            'grid grid-cols-1 gap-4 md:grid-cols-2',
-            height !== null && 'h-full grid-rows-2 md:grid-rows-1',
-          )}
+          data-result-frame-scroll=""
+          className="@container h-full overflow-y-auto @min-[700px]:overflow-hidden"
         >
-          {/* Left column: selected topics */}
-          <div className="flex min-h-0 flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-body font-medium text-foreground">
-                Selected Topics ({selectedTopics.length})
-              </h4>
-              {selectedTopics.length > 0 && (
-                <button
-                  type="button"
-                  onClick={onClearSelection}
-                  aria-label="Clear selected topics"
-                  className="text-label-secondary text-description hover:text-foreground"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-            {selectedTopics.length === 0 ? (
-              <p className="text-label-secondary text-description italic">
-                Click topics in the chart or list to prioritize them in the chart export.
-              </p>
-            ) : (
-              <div
-                className={cn(
-                  'space-y-1 overflow-y-auto',
-                  height !== null ? 'min-h-0 flex-1' : 'max-h-80',
-                )}
-              >
-                {selectedTopics.map((topic) => {
-                  const isHovered = hoveredTopicId === topic.id;
-                  return (
-                    <div
-                      key={topic.id}
-                      className={`flex items-center justify-between rounded-lg border border-surface-border p-2 transition-colors ${isHovered ? 'bg-list-hover' : 'bg-panel/50'}`}
-                      onMouseEnter={() => {
-                        onHoveredTopicChange(topic.id);
-                      }}
-                      onMouseLeave={() => {
-                        onHoveredTopicChange(null);
-                      }}
-                    >
-                      <div className="min-w-0 flex-1">
-                        <span className="text-body font-medium text-foreground">
-                          Topic {topic.id}
-                        </span>
-                        {topicWords(topic)}
-                      </div>
-                      <button
-                        type="button"
-                        className="ml-2 shrink-0 rounded-sm p-0.5 text-description hover:bg-error/10 hover:text-error"
-                        onClick={() => {
-                          onToggleTopicSelection(topic.id);
-                        }}
-                        aria-label={`Remove topic ${String(topic.id)}`}
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
+          <div
+            className={cn(
+              'grid grid-cols-1 gap-4 @min-[700px]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]',
+              height !== null && '@min-[700px]:h-full @min-[700px]:grid-rows-1',
             )}
-          </div>
-
-          {/* Right column: all topics (filtered) */}
-          <div className="flex min-h-0 flex-col gap-2">
-            <h4 className="text-body font-medium text-foreground">
-              All Topics (
-              {hasLassoFilter
-                ? `${String(filteredTopics.length)} of ${String(topics.length)}`
-                : filteredTopics.length}
-              )
-            </h4>
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-2 left-2.5 h-3.5 w-3.5 text-description" />
-              <input
-                type="text"
-                value={topicSearchQuery}
-                onChange={(e) => {
-                  onTopicSearchQueryChange(e.target.value);
-                }}
-                placeholder="Search representative words…"
-                className="h-8 w-full rounded-md border border-input-border bg-editor pl-8 pr-3 text-label-secondary placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
-              />
-            </div>
-            <div
-              className={cn(
-                'space-y-1 overflow-y-auto',
-                height !== null ? 'min-h-0 flex-1' : 'max-h-70',
-              )}
+          >
+            <section
+              aria-label="Topics"
+              className="flex max-h-96 min-h-0 flex-col gap-2 @min-[700px]:max-h-none"
             >
-              {filteredTopics.map((topic) => {
-                const isSelected = selectedTopicIds.has(topic.id);
-                const isHovered = hoveredTopicId === topic.id;
-                return (
-                  <div
-                    key={topic.id}
-                    role="button"
-                    tabIndex={0}
-                    className={`cursor-pointer rounded-lg border p-2 transition-colors ${
-                      isSelected
-                        ? 'border-l-[3px] border-l-green-500 border-[var(--vscode-charts-green)] bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/60'
-                        : 'border-surface-border/60 bg-surface'
-                    } ${isHovered ? (isSelected ? 'bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]/80' : 'bg-list-hover/70') : ''}`}
-                    onClick={() => {
-                      onToggleTopicSelection(topic.id);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        onToggleTopicSelection(topic.id);
-                      }
-                    }}
-                    onMouseEnter={() => {
-                      onHoveredTopicChange(topic.id);
-                    }}
-                    onMouseLeave={() => {
-                      onHoveredTopicChange(null);
-                    }}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="text-body font-medium text-foreground">
-                        Topic {topic.id}
-                      </span>
-                      <TopicSizeComposition
-                        sizes={topic.size}
-                        total={topic.total_size}
-                        topicId={topic.id}
-                        {...corpusPresentation}
-                      />
-                    </div>
-                    <div className="mt-0.5">{topicWords(topic)}</div>
+              <h4 className="text-body font-medium text-foreground">
+                Topics{' '}
+                <span className="tabular-nums text-description">
+                  {filtered
+                    ? `${String(matchingIds.size)} / ${String(topics.length)}`
+                    : String(topics.length)}
+                </span>
+              </h4>
+              {selectedTopics.length > 0 ? (
+                <div className="flex max-h-[40%] min-h-0 shrink-0 flex-col gap-1">
+                  <div className="flex items-center justify-between text-label-secondary text-description">
+                    <span>Selected {selectedTopics.length}</span>
+                    <button
+                      type="button"
+                      onClick={onClearSelection}
+                      aria-label="Clear selected topics"
+                      className="hover:text-foreground"
+                    >
+                      Clear
+                    </button>
                   </div>
-                );
-              })}
-              {filteredTopics.length === 0 && (
-                <p className="py-4 text-center text-label-secondary text-description italic">
-                  No topics match the current filters.
-                </p>
-              )}
-            </div>
+                  <ul aria-label="Selected topics" className="min-h-0 space-y-1 overflow-y-auto">
+                    {selectedTopics.map(card)}
+                  </ul>
+                </div>
+              ) : null}
+              <div className="flex min-h-0 flex-1 flex-col gap-1">
+                {selectedTopics.length > 0 ? (
+                  <span className="text-label-secondary text-description">
+                    Others {otherTopics.length}
+                  </span>
+                ) : null}
+                <ul
+                  aria-label="Other topics"
+                  className={cn(
+                    'space-y-1 overflow-y-auto',
+                    height !== null ? 'min-h-0 flex-1' : 'max-h-80',
+                  )}
+                >
+                  {otherTopics.map(card)}
+                </ul>
+                {otherTopics.length === 0 ? (
+                  <p className="py-4 text-center text-label-secondary text-description italic">
+                    {matchingIds.size === 0
+                      ? 'No topics match the current filters.'
+                      : 'Every matching topic is selected.'}
+                  </p>
+                ) : null}
+              </div>
+            </section>
+            {examples ? (
+              <TopicExamplesPane
+                key={`${examples.analysisId}:${String(examples.clusterCount)}`}
+                {...examples}
+                topic={shownTopic}
+                wordColor={shownTopicColor}
+                filteredOut={shownTopic !== null && !matchingIds.has(shownTopic.id)}
+                onClose={() => {
+                  if (shownTopicId !== null) onToggleShownTopic(shownTopicId);
+                }}
+                onClearFilters={onClearFilters}
+              />
+            ) : null}
           </div>
         </div>
       )}

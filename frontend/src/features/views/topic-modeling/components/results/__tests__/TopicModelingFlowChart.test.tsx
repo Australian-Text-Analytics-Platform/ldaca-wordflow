@@ -142,6 +142,7 @@ const bubble: TopicBubbleModel = {
   selected: false,
   lassoed: false,
   hovered: false,
+  shown: false,
   filteredOut: false,
   matchedWords: [],
 };
@@ -503,5 +504,63 @@ describe('TopicModelingFlowChart', () => {
       'pointer-events',
       'visiblePainted',
     );
+  });
+});
+
+describe('TopicModelingFlowChart examples shortcut (#353)', () => {
+  const renderChart = (
+    overrides: Partial<TopicBubbleModel>,
+    onToggleShownTopic?: (topicId: number) => void,
+  ) =>
+    render(
+      <TopicModelingFlowChart
+        plane={DEFAULT_TOPIC_GRAPH_PLANE}
+        bubbles={[{ ...bubble, ...overrides }]}
+        corpusPresentation={{
+          corpusCount: 1,
+          panelNodeIds: ['corpus-1'],
+          nodeColors: { 'corpus-1': '#2563eb' },
+          defaultPalette: ['#2563eb'],
+        }}
+        projectionKey="analysis-1:7"
+        lassoMode={false}
+        lassoFilterActive={false}
+        exportDisabled={false}
+        onToggleLassoMode={vi.fn()}
+        onClearLassoFilter={vi.fn()}
+        onAddLassoTopics={vi.fn()}
+        onDownload={vi.fn()}
+        onViewReady={vi.fn()}
+        onToggleTopicSelection={vi.fn()}
+        onToggleShownTopic={onToggleShownTopic}
+      />,
+    );
+  const contextMenu = (node: { data: { bubble: TopicBubbleModel } }) => {
+    const event = { preventDefault: vi.fn() };
+    (
+      flowProps.current.onNodeContextMenu as (
+        event: { preventDefault: () => void },
+        node: { data: { bubble: TopicBubbleModel } },
+      ) => void
+    )(event, node);
+    return event;
+  };
+
+  it('shows examples on right-click of an active bubble, never of a faded one', () => {
+    const onToggleShownTopic = vi.fn();
+    renderChart({}, onToggleShownTopic);
+    const event = contextMenu({ data: { bubble } });
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(onToggleShownTopic).toHaveBeenCalledWith(7);
+
+    onToggleShownTopic.mockClear();
+    const faded = contextMenu({ data: { bubble: { ...bubble, filteredOut: true } } });
+    expect(faded.preventDefault).not.toHaveBeenCalled();
+    expect(onToggleShownTopic).not.toHaveBeenCalled();
+  });
+
+  it('marks the shown bubble with an eye', () => {
+    renderChart({ shown: true }, vi.fn());
+    expect(screen.getByTestId('topic-shown-eye-7')).toBeInTheDocument();
   });
 });

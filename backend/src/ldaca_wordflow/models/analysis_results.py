@@ -64,6 +64,77 @@ class TopicColorGroups(_StrictModel):
     topic_counts: list[list[int]]
 
 
+class TopicSegmentsQuery(_StrictModel):
+    """Example segments of one Topic at a projected Topic count (issue 353)."""
+
+    cluster_count: int = Field(ge=1)
+    topic_id: int = Field(ge=0)
+    order: Literal["typical", "random"] = "typical"
+    one_per_document: bool = True
+    # Only this Data Block's documents, for a run on two Data Blocks.
+    corpus_index: int | None = Field(default=None, ge=0)
+    # Only documents in this Colour by group (one Data Block): the column and
+    # the group's label as Colour by shows it.
+    group_column: str | None = Field(default=None, min_length=1, max_length=500)
+    group_value: str | None = Field(default=None, max_length=10_000)
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=5, ge=1, le=50)
+
+
+class TopicSegmentItem(_StrictModel):
+    segment_index: int = Field(ge=0)
+    document_index: int = Field(ge=0)
+    corpus_index: int = Field(ge=0)
+    node_id: uuid.UUID
+    row_index: int = Field(ge=0)
+    # Unicode code-point offsets into the document text.
+    start: int = Field(ge=0)
+    end: int = Field(ge=0)
+    text: str
+    similarity: float | None
+    # Share (0-100) of the Topic's segments less similar to its centre.
+    typicality: int | None = Field(default=None, ge=0, le=100)
+    metadata: dict[str, str | None]
+
+
+class TopicSegmentsPage(_StrictModel):
+    """One page of a Topic's example segments (issue 353)."""
+
+    topic_id: int
+    segment_count: int = Field(ge=0)
+    document_count: int = Field(ge=0)
+    matching_count: int = Field(ge=0)
+    has_similarity: bool
+    page: int = Field(ge=1)
+    page_size: int = Field(ge=1)
+    metadata_columns: list[str]
+    items: list[TopicSegmentItem]
+
+
+class TopicDocumentQuery(_StrictModel):
+    cluster_count: int = Field(ge=1)
+    document_index: int = Field(ge=0)
+
+
+class TopicDocumentSpan(_StrictModel):
+    start: int = Field(ge=0)
+    end: int = Field(ge=0)
+    topic_id: int
+
+
+class TopicDocument(_StrictModel):
+    """One document of a Topic run with every segment's Topic (issue 353)."""
+
+    document_index: int = Field(ge=0)
+    corpus_index: int = Field(ge=0)
+    node_id: uuid.UUID
+    node_name: str
+    row_index: int = Field(ge=0)
+    text: str
+    spans: list[TopicDocumentSpan]
+    metadata: dict[str, str | None]
+
+
 class ConcordanceResultQuery(_PagedQuery):
     kind: Literal["concordance"] = "concordance"
     node_id: uuid.UUID | None = None

@@ -47,7 +47,9 @@ coverage is never repeated.
 - Count each row in bubbles for its strongest one or more positive Topics.
 - Inspect representative words, topic sizes, similarity, and outliers.
 - Pan and zoom the fitted Topic graph, or cumulatively lasso Topics to filter
-  the All Topics list.
+  the topic list.
+- Read the most typical or random example texts of a topic, and open their
+  documents.
 - Add selected topic data and meanings to the Project as new Data Blocks.
 
 <h3 id="info-topic-modeling-interpretation">Interpret with care</h3>

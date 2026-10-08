@@ -34,7 +34,8 @@ interface TopicModelingStopWordsControlProps {
  * Edits and applies the active Topic Tab's saved stop words without changing
  * the immutable Result. The shared language dropdown appends default stop
  * words to the saved list; the switch only controls whether that list
- * participates in the current Result projection.
+ * participates in the current Result projection. The switch has no visible
+ * label: the dropdown's resting text, "Use stop words", names it (issue 353).
  */
 export function TopicModelingStopWordsControl({
   enabled,
@@ -75,7 +76,8 @@ export function TopicModelingStopWordsControl({
         <StopWordsEnabledSwitch
           checked={enabled}
           onCheckedChange={onEnabledChange}
-          label="Filter stop words"
+          label="Use stop words"
+          hideLabel
         />
         <StopWordsLanguageSelect
           words={savedWords}
@@ -87,6 +89,11 @@ export function TopicModelingStopWordsControl({
           disabled={isSavingEditor}
           onListAdded={() => {
             if (!enabled) onEnabledChange(true);
+          }}
+          restingLabel="Use stop words"
+          active={enabled}
+          onDeactivate={() => {
+            onEnabledChange(false);
           }}
         />
         <Tooltip>

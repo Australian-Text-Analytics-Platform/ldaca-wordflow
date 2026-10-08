@@ -24,6 +24,10 @@ from ...models.analysis_results import (
     StoredArtifactIdentity,
     TopicColorGroups,
     TopicColorGroupsQuery,
+    TopicDocument,
+    TopicDocumentQuery,
+    TopicSegmentsPage,
+    TopicSegmentsQuery,
 )
 from ...models.tables import (
     CompleteTableResource,
@@ -440,6 +444,44 @@ async def query_quotation_preview_table(
         body,
     )
     return arrow_page_response(result)
+
+
+@router.post(
+    "/analyses/{analysis_id}/result/topic-segments/query",
+    response_model=TopicSegmentsPage,
+    responses=api_errors(400, 403, 404, 409, 410, 422, 500),
+)
+async def query_topic_segments(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    query: TopicSegmentsQuery,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> TopicSegmentsPage:
+    """One page of a Topic's example segments, most typical or random (issue 353)."""
+
+    return await runtime.analysis_result_service.topic_segments(
+        principal.user.id, workspace_id, analysis_id, query
+    )
+
+
+@router.post(
+    "/analyses/{analysis_id}/result/topic-document/query",
+    response_model=TopicDocument,
+    responses=api_errors(400, 403, 404, 409, 410, 422, 500),
+)
+async def query_topic_document(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    query: TopicDocumentQuery,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> TopicDocument:
+    """One document with every segment's Topic, for the document viewer (issue 353)."""
+
+    return await runtime.analysis_result_service.topic_document(
+        principal.user.id, workspace_id, analysis_id, query
+    )
 
 
 @router.post(

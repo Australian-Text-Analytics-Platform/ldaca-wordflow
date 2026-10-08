@@ -64,6 +64,16 @@ def _json_value(value: Any) -> Any:
     return value
 
 
+def group_label(value: Any) -> str:
+    """A raw column value's Colour by label, as the legend shows it.
+
+    Shared with the Topic examples group filter (issue 353); non-finite
+    numbers count as missing, as they do in the colour counts.
+    """
+
+    return _group_label(_json_value(value))
+
+
 def group_topic_counts(
     values: Sequence[Any],
     documents: Sequence[dict[str, Any]],
@@ -135,5 +145,6 @@ __all__ = [
     "MAX_TOPIC_COLOR_GROUPS",
     "MISSING_GROUP_LABEL",
     "eligible_color_columns",
+    "group_label",
     "group_topic_counts",
 ]

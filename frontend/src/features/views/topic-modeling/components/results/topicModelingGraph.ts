@@ -55,6 +55,8 @@ export interface TopicBubbleModel {
   selected: boolean;
   lassoed: boolean;
   hovered: boolean;
+  /** Its examples are shown beside the list; the bubble carries an eye (issue 353). */
+  shown: boolean;
   filteredOut: boolean;
   /** Words matching Find topics, shown bold in the bubble's word cloud (issue 342). */
   matchedWords: string[];
@@ -170,6 +172,7 @@ interface BuildTopicBubbleModelsOptions {
   selectedTopicIds: Set<number>;
   lassoTopicIds: Set<number>;
   hoveredTopicId: number | null;
+  shownTopicId?: number | null;
   topicSearchQuery: string;
   colorScheme?: TopicColorScheme | null;
   /** The canvas-shaped plane to lay topics out in (issue 308). */
@@ -365,6 +368,7 @@ export function buildTopicBubbleModels({
   selectedTopicIds,
   lassoTopicIds,
   hoveredTopicId,
+  shownTopicId = null,
   topicSearchQuery,
   colorScheme = null,
   plane = DEFAULT_TOPIC_GRAPH_PLANE,
@@ -428,6 +432,7 @@ export function buildTopicBubbleModels({
       selected: selectedTopicIds.has(topic.id),
       lassoed: lassoTopicIds.has(topic.id),
       hovered: hoveredTopicId === topic.id,
+      shown: shownTopicId === topic.id,
       matchedWords: [
         ...matchedTopicWords(
           topic.representative_words.map((term) => term.word),
@@ -435,7 +440,7 @@ export function buildTopicBubbleModels({
           matchChecklistOption,
         ),
       ],
-      // Faded exactly when All Topics leaves it out: outside the lasso, or
+      // Faded exactly when the Topic list leaves it out: outside the lasso, or
       // not matching the search (Chao, 2026-10-08: the chart lit search
       // matches outside the lasso while the list showed only lassoed ones).
       filteredOut:

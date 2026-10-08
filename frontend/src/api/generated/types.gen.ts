@@ -5369,6 +5369,80 @@ export type TopicColorGroupsQuery = {
 };
 
 /**
+ * TopicDocument
+ *
+ * One document of a Topic run with every segment's Topic (issue 353).
+ */
+export type TopicDocument = {
+    /**
+     * Corpus Index
+     */
+    corpus_index: number;
+    /**
+     * Document Index
+     */
+    document_index: number;
+    /**
+     * Metadata
+     */
+    metadata: {
+        [key: string]: string | null;
+    };
+    /**
+     * Node Id
+     */
+    node_id: string;
+    /**
+     * Node Name
+     */
+    node_name: string;
+    /**
+     * Row Index
+     */
+    row_index: number;
+    /**
+     * Spans
+     */
+    spans: Array<TopicDocumentSpan>;
+    /**
+     * Text
+     */
+    text: string;
+};
+
+/**
+ * TopicDocumentQuery
+ */
+export type TopicDocumentQuery = {
+    /**
+     * Cluster Count
+     */
+    cluster_count: number;
+    /**
+     * Document Index
+     */
+    document_index: number;
+};
+
+/**
+ * TopicDocumentSpan
+ */
+export type TopicDocumentSpan = {
+    /**
+     * End
+     */
+    end: number;
+    /**
+     * Start
+     */
+    start: number;
+    /**
+     * Topic Id
+     */
+    topic_id: number;
+};
+
+/**
  * TopicInclusion
  */
 export type TopicInclusion = {
@@ -5717,9 +5791,149 @@ export type TopicModelingTabUpdate = {
 };
 
 /**
+ * TopicSegmentItem
+ */
+export type TopicSegmentItem = {
+    /**
+     * Corpus Index
+     */
+    corpus_index: number;
+    /**
+     * Document Index
+     */
+    document_index: number;
+    /**
+     * End
+     */
+    end: number;
+    /**
+     * Metadata
+     */
+    metadata: {
+        [key: string]: string | null;
+    };
+    /**
+     * Node Id
+     */
+    node_id: string;
+    /**
+     * Row Index
+     */
+    row_index: number;
+    /**
+     * Segment Index
+     */
+    segment_index: number;
+    /**
+     * Similarity
+     */
+    similarity: number | null;
+    /**
+     * Start
+     */
+    start: number;
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Typicality
+     */
+    typicality?: number | null;
+};
+
+/**
  * TopicSegmentationMethod
  */
 export type TopicSegmentationMethod = 'automatic' | 'line' | 'sentence';
+
+/**
+ * TopicSegmentsPage
+ *
+ * One page of a Topic's example segments (issue 353).
+ */
+export type TopicSegmentsPage = {
+    /**
+     * Document Count
+     */
+    document_count: number;
+    /**
+     * Has Similarity
+     */
+    has_similarity: boolean;
+    /**
+     * Items
+     */
+    items: Array<TopicSegmentItem>;
+    /**
+     * Matching Count
+     */
+    matching_count: number;
+    /**
+     * Metadata Columns
+     */
+    metadata_columns: Array<string>;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Page Size
+     */
+    page_size: number;
+    /**
+     * Segment Count
+     */
+    segment_count: number;
+    /**
+     * Topic Id
+     */
+    topic_id: number;
+};
+
+/**
+ * TopicSegmentsQuery
+ *
+ * Example segments of one Topic at a projected Topic count (issue 353).
+ */
+export type TopicSegmentsQuery = {
+    /**
+     * Cluster Count
+     */
+    cluster_count: number;
+    /**
+     * Corpus Index
+     */
+    corpus_index?: number | null;
+    /**
+     * Group Column
+     */
+    group_column?: string | null;
+    /**
+     * Group Value
+     */
+    group_value?: string | null;
+    /**
+     * One Per Document
+     */
+    one_per_document?: boolean;
+    /**
+     * Order
+     */
+    order?: 'typical' | 'random';
+    /**
+     * Page
+     */
+    page?: number;
+    /**
+     * Page Size
+     */
+    page_size?: number;
+    /**
+     * Topic Id
+     */
+    topic_id: number;
+};
 
 /**
  * TopicSource
@@ -10081,6 +10295,130 @@ export type QueryTopicColorGroupsResponses = {
 };
 
 export type QueryTopicColorGroupsResponse = QueryTopicColorGroupsResponses[keyof QueryTopicColorGroupsResponses];
+
+export type QueryTopicDocumentData = {
+    body: TopicDocumentQuery;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Analysis Id
+         */
+        analysis_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-document/query';
+};
+
+export type QueryTopicDocumentErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Retained artifact is no longer available
+     */
+    410: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type QueryTopicDocumentError = QueryTopicDocumentErrors[keyof QueryTopicDocumentErrors];
+
+export type QueryTopicDocumentResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicDocument;
+};
+
+export type QueryTopicDocumentResponse = QueryTopicDocumentResponses[keyof QueryTopicDocumentResponses];
+
+export type QueryTopicSegmentsData = {
+    body: TopicSegmentsQuery;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Analysis Id
+         */
+        analysis_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-segments/query';
+};
+
+export type QueryTopicSegmentsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Retained artifact is no longer available
+     */
+    410: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type QueryTopicSegmentsError = QueryTopicSegmentsErrors[keyof QueryTopicSegmentsErrors];
+
+export type QueryTopicSegmentsResponses = {
+    /**
+     * Successful Response
+     */
+    200: TopicSegmentsPage;
+};
+
+export type QueryTopicSegmentsResponse = QueryTopicSegmentsResponses[keyof QueryTopicSegmentsResponses];
 
 export type ExportWorkspaceArchiveData = {
     body?: never;

@@ -1,3 +1,4 @@
+import type React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -36,62 +37,97 @@ const corpusPresentation = {
   defaultPalette: [],
 };
 
+type PanelProps = React.ComponentProps<typeof TopicSelectionPanel>;
+
+function panelProps(overrides: Partial<PanelProps> = {}): PanelProps {
+  return {
+    topics,
+    selectedTopicIds: new Set(),
+    onToggleTopicSelection: vi.fn(),
+    onClearSelection: vi.fn(),
+    topicSearchQuery: '',
+    lassoTopicIds: new Set(),
+    corpusPresentation,
+    hoveredTopicId: null,
+    onHoveredTopicChange: vi.fn(),
+    shownTopicId: null,
+    onToggleShownTopic: vi.fn(),
+    onClearFilters: vi.fn(),
+    ...overrides,
+  };
+}
+
 describe('TopicSelectionPanel', () => {
-  it('intersects the additive lasso filter with search while keeping manual selections separate', () => {
+  it('keeps selected topics listed, dimmed when the filters hide them (#353)', () => {
     render(
       <TopicSelectionPanel
-        topics={topics}
-        selectedTopicIds={new Set([1])}
-        onToggleTopicSelection={vi.fn()}
-        onClearSelection={vi.fn()}
-        topicSearchQuery="alpha"
-        onTopicSearchQueryChange={vi.fn()}
-        lassoTopicIds={new Set([0, 1, 2])}
-        corpusPresentation={corpusPresentation}
-        hoveredTopicId={null}
-        onHoveredTopicChange={vi.fn()}
+        {...panelProps({
+          selectedTopicIds: new Set([1]),
+          topicSearchQuery: 'alpha',
+          lassoTopicIds: new Set([0, 1, 2]),
+        })}
       />,
     );
 
-    expect(screen.getByRole('heading', { name: 'Selected Topics (1)' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'All Topics (2 of 3)' })).toBeInTheDocument();
-    expect(screen.getAllByText('Topic 1')).toHaveLength(1);
-    expect(screen.getByText('Topic 0')).toBeInTheDocument();
-    expect(screen.getByText('Topic 2')).toBeInTheDocument();
-
-    expect(screen.queryByRole('button', { name: 'Clear lasso filter' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Topics 2 / 3' })).toBeInTheDocument();
+    const selected = screen.getByRole('list', { name: 'Selected topics' });
+    expect(within(selected).getByText('Topic 1')).toBeInTheDocument();
+    expect(within(selected).getByRole('listitem')).toHaveClass('opacity-50');
+    const others = screen.getByRole('list', { name: 'Other topics' });
+    expect(
+      within(others)
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('data-topic-id')),
+    ).toEqual(['0', '2']);
+    expect(screen.getByText('Selected 1')).toBeInTheDocument();
+    expect(screen.getByText('Others 2')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
-  it('shows all topics when no lasso filter is active', () => {
+  it('counts every topic when nothing filters them', () => {
     const onHoveredTopicChange = vi.fn();
+    const onToggleTopicSelection = vi.fn();
     render(
-      <TopicSelectionPanel
-        topics={topics}
-        selectedTopicIds={new Set()}
-        onToggleTopicSelection={vi.fn()}
-        onClearSelection={vi.fn()}
-        topicSearchQuery=""
-        onTopicSearchQueryChange={vi.fn()}
-        lassoTopicIds={new Set()}
-        corpusPresentation={corpusPresentation}
-        hoveredTopicId={null}
-        onHoveredTopicChange={onHoveredTopicChange}
-      />,
+      <TopicSelectionPanel {...panelProps({ onHoveredTopicChange, onToggleTopicSelection })} />,
     );
 
-    expect(screen.getByRole('heading', { name: 'All Topics (3)' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Clear lasso filter' })).not.toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Topics 3' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Selected topics' })).not.toBeInTheDocument();
 
-    const topicRow = screen.getByRole('button', { name: /Topic 0/ });
+    const topicRow = screen.getByRole('button', { name: 'Select Topic 0' });
     fireEvent.mouseEnter(topicRow);
     fireEvent.mouseLeave(topicRow);
     expect(onHoveredTopicChange).toHaveBeenNthCalledWith(1, 0);
     expect(onHoveredTopicChange).toHaveBeenNthCalledWith(2, null);
+    fireEvent.click(topicRow);
+    expect(onToggleTopicSelection).toHaveBeenCalledWith(0);
+  });
+
+  it('shows and stops showing examples from the eye at the tail of a card (#353)', () => {
+    const onToggleShownTopic = vi.fn();
+    const onToggleTopicSelection = vi.fn();
+    const { rerender } = render(
+      <TopicSelectionPanel {...panelProps({ onToggleShownTopic, onToggleTopicSelection })} />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show examples of Topic 2' }));
+    expect(onToggleShownTopic).toHaveBeenCalledWith(2);
+    expect(onToggleTopicSelection).not.toHaveBeenCalled();
+
+    rerender(
+      <TopicSelectionPanel
+        {...panelProps({ onToggleShownTopic, onToggleTopicSelection, shownTopicId: 2 })}
+      />,
+    );
+    const eye = screen.getByRole('button', { name: 'Stop showing Topic 2' });
+    expect(eye).toHaveAttribute('aria-pressed', 'true');
+    expect(eye).toHaveClass('bg-button');
   });
 
   it('picks out the matching words in bold orange, with all words in a tooltip (issue 342)', async () => {
     render(
       <TopicSelectionPanel
+        {...panelProps({ topicSearchQuery: 'famil*' })}
         topics={[
           {
             id: 5,
@@ -106,15 +142,6 @@ describe('TopicSelectionPanel', () => {
             y: 0,
           },
         ]}
-        selectedTopicIds={new Set()}
-        onToggleTopicSelection={vi.fn()}
-        onClearSelection={vi.fn()}
-        topicSearchQuery="famil*"
-        onTopicSearchQueryChange={vi.fn()}
-        lassoTopicIds={new Set()}
-        corpusPresentation={corpusPresentation}
-        hoveredTopicId={null}
-        onHoveredTopicChange={vi.fn()}
       />,
     );
 

@@ -10445,6 +10445,120 @@
         "title": "TopicColorGroupsQuery",
         "type": "object"
       },
+      "TopicDocument": {
+        "additionalProperties": false,
+        "description": "One document of a Topic run with every segment's Topic (issue 353).",
+        "properties": {
+          "corpus_index": {
+            "minimum": 0.0,
+            "title": "Corpus Index",
+            "type": "integer"
+          },
+          "document_index": {
+            "minimum": 0.0,
+            "title": "Document Index",
+            "type": "integer"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Metadata",
+            "type": "object"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "node_name": {
+            "title": "Node Name",
+            "type": "string"
+          },
+          "row_index": {
+            "minimum": 0.0,
+            "title": "Row Index",
+            "type": "integer"
+          },
+          "spans": {
+            "items": {
+              "$ref": "#/components/schemas/TopicDocumentSpan"
+            },
+            "title": "Spans",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_index",
+          "corpus_index",
+          "node_id",
+          "node_name",
+          "row_index",
+          "text",
+          "spans",
+          "metadata"
+        ],
+        "title": "TopicDocument",
+        "type": "object"
+      },
+      "TopicDocumentQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "cluster_count": {
+            "minimum": 1.0,
+            "title": "Cluster Count",
+            "type": "integer"
+          },
+          "document_index": {
+            "minimum": 0.0,
+            "title": "Document Index",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cluster_count",
+          "document_index"
+        ],
+        "title": "TopicDocumentQuery",
+        "type": "object"
+      },
+      "TopicDocumentSpan": {
+        "additionalProperties": false,
+        "properties": {
+          "end": {
+            "minimum": 0.0,
+            "title": "End",
+            "type": "integer"
+          },
+          "start": {
+            "minimum": 0.0,
+            "title": "Start",
+            "type": "integer"
+          },
+          "topic_id": {
+            "title": "Topic Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "topic_id"
+        ],
+        "title": "TopicDocumentSpan",
+        "type": "object"
+      },
       "TopicInclusion": {
         "additionalProperties": false,
         "properties": {
@@ -11127,6 +11241,102 @@
         "title": "TopicModelingTabUpdate",
         "type": "object"
       },
+      "TopicSegmentItem": {
+        "additionalProperties": false,
+        "properties": {
+          "corpus_index": {
+            "minimum": 0.0,
+            "title": "Corpus Index",
+            "type": "integer"
+          },
+          "document_index": {
+            "minimum": 0.0,
+            "title": "Document Index",
+            "type": "integer"
+          },
+          "end": {
+            "minimum": 0.0,
+            "title": "End",
+            "type": "integer"
+          },
+          "metadata": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Metadata",
+            "type": "object"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "row_index": {
+            "minimum": 0.0,
+            "title": "Row Index",
+            "type": "integer"
+          },
+          "segment_index": {
+            "minimum": 0.0,
+            "title": "Segment Index",
+            "type": "integer"
+          },
+          "similarity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Similarity"
+          },
+          "start": {
+            "minimum": 0.0,
+            "title": "Start",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "typicality": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Typicality"
+          }
+        },
+        "required": [
+          "segment_index",
+          "document_index",
+          "corpus_index",
+          "node_id",
+          "row_index",
+          "start",
+          "end",
+          "text",
+          "similarity",
+          "metadata"
+        ],
+        "title": "TopicSegmentItem",
+        "type": "object"
+      },
       "TopicSegmentationMethod": {
         "enum": [
           "automatic",
@@ -11135,6 +11345,158 @@
         ],
         "title": "TopicSegmentationMethod",
         "type": "string"
+      },
+      "TopicSegmentsPage": {
+        "additionalProperties": false,
+        "description": "One page of a Topic's example segments (issue 353).",
+        "properties": {
+          "document_count": {
+            "minimum": 0.0,
+            "title": "Document Count",
+            "type": "integer"
+          },
+          "has_similarity": {
+            "title": "Has Similarity",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TopicSegmentItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "matching_count": {
+            "minimum": 0.0,
+            "title": "Matching Count",
+            "type": "integer"
+          },
+          "metadata_columns": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Metadata Columns",
+            "type": "array"
+          },
+          "page": {
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "segment_count": {
+            "minimum": 0.0,
+            "title": "Segment Count",
+            "type": "integer"
+          },
+          "topic_id": {
+            "title": "Topic Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic_id",
+          "segment_count",
+          "document_count",
+          "matching_count",
+          "has_similarity",
+          "page",
+          "page_size",
+          "metadata_columns",
+          "items"
+        ],
+        "title": "TopicSegmentsPage",
+        "type": "object"
+      },
+      "TopicSegmentsQuery": {
+        "additionalProperties": false,
+        "description": "Example segments of one Topic at a projected Topic count (issue 353).",
+        "properties": {
+          "cluster_count": {
+            "minimum": 1.0,
+            "title": "Cluster Count",
+            "type": "integer"
+          },
+          "corpus_index": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Corpus Index"
+          },
+          "group_column": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Column"
+          },
+          "group_value": {
+            "anyOf": [
+              {
+                "maxLength": 10000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Group Value"
+          },
+          "one_per_document": {
+            "default": true,
+            "title": "One Per Document",
+            "type": "boolean"
+          },
+          "order": {
+            "default": "typical",
+            "enum": [
+              "typical",
+              "random"
+            ],
+            "title": "Order",
+            "type": "string"
+          },
+          "page": {
+            "default": 1,
+            "minimum": 1.0,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 5,
+            "maximum": 50.0,
+            "minimum": 1.0,
+            "title": "Page Size",
+            "type": "integer"
+          },
+          "topic_id": {
+            "minimum": 0.0,
+            "title": "Topic Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "cluster_count",
+          "topic_id"
+        ],
+        "title": "TopicSegmentsQuery",
+        "type": "object"
       },
       "TopicSource": {
         "additionalProperties": false,
@@ -19210,6 +19572,284 @@
           }
         ],
         "summary": "Query Topic Color Groups",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-document/query": {
+      "post": {
+        "description": "One document with every segment's Topic, for the document viewer (issue 353).",
+        "operationId": "query_topic_document",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicDocumentQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicDocument"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Retained artifact is no longer available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Query Topic Document",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-segments/query": {
+      "post": {
+        "description": "One page of a Topic's example segments, most typical or random (issue 353).",
+        "operationId": "query_topic_segments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicSegmentsQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TopicSegmentsPage"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Retained artifact is no longer available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Query Topic Segments",
         "tags": [
           "analyses"
         ]

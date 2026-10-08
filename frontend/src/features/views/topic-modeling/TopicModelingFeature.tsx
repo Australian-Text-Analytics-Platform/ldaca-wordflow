@@ -574,6 +574,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           runningTask={topicRunningTask}
           error={error ?? analysisFailure}
           result={result}
+          analysisId={tabTaskId}
           topics={topics}
           exportTopics={exportTopics}
           containerRef={containerRef}

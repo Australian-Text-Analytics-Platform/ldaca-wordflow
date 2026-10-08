@@ -45,6 +45,13 @@ export interface RowDetailCustomization {
    * the metadata table in view below it; the box still scrolls.
    */
   documentMaxHeightClassName?: string;
+  /** Replaces "Row Details" in the title, e.g. "Document" (issue 353). */
+  title?: string;
+  /**
+   * Changes when the anchor moves within the same document (for example the
+   * next highlighted segment), so the box scrolls to it again (issue 353).
+   */
+  anchorKey?: string | number;
 }
 
 export interface RowDetailNavigation {
@@ -54,6 +61,9 @@ export interface RowDetailNavigation {
   error: string | null;
   onPrevious: () => void;
   onNext: () => void;
+  /** Button labels; "Previous row" and "Next row" by default (issue 353). */
+  previousLabel?: string;
+  nextLabel?: string;
 }
 
 export interface RowDetailPayload {
@@ -157,7 +167,7 @@ export function RowDetailPanel({
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 0;
     if (documentBox) scrollDocumentToAnchor(documentBox);
-  }, [payload, open, documentBox]);
+  }, [payload, open, documentBox, customization?.anchorKey]);
 
   if (!payload) return null;
 
@@ -190,7 +200,10 @@ export function RowDetailPanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="grid max-h-[80vh] w-full max-w-4xl grid-rows-[auto_minmax(0,1fr)_auto] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>Row Details{titleSuffix}</DialogTitle>
+          <DialogTitle>
+            {customization?.title ?? 'Row Details'}
+            {titleSuffix}
+          </DialogTitle>
           <DialogDescription className="sr-only">
             Full row text and metadata for the selected result.
           </DialogDescription>
@@ -291,14 +304,14 @@ export function RowDetailPanel({
             variant="outline"
             onClick={navigation.onPrevious}
             disabled={!navigation.canPrevious || navigation.pendingDirection !== null}
-            aria-label="Previous row"
+            aria-label={navigation.previousLabel ?? 'Previous row'}
           >
             {navigation.pendingDirection === 'previous' ? (
               <Loader2 aria-hidden="true" className="animate-spin" />
             ) : (
               <ChevronLeft aria-hidden="true" />
             )}
-            Previous row
+            {navigation.previousLabel ?? 'Previous row'}
           </Button>
           {navigation.error ? (
             <p role="alert" className="self-center text-body text-error">
@@ -316,9 +329,9 @@ export function RowDetailPanel({
             variant="outline"
             onClick={navigation.onNext}
             disabled={!navigation.canNext || navigation.pendingDirection !== null}
-            aria-label="Next row"
+            aria-label={navigation.nextLabel ?? 'Next row'}
           >
-            Next row
+            {navigation.nextLabel ?? 'Next row'}
             {navigation.pendingDirection === 'next' ? (
               <Loader2 aria-hidden="true" className="animate-spin" />
             ) : (

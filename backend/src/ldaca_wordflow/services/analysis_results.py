@@ -9,7 +9,7 @@ import shutil
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import TypeVar, cast
 
@@ -28,7 +28,14 @@ from ..analysis.concordance_projection import filter_concordance_documents
 from ..analysis.quotation_core import compute_quotation_page
 from ..analysis.token_cache import tokenize_lazyframe, tokens_cache_path
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
+from ..analysis.topic_examples import (
+    TopicSegment,
+    corpus_position,
+    order_topic_segments,
+    typicality_percentiles,
+)
 from ..analysis.topic_metadata_colors import (
+    group_label,
     eligible_color_columns,
     group_topic_counts,
 )
@@ -83,8 +90,14 @@ from ..models.analysis_results import (
     TokenFrequencyStoredResult,
     TopicColorGroups,
     TopicColorGroupsQuery,
+    TopicDocument,
+    TopicDocumentQuery,
+    TopicDocumentSpan,
     TopicModelingResultQuery,
     TopicModelingStoredResult,
+    TopicSegmentItem,
+    TopicSegmentsPage,
+    TopicSegmentsQuery,
 )
 from ..settings import Settings
 from ..shared.errors import (
@@ -521,6 +534,137 @@ class AnalysisResultService:
             frame,
             source.text_column,
             context_path,
+        )
+
+    async def topic_segments(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        query: TopicSegmentsQuery,
+    ) -> TopicSegmentsPage:
+        """One page of a Topic's example segments, most typical or random (issue 353).
+
+        Segments and their similarity to the Topic's centre come from the
+        run's projection context; their text and their documents' metadata
+        are read from the live source Data Blocks, checked against the run's
+        fingerprints as for metadata colours (issue 319).
+        """
+
+        async with self._analyses.successful_record_context(
+            user_id,
+            workspace_id,
+            analysis_id,
+            allow_closing=False,
+        ) as (lease, record):
+            stored, context_path = _topic_run(lease, record)
+            seed = int(getattr(record.request, "random_seed", 0))
+            sources = _topic_sources(lease, stored)
+            group_values = None
+            if query.group_column is not None:
+                if len(sources) != 1:
+                    raise InvalidInputError(
+                        "Colour by groups are available for single-corpus results only"
+                    )
+                group_values = await self._run_sync(
+                    _topic_group_values,
+                    sources[0],
+                    query.group_column,
+                )
+            segments = await self._run_sync(
+                _topic_segment_similarities,
+                context_path,
+                query.cluster_count,
+                query.topic_id,
+            )
+            allowed = _topic_allowed_documents(stored, query, group_values)
+            ordered = order_topic_segments(
+                segments,
+                order=query.order,
+                seed=seed,
+                one_per_document=query.one_per_document,
+                allowed_documents=allowed,
+            )
+            start = (query.page - 1) * query.page_size
+            page_segments = ordered[start : start + query.page_size]
+            documents = await self._run_sync(
+                _topic_documents,
+                sources,
+                stored,
+                sorted({segment.document_index for segment in page_segments}),
+            )
+        percentiles = typicality_percentiles(segments)
+        items = []
+        for segment in page_segments:
+            document = documents[segment.document_index]
+            items.append(
+                TopicSegmentItem(
+                    segment_index=segment.segment_index,
+                    document_index=segment.document_index,
+                    corpus_index=document.corpus_index,
+                    node_id=document.node_id,
+                    row_index=document.row_index,
+                    start=segment.start,
+                    end=segment.end,
+                    text=document.text[segment.start : segment.end],
+                    similarity=segment.similarity,
+                    typicality=percentiles.get(segment.segment_index),
+                    metadata=document.metadata,
+                )
+            )
+        return TopicSegmentsPage(
+            topic_id=query.topic_id,
+            segment_count=len(segments),
+            document_count=len({segment.document_index for segment in segments}),
+            matching_count=len(ordered),
+            has_similarity=bool(segments) and segments[0].similarity is not None,
+            page=query.page,
+            page_size=query.page_size,
+            metadata_columns=sorted(
+                {column for source in sources for column in source.metadata_columns}
+            ),
+            items=items,
+        )
+
+    async def topic_document(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        query: TopicDocumentQuery,
+    ) -> TopicDocument:
+        """One document of a Topic run with every segment's Topic (issue 353)."""
+
+        async with self._analyses.successful_record_context(
+            user_id,
+            workspace_id,
+            analysis_id,
+            allow_closing=False,
+        ) as (lease, record):
+            stored, context_path = _topic_run(lease, record)
+            sources = _topic_sources(lease, stored)
+            documents = await self._run_sync(
+                _topic_documents, sources, stored, [query.document_index]
+            )
+            spans = await self._run_sync(
+                _topic_document_spans,
+                context_path,
+                query.cluster_count,
+                query.document_index,
+            )
+        document = documents[query.document_index]
+        return TopicDocument(
+            document_index=query.document_index,
+            corpus_index=document.corpus_index,
+            node_id=document.node_id,
+            node_name=document.node_name,
+            row_index=document.row_index,
+            text=document.text,
+            spans=[
+                TopicDocumentSpan(start=start, end=end, topic_id=topic_id)
+                for start, end, topic_id in spans
+            ],
+            metadata=document.metadata,
         )
 
     async def query(
@@ -1138,6 +1282,214 @@ def _query_topics(
     payload["topics"] = cast(JsonData, rows)
     payload["query"] = cast(JsonData, query.model_dump(mode="json"))
     return payload
+
+
+@dataclass(frozen=True)
+class _TopicSource:
+    """One source Data Block of a Topic run, read live (issue 353)."""
+
+    corpus_index: int
+    node_id: uuid.UUID
+    node_name: str
+    data: pl.LazyFrame
+    text_column: str
+    row_indices: list[int]
+    fingerprint: str | None
+    metadata_columns: list[str]
+
+
+@dataclass(frozen=True)
+class _TopicDocument:
+    corpus_index: int
+    node_id: uuid.UUID
+    node_name: str
+    row_index: int
+    text: str
+    metadata: dict[str, str | None]
+
+
+def _topic_run(
+    lease: WorkspaceLease, record: AnalysisRecord
+) -> tuple[TopicModelingStoredResult, Path]:
+    if record.request.kind != "topic_modeling" or record.result_payload is None:
+        raise AnalysisKindMismatchError("Topic examples require a Topic Modeling Analysis")
+    try:
+        stored = TopicModelingStoredResult.model_validate(record.result_payload)
+    except ValidationError as exc:
+        raise AnalysisCorruptError("Analysis data is corrupt") from exc
+    context_path = _topic_context_path(lease, record, stored)
+    if context_path is None or not context_path.is_file():
+        raise ArtifactGoneError("Topic projection context is unavailable")
+    return stored, context_path
+
+
+def _topic_sources(
+    lease: WorkspaceLease, stored: TopicModelingStoredResult
+) -> list[_TopicSource]:
+    fingerprints = stored.projection_context.source_document_fingerprints
+    sources = []
+    for index, source in enumerate(stored.sources):
+        node = lease.workspace.nodes.get(source.node_id)
+        if node is None:
+            raise NodeNotFoundError("The source Data Block is no longer available")
+        sources.append(
+            _TopicSource(
+                corpus_index=index,
+                node_id=source.node_id,
+                node_name=node.name,
+                data=node.data,
+                text_column=source.text_column,
+                row_indices=stored.projection_context.source_row_indices[index],
+                fingerprint=fingerprints[index] if fingerprints else None,
+                metadata_columns=supported_metadata_columns(
+                    node.data.collect_schema(), exclude=(source.text_column,)
+                ),
+            )
+        )
+    return sources
+
+
+def _context_identity(path: Path) -> tuple[str, int, int]:
+    status = path.stat()
+    return str(path), status.st_mtime_ns, status.st_size
+
+
+@lru_cache(maxsize=16)
+def _cached_topic_segments(
+    identity: tuple[str, int, int], cluster_count: int, topic_id: int
+) -> tuple[TopicSegment, ...]:
+    from polars_text.topic_projection import topic_segment_similarities
+
+    rows = topic_segment_similarities(
+        Path(identity[0]).read_bytes(), cluster_count, topic_id
+    )
+    return tuple(TopicSegment(*row) for row in rows)
+
+
+@lru_cache(maxsize=4)
+def _cached_segment_topics(
+    identity: tuple[str, int, int], cluster_count: int
+) -> tuple[tuple[int, int, int, int], ...]:
+    from polars_text.topic_projection import project_topic_segments
+
+    return tuple(project_topic_segments(Path(identity[0]).read_bytes(), cluster_count))
+
+
+def _topic_segment_similarities(
+    context_path: Path, cluster_count: int, topic_id: int
+) -> tuple[TopicSegment, ...]:
+    try:
+        return _cached_topic_segments(_context_identity(context_path), cluster_count, topic_id)
+    except OSError as exc:
+        raise ArtifactGoneError("Topic projection context is unavailable") from exc
+    except ValueError as exc:
+        raise InvalidInputError(str(exc)) from exc
+
+
+def _topic_document_spans(
+    context_path: Path, cluster_count: int, document_index: int
+) -> list[tuple[int, int, int]]:
+    try:
+        segments = _cached_segment_topics(_context_identity(context_path), cluster_count)
+    except OSError as exc:
+        raise ArtifactGoneError("Topic projection context is unavailable") from exc
+    except ValueError as exc:
+        raise InvalidInputError(str(exc)) from exc
+    return [
+        (start, end, topic)
+        for document, start, end, topic in segments
+        if document == document_index
+    ]
+
+
+def _topic_group_values(
+    source: _TopicSource, column: str
+) -> list[object]:
+    """One Colour by column's values for the run's documents, in model order."""
+
+    if column not in source.metadata_columns:
+        raise InvalidInputError(f'Column "{column}" is not available to filter by')
+    frame = source.data.select(source.text_column, column).collect()
+    require_same_documents(frame, source.text_column, source.fingerprint)
+    if source.row_indices and max(source.row_indices) >= frame.height:
+        raise InvalidInputError(
+            "The source Data Block no longer has the rows used by this run"
+        )
+    values = frame[column]
+    if isinstance(values.dtype, (pl.Categorical, pl.Enum)):
+        values = values.cast(pl.String)
+    return values.gather(source.row_indices).to_list()
+
+
+def _topic_allowed_documents(
+    stored: TopicModelingStoredResult,
+    query: TopicSegmentsQuery,
+    group_values: list[object] | None,
+) -> set[int] | None:
+    allowed: set[int] | None = None
+    if query.corpus_index is not None:
+        if query.corpus_index >= len(stored.corpus_sizes):
+            raise InvalidInputError("The run has no such Data Block")
+        offset = sum(stored.corpus_sizes[: query.corpus_index])
+        allowed = set(range(offset, offset + stored.corpus_sizes[query.corpus_index]))
+    if group_values is not None:
+        # The filter value is the group's label, as Colour by shows it.
+        matching = {
+            index
+            for index, value in enumerate(group_values)
+            if group_label(value) == query.group_value
+        }
+        allowed = matching if allowed is None else allowed & matching
+    return allowed
+
+
+def _metadata_text(value: object) -> str | None:
+    if value is None:
+        return None
+    if isinstance(value, float) and math.isnan(value):
+        return None
+    return str(value)
+
+
+def _topic_documents(
+    sources: list[_TopicSource],
+    stored: TopicModelingStoredResult,
+    document_indices: list[int],
+) -> dict[int, _TopicDocument]:
+    """Text and metadata of the given documents (model order), read live and checked."""
+
+    by_corpus: dict[int, list[tuple[int, int]]] = {}
+    for document_index in document_indices:
+        try:
+            corpus, local = corpus_position(document_index, stored.corpus_sizes)
+        except ValueError as exc:
+            raise InvalidInputError(str(exc)) from exc
+        by_corpus.setdefault(corpus, []).append((document_index, local))
+    documents: dict[int, _TopicDocument] = {}
+    for corpus, wanted in by_corpus.items():
+        source = sources[corpus]
+        frame = source.data.select(source.text_column, *source.metadata_columns).collect()
+        require_same_documents(frame, source.text_column, source.fingerprint)
+        for document_index, local in wanted:
+            row = source.row_indices[local]
+            if row >= frame.height:
+                raise InvalidInputError(
+                    "The source Data Block no longer has the rows used by this run"
+                )
+            values = frame.row(row, named=True)
+            text = values.get(source.text_column)
+            documents[document_index] = _TopicDocument(
+                corpus_index=corpus,
+                node_id=source.node_id,
+                node_name=source.node_name,
+                row_index=row,
+                text="" if text is None else str(text),
+                metadata={
+                    column: _metadata_text(values.get(column))
+                    for column in source.metadata_columns
+                },
+            )
+    return documents
 
 
 def _topic_context_path(

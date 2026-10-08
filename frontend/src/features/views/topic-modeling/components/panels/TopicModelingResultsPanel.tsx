@@ -1,5 +1,5 @@
 import type { ProgressDetail } from '@/api';
-import { LoaderCircle, Plus } from 'lucide-react';
+import { LoaderCircle, Plus, Search } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type {
   TopicClustering,
@@ -41,6 +41,8 @@ interface Props {
     started_at?: string | null;
   } | null;
   result: TopicModelingResponse | null;
+  /** The run whose example segments the Topic list shows (issue 353). */
+  analysisId?: string | null;
   /** A message, or a stored failure whose diagnostic shows under Details. */
   error?: unknown;
   topics: TopicModelingTopic[];
@@ -98,6 +100,39 @@ interface TopicColorByState {
 }
 
 const COLOR_BY_DATA_BLOCK = '__data_block__';
+
+/** Find topics by their words; it dims the chart and filters the list (issue 353). */
+function FindTopicsInput({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (query: string) => void;
+}) {
+  return (
+    <div className="grid gap-1 text-label-secondary text-description">
+      <label htmlFor="topic-find-input" className="font-medium">
+        Find topics
+      </label>
+      <div className="relative">
+        <Search
+          aria-hidden="true"
+          className="pointer-events-none absolute top-2.5 left-2.5 size-3.5 text-description"
+        />
+        <input
+          id="topic-find-input"
+          type="search"
+          value={value}
+          onChange={(event) => {
+            onChange(event.target.value);
+          }}
+          placeholder="Words in a topic…"
+          className="h-8 w-56 rounded-md border border-input-border bg-editor pr-3 pl-8 text-body placeholder:text-description focus:border-focus focus:ring-1 focus:ring-focus focus:outline-hidden"
+        />
+      </div>
+    </div>
+  );
+}
 
 function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
   return (
@@ -491,6 +526,7 @@ export function TopicModelingResultsPanel({
   runningTask,
   error,
   result,
+  analysisId = null,
   topics,
   exportTopics = topics,
   containerRef,
@@ -596,6 +632,8 @@ export function TopicModelingResultsPanel({
                   exportDisabled={projectionPending}
                   randomSeed={randomSeed}
                   colorScheme={colorBy?.scheme ?? null}
+                  workspaceId={stopWordsDetectionTarget.workspaceId ?? undefined}
+                  analysisId={analysisId ?? undefined}
                   controlRowSlot={
                     <section
                       aria-labelledby="topic-result-settings-heading"
@@ -674,6 +712,10 @@ export function TopicModelingResultsPanel({
                           column={stopWordsDetectionTarget.column}
                           onSavedWordsChange={onStopWordsChange}
                           sources={stopWordListSources}
+                        />
+                        <FindTopicsInput
+                          value={topicSearchQuery}
+                          onChange={onTopicSearchQueryChange}
                         />
                       </div>
                     </section>

@@ -17,7 +17,7 @@ vi.mock('../../results/TopicModelingBubbleChartSection', () => ({
   }) => (
     <div data-testid="topic-bubble-chart-section">
       {controlRowSlot}
-      <span>All Topics ({topics.length})</span>
+      <span>Topics {topics.length}</span>
     </div>
   ),
 }));
@@ -34,13 +34,13 @@ vi.mock('../../TopicModelingStopWordsControl', () => ({
       <button
         type="button"
         role="switch"
-        aria-label="Filter stop words"
+        aria-label="Use stop words"
         aria-checked={enabled}
         onClick={() => {
           onEnabledChange(!enabled);
         }}
       />
-      <button type="button" aria-label="Stop words language" />
+      <button type="button" aria-label="Stop words list" />
       <button type="button" aria-label="Edit stop words" />
     </>
   ),
@@ -463,7 +463,7 @@ describe('TopicModelingResultsPanel', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
     expect(screen.getByTestId('topic-modeling-result-content')).not.toHaveAttribute('inert');
     expect(screen.getByText('Topics (2)')).toBeInTheDocument();
-    expect(screen.getByText('All Topics (2)')).toBeInTheDocument();
+    expect(screen.getByText('Topics 2')).toBeInTheDocument();
     expect(screen.getByRole('slider', { name: 'Number of topics' })).toHaveAttribute(
       'aria-valuenow',
       '2',
@@ -621,14 +621,33 @@ describe('TopicModelingResultsPanel', () => {
       </TooltipProvider>,
     );
 
-    expect(screen.getByLabelText('Stop words language')).toBeEnabled();
+    expect(screen.getByLabelText('Stop words list')).toBeEnabled();
     expect(screen.getByRole('button', { name: 'Edit stop words' })).toBeEnabled();
-    fireEvent.click(screen.getByRole('switch', { name: 'Filter stop words' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Use stop words' }));
     expect(onStopWordsEnabledChange).toHaveBeenCalledWith(true);
 
     const count = screen.getByLabelText('Words per topic');
     fireEvent.change(count, { target: { value: '101' } });
     fireEvent.blur(count);
     expect(onWordsPerTopicChange).toHaveBeenCalledWith(100);
+  });
+
+  it('finds topics from the result settings row (#353)', () => {
+    const onTopicSearchQueryChange = vi.fn();
+    render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          topicSearchQuery="hous"
+          onTopicSearchQueryChange={onTopicSearchQueryChange}
+        />
+      </TooltipProvider>,
+    );
+
+    const find = screen.getByRole('searchbox', { name: 'Find topics' });
+    expect(find).toHaveValue('hous');
+    expect(screen.getByRole('region', { name: 'Result settings' })).toContainElement(find);
+    fireEvent.change(find, { target: { value: 'housing' } });
+    expect(onTopicSearchQueryChange).toHaveBeenCalledWith('housing');
   });
 });

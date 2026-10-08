@@ -202,10 +202,13 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 ![Topic modelling results](tutorials/assets/topic_modelling/results.png)
 
 The **Result settings** row below the bubble chart holds **Topics**, **Per
-document**, **Words**, the stop word controls, and, for a single-corpus result,
-**Colour by**, with **Add to Project** at its right. Question-mark icons beside some of these
-controls give a short explanation. Below it, the **Selected Topics** and **All
-Topics** lists each have their own resize grip, like the chart itself.
+document**, **Words**, the stop word controls, **Colour by** for a
+single-corpus result, and **Find topics**, with **Add to Project** at its
+right. Question-mark icons beside some of these controls give a short
+explanation. Below it, the topic list takes the left third and the
+[examples of one topic](#help-topic-modeling-examples) the right two thirds;
+in a narrow window the list sits above the examples. The area has its own
+resize grip, like the chart itself.
 
 ![Result settings: Topics, Per document, Words, and the stop word filter](tutorials/assets/topic_modelling/result_settings.png)
 
@@ -303,10 +306,12 @@ Without **Colour by**, every bubble uses the same opacity.
 <h3 id="help-topic-modeling-words-per-topic">Words (words per topic) and stop words</h3>
 
 **Words per topic** controls how many representative words appear in the topic
-list, search, and hover cloud. The default is 15 and the range is 3-100. Enable
-the stopword filter to apply the Tab's saved list. Choosing a list from the
-dropdown switches the filter on if it was off. You can edit the list while
-filtering is off.
+list, search, and hover cloud. The default is 15 and the range is 3-100. The
+switch before the stop words dropdown applies the Tab's saved list. While it is
+off, the dropdown reads **Use stop words**. Choosing a list from the dropdown
+switches it on, and the dropdown then shows **Saved list (N words)**. To stop
+using the list, turn the switch off or choose **Don't use stop words**; the
+saved list is kept for next time. You can edit the list while it is off.
 The dropdown's **From other tabs** group lists stop words saved in your other
 Frequency or Topic Modelling tabs; **Wordflow classic lists** offers the built-in
 lists earlier Wordflow versions used; **Languages (stopword library)** offers
@@ -315,8 +320,7 @@ detected from the first selected Data Block, marked **(Detected)**, and **Show
 all languages** reveals the rest. Any choice appends its words to the
 saved list (duplicates are skipped, so you can combine lists and keep custom
 words), copied tab lists stay independent afterwards, and **Clear stop words**
-empties the list. The menu returns to **Saved list (N words)** after a choice.
-These controls change presentation without rerunning or refetching the
+empties the list. These controls change presentation without rerunning or refetching the
 Result.
 
 <h3 id="help-topic-modeling-bubble-chart">Bubble chart</h3>
@@ -369,16 +373,58 @@ Drag empty graph space to pan. To zoom, pinch on a trackpad, or hold ⌘ on a Ma
 fits every bubble; use **Fit view** to restore that complete view after moving
 around. Select topics directly, or enable the lasso control and draw around
 several Topic centres. Lasso mode remains active and later strokes add to the
-filter shown in **All Topics**; use **Clear filter** in the graph toolbar to
+filter of the topic list; use **Clear filter** in the graph toolbar to
 remove that accumulated filter without changing manually selected Topics.
-Search further narrows the filtered list and fades the other topics in the
+**Find topics** further narrows the list and fades the other topics in the
 graph. A topic matches when the search text is found in its words; `*` (any
 letters) and `?` (one letter) match within a single word, so `gs*` and `gs?`
-both find topics with *gst* wherever it is in their list. Click a topic in the chart or in **All
-Topics** to add it to **Selected Topics**; the **×** removes it and **Clear**
-removes them all.
+both find topics with *gst* wherever it is in their list.
 
-![Topic 12 selected, shown in Selected Topics and highlighted in All Topics](tutorials/assets/topic_modelling/topic_lists.png)
+<h3 id="help-topic-modeling-topic-list">Topic list</h3>
+
+The list heading counts the topics, for example **Topics 249**. While Find
+topics or the lasso is filtering, it shows how many match out of all of them,
+for example **Topics 15 / 249**. Click a topic in the chart or in the list to
+select it; click it again to deselect it, or use **Clear** to deselect them all.
+Selected topics move to the **Selected** group at the top of the list, which
+scrolls on its own, so the **Others** below always stay in reach. Selected
+topics stay in their group even when the search or lasso leaves them out; they
+are then shown faded. Hover over a topic's words to see all of them.
+
+<h3 id="help-topic-modeling-examples">Examples of a topic</h3>
+
+To see the texts behind a topic, click the eye at the right of its card in the
+list, or right-click its bubble. Its example segments then appear beside the
+list, and an eye marks its card and its bubble. Only one topic is shown at a
+time: showing another replaces it. Click the eye or right-click the bubble
+again, or close the examples with **×**, to stop showing them. Faded bubbles
+cannot be right-clicked. Find topics and the lasso never hide the examples; if
+they leave out the shown topic, a note says so, with **Clear filters**.
+
+- **Most typical** lists the segments closest to the centre of the topic
+  first. **Random** lists them in a random order set by the run's seed, so the
+  same run always gives the same examples.
+- **One per document** (on by default) shows only the most typical (or first
+  random) segment of each document.
+- With **Colour by** on, you can limit the examples to one of its values. For
+  a two-corpus run, you can limit them to one Data Block.
+- **Label** chooses the column that names each example; by default it is the
+  Data Block and row.
+
+Each example shows the topic's words in the bubble's colour and a badge such as
+**Top 10%**: this segment is more typical of the topic than 90% of its
+segments. Green marks the top quarter, amber the middle half and grey the
+bottom quarter. Hover over the badge for the segment's similarity to the
+topic's centre. The badge ranks segments within one topic; it is not the
+chance that the segment belongs to the topic. Runs from Wordflow 0.7.10 or
+earlier list their examples without a badge; run Topic Modelling again to rank
+them.
+
+**Open document** shows the whole document with its metadata. The segments of
+the shown topic are highlighted in the bubble's colour, the opened one more
+strongly, and segments of other topics in grey; text with no topic is not
+highlighted. **Previous segment** and **Next segment** step through the shown
+topic's segments in that document.
 
 Choose **Add to Project** to publish
 manually selected topic data and linked topic meanings as new Data Blocks.

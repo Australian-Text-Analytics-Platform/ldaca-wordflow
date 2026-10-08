@@ -46,6 +46,9 @@ interface Props {
   controlRowSlot?: React.ReactNode;
   /** Single-corpus metadata colouring chosen under "Colour by". */
   colorScheme?: TopicColorScheme | null;
+  /** The run whose example segments the list can show (issue 353). */
+  workspaceId?: string;
+  analysisId?: string;
 }
 
 /** Maps each metadata colour to its value, shown under the graph. */
@@ -101,7 +104,7 @@ const TM_CSV_OPTION = {
 } as const;
 const EMPTY_TOPIC_IDS = new Set<number>();
 
-/** Composes the React Flow topic graph, export dialog, result controls, and Topic lists. */
+/** Composes the React Flow topic graph, export dialog, result controls, Topic list and examples. */
 export function TopicModelingBubbleChartSection({
   topics,
   exportTopics = topics,
@@ -123,6 +126,8 @@ export function TopicModelingBubbleChartSection({
   topNTopics,
   controlRowSlot,
   colorScheme = null,
+  workspaceId,
+  analysisId,
 }: Props) {
   const corpusCount = corpusSizes.length;
   const chartRef = useRef<HTMLDivElement | null>(null);
@@ -139,6 +144,16 @@ export function TopicModelingBubbleChartSection({
   const lassoTopicIds =
     lassoFilter.projectionKey === projectionKey ? lassoFilter.topicIds : EMPTY_TOPIC_IDS;
   const hoveredTopicId = listHover.projectionKey === projectionKey ? listHover.topicId : null;
+  // The Topic whose examples are shown (issue 353). Topic ids change with the
+  // Topics slider, so it belongs to one projection.
+  const [shown, setShown] = useState({ projectionKey, topicId: null as number | null });
+  const shownTopicId =
+    shown.projectionKey === projectionKey && topics.some((topic) => topic.id === shown.topicId)
+      ? shown.topicId
+      : null;
+  const toggleShownTopic = (topicId: number) => {
+    setShown({ projectionKey, topicId: shownTopicId === topicId ? null : topicId });
+  };
   // The map takes the canvas's shape, within limits (issue 308).
   const [canvasAspect, setCanvasAspect] = useState<number | null>(null);
   const plane =
@@ -152,6 +167,7 @@ export function TopicModelingBubbleChartSection({
     selectedTopicIds,
     lassoTopicIds,
     hoveredTopicId,
+    shownTopicId,
     topicSearchQuery,
     colorScheme,
     plane,
@@ -166,6 +182,16 @@ export function TopicModelingBubbleChartSection({
     colorScheme: activeColorScheme,
     corpusSizes,
   };
+  const examples =
+    workspaceId && analysisId && clusterCount != null
+      ? {
+          workspaceId,
+          analysisId,
+          clusterCount,
+          nodeNames: nodeNames ?? [],
+          colorScheme: activeColorScheme,
+        }
+      : undefined;
   const corpusLegend = topicCorpusLegend(corpusPresentation, nodeNames ?? []);
   const exportLegend = activeColorScheme
     ? activeColorScheme.groups.map((group) => ({ label: group.label, color: group.color }))
@@ -293,6 +319,7 @@ export function TopicModelingBubbleChartSection({
             }}
             onViewReady={onViewReady}
             onToggleTopicSelection={onToggleTopicSelection}
+            onToggleShownTopic={examples ? toggleShownTopic : undefined}
           />
         </ResultFrame>
       </div>
@@ -308,13 +335,20 @@ export function TopicModelingBubbleChartSection({
         onToggleTopicSelection={onToggleTopicSelection}
         onClearSelection={onClearSelection}
         topicSearchQuery={topicSearchQuery}
-        onTopicSearchQueryChange={onTopicSearchQueryChange}
         lassoTopicIds={lassoTopicIds}
         corpusPresentation={corpusPresentation}
         hoveredTopicId={hoveredTopicId}
         onHoveredTopicChange={(topicId) => {
           setListHover({ projectionKey, topicId });
         }}
+        shownTopicId={shownTopicId}
+        shownTopicColor={bubbles.find((bubble) => bubble.id === shownTopicId)?.fill}
+        onToggleShownTopic={toggleShownTopic}
+        onClearFilters={() => {
+          onTopicSearchQueryChange('');
+          setLassoFilter({ projectionKey, topicIds: EMPTY_TOPIC_IDS });
+        }}
+        examples={examples}
       />
 
       <ChartImageDownloadDialog
