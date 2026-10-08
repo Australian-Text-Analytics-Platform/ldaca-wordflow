@@ -18,6 +18,7 @@ from starlette.background import BackgroundTask
 from ...models.node_resources import (
     CastNodeEditRequest,
     CategoryValuesResource,
+    ColumnExamplesResource,
     ConversionCheckResource,
     CorpusOverviewResource,
     DatetimeFormatsResource,
@@ -431,6 +432,26 @@ async def get_category_values(
         node_id,
         column,
         read_all,
+    )
+
+
+@router.get(
+    "/{node_id}/column-examples",
+    response_model=ColumnExamplesResource,
+    responses=api_errors(404, 422),
+)
+async def get_column_examples(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> ColumnExamplesResource:
+    """Each column's first non-empty value, as an example (issue 354)."""
+
+    return await runtime.node_service.column_examples(
+        principal.user.id,
+        workspace_id,
+        node_id,
     )
 
 

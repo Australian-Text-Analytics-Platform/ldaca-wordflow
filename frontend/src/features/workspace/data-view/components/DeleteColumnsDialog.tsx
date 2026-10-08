@@ -1,5 +1,7 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Loader2, Trash2 } from 'lucide-react';
+import { getColumnExamples } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -17,6 +19,9 @@ interface DeleteColumnsDialogProps {
   onOpenChange: (open: boolean) => void;
   columns: string[];
   onConfirm: (columns: string[]) => Promise<void>;
+  /** The Data Block whose first values are shown as examples (issue 354). */
+  workspaceId?: string;
+  nodeId?: string;
 }
 
 /**
@@ -28,7 +33,27 @@ export function DeleteColumnsDialog({
   onOpenChange,
   columns,
   onConfirm,
+  workspaceId,
+  nodeId,
 }: DeleteColumnsDialogProps) {
+  // Each column's first value, so unclear names can be recognised (issue 354).
+  // The list works without them while they load or if they fail.
+  const examplesQuery = useQuery({
+    queryKey: ['workspaces', workspaceId, 'nodes', nodeId, 'column-examples'],
+    enabled: open && Boolean(workspaceId && nodeId),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const { data } = await getColumnExamples({
+        path: { workspace_id: workspaceId ?? '', node_id: nodeId ?? '' },
+        signal,
+        throwOnError: true,
+      });
+      return data.examples;
+    },
+  });
+  const examples = examplesQuery.data;
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [filter, setFilter] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -70,14 +95,14 @@ export function DeleteColumnsDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Delete columns</DialogTitle>
           <DialogDescription>
             Choose the columns to remove from this Data Block. Undo restores them in one step.
           </DialogDescription>
         </DialogHeader>
-        <div className="space-y-2">
+        <div className="min-w-0 space-y-2">
           <Input
             aria-label="Filter columns"
             placeholder="Filter columns"
@@ -123,8 +148,19 @@ export function DeleteColumnsDialog({
                     toggle(column, checked === true);
                   }}
                 />
-                <label htmlFor={`delete-column-${column}`} className="min-w-0 truncate text-body">
-                  {column}
+                <label
+                  htmlFor={`delete-column-${column}`}
+                  className="flex min-w-0 flex-1 items-baseline gap-2"
+                >
+                  <span className="max-w-[60%] shrink-0 truncate text-body">{column}</span>
+                  {examples && column in examples ? (
+                    <span
+                      data-testid={`delete-column-example-${column}`}
+                      className="min-w-0 truncate text-label-secondary text-description"
+                    >
+                      {examples[column] ?? <span className="italic">(empty)</span>}
+                    </span>
+                  ) : null}
                 </label>
               </li>
             ))}

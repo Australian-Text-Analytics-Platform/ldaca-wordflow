@@ -487,6 +487,18 @@ class CategoryValuesResource(BaseModel):
     is_document: bool
 
 
+class ColumnExamplesResource(BaseModel):
+    """Each column's first non-empty value as short text (issue 354).
+
+    ``None`` marks a column with no values: all missing, NaN or blank text.
+    Keys follow the Data Block's column order.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    examples: dict[str, str | None]
+
+
 class CorpusOverviewResource(BaseModel):
     """Cheap statistics for one text column of a Data Block (issue 327).
 

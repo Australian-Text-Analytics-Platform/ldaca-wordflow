@@ -46,6 +46,7 @@ from ..shared.unsupported_columns import require_supported_columns
 from .conversion import detect_datetime_formats, format_tokens
 from .node_casting import check_cast
 from .node_operations import conversion_options
+from .column_examples import column_examples
 from .corpus_overview import corpus_overview
 from .category_order import (
     MAX_CATEGORY_VALUES,
@@ -55,6 +56,7 @@ from .category_order import (
 )
 from ..models.node_resources import (
     CategoryValuesResource,
+    ColumnExamplesResource,
     CorpusOverviewResource,
     ConversionCheckResource,
     DatetimeFormatCandidate,
@@ -683,6 +685,21 @@ class NodeService:
             warn_values=WARN_CATEGORY_VALUES,
             max_values=MAX_CATEGORY_VALUES,
         )
+
+    async def column_examples(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+    ) -> ColumnExamplesResource:
+        """Each column's first value, for the Delete columns window (issue 354)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            examples = await self._run_io(column_examples, node.data)
+        return ColumnExamplesResource(examples=examples)
 
     async def corpus_overview(
         self,

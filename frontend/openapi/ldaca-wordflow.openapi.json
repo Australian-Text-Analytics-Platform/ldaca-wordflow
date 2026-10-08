@@ -2953,6 +2953,31 @@
         "title": "CloneNodeCreateRequest",
         "type": "object"
       },
+      "ColumnExamplesResource": {
+        "additionalProperties": false,
+        "description": "Each column's first non-empty value as short text (issue 354).\n\n``None`` marks a column with no values: all missing, NaN or blank text.\nKeys follow the Data Block's column order.",
+        "properties": {
+          "examples": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Examples",
+            "type": "object"
+          }
+        },
+        "required": [
+          "examples"
+        ],
+        "title": "ColumnExamplesResource",
+        "type": "object"
+      },
       "ColumnExpression": {
         "additionalProperties": false,
         "properties": {
@@ -21124,6 +21149,85 @@
           }
         ],
         "summary": "Get Category Values",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/column-examples": {
+      "get": {
+        "description": "Each column's first non-empty value, as an example (issue 354).",
+        "operationId": "get_column_examples",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumnExamplesResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Column Examples",
         "tags": [
           "nodes"
         ]

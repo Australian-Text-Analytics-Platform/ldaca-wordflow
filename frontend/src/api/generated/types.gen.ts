@@ -1379,6 +1379,23 @@ export type CloneNodeCreateRequest = {
 };
 
 /**
+ * ColumnExamplesResource
+ *
+ * Each column's first non-empty value as short text (issue 354).
+ *
+ * ``None`` marks a column with no values: all missing, NaN or blank text.
+ * Keys follow the Data Block's column order.
+ */
+export type ColumnExamplesResource = {
+    /**
+     * Examples
+     */
+    examples: {
+        [key: string]: string | null;
+    };
+};
+
+/**
  * ColumnExpression
  */
 export type ColumnExpression = {
@@ -11007,6 +11024,48 @@ export type GetCategoryValuesResponses = {
 };
 
 export type GetCategoryValuesResponse = GetCategoryValuesResponses[keyof GetCategoryValuesResponses];
+
+export type GetColumnExamplesData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/column-examples';
+};
+
+export type GetColumnExamplesErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetColumnExamplesError = GetColumnExamplesErrors[keyof GetColumnExamplesErrors];
+
+export type GetColumnExamplesResponses = {
+    /**
+     * Successful Response
+     */
+    200: ColumnExamplesResource;
+};
+
+export type GetColumnExamplesResponse = GetColumnExamplesResponses[keyof GetColumnExamplesResponses];
 
 export type CheckConversionData = {
     body: CastNodeEditRequest;

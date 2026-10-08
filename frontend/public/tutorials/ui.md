@@ -166,7 +166,7 @@ The **Data Editor** fills the bottom-right area. It shows the contents of the se
 ![Clean text open above the table: the text column is highlighted and the panel reports 1,779 rows changed](tutorials/assets/ui/column_tool_panel.png)
 
 - If you select another Data Block while a tool has unfinished settings, Wordflow asks whether to **Keep editing** or **Discard** them.
-- **Delete columns** opens a list of the Data Block's columns: tick the ones to remove (filter, **Select all**, **Select none**), then confirm. They are removed in one step, so a single **Undo** brings them all back. At least one column must remain.
+- **Delete columns** opens a list of the Data Block's columns, each followed by its first value as an example (*(empty)* when the column has none): tick the ones to remove (filter, **Select all**, **Select none**), then confirm. They are removed in one step, so a single **Undo** brings them all back. At least one column must remain.
 
 ![Delete columns dialog with three columns ticked](tutorials/assets/ui/delete_columns.png)
 

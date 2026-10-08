@@ -218,6 +218,8 @@ export const WorkspaceDataHeader = ({
             onOpenChange={setDeleteColumnsOpen}
             columns={info.columns}
             onConfirm={onDeleteColumns}
+            workspaceId={info.overview?.workspaceId}
+            nodeId={info.overview?.nodeId}
           />
         ) : null}
       </div>
