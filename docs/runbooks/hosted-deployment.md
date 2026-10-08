@@ -58,7 +58,8 @@ POLARS_TEXT_EMBEDDING_THREADS=8
 ```
 
 The values shown are the defaults, except `POLARS_TEXT_EMBEDDING_THREADS`,
-which is unset by default (each topic model's embedding uses every core). On a
+which is unset by default: each topic model's embedding then uses every
+processor the worker may run on, capped by any container CPU quota (issue 341). On a
 shared server, set it so two slow-lane topic models leave cores for everyone
 else; with 32 cores, 8 threads each is a reasonable start (polars-text 0.6.3
 and later honour the number). A full lane queues new work rather than refusing

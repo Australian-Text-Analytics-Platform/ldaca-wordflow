@@ -44,6 +44,7 @@ from .topic_result import (
     _coverage_by_doc_index,
 )
 from .topic_types import _PreparedTopicPayload
+from .cpu import default_embedding_threads
 from .utils import process_entrypoint
 
 # Default ONNX embedder used by the Rust ORT pipeline when no override is given.
@@ -766,6 +767,8 @@ def run_topic_modeling_analysis(
     cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only topic-modeling process contract."""
+
+    default_embedding_threads()
 
     corpora, resolved_infos = _load_corpora_from_snapshot(
         input_snapshot_dir,
