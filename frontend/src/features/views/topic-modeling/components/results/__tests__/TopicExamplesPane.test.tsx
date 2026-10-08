@@ -126,6 +126,21 @@ describe('TopicExamplesPane (#353)', () => {
     expect(within(cards[0]!).getByText('Hansard')).toHaveStyle({ color: '#dc2626' });
   });
 
+  it('labels examples by a chosen column, saying when it is empty', async () => {
+    const user = userEvent.setup();
+    api.queryTopicSegments.mockResolvedValue({
+      data: page({ items: [item(0, 96), { ...item(1, 50), metadata: { speaker: null } }] }),
+    });
+    renderPane();
+    await screen.findByText('40 segments in 12 documents');
+    await user.click(screen.getByRole('combobox', { name: 'Label each example by' }));
+    await user.click(screen.getByRole('option', { name: 'Label: speaker' }));
+    const cards = screen.getAllByRole('listitem');
+    expect(within(cards[0]!).getByText('Speaker 0')).toBeInTheDocument();
+    expect(within(cards[1]!).getByText('(no speaker)')).toBeInTheDocument();
+    expect(cards[1]).not.toHaveTextContent('Hansard');
+  });
+
   it('asks for the next page and switches to random order', async () => {
     const user = userEvent.setup();
     renderPane();

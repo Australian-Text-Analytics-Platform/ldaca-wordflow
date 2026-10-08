@@ -224,8 +224,13 @@ export function TopicExamplesPane({
     setPage(1);
   };
   const itemLabel = (item: TopicSegmentItem): ReactNode => {
-    const value = labelColumn === NO_LABEL ? null : item.metadata[labelColumn];
-    if (value) return value;
+    if (labelColumn !== NO_LABEL) {
+      // An empty value says so, rather than falling back to the Data Block
+      // and row, which looked as if the Label choice did nothing (Chao, 2026-10-08).
+      const value = item.metadata[labelColumn];
+      if (value) return value;
+      return <span className="italic">(no {labelColumn})</span>;
+    }
     const blockName = nodeNames[item.corpus_index] ?? 'Data Block';
     // The Data Block's name in its colour, as in the chart (Chao, 2026-10-08).
     return (
