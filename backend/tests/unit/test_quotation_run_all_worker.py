@@ -18,9 +18,12 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
     progress_updates: list[tuple[float, str]] = []
 
     def fake_quotation_groups_via_quote_extractor(
-        input_df: pl.DataFrame, source_column: str
+        input_df: pl.DataFrame, source_column: str, on_progress=None
     ):
         assert source_column == "document"
+        if on_progress is not None:
+            # Documents done reach the Tasks panel (issue 350).
+            on_progress(input_df.height, input_df.height)
         # Mirror the real `quotation_groups_for_dataframe`: it preserves
         # every input column and adds a `quotation` group column. The
         # worker pipeline relies on that contract (e.g. for QUOTE_extraction
@@ -72,7 +75,7 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
         engine=LocalResolvedQuotationEngine(),
         quotation_service_max_batch_size=100,
         quotation_service_timeout=30,
-        progress_callback=lambda progress, message: progress_updates.append(
+        progress_callback=lambda progress, message, _detail=None: progress_updates.append(
             (
                 progress,
                 message,
@@ -126,7 +129,9 @@ def test_quotation_result_added_to_project_can_be_quoted_again(
         run_result_data_block_creation,
     )
 
-    def fake_quotation_groups(input_df: pl.DataFrame, source_column: str):
+    def fake_quotation_groups(
+        input_df: pl.DataFrame, source_column: str, _on_progress=None
+    ):
         return input_df.with_columns(
             pl.Series(
                 "quotation",
@@ -178,7 +183,7 @@ def test_quotation_result_added_to_project_can_be_quoted_again(
         engine=LocalResolvedQuotationEngine(),
         quotation_service_max_batch_size=100,
         quotation_service_timeout=30,
-        progress_callback=lambda progress, message: None,
+        progress_callback=lambda progress, message, _detail=None: None,
     )
     assert result["state"] == "successful", result
     assert result["source"]["metadata_columns"] == ["speaker"]
@@ -217,7 +222,9 @@ def test_quotation_on_a_quote_extraction_keeps_its_text_as_quote_source(
         run_result_data_block_creation,
     )
 
-    def fake_quotation_groups(input_df: pl.DataFrame, source_column: str):
+    def fake_quotation_groups(
+        input_df: pl.DataFrame, source_column: str, _on_progress=None
+    ):
         return input_df.with_columns(
             pl.Series(
                 "quotation",
@@ -264,7 +271,7 @@ def test_quotation_on_a_quote_extraction_keeps_its_text_as_quote_source(
         engine=LocalResolvedQuotationEngine(),
         quotation_service_max_batch_size=100,
         quotation_service_timeout=30,
-        progress_callback=lambda progress, message: None,
+        progress_callback=lambda progress, message, _detail=None: None,
     )
     assert result["state"] == "successful", result
     assert result["source"]["document_column"] == "QUOTE_source"

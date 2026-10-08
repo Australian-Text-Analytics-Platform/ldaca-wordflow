@@ -109,7 +109,7 @@ def test_concordance_run_all_leaves_topic_coverage_out(
         regex=False,
         whole_word=False,
         case_sensitive=False,
-        progress_callback=lambda _progress, _message: None,
+        progress_callback=lambda _progress, _message, _detail=None: None,
     )
 
     source = result["source"]
@@ -142,7 +142,9 @@ def test_concordance_preview_leaves_topic_coverage_out(source: pl.LazyFrame) -> 
 def test_quotation_run_all_leaves_topic_coverage_out(
     tmp_path, monkeypatch, worker_snapshot
 ) -> None:
-    def fake_groups(input_df: pl.DataFrame, _source_column: str) -> pl.DataFrame:
+    def fake_groups(
+        input_df: pl.DataFrame, _source_column: str, _on_progress=None
+    ) -> pl.DataFrame:
         quote = {
             "speaker": "Ada",
             "speaker_start_idx": 0,
@@ -174,7 +176,7 @@ def test_quotation_run_all_leaves_topic_coverage_out(
         engine=LocalResolvedQuotationEngine(),
         quotation_service_max_batch_size=100,
         quotation_service_timeout=30,
-        progress_callback=lambda _progress, _message: None,
+        progress_callback=lambda _progress, _message, _detail=None: None,
     )
 
     source = result["source"]

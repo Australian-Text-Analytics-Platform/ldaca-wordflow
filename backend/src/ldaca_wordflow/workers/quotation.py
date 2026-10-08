@@ -14,7 +14,6 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from collections.abc import Callable
 import uuid
 
 from ..analysis.generated_columns import (
@@ -22,7 +21,11 @@ from ..analysis.generated_columns import (
     QUOTE_EXTRACTION_COLUMN,
 )
 from .concordance import SOURCE_ROW_ID_COLUMN
+from .progress import ProgressCallback, Step, StepReporter, keep_alive
 from .utils import process_entrypoint
+
+# Finding quotations is nearly all of a run (issue 350).
+QUOTATION_PROGRESS_BAND = (0.25, 0.82)
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +116,7 @@ def run_quotation_run_all(
     engine: ResolvedQuotationEngine,
     quotation_service_max_batch_size: int,
     quotation_service_timeout: float,
-    progress_callback: Callable[[float, str], None],
+    progress_callback: ProgressCallback,
 ) -> dict[str, Any]:
     """Compute one complete immutable Quotation Result table."""
     try:
@@ -149,7 +152,15 @@ def run_quotation_run_all(
         document_column = source_text_column_name(
             source_snapshot.data.collect_schema().names(), document_column, "QUOTE"
         )
-        progress_callback(0.6, "Finding quotations…")
+        # Documents done, the time left and processor use (issue 350).
+        quotation_reporter = StepReporter(
+            progress_callback,
+            band=QUOTATION_PROGRESS_BAND,
+            steps=(Step("finding", "Finding quotations"),),
+        )
+        quotation_reporter.update(
+            "finding", done=0, total=len(node_corpus), unit="documents"
+        )
 
         input_data: dict[str, list] = {
             SOURCE_ROW_ID_COLUMN: source_row_ids,
@@ -190,14 +201,19 @@ def run_quotation_run_all(
                     extract_remote_fn=extract_remote,
                     run_blocking=run_inline,
                     quotation_service_max_batch_size=quotation_service_max_batch_size,
+                    on_progress=lambda done, total: quotation_reporter.update(
+                        "finding", done=done, total=total, unit="documents"
+                    ),
                 )
                 return grouped
             finally:
                 if client is not None:
                     await client.close()
 
+        with keep_alive(quotation_reporter):
+            extracted = asyncio.run(extract())
         quote_df = (
-            asyncio.run(extract())
+            extracted
             .filter(pl.col("quotation").list.len().fill_null(0) > 0)
             .sort(SOURCE_ROW_ID_COLUMN)
         )

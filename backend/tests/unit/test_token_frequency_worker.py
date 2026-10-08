@@ -53,7 +53,7 @@ def test_token_frequency_worker_emits_early_progress_updates(tmp_path, monkeypat
         },
         node_display_names={_id("node-1"): "Data Block 1", _id("node-2"): "Data Block 2"},
         artifact_dir=str(tmp_path / "output"),
-        progress_callback=lambda progress, message: progress_updates.append(
+        progress_callback=lambda progress, message, _detail=None: progress_updates.append(
             (
                 progress,
                 message,

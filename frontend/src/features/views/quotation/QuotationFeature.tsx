@@ -670,6 +670,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             status={quotationRunAll.state}
             taskId={quotationRunAll.id}
             message={quotationRunAll.progress.message ?? undefined}
+            detail={quotationRunAll.progress.detail}
           />
         ) : null}
 

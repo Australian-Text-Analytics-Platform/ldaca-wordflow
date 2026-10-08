@@ -94,6 +94,7 @@ const analysisTask = (
   state: taskState(analysis),
   progress: analysis.progress.fraction ?? undefined,
   progress_message: analysis.progress.message ?? undefined,
+  progress_detail: analysis.progress.detail ?? null,
   message: analysis.error?.message ?? analysis.progress.message ?? undefined,
   error: analysis.error?.message ?? null,
   created_at: analysis.created_at,

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
 from multiprocessing.queues import Queue
 from typing import Any, assert_never
 
+from .progress import ProgressCallback
 from .invocations import (
     AnalysisWorkerInput,
     AnnotationInput,
@@ -20,9 +20,17 @@ from .invocations import (
 )
 
 
-def _progress_callback(progress_queue: Queue[Any]) -> Callable[[float, str], None]:
-    def report(progress: float, message: str) -> None:
-        progress_queue.put({"fraction": progress, "message": message})
+def _progress_callback(progress_queue: Queue[Any]) -> ProgressCallback:
+    def report(
+        progress: float,
+        message: str,
+        detail: dict[str, Any] | None = None,
+    ) -> None:
+        payload: dict[str, Any] = {"fraction": progress, "message": message}
+        if detail is not None:
+            # Step progress for slow runs (issue 350).
+            payload["detail"] = detail
+        progress_queue.put(payload)
 
     return report
 

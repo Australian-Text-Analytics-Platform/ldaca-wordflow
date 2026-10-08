@@ -19,6 +19,8 @@ import { buildTaskRows, type TaskRowTarget, type TaskTab } from './taskRows';
 import { ErrorDetails } from '@/components/errors/ErrorDetails';
 import { presentError, presentFailureMessage } from '@/lib/errorPresentation';
 import { useUploadTasksStore } from '@/stores/uploadTasksStore';
+import { useTaskFocusStore } from '@/stores/taskFocusStore';
+import { TaskLiveness } from './TaskLiveness';
 
 /** Task states treated as attention-worthy in the sidebar task list. */
 const PROBLEMATIC_STATES = new Set(['failed', 'cancelled']);
@@ -126,6 +128,40 @@ function SidebarTasksSection({
     });
   };
 
+  // An analysis page's "Live progress in Tasks" expands its task and scrolls
+  // to it (issue 350), also when the request came before this section opened.
+  const rowElements = React.useRef(new Map<string, HTMLDivElement>());
+  const rowsRef = React.useRef(rows);
+  React.useEffect(() => {
+    rowsRef.current = rows;
+  });
+  React.useEffect(() => {
+    const reveal = (taskId: string | null) => {
+      if (!taskId) return;
+      const row = rowsRef.current.find(
+        (candidate) =>
+          candidate.primary.task_id === taskId ||
+          candidate.steps.some((stepItem) => stepItem.task.task_id === taskId),
+      );
+      if (!row) return;
+      setExpandedTaskIds((prev) => new Set(prev).add(row.key));
+      window.requestAnimationFrame(() => {
+        rowElements.current.get(row.key)?.scrollIntoView({ block: 'nearest' });
+      });
+      useTaskFocusStore.getState().clearFocus();
+    };
+    const frame = window.requestAnimationFrame(() => {
+      reveal(useTaskFocusStore.getState().taskId);
+    });
+    const unsubscribe = useTaskFocusStore.subscribe((state, previous) => {
+      if (state.requestId !== previous.requestId) reveal(state.taskId);
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      unsubscribe();
+    };
+  }, []);
+
   /** Called by: SidebarTasksSection row rendering for task status icons and labels. */
   const statusMeta = (status?: string) => STATUS_META[status ?? ''] ?? DEFAULT_STATUS_META;
 
@@ -197,6 +233,10 @@ function SidebarTasksSection({
               return (
                 <div
                   key={row.key}
+                  ref={(element) => {
+                    if (element) rowElements.current.set(row.key, element);
+                    else rowElements.current.delete(row.key);
+                  }}
                   className={cn(
                     'rounded-md border bg-editor text-left transition-colors',
                     PROBLEMATIC_STATES.has(row.state.toLowerCase())
@@ -314,6 +354,9 @@ function SidebarTasksSection({
                         task.progress_message !== task.message && (
                           <p className="text-[11px] text-description">{task.progress_message}</p>
                         )}
+                      {task.state === 'running' && task.progress_detail ? (
+                        <TaskLiveness detail={task.progress_detail} />
+                      ) : null}
                       {row.blockResults.length > 0 ? (
                         <ul aria-label={`${label} Data Blocks`} className="space-y-1">
                           {row.blockResults.map((result) => {

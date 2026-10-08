@@ -31,7 +31,7 @@ def test_concordance_run_all_writes_complete_analysis_table_artifact(
         regex=False,
         whole_word=False,
         case_sensitive=False,
-        progress_callback=lambda progress, message: progress_updates.append(
+        progress_callback=lambda progress, message, _detail=None: progress_updates.append(
             (
                 progress,
                 message,

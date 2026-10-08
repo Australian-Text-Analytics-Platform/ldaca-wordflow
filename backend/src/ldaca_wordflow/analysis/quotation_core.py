@@ -122,11 +122,14 @@ async def _extract_remote_batches(
     *,
     batch_size: int,
     extract_remote_fn: RemoteQuotationExtractor,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> RemoteQuotationExtractResponse:
     """Batch remote extraction and require exact ordered document coverage."""
 
     combined_results: list[RemoteQuotationResult] = []
     for start in range(0, len(documents), batch_size):
+        if on_progress is not None and combined_results:
+            on_progress(len(combined_results), len(documents))
         chunk = documents[start : start + batch_size]
         response = await extract_remote_fn(engine, chunk)
         expected_ids = [document.id for document in chunk]
@@ -141,14 +144,18 @@ async def _extract_remote_batches(
     return RemoteQuotationExtractResponse(version=2, results=combined_results)
 
 
-def quotation_groups_via_quote_extractor(df: pl.DataFrame, column: str) -> pl.DataFrame:
+def quotation_groups_via_quote_extractor(
+    df: pl.DataFrame,
+    column: str,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> pl.DataFrame:
     """Extract quotations using the vendored QuoteExtractor (replaces polars-text).
 
     Used by quotation workers and live result queries.
     """
     from .quotation_extractor import quotation_groups_for_dataframe
 
-    return quotation_groups_for_dataframe(df, column)
+    return quotation_groups_for_dataframe(df, column, on_progress)
 
 
 def _remote_payload_to_grouped_dataframe(
@@ -182,8 +189,11 @@ async def compute_quotation_groups(
     extract_remote_fn: RemoteQuotationExtractor,
     run_blocking: BlockingRunner,
     quotation_service_max_batch_size: int,
+    on_progress: Callable[[int, int], None] | None = None,
 ) -> pl.DataFrame:
     """Compute grouped quote rows for one node/column pair.
+
+    ``on_progress(done, total)`` reports documents done (issue 350).
 
     Why:
     - Abstracts local vs remote extraction behind one shared contract.
@@ -199,6 +209,7 @@ async def compute_quotation_groups(
             documents,
             batch_size=quotation_service_max_batch_size,
             extract_remote_fn=extract_remote_fn,
+            on_progress=on_progress,
         )
         return await run_blocking(
             _remote_payload_to_grouped_dataframe,
@@ -206,7 +217,9 @@ async def compute_quotation_groups(
             payload,
         )
 
-    return await run_blocking(quotation_groups_via_quote_extractor, base_df, column)
+    return await run_blocking(
+        quotation_groups_via_quote_extractor, base_df, column, on_progress
+    )
 
 
 def _lazyframe_height(lazyframe: pl.LazyFrame) -> int:

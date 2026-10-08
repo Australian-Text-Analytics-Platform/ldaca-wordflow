@@ -25,7 +25,6 @@ import os
 import uuid
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Callable
 
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
 from ..analysis.topic_projection import (
@@ -45,6 +44,7 @@ from .topic_result import (
 )
 from .topic_types import _PreparedTopicPayload
 from .cpu import default_embedding_threads
+from .progress import ProgressCallback, Step, StepReporter, polars_text_progress
 from .utils import process_entrypoint
 
 # Default ONNX embedder used by the Rust ORT pipeline when no override is given.
@@ -66,7 +66,7 @@ def run_topic_modeling_data_block_creation(
     request_payload: dict[str, Any],
     projection_context_path: str,
     source_projection: dict[uuid.UUID, dict[str, Any]],
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Materialize selected Topic Modelling rows and meanings as Data Blocks."""
 
@@ -509,12 +509,24 @@ def _load_corpora_from_snapshot(
     return raw_corpora, resolved_infos
 
 
+# The polars-text pipeline's share of a run and its steps' rough shares of
+# the time on a CPU (issue 350): reading the text into the model dominates.
+TOPIC_PROGRESS_BAND = (0.1, 0.85)
+TOPIC_PROGRESS_STEPS = (
+    Step("segmenting", "Splitting the documents into segments", weight=0.03),
+    Step("embedding", "Reading the text into the model", weight=0.62),
+    Step("arranging", "Arranging the segments", weight=0.1, counted=False),
+    Step("grouping", "Grouping the segments into topics", weight=0.18, counted=False),
+    Step("topic_words", "Finding each topic's words", weight=0.07, counted=False),
+)
+
+
 def _prepare_payload(
     *,
     node_infos: list[TopicNodeInfo],
     artifact_dir: str,
     corpora: list[list[str]],
-    progress_callback: Callable[[float, str], None] | None,
+    progress_callback: ProgressCallback | None,
 ) -> _PreparedTopicPayload:
     """Prepare payload data consumed by topic-modeling worker pipeline.
 
@@ -550,7 +562,7 @@ def _compute_topic_payload(
     artifact_prefix: str,
     min_cluster_size: int,
     random_seed: int,
-    progress_callback: Callable[[float, str], None] | None,
+    progress_callback: ProgressCallback | None,
     max_cluster_size: int | None = None,
     sample_fractions: list[float | None] | None,
     segmentation_method: str,
@@ -591,21 +603,31 @@ def _compute_topic_payload(
         len(sampled.all_docs),
         min_cluster_size,
     )
-    if progress_callback:
-        progress_callback(0.1, "Grouping the text into topics…")
+    def run_rust(progress_path: str | None) -> dict:
+        return _run_rust_topic_modeling(
+            all_docs=sampled.all_docs,
+            seed=random_state,
+            min_cluster_size=min_cluster_size,
+            max_cluster_size=max_cluster_size,
+            vectorizer_model=vectorizer_model,
+            embedder_model=_DEFAULT_EMBEDDER_MODEL,
+            embedding_cache=embedding_cache_path,
+            segmentation_method=segmentation_method,
+            max_segment_tokens=max_segment_tokens,
+            cluster_sample_size=cluster_sample_size,
+            progress_path=progress_path,
+        )
 
-    rust_result = _run_rust_topic_modeling(
-        all_docs=sampled.all_docs,
-        seed=random_state,
-        min_cluster_size=min_cluster_size,
-        max_cluster_size=max_cluster_size,
-        vectorizer_model=vectorizer_model,
-        embedder_model=_DEFAULT_EMBEDDER_MODEL,
-        embedding_cache=embedding_cache_path,
-        segmentation_method=segmentation_method,
-        max_segment_tokens=max_segment_tokens,
-        cluster_sample_size=cluster_sample_size,
-    )
+    if progress_callback:
+        # polars-text reports its five steps through a file (issue 350).
+        reporter = StepReporter(
+            progress_callback, band=TOPIC_PROGRESS_BAND, steps=TOPIC_PROGRESS_STEPS
+        )
+        reporter.update("segmenting", done=0, total=len(sampled.all_docs), unit="documents")
+        with polars_text_progress(reporter) as progress_path:
+            rust_result = run_rust(progress_path)
+    else:
+        rust_result = run_rust(None)
 
     if progress_callback:
         progress_callback(0.85, "Putting the topics together…")
@@ -673,7 +695,7 @@ def _compute_topic_modeling(
     random_seed: int = 0,
     segmentation_method: str = "automatic",
     max_segment_tokens: int = 256,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
     sample_fractions: list[float | None] | None = None,
     cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:
@@ -762,7 +784,7 @@ def run_topic_modeling_analysis(
     segmentation_method: str,
     max_segment_tokens: int,
     sample_fractions: list[float | None] | None,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
     max_cluster_size: int | None = None,
     cluster_sample_size: int | None = None,
 ) -> dict[str, Any]:

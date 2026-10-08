@@ -1,5 +1,6 @@
 import type {
   Analysis,
+  ProgressDetail,
   UnavailableAnalysis,
   UnavailableUserFileImport,
   UserFileImport,
@@ -16,6 +17,8 @@ interface TaskItemBase {
   state: TaskState;
   progress?: number;
   progress_message?: string;
+  /** Step, counts and processor use of a slow run (issue 350). */
+  progress_detail?: ProgressDetail | null;
   message?: string;
   created_at?: string;
   updated_at?: string;
@@ -113,6 +116,7 @@ export const analysisToTask = (
       state: toTaskState(resource.state),
       progress: progress?.fraction ?? undefined,
       progress_message: progress?.message ?? undefined,
+      progress_detail: progress?.detail ?? null,
       message: failureMessage(resource.error) ?? progress?.message ?? undefined,
       created_at: resource.created_at,
       started_at: resource.started_at,
@@ -174,6 +178,7 @@ export const importToTask = (resource: UserFileImport | UnavailableUserFileImpor
     state: toTaskState(resource.state),
     progress: progress.fraction ?? undefined,
     progress_message: progress.message ?? undefined,
+    progress_detail: progress.detail ?? null,
     // A finished import says what it did, in plain words (issue 235).
     message:
       failureMessage(resource.error) ??

@@ -846,6 +846,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             status={analysis.state}
             taskId={analysis.id}
             message={analysis.progress.message ?? undefined}
+            detail={analysis.progress.detail}
             className="mt-4"
           />
         ) : null,

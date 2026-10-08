@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useUploadLeaveGuard } from '@/hooks/useUploadLeaveGuard';
 import { useShallow } from 'zustand/react/shallow';
@@ -40,6 +41,7 @@ import {
   useNodeInputRequestsStore,
 } from '@/stores/nodeInputRequestsStore';
 import { useFreshNodesStore } from '@/stores/freshNodesStore';
+import { useTaskFocusStore } from '@/stores/taskFocusStore';
 import { usePinnedNodesStore } from '@/stores/pinnedNodesStore';
 import { useFileRevealStore } from '@/stores/fileRevealStore';
 import type { WorkspaceGraphNode } from '@/api';
@@ -224,6 +226,14 @@ function Sidebar() {
     initialRatios: INITIAL_SECTION_RATIOS,
     fitContentKeys: FIT_CONTENT_SECTIONS,
   });
+
+  // Showing a task from an analysis page opens the Tasks section (issue 350).
+  const focusRequestId = useTaskFocusStore((state) => state.requestId);
+  useEffect(() => {
+    if (focusRequestId > 0 && isCollapsed('tasks')) toggleSection('tasks');
+    // Act once per request, not whenever the split state changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusRequestId]);
 
   const isWorkspaceLoaded = Boolean(currentWorkspaceId);
   const visibleNavItems = VIEW_DEFINITIONS.filter(({ id }) => visibleViews.includes(id));

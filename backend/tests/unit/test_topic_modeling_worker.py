@@ -682,7 +682,7 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
         segmentation_method="line",
         max_segment_tokens=64,
         embedding_cache_path=str(embedding_cache_path),
-        progress_callback=lambda p, m: progress.append((p, m)),
+        progress_callback=lambda p, m, _detail=None: progress.append((p, m)),
     )
 
     context_path = tmp_path / "tm_test_topic_projection_context.msgpack.zst"

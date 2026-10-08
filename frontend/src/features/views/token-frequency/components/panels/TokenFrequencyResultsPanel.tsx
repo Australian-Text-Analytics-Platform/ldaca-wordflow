@@ -1,3 +1,4 @@
+import type { ProgressDetail } from '@/api';
 import React from 'react';
 import type { TokenFrequencyResponse } from '@/api';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -28,6 +29,7 @@ interface RunningTask {
   message?: string;
   progress?: number;
   progress_message?: string;
+  progress_detail?: ProgressDetail | null;
 }
 
 interface TokenFrequencyResultsPanelProps {
@@ -165,7 +167,12 @@ export const TokenFrequencyResultsPanel = ({
       }}
     >
       {isRunningState ? (
-        <AnalysisRunningStateCard message={runningMessage} progress={runningProgress} />
+        <AnalysisRunningStateCard
+          message={runningMessage}
+          progress={runningProgress}
+          detail={runningTask?.progress_detail}
+          taskId={runningTask?.task_id}
+        />
       ) : null}
 
       {isSuccessfulState ? (

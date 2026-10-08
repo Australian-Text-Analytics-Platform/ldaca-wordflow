@@ -1,12 +1,17 @@
 import { useEffect, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import type { ProgressDetail } from '@/api';
 import { Progress } from '@/components/ui/progress';
+import { RunStepNotice } from './RunStepNotice';
 
 interface AnalysisRunningStateCardProps {
   title?: string;
   message: string;
   progress?: number | null;
   startedAt?: string | number | null;
+  /** Step detail of a slow run: shown as one calm line, live counts in Tasks (issue 350). */
+  detail?: ProgressDetail | null;
+  taskId?: string | null;
 }
 
 // Backend sends started_at as time.time() (Unix seconds). Convert to ms when needed.
@@ -62,6 +67,8 @@ export function AnalysisRunningStateCard({
   message,
   progress,
   startedAt,
+  detail,
+  taskId,
 }: AnalysisRunningStateCardProps) {
   // Backend sends progress as 0.0–1.0; convert to 0–100 for display
   const normalizedProgress =
@@ -81,11 +88,15 @@ export function AnalysisRunningStateCard({
               </span>
             )}
           </div>
-          <p className="text-warning/90">{message}</p>
+          {detail ? (
+            <RunStepNotice detail={detail} taskId={taskId} />
+          ) : (
+            <p className="text-warning/90">{message}</p>
+          )}
         </div>
       </div>
 
-      {normalizedProgress !== null ? (
+      {normalizedProgress !== null && !detail ? (
         <div className="space-y-1">
           <div className="flex items-center justify-between text-label-secondary text-warning/90">
             <span>Progress</span>

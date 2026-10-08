@@ -33,6 +33,7 @@ def tokenize_lazyframe(
     source_column: str,
     model: str,
     cache_path: str | Path | None,
+    progress_path: str | None = None,
 ) -> tuple[pl.LazyFrame, str]:
     """Attach tokens selected by an immutable Analysis request.
 
@@ -61,6 +62,8 @@ def tokenize_lazyframe(
             remove_punctuation=True,
             model=normalized_model,
             cache=cache,
+            # Documents tokenised so far, for a slow run's progress (issue 350).
+            **({"progress_path": progress_path} if progress_path else {}),
         )
         .alias(tokenization_column)
     )

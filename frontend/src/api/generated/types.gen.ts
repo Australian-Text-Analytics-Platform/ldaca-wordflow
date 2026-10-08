@@ -3601,6 +3601,7 @@ export type PreviewReadyResult = {
  * Exact live and durable progress value shared by background resources.
  */
 export type Progress = {
+    detail?: ProgressDetail | null;
     /**
      * Fraction
      */
@@ -3609,6 +3610,61 @@ export type Progress = {
      * Message
      */
     message: string | null;
+};
+
+/**
+ * ProgressDetail
+ *
+ * Step-by-step progress of a slow run, for the Tasks panel (issue 350).
+ *
+ * ``step_label`` names the current step in plain words for the analysis
+ * page; ``done``/``total``/``unit`` count it when it can be counted, and
+ * ``eta_seconds`` comes from the rate measured on this computer.
+ * ``processors_busy`` (CPU time per second of the worker process, all its
+ * threads) shows the run is working; ``stalled_seconds`` is how long the
+ * counts have not moved.
+ */
+export type ProgressDetail = {
+    /**
+     * Done
+     */
+    done?: number | null;
+    /**
+     * Eta Seconds
+     */
+    eta_seconds?: number | null;
+    /**
+     * Processors
+     */
+    processors?: number | null;
+    /**
+     * Processors Busy
+     */
+    processors_busy?: number | null;
+    /**
+     * Stalled Seconds
+     */
+    stalled_seconds?: number | null;
+    /**
+     * Step
+     */
+    step: number;
+    /**
+     * Step Label
+     */
+    step_label: string;
+    /**
+     * Steps
+     */
+    steps: number;
+    /**
+     * Total
+     */
+    total?: number | null;
+    /**
+     * Unit
+     */
+    unit?: string | null;
 };
 
 /**

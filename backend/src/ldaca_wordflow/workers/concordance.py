@@ -11,9 +11,9 @@ Flow: load text or token inputs, derive concordance rows or dispersion bins, per
 from __future__ import annotations
 
 import logging
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any, cast
-from collections.abc import Callable
 import uuid
 
 from ..analysis.concordance_core import build_concordance_search_pattern
@@ -38,11 +38,15 @@ from ..analysis.generated_columns import (
     concordance_extraction_expr,
     concordance_struct_projection,
 )
+from .progress import ProgressCallback, Step, StepReporter, polars_text_progress
 from .utils import process_entrypoint
 
 SOURCE_ROW_ID_COLUMN = "__wordflow_source_row_id"
 
 logger = logging.getLogger(__name__)
+
+# Tokenising runs between "Preparing the text" and "Finding matches" (issue 350).
+TOKENIZE_PROGRESS_BAND = (0.2, 0.55)
 
 
 def _source_text_filter(document_column: str):
@@ -75,6 +79,7 @@ def _collect_source_input_from_snapshot(
     include_all_metadata: bool = False,
     search_mode: str = "regex",
     tokenizer_model: str | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[
     list[str],
     dict[str, list] | None,
@@ -106,48 +111,71 @@ def _collect_source_input_from_snapshot(
     node_data, document_column = without_previous_concordance_columns(
         snapshot_node.data, document_column
     )
-    tokenization_column: str | None = None
-    if search_mode == "tokens":
-        if tokenizer_model is None:
-            raise ValueError("Tokens-mode concordance requires a tokenizer model")
-        from ..analysis.token_cache import tokenize_lazyframe
+    progress_stack = ExitStack()
+    try:
+        tokenization_column: str | None = None
+        if search_mode == "tokens":
+            if tokenizer_model is None:
+                raise ValueError("Tokens-mode concordance requires a tokenizer model")
+            from ..analysis.token_cache import tokenize_lazyframe
 
-        node_data, tokenization_column = tokenize_lazyframe(
-            data=node_data,
-            source_column=document_column,
-            model=tokenizer_model,
-            cache_path=token_cache_path,
+            progress_path: str | None = None
+            if progress_callback is not None:
+                # Tokenising a large corpus can take long on a first run (issue 350).
+                total = int(
+                    node_data.filter(_source_text_filter(document_column))
+                    .select(pl.len())
+                    .collect()
+                    .item()
+                )
+                reporter = StepReporter(
+                    progress_callback,
+                    band=TOKENIZE_PROGRESS_BAND,
+                    steps=(Step("tokenizing", "Tokenising the text"),),
+                )
+                reporter.update("tokenizing", done=0, total=total, unit="documents")
+                progress_path = progress_stack.enter_context(
+                    polars_text_progress(reporter, total=total)
+                )
+            node_data, tokenization_column = tokenize_lazyframe(
+                data=node_data,
+                source_column=document_column,
+                model=tokenizer_model,
+                cache_path=token_cache_path,
+                progress_path=progress_path,
+            )
+
+        schema = node_data.collect_schema()
+        if SOURCE_ROW_ID_COLUMN in schema:
+            raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")
+        node_data = node_data.with_row_index(SOURCE_ROW_ID_COLUMN)
+        # Metadata travels through Python lists and is cast back to its source
+        # type, which Topic Coverage cannot survive, so it is left out (issue 200).
+        supported = supported_metadata_columns(
+            schema, exclude=(document_column, tokenization_column)
         )
+        if include_all_metadata:
+            metadata_columns = supported
+        else:
+            metadata_columns = [
+                column for column in extra_column_names or [] if column in supported
+            ]
 
-    schema = node_data.collect_schema()
-    if SOURCE_ROW_ID_COLUMN in schema:
-        raise ValueError(f"Source column name is reserved: {SOURCE_ROW_ID_COLUMN}")
-    node_data = node_data.with_row_index(SOURCE_ROW_ID_COLUMN)
-    # Metadata travels through Python lists and is cast back to its source
-    # type, which Topic Coverage cannot survive, so it is left out (issue 200).
-    supported = supported_metadata_columns(
-        schema, exclude=(document_column, tokenization_column)
-    )
-    if include_all_metadata:
-        metadata_columns = supported
-    else:
-        metadata_columns = [
-            column for column in extra_column_names or [] if column in supported
+        select_exprs = [
+            pl.col(SOURCE_ROW_ID_COLUMN),
+            pl.col(document_column),
+            *[pl.col(c) for c in metadata_columns],
         ]
+        if tokenization_column is not None:
+            select_exprs.append(pl.col(tokenization_column))
 
-    select_exprs = [
-        pl.col(SOURCE_ROW_ID_COLUMN),
-        pl.col(document_column),
-        *[pl.col(c) for c in metadata_columns],
-    ]
-    if tokenization_column is not None:
-        select_exprs.append(pl.col(tokenization_column))
-
-    corpus_df = (
-        node_data.select(select_exprs)
-        .filter(_source_text_filter(document_column))
-        .collect()
-    )
+        corpus_df = (
+            node_data.select(select_exprs)
+            .filter(_source_text_filter(document_column))
+            .collect()
+        )
+    finally:
+        progress_stack.close()
     node_corpus = [
         str(value) if value is not None else ""
         for value in corpus_df.get_column(document_column).to_list()
@@ -457,7 +485,7 @@ def run_concordance_run_all(
     search_mode: str = "regex",
     tokenizer_model: str | None = None,
     token_cache_path: str | None = None,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Compute one complete immutable Concordance Result table."""
     try:
@@ -491,6 +519,7 @@ def run_concordance_run_all(
             include_all_metadata=True,
             search_mode=search_mode,
             tokenizer_model=tokenizer_model,
+            progress_callback=progress_callback,
         )
         # The collector renamed a text column named like a Concordance column
         # to CONC_source; the Result stores and reports that name (issue 244).

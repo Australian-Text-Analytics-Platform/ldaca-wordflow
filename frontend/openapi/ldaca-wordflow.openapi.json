@@ -7081,6 +7081,16 @@
         "additionalProperties": false,
         "description": "Exact live and durable progress value shared by background resources.",
         "properties": {
+          "detail": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProgressDetail"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "fraction": {
             "anyOf": [
               {
@@ -7113,6 +7123,120 @@
           "message"
         ],
         "title": "Progress",
+        "type": "object"
+      },
+      "ProgressDetail": {
+        "additionalProperties": false,
+        "description": "Step-by-step progress of a slow run, for the Tasks panel (issue 350).\n\n``step_label`` names the current step in plain words for the analysis\npage; ``done``/``total``/``unit`` count it when it can be counted, and\n``eta_seconds`` comes from the rate measured on this computer.\n``processors_busy`` (CPU time per second of the worker process, all its\nthreads) shows the run is working; ``stalled_seconds`` is how long the\ncounts have not moved.",
+        "properties": {
+          "done": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Done"
+          },
+          "eta_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Eta Seconds"
+          },
+          "processors": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processors"
+          },
+          "processors_busy": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processors Busy"
+          },
+          "stalled_seconds": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stalled Seconds"
+          },
+          "step": {
+            "minimum": 1.0,
+            "title": "Step",
+            "type": "integer"
+          },
+          "step_label": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Step Label",
+            "type": "string"
+          },
+          "steps": {
+            "minimum": 1.0,
+            "title": "Steps",
+            "type": "integer"
+          },
+          "total": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "maxLength": 40,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          }
+        },
+        "required": [
+          "step",
+          "steps",
+          "step_label"
+        ],
+        "title": "ProgressDetail",
         "type": "object"
       },
       "ProjectedTableResource": {

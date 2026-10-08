@@ -10,13 +10,18 @@ persist derived artifacts for result queries.
 
 from __future__ import annotations
 
+from contextlib import ExitStack
+
 import logging
 from pathlib import Path
 from typing import Any
-from collections.abc import Callable
 import uuid
 
+from .progress import ProgressCallback, Step, StepReporter, polars_text_progress
 from .utils import process_entrypoint
+
+# Tokenising each Data Block, before the counting (issue 350).
+TOKENIZE_PROGRESS_BAND = (0.02, 0.5)
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +48,7 @@ def _prepare_snapshot_inputs(
     node_columns: dict[uuid.UUID, str],
     node_tokenizer_models: dict[uuid.UUID, str],
     token_cache_path: str | None,
+    progress_callback: ProgressCallback | None = None,
 ) -> tuple[
     dict[uuid.UUID, list[str]],
     dict[uuid.UUID, str],
@@ -60,6 +66,13 @@ def _prepare_snapshot_inputs(
     corpora: dict[uuid.UUID, list[str]] = {}
     display_names: dict[uuid.UUID, str] = {}
     token_streams: dict[uuid.UUID, str] = {}
+    # Each tokenised Data Block gets its own slice of the band, in order, so
+    # progress never goes back (issue 350).
+    tokenised_ids = [
+        node_id for node_id in node_ids if node_tokenizer_models[node_id] != PLAIN_WORDS_EN_MODEL
+    ]
+    low, high = TOKENIZE_PROGRESS_BAND
+    slice_width = (high - low) / max(1, len(tokenised_ids))
     for node_id in node_ids:
         snapshot_node = load_snapshot_node(input_snapshot_dir, node_id)
         source_column = node_columns[node_id]
@@ -74,23 +87,41 @@ def _prepare_snapshot_inputs(
                 for value in docs_df["__doc_col__"].to_list()
             ]
             continue
-        node_data, tokenization_col = tokenize_lazyframe(
-            data=snapshot_node.data,
-            source_column=source_column,
-            model=tokenizer_model,
-            cache_path=token_cache_path,
-        )
-        stream_path = scratch_root / f"token-stream-{node_id}.parquet"
-        (
-            node_data.select(
-                pl.col(tokenization_col)
-                .list.eval(pl.element().struct.field("token"))
-                .explode()
-                .alias("token")
+        with ExitStack() as progress_stack:
+            progress_path: str | None = None
+            if progress_callback is not None:
+                # A first run with a model tokeniser can take long (issue 350).
+                total = int(snapshot_node.data.select(pl.len()).collect().item())
+                reporter = StepReporter(
+                    progress_callback,
+                    band=(
+                        low + slice_width * tokenised_ids.index(node_id),
+                        low + slice_width * (tokenised_ids.index(node_id) + 1),
+                    ),
+                    steps=(Step("tokenizing", f"Tokenising {snapshot_node.name}"),),
+                )
+                reporter.update("tokenizing", done=0, total=total, unit="documents")
+                progress_path = progress_stack.enter_context(
+                    polars_text_progress(reporter, total=total)
+                )
+            node_data, tokenization_col = tokenize_lazyframe(
+                data=snapshot_node.data,
+                source_column=source_column,
+                model=tokenizer_model,
+                cache_path=token_cache_path,
+                progress_path=progress_path,
             )
-            .filter(pl.col("token").is_not_null())
-            .sink_parquet(stream_path)
-        )
+            stream_path = scratch_root / f"token-stream-{node_id}.parquet"
+            (
+                node_data.select(
+                    pl.col(tokenization_col)
+                    .list.eval(pl.element().struct.field("token"))
+                    .explode()
+                    .alias("token")
+                )
+                .filter(pl.col("token").is_not_null())
+                .sink_parquet(stream_path)
+            )
         token_streams[node_id] = str(stream_path)
     return corpora, display_names, token_streams
 
@@ -100,7 +131,7 @@ def _compute_token_frequencies(
     node_display_names: dict[uuid.UUID, str],
     artifact_dir: str,
     token_limit: int = 10,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
     node_token_streams: dict[uuid.UUID, str] | None = None,
     node_tokenizer_models: dict[uuid.UUID, str] | None = None,
     node_order: list[uuid.UUID] | None = None,
@@ -314,7 +345,7 @@ def run_token_frequency_analysis(
     token_limit: int,
     node_tokenizer_models: dict[uuid.UUID, str],
     token_cache_path: str,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Run the canonical snapshot-only token-frequency process contract."""
 
@@ -329,13 +360,23 @@ def run_token_frequency_analysis(
         node_columns=node_columns,
         node_tokenizer_models=node_tokenizer_models,
         token_cache_path=token_cache_path,
+        progress_callback=progress_callback,
     )
+    tokenized = bool(token_streams) and progress_callback is not None
+
+    def after_tokenizing(
+        fraction: float, message: str, detail: dict[str, Any] | None = None, /
+    ) -> None:
+        # Progress may not go back below the tokenising band (issue 350).
+        assert progress_callback is not None
+        progress_callback(max(fraction, TOKENIZE_PROGRESS_BAND[1]), message, detail)
+
     return _compute_token_frequencies(
         node_corpora=corpora,
         node_display_names=display_names,
         artifact_dir=artifact_dir,
         token_limit=token_limit,
-        progress_callback=progress_callback,
+        progress_callback=after_tokenizing if tokenized else progress_callback,
         node_token_streams=token_streams,
         node_tokenizer_models=node_tokenizer_models,
         node_order=node_ids,

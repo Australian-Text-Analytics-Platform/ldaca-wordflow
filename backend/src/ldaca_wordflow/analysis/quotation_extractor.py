@@ -11,6 +11,8 @@ Flow: normalize source text, run the local extractor, preserve source-row
 
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import re
 import shutil
 import tarfile
@@ -320,9 +322,13 @@ def _preprocess_with_mapping(txt: str) -> tuple[str, list[int]]:
     return "".join(chars), mapping
 
 
-def extract_quotations_for_texts(texts: list[str]) -> list[list[dict[str, Any]]]:
+def extract_quotations_for_texts(
+    texts: list[str],
+    on_progress: Callable[[int, int], None] | None = None,
+) -> list[list[dict[str, Any]]]:
     """Extract quotations from a list of texts using the vendored QuoteExtractor.
 
+    ``on_progress(done, total)`` is called after each text (issue 350).
     Used by quotation workers and live result queries.
     """
     extractor = _get_extractor()
@@ -330,6 +336,8 @@ def extract_quotations_for_texts(texts: list[str]) -> list[list[dict[str, Any]]]
     results: list[list[dict[str, Any]]] = []
 
     for text in texts:
+        if on_progress is not None and results:
+            on_progress(len(results), len(texts))
         if not text or not text.strip():
             results.append([])
             continue
@@ -345,12 +353,16 @@ def extract_quotations_for_texts(texts: list[str]) -> list[list[dict[str, Any]]]
     return results
 
 
-def quotation_groups_for_dataframe(df: pl.DataFrame, column: str) -> pl.DataFrame:
+def quotation_groups_for_dataframe(
+    df: pl.DataFrame,
+    column: str,
+    on_progress: Callable[[int, int], None] | None = None,
+) -> pl.DataFrame:
     """Attach canonical grouped quotation records to a DataFrame."""
     texts = df.get_column(column).to_list()
     texts = [str(t) if t is not None else "" for t in texts]
 
-    all_quotes = extract_quotations_for_texts(texts)
+    all_quotes = extract_quotations_for_texts(texts, on_progress)
 
     return df.with_columns(
         pl.Series(

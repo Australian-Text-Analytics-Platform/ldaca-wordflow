@@ -87,7 +87,7 @@ def _create(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fingerprint: str) -
                 "fingerprint": fingerprint,
             }
         },
-        progress_callback=lambda _progress, _message: None,
+        progress_callback=lambda _progress, _message, _detail=None: None,
     )
     return pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
 

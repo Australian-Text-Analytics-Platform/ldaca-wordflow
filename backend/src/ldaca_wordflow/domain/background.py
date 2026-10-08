@@ -38,6 +38,31 @@ class BackgroundState(StrEnum):
     CANCELLED = "cancelled"
 
 
+class ProgressDetail(BaseModel):
+    """Step-by-step progress of a slow run, for the Tasks panel (issue 350).
+
+    ``step_label`` names the current step in plain words for the analysis
+    page; ``done``/``total``/``unit`` count it when it can be counted, and
+    ``eta_seconds`` comes from the rate measured on this computer.
+    ``processors_busy`` (CPU time per second of the worker process, all its
+    threads) shows the run is working; ``stalled_seconds`` is how long the
+    counts have not moved.
+    """
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    step: int = Field(ge=1)
+    steps: int = Field(ge=1)
+    step_label: SafePublicText
+    done: int | None = Field(default=None, ge=0)
+    total: int | None = Field(default=None, ge=0)
+    unit: Annotated[str, StringConstraints(min_length=1, max_length=40)] | None = None
+    eta_seconds: int | None = Field(default=None, ge=0)
+    processors_busy: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
+    processors: int | None = Field(default=None, ge=1)
+    stalled_seconds: int | None = Field(default=None, ge=0)
+
+
 class Progress(BaseModel):
     """Exact live and durable progress value shared by background resources."""
 
@@ -45,6 +70,7 @@ class Progress(BaseModel):
 
     fraction: float | None = Field(ge=0.0, le=1.0, allow_inf_nan=False)
     message: SafePublicText | None
+    detail: ProgressDetail | None = None
 
 
 class Failure(BaseModel):
@@ -59,4 +85,4 @@ class Failure(BaseModel):
     diagnostic: DiagnosticText | None = None
 
 
-__all__ = ["BackgroundState", "DiagnosticText", "Failure", "Progress"]
+__all__ = ["BackgroundState", "DiagnosticText", "Failure", "Progress", "ProgressDetail"]

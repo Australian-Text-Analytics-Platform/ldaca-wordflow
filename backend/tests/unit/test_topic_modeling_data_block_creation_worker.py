@@ -115,7 +115,7 @@ def test_topic_modeling_data_block_creation_publishes_ordered_data_and_meanings(
             first_id: {"row_indices": [0, 1, 2], "offset": 0, "size": 3},
             second_id: {"row_indices": [0, 1, 2], "offset": 3, "size": 3},
         },
-        progress_callback=lambda progress, message: progress_updates.append(
+        progress_callback=lambda progress, message, _detail=None: progress_updates.append(
             (progress, message)
         ),
     )

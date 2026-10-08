@@ -1,13 +1,17 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
+import type { ProgressDetail } from '@/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { RunStepNotice } from './RunStepNotice';
 
 interface AnalysisTaskBannerProps {
   analysisName: string;
   status?: 'running' | 'queued';
   taskId?: string | null;
   message?: string;
+  /** Step detail of a slow run: shown as one calm line, live counts in Tasks (issue 350). */
+  detail?: ProgressDetail | null;
   className?: string;
   children?: React.ReactNode;
 }
@@ -39,6 +43,7 @@ function AnalysisTaskBanner({
   status = 'running',
   taskId,
   message,
+  detail,
   className,
   children,
 }: AnalysisTaskBannerProps) {
@@ -65,7 +70,11 @@ function AnalysisTaskBanner({
           />
         </div>
         <div className="space-y-1">
-          {trimmedMessage && <p className="leading-tight">{trimmedMessage}</p>}
+          {detail ? (
+            <RunStepNotice detail={detail} taskId={taskId} />
+          ) : (
+            trimmedMessage && <p className="leading-tight">{trimmedMessage}</p>
+          )}
           {children}
         </div>
       </CardContent>

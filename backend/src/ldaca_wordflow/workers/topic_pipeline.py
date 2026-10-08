@@ -191,6 +191,7 @@ def _run_rust_topic_modeling(
     embedder_model: str | None = None,
     embedding_cache: str | os.PathLike[str] | None = None,
     cluster_sample_size: int | None = None,
+    progress_path: str | None = None,
 ) -> dict:
     """Run the scalar Rust topic-modeling expression and validate its payload.
 
@@ -207,7 +208,10 @@ def _run_rust_topic_modeling(
     # Auto max topic size and no topic sampling are the native defaults, so
     # each option is only passed when set; this keeps default runs working with
     # polars-text builds that predate the options.
-    optional_kwargs: dict[str, int] = {}
+    optional_kwargs: dict[str, Any] = {}
+    if progress_path is not None:
+        # polars-text 0.6.5 reports its steps to this file (issue 350).
+        optional_kwargs["progress_path"] = progress_path
     if max_cluster_size is not None:
         optional_kwargs["max_topic_size"] = int(max_cluster_size)
     if cluster_sample_size is not None:

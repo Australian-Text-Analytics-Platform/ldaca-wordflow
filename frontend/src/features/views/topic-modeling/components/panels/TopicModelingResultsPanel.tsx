@@ -1,3 +1,4 @@
+import type { ProgressDetail } from '@/api';
 import { LoaderCircle, Plus } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 import type {
@@ -36,6 +37,7 @@ interface Props {
     state?: string;
     message?: string;
     progress?: number;
+    progress_detail?: ProgressDetail | null;
     started_at?: string | null;
   } | null;
   result: TopicModelingResponse | null;
@@ -554,6 +556,8 @@ export function TopicModelingResultsPanel({
             message={runningMessage}
             progress={runningProgress}
             startedAt={runningTask?.started_at}
+            detail={runningTask?.progress_detail}
+            taskId={runningTask?.task_id}
           />
         ) : null}
 
