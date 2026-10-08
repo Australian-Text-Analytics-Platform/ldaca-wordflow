@@ -8,7 +8,7 @@ export interface GraphLayoutOptions {
   nodeSize?: (id: string) => GraphNodeSize;
 }
 
-export interface GraphNodeSize {
+interface GraphNodeSize {
   width: number;
   height: number;
 }
@@ -128,7 +128,7 @@ const GLYPH_EM = 0.58;
  * layout can pack cards by their real size (issue 345).
  * Used by: buildGraphLayouts.
  */
-export const compactNodeSize = (name: string): GraphNodeSize => {
+const compactNodeSize = (name: string): GraphNodeSize => {
   const textWidth = Array.from(name).length * GLYPH_EM * COMPACT_FONT_PX;
   const contentMax = COMPACT_MAX_WIDTH - 2 * COMPACT_PADDING;
   const content = Math.min(
