@@ -27,7 +27,19 @@ describe('GroupedResultsPageSizeSummary', () => {
     );
 
     expect(
-      screen.getByText('(Found 3 matches in 2 documents after processing 100 documents).'),
+      screen.getByText('(Found 3 matches in 2 documents after checking 100 documents).'),
+    ).toBeInTheDocument();
+  });
+
+  it('says how many of all documents a Preview checked and points to Run (issue 347)', () => {
+    render(
+      <GroupedResultsPageSizeSummary groups={[]} totalProcessed={20} totalDocuments={26163} />,
+    );
+
+    expect(
+      screen.getByText(
+        `(Found 0 matches in 0 documents after checking 20 of ${(26163).toLocaleString()} documents). Run searches them all.`,
+      ),
     ).toBeInTheDocument();
   });
 });

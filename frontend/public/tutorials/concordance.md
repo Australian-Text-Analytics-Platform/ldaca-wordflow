@@ -106,9 +106,10 @@ source documents the current page evaluates: 10, 20, 50, 100, 200, 400, or
 800. A page can contain fewer visible rows because documents without a match
 are omitted, while a document with several matches contributes several rows.
 
-The footer reports the matches and matching documents found after processing
-the current source-document batch. An empty page does not mean later pages are
-empty.
+The footer reports the matches and matching documents found in the current
+page of documents, and how many of the Data Block's documents that page checked,
+for example "after checking 20 of 26,163 documents". No matches in a Preview
+does not mean the word is absent: choose **Run** to search every document.
 
 ![Preview footer: matches found so far and Documents per page](tutorials/assets/concordance/documents_per_page.png)
 

@@ -202,6 +202,7 @@ export function ConcordanceDispersionNodeBlock({
       <GroupedResultsPageSizeSummary
         groups={nodeData.data}
         totalProcessed={batchProcessedCount(nodeData.pagination)}
+        totalDocuments={nodeData.pagination?.total_source_rows}
       />
     );
     const combinedBelowTable = (
@@ -378,6 +379,7 @@ export function ConcordanceDispersionNodeBlock({
     <GroupedResultsPageSizeSummary
       groups={nodeData.data}
       totalProcessed={batchProcessedCount(nodeData.pagination)}
+      totalDocuments={nodeData.pagination?.total_source_rows}
     />
   );
   const belowTable = (

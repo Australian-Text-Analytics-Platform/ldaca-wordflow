@@ -1242,7 +1242,7 @@ describe('ConcordanceFeature', () => {
     // page_size (20) for the "processed N documents" label — page_size is
     // a configuration knob, not an actual processed count.
     expect(
-      screen.getByText('(Found 2 matches in 1 document after processing 1 document).'),
+      screen.getByText('(Found 2 matches in 1 document after checking 1 document).'),
     ).toBeInTheDocument();
   });
 
