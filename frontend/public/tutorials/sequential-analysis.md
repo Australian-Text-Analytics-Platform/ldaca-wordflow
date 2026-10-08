@@ -142,7 +142,7 @@ Dates on the chart and in its tooltip read the same in both spacings, in the tim
 
 **Empty periods.** A period with no rows at all is hidden in Even spacing and leaves a gap on the axis in To scale spacing. Within a period that is shown, a group with no rows counts as zero, so its line dips to zero rather than breaking: "no occurrences" is genuinely zero, not unknown.
 
-The vertical axis shows counts of rows and has no title (percentages when **Normalise to 100%** is on). When nothing is grouped, the single series is named after the Data Block.
+The vertical axis, titled **Rows**, counts the rows in each period: documents for a corpus, or matches for a Data Block made by Concordance. With **Normalise to 100%** on it is titled **% of rows**. When nothing is grouped, the single series is named after the Data Block.
 
 <h3 id="help-sequential-normalise">Normalise to 100%</h3>
 

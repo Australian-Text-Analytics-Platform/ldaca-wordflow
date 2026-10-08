@@ -9,8 +9,12 @@ import { useUIStore } from '@/stores/uiStore';
 
 const render = (ui: ReactElement) => renderUi(ui, { wrapper: TooltipProvider });
 
+const echartsOptions = vi.hoisted(() => [] as { yAxis?: unknown }[]);
 vi.mock('@/features/views/common/components/EChartsView', () => ({
-  EChartsView: () => <div data-testid="echarts-view" />,
+  EChartsView: ({ option }: { option: { yAxis?: unknown } }) => {
+    echartsOptions.push(option);
+    return <div data-testid="echarts-view" />;
+  },
 }));
 
 const model = buildSequentialChartModel({
@@ -79,6 +83,25 @@ describe('SequentialChart', () => {
       }),
     ).toBeEnabled();
     expect(screen.queryByText(/data points but only/)).not.toBeInTheDocument();
+  });
+
+  it('names the y-axis and keeps count ticks whole (issue 346)', () => {
+    render(
+      <SequentialChart
+        model={model}
+        minimumGroupCount={0}
+        onMinimumGroupCountChange={vi.fn()}
+        onToggleGroupIndices={vi.fn()}
+        onUncasedChange={vi.fn()}
+        onPeriodClick={vi.fn()}
+        onClearSelection={vi.fn()}
+        dataResetKey="task-1"
+        containerRef={createRef<HTMLDivElement>()}
+      />,
+    );
+
+    const yAxes = echartsOptions.at(-1)?.yAxis as { name?: string; minInterval?: number }[];
+    expect(yAxes[0]).toMatchObject({ name: 'Rows', minInterval: 1 });
   });
 
   it('opens the legend section of the tutorial from the legend help icon', () => {

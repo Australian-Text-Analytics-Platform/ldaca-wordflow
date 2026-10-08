@@ -210,7 +210,8 @@ export const buildMultiSeriesChartOption = ({
     },
     grid: {
       containLabel: true,
-      top: 20,
+      // Room above the plot for a y-axis title such as "Rows" (issue 346).
+      top: yAxis?.name ? 32 : 20,
       right: 30,
       left: 20,
       // containLabel already reserves the axis-label height. This footer only

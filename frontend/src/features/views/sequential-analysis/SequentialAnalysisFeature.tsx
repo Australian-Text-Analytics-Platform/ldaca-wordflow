@@ -399,11 +399,11 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
 
   const resultsSummary = summary.timeColumn
     ? summary.columnType === 'numeric'
-      ? `Numeric bin counts for ${summary.timeColumn}`
+      ? `Rows per step of ${summary.timeColumn}`
       : summary.columnType === 'category'
-        ? `Records per value of ${summary.timeColumn}`
-        : `Frequency of records grouped by ${summary.timeColumn}`
-    : 'Aggregated frequency over time';
+        ? `Rows per value of ${summary.timeColumn}`
+        : `Rows per period of ${summary.timeColumn}`
+    : 'Rows per period';
 
   const handleAddToWorkspace = async (selection: AddToWorkspaceSelection) => {
     if (!tabTaskId || !results?.source) return;
@@ -496,12 +496,12 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           info={{
             targetKey: 'sequential-analysis.overview',
             label: 'About Trends Analysis',
-            tooltip: 'Learn what sequential analysis is and how it can help you.',
+            tooltip: 'Counts the rows in each period, for example documents per month.',
           }}
           help={{
             targetKey: 'analysis.sequential-analysis.parameters',
             label: 'Trends parameters',
-            tooltip: 'Select a time column, choose frequency, and configure group-by options.',
+            tooltip: 'Choose a time, number or category column, set the period, and add Group By columns.',
           }}
           actions={{
             // Routes the Run button through live sequential analysis.
@@ -527,7 +527,7 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
             runAllDisabledReason: (() => {
               if (isAnalyzing || isLoading.operations) return undefined;
               if (actionState.runDisabledReason) return actionState.runDisabledReason;
-              if (!activeTimeColumn) return 'Select a time column to run';
+              if (!activeTimeColumn) return 'Select a time, number or category column to run';
               return tooManyGroupsReason;
             })(),
             clearDisabled: actionState.clearDisabled,

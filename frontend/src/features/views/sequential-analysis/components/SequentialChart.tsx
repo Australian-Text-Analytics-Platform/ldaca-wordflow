@@ -57,7 +57,7 @@ export function SequentialChart({
     return (
       <div className="flex h-40 items-center justify-center rounded-md border border-dashed border-surface-border-foreground/30 text-body text-description">
         {model.status === 'malformed'
-          ? 'The sequential analysis result is malformed and has no chartable rows.'
+          ? 'This Trends result is damaged and has nothing to chart. Run it again.'
           : 'No Trends data available. Adjust your configuration and try again.'}
       </div>
     );
@@ -93,8 +93,17 @@ export function SequentialChart({
                     labelFormatter: model.tooltip.labelFormatter,
                     valueFormatter: model.tooltip.valueFormatter,
                   }}
-                  yAxis={
-                    model.normalised
+                  yAxis={{
+                    // Trends counts rows: documents for a corpus, matches for a
+                    // Concordance Data Block (issue 346).
+                    name: model.normalised ? '% of rows' : 'Rows',
+                    nameLocation: 'end',
+                    nameGap: 8,
+                    nameTextStyle: {
+                      color: 'var(--vscode-charts-foreground)',
+                      align: 'left',
+                    },
+                    ...(model.normalised
                       ? {
                           min: 0,
                           // Stacked areas and bars of every group reach 100%.
@@ -105,8 +114,9 @@ export function SequentialChart({
                             formatter: portableFormatter({ kind: 'percent', round: false }),
                           },
                         }
-                      : undefined
-                  }
+                      : // Counts are whole numbers, so no 0.5 ticks on small counts.
+                        { minInterval: 1 }),
+                  }}
                   selection={{
                     selectedIndices: model.selection.selectedIndices,
                     onSelect: onPeriodClick,

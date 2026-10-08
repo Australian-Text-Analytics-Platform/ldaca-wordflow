@@ -176,7 +176,7 @@ export function SequentialAnalysisParameterPanel({
                   disabled={inputsDisabled}
                 >
                   <SelectTrigger className={frequency === 'custom' ? 'w-full sm:w-44' : 'w-full'}>
-                    <SelectValue placeholder="Select frequency" />
+                    <SelectValue placeholder="Select period" />
                   </SelectTrigger>
                   <SelectContent>
                     {DEFAULT_FREQUENCY_OPTIONS.filter((option) =>
