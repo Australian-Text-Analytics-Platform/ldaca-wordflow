@@ -501,7 +501,8 @@ const SequentialAnalysisFeature = ({ host }: AnalysisTabFeatureProps) => {
           help={{
             targetKey: 'analysis.sequential-analysis.parameters',
             label: 'Trends parameters',
-            tooltip: 'Choose a time, number or category column, set the period, and add Group By columns.',
+            tooltip:
+              'Choose a time, number or category column, set the period, and add Group By columns.',
           }}
           actions={{
             // Routes the Run button through live sequential analysis.

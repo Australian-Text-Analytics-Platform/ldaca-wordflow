@@ -217,7 +217,7 @@ const VirtualizedTokenList = ({
                       event.preventDefault();
                       onTokenRightClick(row.token);
                     }}
-                    title="Click to inspect in concordance. Right-click to add to stop words."
+                    title="Click to open in Concordance. Right-click to add to stop words."
                   >
                     <span
                       className="absolute inset-y-0 left-0 rounded-sm bg-button/20 group-hover:bg-button/30"

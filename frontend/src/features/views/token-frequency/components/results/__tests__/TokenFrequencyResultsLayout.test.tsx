@@ -179,7 +179,7 @@ describe('Token frequency result layouts', () => {
     );
 
     expect(
-      screen.queryAllByTitle('Click to inspect in concordance. Right-click to add to stop words.'),
+      screen.queryAllByTitle('Click to open in Concordance. Right-click to add to stop words.'),
     ).toHaveLength(0);
     expect(screen.getByRole('button', { name: 'Download word cloud' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Download frequencies' })).not.toBeInTheDocument();
@@ -219,7 +219,7 @@ describe('Token frequency result layouts', () => {
       );
 
       const mountedTokenRows = await screen.findAllByTitle(
-        'Click to inspect in concordance. Right-click to add to stop words.',
+        'Click to open in Concordance. Right-click to add to stop words.',
       );
       expect(mountedTokenRows.length).toBeGreaterThan(0);
       expect(mountedTokenRows.length).toBeLessThan(100);

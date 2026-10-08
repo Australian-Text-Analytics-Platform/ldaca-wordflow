@@ -375,16 +375,16 @@ export const useSliceSubTab = (props: SliceSubTabProps): UseSliceSubTabResult =>
         return;
       }
       if (!lengthValid) {
-        setCurrentInlineError('Length is required – enter a non-negative integer.');
+        setCurrentInlineError('Enter a length: 0 or a positive whole number.');
         return;
       }
     } else {
       if (!sampleSizeValid) {
-        setCurrentInlineError('Enter a fraction (0–1) or an integer row count (≥ 1).');
+        setCurrentInlineError('Enter a fraction (0 to 1) or a whole number of rows (1 or more).');
         return;
       }
       if (!randomSeedValid) {
-        setCurrentInlineError('Random seed must be a non-negative integer.');
+        setCurrentInlineError('Random seed must be 0 or a positive whole number.');
         return;
       }
     }

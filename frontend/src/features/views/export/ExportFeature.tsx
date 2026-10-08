@@ -162,7 +162,7 @@ function ExportFeature() {
                 <HelpIcon
                   targetKey="analysis.export.format"
                   label="About export formats"
-                  tooltip="CSV opens in Excel and most tools; Excel (.xlsx) writes date-times in UTC; Parquet keeps data types exactly."
+                  tooltip="CSV opens in Excel and most tools; Excel (.xlsx) writes dates and times in UTC; Parquet keeps data types exactly."
                   className="h-5 w-5 text-description"
                 />
               </div>

@@ -141,9 +141,9 @@ export const deriveSliceFormModel = ({
   const sampleSizeHint: string | null = (() => {
     if (trimmedSampleSize.length === 0 || sampleSizeValid) return null;
     if (sampleSizeNumber !== null && sampleSizeNumber >= 1 && !Number.isInteger(sampleSizeNumber)) {
-      return 'Values ≥ 1 must be whole numbers (e.g. 25, not 25.5).';
+      return 'Sizes of 1 or more must be whole numbers (for example 25, not 25.5).';
     }
-    return 'Enter a fraction (0–1) or an integer row count (≥ 1).';
+    return 'Enter a fraction (0 to 1) or a whole number of rows (1 or more).';
   })();
 
   const trimmedRandomSeed = randomSeedInput.trim();
@@ -211,10 +211,10 @@ export const deriveSliceFormModel = ({
     }
 
     if (!sampleSizeValid) {
-      return 'Enter a fraction (0–1) or an integer row count (≥ 1).';
+      return 'Enter a fraction (0 to 1) or a whole number of rows (1 or more).';
     }
     if (!randomSeedValid) {
-      return 'Random seed must be a non-negative integer.';
+      return 'Random seed must be 0 or a positive whole number.';
     }
     if (sampleSizeValue !== undefined && sampleSizeValue < 1) {
       if (randomSeedValue === undefined) {
@@ -262,9 +262,9 @@ export const deriveSliceFormModel = ({
       if (!sampleSizeValid) {
         return trimmedSampleSize.length === 0
           ? 'Enter a sample size'
-          : 'Enter a valid sample size — a fraction (0–1) or a whole number ≥ 1';
+          : 'Enter a sample size: a fraction (0 to 1) or a whole number of 1 or more';
       }
-      if (!randomSeedValid) return 'Enter a valid random seed (non-negative integer)';
+      if (!randomSeedValid) return 'Enter a random seed: 0 or a positive whole number';
     }
     return undefined;
   })();

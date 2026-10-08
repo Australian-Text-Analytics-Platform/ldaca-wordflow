@@ -62,7 +62,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                 Sample or slice a Data Block
                 <HelpIcon
                   targetKey="preprocessing.slice.tab"
-                  label="Sample sub-tab overview"
+                  label="About Sample"
                   tooltip="Create either a contiguous slice or a random sample from the selected Data Block."
                 />
               </CardTitle>
@@ -249,7 +249,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               )}
             </Button>
           </DisabledReasonTooltip>
-          <HelpIcon targetKey="preprocessing.common.apply-button" label="Apply action" />
+          <HelpIcon targetKey="preprocessing.common.apply-button" label="About Add to Project" />
         </CardFooter>
       </Card>
 

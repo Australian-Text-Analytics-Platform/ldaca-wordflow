@@ -49,8 +49,8 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
                 Filter a Data Block
                 <HelpIcon
                   targetKey="preprocessing.filter.tab"
-                  label="Filter sub-tab overview"
-                  tooltip="Apply column-based filters to a new or selected Data Block."
+                  label="About Filter"
+                  tooltip="Keep only the rows that match your conditions, in a new Data Block."
                 />
               </CardTitle>
             </div>
@@ -77,7 +77,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
                 />
               </span>
             }
-            description="Apply column-based filters to a new or selected Data Block."
+            description="Keep only the rows that match your conditions, in a new Data Block."
             conditions={conditionBuilder.conditions}
             availableColumns={conditionBuilder.availableColumns}
             logic={conditionBuilder.logic}
@@ -146,7 +146,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
               )}
             </Button>
           </DisabledReasonTooltip>
-          <HelpIcon targetKey="preprocessing.common.apply-button" label="Apply action" />
+          <HelpIcon targetKey="preprocessing.common.apply-button" label="About Add to Project" />
         </PreprocessingApplyBar>
       </Card>
 

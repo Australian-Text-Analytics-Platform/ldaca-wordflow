@@ -1237,8 +1237,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           }
           description={
             createColumnDialog?.kind === 'correction'
-              ? 'Add an empty string column to this Data Block and select it for user corrections.'
-              : 'Add an empty string column to this Data Block and select it for annotation.'
+              ? 'Add an empty text column to this Data Block and select it for user corrections.'
+              : 'Add an empty text column to this Data Block and select it for annotation.'
           }
           inputId={
             createColumnDialog?.kind === 'correction'

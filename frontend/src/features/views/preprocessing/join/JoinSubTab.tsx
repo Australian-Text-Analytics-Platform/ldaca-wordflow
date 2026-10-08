@@ -55,7 +55,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
                 Join two Data Blocks
                 <HelpIcon
                   targetKey="preprocessing.join.tab"
-                  label="Join sub-tab overview"
+                  label="About Join"
                   tooltip="Combine up to two Data Blocks using matching columns."
                 />
               </CardTitle>
@@ -148,7 +148,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
               )}
             </Button>
           </DisabledReasonTooltip>
-          <HelpIcon targetKey="preprocessing.common.apply-button" label="Apply action" />
+          <HelpIcon targetKey="preprocessing.common.apply-button" label="About Add to Project" />
         </CardFooter>
       </Card>
 

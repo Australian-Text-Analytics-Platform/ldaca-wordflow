@@ -130,21 +130,21 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.dataLoader.fileSources,
     '[data-guidance="file-sources"]',
     'Bring in source files',
-    'Upload your own files, import sample data, or import from LDaCA. Choose a source to add to User Files.',
+    'Upload your own files, import sample data, or import from LDaCA. Choose a source to add files.',
     2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.addDataBlock,
     resolveAddDataBlockTarget,
     'Make a file analysis-ready',
-    'User Files stay outside the Project until you add one. Preview a file if needed, then choose Add to create a Source Data Block.',
+    'Files stay outside the Project until you add them. Preview a file, then choose Add to make it a Data Block.',
     2,
   ),
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.dataBlocks,
     '[data-guidance="data-blocks"]',
     'Work from Data Blocks',
-    'Data Blocks appear here and in the Project graph. Select one to inspect it, then open a function to analyse or transform it.',
+    'Data Blocks appear here and in the Project graph. Select one to inspect it, then open a tool to analyse or transform it.',
     2,
   ),
 
@@ -152,7 +152,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.inputs,
     '[data-guidance="preprocessing-inputs"]',
     'Choose the data to prepare',
-    'Join and Stack need multiple compatible inputs; the other operations need one. Add the required Data Blocks to continue.',
+    'Join and Stack need two or more matching Data Blocks; the other tools need one. Add the Data Blocks to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.filter,
@@ -182,7 +182,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.preprocessing.preview,
     '[data-guidance="preprocessing-preview"]',
     'Check the transformation before applying',
-    'Preview shows the current transformation without changing the Project. Confirm the rows and columns, then apply it.',
+    'Preview shows the result without changing the Project. Check the rows and columns, then choose Add to Project.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.preprocessing.createOutcome,
@@ -245,13 +245,13 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.trends.inputs,
     '[data-guidance="trends-inputs"]',
     'Choose an ordered Data Block',
-    'Add one Data Block, then select a time or number column for the horizontal axis. Choose that column to continue.',
+    'Add one Data Block, then choose a time, number or category column for the horizontal axis.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.trends.run,
     '[data-guidance="trends-actions"]',
     'Shape the trend',
-    'Set a calendar frequency or a Step for numbers and optionally group by up to three columns. Check the settings, then choose Run.',
+    'Set a Period for dates and times, or a Start and Step for numbers. Add up to three Group By columns, then choose Run.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.trends.results,
@@ -375,7 +375,7 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
     CONTEXTUAL_HINT_IDS.export.inputs,
     '[data-guidance="export-inputs"]',
     'Choose Data Blocks to take with you',
-    'Add individual Data Blocks or use Add all to build the export selection. Choose the tables you need to continue.',
+    'Add Data Blocks one by one or use Add all. Choose the Data Blocks you need to continue.',
   ),
   hint(
     CONTEXTUAL_HINT_IDS.export.format,

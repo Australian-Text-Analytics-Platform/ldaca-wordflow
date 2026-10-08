@@ -103,7 +103,10 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
             <Label htmlFor="concat-new-node-name" className="shrink-0">
               New Data Block name
             </Label>
-            <HelpIcon targetKey="preprocessing.concat.new-node-name" label="Concat output name" />
+            <HelpIcon
+              targetKey="preprocessing.concat.new-node-name"
+              label="About the new Data Block name"
+            />
             <Input
               id="concat-new-node-name"
               value={form.value}
@@ -154,7 +157,7 @@ export function ConcatSubTab(props: ConcatSubTabComponentProps) {
               )}
             </Button>
           </DisabledReasonTooltip>
-          <HelpIcon targetKey="preprocessing.common.apply-button" label="Apply action" />
+          <HelpIcon targetKey="preprocessing.common.apply-button" label="About Add to Project" />
         </CardFooter>
       </Card>
 

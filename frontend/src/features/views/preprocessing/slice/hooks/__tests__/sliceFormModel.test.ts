@@ -75,10 +75,10 @@ describe('deriveSliceFormModel', () => {
     });
 
     expect(invalidSize.sampleSizeHint).toBe(
-      'Values ≥ 1 must be whole numbers (e.g. 25, not 25.5).',
+      'Sizes of 1 or more must be whole numbers (for example 25, not 25.5).',
     );
     expect(invalidSize.applyDisabledReason).toBe(
-      'Enter a valid sample size — a fraction (0–1) or a whole number ≥ 1',
+      'Enter a sample size: a fraction (0 to 1) or a whole number of 1 or more',
     );
 
     const noSeed = deriveSliceFormModel({

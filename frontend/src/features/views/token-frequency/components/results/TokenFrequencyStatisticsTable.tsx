@@ -181,7 +181,7 @@ const buildColumns = (
             onClick={() => {
               onTokenClick(token);
             }}
-            title="Click to inspect in concordance across both corpora."
+            title="Click to open in Concordance for both corpora."
           >
             {token}
           </button>
