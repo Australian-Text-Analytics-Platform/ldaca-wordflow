@@ -27,15 +27,17 @@ function TopicWords({ words, matched }: TopicWordsProps) {
 }
 
 /**
- * One truncated line of a topic's words; the tooltip shows all of them with
- * the same highlighting, since the line rarely has room for every word.
+ * One line of a topic's words that fades out at the right; the tooltip shows
+ * all of them with the same highlighting, since the line rarely has room for
+ * every word. No ellipsis: Safari shows its own plain tooltip for text cut
+ * with one, which appeared beside this one (Chao, 2026-10-08).
  */
 export function TopicWordsLine(props: TopicWordsProps) {
   return (
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger asChild>
-          <div className="truncate text-label-secondary text-description">
+          <div className="overflow-hidden whitespace-nowrap text-label-secondary text-description [mask-image:linear-gradient(to_right,#000_calc(100%_-_2rem),transparent)]">
             <TopicWords {...props} />
           </div>
         </TooltipTrigger>
