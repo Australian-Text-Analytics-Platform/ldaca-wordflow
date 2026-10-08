@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { act, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -303,5 +305,12 @@ describe('ResponsiveWordCloud', () => {
     await waitFor(() => {
       expect(overlay).toBeEmptyDOMElement();
     });
+  });
+
+  it('keeps the echarts-wordcloud patch that stops hover lifting words (issue 343)', () => {
+    // Without it, a large word lifted on hover catches clicks meant for the
+    // small words placed inside its box (pnpm patch, patches/echarts-wordcloud@2.1.0.patch).
+    const view = createRequire(import.meta.url).resolve('echarts-wordcloud/src/WordCloudView.js');
+    expect(readFileSync(view, 'utf8')).toContain('textEl.z2EmphasisLift = 0;');
   });
 });

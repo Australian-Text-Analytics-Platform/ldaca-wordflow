@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  echarts-wordcloud@2.1.0: 1685ec0ac958eb77ee0a3807cd022b1bf0a2040137e4fc7d3e667d3ebccce570
+
 importers:
 
   .:
@@ -76,7 +79,7 @@ importers:
         version: 6.1.0
       echarts-wordcloud:
         specifier: 2.1.0
-        version: 2.1.0(echarts@6.1.0)
+        version: 2.1.0(patch_hash=1685ec0ac958eb77ee0a3807cd022b1bf0a2040137e4fc7d3e667d3ebccce570)(echarts@6.1.0)
       immer:
         specifier: ^11.1.18
         version: 11.1.18
@@ -6732,7 +6735,7 @@ snapshots:
 
   dotenv@17.4.2: {}
 
-  echarts-wordcloud@2.1.0(echarts@6.1.0):
+  echarts-wordcloud@2.1.0(patch_hash=1685ec0ac958eb77ee0a3807cd022b1bf0a2040137e4fc7d3e667d3ebccce570)(echarts@6.1.0):
     dependencies:
       echarts: 6.1.0
 

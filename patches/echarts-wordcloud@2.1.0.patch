@@ -1,0 +1,15 @@
+diff --git a/src/WordCloudView.js b/src/WordCloudView.js
+index d63232ad6cc0e285ec994838dd67e3daaa25d280..8f21ff5fbf24d2a0367dcc1756eb60563fed2416 100644
+--- a/src/WordCloudView.js
++++ b/src/WordCloudView.js
+@@ -36,6 +36,10 @@ echarts.extendChartView({
+ 
+       data.setItemGraphicEl(dataIdx, textEl);
+ 
++      // Wordflow (issue 343): hovering must not lift a word above the smaller
++      // words placed inside its box, or clicks on those words reach it instead.
++      textEl.z2EmphasisLift = 0;
++
+       textEl.ensureState('emphasis').style = echarts.helper.createTextStyle(
+         itemModel.getModel(['emphasis', 'textStyle']),
+         {
