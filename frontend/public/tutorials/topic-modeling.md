@@ -423,8 +423,8 @@ them.
 
 **Open document** shows the whole document with its metadata, and the topic's
 words under the title for reference. The opened
-segment is in the bubble's colour; the topic's other segments in the document
-have a light tint of that colour, and segments of other topics a grey one. In
+segment has a tint of the bubble's colour; the topic's other segments in the
+document have a lighter tint of it, and segments of other topics a grey one. In
 the topic's segments, its words are bold and italic. Text with no topic is not
 highlighted. **Previous segment** and **Next segment** step through the shown
 topic's segments in that document.

@@ -41,12 +41,14 @@ export function TopicDocumentDialog({
   topicColor = 'var(--vscode-charts-orange)',
   onClose,
 }: TopicDocumentDialogProps) {
-  // The segment being read is in the Topic's colour; its other segments in
-  // this document have a light tint of it (Chao, 2026-10-08).
-  const currentStyle = { color: topicColor };
-  const otherStyle = {
-    background: `color-mix(in srgb, ${topicColor} 25%, transparent)`,
-  };
+  // The segment being read has a stronger tint of the Topic's colour than
+  // its other segments; coloured text was hard to read in some colours
+  // (Chao, 2026-10-08).
+  const tint = (percent: number) => ({
+    background: `color-mix(in srgb, ${topicColor} ${String(percent)}%, transparent)`,
+  });
+  const currentStyle = tint(50);
+  const otherStyle = tint(20);
   const documentQuery = useQuery({
     queryKey: [
       'workspaces',
@@ -103,7 +105,8 @@ export function TopicDocumentDialog({
             title={`Topic ${String(span.topic_id)}`}
             data-row-detail-anchor={isCurrent ? '' : undefined}
             data-current-segment={isCurrent ? '' : undefined}
-            className={isCurrent ? undefined : isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
+            data-tint={isCurrent ? 'strong' : isShown ? 'light' : undefined}
+            className={isShown ? SHOWN_SEGMENT : OTHER_SEGMENT}
             style={isCurrent ? currentStyle : isShown ? otherStyle : undefined}
           >
             {isShown
@@ -155,7 +158,7 @@ export function TopicDocumentDialog({
             label: 'Highlights',
             value: (
               <span className="flex flex-wrap items-center gap-2">
-                <span className="px-1" style={currentStyle}>
+                <span className={cn(SHOWN_SEGMENT, 'px-1')} style={currentStyle}>
                   Topic {topicId}, this segment
                 </span>
                 <span className={cn(SHOWN_SEGMENT, 'px-1')} style={otherStyle}>

@@ -40,7 +40,7 @@ describe('TopicDocumentDialog (#353)', () => {
     });
   });
 
-  it('shows the opened segment bold in the topic colour and steps through its segments', async () => {
+  it('tints the opened segment more strongly and steps through its segments', async () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient()}>
@@ -64,7 +64,8 @@ describe('TopicDocumentDialog (#353)', () => {
       (_, element) => element?.hasAttribute('data-current-segment') ?? false,
     );
     expect(current).toHaveTextContent('Rents fell again.');
-    expect(current).toHaveStyle({ color: '#16a34a' });
+    expect(current).toHaveAttribute('data-tint', 'strong');
+    expect(screen.getByText('rose.', { exact: false })).toHaveAttribute('data-tint', 'light');
     // Only the topic's words are bold and italic, in every segment of the topic.
     expect(within(current).getByText('Rents')).toHaveClass('font-bold', 'italic');
     expect(within(current).queryByText('fell')).toBeNull();
