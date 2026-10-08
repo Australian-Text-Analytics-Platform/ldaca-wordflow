@@ -107,9 +107,23 @@ def order_topic_segments(
     return unique
 
 
+def shared_columns(column_lists: Sequence[Sequence[str]]) -> list[str]:
+    """Columns every Data Block of the run has, in the first one's order.
+
+    The examples' Label menu offers only these, so a label never silently
+    applies to one Data Block of a comparison run (Chao, 2026-10-08).
+    """
+
+    if not column_lists:
+        return []
+    rest = [set(columns) for columns in column_lists[1:]]
+    return [column for column in column_lists[0] if all(column in other for other in rest)]
+
+
 __all__ = [
     "TopicSegment",
     "corpus_position",
     "order_topic_segments",
+    "shared_columns",
     "typicality_percentiles",
 ]

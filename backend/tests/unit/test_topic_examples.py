@@ -64,3 +64,11 @@ def test_group_label_matches_the_colour_legend() -> None:
     assert group_label(2.0) == "2"
     assert group_label(True) == "true"
     assert group_label("Senate") == "Senate"
+
+
+def test_label_columns_are_those_every_data_block_has() -> None:
+    from ldaca_wordflow.analysis.topic_examples import shared_columns
+
+    assert shared_columns([["party", "date", "user"], ["date", "user"]]) == ["date", "user"]
+    assert shared_columns([["party", "date"]]) == ["party", "date"]
+    assert shared_columns([]) == []

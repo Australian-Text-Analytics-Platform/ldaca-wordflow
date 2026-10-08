@@ -32,6 +32,7 @@ from ..analysis.topic_examples import (
     TopicSegment,
     corpus_position,
     order_topic_segments,
+    shared_columns,
     typicality_percentiles,
 )
 from ..analysis.topic_metadata_colors import (
@@ -620,8 +621,8 @@ class AnalysisResultService:
             has_similarity=bool(segments) and segments[0].similarity is not None,
             page=query.page,
             page_size=query.page_size,
-            metadata_columns=sorted(
-                {column for source in sources for column in source.metadata_columns}
+            metadata_columns=shared_columns(
+                [source.metadata_columns for source in sources]
             ),
             items=items,
         )
