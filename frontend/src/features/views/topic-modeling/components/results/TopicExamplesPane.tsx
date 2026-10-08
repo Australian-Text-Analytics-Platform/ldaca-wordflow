@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { queryTopicSegments, type TopicModelingTopic, type TopicSegmentItem } from '@/api';
@@ -30,6 +30,8 @@ export interface TopicExamplesContext {
   clusterCount: number;
   /** Data Block names, in the run's order (two for a comparison run). */
   nodeNames: string[];
+  /** Each Data Block's colour, as in the chart, for its name on the cards. */
+  corpusColors?: string[];
   colorScheme: TopicColorScheme | null;
 }
 
@@ -65,7 +67,7 @@ function SegmentCard({
   item: TopicSegmentItem;
   words: readonly string[];
   wordColor?: string;
-  label: string;
+  label: ReactNode;
   onOpen: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -137,6 +139,7 @@ export function TopicExamplesPane({
   analysisId,
   clusterCount,
   nodeNames,
+  corpusColors = [],
   colorScheme,
   topic,
   wordColor,
@@ -220,11 +223,19 @@ export function TopicExamplesPane({
   const resetPage = () => {
     setPage(1);
   };
-  const itemLabel = (item: TopicSegmentItem) => {
+  const itemLabel = (item: TopicSegmentItem): ReactNode => {
     const value = labelColumn === NO_LABEL ? null : item.metadata[labelColumn];
     if (value) return value;
     const blockName = nodeNames[item.corpus_index] ?? 'Data Block';
-    return `${blockName}, row ${String(item.row_index + 1)}`;
+    // The Data Block's name in its colour, as in the chart (Chao, 2026-10-08).
+    return (
+      <>
+        <span className="font-medium" style={{ color: corpusColors[item.corpus_index] }}>
+          {blockName}
+        </span>
+        , row {item.row_index + 1}
+      </>
+    );
   };
 
   return (

@@ -67,6 +67,7 @@ function renderPane(props: Partial<React.ComponentProps<typeof TopicExamplesPane
           analysisId="analysis-1"
           clusterCount={8}
           nodeNames={['Hansard']}
+          corpusColors={['#dc2626']}
           colorScheme={null}
           topic={topic}
           wordColor="#2563eb"
@@ -121,7 +122,8 @@ describe('TopicExamplesPane (#353)', () => {
     // The Topic's words take its bubble's base colour.
     expect(within(cards[0]!).getByText('Housing')).toHaveStyle({ color: '#2563eb' });
     expect(within(cards[0]!).getByText('rent')).toHaveClass('font-semibold');
-    expect(within(cards[0]!).getByText('Hansard, row 1')).toBeInTheDocument();
+    expect(cards[0]).toHaveTextContent('Hansard, row 1');
+    expect(within(cards[0]!).getByText('Hansard')).toHaveStyle({ color: '#dc2626' });
   });
 
   it('asks for the next page and switches to random order', async () => {
