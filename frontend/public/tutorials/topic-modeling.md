@@ -206,8 +206,9 @@ document**, **Words**, the stop word controls, **Colour by** for a
 single-corpus result, and **Find topics**, with **Add to Project** at its
 right. Question-mark icons beside some of these controls give a short
 explanation. Below it, the topic list takes the left third and the
-[examples of one topic](#help-topic-modeling-examples) the right two thirds;
-in a narrow window the list sits above the examples. The area has its own
+[examples of one topic](#help-topic-modeling-examples) the rest; drag the
+divider between them to widen the list (double-click it to go back to a
+third). In a narrow window the list sits above the examples. The area has its own
 resize grip, like the chart itself.
 
 ![Result settings: Topics, Per document, Words, and the stop word filter](tutorials/assets/topic_modelling/result_settings.png)

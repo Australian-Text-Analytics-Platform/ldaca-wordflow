@@ -1,4 +1,6 @@
+import { type CSSProperties, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { ResultFrame } from '@/features/views/common/components/ResultFrame';
 import type { TopicModelingTopic } from '@/api';
 import { Eye } from 'lucide-react';
@@ -27,6 +29,33 @@ interface Props {
   /** Omitted when the run cannot list examples, for example in tests of the list alone. */
   examples?: TopicExamplesContext;
 }
+
+/** The list's share of the width beside the examples: a third by default. */
+const DEFAULT_LIST_SHARE = 1 / 3;
+const MIN_LIST_SHARE = 0.2;
+const MAX_LIST_SHARE = 0.7;
+const LIST_SHARE_STEP = 0.05;
+const LIST_SHARE_KEY = 'ldaca.layout.topicListShare';
+
+const clampShare = (share: number) => Math.min(MAX_LIST_SHARE, Math.max(MIN_LIST_SHARE, share));
+
+const readListShare = (): number => {
+  try {
+    const parsed = Number(window.localStorage.getItem(LIST_SHARE_KEY));
+    return parsed > 0 ? clampShare(parsed) : DEFAULT_LIST_SHARE;
+  } catch {
+    return DEFAULT_LIST_SHARE;
+  }
+};
+
+const writeListShare = (share: number | null) => {
+  try {
+    if (share === null) window.localStorage.removeItem(LIST_SHARE_KEY);
+    else window.localStorage.setItem(LIST_SHARE_KEY, share.toFixed(3));
+  } catch {
+    // Private windows can refuse storage; the divider still works for this session.
+  }
+};
 
 interface TopicCardProps {
   topic: TopicModelingTopic;
@@ -132,7 +161,8 @@ function TopicCard({
  * selection, search, lasso, and shown-Topic state with the chart.
  * Flow: one list in two groups that scroll separately. Selected Topics are
  * always listed, dimmed when the search or lasso hides them; Others lists
- * the rest that match. The right two thirds show the shown Topic's examples.
+ * the rest that match. The shown Topic's examples fill the rest of the
+ * width, beside a divider that sets the list's share (a third by default).
  */
 export function TopicSelectionPanel({
   topics,
@@ -169,6 +199,22 @@ export function TopicSelectionPanel({
     (topic) => !selectedTopicIds.has(topic.id) && matchingIds.has(topic.id),
   );
   const shownTopic = topics.find((topic) => topic.id === shownTopicId) ?? null;
+  // A divider between the list and the examples sets the list's width; it
+  // is remembered in this browser, and double-click returns to a third (Chao, 2026-10-08).
+  const gridRef = useRef<HTMLDivElement | null>(null);
+  const [listShare, setListShare] = useState(readListShare);
+  const [dragging, setDragging] = useState(false);
+  const commitShare = (share: number | null) => {
+    const next = share === null ? DEFAULT_LIST_SHARE : clampShare(share);
+    setListShare(next);
+    writeListShare(share === null ? null : next);
+  };
+  const shareAt = (clientX: number) => {
+    const bounds = gridRef.current?.getBoundingClientRect();
+    return bounds && bounds.width > 0
+      ? clampShare((clientX - bounds.left) / bounds.width)
+      : listShare;
+  };
 
   const card = (topic: TopicModelingTopic) => (
     <TopicCard
@@ -202,10 +248,12 @@ export function TopicSelectionPanel({
           className="@container h-full overflow-y-auto @min-[700px]:overflow-hidden"
         >
           <div
+            ref={gridRef}
             className={cn(
-              'grid grid-cols-1 gap-4 @min-[700px]:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]',
+              'grid grid-cols-1 gap-4 @min-[700px]:grid-cols-[var(--topic-list-width)_auto_minmax(0,1fr)] @min-[700px]:gap-x-1',
               height !== null && '@min-[700px]:h-full @min-[700px]:grid-rows-1',
             )}
+            style={{ '--topic-list-width': `${(listShare * 100).toFixed(1)}%` } as CSSProperties}
           >
             <section
               aria-label="Topics"
@@ -261,6 +309,49 @@ export function TopicSelectionPanel({
                 ) : null}
               </div>
             </section>
+            {examples ? (
+              <ResizeHandle
+                orientation="vertical"
+                variant="bar"
+                isDragging={dragging}
+                aria-label="Resize the topic list and examples"
+                aria-valuenow={Math.round(listShare * 100)}
+                aria-valuemin={MIN_LIST_SHARE * 100}
+                aria-valuemax={MAX_LIST_SHARE * 100}
+                tabIndex={0}
+                title="Drag to resize. Double-click to reset."
+                data-testid="topic-list-divider"
+                className="hidden h-full @min-[700px]:flex"
+                onPointerDown={(event) => {
+                  if (event.button !== 0) return;
+                  event.preventDefault();
+                  event.currentTarget.setPointerCapture(event.pointerId);
+                  setDragging(true);
+                }}
+                onPointerMove={(event) => {
+                  if (dragging) setListShare(shareAt(event.clientX));
+                }}
+                onPointerUp={(event) => {
+                  if (!dragging) return;
+                  event.currentTarget.releasePointerCapture(event.pointerId);
+                  setDragging(false);
+                  commitShare(shareAt(event.clientX));
+                }}
+                onPointerCancel={() => {
+                  setDragging(false);
+                }}
+                onDoubleClick={() => {
+                  commitShare(null);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                  event.preventDefault();
+                  commitShare(
+                    listShare + (event.key === 'ArrowLeft' ? -LIST_SHARE_STEP : LIST_SHARE_STEP),
+                  );
+                }}
+              />
+            ) : null}
             {examples ? (
               <TopicExamplesPane
                 key={`${examples.analysisId}:${String(examples.clusterCount)}`}

@@ -1,5 +1,6 @@
 import type React from 'react';
 import { fireEvent, render, screen, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, expect, it, vi } from 'vitest';
 
 import { TopicSelectionPanel } from '../TopicSelectionPanel';
@@ -122,6 +123,35 @@ describe('TopicSelectionPanel', () => {
     const eye = screen.getByRole('button', { name: 'Stop showing Topic 2' });
     expect(eye).toHaveAttribute('aria-pressed', 'true');
     expect(eye).toHaveClass('bg-button');
+  });
+
+  it('resizes the list beside the examples with the divider (#353)', () => {
+    window.localStorage.removeItem('ldaca.layout.topicListShare');
+    const client = new QueryClient();
+    render(
+      <QueryClientProvider client={client}>
+        <TopicSelectionPanel
+          {...panelProps({
+            examples: {
+              workspaceId: 'ws-1',
+              analysisId: 'analysis-1',
+              clusterCount: 3,
+              nodeNames: ['Hansard'],
+              colorScheme: null,
+            },
+          })}
+        />
+      </QueryClientProvider>,
+    );
+
+    const divider = screen.getByRole('separator', { name: 'Resize the topic list and examples' });
+    expect(divider).toHaveAttribute('aria-valuenow', '33');
+    fireEvent.keyDown(divider, { key: 'ArrowRight' });
+    expect(divider).toHaveAttribute('aria-valuenow', '38');
+    expect(window.localStorage.getItem('ldaca.layout.topicListShare')).toBe('0.383');
+    fireEvent.doubleClick(divider);
+    expect(divider).toHaveAttribute('aria-valuenow', '33');
+    expect(window.localStorage.getItem('ldaca.layout.topicListShare')).toBeNull();
   });
 
   it('picks out the matching words in bold orange, with all words in a tooltip (issue 342)', async () => {
