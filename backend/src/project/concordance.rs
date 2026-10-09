@@ -555,6 +555,69 @@ mod tests {
             .unwrap();
         assert_eq!(count, 0);
     }
+
+    #[test]
+    fn publication_retains_reserved_source_text_and_suffixes_only_generated_output() {
+        let (mut project, tab, mut input, search) = setup();
+        project.database.conn.execute_batch("ALTER TABLE docs RENAME text TO CONC_matched_text; ALTER TABLE docs ADD COLUMN CONC_extraction VARCHAR").unwrap();
+        input.column = "CONC_matched_text".into();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let result = project
+            .database
+            .test_concordance(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        let selected = PublishSource {
+            source_index: 0,
+            name: "published".into(),
+            metadata: vec!["CONC_extraction".into()],
+            fields: vec!["matched_text".into()],
+            filter: ConcordanceFilter::default(),
+        };
+        assert!(
+            project
+                .database
+                .publish_concordance(
+                    result.id,
+                    ConcordancePublish {
+                        projection: Projection::Matches,
+                        sources: vec![selected.clone()]
+                    }
+                )
+                .is_err()
+        );
+        let selected = PublishSource {
+            metadata: vec![],
+            ..selected
+        };
+        project
+            .database
+            .publish_concordance(
+                result.id,
+                ConcordancePublish {
+                    projection: Projection::Matches,
+                    sources: vec![selected],
+                },
+            )
+            .unwrap();
+        let row = project
+            .database
+            .conn
+            .query_row(
+                "SELECT CONC_matched_text,CONC_matched_text_2 FROM data.published LIMIT 1",
+                [],
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)),
+            )
+            .unwrap();
+        assert_eq!(row, ("😀 cat cat".into(), "cat".into()));
+    }
     #[test]
     fn empty_saved_results_keep_explicit_schemas() {
         let (mut project, tab, input, mut search) = setup();

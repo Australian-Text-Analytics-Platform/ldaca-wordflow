@@ -74,14 +74,14 @@ export const getOperatorsForField = (field: ArrowField | undefined) => {
  */
 export const formatPreviewValue = (value: unknown): string => {
   if (value === null) {
-    return '(null)';
+    return '(missing)';
   }
   if (value === undefined) {
-    return '(undefined)';
+    return '(missing)';
   }
   if (typeof value === 'string') {
     if (value.trim() === '') {
-      return '(empty string)';
+      return value === '' ? '(empty text)' : '(blank text)';
     }
     return value;
   }

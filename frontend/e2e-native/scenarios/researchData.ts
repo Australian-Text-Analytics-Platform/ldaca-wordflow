@@ -85,8 +85,13 @@ export async function chooseColumn(label: string, value: string, scope: Chainabl
   // Radix Select also opens with the embedded driver's keyboard events.
   if (!(await $('[role="option"]').isExisting())) await browser.keys('ArrowDown');
   const option = $(`[role="option"]=${value}`);
-  await option.waitForDisplayed();
-  await option.click();
+  await browser.waitUntil(async () =>
+    (await trigger.getText()) === value || (await option.isDisplayed()),
+    { timeoutMsg: `Choice ${value} did not become available` },
+  );
+  // Language detection may select the requested default while the menu opens.
+  if ((await trigger.getText()) !== value) await option.click();
+  else if (await $('[role="listbox"]').isExisting()) await browser.keys('Escape');
   await expect(trigger).toHaveText(value);
   await expect($('[role="listbox"]')).not.toExist();
 }

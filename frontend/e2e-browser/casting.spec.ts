@@ -115,7 +115,7 @@ for (const kind of ['table', 'view']) {
     if (kind === 'view') {
       await role('button', { name: 'Undo Data Block edit' }).click();
       await expect(role('button', { name: 'Change data type for column items' })).toHaveText(
-        expect.stringContaining('string'),
+        expect.stringContaining('text'),
       );
       await sql([
         `SELECT CASE WHEN typeof(items)='VARCHAR' AND items='[1,2]' THEN 1 ELSE error('Undo failed') END FROM data."Cast data" WHERE items IS NOT NULL`,
@@ -153,10 +153,10 @@ it('rejects invalid types, extra SQL and incompatible values without altering th
     expectAppError(type === 'missing_type' ? /missing_type/ : type === 'INTEGER' ? /broken/ : /Enter one SQL type|Only SELECT statements can be serialized/i);
     await input.setValue(type);
     await role('button', { name: 'Cast', exact: true }, dialog).click();
-    await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(1);
+    await expect(role('alert', {}, dialog)).toBeDisplayed();
+    await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(0);
     await expect(role('button', { name: 'Cast', exact: true }, dialog)).toBeDisplayed();
     await expect(input).toHaveValue(type);
-    await browser.$('[data-sonner-toast] button[aria-label="Close toast"]').click();
   }
   await role('button', { name: 'Cancel', exact: true }, dialog).click();
   await sql([
@@ -165,7 +165,7 @@ it('rejects invalid types, extra SQL and incompatible values without altering th
   ]);
 });
 
-it('commits a lazy View cast and displays the conversion error from the refreshed page', async () => {
+it('validates the complete View before conversion and keeps the failed form editable', async () => {
   await sql([
     `CREATE TABLE data.lazy_cast_source(created_at VARCHAR)`,
     `INSERT INTO data.lazy_cast_source VALUES ('2020-10-17 00:52:37.000 +0000')`,
@@ -176,15 +176,16 @@ it('commits a lazy View cast and displays the conversion error from the refreshe
   await role('button', { name: 'Select lazy_cast', exact: true }).click();
   const overlay = testId('project-data-overlay');
   await overlay.waitForStable();
-  await expect(overlay).toHaveText(expect.stringContaining('2020-10-17'));
   expectAppError(/Conversion Error/);
-  await cast('created_at', 'TIMESTAMP');
-  await expect(browser.$('[data-sonner-toast]')).toHaveText(expect.stringContaining('Conversion Error'));
-  await expect(role('alert', {}, overlay)).not.toExist();
-  await browser.$('[data-sonner-toast] button[aria-label="Close toast"]').click();
-  // The cast committed; Undo restores the previous definition and the page.
-  await role('button', { name: 'Undo Data Block edit', exact: true }, overlay).click();
-  await expect(role('alert', {}, overlay)).not.toExist();
+  await role('button', { name: 'Change data type for column created_at' }).click();
+  await role('menuitem', { name: 'More SQL types…' }).click();
+  const dialog = role('dialog', { name: 'Cast column' });
+  await role('textbox', { name: 'SQL type' }, dialog).setValue('TIMESTAMP');
+  await role('button', { name: 'Cast', exact: true }, dialog).click();
+  await expect(role('alert', {}, dialog)).toHaveText(expect.stringContaining('Conversion Error'));
+  await expect(role('textbox', { name: 'SQL type' }, dialog)).toHaveValue('TIMESTAMP');
+  await sql([`SELECT CASE WHEN typeof(created_at)='VARCHAR' THEN 1 ELSE error('Failed cast changed View') END FROM data.lazy_cast`]);
+  await role('button', { name: 'Cancel', exact: true }, dialog).click();
   await expect(overlay).toHaveText(expect.stringContaining('2020-10-17'));
 });
 

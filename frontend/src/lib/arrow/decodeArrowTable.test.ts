@@ -5,6 +5,10 @@ import {
   Field,
   Int64,
   List,
+  makeData,
+  makeVector,
+  TimestampMicrosecond,
+  TimestampNanosecond,
   Struct,
   Table,
   vectorFromArray,
@@ -52,3 +56,22 @@ it('normalizes dates recursively while retaining exact integers and decimals', (
   exact.toString = () => '900719925474099312345';
   expect(normalizeArrowValue(exact, decimal)).toBe('900719925474099312.345');
 });
+
+it.each([new TimestampMicrosecond('UTC'), new TimestampNanosecond('UTC')])(
+  'preserves sub-millisecond timestamps, including nested values and pre-epoch instants (%s)',
+  (type) => {
+    const value = type.unit === 2 ? 1_700_000_000_123_456n : 1_700_000_000_123_456_789n;
+    const vector = makeVector(makeData({ type, data: new BigInt64Array([value, -1n]) }));
+    const nested = new Struct([new Field('instant', type)]);
+    const struct = makeVector(makeData({ type: nested, length: 2, children: vector.data }));
+    const table = new Table({ instant: vector, nested: struct });
+    const expected =
+      type.unit === 2
+        ? ['2023-11-14T22:13:20.123456Z', '1969-12-31T23:59:59.999999Z']
+        : ['2023-11-14T22:13:20.123456789Z', '1969-12-31T23:59:59.999999999Z'];
+    expect(decodeArrowData(table).rows).toEqual(
+      expected.map((instant) => ({ instant, nested: { instant } })),
+    );
+    expect(decodeArrowData(table.slice(1)).rows[0]?.instant).toBe(expected[1]);
+  },
+);

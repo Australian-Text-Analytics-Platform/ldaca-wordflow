@@ -170,6 +170,7 @@ function ProjectViewContent({
   };
   const remove = (id: objectsApi.DataTarget) => removeMany([id]);
   const renamed = useMutation({
+    meta: { reportError: false },
     mutationFn: ({ id, name }: { id: objectsApi.DataTarget; name: string }) =>
       projectApi.renameNode(base, id, name),
   });
@@ -197,9 +198,7 @@ function ProjectViewContent({
       replacement: objectsApi.ObjectRef;
     }) => projectApi.replaceSource(base, child, source, replacement),
   });
-  const rename = (id: objectsApi.DataTarget, name: string) => {
-    renamed.mutate({ id, name });
-  };
+  const rename = (id: objectsApi.DataTarget, name: string) => renamed.mutateAsync({ id, name });
   const clone = cloned.mutate;
   const undo = undone.mutate;
   const destinations = useInputDestinations((state) => state.destinations);
@@ -360,9 +359,7 @@ function ProjectViewContent({
               }}
               onDelete={(id) => remove(graphTarget(id))}
               onDeleteMany={(ids) => removeMany(ids.map(graphTarget))}
-              onRename={(id, next) => {
-                rename(graphTarget(id), next);
-              }}
+              onRename={(id, next) => rename(graphTarget(id), next)}
               onClone={(id) => {
                 clone(graphTarget(id));
               }}

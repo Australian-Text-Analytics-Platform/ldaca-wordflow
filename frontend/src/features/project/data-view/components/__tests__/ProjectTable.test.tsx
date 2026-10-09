@@ -67,24 +67,24 @@ describe('ProjectTable', () => {
 
     expect(
       screen.getByRole('button', { name: 'Change data type for column text' }),
-    ).toHaveTextContent('string');
+    ).toHaveTextContent('text');
     expect(
       screen.getByRole('button', { name: 'Change data type for column category' }),
-    ).toHaveTextContent('categorical');
+    ).toHaveTextContent('category');
     expect(
       screen.getByRole('button', { name: 'Change data type for column count' }),
-    ).toHaveTextContent('integer');
+    ).toHaveTextContent('whole number');
     expect(
       screen.getByRole('button', { name: 'Change data type for column score' }),
-    ).toHaveTextContent('float');
+    ).toHaveTextContent('decimal');
     expect(
       screen.getByRole('button', { name: 'Change data type for column created_at' }),
-    ).toHaveTextContent('datetime');
+    ).toHaveTextContent('date and time with timezone');
 
     await user.click(screen.getByRole('button', { name: 'Change data type for column category' }));
 
     expect(
-      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'categorical' }),
+      within(screen.getByRole('menu')).getAllByRole('menuitemradio', { name: 'category' }),
     ).toHaveLength(1);
   });
 

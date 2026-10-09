@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -26,10 +27,22 @@ export function TopicPublishDialog({
   initial: topicApi.TopicPublish;
   onClose: () => void;
 }) {
-  const [request, setRequest] = useState(() => structuredClone(initial));
+  const allowed = (index: number, name: string) =>
+    name === summary.sources[index]?.input.column ||
+    !['topic_top1', 'topic_coverage'].includes(name.toLowerCase());
+  const [request, setRequest] = useState(() => ({
+    ...structuredClone(initial),
+    sources: initial.sources.map((source, i) => ({
+      ...source,
+      columns: [...new Set([summary.sources[i]!.input.column, ...source.columns])].filter((name) =>
+        allowed(i, name),
+      ),
+    })),
+  }));
   const [selected, setSelected] = useState(summary.sources.map(() => true));
   const [sync, setSync] = useState(false);
   const mutation = useMutation({
+    meta: { reportError: false },
     mutationFn: (captured: topicApi.TopicPublish) => topicApi.publishTopicModel(base, id, captured),
     onSuccess: onClose,
   });
@@ -38,7 +51,10 @@ export function TopicPublishDialog({
       ...old,
       sources: old.sources.map((source, i) =>
         i === index ||
-        (sync && selected[i] && summary.sources[i]?.columns.some(([name]) => name === column))
+        (sync &&
+          selected[i] &&
+          allowed(i, column) &&
+          summary.sources[i]?.columns.some(([name]) => name === column))
           ? {
               ...source,
               columns: checked
@@ -82,7 +98,10 @@ export function TopicPublishDialog({
                   selected[i]
                     ? {
                         ...s,
-                        columns: summary.sources[i]?.columns.map(([name]) => name) ?? [],
+                        columns:
+                          summary.sources[i]?.columns
+                            .map(([name]) => name)
+                            .filter((name) => allowed(i, name)) ?? [],
                         coverage: true,
                       }
                     : s,
@@ -98,7 +117,9 @@ export function TopicPublishDialog({
               setRequest((old) => ({
                 ...old,
                 sources: old.sources.map((s, i) =>
-                  selected[i] ? { ...s, columns: [], coverage: false } : s,
+                  selected[i]
+                    ? { ...s, columns: [summary.sources[i]!.input.column], coverage: false }
+                    : s,
                 ),
               }));
             }}
@@ -123,7 +144,12 @@ export function TopicPublishDialog({
                             columns:
                               summary.sources[i]?.columns
                                 .map(([name]) => name)
-                                .filter((name) => columns.has(name)) ?? [],
+                                .filter(
+                                  (name) =>
+                                    allowed(i, name) &&
+                                    (columns.has(name) ||
+                                      name === summary.sources[i]!.input.column),
+                                ) ?? [],
                           }
                         : s,
                     ),
@@ -183,8 +209,14 @@ export function TopicPublishDialog({
               {summary.sources[i]?.columns.map(([column]) => (
                 <label key={column} className="flex items-center gap-2 break-all">
                   <Checkbox
-                    checked={output.columns.includes(column)}
-                    disabled={!selected[i]}
+                    checked={
+                      column === summary.sources[i]?.input.column || output.columns.includes(column)
+                    }
+                    disabled={
+                      !selected[i] ||
+                      column === summary.sources[i]?.input.column ||
+                      !allowed(i, column)
+                    }
                     onCheckedChange={(value) => {
                       changeColumn(i, column, value === true);
                     }}
@@ -205,7 +237,7 @@ export function TopicPublishDialog({
           />
         </label>
         {mutation.isError && (
-          <p role="alert">Could not create the Data Blocks. Your choices are retained.</p>
+          <OperationError error={mutation.error} title="Couldn't create Data Blocks" />
         )}
         <DialogFooter>
           <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>

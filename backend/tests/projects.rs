@@ -1,4 +1,4 @@
-use arrow_ipc::reader::{FileReader, StreamReader};
+use arrow_ipc::reader::StreamReader;
 use duckdb::arrow::{
     array::{Array, BinaryArray, Float64Array, Int64Array, ListArray, StringArray, StructArray},
     record_batch::RecordBatch,
@@ -912,7 +912,7 @@ async fn native_rename_clone_cast_and_export() {
     app.close().await;
     app.reopen().await;
     app.action("b", "undo", json!({})).await;
-    for format in ["csv", "json", "ndjson", "parquet", "ipc"] {
+    for format in ["csv", "xlsx", "json", "parquet"] {
         let result = app.post("/nodes/b/export", json!({"format":format})).await;
         let status = result.status();
         let bytes = result.bytes().await.unwrap();
@@ -921,14 +921,11 @@ async fn native_rename_clone_cast_and_export() {
         if format == "csv" {
             assert!(String::from_utf8_lossy(&bytes).contains("101"));
         }
-        if format == "ipc" {
-            assert_eq!(
-                FileReader::try_new(Cursor::new(bytes), None)
-                    .unwrap()
-                    .map(|b| b.unwrap().num_rows())
-                    .sum::<usize>(),
-                2
-            );
+        if format == "xlsx" {
+            use calamine::Reader;
+            let mut workbook = calamine::Xlsx::new(Cursor::new(bytes)).unwrap();
+            assert_eq!(workbook.sheet_names(), &["Data"]);
+            assert_eq!(workbook.worksheet_range("Data").unwrap().height(), 3);
         }
     }
     app.close().await;
@@ -2020,7 +2017,7 @@ async fn import_task_cancellation_rolls_back_all_sources_and_keeps_sql_usable() 
 }
 
 #[tokio::test]
-async fn arrow_export_preserves_extension_metadata_and_exact_values() {
+async fn internal_arrow_transport_preserves_extension_metadata_and_exact_values() {
     let app = App::start().await;
     app.create().await;
     app.sql(&[
@@ -2029,9 +2026,11 @@ async fn arrow_export_preserves_extension_metadata_and_exact_values() {
         "INSERT INTO wordflow.nodes(table_name) VALUES ('t')",
         "INSERT INTO wordflow.arrow_metadata(schema_name,relation_name,field_path,extension_name,extension_metadata) VALUES ('data','t',json_array('label'),'wordflow.test','{\"version\":1}')",
     ]).await;
-    let response = app.post("/nodes/t/export", json!({"format":"ipc"})).await;
+    let response = app
+        .post("/nodes/t/page", json!({"page":1,"page_size":20}))
+        .await;
     assert_eq!(response.status(), 200);
-    let reader = FileReader::try_new(Cursor::new(response.bytes().await.unwrap()), None).unwrap();
+    let reader = StreamReader::try_new(Cursor::new(response.bytes().await.unwrap()), None).unwrap();
     assert_eq!(
         reader.schema().field(2).metadata()["ARROW:extension:name"],
         "wordflow.test"
@@ -2332,7 +2331,7 @@ async fn object_routes_share_mutations_without_registering_or_crossing_schemas()
             .iter()
             .any(|edge| edge["target"] == json!({"schema":"other","name":"v"}))
     );
-    for format in ["csv", "json", "ndjson", "parquet", "ipc"] {
+    for format in ["csv", "xlsx", "json", "parquet"] {
         let response = app
             .post("/objects/other/v/export", json!({"format":format}))
             .await;
@@ -3465,11 +3464,11 @@ async fn export_service_inspects_captures_and_streams_portable_projects() {
         0
     );
     assert!(copy.prepare("SELECT * FROM data.\"文件 / one\"").is_err());
-    let single=app.post("/exports",json!({"kind":"files","objects":[{"schema":"data","name":"文件 / one"}],"format":"ipc"})).await;
+    let single=app.post("/exports",json!({"kind":"files","objects":[{"schema":"data","name":"文件 / one"}],"format":"xlsx"})).await;
     assert_eq!(single.status(), 200);
     assert_eq!(
         single.headers()["content-type"],
-        "application/vnd.apache.arrow.file"
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     );
     assert!(
         single.headers()["content-disposition"]
@@ -3477,8 +3476,10 @@ async fn export_service_inspects_captures_and_streams_portable_projects() {
             .unwrap()
             .contains("%E6%96%87")
     );
-    let reader = FileReader::try_new(Cursor::new(single.bytes().await.unwrap()), None).unwrap();
-    assert_eq!(reader.map(|b| b.unwrap().num_rows()).sum::<usize>(), 2);
+    use calamine::Reader;
+    let mut workbook = calamine::Xlsx::new(Cursor::new(single.bytes().await.unwrap())).unwrap();
+    assert_eq!(workbook.sheet_names(), &["Data"]);
+    assert_eq!(workbook.worksheet_range("Data").unwrap().height(), 3);
     let zip=app.post("/exports",json!({"kind":"files","objects":[{"schema":"data","name":"文件 / one"},{"schema":"data","name":"filtered"}],"format":"csv"})).await;
     assert_eq!(zip.status(), 200);
     assert_eq!(zip.headers()["content-type"], "application/zip");

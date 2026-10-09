@@ -305,6 +305,7 @@ export function FrequencyResults({
         name={tab.name}
         message={queryError ? 'Could not load results.' : 'Loading results…'}
         error={Boolean(queryError)}
+        diagnostic={queryError?.error}
         onRetry={
           queryError
             ? () => {

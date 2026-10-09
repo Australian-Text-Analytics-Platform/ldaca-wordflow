@@ -14,15 +14,15 @@ export async function datetimeScenario(base: string) {
   const stamp = browser.$('[aria-label="Change data type for column stamp"]');
   await stamp.click();
   await browser.keys('ArrowDown');
-  await browser.$('[role="menuitemradio"]=datetime').click();
-  await expect(stamp).toHaveText(expect.stringContaining('datetime with timezone'));
+  await browser.$('[role="menuitemradio"]=date and time').click();
+  await expect(stamp).toHaveText(expect.stringContaining('date and time with timezone'));
   await expect(browser.$('[role="dialog"]')).not.toExist();
   await querySql(base, [{ sql: "SELECT CASE WHEN stamp=TIMESTAMPTZ '2020-10-16 19:22:37+00' THEN 1 ELSE error('Offset was lost') END FROM data.datetime_probe" }]);
   const ambiguous = browser.$('[aria-label="Change data type for column ambiguous"]');
   await ambiguous.scrollIntoView();
   await ambiguous.click();
   await browser.keys('ArrowDown');
-  await browser.$('[role="menuitemradio"]=datetime').click();
+  await browser.$('[role="menuitemradio"]=date and time').click();
   const dialog = browser.$('[role="dialog"]');
   await expect(dialog).toBeDisplayed();
   await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(0);
@@ -30,13 +30,13 @@ export async function datetimeScenario(base: string) {
   await input.setValue('%Y-%m-%d');
   expectAppError(/Could not parse string/);
   await dialog.$('button=Convert').click();
-  await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(1);
+  await expect(dialog.$('[role="alert"]')).toHaveText(expect.stringContaining('Could not parse string'));
+  await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(0);
   await expect(dialog).toBeDisplayed();
   await expect(input).toHaveValue('%Y-%m-%d');
-  await browser.$('[data-sonner-toast] button[aria-label="Close toast"]').click();
   await input.setValue('%d/%m/%Y');
   await dialog.$('button=Convert').click();
   await expect(dialog).not.toExist();
-  await expect(ambiguous).toHaveText(expect.stringContaining('datetime'));
+  await expect(ambiguous).toHaveText(expect.stringContaining('date and time'));
   await querySql(base, [{ sql: "SELECT CASE WHEN ambiguous=TIMESTAMP '2020-02-01' THEN 1 ELSE error('Wrong manual date') END FROM data.datetime_probe" }]);
 }

@@ -114,6 +114,10 @@ DuckDB's rendered SQL. Metadata cleanup compares resolved database types, not
 user-entered aliases. The ordinary datetime shortcut tries direct conversion,
 then bounded format inference, then manual input when needed. See the
 [conversion contract](../reference/native-project-api.md).
+All conversion requests validate the complete source before committing, including
+casts of Views. Failure preserves the previous type, definition and metadata and
+reports counts and bounded examples with the original engine diagnostic. This
+is the explicit exception to lazy validation for ordinary View edits.
 Parsed offset formats retain a timezone-aware type; successful direct casts are
 unchanged. Explicit timezone-aware types remain available in the SQL type dialog.
 
@@ -339,6 +343,12 @@ Progress and execution state are not persisted with results. Reload reconnects t
 runtime-owned work; reopening a project restores completed results but does not
 resume interrupted tasks.
 
+Task display order is active work, failed/cancelled work, then successful work.
+Renaming a tab updates its associated task labels. Deleting a tab first commits
+its deletion, then cancels its run and removes all associated task summaries.
+Owned worker cleanup still completes; late progress or completion cannot recreate
+that history. Unassociated import/export summaries remain available.
+
 ## Automatic names
 
 Only new application-generated defaults use this policy. Existing objects, explicit
@@ -375,7 +385,11 @@ and applicable registered names in their creation transaction. Comparison follow
 DuckDB's ASCII case-insensitive identifier rules. Imports keep their existing
 allocator. Explicit-name creation retains strict transactional collision errors;
 a concurrent collision never overwrites an object or silently changes the draft.
-Naming reads metadata only, never source rows.
+Naming reads metadata only, never source rows. Newly entered names trim outer
+whitespace only; existing names and internal whitespace remain exact. Explicit
+column renames reject collisions before redefining a View rather than accepting
+DuckDB's automatic duplicate-column suffixing. Rename forms keep their confirmed
+name until success and retain an editable draft with Retry after failure.
 
 Build suggests `col`, then the first available `col_2`, `col_3`, etc. A missing
 schema can update this automatic suggestion when it loads; user edits always win.

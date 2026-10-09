@@ -2265,7 +2265,7 @@ export interface components {
     /** @enum {string} */
     Existence: 'off' | 'present' | 'empty';
     /** @enum {string} */
-    ExportFormat: 'csv' | 'json' | 'ndjson' | 'parquet' | 'ipc';
+    ExportFormat: 'csv' | 'xlsx' | 'json' | 'parquet';
     ExportInspection: {
       blockers: components['schemas']['Error'][];
       objects: components['schemas']['ExportObject'][];

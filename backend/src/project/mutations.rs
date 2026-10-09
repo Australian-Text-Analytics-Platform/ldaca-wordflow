@@ -107,6 +107,11 @@ impl Database {
             | ColumnChange::Delete { column }
             | ColumnChange::Transform { column, .. } => column,
         };
+        let requested = if matches!(change, ColumnChange::Add { .. }) {
+            requested.trim()
+        } else {
+            requested.as_str()
+        };
         let existing = fields
             .iter()
             .find(|(name, _)| name.eq_ignore_ascii_case(requested));
@@ -118,7 +123,13 @@ impl Database {
             (None, ColumnChange::Transform { .. } | ColumnChange::Add { .. })
                 if !requested.trim().is_empty() =>
             {
-                requested.clone()
+                if fields
+                    .iter()
+                    .any(|(field, _)| field.eq_ignore_ascii_case(requested.trim()))
+                {
+                    return Err(Error::invalid("A column with this name already exists"));
+                }
+                requested.trim().to_owned()
             }
             _ => {
                 return Err(Error::invalid(format!(
@@ -188,6 +199,47 @@ impl Database {
                     sql_type
                 };
                 let changed = existing.is_some_and(|(_, kind)| kind != &resolved_type);
+                // Conversion is the explicit full-source validation exception for live Views.
+                let checked = expression.replacen("CAST(", "TRY_CAST(", 1).replacen(
+                    "strptime(",
+                    "try_strptime(",
+                    1,
+                );
+                let invalid = format!("{q} IS NOT NULL AND ({checked}) IS NULL");
+                let failures: u64 = tx.query_row(
+                    &format!("SELECT count(*) FROM {} WHERE {invalid}", relation.sql()),
+                    [],
+                    |row| row.get(0),
+                )?;
+                if failures > 0 {
+                    let examples = tx
+                        .prepare(&format!(
+                            "SELECT CAST({q} AS VARCHAR) FROM {} WHERE {invalid} LIMIT 5",
+                            relation.sql()
+                        ))?
+                        .query_map([], |row| row.get::<_, String>(0))?
+                        .collect::<duckdb::Result<Vec<_>>>()?;
+                    let error = tx
+                        .query_row(
+                            &format!(
+                                "SELECT {expression} FROM {} WHERE {invalid} LIMIT 1",
+                                relation.sql()
+                            ),
+                            [],
+                            |_| Ok(()),
+                        )
+                        .err()
+                        .map(Error::from)
+                        .unwrap_or_else(|| Error::invalid("Conversion failed"));
+                    return Err(Error {
+                        message: format!(
+                            "{}\n\n{failures} values could not be converted. Examples: {}",
+                            error.message,
+                            examples.join(", ")
+                        ),
+                        ..error
+                    });
+                }
                 if let Some(previous) = &previous {
                     edit_view(
                         &tx,
@@ -207,6 +259,12 @@ impl Database {
                 let name = name.trim();
                 if name.is_empty() {
                     return Err(Error::invalid("Column name cannot be empty"));
+                }
+                if fields
+                    .iter()
+                    .any(|(field, _)| field != &column && field.eq_ignore_ascii_case(name))
+                {
+                    return Err(Error::invalid("A column with this name already exists"));
                 }
                 let interfaces = renames::ViewInterfaces::capture(&tx, relation)?;
                 let rewrites = renames::column_views(&tx, relation, &column, name, &fields)?;
@@ -308,11 +366,73 @@ impl Database {
 }
 
 #[cfg(test)]
-mod lazy_cast_tests {
+mod mutation_tests {
     use super::*;
 
     #[test]
-    fn view_cast_commits_lazily_and_notifies_before_rows_are_evaluated() {
+    fn new_names_trim_only_outer_space_and_view_rename_rejects_collisions() {
+        let mut project = Project::untitled().unwrap();
+        let db = &mut project.database;
+        db.conn.execute_batch("CREATE TABLE data.raw(\" text \" VARCHAR, count INTEGER); INSERT INTO data.raw VALUES ('original', 1); CREATE VIEW data.corpus AS SELECT * FROM data.raw; INSERT INTO wordflow.nodes(table_name) VALUES ('corpus')").unwrap();
+        let target = ObjectTarget {
+            schema: Some("data".into()),
+            name: "corpus".into(),
+        };
+        let error = db
+            .change_column(
+                target.clone(),
+                ColumnChange::Rename {
+                    column: " text ".into(),
+                    name: "  COUNT ".into(),
+                },
+            )
+            .unwrap_err();
+        assert!(error.message.contains("already exists"));
+        assert_eq!(
+            columns(&db.conn, &target.resolve(&db.conn).unwrap().relation).unwrap()[0].0,
+            " text "
+        );
+        db.change_column(
+            target.clone(),
+            ColumnChange::Rename {
+                column: " text ".into(),
+                name: "  Full  text  ".into(),
+            },
+        )
+        .unwrap();
+        db.change_column(
+            target.clone(),
+            ColumnChange::Transform {
+                column: "Full  text".into(),
+                expression: "upper(\"Full  text\")".into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            db.conn
+                .query_row("SELECT \"Full  text\" FROM data.corpus", [], |row| row
+                    .get::<_, String>(
+                    0
+                ))
+                .unwrap(),
+            "ORIGINAL"
+        );
+        db.change_column(
+            target.clone(),
+            ColumnChange::Add {
+                column: "  New  field  ".into(),
+                sql_type: "VARCHAR".into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            columns(&db.conn, &target.resolve(&db.conn).unwrap().relation).unwrap()[2].0,
+            "New  field"
+        );
+    }
+
+    #[test]
+    fn view_cast_validates_all_values_before_change_and_notifies_only_on_success() {
         let mut project = Project::untitled().unwrap();
         let db = &mut project.database;
         db.conn.execute_batch("CREATE TABLE data.raw(created_at VARCHAR); INSERT INTO data.raw VALUES ('2020-10-17 00:52:37.000 +0000'),(NULL); CREATE VIEW data.corpus AS SELECT * FROM data.raw; INSERT INTO wordflow.nodes(table_name) VALUES ('corpus')").unwrap();
@@ -321,31 +441,21 @@ mod lazy_cast_tests {
             name: "corpus".into(),
         };
         let mut changes = db.changes.subscribe();
-        db.change_column(
-            target.clone(),
-            ColumnChange::Cast {
-                column: "created_at".into(),
-                target: CastType::Sql {
-                    sql_type: "TIMESTAMP".into(),
-                },
-                format: None,
-            },
-        )
-        .unwrap();
-        let change = changes.try_recv().unwrap();
-        assert!(
-            change
-                .objects
-                .iter()
-                .any(|r| r.schema == "data" && r.name == "corpus")
-        );
         let error = db
-            .conn
-            .query_row("SELECT created_at FROM data.corpus LIMIT 1", [], |r| {
-                r.get::<_, String>(0)
-            })
+            .change_column(
+                target.clone(),
+                ColumnChange::Cast {
+                    column: "created_at".into(),
+                    target: CastType::Sql {
+                        sql_type: "TIMESTAMP".into(),
+                    },
+                    format: None,
+                },
+            )
             .unwrap_err();
-        assert!(error.to_string().contains("Conversion Error"));
+        assert!(error.message.contains("Conversion Error"));
+        assert!(error.message.contains("1 values could not be converted"));
+        assert!(changes.try_recv().is_err());
         assert_eq!(
             db.conn
                 .query_row(
@@ -354,11 +464,8 @@ mod lazy_cast_tests {
                     |r| r.get::<_, String>(0)
                 )
                 .unwrap(),
-            "TIMESTAMP"
+            "VARCHAR"
         );
-        db.conn
-            .execute_batch("CREATE OR REPLACE VIEW data.corpus AS SELECT * FROM data.raw")
-            .unwrap();
         db.change_column(
             target,
             ColumnChange::Cast {

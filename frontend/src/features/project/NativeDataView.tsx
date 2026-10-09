@@ -9,7 +9,6 @@ import { schemaQuery } from './projectQueries';
 import { defaultNodeView, useProjectViewState } from './projectViewState';
 
 import { useProjectPreview } from './previewState';
-import { reportProjectError } from './projectErrors';
 export default function NativeDataView({
   base,
   nodes,
@@ -24,7 +23,7 @@ export default function NativeDataView({
   nodes: projectApi.ProjectNode[];
   name: objectsApi.DataTarget;
   onClose: () => void;
-  rename: (id: objectsApi.DataTarget, name: string) => void;
+  rename: (id: objectsApi.DataTarget, name: string) => Promise<unknown>;
   undo: (id: objectsApi.DataTarget) => void;
 }) {
   const cache = useQueryClient();
@@ -39,6 +38,7 @@ export default function NativeDataView({
   };
   const schema = useQuery({
     ...schemaQuery(base, name, true),
+    meta: { ...objectDependencies(object), reportError: false },
     enabled: isOpen && !!node,
   });
   const validSorting = request.sorting.every((sort) =>
@@ -56,7 +56,7 @@ export default function NativeDataView({
     ],
     enabled: isOpen && !!node && !!schema.data && validSorting,
     gcTime: 0,
-    meta: objectDependencies(object),
+    meta: { ...objectDependencies(object), reportError: false },
     queryFn: ({ signal }) =>
       projectApi.rowPage(base, name, request.page, request.size, request.sorting, signal),
     placeholderData: (previous, query) =>
@@ -120,9 +120,7 @@ export default function NativeDataView({
           undoTitle:
             'Undo applies only to View query layers. Table writes and metadata changes are not undone.',
           redoTitle: 'Redo is not available for native SQL edits.',
-          onRename: (next) => {
-            rename(name, next);
-          },
+          onRename: (next) => rename(name, next),
           onUndo: () => {
             undo(name);
           },
@@ -138,6 +136,10 @@ export default function NativeDataView({
           documentColumn: logical ? (node?.document_column ?? undefined) : undefined,
           fetching: rows.isFetching,
           pageError: schema.error ?? rows.error,
+          onRetryPage: () => {
+            void schema.refetch();
+            void rows.refetch();
+          },
           pagination: { page: request.page, page_size: request.size },
           hasNext: rows.data?.hasNext,
           preferences: request.columns,
@@ -157,7 +159,6 @@ export default function NativeDataView({
           onCast: cast,
           onRenameColumn: renameColumn,
           onDeleteColumn: deleteColumn,
-          onMutationError: reportProjectError,
         },
       }}
     />

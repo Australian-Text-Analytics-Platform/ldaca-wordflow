@@ -132,7 +132,7 @@ export function ConcordanceResults({
             ? concordanceApi.queryConcordance(base, result?.id ?? '', query, signal)
             : concordanceApi.previewConcordance(base, tab.id, preview, signal),
         enabled: active && Boolean(saved ? result : submitted) && (!stopped || saved),
-        meta: saved ? undefined : objectDependencies(input.source),
+        meta: { ...(saved ? {} : objectDependencies(input.source)), reportError: false },
         placeholderData: saved ? undefined : keepPreviousData,
         staleTime: Infinity,
       };
@@ -350,6 +350,7 @@ export function ConcordanceResults({
           failed ? 'Could not load output.' : saved ? 'Loading results…' : 'Calculating Preview…'
         }
         error={failed}
+        diagnostic={[...queries, ...displayedDensity].find((query) => query.error)?.error}
         onRetry={
           failed
             ? () => {

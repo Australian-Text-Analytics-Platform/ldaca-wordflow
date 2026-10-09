@@ -8,11 +8,11 @@ import { DataType } from 'apache-arrow';
 export type { ColumnCastType } from '../../api';
 
 export const DATA_TYPES = [
-  { value: 'string', label: 'string' },
-  { value: 'categorical', label: 'categorical' },
-  { value: 'integer', label: 'integer' },
-  { value: 'float', label: 'float' },
-  { value: 'datetime', label: 'datetime' },
+  { value: 'string', label: 'text' },
+  { value: 'categorical', label: 'category' },
+  { value: 'integer', label: 'whole number' },
+  { value: 'float', label: 'decimal' },
+  { value: 'datetime', label: 'date and time' },
 ] as const;
 
 export const isColumnCastType = (value: string): value is Extract<ColumnCastType, string> =>
@@ -24,7 +24,7 @@ export const isColumnCastType = (value: string): value is Extract<ColumnCastType
  */
 export const getTypeDisplayName = (field: ArrowField | undefined): string =>
   field && !arrowExtensionName(field) && DataType.isTimestamp(field.type) && field.type.timezone
-    ? 'datetime with timezone'
+    ? 'date and time with timezone'
     : field
       ? arrowTypeDisplayName(field)
       : 'unknown';
@@ -35,4 +35,11 @@ export const columnCastIdentity = (field: ArrowField): string =>
     ? field.type.timezone
       ? 'datetime_tz'
       : 'datetime'
-    : arrowTypeDisplayName(field);
+    : ((
+        {
+          text: 'string',
+          category: 'categorical',
+          'whole number': 'integer',
+          decimal: 'float',
+        } as Record<string, string>
+      )[arrowTypeDisplayName(field)] ?? arrowTypeDisplayName(field));

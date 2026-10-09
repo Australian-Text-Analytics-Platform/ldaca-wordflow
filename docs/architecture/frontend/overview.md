@@ -43,7 +43,11 @@ to the standalone Rust backend during development.
   use the table controller's single mutation owner; `NativeDataView` forwards the
   captured request and reconciles its local column preferences after success.
   Committed object changes invalidate open schema/page queries. Schema and page
-  fetch errors use the shared Sonner observer, without an inline table banner.
+  failures remain in the Data View with the original diagnostic and Retry;
+  failed reads do not appear as empty results. Column conversion failures stay
+  in the open conversion form. `OperationError` provides bounded diagnostic text,
+  expandable Details, copy and feedback actions. Unowned failures retain the
+  shared notification fallback.
   Datetime conversion submits immediately; only `datetime_format_required` opens
   the manual-format dialog. Failed manual submissions retain the entered format.
 - TanStack Query owns database state. Zustand owns graph selection, the displayed preview, pins, positions

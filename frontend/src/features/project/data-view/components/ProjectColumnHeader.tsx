@@ -118,13 +118,7 @@ export function ProjectColumnHeader({
       </button>
 
       {isRenaming ? (
-        <RenameInput
-          column={column}
-          onSubmit={(currentColumn, value) => {
-            void onSubmitRename(currentColumn, value);
-          }}
-          onCancel={onCancelRename}
-        />
+        <RenameInput column={column} onSubmit={onSubmitRename} onCancel={onCancelRename} />
       ) : (
         <div className="min-w-0">
           <span

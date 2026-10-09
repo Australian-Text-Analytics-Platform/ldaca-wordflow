@@ -185,10 +185,12 @@ it('lets DuckDB decide column name collisions and permits timezone target change
     { wrapper: Wrapper },
   );
   await act(async () => {
-    await result.current.submitRename('source', 'taken');
+    await expect(result.current.submitRename('source', 'taken')).rejects.toThrow(
+      'duplicate column name',
+    );
   });
   expect(onRenameColumn).toHaveBeenCalledWith('source', 'taken');
-  expect(onError).toHaveBeenCalledOnce();
+  expect(onError).not.toHaveBeenCalled();
   act(() => {
     result.current.handleTypeChange('source', { sqlType: 'TIMESTAMPTZ' });
   });

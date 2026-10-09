@@ -30,6 +30,10 @@ tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
 utoipa = { version = "=6.0.0", features = ["uuid", "axum_extras"] }
 utoipa-axum = "=0.3.0"
+rust_xlsxwriter = { version = "0.99.1", features = ["constant_memory"] }
+calamine = "0.36.1"
+apache-avro = "0.21"
+quick-xml = "0.42"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2.189"

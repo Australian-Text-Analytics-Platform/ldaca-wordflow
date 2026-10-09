@@ -1,5 +1,6 @@
 import {
   DataType,
+  Vector,
   tableFromIPC,
   type Field,
   type Table,
@@ -9,12 +10,12 @@ import {
 
 const ARROW_EXTENSION_NAME = 'ARROW:extension:name';
 const COMMON_ARROW_TYPE_DISPLAY_NAMES = new Map<string, string>([
-  ['Utf8View', 'string'],
-  ['Utf8', 'string'],
-  ['Dictionary<Uint32, Utf8View>', 'categorical'],
-  ['Int64', 'integer'],
-  ['Float64', 'float'],
-  ['Timestamp<MICROSECOND, UTC>', 'datetime'],
+  ['Utf8View', 'text'],
+  ['Utf8', 'text'],
+  ['Dictionary<Uint32, Utf8View>', 'category'],
+  ['Int64', 'whole number'],
+  ['Float64', 'decimal'],
+  ['Timestamp<MICROSECOND, UTC>', 'date and time'],
 ]);
 
 /** Every concrete Arrow type supplies its native schema spelling via `toString`. */
@@ -73,7 +74,7 @@ export const arrowTypeDisplayName = (field: ArrowField): string => {
     [8, 16, 32].includes(field.type.indices.bitWidth) &&
     isArrowStringType(field.type.dictionary as ArrowDataType)
   )
-    return 'categorical';
+    return 'category';
   const nativeTypeName = field.type.toString();
   return COMMON_ARROW_TYPE_DISPLAY_NAMES.get(nativeTypeName) ?? nativeTypeName;
 };
@@ -160,6 +161,43 @@ export const normalizeArrowValue = (value: unknown, type?: ArrowDataType): unkno
   return value;
 };
 
+/** Read timestamp storage before Arrow's millisecond-number getter loses precision. */
+function decodeVectorValue(vector: Vector, index: number): unknown {
+  if (!vector.isValid(index)) return null;
+  const type = vector.type as ArrowDataType;
+  if (DataType.isTimestamp(type)) {
+    let offset = index;
+    for (const data of vector.data) {
+      if (offset >= data.length) {
+        offset -= data.length;
+        continue;
+      }
+      const ticks = data.values[offset] as bigint;
+      const digits = [0, 3, 6, 9][type.unit]!;
+      const scale = 10n ** BigInt(digits);
+      let seconds = ticks / scale;
+      let remainder = ticks % scale;
+      if (remainder < 0n) {
+        seconds -= 1n;
+        remainder += scale;
+      }
+      const date = new Date(Number(seconds) * 1000).toISOString().replace(/\.000Z$/, '');
+      return `${date}${digits ? `.${remainder.toString().padStart(digits, '0')}` : ''}Z`;
+    }
+  }
+  if (DataType.isStruct(type))
+    return Object.fromEntries(
+      type.children.map((field, child) => [
+        field.name,
+        decodeVectorValue(vector.getChildAt(child)!, index),
+      ]),
+    );
+  const value: unknown = vector.get(index);
+  if (value instanceof Vector)
+    return Array.from({ length: value.length }, (_, child) => decodeVectorValue(value, child));
+  return normalizeArrowValue(value, type);
+}
+
 /** Decode an already parsed Arrow table without a serialization round trip. */
 export function decodeArrowData(table: Table<TypeMap>): ArrowTableData {
   const used = new Set<string>();
@@ -177,7 +215,7 @@ export function decodeArrowData(table: Table<TypeMap>): ArrowTableData {
     Object.fromEntries(
       schema.map((column, columnIndex) => [
         column.name,
-        normalizeArrowValue(table.getChildAt(columnIndex)?.get(index), column.field.type),
+        decodeVectorValue(table.getChildAt(columnIndex)!, index),
       ]),
     ),
   );

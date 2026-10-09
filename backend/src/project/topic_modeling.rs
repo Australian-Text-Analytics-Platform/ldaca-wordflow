@@ -673,13 +673,22 @@ impl Database {
             let target = output_target(&selected.name)?;
             let mut names = HashSet::new();
             let mut columns = Vec::new();
-            for requested in &selected.columns {
+            for requested in std::iter::once(&source.input.column).chain(&selected.columns) {
                 let name = &source
                     .columns
                     .iter()
                     .find(|(name, _)| name.eq_ignore_ascii_case(requested))
                     .ok_or_else(|| Error::invalid("Unknown retained column"))?
                     .0;
+                if name != &source.input.column
+                    && ["TOPIC_top1", "TOPIC_coverage"]
+                        .iter()
+                        .any(|field| name.eq_ignore_ascii_case(field))
+                {
+                    return Err(Error::invalid(format!(
+                        "Metadata column conflicts with a generated field: {name}"
+                    )));
+                }
                 if names.insert(name.to_ascii_lowercase()) {
                     columns.push(name.clone());
                 }
@@ -757,15 +766,6 @@ fn output_target(name: &str) -> Result<Relation> {
         schema: "data".into(),
         name: name.trim().into(),
     })
-}
-fn generated_name(names: &mut HashSet<String>, stem: &str) -> String {
-    let mut name = stem.to_owned();
-    let mut suffix = 2;
-    while !names.insert(name.to_ascii_lowercase()) {
-        name = format!("{stem}_{suffix}");
-        suffix += 1;
-    }
-    name
 }
 fn memberships(document: &DocumentResult, top_n: usize) -> Vec<i32> {
     let mut positive = document

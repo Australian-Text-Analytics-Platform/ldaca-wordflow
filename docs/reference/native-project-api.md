@@ -155,13 +155,15 @@ on failure generates rule-based format candidates and validates them against the
 same sample. NULLs are ignored; blanks are not. Ambiguous or unsupported layouts
 return `datetime_format_required` without mutation. The frontend then requests
 an explicit format. Manual formats bypass inference and are checked against the
-same bounded sample; errors retain the dialog draft and use Sonner.
+same bounded sample. Before any conversion commits, the native mutation owner
+validates the complete source for Tables and Views. A failed conversion reports
+the original DuckDB diagnostic, invalid-value count and up to five examples;
+the source type, values, metadata and View definition remain unchanged. The
+responsible form retains the editable draft and original diagnostic with Details.
 Successful direct casts retain their native behavior. Parsed formats retain
 DuckDB's output type, including TIMESTAMPTZ for timezone-aware formats.
-Casting a View changes its SQL definition without evaluating the entire column.
-The committed object notification invalidates dependent schema and row queries;
-subsequent read errors use Sonner and do not roll back the committed definition.
-Table casts still use DuckDB's full, atomic ALTER COLUMN conversion. Other cast
+View casts add ordinary SQL layers after validation; other View edits remain
+lazy and schema-only. Table casts use atomic ALTER COLUMN conversion. Other cast
 targets do not use datetime inference.
 Transform adds a missing VARCHAR
 column to a Table or adds a View expression, replacing an existing column when
@@ -310,10 +312,12 @@ Tauri `save_export` accepts the same `request`, shows the native chooser and
 returns a saved path or null on chooser cancellation; it transfers no file Blob
 through the frontend. See [snapshot and portability rules](../architecture/backend/native-exports.md).
 
-Export formats are `csv`, `json` (array), `ndjson`, `parquet`, and `ipc` (Arrow
-file). Exports include the entire object regardless of UI pagination. IPC exports
-enrich the Arrow schema from column metadata inside the export transaction,
-preserving supported extension metadata with exact physical types and values.
+Export formats are `csv`, `xlsx`, `json` (array) and `parquet`. Exports include
+all committed rows regardless of UI pagination. CSV includes a UTF-8 BOM and
+encodes nested cells as JSON. Excel uses one `Data` worksheet, rejects more than
+16,384 columns or 1,048,575 data rows, and uses Excel numeric precision and UTC
+for timezone-aware timestamps. Internal query/page transport remains Arrow.
+
 
 Edit accepts Views only. The column-change operation resolves Table/View kind and
 uses native ALTER TABLE or wrapped View SQL accordingly. No automatic Table-to-View

@@ -2,7 +2,6 @@ import { browser, $, expect } from '@wdio/globals';
 import { it } from 'mocha';
 import { readFile, rm } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { tableFromIPC, DataType, type TypeMap } from 'apache-arrow';
 import JSZip from 'jszip';
 import { inspectProjectFile } from '../e2e-native/scenarios/projectFile';
 import { exportScenario } from '../e2e-native/scenarios/export';
@@ -41,21 +40,34 @@ async function downloaded(name: string, action: () => Promise<unknown>) {
 
 // Format-specific readers check every original value. They do not call the exporter.
 async function verifySurvey(path: string, extension: string, expected: SurveyRow[]) {
-  if (extension === 'arrow') {
-    const table = tableFromIPC<TypeMap>(await readFile(path));
-    expect(table.numRows).toBe(expected.length);
-    expect(table.schema.fields.map((f) => f.name)).toEqual(Object.keys(expected[0] ?? {}));
-    expect(DataType.isDecimal(table.getChild('measurement')?.type)).toBe(true);
-    for (const [i, row] of expected.entries()) {
-      for (const [key, value] of Object.entries(row)) {
-        const actual: unknown = table.getChild(key)?.get(i);
-        if (key === 'day') expect(Number(actual)).toBe(Date.parse(row.day));
-        else if (key === 'recorded_at') expect(Number(actual)).toBe(Date.parse(row.recorded_at));
-        // Decimal Arrow lanes are lossless scaled integers, inspected below via the other readers.
-        else if (key === 'measurement') {
-          if (value === null) expect(actual).toBeNull();
-          else expect(String(actual)).toBe(String(Math.round(Number(value) * 100)));
-        } else if (typeof value === 'number') expect(Number(actual)).toBe(value);
+  if (extension === 'xlsx') {
+    const zip = await JSZip.loadAsync(await readFile(path));
+    const workbook = await zip.file('xl/workbook.xml')!.async('string');
+    expect(workbook.match(/<sheet /g)).toHaveLength(1);
+    expect(workbook).toContain('name="Data"');
+    const xml = await zip.file('xl/worksheets/sheet1.xml')!.async('string');
+    const rows = await browser.execute((text) => {
+      const document = new DOMParser().parseFromString(text, 'application/xml');
+      return Array.from(document.querySelectorAll('row'), (row) =>
+        Object.fromEntries(Array.from(row.querySelectorAll('c'), (cell) => [
+          cell.getAttribute('r')!.replace(/\d+$/, ''),
+          cell.getAttribute('t') === 'inlineStr'
+            ? cell.querySelector('t')!.textContent
+            : Number(cell.querySelector('v')?.textContent),
+        ])));
+    }, xml);
+    const headers = Object.entries(rows.shift()!);
+    expect(headers.map(([, name]) => name)).toEqual(Object.keys(expected[0]!));
+    expect(rows).toHaveLength(expected.length);
+    for (const [index, row] of rows.entries()) {
+      for (const [column, key] of headers) {
+        const value = expected[index]![key as keyof SurveyRow];
+        const actual = row[column];
+        if (value == null || value === '') expect(actual ?? '').toBe('');
+        else if (key === 'day' || key === 'recorded_at')
+          expect(Number(actual)).toBeCloseTo(Date.parse(String(value)) / 86_400_000 + 25569, 7);
+        else if (typeof value === 'number') expect(Number(actual)).toBe(value);
+        else if (typeof value === 'boolean') expect(Boolean(actual)).toBe(value);
         else expect(actual).toBe(value);
       }
     }
@@ -84,7 +96,7 @@ async function verifySurvey(path: string, extension: string, expected: SurveyRow
   );
 }
 
-it('exports every row and value in five formats, ZIP members, and reopens selected/complete projects', async function () {
+it('exports every row and value in four formats, ZIP members, and reopens selected/complete projects', async function () {
   this.timeout(240000);
   const expected = await readResearchData<SurveyRow>('community-survey.json');
   await browser.url('/');
@@ -92,9 +104,8 @@ it('exports every row and value in five formats, ZIP members, and reopens select
     for (const [label, extension] of [
       ['CSV (.csv)', 'csv'],
       ['JSON (.json)', 'json'],
-      ['NDJSON (.ndjson)', 'ndjson'],
+      ['Excel (.xlsx)', 'xlsx'],
       ['Parquet (.parquet)', 'parquet'],
-      ['Arrow IPC (.arrow)', 'arrow'],
     ] as const) {
       await panel.$('#export-format').click();
       await $(`[role="option"]=${label}`).click();
@@ -152,7 +163,17 @@ it('exports every row and value in five formats, ZIP members, and reopens select
       [complete, tabs],
     ] as const) {
       await inspectProjectFile(path, async (base) => {
-        expect(await analysesApi.listTabs(base)).toEqual(expectedTabs);
+        const reopenedTabs = await analysesApi.listTabs(base);
+        const withoutDisplayZone = (items: analysesApi.Tab[]) => items.map((tab) => ({
+          ...tab,
+          analysis: tab.analysis ? { ...tab.analysis, created_at: null } : null,
+        }));
+        expect(withoutDisplayZone(reopenedTabs)).toEqual(withoutDisplayZone([...expectedTabs]));
+        const instant = (value: string) => Date.parse(value.replace(/([+-]\d{2})$/, '$1:00'));
+        reopenedTabs.forEach((tab, index) => {
+          if (tab.analysis && expectedTabs[index]?.analysis)
+            expect(instant(tab.analysis.created_at)).toBe(instant(expectedTabs[index]!.analysis!.created_at));
+        });
         if (path === complete) {
           const counts = await frequencyApi.queryFrequency(base, analysisId, {
             view: 'corpus',

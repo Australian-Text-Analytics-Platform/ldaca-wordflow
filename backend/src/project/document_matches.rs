@@ -1,5 +1,49 @@
 //! Typed document pages shared by Concordance and Quotation.
 use super::*;
+
+/// Original text keeps its name. Optional metadata cannot claim selected generated names.
+pub(super) fn publication_fields(
+    columns: &[(String, String)],
+    text: &str,
+    selected: &[String],
+    generated: &[String],
+) -> Result<(std::collections::HashSet<String>, Vec<String>)> {
+    let mut names = std::collections::HashSet::new();
+    let mut fields = Vec::new();
+    for requested in std::iter::once(text).chain(selected.iter().map(String::as_str)) {
+        let name = &columns
+            .iter()
+            .find(|(name, _)| name.eq_ignore_ascii_case(requested))
+            .ok_or_else(|| Error::invalid("Unknown retained column"))?
+            .0;
+        if !name.eq_ignore_ascii_case(text)
+            && generated
+                .iter()
+                .any(|field| field.eq_ignore_ascii_case(name))
+        {
+            return Err(Error::invalid(format!(
+                "Metadata column conflicts with a generated field: {name}"
+            )));
+        }
+        if names.insert(name.to_ascii_lowercase()) {
+            fields.push(format!(
+                "source.{} AS {}",
+                query::quote(name),
+                query::quote(name)
+            ));
+        }
+    }
+    Ok((names, fields))
+}
+pub(super) fn generated_name(names: &mut std::collections::HashSet<String>, stem: &str) -> String {
+    let mut name = stem.to_owned();
+    let mut suffix = 2;
+    while !names.insert(name.to_ascii_lowercase()) {
+        name = format!("{stem}_{suffix}");
+        suffix += 1;
+    }
+    name
+}
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct DocumentSort {

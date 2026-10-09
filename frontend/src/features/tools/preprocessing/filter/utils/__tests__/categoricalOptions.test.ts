@@ -8,6 +8,17 @@ import {
 } from '../categoricalOptions';
 
 describe('categoricalOptions', () => {
+  it('distinguishes missing, empty text and whitespace without changing values', () => {
+    const options = buildCategoricalOptionEntries(['', '  ', '\t'], true);
+    expect(options.map((option) => option.label)).toEqual([
+      'Null (no value)',
+      '(empty text)',
+      '(blank text)',
+      '(blank text)',
+    ]);
+    expect(new Set(options.map((option) => option.key)).size).toBe(4);
+    expect(options.map((option) => option.value)).toEqual([null, '', '  ', '\t']);
+  });
   it('keeps type-aware keys distinct for primitive values', () => {
     expect(getCategoricalOptionKey('1')).toBe('string::1');
     expect(getCategoricalOptionKey(1)).toBe('number::1');

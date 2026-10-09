@@ -35,14 +35,14 @@ identity, and emits no database-change event.
 One selected object produces one file. Multiple objects produce a ZIP containing
 one file per object in captured selection order. Filenames are independently
 sanitized and made globally unique, including case and suffix collisions.
-Native DuckDB COPY writes CSV, JSON arrays, NDJSON and Parquet. Arrow IPC exports
-use the standard **file** encoding with recursively enriched field annotations;
-query/page HTTP responses continue using Arrow **streams**. IPC uses bounded
-batches. ZIP writing retains one intermediate data file at a time and copies in
-64 KiB chunks with cancellation checks. No row limit or sampling is applied.
-Parquet preserves the serializer's physical values/types; Wordflow annotation
-round-trip fidelity is promised by IPC and project files, not every interchange
-format.
+Native DuckDB COPY writes JSON arrays and Parquet. CSV adds a UTF-8 BOM and
+serializes nested cells as JSON. Excel writes one `Data` worksheet in constant
+memory, rejects worksheet row/column limits and converts timezone-aware timestamps
+to UTC. Its numeric precision is Excel's precision. ZIP writing retains one
+intermediate file at a time with cancellation checks. No sampling is applied.
+Internal query/page HTTP responses remain Arrow streams. Project exports preserve
+Wordflow field annotations; interchange formats do not promise every annotation.
+
 
 ## Project contents
 

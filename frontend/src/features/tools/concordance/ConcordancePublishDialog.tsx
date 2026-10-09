@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -59,6 +60,7 @@ export function ConcordancePublishDialog({
   });
   const [sync, setSync] = useState(false);
   const mutation = useMutation({
+    meta: { reportError: false },
     mutationFn: (captured: concordanceApi.ConcordancePublishSource[]) =>
       concordanceApi.publishConcordance(base, result.id, projection, captured),
     onSuccess: onClose,
@@ -90,6 +92,11 @@ export function ConcordancePublishDialog({
       }),
     );
   };
+  const reserved = new Set(
+    generated.map(([field]) =>
+      `CONC_${field === 'l1_frequency' ? 'l1_freq' : field === 'r1_frequency' ? 'r1_freq' : field}`.toLowerCase(),
+    ),
+  );
   const all = (checked: boolean) => {
     setOutputs((old) =>
       old.map((output, index) =>
@@ -100,7 +107,9 @@ export function ConcordancePublishDialog({
                 ? (result.result.payload.corpora[index]?.columns ?? [])
                     .map(([column]) => column)
                     .filter(
-                      (column) => column !== result.result.payload.corpora[index]?.input.column,
+                      (column) =>
+                        column !== result.result.payload.corpora[index]?.input.column &&
+                        !reserved.has(column.toLowerCase()),
                     )
                 : [],
               fields: checked ? generated.map(([field]) => field) : [],
@@ -228,6 +237,7 @@ export function ConcordancePublishDialog({
                         <label className="flex items-center gap-2" key={column}>
                           <Checkbox
                             checked={output.metadata.includes(column)}
+                            disabled={reserved.has(column.toLowerCase())}
                             onCheckedChange={(value) => {
                               update(index, 'metadata', column, value === true);
                             }}
@@ -257,10 +267,7 @@ export function ConcordancePublishDialog({
           );
         })}
         {mutation.isError && (
-          <p role="alert">
-            The Data Blocks could not be created. Your selections are retained; review the error
-            details and try again.
-          </p>
+          <OperationError error={mutation.error} title="Couldn't create Data Blocks" />
         )}
         <DialogFooter>
           <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>

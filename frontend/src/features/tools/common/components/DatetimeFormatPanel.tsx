@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import { useState } from 'react';
 import {
   Dialog,
@@ -16,6 +17,7 @@ interface DatetimeFormatPanelProps {
   onClose: () => void;
   onConfirm: (format?: string) => Promise<void>;
   columnName: string;
+  error?: unknown;
 }
 
 /** Manual fallback after bounded automatic datetime discovery could not resolve the format. */
@@ -36,6 +38,7 @@ function DatetimeFormatForm({
   columnName,
   onConfirm,
   onClose,
+  error,
 }: Omit<DatetimeFormatPanelProps, 'open'>) {
   const [format, setFormat] = useState('');
   const [pending, setPending] = useState(false);
@@ -74,6 +77,7 @@ function DatetimeFormatForm({
             example: %Y-%m-%d %H:%M:%S.%f %z.
           </p>
         </div>
+        {error != null && <OperationError title="Couldn't convert date and time" error={error} />}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel

@@ -449,6 +449,7 @@ function FrequencyTab({
           name={tab.name}
           message={result.isError ? 'Could not load results.' : 'Loading results…'}
           error={result.isError}
+          diagnostic={result.error}
           onRetry={
             result.isError
               ? () => {

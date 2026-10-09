@@ -10,7 +10,7 @@ interface ProjectDataTableNodeActions {
   onClose: () => void;
   undoTitle?: string;
   redoTitle?: string;
-  onRename?: (newName: string) => void;
+  onRename?: (newName: string) => void | Promise<unknown>;
   onUndo?: () => void;
 }
 

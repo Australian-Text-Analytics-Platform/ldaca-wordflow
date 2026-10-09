@@ -964,8 +964,13 @@ impl ProjectRuntime {
             .await
     }
     pub(crate) async fn update_analysis_tab(&self, id: Uuid, input: UpdateTab) -> Result<Tab> {
-        self.with_writable_project(move |p| p.update_analysis_tab(id, input))
-            .await
+        let tasks = self.shared.tasks.clone();
+        self.with_writable_project(move |p| {
+            let tab = p.update_analysis_tab(id, input)?;
+            tasks.rename_analysis(id, &tab.name);
+            Ok(tab)
+        })
+        .await
     }
     pub(crate) async fn reorder_tabs(&self, kind: String, ids: Vec<Uuid>) -> Result<Vec<Tab>> {
         self.with_writable_project(move |p| p.reorder_tabs(&kind, ids))
@@ -975,7 +980,7 @@ impl ProjectRuntime {
         let tasks = self.shared.tasks.clone();
         self.with_writable_project(move |p| {
             p.delete_analysis_tab(id)?;
-            tasks.cancel_analysis(id);
+            tasks.purge_analysis(id);
             Ok(())
         })
         .await?;

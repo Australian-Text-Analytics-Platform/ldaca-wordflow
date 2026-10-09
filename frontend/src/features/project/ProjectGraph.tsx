@@ -89,7 +89,7 @@ export default function ProjectGraph({
   onClear: () => void;
   onDelete: (id: string) => Promise<unknown>;
   onDeleteMany: (ids: string[]) => Promise<boolean>;
-  onRename: (id: string, name: string) => void;
+  onRename: (id: string, name: string) => void | Promise<unknown>;
   onClone: (id: string) => void;
   onUndo: (id: string) => void;
   onMaterialize: (id: string) => void;

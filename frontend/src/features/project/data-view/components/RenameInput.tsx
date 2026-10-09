@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { Input } from '@/components/ui/input';
+import { OperationError } from '@/features/project/OperationError';
 
 interface RenameInputProps {
   column: string;
-  onSubmit: (column: string, value: string) => void;
+  onSubmit: (column: string, value: string) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -14,6 +15,25 @@ interface RenameInputProps {
 export function RenameInput({ column, onSubmit, onCancel }: RenameInputProps) {
   const [draft, setDraft] = useState(column);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submitting = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>();
+  const submit = async () => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setPending(true);
+    setError(undefined);
+    try {
+      await onSubmit(column, draft.trim());
+    } catch (cause) {
+      setError(cause);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    } finally {
+      submitting.current = false;
+      setPending(false);
+    }
+  };
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -21,25 +41,37 @@ export function RenameInput({ column, onSubmit, onCancel }: RenameInputProps) {
   }, []);
 
   return (
-    <Input
-      ref={inputRef}
-      value={draft}
-      onChange={(event) => {
-        setDraft(event.target.value);
-      }}
-      onBlur={() => {
-        onSubmit(column, draft);
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          onSubmit(column, draft);
-        } else if (event.key === 'Escape') {
-          onCancel();
-        }
-      }}
-      className="h-7 w-40 truncate text-label-secondary"
-      aria-label={`Rename column ${column}`}
-    />
+    <div className="min-w-0">
+      <Input
+        ref={inputRef}
+        value={draft}
+        readOnly={pending}
+        aria-busy={pending}
+        onChange={(event) => {
+          setDraft(event.target.value);
+        }}
+        onBlur={() => {
+          if (!error) void submit();
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            void submit();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            if (!pending) onCancel();
+          }
+        }}
+        className="h-7 w-40 truncate text-label-secondary"
+        aria-label={`Rename column ${column}`}
+      />
+      {error !== undefined && (
+        <OperationError
+          error={error}
+          title="Couldn't rename column"
+          onRetry={() => void submit()}
+        />
+      )}
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import { Button } from '@/components/ui/button';
 import type { NativeTask } from '@/features/project/tasksApi';
 import { useEffect, useState } from 'react';
@@ -7,6 +8,7 @@ export function AnalysisProgress({
   task,
   message,
   error,
+  diagnostic,
   onRetry,
   onCancel,
   progress,
@@ -16,6 +18,7 @@ export function AnalysisProgress({
   task?: NativeTask;
   message?: string;
   error?: boolean;
+  diagnostic?: unknown;
   onRetry?: () => void;
   onCancel?: () => void;
   progress?: NativeTask['progress'];
@@ -42,6 +45,14 @@ export function AnalysisProgress({
     : startedAt === undefined
       ? null
       : Math.max(0, Math.floor((now - startedAt) / 1000));
+  if (error && (diagnostic || task?.error))
+    return (
+      <OperationError
+        title={message ?? `Couldn't complete ${name}`}
+        error={diagnostic ?? task?.error}
+        onRetry={onRetry}
+      />
+    );
   return (
     <section
       aria-label="Analysis progress"

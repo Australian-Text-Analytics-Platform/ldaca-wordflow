@@ -275,53 +275,56 @@ impl Database {
                 name: selected.name.trim().into(),
             };
             let (sql, parameters) = filtered(&source, &selected.filter)?;
-            let mut names = std::collections::HashSet::new();
-            let mut fields = Vec::new();
-            for column in std::iter::once(&source.input.column).chain(selected.metadata.iter()) {
-                let name = source
-                    .columns
-                    .iter()
-                    .find(|(name, _)| name.eq_ignore_ascii_case(column))
-                    .ok_or_else(|| Error::invalid("Unknown metadata field"))?
-                    .0
-                    .clone();
-                if names.insert(name.to_ascii_lowercase()) {
-                    fields.push(format!(
-                        "source.{} AS {}",
-                        query::quote(&name),
-                        query::quote(&name)
-                    ));
-                }
-            }
+            let output_name = |field: &str| -> Result<&'static str> {
+                Ok(match field {
+                    "left_context" => "CONC_left_context",
+                    "matched_text" => "CONC_matched_text",
+                    "right_context" => "CONC_right_context",
+                    "start_idx" => "CONC_start_idx",
+                    "end_idx" => "CONC_end_idx",
+                    "l1" => "CONC_l1",
+                    "r1" => "CONC_r1",
+                    "l1_frequency" => "CONC_l1_freq",
+                    "r1_frequency" => "CONC_r1_freq",
+                    "extraction" => "CONC_extraction",
+                    _ => return Err(Error::invalid("Unknown match field")),
+                })
+            };
+            let reserved = [
+                "left_context",
+                "matched_text",
+                "right_context",
+                "start_idx",
+                "end_idx",
+                "l1",
+                "r1",
+                "l1_frequency",
+                "r1_frequency",
+                "extraction",
+            ]
+            .iter()
+            .map(|field| output_name(field).map(str::to_owned))
+            .collect::<Result<Vec<_>>>()?;
+            let (mut names, mut fields) = publication_fields(
+                &source.columns,
+                &source.input.column,
+                &selected.metadata,
+                &reserved,
+            )?;
             if request.projection == Projection::Documents {
-                if !names.insert("conc_extraction".into()) {
-                    return Err(Error::invalid(
-                        "The source column conflicts with CONC_extraction",
-                    ));
-                }
-                fields.push("CONC_extraction".into());
+                let output = generated_name(&mut names, "CONC_extraction");
+                fields.push(format!("CONC_extraction AS {}", query::quote(&output)));
             } else {
+                let mut selected_fields = std::collections::HashSet::new();
                 for field in &selected.fields {
-                    let output = match field.as_str() {
-                        "left_context" => "CONC_left_context",
-                        "matched_text" => "CONC_matched_text",
-                        "right_context" => "CONC_right_context",
-                        "start_idx" => "CONC_start_idx",
-                        "end_idx" => "CONC_end_idx",
-                        "l1" => "CONC_l1",
-                        "r1" => "CONC_r1",
-                        "l1_frequency" => "CONC_l1_freq",
-                        "r1_frequency" => "CONC_r1_freq",
-                        "extraction" => "CONC_extraction",
-                        _ => return Err(Error::invalid("Unknown match field")),
-                    };
-                    if !names.insert(output.to_ascii_lowercase()) {
-                        return Err(Error::invalid(format!("Duplicate output column: {output}")));
+                    if !selected_fields.insert(field) {
+                        return Err(Error::invalid("Duplicate output field"));
                     }
+                    let output = generated_name(&mut names, output_name(field)?);
                     fields.push(format!(
                         "{} AS {}",
                         query::quote(field),
-                        query::quote(output)
+                        query::quote(&output)
                     ));
                 }
             }

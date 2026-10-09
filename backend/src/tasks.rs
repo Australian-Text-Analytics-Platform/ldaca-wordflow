@@ -167,11 +167,14 @@ impl Tasks {
         self.closed.clone()
     }
     fn publish(&self, entries: &mut Vec<Entry>) {
+        let group = |state| match state {
+            TaskState::Succeeded => 2,
+            TaskState::Failed | TaskState::Cancelled => 1,
+            _ => 0,
+        };
         entries.sort_by(|a, b| {
-            a.summary
-                .state
-                .is_finished()
-                .cmp(&b.summary.state.is_finished())
+            group(a.summary.state)
+                .cmp(&group(b.summary.state))
                 .then_with(|| {
                     b.summary
                         .finished_at
@@ -302,16 +305,31 @@ impl Tasks {
             .iter()
             .any(|entry| entry.summary.tab_id == Some(tab_id) && !entry.summary.state.is_finished())
     }
-    pub fn cancel_analysis(&self, tab_id: Uuid) {
+    /// Deleted tabs have no task history; owned operations still finish cancellation cleanup.
+    pub fn purge_analysis(&self, tab_id: Uuid) {
         let mut entries = self
             .entries
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        for entry in entries.iter_mut().filter(|entry| {
-            entry.summary.tab_id == Some(tab_id) && !entry.summary.state.is_finished()
-        }) {
-            entry.summary.state = TaskState::Cancelling;
+        for entry in entries
+            .iter()
+            .filter(|entry| entry.summary.tab_id == Some(tab_id))
+        {
             entry.cancellation.cancel();
+        }
+        entries.retain(|entry| entry.summary.tab_id != Some(tab_id));
+        self.publish(&mut entries);
+    }
+    pub fn rename_analysis(&self, tab_id: Uuid, name: &str) {
+        let mut entries = self
+            .entries
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        for entry in entries
+            .iter_mut()
+            .filter(|entry| entry.summary.tab_id == Some(tab_id))
+        {
+            name.clone_into(&mut entry.summary.label);
         }
         self.publish(&mut entries);
     }
@@ -370,5 +388,78 @@ impl Tasks {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         entries.clear();
         self.publish(&mut entries);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::ProjectRuntime;
+
+    #[tokio::test]
+    async fn deleted_tab_cancels_owned_work_and_late_completion_cannot_recreate_history() {
+        let runtime = ProjectRuntime::new(CancellationToken::new());
+        let tasks = Tasks::new();
+        let tab = Uuid::new_v4();
+        let (send, wait) = oneshot::channel();
+        let (started, ready) = oneshot::channel();
+        let run = tasks
+            .submit_owned(
+                runtime.operation().unwrap(),
+                "Original".into(),
+                Some(tab),
+                move |context| async move {
+                    let _ = started.send(context.clone());
+                    let _ = wait.await;
+                    // A provider may finish despite cancellation. The deleted task must stay deleted.
+                    context.progress("Late result", Some(1.0));
+                    Ok(())
+                },
+            )
+            .unwrap();
+        let context = ready.await.unwrap();
+        let unrelated = tasks
+            .submit(runtime.operation().unwrap(), "Import".into(), |_| async {
+                Ok(())
+            })
+            .unwrap();
+        unrelated.wait().await.unwrap();
+        tasks.rename_analysis(tab, "Renamed");
+        assert_eq!(tasks.snapshot().tasks[0].label, "Renamed");
+        tasks.purge_analysis(tab);
+        assert!(context.cancellation().is_cancelled());
+        send.send(()).unwrap();
+        run.wait().await.unwrap();
+        assert_eq!(tasks.snapshot().tasks.len(), 1);
+        assert_eq!(tasks.snapshot().tasks[0].label, "Import");
+    }
+
+    #[tokio::test]
+    async fn failures_precede_successful_history() {
+        let runtime = ProjectRuntime::new(CancellationToken::new());
+        let tasks = Tasks::new();
+        let failed = tasks
+            .submit(runtime.operation().unwrap(), "Failed".into(), |_| async {
+                Err::<(), _>(Error::invalid("Original diagnostic"))
+            })
+            .unwrap();
+        failed.wait().await.unwrap_err();
+        let success = tasks
+            .submit(
+                runtime.operation().unwrap(),
+                "Succeeded".into(),
+                |_| async { Ok(()) },
+            )
+            .unwrap();
+        success.wait().await.unwrap();
+        assert_eq!(
+            tasks
+                .snapshot()
+                .tasks
+                .iter()
+                .map(|task| task.state)
+                .collect::<Vec<_>>(),
+            [TaskState::Failed, TaskState::Succeeded]
+        );
     }
 }

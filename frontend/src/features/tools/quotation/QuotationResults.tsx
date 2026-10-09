@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -112,7 +113,7 @@ export function QuotationResults({
       input,
     }),
     enabled: active && Boolean(request) && (saved || !stopped),
-    meta: saved ? undefined : objectDependencies(input.source),
+    meta: { ...(saved ? {} : objectDependencies(input.source)), reportError: false },
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
@@ -153,6 +154,7 @@ export function QuotationResults({
               : 'Calculating Preview…'
         }
         error={data.isError}
+        diagnostic={data.error}
         onRetry={
           data.isError
             ? () => {
@@ -592,10 +594,15 @@ function QuotationPublishDialog({
   );
   const [metadata, setMetadata] = useState<string[]>([]);
   const [fields, setFields] = useState<string[]>([...quotationFields]);
+  const reserved = new Set([
+    ...quotationFields.map((field) => `QUOTE_${field}`.toLowerCase()),
+    'quote_extraction',
+  ]);
   const choices = result.result.payload.columns
     .map(([name]) => name)
     .filter((name) => name !== result.result.payload.input.column);
   const mutation = useMutation({
+    meta: { reportError: false },
     mutationFn: () =>
       quotationApi.publishQuotation(base, result.id, { projection, name, metadata, fields }),
     onSuccess: onClose,
@@ -635,7 +642,7 @@ function QuotationPublishDialog({
           <Button
             variant="ghost"
             onClick={() => {
-              setMetadata(choices);
+              setMetadata(choices.filter((field) => !reserved.has(field.toLowerCase())));
               setFields([...quotationFields]);
             }}
           >
@@ -656,6 +663,7 @@ function QuotationPublishDialog({
             <label key={field} className="flex items-center gap-2">
               <Checkbox
                 checked={metadata.includes(field)}
+                disabled={reserved.has(field.toLowerCase())}
                 onCheckedChange={(v) => {
                   setMetadata(v ? [...metadata, field] : metadata.filter((n) => n !== field));
                 }}
@@ -677,7 +685,7 @@ function QuotationPublishDialog({
             ))}
         </div>
         {mutation.isError && (
-          <p role="alert">Could not create the Table. Your selections are retained.</p>
+          <OperationError error={mutation.error} title="Couldn't create the Table" />
         )}
         <DialogFooter>
           <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>

@@ -73,8 +73,8 @@ Corpora:
   with headers, footers, and quotes removed and whitespace-normalized excerpts
   capped at 600 characters. These category labels are a useful coarse reference.
 - **Newstalk:** 222 seeded story title/description excerpts from the six largest
-  publisher groups in the local
-  [`newstalk_stories.parquet`](../../ldaca-analytics-sample-data/ADO/reddit/newstalk_stories.parquet).
+  publisher groups in the sample repository
+  [`newstalk_stories.parquet`](https://github.com/Australian-Text-Analytics-Platform/ldaca-analytics-sample-data/blob/main/ADO/reddit/newstalk_stories.parquet).
   Publisher is not a ground-truth Topic, so its ARI is reported only as a source-
   association diagnostic.
 - **Multilingual synthetic:** 40 parallel Topic-labelled sentences covering

@@ -1,6 +1,5 @@
 //! Captured exports own their staging files, never project records or source mutations.
 use super::*;
-use arrow_ipc::writer::FileWriter;
 use std::collections::HashSet;
 use std::io::{Read, Write};
 
@@ -31,10 +30,11 @@ impl ExportRequest {
         match self {
             Self::Files { objects, format } if objects.len() == 1 => match format {
                 ExportFormat::Csv => "text/csv; charset=utf-8",
+                ExportFormat::Xlsx => {
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                }
                 ExportFormat::Json => "application/json",
-                ExportFormat::Ndjson => "application/x-ndjson",
                 ExportFormat::Parquet => "application/vnd.apache.parquet",
-                ExportFormat::Ipc => "application/vnd.apache.arrow.file",
             },
             Self::Files { .. } => "application/zip",
             _ => "application/octet-stream",
@@ -582,49 +582,31 @@ fn write_data(
     conn: &Connection,
     relation: &Relation,
     format: ExportFormat,
-    mut file: tempfile::NamedTempFile,
+    file: tempfile::NamedTempFile,
     cancellation: &CancellationToken,
 ) -> Result<tempfile::NamedTempFile> {
     (|| -> Result<_> {
         check_cancellation(cancellation)?;
-        if matches!(format, ExportFormat::Ipc) {
-            let metadata = arrow_metadata::Annotations::load(conn, relation)?;
-            let mut statement = conn.prepare(&format!("SELECT * FROM {}", relation.sql()))?;
-            let source_schema = statement.stream_arrow([])?.get_schema();
-            let schema = Arc::new(metadata.enrich(&source_schema, source_schema.fields().len())?);
-            let mut writer =
-                FileWriter::try_new(file.as_file_mut(), &schema).map_err(arrow_error)?;
-            while let Some(array) = statement.step()? {
-                check_cancellation(cancellation)?;
-                let batch = arrow_metadata::enrich_batch(
-                    duckdb::arrow::record_batch::RecordBatch::from(&array),
-                    schema.clone(),
+        match format {
+            ExportFormat::Csv => data_export::csv(conn, relation, file, cancellation),
+            ExportFormat::Xlsx => data_export::xlsx(conn, relation, file, cancellation),
+            ExportFormat::Json | ExportFormat::Parquet => {
+                let options = if matches!(format, ExportFormat::Json) {
+                    "FORMAT JSON, ARRAY true"
+                } else {
+                    "FORMAT PARQUET"
+                };
+                conn.execute(
+                    &format!("COPY (SELECT * FROM {}) TO ? ({options})", relation.sql()),
+                    [file.path().to_string_lossy().as_ref()],
                 )?;
-                writer.write(&batch).map_err(arrow_error)?;
+                check_cancellation(cancellation)?;
+                let (_, path) = file.into_parts();
+                Ok(tempfile::NamedTempFile::from_parts(
+                    std::fs::File::open(&path)?,
+                    path,
+                ))
             }
-            writer.finish().map_err(arrow_error)?;
-            drop(writer);
-            use std::io::{Seek, SeekFrom};
-            file.seek(SeekFrom::Start(0))?;
-            Ok(file)
-        } else {
-            let options = match format {
-                ExportFormat::Csv => "FORMAT CSV, HEADER true",
-                ExportFormat::Json => "FORMAT JSON, ARRAY true",
-                ExportFormat::Ndjson => "FORMAT JSON, ARRAY false",
-                ExportFormat::Parquet => "FORMAT PARQUET",
-                ExportFormat::Ipc => unreachable!(),
-            };
-            conn.execute(
-                &format!("COPY (SELECT * FROM {}) TO ? ({options})", relation.sql()),
-                [file.path().to_string_lossy().as_ref()],
-            )?;
-            check_cancellation(cancellation)?;
-            let (_, path) = file.into_parts();
-            Ok(tempfile::NamedTempFile::from_parts(
-                std::fs::File::open(&path)?,
-                path,
-            ))
         }
     })()
     .map_err(|e| contextual(e, relation))
@@ -1160,10 +1142,10 @@ mod tests {
         project.database.conn.execute_batch("CREATE TABLE data.corpus AS SELECT i::BIGINT AS id,repeat('research text ',12)||i::VARCHAR AS text, i%31 AS group_id FROM range(1000000) t(i); INSERT INTO wordflow.nodes(table_name) VALUES ('corpus'); CREATE VIEW data.subset AS SELECT * FROM data.corpus WHERE group_id<5; INSERT INTO wordflow.nodes(table_name) VALUES ('subset')").unwrap();
         for (label, request) in [
             (
-                "Arrow million rows",
+                "Excel million rows",
                 ExportRequest::Files {
                     objects: vec!["corpus".into()],
-                    format: ExportFormat::Ipc,
+                    format: ExportFormat::Xlsx,
                 },
             ),
             (
@@ -1193,30 +1175,28 @@ mod tests {
         }
     }
     #[test]
-    fn zip_names_are_unique_and_ipc_is_a_file_with_annotations() {
+    fn zip_names_are_unique_and_excel_has_one_data_sheet() {
         let project = fixture();
         let file = output(
             &project,
             ExportRequest::Files {
                 objects: vec!["posts".into(), "filtered".into()],
-                format: ExportFormat::Ipc,
+                format: ExportFormat::Xlsx,
             },
         );
         let mut archive = zip::ZipArchive::new(file.reopen().unwrap()).unwrap();
         assert_eq!(archive.len(), 2);
         let mut bytes = Vec::new();
         archive
-            .by_name("posts.arrow")
+            .by_name("posts.xlsx")
             .unwrap()
             .read_to_end(&mut bytes)
             .unwrap();
-        let reader =
-            arrow_ipc::reader::FileReader::try_new(std::io::Cursor::new(bytes), None).unwrap();
-        assert_eq!(
-            reader.schema().field(1).metadata()["ARROW:extension:metadata"],
-            "opaque payload"
-        );
-        assert_eq!(reader.map(|b| b.unwrap().num_rows()).sum::<usize>(), 2);
+        use calamine::Reader;
+        let mut workbook =
+            calamine::open_workbook_auto_from_rs(std::io::Cursor::new(bytes)).unwrap();
+        assert_eq!(workbook.sheet_names(), ["Data"]);
+        assert_eq!(workbook.worksheet_range("Data").unwrap().height(), 3);
         assert_eq!(
             archive_names(
                 ["a/b", "a_b", "a_b_2", "A_B", "CON", "../x"].into_iter(),

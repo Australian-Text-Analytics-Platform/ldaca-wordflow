@@ -39,7 +39,7 @@ export interface CustomNodeData extends Record<string, unknown> {
   detail?: string;
   objectName?: string;
   onDelete: (nodeId: string) => void;
-  onRename: (nodeId: string, newName: string) => void;
+  onRename: (nodeId: string, newName: string) => void | Promise<unknown>;
   onCopy: (nodeId: string) => void;
   onUndo: (nodeId: string) => void;
   onMaterialize?: (nodeId: string) => void;
@@ -507,9 +507,7 @@ export function CustomNodeView({
       onValueChange={(value) => {
         dispatchUi({ type: 'set-rename-value', value });
       }}
-      onRename={(name) => {
-        onRename(node.id, name);
-      }}
+      onRename={(name) => onRename(node.id, name)}
     />
   );
 

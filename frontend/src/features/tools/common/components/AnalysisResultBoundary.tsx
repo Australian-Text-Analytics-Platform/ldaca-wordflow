@@ -25,10 +25,11 @@ export function AnalysisResultBoundary({
     <ErrorBoundary
       key={analysisId}
       onError={onError}
-      fallbackRender={({ resetError }) => (
+      fallbackRender={({ error, resetError }) => (
         <AnalysisProgress
           name={name}
           error
+          diagnostic={error}
           message="Could not display saved results. Retry loading them, or use Rerun to rebuild them."
           onRetry={() => {
             void cache.invalidateQueries({

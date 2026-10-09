@@ -2,12 +2,13 @@ import { useEffect, useState, useRef } from 'react';
 import { Pencil, Redo2, Undo2, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+import { OperationError } from '@/features/project/OperationError';
 import type { ProjectDataTableHeaderInfo } from './projectTableModel';
 
 interface ProjectDataHeaderProps {
   info: ProjectDataTableHeaderInfo;
   onClose: () => void;
-  onRename?: (newName: string) => void;
+  onRename?: (newName: string) => void | Promise<unknown>;
   onUndo?: () => void;
   undoTitle?: string;
   redoTitle?: string;
@@ -88,21 +89,40 @@ export const ProjectDataHeader = ({
 }: ProjectDataHeaderProps) => {
   const [renameDraft, setRenameDraft] = useState<{ baseLabel: string; value: string }>();
   const inputRef = useRef<HTMLInputElement>(null);
+  const submitting = useRef(false);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<unknown>();
   const isRenaming = renameDraft?.baseLabel === info.nodeLabel;
 
   /**
    * Commits a node rename when the inline editor blurs or submits.
    * Attached to the rename form's submit and input blur paths.
    */
-  const handleRenameCommit = () => {
-    if (!isRenaming) {
+  const handleRenameCommit = async () => {
+    if (!isRenaming || submitting.current) return;
+    const trimmed = renameDraft.value.trim();
+    if (!trimmed) {
+      setError(new Error('Enter a Data Block name'));
       return;
     }
-    const trimmed = renameDraft.value.trim();
-    if (trimmed && trimmed !== (info.renameValue ?? info.nodeLabel) && onRename) {
-      onRename(trimmed);
+    if (trimmed === (info.renameValue ?? info.nodeLabel)) {
+      setRenameDraft(undefined);
+      return;
     }
-    setRenameDraft(undefined);
+    submitting.current = true;
+    setPending(true);
+    setError(undefined);
+    try {
+      await onRename?.(trimmed);
+      setRenameDraft(undefined);
+    } catch (cause) {
+      setError(cause);
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    } finally {
+      submitting.current = false;
+      setPending(false);
+    }
   };
 
   /**
@@ -119,6 +139,13 @@ export const ProjectDataHeader = ({
 
   return (
     <div className="shrink-0 border-b border-surface-border bg-panel p-2">
+      {error !== undefined && (
+        <OperationError
+          error={error}
+          title="Couldn't rename Data Block"
+          onRetry={() => void handleRenameCommit()}
+        />
+      )}
       <div className="flex min-w-0 items-center gap-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           {isRenaming ? (
@@ -126,13 +153,19 @@ export const ProjectDataHeader = ({
               ref={inputRef}
               className="min-w-0 flex-1 rounded-sm border px-2 py-0.5 text-body font-semibold text-foreground"
               value={renameDraft.value}
+              readOnly={pending}
               onChange={(e) => {
                 setRenameDraft({ baseLabel: info.nodeLabel, value: e.target.value });
               }}
-              onBlur={handleRenameCommit}
+              onBlur={() => {
+                if (!error) void handleRenameCommit();
+              }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRenameCommit();
-                if (e.key === 'Escape') setRenameDraft(undefined);
+                if (e.key === 'Enter') void handleRenameCommit();
+                if (e.key === 'Escape' && !pending) {
+                  setError(undefined);
+                  setRenameDraft(undefined);
+                }
               }}
               aria-label="Node name"
             />

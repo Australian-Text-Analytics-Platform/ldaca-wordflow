@@ -370,34 +370,24 @@ impl Database {
             schema: "data".into(),
             name: request.name.trim().into(),
         };
-        let mut names = std::collections::HashSet::new();
-        let mut fields = Vec::new();
-        for column in std::iter::once(&source.input.column).chain(&request.metadata) {
-            let name = &source
-                .columns
-                .iter()
-                .find(|(name, _)| name.eq_ignore_ascii_case(column))
-                .ok_or_else(|| Error::invalid("Unknown metadata column"))?
-                .0;
-            if names.insert(name.to_ascii_lowercase()) {
-                fields.push(format!(
-                    "source.{} AS {}",
-                    query::quote(name),
-                    query::quote(name)
-                ));
-            }
-        }
+        let reserved = FIELDS
+            .iter()
+            .map(|field| format!("QUOTE_{field}"))
+            .chain(std::iter::once("QUOTE_extraction".into()))
+            .collect::<Vec<_>>();
+        let (mut names, mut fields) = publication_fields(
+            &source.columns,
+            &source.input.column,
+            &request.metadata,
+            &reserved,
+        )?;
         let projection = format!(
             "SELECT * FROM wordflow.{}",
             artifact_table(source.projection)
         );
         let rows = if request.projection == Projection::Documents {
-            if !names.insert("quote_extraction".into()) {
-                return Err(Error::invalid(
-                    "Source column conflicts with QUOTE_extraction",
-                ));
-            }
-            fields.push("QUOTE_extraction".into());
+            let output = generated_name(&mut names, "QUOTE_extraction");
+            fields.push(format!("QUOTE_extraction AS {}", query::quote(&output)));
             format!(
                 "SELECT document_id,first(source) AS source,string_agg(quote,chr(10) ORDER BY quote_row_idx) AS QUOTE_extraction FROM ({projection}) GROUP BY document_id"
             )
@@ -406,10 +396,7 @@ impl Database {
                 if !FIELDS.contains(&field.as_str()) {
                     return Err(Error::invalid("Unknown quotation field"));
                 }
-                let output = format!("QUOTE_{field}");
-                if !names.insert(output.to_ascii_lowercase()) {
-                    return Err(Error::invalid("Duplicate output column"));
-                }
+                let output = generated_name(&mut names, &format!("QUOTE_{field}"));
                 fields.push(format!(
                     "{} AS {}",
                     query::quote(field),

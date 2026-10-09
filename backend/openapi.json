@@ -1860,10 +1860,9 @@
       "ExportFormat": {
         "enum": [
           "csv",
+          "xlsx",
           "json",
-          "ndjson",
-          "parquet",
-          "ipc"
+          "parquet"
         ],
         "type": "string"
       },

@@ -21,15 +21,15 @@ schema objects** when needed. Add all respects the picker's search and scope.
 |---|---|
 | CSV (default) | Spreadsheet and plain table exchange |
 | JSON | A JSON array of row objects |
-| NDJSON | One JSON object per line |
+| Excel | One Data worksheet, with Excel numeric precision and UTC date/time conversion |
 | Parquet | Typed, compressed columnar data |
-| Arrow IPC | A standard `.arrow` file with typed values and Wordflow field annotations |
 
 One selected Data Block produces one file. Multiple selections produce a ZIP
 with one file per Data Block, in selection order. Export includes all committed
 rows and columns, regardless of Data View paging, filters or unsaved edits.
-Parquet preserves typed values; use Arrow IPC or `.wfpj` when you need Wordflow's
-extension annotations too.
+CSV includes a UTF-8 BOM and represents nested cells as JSON. Excel supports up to
+16,384 columns and 1,048,575 data rows plus a header. Parquet preserves typed
+values; use `.wfpj` to retain Wordflow's extension annotations too.
 
 ### Wordflow project
 
@@ -74,7 +74,7 @@ creates a separate portable copy while you keep working in the original.
 ## Practice
 
 1. Export two Data Blocks as CSV and inspect both files inside the ZIP.
-2. Export one as Arrow IPC and verify the complete row count.
+2. Export one as Excel and verify the complete row count.
 3. Export a selected project and review its View materialization list.
 4. Open the copy separately and check its data without the original source files.
 

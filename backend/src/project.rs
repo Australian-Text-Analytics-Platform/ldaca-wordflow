@@ -61,19 +61,17 @@ pub(crate) enum SqlOutput {
 #[serde(rename_all = "lowercase")]
 pub enum ExportFormat {
     Csv,
+    Xlsx,
     Json,
-    Ndjson,
     Parquet,
-    Ipc,
 }
 impl ExportFormat {
     pub fn extension(self) -> &'static str {
         match self {
             Self::Csv => "csv",
+            Self::Xlsx => "xlsx",
             Self::Json => "json",
-            Self::Ndjson => "ndjson",
             Self::Parquet => "parquet",
-            Self::Ipc => "arrow",
         }
     }
 }
@@ -541,6 +539,7 @@ impl Database {
     }
     fn rename_node(&mut self, id: impl Into<ObjectTarget>, name: &str) -> Result<(String, Uuid)> {
         let target = id.into();
+        let name = name.trim();
         if name.trim().is_empty() {
             return Err(Error::invalid("Table name cannot be empty"));
         }
@@ -977,6 +976,7 @@ fn arrow_error(e: duckdb::arrow::error::ArrowError) -> Error {
 pub mod analyses;
 pub(crate) mod changes;
 pub(crate) mod concordance;
+mod data_export;
 mod document_matches;
 pub mod exports;
 pub mod frequency;

@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -32,6 +33,7 @@ export function SqlTypeDialog({
   column,
   nodeName,
   applying,
+  error,
   onClose,
   onCast,
 }: {
@@ -39,6 +41,7 @@ export function SqlTypeDialog({
   column: string;
   nodeName: string;
   applying: boolean;
+  error?: unknown;
   onClose: () => void;
   onCast: (sqlType: string) => Promise<void>;
 }) {
@@ -47,6 +50,7 @@ export function SqlTypeDialog({
   const catalogue = useQuery({
     queryKey: ['native', base, 'sql-types'],
     queryFn: ({ signal }) => sqlTypes(base, signal),
+    meta: { reportError: false },
     gcTime: 0,
     refetchOnWindowFocus: false,
   });
@@ -91,6 +95,9 @@ export function SqlTypeDialog({
         </div>
         <div className="flex max-h-[40vh] flex-col gap-3 overflow-y-auto">
           {catalogue.isPending && <p role="status">Loading SQL types…</p>}
+          {catalogue.isError && (
+            <OperationError title="Couldn't load SQL types" error={catalogue.error} />
+          )}
           {catalogue.isError && (
             <Button
               variant="outline"
@@ -154,13 +161,14 @@ export function SqlTypeDialog({
             </p>
           )}
         </div>
+        {error != null && <OperationError title="Couldn't convert column" error={error} />}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button
             type="button"
-            disabled={!value.trim()}
+            disabled={!value.trim() || applying}
             onClick={() => {
               void onCast(value);
             }}

@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +78,7 @@ export interface ProjectTableProps {
   fetching?: boolean;
   /** Page-query failure used by transparent Row Details navigation. */
   pageError?: unknown;
+  onRetryPage?: () => void;
   projectKey?: string;
   nodeId?: string;
   nodeLabel?: string;
@@ -84,7 +86,6 @@ export interface ProjectTableProps {
   onCast?: (column: string, targetType: ColumnCastType, format?: string) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
-  onMutationError?: (error: unknown) => void;
 
   /** Server-side pagination info (1-indexed page from backend). */
   pagination?: NodeTablePagination;
@@ -120,6 +121,7 @@ export function ProjectTable({
   loading = false,
   fetching = false,
   pageError,
+  onRetryPage,
   projectKey,
   nodeId,
   nodeLabel,
@@ -127,7 +129,6 @@ export function ProjectTable({
   onCast,
   onRenameColumn,
   onDeleteColumn,
-  onMutationError,
   pagination,
   rowCount,
   hasNext,
@@ -173,13 +174,24 @@ export function ProjectTable({
     viewportRef.current.scrollTop = 0;
   }, [projectKey, nodeId]);
 
+  const [columnError, setColumnError] = useState<unknown>();
   const mutations = useColumnMutations({
     nodeName: nodeLabel ?? nodeId,
     columnFields,
-    onCast,
+    onCast: onCast
+      ? async (...args) => {
+          setColumnError(undefined);
+          await onCast(...args);
+        }
+      : undefined,
     onRenameColumn,
-    onDeleteColumn,
-    onError: onMutationError,
+    onDeleteColumn: onDeleteColumn
+      ? async (column) => {
+          setColumnError(undefined);
+          await onDeleteColumn(column);
+        }
+      : undefined,
+    onError: setColumnError,
   });
 
   const {
@@ -311,9 +323,9 @@ export function ProjectTable({
             }}
             isColumnBusy={isColumnBusy}
             isRenaming={renamingColumn === column}
-            canCast={Boolean(onCast && onMutationError)}
-            canRename={Boolean(onRenameColumn && onMutationError)}
-            canDelete={Boolean(onDeleteColumn && onMutationError)}
+            canCast={Boolean(onCast)}
+            canRename={Boolean(onRenameColumn)}
+            canDelete={Boolean(onDeleteColumn)}
             isWideColumn={isWideColumn}
             isCollapsedColumn={isCollapsedColumn}
             onToggleExpand={onToggleExpand}
@@ -347,9 +359,18 @@ export function ProjectTable({
         if (isTopicCoverageField(currentField)) {
           return <TopicCoverageBar value={cellValue} />;
         }
-        // Cell values may be structs/objects; default stringification preserves prior display text.
-        // eslint-disable-next-line @typescript-eslint/no-base-to-string
-        const displayValue = cellValue == null ? '' : String(cellValue);
+        const displayValue =
+          cellValue == null
+            ? ''
+            : typeof cellValue === 'object'
+              ? JSON.stringify(cellValue, (_key, value: unknown) =>
+                  typeof value === 'bigint' ? value.toString() : value,
+                )
+              : typeof cellValue === 'string'
+                ? cellValue
+                : JSON.stringify(cellValue, (_key, value: unknown) =>
+                    typeof value === 'bigint' ? value.toString() : value,
+                  );
         return (
           <span className="block truncate" title={displayValue}>
             {displayValue}
@@ -489,6 +510,11 @@ export function ProjectTable({
     },
   );
 
+  if (pageError != null && sanitizedData.length === 0)
+    return (
+      <OperationError title="Couldn't load Data Block" error={pageError} onRetry={onRetryPage} />
+    );
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -503,6 +529,16 @@ export function ProjectTable({
   return (
     <>
       <div className="flex h-full w-full flex-col min-h-0">
+        {pageError != null && (
+          <OperationError
+            title="Couldn't load Data Block"
+            error={pageError}
+            onRetry={onRetryPage}
+          />
+        )}
+        {columnError != null && !datetimeModal && !sqlTypeModal && (
+          <OperationError title="Couldn't change column" error={columnError} />
+        )}
         <ScrollArea viewportRef={viewportRef} scrollbars="both" className="flex-1 bg-surface">
           <Table disableContainer className="w-max table-auto">
             <TableHeader className="sticky top-0 z-20 bg-panel">
@@ -646,8 +682,15 @@ export function ProjectTable({
 
       <DatetimeFormatPanel
         open={datetimeModal !== null}
-        onClose={closeDatetimeModal}
-        onConfirm={handleDatetimeFormatConfirm}
+        error={columnError}
+        onClose={() => {
+          setColumnError(undefined);
+          closeDatetimeModal();
+        }}
+        onConfirm={(format) => {
+          setColumnError(undefined);
+          return handleDatetimeFormatConfirm(format);
+        }}
         columnName={datetimeModal?.column ?? ''}
       />
       {sqlTypeModal && (
@@ -656,8 +699,15 @@ export function ProjectTable({
           column={sqlTypeModal.column}
           nodeName={sqlTypeModal.nodeName}
           applying={loadingCast[sqlTypeModal.column] ?? false}
-          onClose={closeSqlTypeModal}
-          onCast={confirmSqlType}
+          error={columnError}
+          onClose={() => {
+            setColumnError(undefined);
+            closeSqlTypeModal();
+          }}
+          onCast={(type) => {
+            setColumnError(undefined);
+            return confirmSqlType(type);
+          }}
         />
       )}
 

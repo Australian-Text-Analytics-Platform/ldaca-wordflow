@@ -177,25 +177,18 @@ export const useColumnMutations = ({
         dispatch({ type: 'renameClosed' });
         return;
       }
-      if (!nextName) {
-        onError(new Error('Column name cannot be empty.'));
-        return;
-      }
+      if (!nextName) throw new Error('Column name cannot be empty.');
       if (nextName === column) {
         dispatch({ type: 'renameClosed' });
         return;
       }
 
-      try {
-        await mutateAsync({
-          column,
-          kind: 'action',
-          execute: () => onRenameColumn(column, nextName),
-        });
-        dispatch({ type: 'renameClosed' });
-      } catch (error) {
-        onError(error);
-      }
+      await mutateAsync({
+        column,
+        kind: 'action',
+        execute: () => onRenameColumn(column, nextName),
+      });
+      dispatch({ type: 'renameClosed' });
     },
     [onRenameColumn, mutateAsync, onError],
   );
