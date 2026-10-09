@@ -801,8 +801,69 @@
               "operation"
             ],
             "type": "object"
+          },
+          {
+            "properties": {
+              "columns": {
+                "items": {
+                  "$ref": "#/components/schemas/ColumnExpression"
+                },
+                "type": "array"
+              },
+              "operation": {
+                "enum": [
+                  "transform_many"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "columns",
+              "operation"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "columns": {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "operation": {
+                "enum": [
+                  "delete_many"
+                ],
+                "type": "string"
+              }
+            },
+            "required": [
+              "columns",
+              "operation"
+            ],
+            "type": "object"
           }
         ]
+      },
+      "ColumnExpression": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "type": "string"
+          },
+          "expression": {
+            "type": "string"
+          },
+          "replace": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "column",
+          "expression"
+        ],
+        "type": "object"
       },
       "ColumnMapping": {
         "additionalProperties": false,
@@ -1442,6 +1503,21 @@
           "name",
           "sql",
           "mappings"
+        ],
+        "type": "object"
+      },
+      "CreateViews": {
+        "additionalProperties": false,
+        "properties": {
+          "views": {
+            "items": {
+              "$ref": "#/components/schemas/CreateView"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "views"
         ],
         "type": "object"
       },
@@ -18046,6 +18122,66 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/api/project/views/batch": {
+      "post": {
+        "operationId": "api_create_views",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateViews"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Atomically created live Views"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "tags": [

@@ -147,6 +147,7 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(change_column))
         .routes(utoipa_axum::routes!(change_column_object))
         .routes(utoipa_axum::routes!(create_view))
+        .routes(utoipa_axum::routes!(create_views))
         .routes(utoipa_axum::routes!(read_stopwords))
         .routes(utoipa_axum::routes!(prepare_stopwords))
         .merge(
@@ -509,6 +510,18 @@ async fn create_view(
     Ok(Json(TableName {
         table_name: project.create_view(input).await?,
     }))
+}
+#[utoipa::path(
+    post, path = "/api/project/views/batch", operation_id = "api_create_views",
+    tag = "api",
+    request_body = crate::project::mutations::CreateViews,
+    responses((status = 200, description = "Atomically created live Views", body = Vec<String>), (status = 400, body = crate::error::ErrorEnvelope), (status = 409, body = crate::error::ErrorEnvelope), (status = 500, body = crate::error::ErrorEnvelope))
+)]
+async fn create_views(
+    State(project): State<ProjectRuntime>,
+    InputJson(input): InputJson<crate::project::mutations::CreateViews>,
+) -> Result<Json<Vec<String>>> {
+    Ok(Json(project.create_views(input).await?))
 }
 #[utoipa::path(
     post, path = "/api/project/stopwords/read", operation_id = "api_read_stopwords",

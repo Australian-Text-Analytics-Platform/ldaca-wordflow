@@ -118,3 +118,53 @@ Observed checks:
 
 No public release or production storage was modified. WebKit, native macOS and
 Windows acceptance remain in the global platform lane.
+
+## Batch 4: native Data Editor and Data Builder
+
+The Editor occupies the former graph area above a collapsible Data View. Its
+existing window-local draft owner feeds ordinary SQL into shared Preview/Apply.
+Successful Apply closes its captured form; failed Apply keeps editable values and
+an inline original diagnostic. Multi-column changes/deletion are atomic, preserve
+Table physical types and constraints, and add one undoable live View layer.
+Native text functions remain registered after project reopening.
+
+Builder now offers Filter, Group, Join, Aggregate, Sample, Deduplicate, Stack,
+Build and SQL. Group outputs and the Deduplicate pair use one native batch
+transaction. Exact filter bounds, guarded statistics prefilling, whole-day date
+ends and Topic Coverage STRUCT access use the same SQL for Preview and Apply.
+
+Observed checks:
+
+- Backend: 213 library tests, 57 integration tests and two CLI tests passed;
+  14 optional library tests and one subprocess helper remain explicitly ignored.
+  Seven focused mutation tests cover rollback, exact decimal/nested metadata,
+  simultaneous edits, lazy Views, one Undo and atomic View batches. Three native
+  text-function tests include saved View reopening.
+- Native text/data library: 108 unit and 23 integration tests passed; two
+  model/download-dependent tests remain ignored. No-default, tokenisation-only
+  and data-only compilation pass. The tokenisation-only lane retains its existing
+  unused cache-fingerprint warning. Strict all-feature Clippy and formatting pass
+  for the library and backend.
+- Frontend: all 739 unit tests and 17 script tests passed. One diagnostics test
+  required a focused rerun with permission for its loopback fixture. Production
+  build, lint, Knip, generated API, bundled-doc drift and internal links pass.
+  Seven focused header tests also pass, including the subsequent regression for
+  retaining an open menu and name draft when refreshed column definitions arrive.
+- Chromium: all five Editor and ten Builder journeys pass. These exercise
+  literal/Regex/CJK matching, templates and zero-row constants, all Count modes,
+  directional splitting, parser-based XML, exact types and copied nested metadata,
+  atomic failure, live source updates and one Undo. Group date/range counts,
+  optional aggregate order, NULL-excluding distinct counts and duplicate kept flags
+  are checked against native values.
+- All six native conversion browser checks pass, including named SQL types,
+  exact decimal/nested casts, full-source failures, datetime discovery and manual
+  formats. An observed menu remount during refresh was fixed and retested.
+- Editor browser checks retain typing focus, accept suggested names with Tab,
+  preserve failed drafts without a toast, close on successful Apply and collapse
+  Data View. Malformed XML after the first 200 rows is counted and inspectable
+  without changing Apply membership. Actual light/dark screenshots at 1000×760
+  were inspected; wrapping and scrolling remain available.
+
+The bundled tutorial and canonical native contracts/domain/ownership pages are
+updated. Shell labels, compact headers and content-based panel sizing continue in
+batch 7. WebKit and native macOS/Windows acceptance remain open globally.

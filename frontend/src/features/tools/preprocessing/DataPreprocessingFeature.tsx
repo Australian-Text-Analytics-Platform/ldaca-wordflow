@@ -6,7 +6,7 @@ import type { ProjectNode } from '@/features/project/api';
 import { querySql } from '@/features/project/api';
 import { suggestDataBlockName, type DataBlockOperation } from '@/features/project/automaticNames';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
-import { reportProjectError } from '@/features/project/projectErrors';
+import { OperationError } from '@/features/project/OperationError';
 import { schemaQuery } from '@/features/project/projectQueries';
 import { NodeInputsPanel } from '@/features/tools/common/components/NodeInputsPanel';
 import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetadata';
@@ -14,9 +14,18 @@ import {
   useNodeInputs,
   type UseNodeInputsResult,
 } from '@/features/tools/common/nodeInputs/useNodeInputs';
-import { isArrowStringField } from '@/lib/arrow/decodeArrowTable';
 import { useIsMutating, useMutation, useQueries } from '@tanstack/react-query';
-import { Calculator, Code2, Filter, Layers, Merge, Search, Shuffle } from 'lucide-react';
+import {
+  Calculator,
+  Code2,
+  Filter,
+  Layers,
+  Merge,
+  Shuffle,
+  Group,
+  Sigma,
+  CopyCheck,
+} from 'lucide-react';
 import { lazy, Suspense, useState } from 'react';
 import { BuildSubTab } from './build/BuildSubTab';
 import { buildExpression, type BuildColumnRequest } from './build/hooks/buildExpressionModel';
@@ -26,21 +35,18 @@ import { usePreprocessingInputs } from './inputState';
 import { JoinSubTab } from './join/JoinSubTab';
 import { joinColumnMappings } from './join/columnMappings';
 import {
-  applyFind,
   applyTransformation,
   previewSql,
   resultSelect,
   type ColumnMapping,
   type Transformation,
 } from './projectPreprocessing';
-import { ReplaceSubTab } from './replace/ReplaceSubTab';
-import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
 import { SliceSubTab } from './slice/SliceSubTab';
+import { GroupTool, AggregateTool, DeduplicateTool } from './grouping/GroupingTools';
 import {
   bindInput,
   columnSelect,
   filterSelect,
-  findColumn,
   joinSelect,
   resolveColumnName,
   sampleSelect,
@@ -53,10 +59,12 @@ const SqlSubTab = lazy(() =>
 
 const TOOLS = [
   { id: 'filter', title: 'Filter', Icon: Filter },
-  { id: 'slice', title: 'Sample', Icon: Shuffle },
+  { id: 'group', title: 'Group', Icon: Group },
   { id: 'join', title: 'Join', Icon: Merge },
+  { id: 'aggregate', title: 'Aggregate', Icon: Sigma },
+  { id: 'slice', title: 'Sample', Icon: Shuffle },
+  { id: 'deduplicate', title: 'Deduplicate', Icon: CopyCheck },
   { id: 'concat', title: 'Stack', Icon: Layers },
-  { id: 'find', title: 'Find', Icon: Search },
   { id: 'build', title: 'Build', Icon: Calculator },
   { id: 'sql', title: 'SQL', Icon: Code2 },
 ] as const;
@@ -85,14 +93,12 @@ export default function DataPreprocessingFeature(props: DataPreprocessingProps) 
   return (
     <div className="@container/preprocessing w-full min-w-0 space-y-4">
       <div className="flex items-center gap-2">
-        <h1 className="text-heading-1 font-semibold">Data Preprocessing</h1>
-        <InfoIcon targetKey="preprocessing.overview" label="About Data Preprocessing" />
+        <h1 className="text-heading-1 font-semibold">Data Builder</h1>
+        <InfoIcon targetKey="preprocessing.overview" label="About Data Builder" />
       </div>
       {tool !== 'sql' && (
         <p className="text-body text-description">
-          {tool === 'find'
-            ? 'Find adds or replaces a column in the selected Data Block.'
-            : 'This tool creates a new View that follows its inputs. Input Data Blocks stay unchanged.'}
+          Create live Views that follow their inputs. Input Data Blocks stay unchanged.
         </p>
       )}
       <Tabs
@@ -102,7 +108,7 @@ export default function DataPreprocessingFeature(props: DataPreprocessingProps) 
         }}
       >
         <EditorTabs
-          aria-label="Data preprocessing tools"
+          aria-label="Data Builder tools"
           activeTabId={tool}
           onActivate={(value) => {
             setTool(value);
@@ -159,6 +165,7 @@ function ToolPane({
   const schemaNames = [...new Set(inputs.map((input) => input.node_id))];
   const setInputs = usePreprocessingInputs((state) => state.set);
   const [name, setName] = useState('');
+  const [operationError, setOperationError] = useState<unknown>();
   const mutationKey = ['native', base, 'preprocessing-apply', tool];
   const pending = useIsMutating({ mutationKey });
   const projectNodes: NodeMetadata[] = nodes.map((node) => ({
@@ -173,6 +180,7 @@ function ToolPane({
     queries: schemaNames.map((node_id) => ({
       ...schemaQuery(base, node_id, true),
       enabled: active,
+      meta: { reportError: false },
     })),
   });
   const columns = (node: Pick<NodeMetadata, 'id'>) =>
@@ -185,7 +193,7 @@ function ToolPane({
     },
     allNodes: projectNodes,
     getColumnInfos: columns,
-    constraints: { maxNodes, ...(tool === 'find' ? { fieldPredicate: isArrowStringField } : {}) },
+    constraints: { maxNodes },
   });
   const leftPicker = useNodeInputs({
     value: join.left ? [join.left] : EMPTY_INPUTS,
@@ -210,7 +218,7 @@ function ToolPane({
   const selected = picker.selectedNodes.map((node) => node.id);
   const isLoading = { operations: pending > 0 };
   const onAlert = (message: string) => {
-    reportProjectError(new Error(message), 'Preprocessing failed', `preprocessing-${tool}`);
+    setOperationError(message);
   };
   const inputPanel = () =>
     tool === 'join' ? (
@@ -229,7 +237,7 @@ function ToolPane({
         onRemoveNode={picker.removeNode}
         onClear={picker.clear}
         onColumnChange={picker.setColumn}
-        showColumnPicker={tool === 'find'}
+        showColumnPicker={false}
         columnLabel="Text column:"
         title="Preprocessing Inputs"
       />
@@ -241,7 +249,9 @@ function ToolPane({
     join: 'join',
     concat: 'stk',
     build: 'bld',
-    find: 'bld',
+    group: 'grp',
+    aggregate: 'agg',
+    deduplicate: 'ddp',
   };
   const suggestedName = suggestDataBlockName(selected, operation[tool], existingNames);
   const baseProps = {
@@ -283,13 +293,6 @@ function ToolPane({
   });
   const filter = (source: string, request: FilterRequest): Transformation =>
     single(source, filterSelect(request));
-  const find = (source: string, request: ReplaceRequest): Transformation => {
-    const { column, select } = findColumn(
-      request,
-      columns({ id: source }).map(({ name }) => name),
-    );
-    return single(source, select, column);
-  };
   const build = (source: string, request: BuildColumnRequest): Transformation => {
     const column = resolveColumnName(
       request.column,
@@ -305,19 +308,6 @@ function ToolPane({
       column,
     );
   };
-  const { mutateAsync: submitFind } = useMutation({
-    mutationKey,
-    meta: { reportError: false },
-    mutationFn: ({
-      target,
-      request,
-      columnNames,
-    }: {
-      target: Pick<ProjectNode, 'table_name' | 'kind'>;
-      request: ReplaceRequest;
-      columnNames: string[];
-    }) => applyFind(base, target, request, columnNames),
-  });
   const { mutateAsync: submit } = useMutation({
     mutationKey,
     meta: { reportError: false },
@@ -338,130 +328,167 @@ function ToolPane({
     operation: Transformation | (() => Promise<Transformation>),
     requestedName?: string,
   ) {
+    setOperationError(undefined);
     const outputName = [requestedName?.trim(), name.trim()].find(Boolean) ?? suggestedName;
     return submit({ operation, outputName });
   }
-  if (tool === 'filter')
+  const renderTool = () => {
+    if (tool === 'group' || tool === 'aggregate' || tool === 'deduplicate') {
+      const Component =
+        tool === 'group' ? GroupTool : tool === 'aggregate' ? AggregateTool : DeduplicateTool;
+      return id ? (
+        <Component
+          key={id}
+          base={base}
+          source={id}
+          columns={schemas[schemaNames.indexOf(id)]?.data ?? []}
+          existingNames={existingNames}
+          active={active}
+          inputs={inputPanel()}
+          suggested={suggestedName}
+          documentColumn={first?.document ?? undefined}
+        />
+      ) : (
+        inputPanel()
+      );
+    }
+    if (tool === 'filter')
+      return (
+        <FilterSubTab
+          {...baseProps}
+          selectedNodeId={id}
+          selectedNode={first}
+          columnOptions={first ? columns(first) : []}
+          filterNode={(source, request) => apply(filter(source, request), request.name)}
+          filterPreview={({ nodeId, payload, page, pageSize, signal }) =>
+            previewSql(base, resultSelect(filter(nodeId, payload)), page, pageSize, signal)
+          }
+        />
+      );
+    if (tool === 'slice')
+      return (
+        <SliceSubTab
+          {...baseProps}
+          selectedNodeId={id}
+          selectedNode={first}
+          sliceNode={(source, request) =>
+            apply(single(source, sampleSelect(request)), request.name)
+          }
+          slicePreview={({ nodeId, payload, page, pageSize, signal }) =>
+            previewSql(base, bindInput(sampleSelect(payload), nodeId), page, pageSize, signal)
+          }
+        />
+      );
+    if (tool === 'join')
+      return (
+        <JoinSubTab
+          {...baseProps}
+          leftColumns={
+            join.left ? columns({ id: join.left.node_id }).map((column) => column.name) : undefined
+          }
+          rightColumns={
+            join.right
+              ? columns({ id: join.right.node_id }).map((column) => column.name)
+              : undefined
+          }
+          left={
+            leftPicker.resolvedNodes[0]
+              ? {
+                  node_id: leftPicker.resolvedNodes[0].id,
+                  column: leftPicker.resolvedNodes[0].column,
+                }
+              : null
+          }
+          right={
+            rightPicker.resolvedNodes[0]
+              ? {
+                  node_id: rightPicker.resolvedNodes[0].id,
+                  column: rightPicker.resolvedNodes[0].column,
+                }
+              : null
+          }
+          joinNodes={(left, right, joinKind, leftKeys, rightKeys, newName) => {
+            const leftColumns = unchanged(left);
+            const rightColumns = unchanged(right);
+            const select = joinSelect(
+              left,
+              right,
+              joinKind,
+              leftKeys[0],
+              rightKeys[0],
+              leftColumns.map((column) => column.column),
+              rightColumns.map((column) => column.column),
+            );
+            return apply(async () => {
+              const result = await querySql(base, [{ sql: `DESCRIBE SELECT * FROM (${select})` }]);
+              return {
+                select,
+                mappings: joinColumnMappings(
+                  leftColumns,
+                  rightColumns,
+                  joinKind,
+                  leftKeys[0],
+                  rightKeys[0],
+                  Array.from(result, (row: Record<string, unknown>) => String(row.column_name)),
+                ),
+              };
+            }, newName);
+          }}
+        />
+      );
+    if (tool === 'concat')
+      return (
+        <ConcatSubTab
+          {...baseProps}
+          selectedNodeIds={selected}
+          projectNodes={projectNodes}
+          getColumnInfos={columns}
+          concatPreview={({ nodeIds, deduplicate, page, pageSize, signal }) =>
+            previewSql(base, stackSelect(nodeIds, deduplicate), page, pageSize, signal)
+          }
+          concatNodes={(names, newName, deduplicate = false) =>
+            apply(
+              {
+                select: stackSelect(names, deduplicate),
+                mappings: names.flatMap((source) => unchanged(source)),
+              },
+              newName,
+            )
+          }
+        />
+      );
     return (
-      <FilterSubTab
+      <BuildSubTab
         {...baseProps}
-        selectedNodeId={id}
-        selectedNode={first}
-        columnOptions={first ? columns(first) : []}
-        filterNode={(source, request) => apply(filter(source, request), request.name)}
-        filterPreview={({ nodeId, payload, page, pageSize, signal }) =>
-          previewSql(base, resultSelect(filter(nodeId, payload)), page, pageSize, signal)
-        }
-      />
-    );
-  if (tool === 'slice')
-    return (
-      <SliceSubTab
-        {...baseProps}
-        selectedNodeId={id}
-        selectedNode={first}
-        sliceNode={(source, request) => apply(single(source, sampleSelect(request)), request.name)}
-        slicePreview={({ nodeId, payload, page, pageSize, signal }) =>
-          previewSql(base, bindInput(sampleSelect(payload), nodeId), page, pageSize, signal)
-        }
-      />
-    );
-  if (tool === 'join')
-    return (
-      <JoinSubTab
-        {...baseProps}
-        left={
-          leftPicker.resolvedNodes[0]
-            ? {
-                node_id: leftPicker.resolvedNodes[0].id,
-                column: leftPicker.resolvedNodes[0].column,
-              }
-            : null
-        }
-        right={
-          rightPicker.resolvedNodes[0]
-            ? {
-                node_id: rightPicker.resolvedNodes[0].id,
-                column: rightPicker.resolvedNodes[0].column,
-              }
-            : null
-        }
-        joinNodes={(left, right, joinKind, leftKeys, rightKeys, newName) => {
-          const select = joinSelect(left, right, joinKind, leftKeys[0], rightKeys[0]);
-          const leftColumns = unchanged(left);
-          const rightColumns = unchanged(right);
-          return apply(async () => {
-            const result = await querySql(base, [{ sql: `DESCRIBE SELECT * FROM (${select})` }]);
-            return {
-              select,
-              mappings: joinColumnMappings(
-                leftColumns,
-                rightColumns,
-                joinKind,
-                leftKeys[0],
-                rightKeys[0],
-                Array.from(result, (row: Record<string, unknown>) => String(row.column_name)),
-              ),
-            };
-          }, newName);
-        }}
-      />
-    );
-  if (tool === 'concat')
-    return (
-      <ConcatSubTab
-        {...baseProps}
-        selectedNodeIds={selected}
-        projectNodes={projectNodes}
-        getColumnInfos={columns}
-        concatPreview={({ nodeIds, deduplicate, page, pageSize, signal }) =>
-          previewSql(base, stackSelect(nodeIds, deduplicate), page, pageSize, signal)
-        }
-        concatNodes={(names, newName, deduplicate = false) =>
-          apply(
-            {
-              select: stackSelect(names, deduplicate),
-              mappings: names.flatMap((source) => unchanged(source)),
-            },
-            newName,
-          )
-        }
-      />
-    );
-  if (tool === 'find')
-    return (
-      <ReplaceSubTab
-        {...baseProps}
-        selectedColumn={picker.resolvedNodes[0]?.column ?? ''}
         selectedNodes={picker.selectedNodes}
         getColumnInfos={columns}
-        sourceKind={nodes.find((node) => node.table_name === id)?.kind}
-        replaceText={(source, request) =>
-          submitFind({
-            target: {
-              table_name: source,
-              kind: nodes.find((node) => node.table_name === source)?.kind ?? 'missing',
-            },
-            request,
-            columnNames: columns({ id: source }).map(({ name }) => name),
-          })
-        }
-        replaceTextPreview={({ nodeId, payload, page, pageSize, signal }) =>
-          previewSql(base, resultSelect(find(nodeId, payload)), page, pageSize, signal)
+        outputNameInput={outputNameInput}
+        buildColumnApply={(source, request) => apply(build(source, request))}
+        buildColumnPreview={({ nodeId, payload, page, pageSize, signal }) =>
+          previewSql(base, resultSelect(build(nodeId, payload)), page, pageSize, signal)
         }
       />
     );
+  };
   return (
-    <BuildSubTab
-      {...baseProps}
-      selectedNodes={picker.selectedNodes}
-      getColumnInfos={columns}
-      outputNameInput={outputNameInput}
-      buildColumnApply={(source, request) => apply(build(source, request))}
-      buildColumnPreview={({ nodeId, payload, page, pageSize, signal }) =>
-        previewSql(base, resultSelect(build(nodeId, payload)), page, pageSize, signal)
-      }
-    />
+    <>
+      {operationError != null && (
+        <OperationError title="Couldn't apply Builder operation" error={operationError} />
+      )}
+      {schemas.map((schema, index) =>
+        schema.error ? (
+          <OperationError
+            key={schemaNames[index]}
+            title="Couldn't load input columns"
+            error={schema.error}
+            onRetry={() => {
+              void schema.refetch();
+            }}
+          />
+        ) : null,
+      )}
+      {renderTool()}
+    </>
   );
 }
 

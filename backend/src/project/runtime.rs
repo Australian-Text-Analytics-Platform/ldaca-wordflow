@@ -859,6 +859,13 @@ impl ProjectRuntime {
         self.with_writable_project(move |p| p.create_view(request))
             .await
     }
+    pub(crate) async fn create_views(
+        &self,
+        request: mutations::CreateViews,
+    ) -> Result<Vec<String>> {
+        self.with_writable_project(move |p| p.create_views(request))
+            .await
+    }
     pub(crate) async fn read_stopwords(
         &self,
         selected: stopwords::StopwordSource,

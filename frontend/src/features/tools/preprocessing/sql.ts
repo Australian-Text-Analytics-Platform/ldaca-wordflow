@@ -1,7 +1,13 @@
 import { identifier, relation } from '@/features/project/objects';
-import { isArrowStringListField } from '@/lib/arrow/decodeArrowTable';
+import {
+  isArrowStringListField,
+  isArrowFloatField,
+  isArrowStringField,
+  isArrowDictionaryField,
+  type ArrowField,
+} from '@/lib/arrow/decodeArrowTable';
+import { DataType } from 'apache-arrow';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
 import type { SliceRequestPayload } from './slice/hooks/sliceFormModel';
 import type { FilterRequest, JoinType } from './types';
 
@@ -16,6 +22,10 @@ export const literal = (value: string | number | boolean | null): string => {
 };
 export const table = (name: string) => relation({ table_name: name });
 const CURRENT = '__wf_current';
+export function emptyPredicate(column: string, field?: ArrowField): string {
+  const source = identifier(column);
+  return `${source} IS NULL${field && isArrowFloatField(field) ? ` OR isnan(${source})` : ''}${field && (isArrowStringField(field) || isArrowDictionaryField(field)) ? ` OR regexp_full_match(CAST(${source} AS VARCHAR), '[\\p{Z}\\s]*')` : ''}`;
+}
 export const selectText = (sql: string) => sql.trim().replace(/;\s*$/, '');
 export const bindInput = (sql: string, name: string) =>
   `WITH ${CURRENT} AS (SELECT * FROM ${table(name)}) SELECT * FROM (${selectText(sql)})`;
@@ -39,6 +49,8 @@ function filterPredicate(request: FilterRequest): string {
       };
       let predicate: string;
       if (condition.operator === 'is_null') predicate = `${column} IS NULL`;
+      else if (condition.operator === 'is_empty')
+        predicate = emptyPredicate(condition.column, condition.field);
       else if (isTopicCoverageField(condition.field)) {
         if (
           !value ||
@@ -51,7 +63,7 @@ function filterPredicate(request: FilterRequest): string {
           condition.operator as 'gt'
         ];
         if (!comparison) throw new Error('Unsupported coverage comparison');
-        predicate = `list_extract(${column}, CAST(${scalar(value.topic_id)} AS INTEGER) + 2) ${comparison} ${scalar(value.threshold)}`;
+        predicate = `(list_extract(${column}, CAST(${scalar(value.topic_id)} AS INTEGER) + 2)).coverage ${comparison} ${scalar(value.threshold)}`;
       } else if (condition.operator === 'in') {
         if (!Array.isArray(value)) throw new Error('Select filter values');
         const nonNull = value.filter((item) => item !== null);
@@ -67,7 +79,7 @@ function filterPredicate(request: FilterRequest): string {
           throw new Error('Enter a range');
         const bounds = [
           value.start != null && value.start !== '' ? `${column} >= ${scalar(value.start)}` : '',
-          value.end != null && value.end !== '' ? `${column} <= ${scalar(value.end)}` : '',
+          value.end != null && value.end !== '' ? upperBound(value.end) : '',
         ].filter(Boolean);
         if (!bounds.length) throw new Error('Enter a range bound');
         predicate = bounds.join(' AND ');
@@ -84,9 +96,20 @@ function filterPredicate(request: FilterRequest): string {
           condition.operator as 'eq'
         ];
         if (!comparison) throw new Error('Unsupported filter operator');
-        predicate = `${column} ${comparison} ${scalar(value)}`;
+        predicate =
+          condition.operator === 'lte'
+            ? upperBound(value)
+            : `${column} ${comparison} ${scalar(value)}`;
       }
       return condition.negate ? `NOT (${predicate})` : `(${predicate})`;
+      function upperBound(input: unknown) {
+        return condition.field &&
+          DataType.isTimestamp(condition.field.type) &&
+          typeof input === 'string' &&
+          /^\d{4}-\d{2}-\d{2}$/.test(input)
+          ? `${column} < (CAST(${literal(input)} AS DATE) + INTERVAL 1 DAY)`
+          : `${column} <= ${scalar(input)}`;
+      }
     })
     .join(request.logic === 'or' ? ' OR ' : ' AND ');
 }
@@ -115,8 +138,32 @@ export function joinSelect(
   kind: JoinType,
   leftKey?: string,
   rightKey?: string,
+  leftColumns?: readonly string[],
+  rightColumns?: readonly string[],
 ): string {
-  const prefix = `SELECT * FROM ${table(left)} AS a ${kind.toUpperCase()} JOIN ${table(right)} AS b`;
+  let projection = '*';
+  if (leftColumns && rightColumns) {
+    const fold = (value: string) => value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
+    const reserved = new Set(leftColumns.map(fold));
+    const merged = kind !== 'cross' && leftKey === rightKey;
+    const selections = leftColumns.map((column) => {
+      if (merged && column === leftKey && (kind === 'right' || kind === 'full'))
+        return `${kind === 'right' ? `b.${identifier(column)}` : `coalesce(a.${identifier(column)}, b.${identifier(column)})`} AS ${identifier(column)}`;
+      return `a.${identifier(column)}`;
+    });
+    if (kind !== 'semi' && kind !== 'anti')
+      for (const column of rightColumns) {
+        if (merged && column === rightKey) continue;
+        const stem = reserved.has(fold(column)) ? `${column}_${right}` : column;
+        let name = stem;
+        let suffix = 2;
+        while (reserved.has(fold(name))) name = `${stem}_${String(suffix++)}`;
+        reserved.add(fold(name));
+        selections.push(`b.${identifier(column)} AS ${identifier(name)}`);
+      }
+    projection = selections.join(', ');
+  }
+  const prefix = `SELECT ${projection} FROM ${table(left)} AS a ${kind.toUpperCase()} JOIN ${table(right)} AS b`;
   if (kind === 'cross') return prefix;
   if (!leftKey || !rightKey) throw new Error('Choose both join keys');
   return leftKey === rightKey
@@ -130,19 +177,6 @@ export function stackSelect(names: string[], distinct: boolean): string {
     .join(distinct ? ' UNION BY NAME ' : ' UNION ALL BY NAME ');
 }
 
-function findExpression(request: ReplaceRequest): string {
-  const source = identifier(request.source_column);
-  const pattern = literal(request.pattern);
-  if (request.mode !== 'extract')
-    return `regexp_replace(${source}, ${pattern}, ${literal(request.replacement ?? '')}${request.count === 'first' ? '' : ", 'g'"})`;
-  let matches = `regexp_extract_all(${source}, ${pattern})`;
-  if (request.count === 'first') {
-    if (!Number.isSafeInteger(request.match_limit) || (request.match_limit ?? 0) < 1)
-      throw new Error('Match count must be a positive integer');
-    matches = `list_slice(${matches}, 1, ${String(request.match_limit)})`;
-  }
-  return `array_to_string(${matches}, ${literal(request.connector ?? ' ')})`;
-}
 /** DuckDB identifiers fold ASCII case, including quoted identifiers. */
 export const resolveColumnName = (name: string, existing: readonly string[]) => {
   const fold = (value: string) => value.replace(/[A-Z]/g, (letter) => letter.toLowerCase());
@@ -152,10 +186,3 @@ export const columnSelect = (column: string, expression: string, existing: reado
   existing.includes(column)
     ? `SELECT * REPLACE (${expression} AS ${identifier(column)}) FROM ${CURRENT}`
     : `SELECT *, ${expression} AS ${identifier(column)} FROM ${CURRENT}`;
-
-export function findColumn(request: ReplaceRequest, existing: readonly string[]) {
-  const output = request.output_column?.trim();
-  const column = resolveColumnName(output?.length ? output : request.source_column, existing);
-  const expression = findExpression(request);
-  return { column, expression, select: columnSelect(column, expression, existing) };
-}

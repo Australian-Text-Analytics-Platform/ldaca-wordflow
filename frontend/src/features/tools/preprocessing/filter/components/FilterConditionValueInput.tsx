@@ -340,6 +340,34 @@ export function FilterConditionValueInput({
 
   if (field && (isArrowIntegerField(field) || isArrowFloatField(field))) {
     const integer = isArrowIntegerField(field);
+    if (condition.operator === 'between') {
+      const range =
+        condition.value && typeof condition.value === 'object' && 'start' in condition.value
+          ? condition.value
+          : { start: null, end: null };
+      return (
+        <div className="flex flex-wrap gap-2">
+          {(['start', 'end'] as const).map((edge) => (
+            <input
+              key={edge}
+              aria-label={edge === 'start' ? 'Minimum (inclusive)' : 'Maximum (inclusive)'}
+              type="number"
+              step={integer ? '1' : 'any'}
+              value={range[edge] ?? ''}
+              onChange={(event) =>
+                onConditionChange(condition.id, 'value', {
+                  ...range,
+                  [edge]: event.target.value || null,
+                })
+              }
+              placeholder={edge === 'start' ? 'No minimum' : 'No maximum'}
+              disabled={disabled}
+              className="min-w-0 flex-1 rounded-md border border-input-border px-2 py-1 text-body"
+            />
+          ))}
+        </div>
+      );
+    }
     return (
       <input
         type="number"

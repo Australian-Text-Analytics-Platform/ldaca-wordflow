@@ -204,7 +204,7 @@ export function ConditionBuilder<Condition extends ConditionBuilderItem>(
                       </Select>
                     )}
 
-                    {condition.operator !== 'is_null' && (
+                    {condition.operator !== 'is_null' && condition.operator !== 'is_empty' && (
                       <div className="flex-1 md:flex-auto md:min-w-[28ch] md:max-w-full">
                         {renderValueInput(condition, rowDisabled)}
                       </div>

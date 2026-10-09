@@ -64,14 +64,14 @@ const getPrefillRequest = (
   column: string | undefined,
   operator: FilterCondition['operator'],
 ): FilterConditionPrefillRequest | null => {
-  if (!column || operator === 'is_null') return null;
+  if (!column || operator === 'is_null' || operator === 'is_empty') return null;
   if (field && isArrowTemporalField(field)) {
     return { kind: 'datetime', conditionId, column, operator };
   }
   if (
     field &&
     (isArrowIntegerField(field) || isArrowFloatField(field)) &&
-    (operator === 'gte' || operator === 'lte')
+    (operator === 'gte' || operator === 'lte' || operator === 'between')
   ) {
     return { kind: 'numeric', conditionId, column, operator };
   }
@@ -157,7 +157,17 @@ export const applyFilterConditionFieldChange = <Key extends keyof FilterConditio
       updated.value = updated.value[0] ?? '';
     }
 
-    if (updated.field && isArrowTemporalField(updated.field) && updated.column) {
+    if (
+      operator === 'between' &&
+      !(updated.value && typeof updated.value === 'object' && 'start' in updated.value)
+    ) {
+      updated.value = { start: null, end: null };
+    } else if (
+      operator !== 'between' &&
+      updated.value &&
+      typeof updated.value === 'object' &&
+      'start' in updated.value
+    ) {
       updated.value = '';
     }
     prefillRequest = getPrefillRequest(condition.id, updated.field, updated.column, operator);

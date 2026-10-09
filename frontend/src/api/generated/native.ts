@@ -1617,6 +1617,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/views/batch': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['api_create_views'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/resources/language/{name}': {
     parameters: {
       query?: never;
@@ -2136,7 +2152,22 @@ export interface components {
           expression: string;
           /** @enum {string} */
           operation: 'transform';
+        }
+      | {
+          columns: components['schemas']['ColumnExpression'][];
+          /** @enum {string} */
+          operation: 'transform_many';
+        }
+      | {
+          columns: string[];
+          /** @enum {string} */
+          operation: 'delete_many';
         };
+    ColumnExpression: {
+      column: string;
+      expression: string;
+      replace?: boolean;
+    };
     ColumnMapping: {
       column: string;
       output: string;
@@ -2304,6 +2335,9 @@ export interface components {
       mappings: components['schemas']['ColumnMapping'][];
       name: string;
       sql: string;
+    };
+    CreateViews: {
+      views: components['schemas']['CreateView'][];
     };
     /** @enum {string} */
     CredentialMode: 'none' | 'session' | 'remembered' | 'browser';
@@ -11908,6 +11942,54 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  api_create_views: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateViews'];
+      };
+    };
+    responses: {
+      /** @description Atomically created live Views */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': string[];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      500: {
         headers: {
           [name: string]: unknown;
         };

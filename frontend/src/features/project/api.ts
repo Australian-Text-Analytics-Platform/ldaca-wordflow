@@ -352,3 +352,10 @@ export async function createView(
 ): Promise<components['schemas']['TableName']> {
   return (await request(base, '/api/project/views', 'post', { body: input })).json();
 }
+
+export async function createViews(
+  base: string,
+  views: components['schemas']['CreateView'][],
+): Promise<string[]> {
+  return (await request(base, '/api/project/views/batch', 'post', { body: { views } })).json();
+}

@@ -5,7 +5,6 @@ import { Field, Utf8 } from 'apache-arrow';
 import { describe, expect, it, vi } from 'vite-plus/test';
 import { useBuildSubTab } from '../../build/hooks/useBuildSubTab';
 import { useFilterSubTabSections } from '../../filter/hooks/useFilterSubTabSections';
-import { useReplaceSubTab } from '../../replace/hooks/useReplaceSubTab';
 const preview = vi.hoisted(() => vi.fn());
 vi.mock('../usePreprocessingPreview', () => ({ usePreprocessingPreview: preview }));
 vi.mock('../useNodePreviewWithRawFallback', () => ({ useNodePreviewWithRawFallback: preview }));
@@ -26,7 +25,7 @@ const common = {
 };
 describe('preview is advisory', () => {
   it.each(['loading', 'failed', 'empty'])(
-    'permits complete Filter, Find and Build requests when preview is %s',
+    'permits complete Filter and Build requests when preview is %s',
     async (state) => {
       preview.mockReturnValue({
         data: [],
@@ -57,24 +56,6 @@ describe('preview is advisory', () => {
         await filter.current.applyFilter();
       });
       expect(filterNode).toHaveBeenCalledOnce();
-      const replaceText = vi.fn();
-      const { result: find } = renderHook(() =>
-        useReplaceSubTab({
-          ...common,
-          selectedNodes: [node],
-          getColumnInfos: () => [{ name: 'text', typeName: 'Utf8', field }],
-          replaceText,
-          replaceTextPreview: vi.fn(),
-        }),
-      );
-      act(() => {
-        find.current.setPattern('[');
-      });
-      expect(find.current.canApply).toBe(true);
-      await act(async () => {
-        await find.current.handleApply();
-      });
-      expect(replaceText).toHaveBeenCalledOnce();
       const buildColumnApply = vi.fn().mockResolvedValue({ table_name: 'new' });
       const { result: build } = renderHook(
         () =>

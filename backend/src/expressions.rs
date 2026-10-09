@@ -15,6 +15,15 @@ pub(crate) struct Expression {
     #[serde(flatten)]
     syntax: Syntax,
 }
+impl Expression {
+    /// A direct column projection keeps the original Arrow field annotations.
+    pub(crate) fn source_column(&self) -> Option<&str> {
+        match &self.syntax {
+            Syntax::Column { names } if names.len() == 1 => Some(&names[0]),
+            _ => None,
+        }
+    }
+}
 #[derive(Serialize, utoipa::ToSchema)]
 #[schema(as = ExpressionSyntax)]
 #[serde(tag = "kind", rename_all = "snake_case")]

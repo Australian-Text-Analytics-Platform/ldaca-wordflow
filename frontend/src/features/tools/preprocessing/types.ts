@@ -15,6 +15,7 @@ type FilterOperator =
   | 'starts_with'
   | 'ends_with'
   | 'is_null'
+  | 'is_empty'
   | 'in'
   | 'between';
 export interface FilterCondition {
@@ -99,24 +100,35 @@ export interface ConcatPreviewRequestPayload {
 
 export const PREVIEW_PAGE_SIZE_OPTIONS = [10, 20, 50];
 
-export const JOIN_TYPE_OPTIONS: { value: JoinType; description: string }[] = [
-  { value: 'inner', description: 'Only rows with matching keys in both data blocks.' },
+export const JOIN_TYPE_OPTIONS: { value: JoinType; label: string; description: string }[] = [
   {
     value: 'left',
+    label: 'Left',
     description: 'All rows from the left data block plus matching rows from the right.',
   },
   {
+    value: 'inner',
+    label: 'Inner',
+    description: 'Only rows with matching keys in both data blocks.',
+  },
+  {
     value: 'right',
+    label: 'Right',
     description: 'All rows from the right data block plus matching rows from the left.',
   },
-  { value: 'full', description: 'All rows from both data blocks; missing matches become nulls.' },
+  {
+    value: 'full',
+    label: 'Full',
+    description: 'All rows from both data blocks; missing matches become nulls.',
+  },
   {
     value: 'semi',
+    label: 'Keep matches',
     description: 'Rows from the left data block that have at least one match in the right.',
   },
   {
     value: 'anti',
+    label: 'Keep non-matches',
     description: 'Rows from the left data block that do not match anything in the right.',
   },
-  { value: 'cross', description: 'Cartesian product of all rows; ignores column selections.' },
 ];

@@ -9,6 +9,10 @@ import { schemaQuery } from './projectQueries';
 import { defaultNodeView, useProjectViewState } from './projectViewState';
 
 import { useProjectPreview } from './previewState';
+import { EditorToolbar } from './data-editor/DataEditorPanel';
+import { compileEditor } from './data-editor/expressions';
+import { usePreprocessingPreview } from '@/features/tools/preprocessing/hooks/usePreprocessingPreview';
+import { previewSql } from '@/features/tools/preprocessing/projectPreprocessing';
 export default function NativeDataView({
   base,
   nodes,
@@ -32,6 +36,8 @@ export default function NativeDataView({
   const node = nodes.find((n) => objectsApi.sameTarget(n.object ?? n.table_name, name));
   const key = objectsApi.targetKey(name);
   const object = objectsApi.objectRef(name);
+  const editor = useProjectPreview((state) => state.editor);
+  const editing = editor && objectsApi.sameTarget(editor.target, name) ? editor : null;
   const request = useProjectViewState((s) => s.nodes.get(key) ?? defaultNodeView);
   const update = (patch: Partial<typeof request>) => {
     useProjectViewState.getState().update(key, patch);
@@ -54,7 +60,7 @@ export default function NativeDataView({
       object.name,
       { page: request.page, size: request.size, sorting: request.sorting },
     ],
-    enabled: isOpen && !!node && !!schema.data && validSorting,
+    enabled: isOpen && !!node && !!schema.data && validSorting && !editing,
     gcTime: 0,
     meta: { ...objectDependencies(object), reportError: false },
     queryFn: ({ signal }) =>
@@ -65,11 +71,59 @@ export default function NativeDataView({
         : undefined,
   });
   const fields = schema.data ?? [];
+  let operation: ReturnType<typeof compileEditor> | undefined;
+  if (editing && schema.data) {
+    try {
+      operation = compileEditor(
+        editing.tool,
+        editing.draft,
+        fields.map((field) => field.name),
+        node?.kind === 'table',
+      );
+    } catch {
+      /* Incomplete forms keep the original data visible. */
+    }
+  }
+  const editPreview = usePreprocessingPreview({
+    request: operation
+      ? {
+          select: operation.select,
+          sorting: request.sorting.filter(
+            (sort) =>
+              (fields.some((field) => field.name === sort.id) &&
+                !(
+                  operation.change.operation === 'delete_many' &&
+                  operation.change.columns.includes(sort.id)
+                )) ||
+              operation.outputs.includes(sort.id),
+          ),
+        }
+      : null,
+    identity: {
+      projectBase: base,
+      operation: `data-editor-${object.schema}`,
+      nodeIds: [object.name],
+    },
+    enabled: Boolean(editing),
+    debounceMs: 350,
+    reportError: false,
+    retainLastSuccess: true,
+    fetcher: ({ request, page, pageSize, signal }) =>
+      previewSql(
+        base,
+        `WITH __wf_current AS (SELECT * FROM ${objectsApi.objectSql(name)}) SELECT * FROM (${request.select})${request.sorting.length ? ` ORDER BY ${request.sorting.map((sort) => `${objectsApi.identifier(sort.id)} ${sort.desc ? 'DESC' : 'ASC'}`).join(', ')}` : ''}`,
+        page,
+        pageSize,
+        signal,
+      ),
+  });
+  const showingEdit = Boolean(editing && editPreview.columns.length);
   useEffect(() => {
     if (!schema.data) return;
     const names = new Set(schema.data.map((field) => field.name));
+    for (const output of operation?.outputs ?? []) names.add(output);
     useProjectViewState.getState().reconcileColumns(key, names);
-  }, [schema.data, request.sorting, key]);
+  }, [schema.data, request.sorting, key, operation]);
   const changeColumn = async (
     change: projectApi.ColumnChange,
     columnChange?: { from: string; to?: string },
@@ -107,6 +161,18 @@ export default function NativeDataView({
     changeColumn({ operation: 'delete', column }, { from: column });
   return (
     <ProjectDataTableView
+      toolbar={
+        <>
+          <EditorToolbar target={name} column={fields[0]?.name ?? ''} />
+          {showingEdit && (
+            <p className="px-2 text-label-secondary text-description">
+              {editPreview.outdated
+                ? 'Previous preview — waiting for the current edit.'
+                : 'Edit preview — Apply commits this change.'}
+            </p>
+          )}
+        </>
+      }
       model={{
         selectedNode: node ? { id: key } : null,
         header: {
@@ -125,40 +191,75 @@ export default function NativeDataView({
             undo(name);
           },
         },
-        loading: { nodeData: schema.isLoading || rows.isLoading },
+        loading: { nodeData: schema.isLoading || (!editing && rows.isLoading) },
         table: {
           base,
-          data: rows.data?.rows ?? [],
-          columns: rows.data?.columns ?? [],
-          columnFields: Object.fromEntries(fields.map((f) => [f.name, f.field])),
+          data: showingEdit ? editPreview.data : (rows.data?.rows ?? []),
+          columns: showingEdit ? editPreview.columns : (rows.data?.columns ?? []),
+          columnFields: Object.fromEntries(
+            (showingEdit ? (editPreview.schema ?? fields) : fields).map((f) => {
+              const changed = operation?.outputs.includes(f.name);
+              const original = fields.find((field) => field.name === f.name);
+              if (changed && editing?.tool === 'duplicate') {
+                const source = fields.find((field) => field.name === editing.draft.column);
+                if (source) return [f.name, source.field.clone({ name: f.name })];
+              }
+              return [f.name, !changed && original ? original.field : f.field];
+            }),
+          ),
+          revealColumns: !editPreview.outdated ? operation?.outputs : undefined,
+          revealRevision: !editPreview.outdated ? operation?.select : undefined,
           nodeId: key,
           nodeLabel: objectsApi.targetLabel(name),
           documentColumn: logical ? (node?.document_column ?? undefined) : undefined,
-          fetching: rows.isFetching,
-          pageError: schema.error ?? rows.error,
+          fetching: editing ? editPreview.loading : rows.isFetching,
+          pageError: schema.error ?? (editing ? editPreview.error : rows.error),
           onRetryPage: () => {
             void schema.refetch();
             void rows.refetch();
+            if (editing) editPreview.refresh();
           },
-          pagination: { page: request.page, page_size: request.size },
-          hasNext: rows.data?.hasNext,
+          pagination: showingEdit
+            ? { page: editPreview.page, page_size: editPreview.pageSize }
+            : { page: request.page, page_size: request.size },
+          hasNext: showingEdit ? editPreview.pagination?.has_next : rows.data?.hasNext,
           preferences: request.columns,
           onPreferencesChange: (columns) => {
             update({ columns });
           },
           sorting: request.sorting,
           onPageChange: (page) => {
+            if (showingEdit) {
+              editPreview.setPage(page);
+              return;
+            }
             update({ page });
           },
           onPageSizeChange: (size) => {
+            if (showingEdit) {
+              editPreview.setPageSize(size);
+              return;
+            }
             update({ size, page: 1 });
           },
           onSortingChange: (sorting) => {
             update({ sorting, page: 1 });
           },
-          onCast: cast,
-          onRenameColumn: renameColumn,
-          onDeleteColumn: deleteColumn,
+          onCast: editing ? undefined : cast,
+          onRenameColumn: editing ? undefined : renameColumn,
+          onDeleteColumn: editing ? undefined : deleteColumn,
+          loadColumnExamples: async (column, signal) => {
+            const result = await projectApi.querySql(
+              base,
+              [
+                {
+                  sql: `SELECT CAST(${objectsApi.identifier(column)} AS VARCHAR) AS value FROM ${objectsApi.objectSql(name)} WHERE ${objectsApi.identifier(column)} IS NOT NULL LIMIT 3`,
+                },
+              ],
+              signal,
+            );
+            return Array.from(result, (row) => String(row.value));
+          },
         },
       }}
     />

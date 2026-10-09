@@ -2,21 +2,23 @@
 
 [← Back to tutorial index](./index.md)
 
-<h1 id="help-preprocessing-section">Preprocessing tutorial</h1>
+<h1 id="help-preprocessing-section">Data Editor and Data Builder</h1>
 
 Preprocessing transforms Data Blocks with DuckDB SQL. The existing tools work with
 both Tables and Views, without loading a Python or Polars runtime.
 
-Filter, Sample, Join, Stack and Build create a **new View**, leaving their inputs
-unchanged. Find adds or replaces a column **in the selected Data Block**.
+Data Builder creates live Views from selected inputs. Data Editor changes columns
+in the selected Data Block and shows its form above the collapsible Data View.
 
-| Tool | Purpose |
+| Builder tool | Purpose |
 |---|---|
 | Filter | Keep matching rows |
-| Sample | Slice, sample, or shuffle rows |
+| Group | Create one live View per selected value, date period or numeric range |
 | Join | Combine two inputs using keys |
+| Aggregate | Summarise rows by grouping keys |
+| Sample | Slice, sample, or shuffle rows |
+| Deduplicate | Create first-occurrence rows and duplicate-group members together |
 | Stack | Combine inputs by column name |
-| Find | Add or replace a column with regex results in place |
 | Build | Build a column from columns and literals |
 | SQL | Run scripts in saved SQL cells |
 
@@ -28,7 +30,7 @@ Use **Preprocessing Inputs** to select inputs. Double-click a graph card, or use
 add button or the sidebar's add button, to add that Data Block to the active tool.
 When a view has more than one input area, choose its labelled destination from the **Add to input** menu. A single area receives the Data Block immediately. Escape closes the menu.
 
-Inputs are independent of graph selection and opened data previews. New results leave existing previews and graph selection unchanged. Filter, Sample, Find and
+Inputs are independent of graph selection and opened data previews. New results leave existing previews and graph selection unchanged. Filter, Group, Aggregate, Sample, Deduplicate and
 Build accept one input; Join accepts two; Stack accepts two or more. SQL uses actual
 table names without an input picker. Each tool retains its inputs and draft when you change
 tabs or return to Data Loader. Reloading the window may reset drafts.
@@ -45,8 +47,8 @@ are shown even when no rows match. A preview does not create or modify a Data Bl
 while previews load, fail, or return no rows; DuckDB validates Apply.
 
 Preview and Apply evaluate separately. Remote data or random sampling can therefore
-produce different rows when applied. An error appears once in an expandable
-notification and leaves your draft available to correct.
+produce different rows when applied. Errors appear beside the responsible form or preview, with original details, Copy
+and feedback actions. Failed requests keep the draft available to correct.
 
 Temporal Filter values remain exactly as typed. Use the shadcn calendar to change
 the date portion and the time text field for seconds or fractional seconds. Explicit
@@ -59,8 +61,9 @@ For Filter, Sample, Join, Stack and Build, accept the short numbered suggestion 
 click **Create Data Block**. The result is
 always a View: it stores the query and follows changes to its sources. Its inputs
 appear as SQL dependencies in the graph. Existing names are never silently overwritten.
-There is no result-type or update-input selector. Find instead uses **Apply** to
-change the selected Data Block in place.
+There is no result-type or update-input selector. Data Editor uses **Apply** to
+change the selected Data Block in place. Successful Apply closes its form; failure
+leaves the editable draft open with Retry.
 
 To store fixed rows afterward, choose **Materialize** in the result's graph menu.
 Table cell-edit sessions must finish before preprocessing can apply changes;
@@ -77,14 +80,18 @@ numeric and temporal comparisons, ranges, categorical checklists, string-list
 membership, and explicitly registered Topic Coverage fields.
 
 SQL conditions keep only rows where the complete predicate is true. NULL does not
-match an ordinary comparison; choose **is null** or select NULL in a checklist when
+match an ordinary comparison; choose **is empty** or select missing in a checklist when
 needed. Negating a comparison does not automatically include NULL. An empty result
 is valid; the new View applies the predicate through its WHERE clause.
 
 Categorical choices load in pages. Search narrows the available choices; **Select
 loaded** selects the currently loaded values. Existing choices persist across
 searches. Numeric filter values are sent as exact text, preserving large integers
-and decimal precision.
+and decimal precision. Ranges accept either bound, include exact endpoints and
+accept zero. Suggested bounds never overwrite edits or arrive for another source.
+**Is empty** matches NULL, NaN and blank/whitespace text without changing values.
+A date-only timestamp upper bound includes the whole calendar day; an explicit
+time keeps its exact comparison.
 
 <h3 id="help-preprocessing-filter-new-node-name">New Data Block name</h3>
 
@@ -129,8 +136,8 @@ Sample always creates a new View. The short name uses `slc` for slices, `smp` fo
 Choose a **Left input** and **Right input**, each with its own key. The same Data
 Block can fill both roles for a self-join. Double-click a graph card, then place
 the Data Block into the labelled desired role. Matching key names use USING; different names
-use ON. DuckDB decides type compatibility and disambiguates duplicate output column
-names. The preview shows the same column names that the new result will use.
+use ON. DuckDB decides type compatibility. Colliding right columns use the right Data
+Block name and a unique suffix; a shared matching key appears once. The preview shows the same column names that the new result will use.
 
 <h3 id="help-preprocessing-join-type">Join type</h3>
 
@@ -140,15 +147,14 @@ names. The preview shows the same column names that the new result will use.
 | Left | All left rows, with matching right values |
 | Right | All right rows, with matching left values |
 | Full | All rows; unmatched values become NULL |
-| Semi | Left rows with a match |
-| Anti | Left rows without a match |
-| Cross | Every pair of left and right rows; no keys required |
+| Keep matches (Semi) | Left rows with a match |
+| Keep non-matches (Anti) | Left rows without a match |
 
 <h3 id="help-preprocessing-join-node-name">Join output name</h3>
 
 Join creates a new View with SQL-dependency arrows from its distinct inputs.
 Empty outputs are allowed; a live View can gain matching rows later. Check the
-preview before creating a potentially large cross join.
+preview before creating a result. Cross joins remain available in SQL.
 
 <h2 id="help-preprocessing-concat-section">Stack</h2>
 
@@ -168,34 +174,68 @@ rows after name alignment and type coercion.
 
 Stack always creates a new View; its referenced inputs appear as SQL dependencies.
 
-<h2 id="help-preprocessing-find-replace">Find</h2>
+<h2 id="help-preprocessing-find-replace">Data Editor</h2>
 
-Choose a text column and a DuckDB regular expression. **Replace** offers **First
-match** or **All matches**. An empty replacement removes matches. Replacement
-capture references use `\1`, `\2`, and so on, not `$1`. For example, pattern
-`(\w+) (\w+)` and replacement `\2, \1` swaps two words.
+Open a Data Block's Data View and choose **Find/Replace**, **Extract**, **Combine**,
+**Duplicate**, **Clean**, **Split**, **Count** or **Delete columns** from its Editor
+strip. The form occupies the graph area. Collapse Data View when more form space
+is useful. Preview reveals affected columns once without moving keyboard focus.
+Counts describe the complete current input; previews remain paged.
 
-**Extract** joins all matches, or the first N matches, using the chosen connector.
-Set **Output column name** and click **Apply**:
+Find/Replace and Extract use literal matching by default. Enable **Regex** for
+patterns and `$1`, `$2` capture replacements. Outside Regex, `$1` is literal text.
+Literal Whole word preserves boundaries for spaced scripts and allows adjacent
+characters at Japanese, Chinese and other unspaced-script edges. Regex patterns
+supply their own boundaries. Ignore case changes matching, not stored source text.
 
-- Leave it blank to replace the selected source column.
-- Enter another existing column name to replace that column (names are case-insensitive).
-- Enter an unused name to add a text column.
+Find/Replace and Clean can replace their own source column or write to a new one.
+Extract joins all matches or a chosen maximum with a connector. New names trim
+outer whitespace only, preserve internal whitespace and reject case-insensitive
+collisions. Press Tab in an untouched empty name field to accept its suggestion;
+press Tab again to move focus.
 
-The Data Block keeps its name and graph identity. A **Table** stores the values
-when Apply runs and has no Undo. Existing Table columns retain their types and
-constraints; DuckDB reports incompatible assignments. A failed Apply rolls back
-the entire change, including any new column. A **View** stores a live expression
-over its previous definition; **Undo** removes the latest query layer.
+Combine accepts `{column}` references, `{{` and `}}` literal braces, and either
+blank or missing output when a referenced value is missing. A nonempty constant
+is allowed and produces no rows when the source has none. Duplicate retains the
+source's physical type and nested metadata.
 
-For example, with source `text`, pattern `\d+` and replacement `#`, leave the
-output blank to clean `text` itself, or enter `clean_text` to keep the original
-column. Extraction uses the same output rules.
+Split uses literal delimiter chips, with Space, Tab and optional newline controls.
+Choose 2–50 columns and a direction. Longer delimiters match first; the final part
+(or first part when splitting from the right) retains the unsplit remainder.
+Count offers words, Unicode characters, non-whitespace characters and matches;
+missing inputs remain missing.
 
-Selection and the displayed Data View stay unchanged. An open preview refreshes;
-a closed preview stays closed. Drafts remain available after success or failure.
-DuckDB uses RE2 regex syntax; unsupported constructs report an error.
-See [DuckDB regex functions](https://duckdb.org/docs/stable/sql/functions/regular_expressions).
+Clean offers whitespace, case, punctuation/symbols, digits, URLs, HTML and XML
+operations. Title case keeps apostrophes inside words. XML cleaning parses entities
+and CDATA; malformed rows stay unchanged and are counted. **Show malformed XML rows only**
+filters the preview for inspection; Apply still cleans all valid rows. HTML is a separate tool.
+
+The Data Block keeps its identity. A **Table** stores the complete change atomically
+and retains existing column types and constraints. Table deletion is permanent.
+A **View** adds one live query layer, including multi-column changes or deletion;
+**Undo** removes that layer. A failed Apply rolls back the whole change and keeps
+the form editable. Successful Apply closes the form.
+
+<h2 id="help-preprocessing-group-section">Group</h2>
+
+Choose selected values, date periods or numeric ranges. Missing, empty and blank
+text share one empty category. Every group starts selected; clear those you do not
+need. At most 50 outputs can be created together. Wider ranges or periods can reduce
+the number of groups. Each output is a live View, created in one atomic request.
+
+<h2 id="help-preprocessing-aggregate-section">Aggregate</h2>
+
+Choose grouping keys and type-appropriate summaries. Every result includes row
+count. Count distinct excludes missing values. First, Last and Join text follow
+incoming order unless you choose a sort column. Date summaries offer earliest,
+latest or both. Output names are made unique without renaming source columns.
+
+<h2 id="help-preprocessing-deduplicate-section">Deduplicate</h2>
+
+Choose columns to compare and optional URL, punctuation, symbol, whitespace and
+case normalisation. This explicitly creates two live Views in one transaction:
+first-occurrence rows, and every member of duplicate groups with a **kept** flag.
+Original values and incoming order are retained. No platform-specific removal runs.
 
 <h2 id="help-preprocessing-build-section">Build</h2>
 

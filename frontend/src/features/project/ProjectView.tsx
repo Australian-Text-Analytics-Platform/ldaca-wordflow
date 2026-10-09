@@ -36,6 +36,7 @@ import { ViewSqlDialog } from './ViewSqlDialog';
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
 import { listTabs } from '@/features/tools/common/analysisApi';
 import { openAnalysisTab } from './openAnalysisTab';
+import { DataEditorPanel } from './data-editor/DataEditorPanel';
 
 export type ProjectTool = ToolId;
 const isProjectTool = (id: string): id is ProjectTool =>
@@ -326,71 +327,80 @@ function ProjectViewContent({
           onToggleCollapse={toggle}
           controls={<ProjectControlsView onToggleCollapse={toggle} />}
           graph={
-            <ProjectGraph
-              key={graphMode}
-              mode={graphMode}
-              onToggleDependencies={() => {
-                useGraphState.setState({ mode: isDependencies ? 'logical' : 'dependencies' });
-              }}
-              loading={isDependencies ? dependencies.isLoading : graph.isLoading}
-              error={isDependencies ? dependencies.error : graph.error}
-              retry={() => {
-                void (isDependencies ? dependencies.refetch() : graph.refetch());
-              }}
-              graph={isDependencies ? dependencyGraph : (graph.data ?? { nodes: [], edges: [] })}
-              base={base}
-              selected={isDependencies ? dependencySelection : selection.selectedNodeIds}
-              onSelect={(id) => {
-                if (isDependencies)
-                  useGraphState.setState((state) => ({
-                    selected: state.selected.includes(id)
-                      ? state.selected.filter((key) => key !== id)
-                      : [...state.selected, id],
-                  }));
-                else selection.toggleNode(id);
-              }}
-              previewed={
-                preview.active === null
-                  ? null
-                  : isDependencies
-                    ? objectsApi.targetKey(preview.active)
-                    : objectsApi.objectRef(preview.active).schema === 'data'
-                      ? objectsApi.objectRef(preview.active).name
-                      : null
-              }
-              onPreview={(id) => {
-                preview.toggle(graphTarget(id));
-              }}
-              onAddToSelection={isDependencies ? undefined : addInput}
-              onLogicalLink={(source, target) => {
-                linked.mutate({ source, target });
-              }}
-              onReplaceSource={(child, source, replacement) => {
-                reconnected.mutate({ child, source, replacement });
-              }}
-              onClear={() => {
-                if (isDependencies) useGraphState.setState({ selected: [] });
-                else selection.clearSelection();
-              }}
-              onDelete={(id) => remove(graphTarget(id))}
-              onDeleteMany={(ids) => removeMany(ids.map(graphTarget))}
-              onRename={(id, next) => rename(graphTarget(id), next)}
-              onClone={(id) => {
-                clone(graphTarget(id));
-              }}
-              onUndo={(id) => {
-                undo(graphTarget(id));
-              }}
-              onMaterialize={(id) => {
-                materialized.mutate(graphTarget(id));
-              }}
-              onEditSql={(id) => {
-                setEditingSql(graphTarget(id));
-              }}
-              onEditTable={(id) => {
-                editTable(graphTarget(id));
-              }}
-            />
+            preview.editor ? (
+              <DataEditorPanel
+                key={`${objectsApi.targetKey(preview.editor.target)}-${preview.editor.tool}`}
+                base={base}
+                session={preview.editor}
+                nodes={[...nodes, ...dependencyNodes]}
+              />
+            ) : (
+              <ProjectGraph
+                key={graphMode}
+                mode={graphMode}
+                onToggleDependencies={() => {
+                  useGraphState.setState({ mode: isDependencies ? 'logical' : 'dependencies' });
+                }}
+                loading={isDependencies ? dependencies.isLoading : graph.isLoading}
+                error={isDependencies ? dependencies.error : graph.error}
+                retry={() => {
+                  void (isDependencies ? dependencies.refetch() : graph.refetch());
+                }}
+                graph={isDependencies ? dependencyGraph : (graph.data ?? { nodes: [], edges: [] })}
+                base={base}
+                selected={isDependencies ? dependencySelection : selection.selectedNodeIds}
+                onSelect={(id) => {
+                  if (isDependencies)
+                    useGraphState.setState((state) => ({
+                      selected: state.selected.includes(id)
+                        ? state.selected.filter((key) => key !== id)
+                        : [...state.selected, id],
+                    }));
+                  else selection.toggleNode(id);
+                }}
+                previewed={
+                  preview.active === null
+                    ? null
+                    : isDependencies
+                      ? objectsApi.targetKey(preview.active)
+                      : objectsApi.objectRef(preview.active).schema === 'data'
+                        ? objectsApi.objectRef(preview.active).name
+                        : null
+                }
+                onPreview={(id) => {
+                  preview.toggle(graphTarget(id));
+                }}
+                onAddToSelection={isDependencies ? undefined : addInput}
+                onLogicalLink={(source, target) => {
+                  linked.mutate({ source, target });
+                }}
+                onReplaceSource={(child, source, replacement) => {
+                  reconnected.mutate({ child, source, replacement });
+                }}
+                onClear={() => {
+                  if (isDependencies) useGraphState.setState({ selected: [] });
+                  else selection.clearSelection();
+                }}
+                onDelete={(id) => remove(graphTarget(id))}
+                onDeleteMany={(ids) => removeMany(ids.map(graphTarget))}
+                onRename={(id, next) => rename(graphTarget(id), next)}
+                onClone={(id) => {
+                  clone(graphTarget(id));
+                }}
+                onUndo={(id) => {
+                  undo(graphTarget(id));
+                }}
+                onMaterialize={(id) => {
+                  materialized.mutate(graphTarget(id));
+                }}
+                onEditSql={(id) => {
+                  setEditingSql(graphTarget(id));
+                }}
+                onEditTable={(id) => {
+                  editTable(graphTarget(id));
+                }}
+              />
+            )
           }
           table={
             preview.active !== null && (

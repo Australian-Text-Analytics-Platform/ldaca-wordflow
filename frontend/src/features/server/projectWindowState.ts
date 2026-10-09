@@ -12,7 +12,10 @@ export function captureProjectWindowState() {
   return {
     graph: { mode, selected, logical, dependencies },
     preprocessing: { activeTool, byTool, join },
-    preview: { active: useProjectPreview.getState().active },
+    preview: {
+      active: useProjectPreview.getState().active,
+      editor: useProjectPreview.getState().editor,
+    },
     views: { nodes: useProjectViewState.getState().nodes },
     pins: { pinnedNodeIds: usePinnedNodesStore.getState().pinnedNodeIds },
     selection: { selectedNodeIds: useSelectionStore.getState().selectedNodeIds },
@@ -24,7 +27,7 @@ export function restoreProjectWindowState(state?: ReturnType<typeof captureProje
   const { activeTool, byTool, join } = usePreprocessingInputs.getInitialState();
   useGraphState.setState(state?.graph ?? { mode, selected, logical, dependencies });
   usePreprocessingInputs.setState(state?.preprocessing ?? { activeTool, byTool, join });
-  useProjectPreview.setState(state?.preview ?? { active: null });
+  useProjectPreview.setState(state?.preview ?? { active: null, editor: null });
   useProjectViewState.setState(state?.views ?? { nodes: new Map() });
   usePinnedNodesStore.setState(state?.pins ?? { pinnedNodeIds: [] });
   useSelectionStore.setState(state?.selection ?? { selectedNodeIds: [] });

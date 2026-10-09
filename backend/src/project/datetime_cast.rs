@@ -30,12 +30,7 @@ fn select_format(
     explicit: Option<&str>,
 ) -> Result<Option<String>> {
     if let Some(format) = explicit {
-        // Strict evaluation produces DuckDB's useful parse error for manual retries.
-        conn.query_row(
-            &format!("SELECT count(strptime(CAST(value AS VARCHAR), ?)) FROM {sample}"),
-            [format],
-            |r| r.get::<_, u64>(0),
-        )?;
+        // The mutation owner validates all rows and reports counts and examples.
         return Ok(Some(format.into()));
     }
     let failures: u64 = conn.query_row(
@@ -217,6 +212,12 @@ mod tests {
             },
             "value",
             manual,
+        )?;
+        // Type inspection alone can be folded without evaluating the conversion.
+        tx.query_row(
+            &format!("SELECT count({expression}) FROM corpus"),
+            [],
+            |r| r.get::<_, i64>(0),
         )?;
         let kind = tx.query_row(
             &format!("SELECT typeof(first({expression})) FROM corpus"),

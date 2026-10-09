@@ -16,7 +16,8 @@ reqwest = { version = "0.13.5", default-features = false, features = ["rustls", 
 ldaca-rs = { path = "../ldaca-rs", features = ["data", "tokenization", "quotation", "topic-modeling", "cache"] }
 axum = "0.8.9"
 futures-util = { version = "0.3.34", default-features = false, features = ["std"] }
-duckdb = { version = "~1.10506.0", features = ["bundled", "json", "parquet"] }
+duckdb = { version = "~1.10506.0", features = ["bundled", "json", "parquet", "vscalar", "vscalar-arrow"] }
+regex = "1.13.1"
 arrow-ipc = "58.4.0"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

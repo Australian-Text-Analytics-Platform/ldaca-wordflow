@@ -3,6 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ProjectDataHeader } from './ProjectDataHeader';
 import { ProjectTable } from './ProjectTable';
 import type { ProjectDataTableViewModel } from './projectTableModel';
+import type { ReactNode } from 'react';
 
 const LoadingState = () => (
   <div className="space-y-4 p-6">
@@ -41,7 +42,13 @@ const EmptyState = () => (
   </div>
 );
 
-export function ProjectDataTableView({ model }: { model: ProjectDataTableViewModel }) {
+export function ProjectDataTableView({
+  model,
+  toolbar,
+}: {
+  model: ProjectDataTableViewModel;
+  toolbar?: ReactNode;
+}) {
   const { selectedNode, header, table, loading, nodeActions } = model;
 
   if (!selectedNode) {
@@ -59,6 +66,7 @@ export function ProjectDataTableView({ model }: { model: ProjectDataTableViewMod
           onUndo={nodeActions.onUndo}
           onClose={nodeActions.onClose}
         />
+        {toolbar}
         <div className="min-h-0 flex-1">
           {loading.nodeData ? <LoadingState /> : <ProjectTable key={selectedNode.id} {...table} />}
         </div>

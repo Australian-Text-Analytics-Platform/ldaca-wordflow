@@ -32,6 +32,7 @@ import type {
 } from '@tanstack/react-table';
 import { flexRender, useTable, type ColumnPinningState } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useColumnMutations } from '../hooks/useColumnMutations';
 import {
@@ -72,6 +73,9 @@ export interface ProjectTableProps {
   rowActions?: { header?: ReactNode; render: (rowIndex: number) => ReactNode };
 
   columns: string[];
+  /** Reveal affected columns once per fresh edit preview. Never moves focus. */
+  revealColumns?: readonly string[];
+  revealRevision?: string;
   columnFields: Record<string, ArrowField>;
   loading?: boolean;
   /** Background fetch state that must not replace the current table shell. */
@@ -86,6 +90,7 @@ export interface ProjectTableProps {
   onCast?: (column: string, targetType: ColumnCastType, format?: string) => Promise<void>;
   onRenameColumn?: (column: string, nextName: string) => Promise<void>;
   onDeleteColumn?: (column: string) => Promise<void>;
+  loadColumnExamples?: (column: string, signal: AbortSignal) => Promise<string[]>;
 
   /** Server-side pagination info (1-indexed page from backend). */
   pagination?: NodeTablePagination;
@@ -117,6 +122,8 @@ export function ProjectTable({
   rowIds,
   rowActions,
   columns: responseColumns,
+  revealColumns,
+  revealRevision,
   columnFields,
   loading = false,
   fetching = false,
@@ -129,6 +136,7 @@ export function ProjectTable({
   onCast,
   onRenameColumn,
   onDeleteColumn,
+  loadColumnExamples,
   pagination,
   rowCount,
   hasNext,
@@ -138,6 +146,23 @@ export function ProjectTable({
   onPageSizeChange,
 }: ProjectTableProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const revealed = useRef('');
+  const revealKey = JSON.stringify([projectKey, nodeId, revealRevision ?? revealColumns]);
+  const availableColumns = JSON.stringify(responseColumns);
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || revealed.current === revealKey || !revealColumns?.length) return;
+    const header = Array.from(viewport.querySelectorAll<HTMLElement>('[data-column]')).find(
+      (element) => revealColumns.includes(element.dataset.column ?? ''),
+    );
+    if (!header) return;
+    revealed.current = revealKey;
+    const bounds = viewport.getBoundingClientRect();
+    const cell = header.getBoundingClientRect();
+    if (cell.left < bounds.left) viewport.scrollLeft += cell.left - bounds.left;
+    else if (cell.right > bounds.right)
+      viewport.scrollLeft += Math.min(cell.left - bounds.left, cell.right - bounds.right);
+  }, [revealKey, availableColumns, revealColumns]);
   const [localPreferences, setLocalPreferences] = useState(defaultTablePreferences);
   const currentPreferences = preferences ?? localPreferences;
   const {
@@ -216,6 +241,12 @@ export function ProjectTable({
     cancelRename,
     submitRename,
   } = mutations;
+  const examples = useQuery({
+    queryKey: ['native', base, 'datetime-examples', nodeId, datetimeModal?.column],
+    enabled: Boolean(datetimeModal && loadColumnExamples),
+    meta: { reportError: false },
+    queryFn: ({ signal }) => loadColumnExamples!(datetimeModal!.column, signal),
+  });
 
   const columns = useMemo(() => {
     if (backendColumns.length > 0) return backendColumns;
@@ -561,10 +592,13 @@ export function ProjectTable({
                     return (
                       <TableHead
                         key={header.id}
+                        data-column={header.column.id}
                         className={cn(
                           meta?.headerClassName,
                           'h-8 px-1 py-1 last:border-r-0',
                           header.column.getIsPinned() ? 'bg-panel' : 'bg-panel',
+                          revealColumns?.includes(header.column.id) &&
+                            'ring-1 ring-inset ring-link',
                         )}
                         style={{
                           ...(meta?.headerMinWidth
@@ -586,9 +620,13 @@ export function ProjectTable({
                           ...getPinnedStyles(header.column, 'header'),
                         }}
                       >
+                        {/* Local definitions are render callbacks. Keeping the rendered header's
+                            identity preserves open menus and name drafts during a row refresh. */}
                         {header.isPlaceholder
                           ? null
-                          : flexRender(header.column.columnDef.header, header.getContext())}
+                          : typeof header.column.columnDef.header === 'function'
+                            ? header.column.columnDef.header(header.getContext())
+                            : header.column.columnDef.header}
                       </TableHead>
                     );
                   })}
@@ -692,6 +730,24 @@ export function ProjectTable({
           return handleDatetimeFormatConfirm(format);
         }}
         columnName={datetimeModal?.column ?? ''}
+        examples={
+          examples.data ??
+          sanitizedData
+            .flatMap((row) => {
+              const value = datetimeModal ? row[datetimeModal.column] : null;
+              return value == null
+                ? []
+                : [
+                    typeof value === 'string'
+                      ? value
+                      : (JSON.stringify(value, (_key, item: unknown) =>
+                          typeof item === 'bigint' ? item.toString() : item,
+                        ) ?? ''),
+                  ];
+            })
+            .slice(0, 3)
+        }
+        examplesError={examples.error}
       />
       {sqlTypeModal && (
         <SqlTypeDialog

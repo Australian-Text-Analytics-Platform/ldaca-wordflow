@@ -20,6 +20,7 @@ import { type DataColumnDef, useDataTable } from '@/features/tools/common/hooks/
 import { type ArrowColumn, arrowTypeDisplayName } from '@/lib/arrow/decodeArrowTable';
 import { flexRender } from '@tanstack/react-table';
 import { Loader2 } from 'lucide-react';
+import { OperationError } from '@/features/project/OperationError';
 import React from 'react';
 import { RowDetailPanel } from '../../common/components/RowDetailPanel';
 import { useRowDetailDialog } from '../../common/components/useRowDetailDialog';
@@ -161,15 +162,12 @@ export function PreviewTable({
         </div>
       </CardHeader>
       <CardContent className="space-y-4 pt-0">
+        {error && <OperationError title="Couldn't preview transformation" error={error} />}
         {!ready ? (
           <div className="rounded-md border border-dashed border-surface-border-foreground/40 bg-panel/40 p-4 text-body text-description">
             {readyMessage}
           </div>
-        ) : error ? (
-          <div className="rounded-md border border-error/40 bg-error/10 p-4 text-body text-error">
-            Preview unavailable. See the error notification for details.
-          </div>
-        ) : (
+        ) : !error || columns.length > 0 ? (
           <ScrollArea
             type="always"
             scrollbars="horizontal"
@@ -249,7 +247,7 @@ export function PreviewTable({
               </TableBody>
             </Table>
           </ScrollArea>
-        )}
+        ) : null}
       </CardContent>
       {ready && !error && (
         <CardFooter className="block border-t border-surface-border p-0">

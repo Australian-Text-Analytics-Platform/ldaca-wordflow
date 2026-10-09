@@ -43,13 +43,13 @@ pub struct Concordance {
     empty: bool,
 }
 impl Concordance {
-    /// Whole-word literals share the same regex engine and Unicode boundaries.
+    /// Whole-word literals keep Unicode boundaries only at spaced-script edges.
     pub fn literal_whole_word(query: &str, mut options: ConcordanceOptions) -> Result<Self> {
         if query.is_empty() {
             return Self::new(query, options);
         }
         options.regex = true;
-        Self::new(&format!(r"\b(?:{})\b", regex::escape(query)), options)
+        Self::new(&literal_word_pattern(query), options)
     }
     pub fn new(query: &str, options: ConcordanceOptions) -> Result<Self> {
         let pattern = if options.regex {
@@ -72,6 +72,28 @@ impl Concordance {
         }
         find_matches(text, &self.matcher, &self.options)
     }
+}
+
+/// Escape literal text and relax boundaries at edges written without word spaces.
+/// Hangul keeps boundaries because Korean normally separates words with spaces.
+pub fn literal_word_pattern(query: &str) -> String {
+    let unspaced = |c: char| {
+        matches!(c as u32,
+        0x0e00..=0x0eff | 0x1000..=0x109f | 0x1780..=0x17ff | 0x3005..=0x3007 |
+        0x3040..=0x30ff | 0x31f0..=0x31ff | 0x3400..=0x4dbf | 0x4e00..=0x9fff |
+        0xf900..=0xfaff | 0xff66..=0xff9f | 0x20000..=0x3ffff)
+    };
+    let start = if query.chars().next().is_some_and(unspaced) {
+        ""
+    } else {
+        r"\b"
+    };
+    let end = if query.chars().next_back().is_some_and(unspaced) {
+        ""
+    } else {
+        r"\b"
+    };
+    format!("{start}(?:{}){end}", regex::escape(query))
 }
 
 /// Exact alternatives over tokenizer output, retaining original-text context.
@@ -496,6 +518,26 @@ mod tests {
             .iter()
             .all(|hit| hit.left_context.is_empty() && hit.right_context.is_empty()));
         assert!(search.find(" ").unwrap().is_empty());
+    }
+    #[test]
+    fn whole_word_literals_follow_script_edges_without_weakening_latin_or_hangul() {
+        for (query, text, expected) in [
+            ("猫", "黒猫猫咪", 2),
+            ("日本", "日本語と日本", 2),
+            ("ไทย", "ภาษาไทยไทย", 2),
+            ("cat猫", "cat猫咪 bobcat猫", 1),
+            ("猫cat", "黒猫cat 猫cats", 1),
+            ("café", "café cafés décafé", 1),
+            ("한국", "한국 한국어", 1),
+            ("a.b", "a.b aXb", 1),
+        ] {
+            let matcher = Concordance::literal_whole_word(query, Default::default()).unwrap();
+            assert_eq!(
+                matcher.find(text).unwrap().len(),
+                expected,
+                "{query}: {text}"
+            );
+        }
     }
     #[test]
     fn original_unicode_context_and_repeated_query() {

@@ -11,6 +11,8 @@ export interface JoinSubTabProps {
   previewEnabled?: boolean;
   left: NodeInput | null;
   right: NodeInput | null;
+  leftColumns?: string[];
+  rightColumns?: string[];
   projectBase: string | null;
   joinNodes: (
     left: string,
@@ -29,6 +31,8 @@ export function useJoinSubTab({
   existingNames = [],
   left,
   right,
+  leftColumns,
+  rightColumns,
   projectBase,
   joinNodes,
   isLoading,
@@ -41,7 +45,14 @@ export function useJoinSubTab({
   const ready = Boolean(left && right && (!needsColumns || (left.column && right.column)));
   const request =
     ready && left && right && projectBase !== null
-      ? { projectBase, left: { ...left }, right: { ...right }, kind: joinType }
+      ? {
+          projectBase,
+          left: { ...left },
+          right: { ...right },
+          kind: joinType,
+          leftColumns,
+          rightColumns,
+        }
       : null;
   const result = usePreprocessingPreview({
     request,
@@ -50,6 +61,7 @@ export function useJoinSubTab({
         ? { projectBase, operation: 'join', nodeIds: [left?.node_id ?? '', right?.node_id ?? ''] }
         : null,
     enabled: previewEnabled,
+    reportError: false,
     fetcher: ({ request, page, pageSize, signal }) =>
       previewSql(
         request.projectBase,
@@ -59,6 +71,8 @@ export function useJoinSubTab({
           request.kind,
           request.left.column ?? undefined,
           request.right.column ?? undefined,
+          request.leftColumns,
+          request.rightColumns,
         ),
         page,
         pageSize,

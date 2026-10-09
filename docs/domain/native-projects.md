@@ -96,6 +96,23 @@ statements. Tables retain their identity and kind; they never acquire a backing
 table automatically. Query-layer edit requests reject Tables. Joins and other
 new derived outputs are created as Views over their parents.
 
+Data Editor transforms and multi-column deletion retain the same object identity.
+Each request binds against the original schema and commits the complete edit or none.
+New Table columns keep DuckDB's exact inferred physical types; direct duplicates
+also retain nested Arrow annotations. A multi-column View edit adds one marked layer,
+so one Undo removes the complete edit. Tables show a permanent-change warning and
+have no SQL-layer Undo. A failed Apply retains the form and draft; a successful Apply
+closes the form while leaving the Data View open.
+
+Group and Deduplicate create multiple live Views in one native transaction. Group
+counts, previews and created Views use the same grouping expression, with at most
+50 outputs and one merged empty category. Deduplicate retains first occurrences
+and separately exposes every duplicate-group member with a kept flag; normalization
+changes only comparison keys. Source values and metadata remain unchanged. Aggregate
+counts rows per group and applies selected summaries; ordering-sensitive summaries
+use incoming order unless an explicit sort is chosen. These are ordinary SQL Views,
+not captured data snapshots or a separate preprocessing plan.
+
 Undo removes one marked wrapper. The current SQL is the history and survives
 close/reopen. There is no Redo, old-version table, or metadata history. Undo does
 not reverse source replacement, display changes, deletion, or stored-table

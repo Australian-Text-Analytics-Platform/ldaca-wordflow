@@ -10,7 +10,7 @@ import {
   isArrowStringListField,
 } from '@/lib/arrow/decodeArrowTable';
 import { isTopicCoverageField } from '@/lib/arrow/semanticTypes';
-import { useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import {
   useNodePreviewWithRawFallback,
@@ -19,15 +19,13 @@ import {
 import { table as sqlTable } from '../../sql';
 import type {
   ConditionColumnOption,
-  ConditionRange,
   ConditionValue,
-  FilterCondition,
   FilterConditionWithId,
   FilterRequest,
   PreviewPagination,
   PreviewRow,
 } from '../../types';
-import { getOperatorsForField } from '../../utils/typeUtils';
+import { getOperatorsForField, hasNonEmptyValue } from '../../utils/typeUtils';
 import { FilterConditionValueInput } from '../components/FilterConditionValueInput';
 import { applyFilterConditionFieldChange, createFilterCondition } from '../utils/conditionState';
 import { buildFilterRequestPayload, isConditionComplete } from '../utils/serializers';
@@ -164,6 +162,10 @@ export const useFilterSubTabSections = (
   }>({ nodeId: selectedNodeId, value: '' });
   const isFiltering = isLoading.operations;
   const latestMissingValueChecks = useRef(new Map<string, string>());
+  const latestPrefills = useRef(new Map<string, object>());
+  useEffect(() => {
+    latestPrefills.current.clear();
+  }, [projectBase, selectedNodeId]);
   const optionSearchScope = `${projectBase ?? ''}\0${selectedNodeId ?? ''}`;
   const [optionSearchState, setOptionSearchState] = useState<{
     scope: string;
@@ -303,6 +305,7 @@ export const useFilterSubTabSections = (
     field: Key,
     value: FilterConditionWithId[Key],
   ) => {
+    latestPrefills.current.delete(id);
     const targetCondition = conditions.find((condition) => condition.id === id);
     if (!targetCondition) return;
 
@@ -329,19 +332,7 @@ export const useFilterSubTabSections = (
     }
 
     if (prefillRequest && selectedNodeId && projectBase !== null) {
-      if (prefillRequest.kind === 'datetime') {
-        void prefillDatetimeValue(
-          prefillRequest.conditionId,
-          prefillRequest.column,
-          prefillRequest.operator,
-        );
-      } else {
-        void prefillNumericValue(
-          prefillRequest.conditionId,
-          prefillRequest.column,
-          prefillRequest.operator,
-        );
-      }
+      void prefillValue(condition, prefillRequest.kind);
     }
   };
 
@@ -414,94 +405,35 @@ export const useFilterSubTabSections = (
   const getConditionOperatorOptions = (condition: FilterConditionWithId) =>
     getOperatorsForField(condition.field);
 
-  /**
-   * Prefills datetime filters from column stats to reduce empty preview states.
-   * Called by `handleConditionChange` when a datetime column/operator is selected.
-   * Steps: reuse an existing date/time value when present, otherwise fetch column stats and
-   * seed the condition from backend min/max values.
-   */
-  const prefillDatetimeValue = async (
-    conditionId: string,
-    column: string,
-    operator: FilterCondition['operator'],
-  ) => {
-    if (!selectedNodeId || projectBase === null) return;
-
+  /** Seed untouched bounds only while the captured source, condition and request still apply. */
+  const prefillValue = async (condition: FilterConditionWithId, kind: 'datetime' | 'numeric') => {
+    if (!selectedNodeId || projectBase === null || hasNonEmptyValue(condition.value)) return;
+    const token = {};
+    latestPrefills.current.set(condition.id, token);
     try {
-      const describeData = await sampleColumnBounds(projectBase, selectedNodeId, column);
-
-      setConditions((prev) =>
-        prev.map((c) => {
-          if (c.id !== conditionId) return c;
-
-          let newValue: ConditionValue;
-
-          // describeData stats come from the API; empty/falsy values should fall
-          // back to '', so keep `||` here.
-          switch (operator) {
-            case 'eq':
-              newValue = describeData.median || describeData.min || '';
-              break;
-            case 'gte':
-              newValue = describeData.min || '';
-              break;
-            case 'lte':
-              newValue = describeData.max || '';
-              break;
-            case 'between':
-              newValue = {
-                start: (describeData.min as ConditionRange['start']) || '',
-                end: (describeData.max as ConditionRange['end']) || '',
-              };
-              break;
-            default:
-              newValue = '';
-          }
-
-          return { ...c, value: newValue };
+      const bounds = await sampleColumnBounds(projectBase, selectedNodeId, condition.column);
+      setConditions((previous) =>
+        previous.map((current) => {
+          if (
+            latestPrefills.current.get(condition.id) !== token ||
+            current.id !== condition.id ||
+            current.column !== condition.column ||
+            current.operator !== condition.operator ||
+            hasNonEmptyValue(current.value)
+          )
+            return current;
+          let value: ConditionValue = '';
+          if (current.operator === 'between')
+            value = { start: bounds.min ?? null, end: bounds.max ?? null };
+          else if (current.operator === 'gte') value = bounds.min ?? '';
+          else if (current.operator === 'lte') value = bounds.max ?? '';
+          else if (kind === 'datetime' && current.operator === 'eq')
+            value = bounds.median ?? bounds.min ?? '';
+          return { ...current, value };
         }),
       );
     } catch {
-      // Best-effort prefill; leave the current value unchanged on failure.
-    }
-  };
-
-  /**
-   * Prefills numeric range filters from column min/max stats when available.
-   * Called by `handleConditionChange` when a numeric column/operator is selected.
-   * Steps: reuse existing numeric bounds when present, otherwise describe the column and seed
-   * range/equality inputs from backend min/max values.
-   */
-  const prefillNumericValue = async (
-    conditionId: string,
-    column: string,
-    operator: FilterCondition['operator'],
-  ) => {
-    if (!selectedNodeId || projectBase === null) return;
-
-    try {
-      const describeData = await sampleColumnBounds(projectBase, selectedNodeId, column);
-
-      setConditions((prev) =>
-        prev.map((c) => {
-          if (c.id !== conditionId) return c;
-
-          let newValue: ConditionValue = c.value ?? '';
-
-          switch (operator) {
-            case 'gte':
-              if (describeData.min !== undefined) newValue = describeData.min;
-              break;
-            case 'lte':
-              if (describeData.max !== undefined) newValue = describeData.max;
-              break;
-          }
-
-          return { ...c, value: newValue };
-        }),
-      );
-    } catch {
-      // Best-effort prefill; leave the current value unchanged on failure.
+      /* Best-effort prefill never blocks an edit. */
     }
   };
 

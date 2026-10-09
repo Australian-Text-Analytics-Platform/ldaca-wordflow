@@ -77,7 +77,7 @@ export const usePreprocessingPreview = <RequestPayload, Row = PreviewRow>(
     debounceMs = DEFAULT_DEBOUNCE_MS,
     initialPage = 1,
     initialPageSize = DEFAULT_PAGE_SIZE,
-    reportError = true,
+    reportError = false,
     retainLastSuccess = false,
     fetcher,
   } = options;

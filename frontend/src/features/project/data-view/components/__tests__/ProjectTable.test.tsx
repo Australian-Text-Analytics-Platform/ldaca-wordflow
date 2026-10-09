@@ -19,6 +19,21 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { ProjectTable } from '../ProjectTable';
 
 describe('ProjectTable', () => {
+  it('keeps an open type menu when a row/schema refresh recreates header callbacks', async () => {
+    const user = userEvent.setup();
+    const props = () => ({
+      data: [{ text: 'value' }],
+      columns: ['text'],
+      columnFields: { text: new Field('text', new Utf8()) },
+      onCast: async () => {},
+    });
+    const view = render(<ProjectTable {...props()} />);
+    await user.click(screen.getByRole('button', { name: 'Change data type for column text' }));
+    expect(screen.getByRole('menu')).toBeVisible();
+    view.rerender(<ProjectTable {...props()} fetching />);
+    expect(screen.getByRole('menu')).toBeVisible();
+    expect(screen.getByRole('menuitem', { name: 'More SQL types…' })).toBeVisible();
+  });
   it('shows the native IPC type name instead of a frontend list alias', () => {
     render(
       <ProjectTable

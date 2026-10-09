@@ -17,7 +17,7 @@ import { hasNonEmptyValue } from '../../utils/typeUtils';
 const serializeConditionsForRequest = (conditions: FilterConditionWithId[]) => {
   return conditions.map<FilterCondition>((condition) => {
     let value: ConditionValue;
-    if (condition.operator === 'is_null') {
+    if (condition.operator === 'is_null' || condition.operator === 'is_empty') {
       value = null;
     } else if (
       condition.value &&
@@ -81,7 +81,7 @@ export const buildFilterRequestPayload = (
  */
 export const isConditionComplete = (condition: FilterConditionWithId): boolean => {
   if (!condition.column) return false;
-  if (condition.operator === 'is_null') return true;
+  if (condition.operator === 'is_null' || condition.operator === 'is_empty') return true;
   if (condition.operator === 'between') {
     const range =
       condition.value && typeof condition.value === 'object'

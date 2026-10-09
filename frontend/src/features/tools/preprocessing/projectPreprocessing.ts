@@ -1,7 +1,6 @@
 import * as projectApi from '@/features/project/api';
 import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
-import type { ReplaceRequest } from './replace/hooks/replaceRequestModel';
-import { bindInput, findColumn, selectText } from './sql';
+import { bindInput, selectText } from './sql';
 
 import type { ColumnMapping } from '@/features/project/api';
 export type { ColumnMapping } from '@/features/project/api';
@@ -51,21 +50,4 @@ export function applyTransformation(base: string, operation: Transformation, out
     mappings: operation.mappings,
     computed_columns: operation.computedColumns,
   });
-}
-
-/** Find changes one column in place, using the same expression as its preview. */
-export async function applyFind(
-  base: string,
-  target: Pick<projectApi.ProjectNode, 'table_name' | 'kind'>,
-  request: ReplaceRequest,
-  columns: readonly string[],
-) {
-  if (target.kind === 'missing') throw new Error('The selected Data Block is unavailable');
-  const { column, expression } = findColumn(request, columns);
-  await projectApi.changeColumn(base, target.table_name, {
-    operation: 'transform',
-    column,
-    expression,
-  });
-  return { table_name: target.table_name };
 }

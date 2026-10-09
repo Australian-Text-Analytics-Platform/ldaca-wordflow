@@ -6,6 +6,8 @@ mod concordance;
 #[cfg(feature = "tokenization")]
 pub use crate::tokenizer::{Token, TokenizeOptions, Tokenizer};
 #[cfg(feature = "tokenization")]
+pub use concordance::literal_word_pattern;
+#[cfg(feature = "tokenization")]
 pub use concordance::{Concordance, ConcordanceMatch, ConcordanceOptions, TokenConcordance};
 #[cfg(all(feature = "tokenization", feature = "cache"))]
 mod token_cache;

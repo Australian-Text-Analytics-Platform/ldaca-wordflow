@@ -18,6 +18,8 @@ interface DatetimeFormatPanelProps {
   onConfirm: (format?: string) => Promise<void>;
   columnName: string;
   error?: unknown;
+  examples?: string[];
+  examplesError?: unknown;
 }
 
 /** Manual fallback after bounded automatic datetime discovery could not resolve the format. */
@@ -39,6 +41,8 @@ function DatetimeFormatForm({
   onConfirm,
   onClose,
   error,
+  examples,
+  examplesError,
 }: Omit<DatetimeFormatPanelProps, 'open'>) {
   const [format, setFormat] = useState('');
   const [pending, setPending] = useState(false);
@@ -62,6 +66,21 @@ function DatetimeFormatForm({
           });
         }}
       >
+        {examples && examples.length > 0 && (
+          <div className="space-y-1">
+            <p className="text-body">Source examples</p>
+            <ul className="list-disc pl-5 text-body">
+              {examples.map((value, index) => (
+                <li key={index} className="break-all font-mono">
+                  {value}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {examplesError != null && (
+          <OperationError title="Couldn't load source examples" error={examplesError} />
+        )}
         <div className="flex flex-col gap-2">
           <Label htmlFor="datetime-format">Datetime format</Label>
           <Input

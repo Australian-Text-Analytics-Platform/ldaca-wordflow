@@ -167,6 +167,8 @@ and return 204:
 | `rename` | `column`, `name` |
 | `delete` | `column` |
 | `transform` | `column`, one SQL `expression` |
+| `transform_many` | 1–50 `columns`, each with `column`, `expression` and `replace` |
+| `delete_many` | nonempty `columns` list, retaining at least one column |
 
 A cast target is a shortcut (`string`, `categorical`, `integer`, `float`,
 `datetime`) or `{"sqlType":"DECIMAL(18,4)"}`. Rust parses an ordinary
@@ -177,8 +179,8 @@ its transaction. With no `format`, it tests the direct TIMESTAMP cast, then only
 on failure generates rule-based format candidates and validates them against the
 same sample. NULLs are ignored; blanks are not. Ambiguous or unsupported layouts
 return `datetime_format_required` without mutation. The frontend then requests
-an explicit format. Manual formats bypass inference and are checked against the
-same bounded sample. Before any conversion commits, the native mutation owner
+an explicit format. Manual formats bypass inference; the mutation owner validates them against the
+complete source. Before any conversion commits, the native mutation owner
 validates the complete source for Tables and Views. A failed conversion reports
 the original DuckDB diagnostic, invalid-value count and up to five examples;
 the source type, values, metadata and View definition remain unchanged. The
@@ -192,11 +194,45 @@ Transform adds a missing VARCHAR
 column to a Table or adds a View expression, replacing an existing column when
 its name matches. Table assignment rules remain DuckDB's responsibility.
 
+Multi-column transforms bind every expression against the original schema before
+changing anything. Newly added Table columns use inferred native SQL types, preserving
+decimal and nested precision; existing-column assignment keeps DuckDB constraints.
+Direct column projections preserve nested Arrow annotations. Multi-column View edits
+add one Undo layer; multi-column deletion is atomic for both Tables and Views.
+
 All operations resolve canonical catalogue names in the transaction. Metadata
 preservation/cleanup and saved column-reference reconciliation commit with the
 change. View edits wrap the previous definition and retain query-layer Undo.
 They preserve normal editor protection, cancellation, conflict errors and
 commit-driven refresh; they do not create task summaries.
+
+## Atomic View batches
+
+`POST /api/project/views/batch` accepts `{"views":[<CreateView>, ...]}` with 1–50
+outputs. It reuses the single-View owner for SQL validation, exact names, registration
+and column mappings. One transaction creates all outputs or none and publishes one
+committed change. The response is the ordered array of confirmed names. This is used
+by Group and Deduplicate; there is no partially committed frontend creation loop.
+
+## Native SQL text helpers
+
+These functions are available on project connections, including reopened saved Views.
+They return NULL for missing source text and expose ordinary DuckDB scalar signatures.
+
+| Function | Result |
+| --- | --- |
+| `wordflow_replace(text, pattern, replacement, regex, whole_word, case_sensitive, first)` | Text with literal or regex replacement |
+| `wordflow_matches(text, pattern, regex, whole_word, case_sensitive)` | List of matched text |
+| `wordflow_split(text, delimiters_json, parts, from_right)` | 2–50 text parts with NULL padding |
+| `wordflow_clean_xml(text)` | Parsed XML text, or unchanged malformed input |
+| `wordflow_xml_valid(text)` | Whether XML parsing succeeded |
+| `wordflow_title_case(text)` | Apostrophe-aware title case |
+| `wordflow_word_count(text)` | Unicode word count |
+
+Whole-word rules apply to literal matching. Regex controls its own boundaries and
+capture groups. Split delimiters are nonempty literal strings encoded as a JSON array;
+longer delimiters match first and the unsplit remainder is preserved. XML does not
+resolve external resources. These helpers add no expression DSL or request-time service.
 
 ## Stopword membership
 

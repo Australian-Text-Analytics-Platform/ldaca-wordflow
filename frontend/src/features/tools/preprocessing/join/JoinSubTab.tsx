@@ -79,12 +79,16 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
                 }}
               >
                 <SelectTrigger id="join-type">
-                  <SelectValue placeholder="Select join type" />
+                  <SelectValue placeholder="Select join type">
+                    {JOIN_TYPE_OPTIONS.find((option) => option.value === joinType)?.label}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {JOIN_TYPE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
-                      {option.value}
+                      <span>
+                        {option.label} — {option.description}
+                      </span>
                     </SelectItem>
                   ))}
                 </SelectContent>

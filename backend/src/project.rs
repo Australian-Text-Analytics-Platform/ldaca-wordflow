@@ -142,6 +142,7 @@ struct Database {
 impl Database {
     fn new(conn: Connection, cancellation: CancellationToken) -> Result<Self> {
         conn.execute_batch("SET SESSION schema='data'")?;
+        text_functions::register(&conn)?;
         Ok(Self {
             conn,
             cancellation,
@@ -1046,6 +1047,7 @@ pub(crate) mod objects;
 mod protection;
 mod renames;
 pub(crate) mod stopwords;
+mod text_functions;
 pub use lifecycle::lock_destination;
 pub use objects::ObjectTarget;
 pub(crate) mod node_reads;

@@ -1,7 +1,8 @@
-# Project preprocessing
+# Data Editor and Data Builder
 
-The current project application enables Data Loader, Preprocessing and the native analysis tools. Both native windows and the Rust browser
-preview use the same six visual preprocessing panels and SQL console and project connection.
+Native windows and the Rust browser preview use the same Data Editor, Data Builder
+and project connection. Builder tools appear as Filter, Group, Join, Aggregate,
+Sample, Deduplicate, Stack, Build and SQL. The former Builder Find form is removed.
 
 `features/tools/preprocessing/DataPreprocessingFeature.tsx` connects the retained
 forms to small SQL builders in `sql.ts`. `projectPreprocessing.ts` owns preview,
@@ -30,7 +31,7 @@ transaction. Filter statistics and missing-value hints remain automatic.
 
 ## Applying a result
 
-Filter, Sample, Join, Stack and Build create new Views through the shared View-creation
+Filter, Group, Join, Aggregate, Sample, Deduplicate, Stack and Build create new Views through the shared View-creation
 operation. The frontend supplies SELECT SQL and column mappings; Rust creates the View,
 registers its name and copies applicable metadata in one transaction. The graph
 calculates dependencies from the resulting SQL; creation does not write virtual
@@ -42,18 +43,73 @@ or general update-input framework. Materialize remains an explicit graph action 
 The [project API](../../reference/native-project-api.md) exposes shared View-creation
 and column-change contracts, without one endpoint per preprocessing tool.
 
-Find uses the column-change operation's expression variant. It captures the selected object
-name and kind, source/output columns and regex settings at submission. Blank output
-names replace the source column; existing names are resolved with DuckDB identifier
-matching. Tables use `ADD COLUMN IF NOT EXISTS … VARCHAR` followed by `UPDATE` in
-one transaction. Existing column types and constraints remain authoritative; failure
-rolls back added columns as well as values. Tables gain no Undo or backing object.
-Rust wraps a View’s previous definition through the existing query-layer implementation with
-`SELECT * REPLACE` or an added expression. Repeated edits retain live behavior and
-SQL-layer Undo without self-references. Both paths clear transformed-column
-descriptors and keep document/tokenizer preferences only for compatible text types
-in the same transaction. New columns receive no inferred metadata. No node or edge
-is created, and native dependency/conflict errors are reported without retries.
+## In-place Data Editor
+
+The existing window-local preview store owns the active Editor target, tool and draft.
+Opening a tool replaces the graph area with its form; the collapsible Data View stays
+below it. Ratios last only until reload. Closing the form restores the graph and
+retains the open Data View. Successful Apply closes its captured form; failure keeps
+an editable draft and an inline original diagnostic with Retry. Pending Apply prevents
+repeat submission. Completion cannot close another tool or target opened meanwhile.
+
+Find/Replace, Extract, Combine, Duplicate, Clean, Split and Count compile ordinary
+DuckDB SQL through `data-editor/expressions.ts`. Preview and Apply share those
+expressions. The Data View uses the existing debounced, abortable preview hook and
+retains the last valid preview, visibly marked outdated. Changed-row and malformed-XML
+counts describe the complete input. Affected headers are highlighted and
+revealed once after a fresh settings preview without moving focus. Pagination,
+resizing and manual horizontal scrolling do not trigger repeated settling. Preview sorting affects only the preview.
+
+Literal matching is the default. `$1` stays literal outside Regex. Whole-word literal
+boundaries relax only at unspaced-script edges through the shared native Concordance
+matcher. Regex is explicit and retains capture replacement. Combine uses a small
+brace scanner, exact column references and an explicit missing-input policy; nonempty
+constant templates still select from the source, including zero source rows. Split
+uses longest-first literal delimiters, optional newlines, either direction, 2–50
+outputs, preserved empty parts and remainder, and NULL padding. Count preserves NULL
+and distinguishes words, Unicode characters, non-whitespace characters and matches.
+XML uses a native parser for entities and CDATA, retaining malformed values and reporting
+affected rows. A preview-only malformed-row filter exposes those rows without
+changing Apply membership. HTML remains a separate cleaning choice. Title case preserves
+in-word apostrophes. Native scalar text functions register on every project database
+owner and remain available when saved Views reopen.
+
+The native `transform_many` operation binds all expressions against the original
+schema. Tables add columns with DuckDB's inferred exact physical types and update
+all outputs in one transaction; existing types and constraints remain authoritative.
+Views receive one ordinary query layer. Direct column copies preserve nested Arrow
+annotations; computed columns discard semantic annotations. `delete_many` removes all
+selected columns atomically, retaining at least one. Tables show a permanent-change
+warning; Views offer one SQL-layer Undo. Neither operation creates a Data Block or
+child task. New names trim outer whitespace, preserve internal whitespace and reject
+case-insensitive collisions; replacing the exact source retains its original name.
+Generated suggestions use the shared guarded Tab interaction, excluding composition
+and modified keys. Native validation remains authoritative for Preview/Apply races.
+
+## Multiple Builder outputs
+
+Group discovers at most 51 categories to enforce a 50-output limit. Values, calendar
+periods and numeric intervals use the same expression for counts, previews and saved
+View predicates. Missing and blank text share the empty category. All discovered
+groups start selected; more than 50 requires a narrower source or wider period/range.
+
+Aggregate creates a live View with selected grouping keys, a row count and type-appropriate
+summaries. The source document defaults to joined text and dates to earliest/latest;
+other summaries are opt-in. First, Last and joined text use incoming order unless an
+explicit sort is selected. Count distinct excludes NULL. Output names receive unique
+suffixes. Deduplicate compares selected columns and optionally normalises text URLs,
+punctuation, symbols, whitespace and case without rewriting source values. It creates
+first-occurrence rows and all duplicate-group members with a unique kept-flag column.
+Incoming row order determines the first occurrence.
+
+Group and Deduplicate submit every output to `POST /api/project/views/batch` once.
+The native View owner validates 1–50 outputs, creates and registers them with metadata
+in one transaction, and emits one committed change. A failure leaves no output behind.
+Validation remains schema-only and lazy; later source changes flow through saved Views.
+Join offers six matching joins, Left first; Cross remains available in SQL. Right-column
+collisions use the right Data Block name and unique suffixes. Preview and Apply share
+the same projection, including merged keys. Stack delegates compatibility to DuckDB
+UNION BY NAME.
 
 Unchanged mapped columns retain descriptors only if catalogue types match. Stack
 and a full join's merged key require agreement among all contributing mapped columns.
@@ -63,7 +119,7 @@ mapped column remains a compatible text type. Generic user SQL remains responsib
 for its own metadata. No semantic propagation through arbitrary SQL is attempted.
 
 After a successful commit, the window observer invalidates graph metadata and queries
-that depend on the affected object, including dependent Views. Failures have one expandable Sonner owner and
+that depend on the affected object, including dependent Views. Failures appear beside the responsible form or preview with original diagnostics and
 preserve the draft. Native runtime cell-edit guards and transaction rollback remain
 authoritative. No project format, task system, shutdown or window ownership changes
 are part of preprocessing.
@@ -71,8 +127,8 @@ are part of preprocessing.
 The [user tutorial](../../../frontend/public/tutorials/preprocessing.md) owns the
 operation controls, SQL examples, NULL rules, regex syntax and sampling caveats.
 
-Creating a result or applying Find leaves existing previews and graph selection unchanged.
-Find refreshes an already-open preview without opening a closed one.
+Creating a Builder result leaves existing previews and graph selection unchanged.
+Editor commits refresh the open Data View through the existing change observer.
 
 ## Build operation ownership
 
@@ -116,7 +172,7 @@ request-key isolation and pagination reset. Build retains only its last successf
 display snapshot while a replacement is pending, invalid or failed, marking it
 outdated. Automatic SQL preview errors appear beside the editor without typing-time
 toasts. Apply captures the current draft and output name independently of preview
-success; failures retain the draft and use the existing notification owner.
+success; failures retain the draft and appear beside the Builder form.
 
 Drafts survive application-tab navigation but have no persistence or recovery.
 There is no discovery endpoint, backend operation catalogue or serialized Polars
@@ -189,8 +245,8 @@ existing user SQL and transient table-edit transport fields are not rewritten.
 
 ## Concurrent visual actions
 
-Column mutations and visual Apply submissions may overlap, including repeated Apply
-from the same tool. The controller captures input nodes, transformation and output name before asynchronous preparation. Pending TanStack mutations
+Independent Builder Apply submissions may overlap. The Editor and multi-output forms
+disable their current submission until it settles. The controller captures input nodes, transformation and output name before asynchronous preparation. Pending TanStack mutations
 drive informational activity; they do not disable inputs or pause table reads. DuckDB reports conflicts
 without queuing, retries or automatic output renaming. Validation and the runtime's
 editor protection remain in force.
@@ -202,6 +258,12 @@ Casts explicitly select TIMESTAMP (wall-clock) or TIMESTAMPTZ (instant), compare
 against authoritative Arrow temporal types. Blank format uses strict CAST; an
 explicit format uses strptime followed by conversion to the selected target. No
 sample inference or offset guessing runs in the frontend.
+
+Numeric ranges accept either inclusive bound, including zero, without converting exact
+text through JavaScript numbers. Filter prefilling only seeds untouched fields while
+the captured source, column, operator and request remain current. Is empty covers NULL,
+NaN and whitespace-only text without rewriting data. A date-only timestamp upper bound
+uses less than the next calendar-day start; explicit times retain exact comparisons.
 
 Filter owns exact temporal text. Its shadcn Calendar uses Radix Popover; dates and
 timestamps expose date selection, timestamps also expose a precise time text field,

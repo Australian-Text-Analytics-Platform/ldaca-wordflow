@@ -9,11 +9,9 @@ import { role, text, label, testId, placeholder, press, screenshot } from './fix
 
 import type { FilterCondition } from '../src/features/tools/preprocessing/types';
 import * as projectApi from '@/features/project/api';
-import * as objectsApi from '@/features/project/objects';
 import { joinColumnMappings } from '../src/features/tools/preprocessing/join/columnMappings';
 import {
   applyTransformation,
-  applyFind,
   previewSql,
   type Transformation,
 } from '../src/features/tools/preprocessing/projectPreprocessing';
@@ -165,7 +163,7 @@ it('DuckDB preprocessing: new Views, NULLs, precision, propagation and rollback'
   );
 });
 
-it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () => {
+it('DuckDB preprocessing: native Sample, Join, Stack and Build', async () => {
   await seed();
   for (const sample of [
     { offset: 40 },
@@ -202,38 +200,6 @@ it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () 
   expect((await previewSql(base, stackSelect(['live', 'live'], true), 1, 100)).data).toHaveLength(
     45,
   );
-  let foundIndex = 0;
-  for (const [request, expected] of [
-    [
-      { source_column: 'text', pattern: '\\w+', replacement: 'X', count: 'first' as const },
-      'X two three',
-    ],
-    [{ source_column: 'text', pattern: '\\w+', replacement: 'X', count: 'all' as const }, 'X X X'],
-    [
-      {
-        source_column: 'text',
-        pattern: '\\w+',
-        mode: 'extract' as const,
-        count: 'first' as const,
-        match_limit: 2,
-        connector: '|',
-      },
-      'one|two',
-    ],
-  ] as const) {
-    const name = `found_${String(foundIndex++)}`;
-    await applyFind(
-      base,
-      { table_name: "source's table", kind: 'table' },
-      { ...request, output_column: name },
-      (await projectApi.nodeSchema(base, "source's table")).map(({ name }) => name),
-    );
-    expect(
-      await scalar(
-        `SELECT ${ objectsApi.identifier(name)} AS found FROM data."source's table" LIMIT 1`,
-      ),
-    ).toEqual({ found: expected });
-  }
   const tokens = [
     {
       id: 'sum',
@@ -273,12 +239,12 @@ it('DuckDB preprocessing: native Sample, Join, Stack, Find and Build', async () 
   expect(exact.data).toHaveLength(1);
 });
 
-it('restored preprocessing keeps seven tabs, native previews and drafts', async () => {
+it('restored preprocessing keeps nine tabs, native previews and drafts', async () => {
   await seed();
   await browser.url('/');
   await role('button', { name: 'Preprocessing', exact: true }).click();
-  await expect(role('heading', { name: 'Data Preprocessing', exact: true })).toBeDisplayed();
-  for (const title of ['Filter', 'Sample', 'Join', 'Stack', 'Find', 'Build', 'SQL'])
+  await expect(role('heading', { name: 'Data Builder', exact: true })).toBeDisplayed();
+  for (const title of ['Filter', 'Group', 'Join', 'Aggregate', 'Sample', 'Deduplicate', 'Stack', 'Build', 'SQL'])
     await expect(role('tab', { name: title, exact: true })).toBeDisplayed();
   await role('tab', { name: 'SQL', exact: true }).click();
   const editor = role('tabpanel', { name: 'SQL', exact: true }).$('.cm-content');
@@ -339,7 +305,7 @@ it('preprocessing preserves mapped metadata and uses native typed filtering', as
   await projectApi.executeSql(base, [
     { sql: "CREATE TYPE labels AS ENUM ('a', 'b', 'unused')" },
     {
-      sql: `CREATE TABLE data.typed AS SELECT 'a'::labels AS category, ['one','two'] AS tags, [0.1,0.8]::DOUBLE[2] AS coverage, TIMESTAMP_NS '2026-09-12 10:11:12.123456789' AS moment UNION ALL SELECT NULL, NULL, NULL, NULL`,
+      sql: `CREATE TABLE data.typed AS SELECT 'a'::labels AS category, ['one','two'] AS tags, [{'topic_id':-1,'coverage':0.1},{'topic_id':0,'coverage':0.8}]::STRUCT(topic_id BIGINT,coverage DOUBLE)[2] AS coverage, TIMESTAMP_NS '2026-09-12 10:11:12.123456789' AS moment UNION ALL SELECT NULL, NULL, NULL, NULL`,
     },
     { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('typed')" },
     {
@@ -453,7 +419,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
       document.documentElement.setAttribute('data-theme', `${value}-2026`);
       document.documentElement.style.colorScheme = value;
     }, theme);
-    for (const title of ['Filter', 'Sample', 'Join', 'Stack', 'Find', 'Build']) {
+    for (const title of ['Filter', 'Sample', 'Join', 'Stack', 'Build']) {
       await role('tab', { name: title, exact: true }).click();
       const pane = role('tabpanel', { name: title, exact: true });
       if (theme === 'light') {
@@ -477,7 +443,6 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
             role('button', { name: 'Create Data Block', exact: true }, pane),
           ).toBeEnabled();
         }
-        if (title === 'Find') await label('Regex pattern', {}, pane).setValue('one');
         if (title === 'Build') {
           await role('button', { name: 'Add column id', exact: true }, pane).click();
         }
@@ -487,16 +452,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
       await expect(role('columnheader', {}, pane)).toHaveText(expect.stringContaining('id'));
       if (theme === 'light') {
         const before = (await projectApi.graph(base)).nodes.map((node) => node.table_name);
-        if (title === 'Find') {
-          await expect(label('New Data Block name', {}, pane)).not.toExist();
-          await role('button', { name: 'Apply', exact: true }, pane).click();
-          await browser.waitUntil(
-            async () =>
-              (await scalar(`SELECT text FROM data."source's table" LIMIT 1`)).text ===
-              ' two three',
-          );
-          expect((await projectApi.graph(base)).nodes.map(({ table_name }) => table_name)).toEqual(before);
-        } else {
+
           await role('button', { name: 'Create Data Block', exact: true }, pane).click();
           await browser.waitUntil(
             async () => (await projectApi.graph(base)).nodes.length === before.length + 1,
@@ -514,7 +470,6 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
           if (title === 'Build') {
             expect((await projectApi.nodeSchema(base, expectedNames[title] ?? '')).map((column) => column.name)).toContain('col');
           }
-        }
         expect(
           await scalar(`SELECT count(*)::INTEGER AS n FROM data."source's table"`),
         ).toEqual({ n: 45 });

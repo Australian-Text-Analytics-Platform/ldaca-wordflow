@@ -4,7 +4,7 @@ import { useProjectPreview } from '@/features/project/previewState';
 import { useSelectionStore } from '@/stores/selectionStore';
 import { ToolInputScope, useInputDestinations } from '@/features/tools/common/inputDestinations';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Int64, Utf8, tableFromArrays } from 'apache-arrow';
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test';
@@ -13,7 +13,6 @@ import { usePreprocessingInputs } from '../inputState';
 
 const mocks = vi.hoisted(() => ({
   apply: vi.fn(),
-  find: vi.fn(),
   preview: vi.fn(),
   schema: vi.fn(),
   report: vi.fn(),
@@ -32,7 +31,6 @@ vi.mock('../sql/SqlEditor', () => ({
 vi.mock('../projectPreprocessing', async (original) => ({
   ...(await original()),
   applyTransformation: mocks.apply,
-  applyFind: mocks.find,
   previewSql: mocks.preview,
 }));
 vi.mock('@/features/project/projectErrors', () => ({ reportProjectError: mocks.report }));
@@ -86,10 +84,17 @@ beforeEach(() => {
   usePreprocessingInputs.setState({
     activeTool: 'filter',
     byTool: Object.fromEntries(
-      ['filter', 'slice', 'join', 'concat', 'find', 'build', 'sql'].map((tool) => [
-        tool,
-        [{ node_id: 'Corpus', column: 'Body' }],
-      ]),
+      [
+        'filter',
+        'group',
+        'slice',
+        'join',
+        'aggregate',
+        'deduplicate',
+        'concat',
+        'build',
+        'sql',
+      ].map((tool) => [tool, [{ node_id: 'Corpus', column: 'Body' }]]),
     ),
   });
   mocks.schema.mockResolvedValue(fields);
@@ -100,7 +105,6 @@ beforeEach(() => {
     pagination: { page: 1, page_size: 10, has_next: true },
   });
   mocks.apply.mockResolvedValue({ table_name: 'result' });
-  mocks.find.mockResolvedValue({ table_name: 'Corpus' });
   mocks.sql.mockResolvedValue(
     tableFromArrays({ missing_count: [0], minimum: ['1'], maximum: ['25'], median: ['13'] }),
   );
@@ -119,14 +123,33 @@ describe('project preprocessing presentation', () => {
     await tab('Join');
     await waitFor(() => expect(labels()).toEqual(['Left input', 'Right input']));
   });
-  it('shows the seven retained tools and native input schema without server providers', async () => {
+  it('shows the nine approved tools and native input schema without server providers', async () => {
     mount();
-    for (const name of ['Filter', 'Sample', 'Join', 'Stack', 'Find', 'Build', 'SQL'])
+    for (const name of [
+      'Filter',
+      'Group',
+      'Join',
+      'Aggregate',
+      'Sample',
+      'Deduplicate',
+      'Stack',
+      'Build',
+      'SQL',
+    ])
       expect(screen.getByRole('tab', { name, exact: true })).toBeVisible();
     await waitFor(() =>
       expect(panel('Filter').getByRole('combobox', { name: 'Filter column' })).toBeEnabled(),
     );
-    for (const title of ['Filter', 'Sample', 'Join', 'Stack', 'Find', 'Build']) {
+    for (const title of [
+      'Filter',
+      'Group',
+      'Join',
+      'Aggregate',
+      'Sample',
+      'Deduplicate',
+      'Stack',
+      'Build',
+    ]) {
       await tab(title);
       const pane = within(screen.getByRole('tabpanel', { name: title, exact: true }));
       expect(pane.queryByRole('combobox', { name: 'Result type' })).not.toBeInTheDocument();
@@ -138,49 +161,6 @@ describe('project preprocessing presentation', () => {
       { schema: 'data', name: 'Corpus' },
       expect.any(AbortSignal),
     );
-  });
-  it('keeps Find drafts across tools and offers only First / All replacement', async () => {
-    mount();
-    await tab('Find');
-    const find = within(screen.getByRole('tabpanel', { name: 'Find' }));
-    await waitFor(() => expect(find.getByLabelText('Regex pattern')).toBeEnabled());
-    fireEvent.change(find.getByLabelText('Regex pattern'), { target: { value: '\\w+' } });
-    await tab('Sample');
-    await tab('Find');
-    expect(find.getByLabelText('Regex pattern')).toHaveValue('\\w+');
-    await userEvent.click(find.getByLabelText('Matches'));
-    expect(screen.getByRole('option', { name: 'First match' })).toBeVisible();
-    await userEvent.click(screen.getByRole('option', { name: 'First match' }));
-    await userEvent.click(find.getByRole('button', { name: 'Apply', exact: true }));
-    await waitFor(() =>
-      expect(mocks.find).toHaveBeenCalledWith(
-        'http://project',
-        { table_name: 'Corpus', kind: 'view' },
-        expect.objectContaining({ source_column: 'Body', output_column: 'Body', count: 'first' }),
-        ['Body', 'Count'],
-      ),
-    );
-    expect(find.queryByLabelText('New Data Block name')).not.toBeInTheDocument();
-    expect(find.getByText(/This View stays live/)).toBeVisible();
-    expect(mocks.apply).not.toHaveBeenCalled();
-    await waitFor(() =>
-      expect(useProjectPreview.getState()).toMatchObject({
-        active: 'existing',
-      }),
-    );
-    expect(useSelectionStore.getState().selectedNodeIds).toEqual(['Corpus']);
-  });
-  it('retains drafts and reports an Apply failure once', async () => {
-    mocks.find.mockRejectedValue(new Error('constraint failed'));
-    mount();
-    await tab('Find');
-    const find = within(screen.getByRole('tabpanel', { name: 'Find' }));
-    await waitFor(() => expect(find.getByLabelText('Regex pattern')).toBeEnabled());
-    fireEvent.change(find.getByLabelText('Regex pattern'), { target: { value: '\\w+' } });
-    await userEvent.click(find.getByRole('button', { name: 'Apply', exact: true }));
-    await waitFor(() => expect(mocks.report).toHaveBeenCalledTimes(1));
-    expect(find.getByLabelText('Regex pattern')).toHaveValue('\\w+');
-    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
   it('creates a new sample and uses the shared lookahead pagination', async () => {
     mount();
@@ -262,7 +242,7 @@ it('Build chains use type-sensitive menus, edit parameters, and retain invalidat
       expect.any(AbortSignal),
     ),
   );
-  await tab('Find');
+  await tab('Filter');
   await tab('Build');
   expect(build.getByRole('button', { name: 'Edit Round' })).toHaveTextContent('3');
   expect(build.queryByRole('button', { name: 'Remove Split' })).not.toBeInTheDocument();
@@ -285,53 +265,14 @@ it('Build failures keep drafts and report once without changing graph selection'
   await userEvent.click(build.getByRole('button', { name: 'Add column Count', exact: true }));
   mocks.apply.mockRejectedValueOnce(new Error('constraint failure'));
   await userEvent.click(build.getByRole('button', { name: 'Create Data Block', exact: true }));
-  await waitFor(() => expect(mocks.report).toHaveBeenCalledTimes(1));
+  await waitFor(() => expect(build.getByRole('alert')).toHaveTextContent('constraint failure'));
+  expect(mocks.report).not.toHaveBeenCalled();
   expect(build.getByRole('button', { name: 'Count', exact: true })).toBeVisible();
   expect(useSelectionStore.getState().selectedNodeIds).toEqual(['Corpus']);
   await userEvent.click(build.getByRole('button', { name: 'Create Data Block', exact: true }));
   await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(build.queryByText('Applying…')).not.toBeInTheDocument());
   expect(useProjectPreview.getState()).toMatchObject({ active: 'existing' });
-});
-
-it('Find captures targets while inputs change and keeps progress until overlapping requests settle', async () => {
-  const releases: ((value: { table_name: string }) => void)[] = [];
-  mocks.find.mockImplementation(() => new Promise((resolve) => releases.push(resolve)));
-  mount([...nodes, { ...nodes[0]!, table_name: 'Other', kind: 'table' }]);
-  await tab('Find');
-  const find = panel('Find');
-  await waitFor(() => expect(find.getByLabelText('Regex pattern')).toBeEnabled());
-  fireEvent.change(find.getByLabelText('Regex pattern'), { target: { value: 'first' } });
-  fireEvent.change(find.getByLabelText('Output column name'), {
-    target: { value: 'first_result' },
-  });
-  fireEvent.click(find.getByRole('button', { name: 'Apply', exact: true }));
-  await waitFor(() => expect(mocks.find).toHaveBeenCalledTimes(1));
-  expect(find.getByLabelText('Regex pattern')).toBeEnabled();
-  act(() => usePreprocessingInputs.getState().set('find', [{ node_id: 'Other', column: 'Body' }]));
-  await waitFor(() => expect(find.getByText(/This Table stores the values/)).toBeVisible());
-  fireEvent.change(find.getByLabelText('Regex pattern'), { target: { value: 'second' } });
-  fireEvent.change(find.getByLabelText('Output column name'), {
-    target: { value: 'second_result' },
-  });
-  fireEvent.click(find.getByRole('button', { name: 'Applying…', exact: true }));
-  await waitFor(() => expect(mocks.find).toHaveBeenCalledTimes(2));
-  expect(mocks.find.mock.calls[0]?.slice(1, 3)).toEqual([
-    { table_name: 'Corpus', kind: 'view' },
-    expect.objectContaining({ pattern: 'first', output_column: 'first_result' }),
-  ]);
-  expect(mocks.find.mock.calls[1]?.slice(1, 3)).toEqual([
-    { table_name: 'Other', kind: 'table' },
-    expect.objectContaining({ pattern: 'second', output_column: 'second_result' }),
-  ]);
-  await act(async () => releases[0]!({ table_name: 'Corpus' }));
-  expect(find.getByRole('button', { name: 'Applying…', exact: true })).toBeEnabled();
-  await act(async () => releases[1]!({ table_name: 'Other' }));
-  await waitFor(() =>
-    expect(find.getByRole('button', { name: 'Apply', exact: true })).toBeEnabled(),
-  );
-  expect(useSelectionStore.getState().selectedNodeIds).toEqual(['Corpus']);
-  expect(useProjectPreview.getState().active).toBe('existing');
 });
 
 it('Build keeps incomplete roots, combines bubbles and requires confirmation before discarding edited SQL', async () => {

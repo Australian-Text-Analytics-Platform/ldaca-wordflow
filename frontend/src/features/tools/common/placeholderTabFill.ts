@@ -37,11 +37,18 @@ const scheduleCaretRestore = (input: HTMLInputElement, value: string) => {
  * placeholder, prevent that one focus move, then restore the caret.
  */
 export const acceptPlaceholderOnTab = ({ event, value, setValue }: PlaceholderTabFillArgs) => {
-  if (event.key !== 'Tab' || event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) {
+  if (
+    event.key !== 'Tab' ||
+    event.shiftKey ||
+    event.altKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.nativeEvent.isComposing
+  ) {
     return;
   }
 
-  if (value.trim().length > 0) {
+  if (value.length > 0) {
     return;
   }
 
