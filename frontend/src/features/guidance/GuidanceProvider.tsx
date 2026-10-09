@@ -297,6 +297,27 @@ export function GuidanceProvider({
     );
   };
 
+  // A hint outlines what it points at, which a spotlight on a large area did
+  // not show well (Chao, issue 360): a button or link to click pulses, like a
+  // settings walk; an area to look at gets a still outline, so the pulse
+  // keeps meaning "click here".
+  const hintTarget = session?.kind === 'hint' && !modalCount ? session.definition.target : null;
+  useEffect(() => {
+    if (!hintTarget) return;
+    const element =
+      typeof hintTarget === 'string'
+        ? document.querySelector<HTMLElement>(hintTarget)
+        : typeof hintTarget === 'function'
+          ? hintTarget()
+          : hintTarget;
+    if (!(element instanceof HTMLElement)) return;
+    const clickable = element.matches('button, a[href], [role="button"]');
+    element.setAttribute('data-hint-target', clickable ? 'click' : 'look');
+    return () => {
+      element.removeAttribute('data-hint-target');
+    };
+  });
+
   // The gear step outlines the gear itself, and a click anywhere but the gear
   // or the card closes the walk, so people who meant to ignore it can just
   // carry on (Chao, issue 360).

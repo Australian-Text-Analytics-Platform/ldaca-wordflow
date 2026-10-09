@@ -323,6 +323,25 @@
   }
 }
 
+/* A hint's target (issue 360): an area gets a still outline; a button or
+   link to click pulses. Drawn on the inside edge, since sidebars and tab
+   strips clip anything outside their children. */
+[data-hint-target] {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: -2px;
+}
+
+[data-hint-target="click"] {
+  animation: hint-target-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes hint-target-pulse {
+  50% {
+    outline-width: 4px;
+    outline-color: color-mix(in srgb, var(--vscode-focusBorder) 40%, transparent);
+  }
+}
+
 /* A settings walk's gear step outlines the gear itself (issue 360). */
 [data-walk-target] {
   outline: 2px solid var(--vscode-focusBorder);
@@ -338,6 +357,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  [data-hint-target="click"],
   [data-walk-target] {
     animation: none;
   }

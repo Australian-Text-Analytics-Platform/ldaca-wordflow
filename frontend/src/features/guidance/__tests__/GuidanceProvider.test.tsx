@@ -332,6 +332,18 @@ describe('GuidanceProvider', () => {
     });
   });
 
+  it('outlines an area hint still, and removes it with the hint (issue 360)', async () => {
+    const user = userEvent.setup();
+    renderGuidance();
+    await user.click(screen.getByRole('button', { name: 'Reach hint' }));
+    // #target is a div, an area to look at: a still outline, not the pulse.
+    expect(screen.getByText('Target')).toHaveAttribute('data-hint-target', 'look');
+    await user.click(screen.getByRole('button', { name: 'Not now' }));
+    await waitFor(() => {
+      expect(screen.getByText('Target')).not.toHaveAttribute('data-hint-target');
+    });
+  });
+
   it('outlines the gear without dimming, and a click elsewhere ends the walk (issue 360)', async () => {
     const gear = document.createElement('button');
     gear.setAttribute('data-guidance', 'settings-button');

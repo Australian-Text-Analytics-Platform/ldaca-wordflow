@@ -327,6 +327,9 @@ function Sidebar() {
                   ) : null}
                   <div
                     data-sidebar-section={key}
+                    // The Data Blocks hint points at the whole list, not its
+                    // heading ("Data Blocks appear here", issue 360).
+                    data-guidance={key === 'nodes' ? 'data-blocks' : undefined}
                     data-testid={`sidebar-section-${key}`}
                     className="flex min-h-0 flex-1 flex-col overflow-hidden"
                   >
@@ -337,7 +340,6 @@ function Sidebar() {
                       >
                         <button
                           type="button"
-                          data-guidance={key === 'nodes' ? 'data-blocks' : undefined}
                           className="flex min-w-0 flex-1 items-center justify-between px-2 py-1.5 text-label-secondary font-semibold uppercase tracking-wide text-description"
                           onClick={() => {
                             toggleSection(key);
