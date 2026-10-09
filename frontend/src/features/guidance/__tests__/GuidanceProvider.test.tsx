@@ -332,6 +332,33 @@ describe('GuidanceProvider', () => {
     });
   });
 
+  it('outlines the gear without dimming, and a click elsewhere ends the walk (issue 360)', async () => {
+    const gear = document.createElement('button');
+    gear.setAttribute('data-guidance', 'settings-button');
+    document.body.append(gear);
+    const user = userEvent.setup();
+    renderGuidance();
+    await user.click(screen.getByRole('button', { name: 'Reach hint' }));
+    await user.click(screen.getByRole('button', { name: 'Turn off hints…' }));
+
+    expect(fixture.joyrideProps?.steps[0]).toMatchObject({
+      hideOverlay: true,
+      dismissKeyAction: 'close',
+    });
+    expect(gear).toHaveAttribute('data-walk-target');
+    // A press on the gear itself keeps the walk.
+    fireEvent.pointerDown(gear);
+    expect(useSettingsDialogStore.getState().guide).toBe('contextual-hints');
+
+    fireEvent.pointerDown(document.body);
+    await waitFor(() => {
+      expect(fixture.joyrideProps?.steps[0]?.target).not.toBe('[data-guidance="settings-button"]');
+    });
+    expect(useSettingsDialogStore.getState().guide).toBeNull();
+    expect(gear).not.toHaveAttribute('data-walk-target');
+    gear.remove();
+  });
+
   it('keeps deliberate tours available when Contextual Hints are disabled', async () => {
     fixture.enabled = false;
     const user = userEvent.setup();

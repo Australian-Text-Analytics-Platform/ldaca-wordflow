@@ -306,3 +306,23 @@
 [data-nudge-active="fading"] {
   outline-color: transparent;
 }
+
+/* A settings walk's gear step outlines the gear itself (issue 360). */
+[data-walk-target] {
+  outline: 2px solid var(--vscode-focusBorder);
+  outline-offset: 2px;
+  animation: walk-target-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes walk-target-pulse {
+  50% {
+    outline-offset: 5px;
+    outline-color: color-mix(in srgb, var(--vscode-focusBorder) 40%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-walk-target] {
+    animation: none;
+  }
+}

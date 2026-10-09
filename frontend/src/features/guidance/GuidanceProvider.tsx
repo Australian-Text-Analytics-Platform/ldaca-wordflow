@@ -289,6 +289,39 @@ export function GuidanceProvider({
     dispatchContextualHintVisit({ type, view: session.view });
   };
 
+  const settingsWalkActive = session?.kind === 'tour' && isSettingsWalkTour(session.definition.id);
+  const endSettingsWalk = () => {
+    if (!useSettingsDialogStore.getState().open) useSettingsDialogStore.getState().endGuide();
+    setTourSession((current) =>
+      current && isSettingsWalkTour(current.definition.id) ? null : current,
+    );
+  };
+
+  // The gear step outlines the gear itself, and a click anywhere but the gear
+  // or the card closes the walk, so people who meant to ignore it can just
+  // carry on (Chao, issue 360).
+  useEffect(() => {
+    if (!settingsWalkActive) return;
+    const gear = document.querySelector<HTMLElement>('[data-guidance="settings-button"]');
+    gear?.setAttribute('data-walk-target', '');
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        (target.closest('[data-guidance="settings-button"]') ||
+          target.closest('.react-joyride__floater'))
+      ) {
+        return;
+      }
+      endSettingsWalk();
+    };
+    document.addEventListener('pointerdown', onPointerDown, true);
+    return () => {
+      gear?.removeAttribute('data-walk-target');
+      document.removeEventListener('pointerdown', onPointerDown, true);
+    };
+  });
+
   const steps: Step[] =
     session?.kind === 'hint'
       ? [
@@ -311,6 +344,9 @@ export function GuidanceProvider({
           ...(step.placement ? { placement: step.placement } : {}),
           ...(step.clickTarget ? { blockTargetInteraction: false } : {}),
           ...(step.buttons ? { buttons: step.buttons } : {}),
+          // A settings walk's gear step stays out of the way: no dimming, and
+          // Escape or a click elsewhere closes it (Chao, issue 360).
+          ...(settingsWalkActive ? { hideOverlay: true, dismissKeyAction: 'close' as const } : {}),
         })) ?? []);
 
   const handleEvent = (event: EventData) => {
