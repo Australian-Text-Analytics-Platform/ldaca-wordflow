@@ -701,6 +701,8 @@ def test__compute_topic_modeling_writes_only_projection_context(tmp_path, monkey
     assert seen_run_kwargs["segmentation_method"] == "line"
     assert seen_run_kwargs["max_segment_tokens"] == 64
     assert result["segment_count"] == 7
+    # Both documents have a real Topic, so none is Ungrouped (issue 362).
+    assert result["ungrouped_documents"] == [0]
     assert any("engine=rust backend=ort" in message for message in messages)
     assert progress[0][1].startswith("Loading the topic model")
     assert progress[-1] == (0.9, "Saving the topics…")

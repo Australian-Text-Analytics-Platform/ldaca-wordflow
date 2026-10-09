@@ -30,6 +30,7 @@ import {
   type TopicGraphPlane,
   type TopicGraphPoint,
 } from './topicModelingGraph';
+import { topicLabel, topicShortLabel } from '../../ungrouped';
 
 interface TopicBubbleNodeData extends Record<string, unknown> {
   bubble: TopicBubbleModel;
@@ -206,7 +207,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             fill="#1e293b"
             className="pointer-events-none select-none"
           >
-            {`T${String(bubble.id)}`}
+            {topicShortLabel(bubble.id)}
           </text>
           {bubble.shown ? (
             // The same eye as the Topic card whose examples are shown (issue 353).
@@ -246,7 +247,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
         data-testid={`topic-flow-tooltip-${String(bubble.id)}`}
         className="pointer-events-none w-[min(18rem,calc(100%-1rem))] rounded-md border border-surface-border bg-surface p-3 text-label-secondary text-surface-foreground"
       >
-        <div className="text-body font-semibold">Topic {bubble.topic.id}</div>
+        <div className="text-body font-semibold">{topicLabel(bubble.topic.id)}</div>
         <div className="mt-1 max-h-36 overflow-hidden text-description">
           <ResponsiveWordCloud
             words={bubble.topic.representative_words.map((term) => ({
@@ -470,7 +471,7 @@ function TopicExportSvg({
               strokeWidth={bubble.selected ? 2 : 1}
             />
             <text textAnchor="middle" dy={4} fontSize={12} fill="#1e293b">
-              {`T${String(bubble.id)}`}
+              {topicShortLabel(bubble.id)}
             </text>
           </g>
         ))}

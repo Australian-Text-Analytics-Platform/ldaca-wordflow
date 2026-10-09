@@ -9,6 +9,7 @@ import { matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters'
 import { TopicWordsLine } from './TopicWords';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 import { TopicExamplesPane, type TopicExamplesContext } from './TopicExamplesPane';
+import { topicLabel } from '../../ungrouped';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -87,7 +88,7 @@ function TopicCard({
   onHoverChange,
 }: TopicCardProps) {
   const words = topic.representative_words.map((term) => term.word);
-  const label = `Topic ${String(topic.id)}`;
+  const label = topicLabel(topic.id);
   return (
     <li
       data-topic-id={topic.id}

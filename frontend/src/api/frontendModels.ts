@@ -72,6 +72,8 @@ export type TopicModelingResponse = Omit<TopicModelingResult, 'topics'> & {
     topics: TopicModelingResult['topics'];
     corpus_sizes: number[];
     segment_count: number;
+    /** Per Data Block, documents with no real Topic (issue 362); null before 0.7.12. */
+    ungrouped_documents?: number[] | null;
   };
 };
 

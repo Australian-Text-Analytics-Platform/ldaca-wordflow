@@ -7,6 +7,7 @@ import {
   type AddToWorkspaceSelection,
   type AddToWorkspaceSource,
 } from '../../common/components/AddToWorkspaceDialog';
+import { isUngrouped } from '../ungrouped';
 
 export interface TopicModelingAddToWorkspaceSource {
   id: string;
@@ -56,8 +57,10 @@ const MAX_TOPICS_IN_NAME = 3;
 const topicNamePart = (selectedTopicIds: readonly number[] | null): string => {
   if (!selectedTopicIds || selectedTopicIds.length === 0) return 'topics';
   const ids = [...selectedTopicIds].sort((a, b) => a - b);
-  if (ids.length === 1) return `topic ${String(ids[0])}`;
-  if (ids.length <= MAX_TOPICS_IN_NAME) return `topics ${ids.join(', ')}`;
+  // Ungrouped (-1) is named, not numbered (issue 362).
+  const named = ids.map((id) => (isUngrouped(id) ? 'ungrouped' : String(id)));
+  if (ids.length === 1) return isUngrouped(ids[0] ?? 0) ? 'ungrouped' : `topic ${named[0] ?? ''}`;
+  if (ids.length <= MAX_TOPICS_IN_NAME) return `topics ${named.join(', ')}`;
   return `${String(ids.length)} topics`;
 };
 
@@ -138,7 +141,7 @@ export function TopicModelingAddToWorkspaceDialog({
         <>
           {rowUnit === 'documents'
             ? 'For each selected source, creates a Data Block with one row per document and its topic coverage, and a Data Block of topic meanings.'
-            : "For each selected source, creates a Data Block with one row per topic in each document, and a Data Block of topic meanings. The document column holds only that topic's segments, joined by line breaks."}
+            : "For each selected source, creates a Data Block with one row per topic in each document, and a Data Block of topic meanings. The document column holds only that topic's segments, joined by line breaks. Every segment of a chosen topic is taken, also from documents outside its bubble, so there can be more documents than the bubble counts."}
           {topicScope}
         </>
       }

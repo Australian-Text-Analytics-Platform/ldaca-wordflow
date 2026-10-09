@@ -142,6 +142,18 @@ describe('TopicExamplesPane (#353)', () => {
     expect(cards[1]).not.toHaveTextContent('row 2');
   });
 
+  it('shows Ungrouped passages in random order, with no ranking to choose (issue 362)', async () => {
+    renderPane({
+      topic: { id: -1, representative_words: [], size: [12], total_size: 12, x: 0, y: 0 },
+    });
+    expect(await screen.findByText('Ungrouped examples')).toBeInTheDocument();
+    expect(api.queryTopicSegments).toHaveBeenCalledWith(
+      expect.objectContaining({ body: expect.objectContaining({ topic_id: -1, order: 'random' }) }),
+    );
+    expect(screen.queryByRole('radiogroup', { name: 'Examples order' })).not.toBeInTheDocument();
+    expect(screen.getByText(/no topic centre to rank them by/)).toBeInTheDocument();
+  });
+
   it('asks for the next page and switches to random order', async () => {
     const user = userEvent.setup();
     renderPane();

@@ -2,6 +2,7 @@ import type { TopicColorGroups, TopicModelingTopic } from '@/api';
 import { matchChecklistOption } from '@/features/views/common/checklistSearch';
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
 import { interpolateColor, matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters';
+import { isUngrouped, UNGROUPED_BUBBLE_OPACITY } from '../../ungrouped';
 
 const TOPIC_GRAPH_WIDTH = 1000;
 const TOPIC_GRAPH_HEIGHT = 550;
@@ -377,6 +378,9 @@ const relaxedPositionsFor = (items: RelaxItem[]): Map<number, TopicGraphPoint> =
   return relaxCache.positions;
 };
 
+/** How far outside the plane's corner the Ungrouped bubble's centre starts, in radii. */
+const UNGROUPED_CORNER_GAP = 1.5;
+
 /** Builds the shared graph/export presentation model for projected Topics with rows. */
 export function buildTopicBubbleModels({
   topics,
@@ -394,13 +398,21 @@ export function buildTopicBubbleModels({
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
-  const projected = normalizeTopicPositions(visibleTopics, plane);
+  // Ungrouped has no place on the map: it sits in the bottom-left corner, a
+  // little apart, and the layout keeps the Topics clear of it (issue 362).
+  const projected = normalizeTopicPositions(
+    visibleTopics.filter((topic) => !isUngrouped(topic.id)),
+    plane,
+  );
   const maxSize = Math.max(1, ...visibleTopics.map((topic) => topic.total_size));
   const radiusFor = (topic: TopicModelingTopic) => 10 + 40 * Math.sqrt(topic.total_size / maxSize);
   const positions = relaxedPositionsFor(
     visibleTopics.map((topic) => {
-      const point = projected.get(topic.id) ?? { x: plane.width / 2, y: plane.height / 2 };
-      return { id: topic.id, x: point.x, y: point.y, radius: radiusFor(topic) };
+      const radius = radiusFor(topic);
+      const point = isUngrouped(topic.id)
+        ? { x: -radius * UNGROUPED_CORNER_GAP, y: plane.height + radius * UNGROUPED_CORNER_GAP }
+        : (projected.get(topic.id) ?? { x: plane.width / 2, y: plane.height / 2 });
+      return { id: topic.id, x: point.x, y: point.y, radius };
     }),
   );
   const fallbackPrimaryColor = defaultPalette[0] ?? '#2563eb';
@@ -438,14 +450,17 @@ export function buildTopicBubbleModels({
       topic,
       position: positions.get(topic.id) ?? { x: plane.width / 2, y: plane.height / 2 },
       radius: radiusFor(topic),
-      fill:
-        corpusCount <= 1
+      // Ungrouped stays Wordflow's not-analysed grey at a constant light fill.
+      fill: isUngrouped(topic.id)
+        ? GREY
+        : corpusCount <= 1
           ? colorScheme
             ? topicColorSchemeFill(colorScheme, topic.id, colorA)
             : colorA
           : interpolateColor(colorA, colorB, proportion),
-      fillOpacity:
-        corpusCount <= 1 && colorScheme
+      fillOpacity: isUngrouped(topic.id)
+        ? UNGROUPED_BUBBLE_OPACITY
+        : corpusCount <= 1 && colorScheme
           ? topicColorSchemeOpacity(colorScheme, topic.id)
           : TOPIC_OPACITY_DEFAULT,
       selected: selectedTopicIds.has(topic.id),

@@ -32,9 +32,18 @@ export function TopicResultNudge({
     clusterCount: clustering.default_cluster_count,
     largestTopicSize: clustering.largest_topic_size ?? 0,
     clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
+    ungroupedShare: ungroupedDocumentShare(result.data),
   });
   if (!id) return null;
   return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} />;
+}
+
+/** Share of the run's documents with no real Topic (issue 362), or null. */
+function ungroupedDocumentShare(data: TopicModelingResponse['data']): number | null {
+  const ungrouped = data.ungrouped_documents;
+  if (!ungrouped) return null;
+  const documents = data.corpus_sizes.reduce((sum, size) => sum + size, 0);
+  return documents > 0 ? ungrouped.reduce((sum, size) => sum + size, 0) / documents : null;
 }
 
 const toMs = (value: string | number) =>

@@ -6,6 +6,10 @@ import polars as pl
 
 TOPIC_COVERAGE_EXTENSION = "org.ldaca.wordflow.topic_coverage.v1"
 
+# Segments the clustering leaves out of every Topic (HDBSCAN noise, BERTopic's
+# outliers). The interface calls them Ungrouped (issue 362).
+UNGROUPED_TOPIC_ID = -1
+
 TOPIC_COVERAGE_ENTRY_DTYPE = pl.Struct(
     [
         pl.Field("topic_id", pl.Int64),

@@ -5739,6 +5739,10 @@ export type TopicModelingResult = {
      * Topics
      */
     topics: Array<TopicItem>;
+    /**
+     * Ungrouped Documents
+     */
+    ungrouped_documents?: Array<number> | null;
 };
 
 /**

@@ -23,6 +23,7 @@ import {
   type TypicalityBand,
 } from './topicExamplesModel';
 import type { TopicColorScheme } from './topicModelingGraph';
+import { isUngrouped, topicLabel } from '../../ungrouped';
 
 export interface TopicExamplesContext {
   workspaceId: string;
@@ -153,6 +154,9 @@ export function TopicExamplesPane({
   const [corpus, setCorpus] = useState<string>(ALL);
   const [labelColumn, setLabelColumn] = useState<string>(NO_LABEL);
   const topicId = topic?.id ?? null;
+  // Ungrouped has no centre to rank by, so its examples are random (issue 362).
+  const ungrouped = topicId !== null && isUngrouped(topicId);
+  const effectiveOrder = ungrouped ? 'random' : order;
   // The page and the open document belong to one Topic; the order and
   // filters carry over when another Topic is shown.
   const [pageState, setPageState] = useState({ topicId, page: 1 });
@@ -179,7 +183,7 @@ export function TopicExamplesPane({
       'topic-segments',
       clusterCount,
       topicId,
-      order,
+      effectiveOrder,
       onePerDocument,
       groupColumn,
       group,
@@ -194,7 +198,7 @@ export function TopicExamplesPane({
         body: {
           cluster_count: clusterCount,
           topic_id: topicId ?? 0,
-          order,
+          order: effectiveOrder,
           one_per_document: onePerDocument,
           corpus_index: corpus === ALL ? null : Number(corpus),
           group_column: groupColumn,
@@ -246,11 +250,11 @@ export function TopicExamplesPane({
 
   return (
     <section
-      aria-label={`Examples of Topic ${String(topic.id)}`}
+      aria-label={`Examples of ${topicLabel(topic.id)}`}
       className="flex h-full min-h-[28rem] flex-col gap-2 rounded-lg border border-surface-border bg-panel/40 p-3 @min-[700px]:min-h-0"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h4 className="text-body font-medium text-foreground">Topic {topic.id} examples</h4>
+        <h4 className="text-body font-medium text-foreground">{topicLabel(topic.id)} examples</h4>
         {data ? (
           <span className="text-label-secondary text-description">
             {data.segment_count.toLocaleString()} segments in {data.document_count.toLocaleString()}{' '}
@@ -270,33 +274,39 @@ export function TopicExamplesPane({
       </div>
       {filteredOut ? (
         <p className="flex flex-wrap items-center gap-2 text-label-secondary text-description">
-          Topic {topic.id} is hidden by the current search or lasso.
+          {topicLabel(topic.id)} is hidden by the current search or lasso.
           <button type="button" className="text-link hover:underline" onClick={onClearFilters}>
             Clear filters
           </button>
         </p>
       ) : null}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-label-secondary">
-        <div role="radiogroup" aria-label="Examples order" className="flex rounded-md border">
-          {(['typical', 'random'] as const).map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="radio"
-              aria-checked={order === value}
-              className={cn(
-                'px-2 py-1 first:rounded-l-md last:rounded-r-md',
-                order === value ? 'bg-list-active text-foreground' : 'text-description',
-              )}
-              onClick={() => {
-                setOrder(value);
-                resetPage();
-              }}
-            >
-              {value === 'typical' ? 'Most typical' : 'Random'}
-            </button>
-          ))}
-        </div>
+        {ungrouped ? (
+          <span className="text-description">
+            In random order: Ungrouped passages have no topic centre to rank them by.
+          </span>
+        ) : (
+          <div role="radiogroup" aria-label="Examples order" className="flex rounded-md border">
+            {(['typical', 'random'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={order === value}
+                className={cn(
+                  'px-2 py-1 first:rounded-l-md last:rounded-r-md',
+                  order === value ? 'bg-list-active text-foreground' : 'text-description',
+                )}
+                onClick={() => {
+                  setOrder(value);
+                  resetPage();
+                }}
+              >
+                {value === 'typical' ? 'Most typical' : 'Random'}
+              </button>
+            ))}
+          </div>
+        )}
         <Label className="flex items-center gap-1.5 font-normal">
           <Checkbox
             checked={onePerDocument}
@@ -368,7 +378,7 @@ export function TopicExamplesPane({
           </Select>
         ) : null}
       </div>
-      {data && !data.has_similarity && order === 'typical' ? (
+      {data && !data.has_similarity && effectiveOrder === 'typical' ? (
         <p className="text-label-secondary text-description">
           This run is from before Wordflow 0.7.11, so examples are not ranked by how typical they
           are. Run Topic Modelling again to rank them.

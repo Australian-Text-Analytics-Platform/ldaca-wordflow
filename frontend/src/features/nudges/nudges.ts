@@ -27,6 +27,12 @@ export const LARGE_INPUT_SEGMENTS = 66_000;
 const GIANT_TOPIC_SHARE = 0.5;
 /** Fewer topics than this. */
 const FEW_TOPICS = 5;
+/**
+ * This share of documents with no real Topic (Ungrouped, issue 362). On the
+ * Obesity corpus, 37% at Min topic size 10 fell to 30% at 5, with 2,848
+ * Topics instead of 782; at 20 everything joined one Topic.
+ */
+const MANY_UNGROUPED_SHARE = 0.3;
 /** A run still in its first steps (segments and embeddings) after this long. */
 export const SLOW_START_MS = 5 * 60_000;
 /** Steps that count as the first steps of a Topic Modelling run. */
@@ -62,6 +68,12 @@ export const NUDGES = {
       'A slightly lower Min topic size finds more topics. Clear the results first to change it.',
     targets: [NUDGE_TARGETS.topicMinClusterSize],
   },
+  'topic-many-ungrouped': {
+    title: 'Many documents are Ungrouped',
+    message:
+      'A slightly smaller Min topic size groups more of them, into more and smaller topics. Clear the results first to change it.',
+    targets: [NUDGE_TARGETS.topicMinClusterSize],
+  },
   'topic-slow-start': {
     title: 'This run is taking a while',
     // Reading the text takes about as long at 128 as at 256 Max tokens on the
@@ -85,18 +97,24 @@ interface TopicResultShape {
   clusterCount: number;
   largestTopicSize: number;
   clusteredSegments: number;
+  /** Share of documents with no real Topic; null for runs before 0.7.12. */
+  ungroupedShare?: number | null;
 }
 
-/** Which Topic Modelling result suggestion applies, if any. A giant topic comes first. */
+/** Which Topic Modelling result suggestion applies, if any: a giant topic, then too few, then many Ungrouped. */
 export function topicResultNudge({
   clusterCount,
   largestTopicSize,
   clusteredSegments,
+  ungroupedShare = null,
 }: TopicResultShape): NudgeId | null {
   if (clusteredSegments > 0 && largestTopicSize / clusteredSegments > GIANT_TOPIC_SHARE) {
     return 'topic-giant-topic';
   }
   if (clusterCount > 0 && clusterCount < FEW_TOPICS) return 'topic-few-topics';
+  if (ungroupedShare !== null && ungroupedShare >= MANY_UNGROUPED_SHARE) {
+    return 'topic-many-ungrouped';
+  }
   return null;
 }
 

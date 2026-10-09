@@ -49,8 +49,8 @@ export function TopicCoverageBar({ value }: Props) {
         aria-label={entries
           .map(
             (entry) =>
-              // Rows with no topic read "No topic", not "outlier" or "Topic -1" (issue 205).
-              `${entry.topic_id < 0 ? 'No topic' : `Topic ${String(entry.topic_id)}`}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
+              // Rows with no topic read "Ungrouped", not "outlier" or "Topic -1" (issues 205, 362).
+              `${entry.topic_id < 0 ? 'Ungrouped' : `Topic ${String(entry.topic_id)}`}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
           )
           .join(', ')}
       >
@@ -64,7 +64,7 @@ export function TopicCoverageBar({ value }: Props) {
                 width: `${String(percentage)}%`,
                 backgroundColor: topicColor(entry.topic_id),
               }}
-              title={`Topic ${String(entry.topic_id)}: ${percentage.toFixed(1)}%`}
+              title={`${entry.topic_id < 0 ? 'Ungrouped' : `Topic ${String(entry.topic_id)}`}: ${percentage.toFixed(1)}%`}
             />
           );
         })}
@@ -81,7 +81,7 @@ export function TopicCoverageBar({ value }: Props) {
                 className="inline-block h-2 w-2 rounded-[2px]"
                 style={{ backgroundColor: topicColor(entry.topic_id) }}
               />
-              {entry.topic_id < 0 ? 'No topic' : `T${String(entry.topic_id)}`}{' '}
+              {entry.topic_id < 0 ? 'Ungrouped' : `T${String(entry.topic_id)}`}{' '}
               {percentage.toFixed(0)}%
             </span>
           );

@@ -4,6 +4,7 @@ import { queryTopicDocument, type TopicDocument } from '@/api';
 import { RowDetailPanel } from '@/features/views/common/components/RowDetailPanel';
 import { cn } from '@/lib/utils';
 import { codePointOffsets, splitTopicWords } from './topicExamplesModel';
+import { topicLabel } from '../../ungrouped';
 
 interface TopicDocumentDialogProps {
   workspaceId: string;
@@ -27,7 +28,7 @@ const OTHER_SEGMENT = 'rounded-sm bg-[color-mix(in_srgb,var(--vscode-foreground)
 /**
  * The full document of a Topic example (issue 353), in the shared Row Details
  * window: every segment is highlighted, the shown Topic's strongest and other
- * Topics pale; No topic text stays plain. Previous/Next segment steps through
+ * Topics pale; Ungrouped text stays plain. Previous/Next segment steps through
  * the shown Topic's segments in this document.
  */
 export function TopicDocumentDialog({
@@ -102,7 +103,7 @@ export function TopicDocumentDialog({
         pieces.push(
           <span
             key={`${String(index)}-${String(span.start)}`}
-            title={`Topic ${String(span.topic_id)}`}
+            title={topicLabel(span.topic_id)}
             data-row-detail-anchor={isCurrent ? '' : undefined}
             data-current-segment={isCurrent ? '' : undefined}
             data-tint={isCurrent ? 'strong' : isShown ? 'light' : undefined}
@@ -150,7 +151,7 @@ export function TopicDocumentDialog({
       }
       customization={{
         title: 'Document',
-        label: `Topic ${String(topicId)}`,
+        label: topicLabel(topicId),
         anchorKey: current?.start,
         titleDetail: topicWords.length > 0 ? topicWords.join(', ') : undefined,
         summaryFields: [
@@ -166,7 +167,7 @@ export function TopicDocumentDialog({
                 </span>
                 <strong className="px-1 font-bold italic">topic words</strong>
                 <span className={cn(OTHER_SEGMENT, 'px-1')}>Other topics</span>
-                <span className="text-description">No topic: not highlighted</span>
+                <span className="text-description">Ungrouped: not highlighted</span>
               </span>
             ),
           },

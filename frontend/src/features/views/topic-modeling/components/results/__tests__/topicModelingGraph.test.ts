@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { GREY, RANDOMIZABLE_FG } from '@/features/views/common/vizPalette';
+import { topicLabel, UNGROUPED_BUBBLE_OPACITY, ungroupedTopic } from '../../../ungrouped';
 import {
   buildTopicBubbleModels,
   buildTopicColorScheme,
@@ -66,6 +67,32 @@ describe('topicModelingGraph', () => {
     expect(normalizeTopicPositions([{ ...topics[0], x: 2, y: 2 }])).toEqual(
       new Map([[0, { x: 500, y: 275 }]]),
     );
+  });
+
+  it('puts Ungrouped in the bottom-left corner, grey at a constant opacity (issue 362)', () => {
+    const ungrouped = ungroupedTopic({ ungrouped_documents: [3] });
+    if (!ungrouped) throw new Error('expected an Ungrouped topic');
+    const bubbles = buildTopicBubbleModels({
+      topics: [...topics, ungrouped],
+      corpusSizes: [4],
+      panelNodeIds: ['corpus-a'],
+      nodeColors: { 'corpus-a': '#ff0000' },
+      defaultPalette: ['#0000ff'],
+      selectedTopicIds: new Set(),
+      lassoTopicIds: new Set(),
+      hoveredTopicId: null,
+      topicSearchQuery: '',
+    });
+    const bubble = bubbles.find((candidate) => candidate.id === -1);
+    expect(bubble).toMatchObject({ fill: GREY, fillOpacity: UNGROUPED_BUBBLE_OPACITY });
+    // Left of and below every Topic, whatever its coordinates.
+    for (const other of bubbles.filter((candidate) => candidate.id !== -1)) {
+      expect(bubble?.position.x).toBeLessThan(other.position.x);
+      expect(bubble?.position.y).toBeGreaterThan(other.position.y);
+    }
+    expect(topicLabel(-1)).toBe('Ungrouped');
+    expect(ungroupedTopic({ ungrouped_documents: null })).toBeNull();
+    expect(ungroupedTopic({ ungrouped_documents: [0, 0] })).toBeNull();
   });
 
   it('builds bounded bubble models with search, selection, and lasso presentation state', () => {

@@ -56,6 +56,7 @@ import {
   sliceTopicRepresentativeWords,
 } from './topicModelingAdapters';
 import { toastError } from '@/lib/toastError';
+import { isUngrouped, ungroupedTopic } from './ungrouped';
 
 /**
  * Renders the native topic-modelling workflow and Result exploration.
@@ -360,7 +361,12 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       null)
     : null;
   const representativeWordsCount = host.topicModelingWordsPerTopic ?? 15;
-  const rawTopics: TopicModelingTopic[] = result?.data.topics ?? [];
+  // Ungrouped joins the Topics as a grey bubble and a list entry (issue 362).
+  const ungrouped = ungroupedTopic(result?.data);
+  const rawTopics: TopicModelingTopic[] = [
+    ...(result?.data.topics ?? []),
+    ...(ungrouped ? [ungrouped] : []),
+  ];
   const effectiveStopWords = stopWordsEnabled
     ? new Set(host.stopWords.map((word) => word.toLocaleLowerCase()))
     : new Set<string>();
@@ -397,10 +403,12 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         cluster_count: result?.clustering.cluster_count ?? 0,
         top_n_topics: result?.topic_inclusion.top_n_topics ?? 0,
         row_unit: rowUnit,
-        topic_meanings_override: exportTopics.map((topic) => ({
-          topic_id: topic.id,
-          words: topic.representative_words.map((term) => term.word),
-        })),
+        topic_meanings_override: exportTopics
+          .filter((topic) => !isUngrouped(topic.id))
+          .map((topic) => ({
+            topic_id: topic.id,
+            words: topic.representative_words.map((term) => term.word),
+          })),
       });
       setAddToWorkspaceDialogOpen(false);
       toast.success('Adding Topic Modelling results to the Project.');
@@ -577,6 +585,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           analysisId={tabTaskId}
           topics={topics}
           exportTopics={exportTopics}
+          sampleFractions={serverRequest?.sample_fractions ?? null}
           containerRef={containerRef}
           selectedTopicIds={selectedTopicIds}
           onToggleTopicSelection={handleToggleTopicSelection}

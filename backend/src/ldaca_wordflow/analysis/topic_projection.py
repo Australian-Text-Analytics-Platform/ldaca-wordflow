@@ -181,6 +181,30 @@ def decode_topic_projection_basis(payload: bytes) -> dict[str, Any]:
     return value
 
 
+def ungrouped_document_counts(
+    documents: list[dict[str, Any]], corpus_sizes: list[int]
+) -> list[int]:
+    """Per source, the documents with no real Topic: the Ungrouped bubble (issue 362).
+
+    A document counts when none of its coverage is on a real Topic, so it is in
+    no Topic bubble at any Top topics per document. Merging Topics keeps every
+    real share real, so the counts hold for every Topic count.
+    """
+
+    starts = [sum(corpus_sizes[:index]) for index in range(len(corpus_sizes))]
+    counts = [0] * len(corpus_sizes)
+    for document in documents:
+        if any(
+            int(entry.get("topic_id", -1)) >= 0 and float(entry.get("coverage", 0.0)) > 0.0
+            for entry in document.get("topic_coverage") or []
+        ):
+            continue
+        doc_index = int(document["doc_index"])
+        corpus = max(index for index, start in enumerate(starts) if start <= doc_index)
+        counts[corpus] += 1
+    return counts
+
+
 def build_topic_projection_payload(
     *,
     basis: dict[str, Any],
@@ -233,4 +257,5 @@ __all__ = [
     "normalize_projected_topics",
     "project_rust_topic_projection_basis",
     "TopicNodeInfo",
+    "ungrouped_document_counts",
 ]

@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, TypeAdapter, ValidationError
 
 from ..shared.document_fingerprint import require_same_documents
 from ..shared.empty_values import empty_last_key
+from ..shared.topic_types import UNGROUPED_TOPIC_ID
 from .category_order import natural_key
 from ..domain.annotation import provider_failure_message
 from ..analysis.concordance_core import compute_node_concordance_page
@@ -581,7 +582,8 @@ class AnalysisResultService:
             allowed = _topic_allowed_documents(stored, query, group_values)
             ordered = order_topic_segments(
                 segments,
-                order=query.order,
+                # Ungrouped has no centre to rank by: random, seeded (issue 362).
+                order="random" if query.topic_id == UNGROUPED_TOPIC_ID else query.order,
                 seed=seed,
                 one_per_document=query.one_per_document,
                 allowed_documents=allowed,
@@ -1380,6 +1382,15 @@ def _topic_segment_similarities(
     context_path: Path, cluster_count: int, topic_id: int
 ) -> tuple[TopicSegment, ...]:
     try:
+        if topic_id == UNGROUPED_TOPIC_ID:
+            # Ungrouped segments, with no similarity to rank by (issue 362).
+            return tuple(
+                TopicSegment(index, document, start, end, None)
+                for index, (document, start, end, topic) in enumerate(
+                    _cached_segment_topics(_context_identity(context_path), cluster_count)
+                )
+                if topic == UNGROUPED_TOPIC_ID
+            )
         return _cached_topic_segments(_context_identity(context_path), cluster_count, topic_id)
     except OSError as exc:
         raise ArtifactGoneError("Topic projection context is unavailable") from exc

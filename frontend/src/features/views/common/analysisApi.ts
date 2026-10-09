@@ -126,6 +126,7 @@ export async function getAnalysisResultResource<TResult>(
         topics: topicResult.topics,
         corpus_sizes: topicResult.corpus_sizes,
         segment_count: topicResult.segment_count,
+        ungrouped_documents: topicResult.ungrouped_documents ?? null,
       },
     } as TResult;
   }

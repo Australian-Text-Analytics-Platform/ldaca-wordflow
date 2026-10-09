@@ -429,3 +429,93 @@ def test_document_rows_replace_the_topic_columns_of_a_previous_run(
     data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
     assert data.columns == ["text", "year", TOPIC_TOP1_COLUMN, TOPIC_COVERAGE_OUTPUT_COLUMN]
     assert data[TOPIC_TOP1_COLUMN].to_list() == [1, 0]
+
+
+def test_per_topic_detach_of_ungrouped_keeps_ungrouped_segments(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Ungrouped (-1) is chosen like a Topic in one row per topic (issue 362)."""
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [(0, 0, 13, 0), (0, 14, 26, -1), (0, 27, 38, 1), (1, 0, 10, -1)],
+    )
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=_topic_request(node_id, topic_ids=[-1]),
+        projection_context_path=str(context_path),
+        source_projection={
+            node_id: {"row_indices": [0, 1], "offset": 0, "size": 2, "text_column": "text"}
+        },
+    )
+
+    data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
+    # Every document with ungrouped text, also one that has Topics.
+    assert data["text"].to_list() == ["Noël arrive.", "Solo line."]
+    assert data[TOPIC_COLUMN].to_list() == [-1, -1]
+
+
+def test_document_rows_of_ungrouped_keep_documents_with_no_topic(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One row per document: Ungrouped is the documents with no real Topic (issue 362)."""
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [],
+        documents=[
+            {
+                "doc_index": 0,
+                "dominant_topic": -1,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 0.6},
+                    {"topic_id": 0, "coverage": 0.4},
+                    {"topic_id": 1, "coverage": 0.0},
+                ],
+            },
+            {
+                "doc_index": 1,
+                "dominant_topic": -1,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 1.0},
+                    {"topic_id": 0, "coverage": 0.0},
+                    {"topic_id": 1, "coverage": 0.0},
+                ],
+            },
+        ],
+    )
+    request = _topic_request(node_id, topic_ids=[-1])
+    request["row_unit"] = "documents"
+
+    result = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "output"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection={node_id: {"row_indices": [0, 1], "offset": 0, "size": 2}},
+    )
+
+    data = pl.read_parquet(result["outputs"][0]["topic_data"]["parquet_path"])
+    # Document 0 is mostly ungrouped but has Topic 0, so it is in Topic 0's bubble.
+    assert data["text"].to_list() == ["Solo line."]
+    meanings = pl.read_parquet(result["outputs"][0]["topic_meanings"]["parquet_path"])
+    assert meanings[TOPIC_COLUMN].to_list() == [-1]
+
+
+def test_ungrouped_document_counts_per_source() -> None:
+    from ldaca_wordflow.analysis.topic_projection import ungrouped_document_counts
+
+    def document(index: int, real: float) -> dict[str, object]:
+        return {
+            "doc_index": index,
+            "topic_coverage": [
+                {"topic_id": -1, "coverage": 1.0 - real},
+                {"topic_id": 0, "coverage": real},
+            ],
+        }
+
+    documents = [document(0, 0.0), document(1, 0.3), document(2, 0.0), document(3, 0.0)]
+    # Two sources of two documents: a partly grouped document is not Ungrouped.
+    assert ungrouped_document_counts(documents, [2, 2]) == [1, 2]

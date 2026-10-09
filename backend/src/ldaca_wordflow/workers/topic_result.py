@@ -77,4 +77,6 @@ def _build_empty_topic_payload(
             "source_row_indices": sampled.active_corpora_indices,
         },
         "segment_count": 0,
+        # No documents were modelled, so none are Ungrouped (issue 362).
+        "ungrouped_documents": [0 for _ in sampled.corpus_sizes],
     }

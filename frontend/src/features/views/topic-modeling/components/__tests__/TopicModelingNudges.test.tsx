@@ -75,6 +75,34 @@ describe('Topic Modelling suggestions (issue 360)', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
+  it('suggests a smaller Min topic size when many documents are Ungrouped (issue 362)', () => {
+    const withUngrouped = (ungrouped: number) =>
+      ({
+        data: {
+          topics: [10, 10, 10, 10, 10, 10].map((total_size, id) => ({ id, total_size })),
+          segment_count: 600,
+          corpus_sizes: [100],
+          ungrouped_documents: [ungrouped],
+        },
+      }) as unknown as TopicModelingResponse;
+    const view = render(
+      <TopicResultNudge
+        result={withUngrouped(37)}
+        clustering={clustering(6, 6, 20)}
+        analysisId="a"
+      />,
+    );
+    expect(screen.getByRole('status')).toHaveTextContent('Many documents are Ungrouped');
+    view.rerender(
+      <TopicResultNudge
+        result={withUngrouped(20)}
+        clustering={clustering(6, 6, 20)}
+        analysisId="a"
+      />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('suggests faster settings when the first steps pass five minutes', () => {
     const detail = { step: 2, steps: 5, step_label: 'Reading the text into the model' };
     const longAgo = new Date(Date.now() - 6 * 60_000).toISOString();

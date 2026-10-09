@@ -11087,6 +11087,20 @@
             },
             "title": "Topics",
             "type": "array"
+          },
+          "ungrouped_documents": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ungrouped Documents"
           }
         },
         "required": [
@@ -11511,7 +11525,7 @@
             "type": "integer"
           },
           "topic_id": {
-            "minimum": 0.0,
+            "minimum": -1.0,
             "title": "Topic Id",
             "type": "integer"
           }

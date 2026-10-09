@@ -559,8 +559,9 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
             set(self.topic_ids)
         ):
             raise ValueError("Selected Topic IDs must be unique")
+        # -1 is Ungrouped (issue 362).
         if self.topic_ids is not None and any(
-            topic_id < 0 or topic_id >= self.cluster_count
+            topic_id < -1 or topic_id >= self.cluster_count
             for topic_id in self.topic_ids
         ):
             raise ValueError("Selected Topic IDs must fit the selected cluster count")

@@ -1,49 +1,5 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
-<h2 id="help-topic-modeling-benchmark">Appendix: an informal benchmark of Max tokens</h2>
-
-This is one ad hoc comparison, made once while developing Wordflow. It used one
-corpus, one computer and two seeds. It is here for reference only and is not
-guidance: other corpora, languages, computers and settings can behave quite
-differently, so try settings on your own data.
-
-- **Corpus**: 26,163 news articles that mention obesity (about 25 million
-  tokens, about 3,800 characters per article).
-- **Computer**: Apple M5 Pro, 18 cores, 64 GB memory.
-- **Settings**: Automatic segments, Topic size 10 to Auto, no sampling, no
-  Topic sampling, seeds 0 and 1. Max tokens 128 and 256.
-- **Times**: the first run of each Max tokens read the text into the model;
-  the second seed reused that work.
-
-| | Max tokens 128 | Max tokens 256 |
-| --- | --- | --- |
-| Segments | 224,502 | 107,551 |
-| First run (seed 0) | 13 minutes | 14 minutes |
-| Second run, reading reused (seed 1) | 2.9 minutes | 1.0 minute |
-| Topics (seed 0, seed 1) | 1,215 and 60 | 782 and 815 |
-| Largest topic's share of segments (seed 0, seed 1) | 2% and 95% | 2% and 2% |
-| Topics that are the main topic of 10 or more documents | 83 and 4 | 167 and 157 |
-| Text with No topic (seed 0) | 69% | 62% |
-| Agreement between the two seeds on each document's main topic (0 to 1) | 0.22 | 0.68 |
-| Topic word coherence, 20 largest topics (seed 0, seed 1) | 0.29 and 0.16 | 0.26 and 0.29 |
-
-What it showed for this corpus:
-
-- Reading the text took about as long at both sizes; it follows the amount of
-  text, not the segment size.
-- 256 grouped the segments about three times faster, because there were half
-  as many.
-- 256 gave similar results with both seeds. 128 did not: with seed 1, one
-  Topic took 95% of the segments.
-- The largest Topics were much the same at both sizes (for example sleep, junk
-  food advertising, a sugar tax, weight-loss surgery), so 128 did not give
-  sharper Topics.
-
-Topic word coherence is the average normalised pointwise mutual information of
-each Topic's top 10 words, counted over the corpus's paragraphs; higher means
-the words appear together more often. Agreement is the normalised mutual
-information of the documents' main topics in the two runs.
-
 [← Back to Help home](./index.md)
 
 <h1 id="help-topic-modeling-section">Topic Modelling</h1>
@@ -191,7 +147,7 @@ compare runs with a few different seeds.
 from a sample of Topic Segments picked at random with the **Seed**, then gives
 every other segment the topic of the sampled segment most similar to it (the
 nearest one by embedding cosine similarity). Every segment is still embedded and
-still gets a topic, or No topic when its nearest sampled segment has none, so
+still gets a topic, or is Ungrouped when its nearest sampled segment is, so
 document coverage and the bubble chart cover the whole corpus. After the run the
 summary line reads, for example, **topics found from a sample of 100,000
 (seed 0)**.
@@ -264,7 +220,7 @@ resize grip, like the chart itself.
 
 The Result starts with the number of Topics the run found. Use **Number of
 topics** to merge them, down to one Topic, without running the analysis again.
-Segments that fit no Topic are marked **No topic**; they stay as they are and
+Segments that fit no Topic are **Ungrouped**; they stay as they are and
 do not count toward the number shown. Results with zero or one real Topic
 show a fixed disabled control.
 
@@ -286,34 +242,72 @@ Running again starts from the natural count and Top 2. Export and Add to
 Project use the topics on screen and are unavailable while an update is
 pending.
 
-<h3 id="help-topic-modeling-no-topic">Text with No topic</h3>
+<h3 id="help-topic-modeling-ungrouped">Ungrouped</h3>
 
 A segment joins a Topic only when it sits in a dense group of similar segments.
-Segments that are not close enough to any group are marked **No topic** rather
-than forced into the nearest one, so a Topic stays a group of passages that
-really are alike. On varied text such as news, a large share can be left out:
-in the [informal benchmark](#help-topic-modeling-benchmark) below, about 60% of
-the text had No topic, and No topic was the largest share of two thirds of the
-documents. This is expected, not an error:
+Segments that are not close enough to any group stay **Ungrouped** rather than
+being forced into the nearest Topic, so a Topic remains a group of passages
+that really are alike. Ungrouped is what BERTopic calls outliers and HDBSCAN
+calls noise. It does not mean the analysis failed on those passages: they were
+read and compared like every other passage, but were too varied, or too much
+like everything else, to form a group of their own.
 
-- A document's main topic (`TOPIC_top1`) is the label that covers most of its
-  text, and No topic counts. A document with 40% of its text in a Topic and 60%
-  in No topic has No topic as its main topic, but still counts toward that
-  Topic's bubble.
-- **Per document** (Top topics per document) does not change this. It only
-  sets how many of a document's real Topics count it in their bubbles. No topic
-  never counts, and a document with no real Topic is in no bubble at any value.
-- A theme every document shares does not become a Topic. Topics come from what
-  makes groups of passages different from one another, and topic words favour
-  what one Topic has that the others do not. In a corpus collected with a
-  search term, such as *obesity*, that term is the background of every
-  document; the Topics are the many settings it appears in (sleep, school
-  canteens, a sugar tax, a sports doping case).
-- A smaller **Min topic size** often lets smaller groups form, which leaves
-  less text with No topic. To place every document, use each document's topic
-  shares (`TOPIC_coverage`, or **One row per topic** in
-  [Add to Project](#help-topic-modeling-add-to-project)) rather than its main
-  topic alone.
+On varied text such as news, much can be Ungrouped. In the
+[informal benchmark](#help-topic-modeling-benchmark) below, about 60% of the
+text was Ungrouped, and 37% of the documents had no Topic at all.
+
+**The Ungrouped bubble and list entry.** Ungrouped has a bubble of its own, in
+the grey Wordflow uses for things not analysed, always in the bottom-left
+corner of the map, and an entry in the Topic list with no topic words, sorted
+by size like the Topics. Its size is the number of documents that are **fully**
+Ungrouped: none of their text is in any Topic. Selecting it works like
+selecting a Topic. Its examples are shown in random order, since Ungrouped has
+no centre to rank them by.
+
+**Why only fully Ungrouped documents.** Ungrouped is not ranked in **Per
+document** (Top topics per document), because it is not a theme: it is the
+passages that matched none. If it were ranked, a document that is 60% Ungrouped
+and 40% about a sugar tax would leave the sugar tax bubble at Top 1, hiding the
+one thing it is about, and the Ungrouped bubble would hold two thirds of the
+documents. Kept out of the ranking:
+
+- every document with any real Topic is in at least one Topic bubble, since its
+  strongest Topic always counts;
+- every document with no real Topic is in the Ungrouped bubble;
+- so the bubbles cover the whole corpus, and selecting all of them and adding
+  **One row per document** gives back every document.
+
+A document's main topic (`TOPIC_top1`) is a different measure: the label that
+covers most of its text, where Ungrouped counts. A document with 40% of its
+text in a Topic and 60% Ungrouped has Ungrouped as its main topic, but is still
+in that Topic's bubble.
+
+**Ungrouped in Add to Project** follows the same rules as a Topic:
+
+- **One row per document** takes the documents in the chosen bubbles: those
+  whose Top topics per document include a chosen Topic, and, for Ungrouped,
+  the fully Ungrouped documents.
+- **One row per topic** takes every segment of each chosen Topic, from every
+  document that has any, whatever the Topic's rank in the document. So it can
+  have more documents than the bubble counts. In the benchmark this added about
+  6% more documents across all Topics; for one Topic, 656 documents against a
+  bubble of 552. With Ungrouped chosen, it takes the Ungrouped segments of
+  every document: for example 500 fully Ungrouped documents (their full text)
+  and 1,000 partly Ungrouped documents (only their Ungrouped segments) give
+  1,500 rows.
+
+**A theme every document shares does not become a Topic.** Topics come from
+what makes groups of passages different from one another, and topic words
+favour what one Topic has that the others do not. In a corpus collected with a
+search term, such as *obesity*, that term is the background of every document;
+the Topics are the many settings it appears in (sleep, school canteens, a sugar
+tax, a sports doping case).
+
+**Fewer Ungrouped documents.** A slightly smaller **Min topic size** leaves
+fewer documents Ungrouped, but makes many more, smaller Topics; in the
+benchmark, 37% fell to 30% at 5, with 2,848 Topics instead of 782. A larger
+size can put almost everything into one Topic. With **Suggestions** on, a
+result with many Ungrouped documents suggests this.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Per document (top topics per document)</h3>
 
@@ -411,7 +405,7 @@ two Data Blocks, a **Bubble colour** legend under the graph names each Data
 Block beside its colour, and the blend between them; downloads carry the same
 legend. A row
 may count in multiple bubbles, so bubble totals need not equal the source-row
-count. Nearby bubbles have more similar topic representations. Only closeness matters: left, right, up and down have no meaning, so the map is stretched to fill the chart area, from 2.5 times as wide as it is tall to 2.5 times as tall as it is wide, and is laid out again when you resize the chart. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. Segments with **No topic** have no bubble. Topics with a total
+count. Nearby bubbles have more similar topic representations. Only closeness matters: left, right, up and down have no meaning, so the map is stretched to fill the chart area, from 2.5 times as wide as it is tall to 2.5 times as tall as it is wide, and is laid out again when you resize the chart. Bubbles may overlap, but positions are nudged apart just enough that no topic is hidden: the centre (and label) of the smaller of two bubbles always stays outside the larger one, the smaller bubble moves more, and bubbles stay as close to their original positions as possible. Smaller bubbles are drawn on top. The grey [Ungrouped](#help-topic-modeling-ungrouped) bubble sits in the bottom-left corner, apart from the Topics, and holds the documents that are fully Ungrouped. Topics with a total
 bubble count of zero are omitted from the graph but remain available in the
 Topic lists and Result data.
 
@@ -506,7 +500,7 @@ them.
 words under the title for reference. The opened
 segment has a tint of the bubble's colour; the topic's other segments in the
 document have a lighter tint of it, and segments of other topics a grey one. In
-the topic's segments, its words are bold and italic. Text with no topic is not
+the topic's segments, its words are bold and italic. Ungrouped text is not
 highlighted. **Previous segment** and **Next segment** step through the shown
 topic's segments in that document.
 
@@ -543,12 +537,14 @@ The **Rows** choice in the dialog sets how rows are formed:
   the segments assigned to that topic, joined by line breaks in source order, so
   a document with three topics becomes three rows. Each row also carries the
   topic (`TOPIC_topic`), its share of the document's text (`TOPIC_share`), and how
-  many segments it joined (`TOPIC_segment_count`). Segments with no topic are
-  left out. Use this when you are interested in particular topics rather than whole
+  many segments it joined (`TOPIC_segment_count`). Ungrouped segments are
+  left out unless you choose Ungrouped (its rows have `TOPIC_topic` −1), and
+  every segment of a chosen topic is taken, so there can be more documents than
+  its bubble counts (see [Ungrouped](#help-topic-modeling-ungrouped)). Use this when you are interested in particular topics rather than whole
   documents.
 
 The suggested name for each new Data Block includes the selected topic numbers,
-for example _Corpus topic 5_ or _Corpus topics 3, 7_ (with more than three
+for example _Corpus topic 5_, _Corpus ungrouped_ or _Corpus topics 3, 7_ (with more than three
 topics selected, _Corpus 8 topics_). **One row per topic** names end in _segments_,
 for example _Corpus topic 5 segments_. You can edit the name before adding it.
 
@@ -582,12 +578,12 @@ available for the next run.
 
 | Symptom | What to try |
 | --- | --- |
-| Almost all segments have No topic | Increase sampling, try another segmentation method, or check whether the corpus has shared themes |
+| Almost all segments are Ungrouped | Increase sampling, try another segmentation method, or check whether the corpus has shared themes |
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
 | A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
 | Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
-| Most documents have No topic as their main topic | Expected on varied text; see [Text with No topic](#help-topic-modeling-no-topic) |
+| Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size groups more of them |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
@@ -609,6 +605,63 @@ available for the next run.
 3. Move Number of topics down and compare the merged representative words.
 4. Clear the Result, choose Paragraph or Sentence, and run again with the same
    sample and seed.
-5. Compare the topic map, representative words, and how many segments have No topic.
+5. Compare the topic map, representative words, and how many segments are Ungrouped.
+
+<h2 id="help-topic-modeling-benchmark">Appendix: an informal benchmark of Max tokens</h2>
+
+This is one ad hoc comparison, made once while developing Wordflow. It used one
+corpus, one computer and two seeds. It is here for reference only and is not
+guidance: other corpora, languages, computers and settings can behave quite
+differently, so try settings on your own data.
+
+- **Corpus**: 26,163 news articles that mention obesity (about 25 million
+  tokens, about 3,800 characters per article).
+- **Computer**: Apple M5 Pro, 18 cores, 64 GB memory.
+- **Settings**: Automatic segments, Topic size 10 to Auto, no sampling, no
+  Topic sampling, seeds 0 and 1. Max tokens 128 and 256.
+- **Times**: the first run of each Max tokens read the text into the model;
+  the second seed reused that work.
+
+| | Max tokens 128 | Max tokens 256 |
+| --- | --- | --- |
+| Segments | 224,502 | 107,551 |
+| First run (seed 0) | 13 minutes | 14 minutes |
+| Second run, reading reused (seed 1) | 2.9 minutes | 1.0 minute |
+| Topics (seed 0, seed 1) | 1,215 and 60 | 782 and 815 |
+| Largest topic's share of segments (seed 0, seed 1) | 2% and 95% | 2% and 2% |
+| Topics that are the main topic of 10 or more documents | 83 and 4 | 167 and 157 |
+| Text Ungrouped (seed 0) | 69% | 62% |
+| Agreement between the two seeds on each document's main topic (0 to 1) | 0.22 | 0.68 |
+| Topic word coherence, 20 largest topics (seed 0, seed 1) | 0.29 and 0.16 | 0.26 and 0.29 |
+
+What it showed for this corpus:
+
+- Reading the text took about as long at both sizes; it follows the amount of
+  text, not the segment size.
+- 256 grouped the segments about three times faster, because there were half
+  as many.
+- 256 gave similar results with both seeds. 128 did not: with seed 1, one
+  Topic took 95% of the segments.
+- The largest Topics were much the same at both sizes (for example sleep, junk
+  food advertising, a sugar tax, weight-loss surgery), so 128 did not give
+  sharper Topics.
+
+Topic word coherence is the average normalised pointwise mutual information of
+each Topic's top 10 words, counted over the corpus's paragraphs; higher means
+the words appear together more often. Agreement is the normalised mutual
+information of the documents' main topics in the two runs.
+
+A second comparison on the same corpus and computer, at Max tokens 256 and seed
+0, changed **Min topic size** with the text already read:
+
+| Min topic size | Topics | Grouping time | Text Ungrouped | Documents fully Ungrouped |
+| --- | --- | --- | --- | --- |
+| 5 | 2,848 | 7.6 minutes | 58% | 30% |
+| 10 (default) | 782 | about 1 minute | 62% | 37% |
+| 20 | 26 | 1.2 minutes | none: one Topic held 94% of the segments | none |
+
+A smaller Min topic size left fewer documents Ungrouped, but only somewhat,
+and made many more, smaller Topics. A larger one put almost everything into one
+Topic.
 
 [← Back to Help home](./index.md)

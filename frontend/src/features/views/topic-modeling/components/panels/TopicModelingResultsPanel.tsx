@@ -26,6 +26,8 @@ import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl'
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 import { TopicResultNudge, TopicSlowStartNudge } from '../TopicModelingNudges';
+import { isUngrouped } from '../../ungrouped';
+import { TopicResultSummary } from '../results/TopicResultSummary';
 
 interface Props {
   topicWaitingBanner: {
@@ -42,6 +44,8 @@ interface Props {
     started_at?: string | null;
   } | null;
   result: TopicModelingResponse | null;
+  /** The run's Sampling per Data Block, for the results summary (issue 362). */
+  sampleFractions?: (number | null)[] | null;
   /** The run whose example segments the Topic list shows (issue 353). */
   analysisId?: string | null;
   /** A message, or a stored failure whose diagnostic shows under Details. */
@@ -527,6 +531,7 @@ export function TopicModelingResultsPanel({
   runningTask,
   error,
   result,
+  sampleFractions = null,
   analysisId = null,
   topics,
   exportTopics = topics,
@@ -607,6 +612,20 @@ export function TopicModelingResultsPanel({
 
         {isErrorState ? <ErrorNotice error={error} /> : null}
 
+        {isSuccessfulState && result && clustering ? (
+          <div className="-mt-2 mb-3">
+            <TopicResultSummary
+              corpusSizes={result.data.corpus_sizes}
+              segmentCount={result.data.segment_count}
+              ungroupedDocuments={result.data.ungrouped_documents}
+              clusterCount={clustering.cluster_count}
+              defaultClusterCount={clustering.default_cluster_count}
+              clusteredSegments={clustering.clustered_segments}
+              sampleFractions={sampleFractions}
+              nodeNames={nodeNames ?? []}
+            />
+          </div>
+        ) : null}
         {isSuccessfulState ? (
           <div className="relative" aria-busy={projectionPending}>
             <div
@@ -657,7 +676,7 @@ export function TopicModelingResultsPanel({
                           Result settings
                         </h3>
                         <span className="rounded-full border bg-editor px-2 py-0.5 text-label-secondary tabular-nums text-description">
-                          Topics ({topics.length})
+                          Topics ({topics.filter((topic) => !isUngrouped(topic.id)).length})
                         </span>
                         <div className="ml-auto">
                           <DisabledReasonTooltip

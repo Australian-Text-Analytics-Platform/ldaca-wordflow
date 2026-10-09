@@ -353,8 +353,9 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
     while the Data Block has more: show more **Documents per page**, or
     **Run** to search them all;
   - Topic Modelling puts most segments in one topic (try a lower **Max topic
-    size**) or finds only a few topics (try a slightly lower **Min topic
-    size**); select **Clear** first to change them;
+    size**), finds only a few topics, or leaves many documents
+    [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (try a
+    slightly lower **Min topic size**); select **Clear** first to change them;
   - a Topic Modelling run is still splitting or reading the text after five
     minutes: reading takes most of a first run, so **Stop**, then lower
     **Sampling** to read fewer documents;

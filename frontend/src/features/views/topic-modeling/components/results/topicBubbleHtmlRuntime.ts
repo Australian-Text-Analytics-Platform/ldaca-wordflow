@@ -74,7 +74,7 @@ export function runTopicBubbleHtml(
     card.replaceChildren();
     const title = document.createElement('div');
     title.className = 'card-title';
-    title.textContent = `Topic ${String(topic.id)}`;
+    title.textContent = topic.id < 0 ? 'Ungrouped' : `Topic ${String(topic.id)}`;
     const words = document.createElement('div');
     words.className = 'card-words';
     topic.words.forEach((entry, index) => {

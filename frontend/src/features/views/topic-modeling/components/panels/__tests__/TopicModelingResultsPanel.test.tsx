@@ -75,6 +75,7 @@ const baseProps = {
         },
       ],
       corpus_sizes: [4],
+      segment_count: 9,
       meta: {},
       topic_inclusion: {
         top_n_topics: 2,

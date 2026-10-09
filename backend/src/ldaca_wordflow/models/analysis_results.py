@@ -68,7 +68,8 @@ class TopicSegmentsQuery(_StrictModel):
     """Example segments of one Topic at a projected Topic count (issue 353)."""
 
     cluster_count: int = Field(ge=1)
-    topic_id: int = Field(ge=0)
+    # -1 is Ungrouped: its segments come in random order (issue 362).
+    topic_id: int = Field(ge=-1)
     order: Literal["typical", "random"] = "typical"
     one_per_document: bool = True
     # Only this Data Block's documents, for a run on two Data Blocks.
@@ -338,6 +339,10 @@ class _TopicModelingBody(_StrictModel):
     clustering: TopicClustering
     topic_inclusion: TopicInclusion
     segment_count: int = Field(ge=0)
+    # Per source, documents with no real Topic at all: the Ungrouped bubble
+    # (issue 362). Merging Topics does not change it. None for results made
+    # before 0.7.12.
+    ungrouped_documents: list[int] | None = None
 
 
 class TopicClustering(_StrictModel):

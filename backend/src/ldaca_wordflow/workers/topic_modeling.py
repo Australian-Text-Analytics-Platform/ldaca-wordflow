@@ -31,6 +31,7 @@ from ..analysis.topic_projection import (
     TopicNodeInfo,
     build_topic_projection_basis,
     build_topic_projection_payload,
+    ungrouped_document_counts,
 )
 from .topic_pipeline import (
     _resolve_vectorizer_model,
@@ -82,7 +83,7 @@ def run_topic_modeling_data_block_creation(
     )
     from ..analysis.topic_inclusion import top_topic_ids
     from ..domain.workspace import TopicModelingDataBlockCreationAnalysisRequest
-    from ..shared.topic_types import topic_coverage_dtype
+    from ..shared.topic_types import UNGROUPED_TOPIC_ID, topic_coverage_dtype
     from ..infrastructure.storage.input_snapshots import load_snapshot_node
 
     request = TopicModelingDataBlockCreationAnalysisRequest.model_validate(request_payload)
@@ -186,10 +187,16 @@ def run_topic_modeling_data_block_creation(
                     request.cluster_count,
                     request.top_n_topics,
                 )
-                if selected_topic_ids and not row_topics.intersection(selected_topic_ids):
+                # Ungrouped (-1) holds the documents with no real Topic (issue 362).
+                ungrouped = not row_topics and UNGROUPED_TOPIC_ID in selected_topic_ids
+                if (
+                    selected_topic_ids
+                    and not row_topics.intersection(selected_topic_ids)
+                    and not ungrouped
+                ):
                     continue
                 included_rows.append(row_offset)
-                included_top_topics.update(row_topics)
+                included_top_topics.update(row_topics or ({UNGROUPED_TOPIC_ID} if ungrouped else set()))
             padded_coverage = _coverage_by_doc_index(
                 [
                     {
@@ -365,6 +372,7 @@ def _topic_segment_rows(
         TOPIC_SEGMENT_COUNT_COLUMN,
         TOPIC_SHARE_COLUMN,
     )
+    from ..shared.topic_types import UNGROUPED_TOPIC_ID
 
     document_characters: dict[int, int] = {}
     kept: list[tuple[int, int, int, int]] = []
@@ -374,7 +382,10 @@ def _topic_segment_rows(
             continue
         row = int(row_indices[local])
         document_characters[row] = document_characters.get(row, 0) + (end - start)
-        if topic_id < 0 or (selected_topic_ids and topic_id not in selected_topic_ids):
+        # Ungrouped segments only when Ungrouped is chosen (issue 362).
+        if topic_id < 0 and UNGROUPED_TOPIC_ID not in selected_topic_ids:
+            continue
+        if selected_topic_ids and topic_id not in selected_topic_ids:
             continue
         kept.append((row, start, end, topic_id))
 
@@ -672,6 +683,9 @@ def _compute_topic_payload(
         ],
     }
     payload["segment_count"] = int(rust_result.get("n_segments") or 0)
+    payload["ungrouped_documents"] = ungrouped_document_counts(
+        list(rust_result.get("documents") or []), sampled.corpus_sizes
+    )
     logger.info(
         "Topic modeling diagnostics engine=rust backend=ort model=%s vectorizer=%s "
         "random_seed=%d corpus_sizes_before=%s corpus_sizes_after=%s",
@@ -762,6 +776,7 @@ def _compute_topic_modeling(
             "topic_inclusion": topic_payload["topic_inclusion"],
             "projection_context": topic_payload["projection_context"],
             "segment_count": topic_payload["segment_count"],
+            "ungrouped_documents": topic_payload.get("ungrouped_documents"),
         }
 
         logger.info("[Worker %d] Topic modeling completed successfully", os.getpid())
