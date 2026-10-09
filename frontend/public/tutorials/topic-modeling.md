@@ -660,12 +660,13 @@ A second comparison on the same corpus and computer, at Max tokens 256 and seed
 
 | Min topic size | Topics | Grouping time | Text Ungrouped | Documents fully Ungrouped |
 | --- | --- | --- | --- | --- |
+| 3 | 9,675 | 6.8 hours | 45% | 16% |
 | 5 | 2,848 | 7.6 minutes | 58% | 30% |
 | 10 (default) | 782 | about 1 minute | 62% | 37% |
 | 20 | 26 | 1.2 minutes | none: one Topic held 94% of the segments | none |
 
-A smaller Min topic size left fewer documents Ungrouped, but only somewhat,
-and made many more, smaller Topics. A larger one put almost everything into one
-Topic.
+A smaller Min topic size left fewer documents Ungrouped, but made many more,
+smaller Topics and, at 3, took hours to group. A larger one put almost
+everything into one Topic (with Wordflow 0.7.11; Auto now splits such a Topic).
 
 [← Back to Help home](./index.md)
