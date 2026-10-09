@@ -13,6 +13,7 @@ import {
   topicResultNudge,
 } from '../nudges';
 import { useNudgeStore } from '../nudgeStore';
+import { useUIStore } from '@/stores/uiStore';
 
 /** Lets the outline and card start listening (they wait a tick). */
 const tick = () =>
@@ -147,6 +148,14 @@ describe('NudgeCard', () => {
     expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Turn off suggestions…' }));
     expect(startSettingsWalk).toHaveBeenCalledWith('suggestions');
+    // The harder suggestions link to their help section (issue 361).
+    const openDocument = vi
+      .spyOn(useUIStore.getState(), 'openDocument')
+      .mockImplementation(vi.fn());
+    await user.click(screen.getByRole('button', { name: 'Learn more' }));
+    expect(openDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ anchor: 'help-topic-modeling-max-cluster-size' }),
+    );
   });
 
   it('fades after other actions and comes back when the situation happens again', async () => {

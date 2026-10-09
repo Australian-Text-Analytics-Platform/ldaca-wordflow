@@ -416,6 +416,16 @@ const tutorial = {
     anchor: 'help-topic-modeling-min-cluster-size',
     label: 'Topic size',
   },
+  'analysis.topic-modeling.max-topic-size': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-max-cluster-size',
+    label: 'Max topic size',
+  },
+  'analysis.topic-modeling.ungrouped': {
+    file: 'tutorials/topic-modeling.md',
+    anchor: 'help-topic-modeling-ungrouped',
+    label: 'Ungrouped',
+  },
   'analysis.topic-modeling.top-topics-per-row': {
     file: 'tutorials/topic-modeling.md',
     anchor: 'help-topic-modeling-top-topics-per-row',

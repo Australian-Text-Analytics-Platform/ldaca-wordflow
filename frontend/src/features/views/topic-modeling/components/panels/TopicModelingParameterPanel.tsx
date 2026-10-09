@@ -260,7 +260,7 @@ export function TopicModelingParameterPanel({
       return `${segments}${sampled}; one topic was the main topic of ${share} of documents, so topics larger than ${appliedMaxTopicSize.toLocaleString()} segments were split`;
     }
     if (autoDecision === 'kept' && share !== null) {
-      return `${segments}${sampled}; one topic is the main topic of ${share} of documents, but splitting it left most of its segments without a topic, so it was kept. Try a fixed Max topic size${largestTopicSize === null ? '' : ` below ${largestTopicSize.toLocaleString()}`}`;
+      return `${segments}${sampled}; one topic is the main topic of ${share} of documents, but splitting it did not give more topics, so it was kept. Try a fixed Max topic size${largestTopicSize === null ? '' : ` below ${largestTopicSize.toLocaleString()}`}`;
     }
     return appliedMaxTopicSize === null
       ? `${segments}${sampled}; no topic needed splitting`

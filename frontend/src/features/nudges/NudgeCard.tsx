@@ -10,8 +10,10 @@ import {
   NUDGE_FADE_MS,
   outlineNudgeTargets,
 } from './nudgeHighlight';
-import { type NudgeId, NUDGES } from './nudges';
+import { type NudgeDefinition, type NudgeId, NUDGES } from './nudges';
 import { useNudgeStore } from './nudgeStore';
+import { useUIStore } from '@/stores/uiStore';
+import { type DocumentKey, getDocumentTarget } from '@/tutorials/documentationRegistry';
 
 /** Other actions (clicks, key presses) before a suggestion card fades. */
 const CARD_FADE_AFTER_ACTIONS = 6;
@@ -50,8 +52,14 @@ export function NudgeCard({ occurrence, ...props }: NudgeCardProps) {
 
 type Phase = 'shown' | 'fading' | 'gone';
 
+/** Opens a help section in the Help window. */
+function openHelp(key: DocumentKey<'tutorial'> | undefined) {
+  const target = key ? getDocumentTarget('tutorial', key) : null;
+  if (target) useUIStore.getState().openDocument(target);
+}
+
 function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'occurrence'>) {
-  const nudge = NUDGES[id];
+  const nudge: NudgeDefinition = NUDGES[id];
   const startSettingsWalk = useSettingsWalk();
   const [phase, setPhase] = useState<Phase>('shown');
 
@@ -105,6 +113,19 @@ function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'oc
           {nudge.message}
         </p>
         <div className="flex flex-wrap items-center gap-x-3">
+          {nudge.help ? (
+            <Button
+              type="button"
+              variant="link"
+              size="sm"
+              className="h-auto px-0"
+              onClick={() => {
+                openHelp(nudge.help);
+              }}
+            >
+              Learn more
+            </Button>
+          ) : null}
           {startSettingsWalk ? (
             <Button
               type="button"

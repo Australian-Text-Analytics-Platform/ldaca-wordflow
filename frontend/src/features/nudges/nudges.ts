@@ -5,6 +5,7 @@
  * they are "nudges"; the interface calls them Suggestions. Every message,
  * outline target and threshold lives here, so they are easy to tune.
  */
+import type { DocumentKey } from '@/tutorials/documentationRegistry';
 
 /** Names elements carry in `data-nudge-target`, so a suggestion can outline them. */
 export const NUDGE_TARGETS = {
@@ -41,6 +42,8 @@ export const SLOW_START_STEPS = 2;
 export interface NudgeDefinition {
   title: string;
   message: string;
+  /** The help section a Learn more link opens, for the harder suggestions (Chao, issue 361). */
+  help?: DocumentKey<'tutorial'>;
   /**
    * Outlined while the suggestion shows. Never a destructive control such as
    * Clear or Stop: a pulse must not invite a click that loses work, so those
@@ -58,19 +61,25 @@ export const NUDGES = {
   },
   'topic-giant-topic': {
     title: 'One topic holds most segments',
-    message: 'A lower Max topic size splits it into smaller topics. Change it and Run again.',
+    // Both directions and their cost (Chao, issue 361): a fixed Max is used as
+    // set; Auto never lowers it.
+    message:
+      'Max topic size caps how large a topic can be. Set a lower Max and Run again to split it into more, smaller topics, though more text may become Ungrouped; a higher Max keeps topics broad.',
+    help: 'analysis.topic-modeling.max-topic-size',
     targets: [NUDGE_TARGETS.topicMaxClusterSize],
   },
   'topic-few-topics': {
     title: 'Only a few topics',
     message: 'A slightly lower Min topic size finds more topics. Change it and Run again.',
+    help: 'analysis.topic-modeling.topic-size',
     targets: [NUDGE_TARGETS.topicMinClusterSize],
   },
   'topic-many-ungrouped': {
     title: 'Many documents are Ungrouped',
     message:
-      'That mostly comes from the text itself, which settings do not change, so expect only a small difference: a slightly smaller Min topic size may group a few more, into more and smaller topics.',
-    targets: [NUDGE_TARGETS.topicMinClusterSize],
+      'That mostly comes from the text itself, which settings do not change, so expect only a small difference: a slightly smaller Min topic size may group a few more into smaller topics, and a higher Max topic size may group a few more into broader topics.',
+    help: 'analysis.topic-modeling.ungrouped',
+    targets: [NUDGE_TARGETS.topicMinClusterSize, NUDGE_TARGETS.topicMaxClusterSize],
   },
   'topic-slow-start': {
     title: 'This run is taking a while',
@@ -85,6 +94,7 @@ export const NUDGES = {
     title: 'A large input',
     message:
       'For a faster first run, use a sample: fewer documents with Sampling, or fewer segments with Topic sampling.',
+    help: 'analysis.topic-modeling.topic-sampling',
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
   },
 } as const satisfies Record<string, NudgeDefinition>;

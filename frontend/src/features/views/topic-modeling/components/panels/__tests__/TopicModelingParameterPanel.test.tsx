@@ -412,7 +412,7 @@ describe('TopicModelingParameterPanel', () => {
       />,
     );
     expect(
-      screen.getByText(/main topic of 90% of documents, but splitting it left/),
+      screen.getByText(/main topic of 90% of documents, but splitting it did not give more topics/),
     ).toHaveTextContent('so it was kept. Try a fixed Max topic size');
   });
 
