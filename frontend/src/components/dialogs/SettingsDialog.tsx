@@ -163,10 +163,10 @@ export function SettingsDialog({
                   key={value}
                   value={value}
                   data-guide-target={walk?.tab === value && !onWalkTab ? '' : undefined}
-                  className={cn(
-                    'h-9 w-full justify-start gap-2 px-3 text-left flex-none',
-                    walk?.tab === value && !onWalkTab && 'ring-2 ring-focus',
-                  )}
+                  // The same pulsing border as the gear (index.css), so people
+                  // see where to click next (Chao, issue 360).
+                  data-walk-target={walk?.tab === value && !onWalkTab ? '' : undefined}
+                  className="h-9 w-full justify-start gap-2 px-3 text-left flex-none"
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -242,9 +242,9 @@ export function SettingsDialog({
                 <section className="border-t border-surface-border/60 pt-4">
                   <div
                     data-highlighted={guide === 'multi-tab' && onWalkTab ? '' : undefined}
+                    data-walk-target={guide === 'multi-tab' && onWalkTab ? '' : undefined}
                     className={cn(
                       'flex items-center justify-between gap-4 rounded-md border border-surface-border/70 px-3 py-2',
-                      guide === 'multi-tab' && 'border-focus ring-2 ring-focus',
                     )}
                   >
                     <Label htmlFor="settings-analysis-multi-tab" className="text-body font-medium">
@@ -374,9 +374,9 @@ export function SettingsDialog({
                   <Label
                     htmlFor="settings-hints-enabled"
                     data-highlighted={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
+                    data-walk-target={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
-                      guide === 'contextual-hints' && 'border-focus ring-2 ring-focus',
                     )}
                   >
                     <Checkbox
@@ -409,9 +409,9 @@ export function SettingsDialog({
                   <Label
                     htmlFor="settings-nudges-enabled"
                     data-highlighted={guide === 'suggestions' && onWalkTab ? '' : undefined}
+                    data-walk-target={guide === 'suggestions' && onWalkTab ? '' : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
-                      guide === 'suggestions' && 'border-focus ring-2 ring-focus',
                     )}
                   >
                     <Checkbox

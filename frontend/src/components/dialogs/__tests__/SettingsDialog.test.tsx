@@ -236,7 +236,10 @@ describe('SettingsDialog', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       'To turn suggestions off, open Guidance on the left.',
     );
+    // The tab pulses like the gear did.
+    expect(screen.getByRole('tab', { name: 'Guidance' })).toHaveAttribute('data-walk-target');
     await user.click(screen.getByRole('tab', { name: 'Guidance' }));
+    expect(screen.getByRole('tab', { name: 'Guidance' })).not.toHaveAttribute('data-walk-target');
     expect(screen.getByRole('status')).toHaveTextContent(
       'Untick Show suggestions to turn suggestions off. Come back here to turn them on again.',
     );
