@@ -1,4 +1,6 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { ReactElement } from 'react';
+import { act, fireEvent, render as baseRender, screen, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as DownloadModule from '@/lib/download';
@@ -14,6 +16,18 @@ vi.mock('@/features/guidance/useProgressiveContextualHints', () => ({
 }));
 
 import ExportFeature from '../ExportFeature';
+import { useNodeInputRequestsStore } from '@/stores/nodeInputRequestsStore';
+import { useUIStore } from '@/stores/uiStore';
+
+// The inputs read Data Block column details through React Query, as in the app.
+const render = (ui: ReactElement) =>
+  baseRender(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      {ui}
+    </QueryClientProvider>,
+  );
 
 const mocks = vi.hoisted(() => ({
   exportDataBlocks: vi.fn(),
@@ -106,6 +120,21 @@ describe('ExportFeature', () => {
       loadBrowserDownload: expect.any(Function),
     });
     expect(mocks.reachContextualHint).toHaveBeenCalledWith('export.data-block-success');
+  });
+
+  it('adds a double-clicked Data Block straight away (issue 357)', async () => {
+    useUIStore.setState({ currentView: 'export' });
+    render(<ExportFeature />);
+    expect(screen.queryByText('Corpus Two')).not.toBeInTheDocument();
+
+    // A double-click on a Data Block in the graph or sidebar sends this request.
+    act(() => {
+      useNodeInputRequestsStore.getState().requestAdd('workspace-1', 'export', 'node-2');
+    });
+
+    expect(await screen.findByText('Corpus Two')).toBeInTheDocument();
+    expect(useNodeInputRequestsStore.getState().pendingRequests).toHaveLength(0);
+    expect(screen.getByRole('button', { name: 'Export 1 Data Block' })).toBeEnabled();
   });
 
   it('adds every remaining Data Block without a selector maximum and downloads one ZIP', async () => {

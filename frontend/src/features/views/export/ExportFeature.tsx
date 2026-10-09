@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Download } from 'lucide-react';
 import { exportWorkspaceArchive, type DataBlockExportFormat } from '@/api';
 import { Button } from '@/components/ui/button';
@@ -17,9 +17,8 @@ import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
 import { useProgressiveContextualHints } from '@/features/guidance/useProgressiveContextualHints';
 import { NodeInputsPanel } from '@/features/views/common/components/NodeInputsPanel';
 import type { NodeInput } from '@/features/views/common/nodeInputs/nodeInputsCore';
-import { useNodeInputs } from '@/features/views/common/nodeInputs/useNodeInputs';
+import { useWorkspaceNodeInputs } from '@/features/views/common/nodeInputs/useTabNodeInputs';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
-import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import {
   DATA_BLOCK_EXPORT_FORMATS,
   downloadDataBlocks,
@@ -38,7 +37,7 @@ interface ExportSelection {
 /** Selects and downloads physical Data Block contents or the complete Workspace archive. */
 function ExportFeature() {
   const { reachContextualHint } = useGuidance();
-  const { currentWorkspaceId, currentWorkspace, nodes } = useWorkspaceData();
+  const { currentWorkspaceId, currentWorkspace } = useWorkspaceData();
   const [selection, setSelection] = useState<ExportSelection>({
     workspaceId: currentWorkspaceId,
     inputs: [],
@@ -47,13 +46,17 @@ function ExportFeature() {
   const [exportingDataBlocks, setExportingDataBlocks] = useState(false);
   const [exportingWorkspace, setExportingWorkspace] = useState(false);
   const inputs = selection.workspaceId === currentWorkspaceId ? selection.inputs : [];
-  const allNodes = nodes.map(projectWorkspaceNodeMetadata);
-  const nodeInputs = useNodeInputs({
-    value: inputs,
-    onChange: (next) => {
+  const onInputsChange = useCallback(
+    (next: NodeInput[]) => {
       setSelection({ workspaceId: currentWorkspaceId, inputs: next });
     },
-    allNodes,
+    [currentWorkspaceId],
+  );
+  // Export takes any number of Data Blocks in one list, so a double-click on a
+  // Data Block (graph or sidebar) adds it straight away (issue 357).
+  const nodeInputs = useWorkspaceNodeInputs({
+    value: inputs,
+    onChange: onInputsChange,
     constraints: EXPORT_CONSTRAINTS,
   });
   const selectedIds = nodeInputs.resolvedNodes.map((node) => node.id);
