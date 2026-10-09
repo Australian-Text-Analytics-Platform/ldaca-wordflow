@@ -15,8 +15,9 @@ beforeEach(() => {
   Element.prototype.scrollIntoView = vi.fn();
 });
 
-const clustering = (count: number, merged = count): TopicClustering => ({
+const clustering = (count: number, merged = count, largest = 0): TopicClustering => ({
   adjustable: true,
+  largest_topic_size: largest,
   cluster_count: merged,
   default_cluster_count: count,
   min_cluster_count: 1,
@@ -36,22 +37,38 @@ describe('Topic Modelling suggestions (issue 360)', () => {
     render(
       <TopicResultNudge
         result={result([80, 5, 5, 5, 5, 5])}
-        clustering={clustering(6)}
+        clustering={clustering(6, 6, 80)}
         analysisId="a"
       />,
     );
     expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
   });
 
+  it('judges a giant topic by segments, not by the documents a topic counts', () => {
+    // total_size counts documents: one topic in most documents is normal.
+    render(
+      <TopicResultNudge
+        result={result([90, 5, 5, 5, 5, 5])}
+        clustering={clustering(6, 6, 20)}
+        analysisId="a"
+      />,
+    );
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
   it('suggests a lower Min topic size for a few topics, not after merging', () => {
     const view = render(
-      <TopicResultNudge result={result([30, 30, 40])} clustering={clustering(3)} analysisId="a" />,
+      <TopicResultNudge
+        result={result([30, 30, 40])}
+        clustering={clustering(3, 3, 40)}
+        analysisId="a"
+      />,
     );
     expect(screen.getByRole('status')).toHaveTextContent('Only a few topics');
     view.rerender(
       <TopicResultNudge
         result={result([30, 30, 40])}
-        clustering={clustering(12, 3)}
+        clustering={clustering(12, 3, 40)}
         analysisId="a"
       />,
     );

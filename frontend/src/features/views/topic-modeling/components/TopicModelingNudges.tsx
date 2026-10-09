@@ -25,11 +25,13 @@ export function TopicResultNudge({
 }) {
   if (!result || !clustering) return null;
   if (clustering.cluster_count !== clustering.default_cluster_count) return null;
-  const topics = result.data.topics.filter((topic) => topic.id >= 0);
+  // Segments with segments: a topic's total_size counts documents, while
+  // largest_topic_size counts the segments of the largest topic the
+  // clustering made (of the sample, with Topic sampling).
   const id = topicResultNudge({
     clusterCount: clustering.default_cluster_count,
-    largestTopicSize: Math.max(0, ...topics.map((topic) => topic.total_size)),
-    clusteredSegments: result.data.segment_count,
+    largestTopicSize: clustering.largest_topic_size ?? 0,
+    clusteredSegments: clustering.clustered_segments ?? result.data.segment_count,
   });
   if (!id) return null;
   return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} />;

@@ -526,7 +526,6 @@ export function TopicModelingParameterPanel({
               }}
             >
               <SelectTrigger
-                {...nudgeTargetProps(NUDGE_TARGETS.topicSegmentation)}
                 id="topic-segmentation-method"
                 aria-label="Segmentation method"
                 className="h-8 w-32"
@@ -550,7 +549,6 @@ export function TopicModelingParameterPanel({
               Max tokens
             </ParameterLabel>
             <Input
-              {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
               id="topic-max-segment-tokens"
               aria-label="Maximum tokens per segment"
               type="number"

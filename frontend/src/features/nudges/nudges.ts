@@ -10,8 +10,6 @@
 export const NUDGE_TARGETS = {
   concordancePageSize: 'concordance-page-size',
   concordanceRun: 'concordance-run',
-  topicSegmentation: 'topic-segmentation-method',
-  topicMaxSegmentTokens: 'topic-max-segment-tokens',
   topicMinClusterSize: 'topic-min-cluster-size',
   topicMaxClusterSize: 'topic-max-cluster-size',
   topicDocumentSampling: 'topic-document-sampling',
@@ -66,14 +64,12 @@ export const NUDGES = {
   },
   'topic-slow-start': {
     title: 'This run is taking a while',
+    // Reading the text takes about as long at 128 as at 256 Max tokens on the
+    // Obesity corpus (13 and 14 minutes), and Topic sampling only shortens the
+    // later grouping step, so fewer documents is the advice that helps here.
     message:
-      'For a faster run, Stop, then try Automatic segments with a larger token size, a smaller sample of documents, or Topic sampling.',
-    targets: [
-      NUDGE_TARGETS.topicSegmentation,
-      NUDGE_TARGETS.topicMaxSegmentTokens,
-      NUDGE_TARGETS.topicDocumentSampling,
-      NUDGE_TARGETS.topicClusterSample,
-    ],
+      'Reading the text takes most of a first run. For a faster run, Stop, then lower Sampling to read fewer documents.',
+    targets: [NUDGE_TARGETS.topicDocumentSampling],
   },
   'topic-large-input': {
     title: 'A large input',

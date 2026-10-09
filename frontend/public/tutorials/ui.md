@@ -356,8 +356,8 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
     size**) or finds only a few topics (try a slightly lower **Min topic
     size**); select **Clear** first to change them;
   - a Topic Modelling run is still splitting or reading the text after five
-    minutes: **Stop**, then try **Automatic** segments with a larger **Max
-    tokens**, a smaller **Sampling** percentage, or **Topic sampling**;
+    minutes: reading takes most of a first run, so **Stop**, then lower
+    **Sampling** to read fewer documents;
   - a Topic Modelling input is large (from about 15,700 documents or 66,000
     segments): a sample of documents or segments gives a faster first run.
 - Clicking a disabled **Run** outlines what it is waiting for, such as an
