@@ -303,7 +303,17 @@ export function GuidanceProvider({
   // keeps meaning "click here".
   const hintTarget = session?.kind === 'hint' && !modalCount ? session.definition.target : null;
   useEffect(() => {
-    if (!hintTarget) return;
+    // Clear every mark, not only the last one set: the tab strip's + is one
+    // element across tools, so a missed clean-up would show everywhere.
+    const clearMarks = () => {
+      for (const marked of document.querySelectorAll('[data-hint-target]')) {
+        marked.removeAttribute('data-hint-target');
+      }
+    };
+    if (!hintTarget) {
+      clearMarks();
+      return;
+    }
     const element =
       typeof hintTarget === 'string'
         ? document.querySelector<HTMLElement>(hintTarget)
@@ -313,16 +323,21 @@ export function GuidanceProvider({
     if (!(element instanceof HTMLElement)) return;
     const clickable = element.matches('button, a[href], [role="button"]');
     element.setAttribute('data-hint-target', clickable ? 'click' : 'look');
-    return () => {
-      element.removeAttribute('data-hint-target');
-    };
+    return clearMarks;
   });
 
   // The gear step outlines the gear itself, and a click anywhere but the gear
   // or the card closes the walk, so people who meant to ignore it can just
   // carry on (Chao, issue 360).
   useEffect(() => {
-    if (!settingsWalkActive) return;
+    if (!settingsWalkActive) {
+      for (const marked of document.querySelectorAll(
+        '[data-guidance="settings-button"][data-walk-target]',
+      )) {
+        marked.removeAttribute('data-walk-target');
+      }
+      return;
+    }
     const gear = document.querySelector<HTMLElement>('[data-guidance="settings-button"]');
     gear?.setAttribute('data-walk-target', '');
     const onPointerDown = (event: PointerEvent) => {

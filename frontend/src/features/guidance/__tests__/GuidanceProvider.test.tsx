@@ -332,6 +332,15 @@ describe('GuidanceProvider', () => {
     });
   });
 
+  it('clears a leftover hint mark when no hint shows (issue 360)', () => {
+    const stray = document.createElement('button');
+    stray.setAttribute('data-hint-target', 'click');
+    document.body.append(stray);
+    renderGuidance();
+    expect(stray).not.toHaveAttribute('data-hint-target');
+    stray.remove();
+  });
+
   it('outlines an area hint still, and removes it with the hint (issue 360)', async () => {
     const user = userEvent.setup();
     renderGuidance();
