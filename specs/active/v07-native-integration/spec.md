@@ -3,6 +3,8 @@
 Implement the user's approved review of V07-001–232 from split `aaea1c3b`,
 v0.7 `3cd4deda4`, against native main `ffdc9609`. The decisions in
 [the register](decisions.md) and this specification supersede v0.7 defaults.
+The [remaining-commit audit](commit-audit.md) accounts for all 53 commits outside
+the numbered entries without introducing additional runtime features.
 
 ## Behavior
 

@@ -70,6 +70,7 @@ export function TopicSelectionPanel({
           {selectedTopics.length > 0 && (
             <button
               type="button"
+              aria-label="Clear selected topics"
               onClick={onClearSelection}
               className="text-label-secondary text-description hover:text-foreground"
             >

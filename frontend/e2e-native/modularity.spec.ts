@@ -9,7 +9,7 @@ it('native input destinations and one-way builder preserve tool drafts', async (
   // activation. Native checks use pointer buttons; Chrome checks both gestures.
   await directInputsAndBuilder(await base(), async () => {
     await $('[data-id="mod_input"] [tabindex="0"]').execute(element => element.focus());
-    const add = $('[aria-label="Add Data Block to selection"]');
+    const add = $('[aria-label="Add to tool"]');
     await add.waitForDisplayed();
     await add.waitForEnabled();
     await add.click();

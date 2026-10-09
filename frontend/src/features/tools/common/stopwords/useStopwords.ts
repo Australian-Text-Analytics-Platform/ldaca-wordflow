@@ -32,12 +32,14 @@ export function useStopwords({
     return next;
   }
   const create = useMutation({
+    meta: { reportError: false },
     mutationFn: async () => {
       const next = await createStopwordTable(base, structuredClone(inputs));
       await onSelect(next);
     },
   });
   const edit = useMutation({
+    meta: { reportError: false },
     mutationFn: async () => {
       const parents = structuredClone(inputs);
       const target = await prepare(structuredClone(selected), parents);
@@ -49,6 +51,7 @@ export function useStopwords({
     },
   });
   const add = useMutation({
+    meta: { reportError: false },
     mutationFn: async (token: string) => {
       const target = await prepare(structuredClone(selected), structuredClone(inputs));
       await saveStopwords(base, target, [], [token]);

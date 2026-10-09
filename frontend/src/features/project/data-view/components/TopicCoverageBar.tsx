@@ -49,7 +49,7 @@ export function TopicCoverageBar({ value }: Props) {
         aria-label={entries
           .map(
             (entry) =>
-              `Topic ${String(entry.topic_id)}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
+              `${entry.topic_id < 0 ? 'No topic' : `Topic ${String(entry.topic_id)}`}: ${((entry.coverage / total) * 100).toFixed(1)}%`,
           )
           .join(', ')}
       >
@@ -63,7 +63,7 @@ export function TopicCoverageBar({ value }: Props) {
                 width: `${String(percentage)}%`,
                 backgroundColor: topicColor(entry.topic_id),
               }}
-              title={`Topic ${String(entry.topic_id)}: ${percentage.toFixed(1)}%`}
+              title={`${entry.topic_id < 0 ? 'No topic' : `Topic ${String(entry.topic_id)}`}: ${percentage.toFixed(1)}%`}
             />
           );
         })}
@@ -80,7 +80,7 @@ export function TopicCoverageBar({ value }: Props) {
                 className="inline-block h-2 w-2 rounded-[2px]"
                 style={{ backgroundColor: topicColor(entry.topic_id) }}
               />
-              {entry.topic_id < 0 ? 'outlier' : `T${String(entry.topic_id)}`}{' '}
+              {entry.topic_id < 0 ? 'No topic' : `T${String(entry.topic_id)}`}{' '}
               {percentage.toFixed(0)}%
             </span>
           );

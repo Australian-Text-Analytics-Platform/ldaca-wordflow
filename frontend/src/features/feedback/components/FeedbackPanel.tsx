@@ -6,6 +6,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { SURVEY_BASE_URL, buildSurveyUrl, type FeedbackContext } from '../feedbackContext';
+import { invoke } from '@tauri-apps/api/core';
+import { useEffect, useRef, useState } from 'react';
+import { isTauri } from '@/lib/isTauri';
+import { OperationError } from '@/features/project/OperationError';
 
 interface FeedbackPanelProps {
   context: FeedbackContext | null;
@@ -15,6 +19,46 @@ interface FeedbackPanelProps {
 /** Feedback presentation for the current project application. */
 export function FeedbackPanelView({ context, onClose }: FeedbackPanelProps) {
   const surveyUrl = context ? buildSurveyUrl(SURVEY_BASE_URL, context) : '';
+  const native = isTauri();
+  const opening = useRef<{
+    context: FeedbackContext;
+    attempt: number;
+    promise: Promise<void>;
+  } | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [failure, setFailure] = useState<unknown>();
+  useEffect(() => {
+    if (!native || !context) return;
+    let disposed = false;
+    if (opening.current?.context !== context || opening.current.attempt !== attempt) {
+      setFailure(undefined);
+      opening.current = {
+        context,
+        attempt,
+        promise: invoke<void>('open_feedback', { url: surveyUrl }),
+      };
+    }
+    void opening.current.promise.then(
+      () => {
+        if (!disposed) onClose();
+      },
+      (error) => {
+        if (!disposed) setFailure(error);
+      },
+    );
+    return () => {
+      disposed = true;
+    };
+  }, [native, context, surveyUrl, attempt, onClose]);
+
+  if (native)
+    return failure === undefined ? null : (
+      <OperationError
+        title="Could not open feedback"
+        error={failure}
+        onRetry={() => setAttempt((value) => value + 1)}
+      />
+    );
 
   return (
     <Dialog

@@ -8,7 +8,6 @@ interface ImportMetaEnv {
   /** Build date as `DD/MMM/YYYY`, injected by `vite.config.ts`. */
   readonly VITE_APP_BUILD_DATE?: string;
   /** Root of the externally hosted docs; the app appends its `v{major}.{minor}` tag. */
-  readonly VITE_DOCS_ORIGIN?: string;
   /** Deployment identifier surfaced in the feedback panel, injected at build time. */
   readonly VITE_DEPLOYMENT_ID?: string;
 }

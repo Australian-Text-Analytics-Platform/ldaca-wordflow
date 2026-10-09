@@ -135,12 +135,12 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
               {isFiltering ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Data Block…
+                  Adding…
                 </>
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

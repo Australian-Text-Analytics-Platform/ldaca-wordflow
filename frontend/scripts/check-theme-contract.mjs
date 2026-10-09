@@ -15,6 +15,12 @@ const allowedRawColorFiles = new Set([
   'features/project/data-view/components/TopicCoverageBar.tsx',
 ]);
 
+// Partner marks require their original light ground in both themes. Only these
+// two exact logo-strip colours are exempt; other colours in that file still fail.
+const allowedRawColorTokens = new Map([
+  ['components/help/PartnerLogos.tsx', new Set(['#fdfcf8', '#d9d6cc'])],
+]);
+
 const checks = [
   ['legacy CSS variable', /var\(--(?:background|card|primary|popover|radius|input|ring|muted-foreground)\b/],
   [
@@ -59,7 +65,8 @@ for (const path of await sourceFiles(root)) {
     /(?:#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:text|bg|border|fill|stroke)-(?:black|white)\b)/.test(
       source,
     ) &&
-    !allowedRawColorFiles.has(displayPath)
+    !allowedRawColorFiles.has(displayPath) &&
+    ![...source.matchAll(/#[0-9a-fA-F]{3,8}\b|rgba?\(|hsla?\(|\b(?:text|bg|border|fill|stroke)-(?:black|white)\b/g)].every(match => allowedRawColorTokens.get(displayPath)?.has(match[0]))
   ) {
     violations.push(`${displayPath}: hardcoded presentation color`);
   }

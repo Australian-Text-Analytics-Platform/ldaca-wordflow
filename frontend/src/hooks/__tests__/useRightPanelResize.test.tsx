@@ -19,19 +19,19 @@ describe('useRightPanelResize', () => {
     });
     const { result } = renderHook(() => useRightPanelResize());
 
-    expect(result.current.asidePanelRatio).toBe(0.4);
+    expect(result.current.asidePanelRatio).toBe(0.3);
     act(() => {
       result.current.toggleRightPanel();
     });
 
     expect(result.current.isRightCollapsed).toBe(true);
-    expect(result.current.asidePanelRatio).toBe(0.4);
+    expect(result.current.asidePanelRatio).toBe(0.3);
 
     act(() => {
       result.current.toggleRightPanel();
     });
     expect(result.current.isRightCollapsed).toBe(false);
-    expect(result.current.asidePanelRatio).toBe(0.4);
+    expect(result.current.asidePanelRatio).toBe(0.3);
     expect(String(getPreferences().layout.asidePanelRatio)).toBe('0.4');
   });
 });

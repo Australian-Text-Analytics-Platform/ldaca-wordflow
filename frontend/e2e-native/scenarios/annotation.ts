@@ -48,7 +48,7 @@ export async function annotationManualScenario(base: string) {
       if (await document.isExisting()) {
         await chooseColumn((await document.getAttribute('aria-label')) ?? '', 'text', request);
       }
-      const materialize = request.$('button=Materialize in place');
+      const materialize = request.$('button=Materialise in place');
       if (await materialize.isExisting()) await materialize.click();
       await chooseColumn('Annotation column', 'label', request);
       await chooseColumn('Correction column', 'correction', request);
@@ -123,7 +123,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       const document = request.$('[aria-label^="Document column"]');
       if (await document.isExisting())
         await chooseColumn((await document.getAttribute('aria-label')) ?? '', 'text', request);
-      const materialize = request.$('button=Materialize in place');
+      const materialize = request.$('button=Materialise in place');
       if (await materialize.isExisting()) await materialize.click();
       await chooseColumn('Annotation column', 'label', request);
       await chooseColumn('Correction column', 'correction', request);
@@ -147,8 +147,8 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       }
       await parameters.$('summary=Advanced settings and examples').click();
       if (provider) {
-        await parameters.$('label*=Batch size').$('input').setValue('7');
-        await parameters.$('label*=Retries').$('input').setValue('1');
+        await parameters.$('label*=Rows per request').$('input').setValue('7');
+        await parameters.$('label*=Retries per request').$('input').setValue('1');
         await parameters.$('label*=Concurrent requests').$('input').setValue('2');
       }
       await setAnalysisPaneSize('narrow');

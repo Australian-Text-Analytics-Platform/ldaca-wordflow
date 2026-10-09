@@ -8,13 +8,18 @@ export function OperationError({
   error,
   title,
   onRetry,
+  taskId,
 }: {
   error: unknown;
   title: string;
   onRetry?: () => void;
+  taskId?: string;
 }) {
   const [copied, setCopied] = useState(false);
   const recorded = useRef<unknown>(undefined);
+  const cancelled = Boolean(
+    error && typeof error === 'object' && 'name' in error && error.name === 'AbortError',
+  );
   const message =
     error && typeof error === 'object' && 'message' in error
       ? String(error.message)
@@ -24,12 +29,19 @@ export function OperationError({
       ? `${message}\n\n${String(error.details)}`
       : message;
   useEffect(() => {
-    if (recorded.current === error) return;
-    recorded.current = error;
-    recordSessionError(error, title);
-  }, [error, title]);
+    if (cancelled) return;
+    const key = taskId ? `${taskId}:${details}` : error;
+    if (recorded.current === key) return;
+    recorded.current = key;
+    recordSessionError(error, title, 'notification', taskId);
+  }, [error, title, taskId, details, cancelled]);
+  if (cancelled) return null;
   return (
-    <div role="alert" className="min-w-0 rounded-md border border-error/40 p-3 text-body">
+    <div
+      role="alert"
+      aria-label={title}
+      className="min-w-0 rounded-md border border-error/40 p-3 text-body"
+    >
       <p className="font-medium">{title}</p>
       <p className="line-clamp-3 whitespace-pre-wrap break-words">{message}</p>
       <details className="mt-2">

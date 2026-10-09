@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -169,6 +170,7 @@ function TopicTab({
   };
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: (request: topicApi.TopicRequest) => topicApi.runTopicModel(base, tab.id, request),
     onSettled: () =>
       cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'topic-modeling'] }),
@@ -446,6 +448,14 @@ function TopicTab({
           </AnalysisAction>
         </div>
       </section>
+      <RunError
+        tabId={tab.id}
+        name="Topics"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={busy}
+      />
       {sampling && active && (
         <TopicSamplingDialog
           base={base}
@@ -485,10 +495,14 @@ function TopicTab({
           message={
             live.cancelling
               ? 'Cancelling…'
-              : (live.error ??
-                (live.update?.state === 'preparing' ? live.update.stage : 'Preparing sample…'))
+              : live.error
+                ? 'Could not complete Topic Modelling Preview'
+                : live.update?.state === 'preparing'
+                  ? live.update.stage
+                  : 'Preparing sample…'
           }
           error={Boolean(live.error)}
+          diagnostic={live.diagnostic}
           onCancel={
             live.error || live.cancelling
               ? undefined

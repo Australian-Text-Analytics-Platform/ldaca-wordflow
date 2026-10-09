@@ -290,7 +290,9 @@ With `mode=dependencies`, the response has `nodes` containing `object: {schema, 
 `diagnostic`. Edges contain `source` and `target`, each a `{schema, name}` reference.
 The catalogue includes persistent Tables and Views in the current database's user
 schemas, including hidden registrations and unregistered objects. System objects
-and the `wordflow` metadata schema are excluded. Direct View references are
+and the `wordflow` metadata schema are excluded. Registrations whose SQL object was
+removed remain as `missing` nodes with their original diagnostic, so deletion can
+clean up their metadata. Direct View references are
 resolved against catalogue names using DuckDB's ASCII-insensitive identifier rules,
 the View's own schema, the default schema and the managed connection search path.
 CTEs shadow unqualified relation names. Repeated references produce one edge;
@@ -324,7 +326,7 @@ transaction, editor and task implementations. The catalogue resolves object iden
 only registered objects in `data` receive registration/metadata reconciliation.
 An object-route Clone creates a plain object in the same schema using the copy-name
 convention, without registration, preferences or virtual links. Viewing, editing and
-exporting never register objects. Delete is non-cascading. Editor sessions return
+exporting never register objects. The single-object Delete route is non-cascading. Editor sessions return
 `schema` alongside `table_name`, retaining that target through Save/Cancel. Native
 `save_node_export` accepts optional `schema` to address the same object directly.
 
@@ -987,3 +989,16 @@ Analysis and tab summaries retain original `request` JSON and add a typed `reque
 `GET /api/ai/providers/{id}/capabilities?model=...` returns the reasoning choices and temperature compatibility implemented by the selected backend adapter. The payload validator consumes the same policy. The existing embedding-model endpoint remains the catalogue and token-limit authority.
 
 Successful table rename and column mutation responses retain their existing bodies/statuses and include `x-wordflow-change-id`. Its value matches the transient project event's `id`, allowing both delivery paths to reconcile a rename once.
+
+### Confirmed atomic deletion
+
+`POST /api/project/objects/delete` accepts `{"objects":[{"schema":"data","name":"documents"}]}`
+and returns the deleted `{schema,name}` objects in dependent-first order. The list
+must be nonempty and include every SQL-dependent View of each selected source.
+Under the existing exclusive SQL mutation gate, the native owner rechecks current
+dependencies, rejects omitted dependents or uncertain dynamic references, checks
+Table-edit protection, and drops all selected objects and their registered
+metadata in one transaction. A failed engine constraint rolls back the entire
+batch. This route does not infer ownership from virtual links or run View rows.
+Missing registered objects are included for metadata cleanup; unknown objects
+return 404 and leave the whole batch unchanged.

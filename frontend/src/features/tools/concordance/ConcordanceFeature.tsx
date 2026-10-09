@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -133,6 +134,7 @@ function ConcordanceTab({
   });
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: (request: concordanceApi.ConcordanceRequest) =>
       concordanceApi.runConcordance(base, tab.id, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'concordance'] }),
@@ -417,6 +419,14 @@ function ConcordanceTab({
           </>
         )}
       </section>
+      <RunError
+        tabId={tab.id}
+        name="Concordance"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={run.isPending || Boolean(currentTask)}
+      />
       {run.isPending || currentTask ? (
         <AnalysisProgress
           name={tab.name}

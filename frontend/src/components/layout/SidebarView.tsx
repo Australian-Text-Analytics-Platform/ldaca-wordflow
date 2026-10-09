@@ -97,10 +97,12 @@ export function SidebarView({
     assignSectionScrollRef,
     resizingLowerKey,
     handleResizeStart,
+    handleResizeKey,
   } = useStackedSplits<SectionKey>(SECTION_KEYS, {
     minSectionPx: MIN_SECTION_HEIGHT,
     sectionMinPx: SECTION_MIN_HEIGHTS,
     initialRatios: INITIAL_SECTION_RATIOS,
+    contentSized: ['tools'],
   });
 
   return (
@@ -136,10 +138,12 @@ export function SidebarView({
                       disabled={resizeDisabled}
                       className="absolute -top-1 right-0 left-0 z-10"
                       aria-label={`Resize ${title}`}
+                      tabIndex={0}
+                      onKeyDown={(event) => handleResizeKey(previousKey, key, event)}
                       onPointerDown={(event) => {
                         handleResizeStart(previousKey, key, event);
                       }}
-                      title="Drag to resize"
+                      title="Drag or use arrow keys to resize"
                     />
                   ) : null}
                   <div

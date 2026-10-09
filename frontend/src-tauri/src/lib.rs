@@ -5,6 +5,7 @@ mod download;
 #[cfg(feature = "e2e")]
 mod e2e_profile;
 mod events;
+mod feedback;
 #[cfg(target_os = "macos")]
 mod macos_quit;
 mod recent_projects;
@@ -12,7 +13,6 @@ mod supervisor;
 
 use std::io;
 
-#[cfg(not(target_os = "macos"))]
 use tauri::menu::HELP_SUBMENU_ID;
 use tauri::menu::{Menu, MenuItemBuilder, PredefinedMenuItem, Submenu, WINDOW_SUBMENU_ID};
 use tauri::{Manager, WebviewWindow};
@@ -109,6 +109,14 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
     }
 
     app.set_menu(menu)?;
+    let feedback = MenuItemBuilder::with_id("send-feedback", "Send feedback…").build(app)?;
+    if let Some(help) = app
+        .menu()
+        .and_then(|menu| menu.get(HELP_SUBMENU_ID))
+        .and_then(|item| item.as_submenu().cloned())
+    {
+        help.append(&feedback)?;
+    }
     Ok(())
 }
 
@@ -156,6 +164,8 @@ pub fn run() {
         .manage(desktop_updater::DesktopUpdaterState::default())
         .invoke_handler(tauri::generate_handler![
             get_backend_status,
+            feedback::open_feedback,
+            feedback::open_external_link,
             app_storage::get_preferences,
             app_storage::patch_preferences,
             app_storage::reset_preferences,
@@ -195,6 +205,9 @@ pub fn run() {
             documents::ensure_window(app.handle());
             app.on_menu_event(|app_handle, event| {
                 documents::menu_action(app_handle, event.id().as_ref());
+                if event.id() == "send-feedback" {
+                    feedback::show_from_menu(app_handle.clone());
+                }
                 if event.id() == CHECK_FOR_UPDATES_MENU_ID {
                     desktop_updater::show_manual_check(app_handle.clone());
                 }
@@ -213,6 +226,9 @@ pub fn run() {
             }
         })
         .on_window_event(|window, event| {
+            if window.label().starts_with("feedback-") {
+                return;
+            }
             if matches!(event, tauri::WindowEvent::Destroyed) {
                 documents::webview_unloaded(window.app_handle(), window.label());
             }

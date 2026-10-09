@@ -66,7 +66,7 @@ export async function concordanceScenario(base: string, prefix: string) {
   expect(outputAnalysisId(tab)).toBeNull();
   expect(tab.settings.preview).toBeUndefined();
   expect(tab.analysis).toBeNull();
-  await $('button=Data Loader').click();
+  await $('button[aria-label="Data Loader"]').click();
   await projectApi.executeSql(
     base,
     [{ sql: `UPDATE ${ objectsApi.identifier(name)} SET text = 'cat fresh' WHERE category = 'two'` }],

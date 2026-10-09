@@ -1,3 +1,5 @@
+import type { NativeTask } from './tasksApi';
+import { RunError } from '@/features/tools/common/components/RunError';
 import {
   getPreferences,
   patchPreferences,
@@ -31,10 +33,14 @@ function fileSize(bytes: number) {
 export function LocalFileImport({
   base,
   dropped,
+  active,
+  tasks,
   onDropHandled,
 }: {
   base: string;
   dropped: string[];
+  active: boolean;
+  tasks: NativeTask[];
   onDropHandled: () => void;
 }) {
   const [path, setPath] = useState('');
@@ -198,13 +204,22 @@ export function LocalFileImport({
             onRetry={() => inspected.mutate(inspected.variables)}
           />
         )}
-        {imported.error && (
-          <OperationError
-            title="Could not import files"
-            error={imported.error}
-            onRetry={() => imported.mutate(imported.variables)}
-          />
-        )}
+        <RunError
+          name="Import"
+          title="Could not import files"
+          taskLabel="Import local data"
+          tasks={tasks}
+          active={active}
+          busy={imported.isPending}
+          error={imported.error}
+          onRetry={
+            imported.error && imported.variables
+              ? () => {
+                  if (imported.variables) imported.mutate(imported.variables);
+                }
+              : undefined
+          }
+        />
         {imported.data && <SkippedImportFiles files={imported.data.skipped} />}
         {(pending > 0 || inspected.isPending) && (
           <p role="status" className="text-body-secondary text-description">

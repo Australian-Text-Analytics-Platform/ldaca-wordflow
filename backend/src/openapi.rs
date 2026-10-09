@@ -106,7 +106,7 @@ mod tests {
                 }
             }
         }
-        assert_eq!(operations.len(), 108);
+        assert_eq!(operations.len(), 109);
         assert!(first["paths"]["/api/project/views/batch"]["post"].is_object());
         assert_eq!(
             first["components"]["schemas"]["FrequencyCorpus"]["properties"]["total_tokens"]["type"],

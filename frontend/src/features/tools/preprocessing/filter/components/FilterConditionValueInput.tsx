@@ -121,7 +121,7 @@ export function FilterConditionValueInput({
           <SelectContent>
             {topicIds.map((topicId) => (
               <SelectItem key={topicId} value={String(topicId)}>
-                Topic {topicId}
+                {topicId < 0 ? 'No topic' : `Topic ${String(topicId)}`}
               </SelectItem>
             ))}
           </SelectContent>

@@ -38,7 +38,7 @@ to the standalone Rust backend during development.
   independently of the dialog which presents them.
 - `lib/arrow/` owns Arrow decoding and exact physical/semantic type inspection.
 - `features/project/projectQueries.ts` defines the shared schema query for Data
-  View, Preprocessing, Frequency and stopword inputs. Both target forms use one
+  View, Data Builder, Frequency and stopword inputs. Both target forms use one
   schema/name cache key and the same object invalidation metadata. Column edits
   use the table controller's single mutation owner; `NativeDataView` forwards the
   captured request and reconciles its local column preferences after success.
@@ -71,16 +71,18 @@ whereas **Rerun** submits the current draft through the ordinary Run endpoint.
 Recovery neither runs automatically nor writes a persisted error flag. Preview,
 input and unrelated-tab query failures do not change the Run label.
 
-Frequency, Concordance, Quotation, Topic Modelling, Annotation and the five Plots modes use native tasks and project-owned saved results. The Data Loader, Preprocessing,
+Frequency, Concordance, Quotation, Topic Modelling, Annotation and the five Plots modes use native tasks and project-owned saved results. The Data Loader, Data Builder,
 Frequency, Concordance, Quotation, graph and paginated Data
 View retain their established three-column presentation; desktop has no server
 project catalogue, authentication, Data Root or managed-file bootstrap.
 The normal split gives the tool 70% and graph 30% of the space after the sidebar.
-The split persists locally. Pointer and keyboard resizing, restored layouts and
+The split lasts until reload. Pointer and keyboard resizing and
 window resizing share the graph's 800px cap; resizing the window constrains the
 effective ratio without overwriting the user's preferred ratio. Double-clicking
 the separator or pressing Enter/Space resets to the configured default.
-The graph canvas always fills the right column. Dagre arranges the graph
+The compact Editor strip always offers an alphabetical Data Block picker. The upper right area shows either the graph or an in-place column form; the lower Data View can collapse without closing its preview. Tools initially fit their visible sidebar list and adopt measured ratios after pointer or keyboard resizing. Ratios remain window-local until reload.
+
+The graph canvas fills the upper right area. Dagre arranges the graph
 from top to bottom, with connections leaving the bottom of each card and
 entering the top of its children. Independent roots share the top rank.
 Graph selection and the displayed preview are independent. A graph card's **Preview data**
@@ -109,7 +111,7 @@ dashed line follows the pointer. Selected SQL edges highlight with a contextual 
 React Flow's source-only reconnect hit area remains invisible, leaving one visible port per card;
 its native connection line follows the pointer during dragging.
 Both interaction modes support keyboard picking and Escape cancellation. The sidebar's
-selection and preprocessing inputs remain logical-only. **Show Dependencies** loads
+selection and Data Builder inputs remain logical-only. **Show Dependencies** loads
 a separate TanStack Query entry beneath the shared graph prefix; invalidation
 refreshes mounted projections and marks inactive ones stale. Each mode restores its
 canvas on return, while the shared preview remains open, including hidden objects.
@@ -328,15 +330,20 @@ The [native settings reference](../../reference/native-backend.md#application-se
 identifies the active updater and renderer stores. No settings file selects a
 backend implementation or persists an HTTP backend URL.
 
-`src/tutorials/` and `public/` own bundled help and documentation. The optional
-`VITE_DOCS_ORIGIN` provides an online update channel with a bundled fallback.
-The shared `DocumentView` maps Markdown typography and inline icons to the live
-VS Code theme colors, including headings, links, code and tables.
+`src/tutorials/` and `public/` exclusively own bundled Help, Information and
+References. `DocumentView` fetches only registered bundled paths, aborts obsolete
+reads and uses one initial anchor scroll with the measured sticky-header offset.
+There is no remote Markdown channel or configuration. Normal website links open
+in the system browser on desktop. Partner logos use a fixed light ground, with
+exact colour-token exemptions in the theme audit. The surrounding document
+follows the current theme; screenshots receive no global filter.
+
 `VITE_DEPLOYMENT_ID` supplies the Feedback deployment label. Feedback captures
-the actual invoking feature once when opened and preserves anonymous survey fields;
-there is no persisted current-view value or authenticated-user override. Help
-target mappings come directly from the bundled registry. Only document content
-uses the optional remote channel; no remote registry overlay or store is loaded.
+the invoking feature and anonymous survey fields. macOS and Windows create an
+independent native feedback window asynchronously; the server uses its existing
+dialog. Native external-link and feedback commands validate their destinations.
+References substitute the application version only and retain the acknowledgement
+citation, concept DOI and contributor list.
 
 The old server entrypoint and runtime-configuration script are archived under
 `archive/frontend/`. Unmigrated analysis and server-controller source, its exclusive tests and utilities
@@ -443,7 +450,7 @@ dialog. The built-in English extractor is the only active engine.
 
 Concordance and Quotation use bounded, sticky-header row tables with whole-row inspection that respects text selection and embedded controls. Preview L1/R1 and offsets are available in Concordance; global neighbor frequencies remain saved-only. Metadata is grouped by shared and source-specific fields, and Combined rows carry source labels and tints. Preview summaries distinguish inspected documents from matching documents and occurrences. Publication uses one menu with the existing two output modes.
 
-The Results header contains presentation tabs: Table/Dispersion for Concordance and Documents/Quotations for Quotation, with Documents selected by default. Preview and saved results have no manual switch; the latest submitted Preview or successful Run determines the displayed data. Metadata controls open bounded, dismissible popovers and retain column selections when closed. Quotation's presentation tabs are available in both modes. Preview expands its returned document page locally without another extraction request; saved projections page the selected unit. Inline role labels and type badges retain quotation identity through overlapping spans and Unicode offsets. Source metadata and generated fields have independent selection shortcuts.
+The Results header contains presentation tabs: Table/Dispersion for Concordance and Documents/Quotations for Quotation, with Quotations selected by default. Preview and saved results have no manual switch; the latest submitted Preview or successful Run determines the displayed data. Metadata controls open bounded, dismissible popovers and retain column selections when closed. Quotation's presentation tabs are available in both modes. Preview expands its returned document page locally without another extraction request; saved projections page the selected unit. Inline role labels and type badges retain quotation identity through overlapping spans and Unicode offsets. Source metadata and generated fields have independent selection shortcuts.
 
 Shared execution actions explain blocked activation through Sonner. Numeric controls commit valid integers on blur/Enter and revert invalid entries with one reminder. Frequency retains independent display limits and continuous lists, with original filtered ranks, a clear-filter shortcut, matching counts, and exact counts in accessible cloud descriptions.
 
@@ -651,3 +658,23 @@ Both successful rename adapters and project events call `project/reconcileRename
 Graph and sidebar input actions call the active tool's registered destinations. One destination receives the addition immediately; several destinations open a labelled, keyboard-accessible chooser. The existing picker owns duplicate and capacity rejection. Registration follows panel activation and disabled state. There is no carried stack or pointer overlay.
 
 `lib/download.ts` owns Blob installation. Large native exports continue through their existing staged and streaming IPC paths. `TablePaginationFooter` accepts direct page/page-size callbacks and uses one native page-size selector. Chart controllers stay with their distinct feature interaction policies.
+
+### Confirmed Data Block deletion
+
+`DeleteObjectsDialog` reads the existing native dependency projection and expands
+selected objects to their SQL-dependent closure. Unticking a dependent also keeps
+its selected ancestors. Logical links do not imply ownership. One native request
+revalidates the closure under the SQL mutation gate and deletes dependents before
+sources in one transaction, including registered metadata. A changed dependency,
+uncertain dynamic View or engine constraint leaves the whole selection intact.
+No frontend loop partially commits a batch. Box selection is an explicit graph
+mode; normal pan/zoom gestures remain available and the MiniMap is removed.
+
+Tab strips reveal the active tab on mount, activation and changed target slot.
+Container resize updates edge indicators without changing manual scroll. Single
+click activates, double click renames, and pending Rename cannot submit twice.
+Failures preserve the editable draft beside the strip with Retry and Escape.
+
+Visible analysis forms own failed Run diagnostics through `RunError`; the existing
+task observer uses a toast only when that tab has no visible error owner. Original
+engine/provider messages stay available in Details, copy and Feedback actions.

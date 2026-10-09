@@ -27,7 +27,7 @@ describe('Tauri project window', () => {
 
   it('runs and paginates SQL once, preserving saved source across a webview reload', async () => {
     const status = await backendStatus();
-    await $('button=Preprocessing').click();
+    await $('button[aria-label="Data Builder"]').click();
     // The embedded driver emits mouse events; our draggable tabs use Pointer Events.
     // Exercise their real keyboard activation rather than synthesizing app events.
     await $('#preprocessing-tab-sql').click();
@@ -45,7 +45,7 @@ describe('Tauri project window', () => {
     await expect($('//td[text()="20"]')).toBeDisplayed();
     // A reload reconnects to the same runtime; neither SQL nor its mutation reruns.
     await browser.refresh();
-    await $('button=Preprocessing').click();
+    await $('button[aria-label="Data Builder"]').click();
     // The embedded driver emits mouse events; our draggable tabs use Pointer Events.
     // Exercise their real keyboard activation rather than synthesizing app events.
     await $('#preprocessing-tab-sql').click();

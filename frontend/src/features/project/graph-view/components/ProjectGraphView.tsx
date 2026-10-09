@@ -1,29 +1,19 @@
 import type { NodeTypes, ReactFlowProps } from '@xyflow/react';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { ObjectRef } from '@/features/project/objects';
 import '@xyflow/react/dist/style.css';
 
 import {
   Background,
   BackgroundVariant,
   Controls,
-  MiniMap,
   ReactFlow,
   useReactFlow,
   useStore,
 } from '@xyflow/react';
-import { CircleOff, Loader2, Map, Network, Minus, Plus, Scan, Trash2 } from 'lucide-react';
+import { CircleOff, Loader2, BoxSelect, Network, Minus, Plus, Scan, Trash2 } from 'lucide-react';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { GraphControlButton as ProjectGraphControlButton } from '@/components/GraphControlButton';
@@ -55,6 +45,7 @@ interface ProjectGraphModel {
   handleReconnectEnd?: ReactFlowProps['onReconnectEnd'];
   isValidConnection?: ReactFlowProps['isValidConnection'];
   pickingConnection?: boolean;
+  handleSelectionChange?: ReactFlowProps['onSelectionChange'];
 }
 
 /** Compact selection summary with the full count available on hover and focus. */
@@ -78,120 +69,29 @@ const GraphSelectionControl = ({ selected, total }: { selected: number; total: n
   </Tooltip>
 );
 
-/**
- * Batch-delete action and confirmation owned by the graph where selection is made.
- * Flow: resolve the selected Data Blocks, confirm their names, delegate deletion and selection cleanup to the host.
- */
-function ProjectGraphDeleteControl({
-  nodes,
-  selectedNodeIds,
-  deleteNodes,
-}: {
-  nodes: { id: string; name: string }[];
-  selectedNodeIds: string[];
-  deleteNodes: (ids: string[]) => Promise<boolean>;
-}) {
-  const [confirmOpen, setConfirmOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const selectedCount = selectedNodeIds.length;
-  const canDelete = selectedCount > 0;
-
-  const selectedForDelete = (() => {
-    if (!canDelete) return [];
-    const selectedIds = new Set(selectedNodeIds);
-    return nodes
-      .filter((node) => selectedIds.has(node.id))
-      .map((node) => ({
-        id: node.id,
-        name: typeof node.name === 'string' && node.name.trim() ? node.name : node.id,
-      }))
-      .sort((left, right) => left.name.localeCompare(right.name));
-  })();
-
-  const handleDelete = async () => {
-    if (!canDelete || isDeleting) return;
-    setIsDeleting(true);
-    try {
-      await deleteNodes(selectedForDelete.map((item) => item.id));
-      setConfirmOpen(false);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  return (
-    <>
-      <ProjectGraphControlButton
-        accessibleLabel={`Delete (${String(selectedCount)})`}
-        label={`Delete (${String(selectedCount)})`}
-        disabled={!canDelete || isDeleting}
-        destructive
-        onClick={() => {
-          setConfirmOpen(true);
-        }}
-      >
-        <Trash2 aria-hidden="true" />
-      </ProjectGraphControlButton>
-
-      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              Delete {selectedForDelete.length} data block
-              {selectedForDelete.length === 1 ? '' : 's'}?
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              This cannot be undone. The following data blocks will be removed:
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <ul className="max-h-60 overflow-y-auto rounded-sm border bg-panel/40 p-2 text-body">
-            {selectedForDelete.map((item) => (
-              <li key={item.id}>{item.name}</li>
-            ))}
-          </ul>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <Button asChild variant="destructive" disabled={isDeleting || !canDelete}>
-              <AlertDialogAction
-                onClick={(event) => {
-                  event.preventDefault();
-                  void handleDelete();
-                }}
-                disabled={isDeleting || !canDelete}
-              >
-                {isDeleting ? 'Deleting…' : `Delete ${String(selectedForDelete.length)}`}
-              </AlertDialogAction>
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
-  );
-}
-
 interface ProjectGraphControlsProps {
   selected: number;
   total: number;
   canClearSelection: boolean;
-  showOverview: boolean;
+  boxSelection: boolean;
   onClearSelection: () => void;
-  onToggleOverview: () => void;
+  onToggleBoxSelection: () => void;
   deleteControl: ReactNode;
   dependencies?: boolean;
   onToggleDependencies?: () => void;
 }
 
 /**
- * Upper-left graph rail containing viewport, overview, selection, and destructive actions.
- * Flow: call React Flow's viewport APIs through explicit expandable controls so every icon and label shares one layout.
+ * Upper-left graph rail containing viewport, box selection, and destructive actions.
+ * Calls React Flow's viewport APIs through fixed-size controls with hover and focus tooltips.
  */
 function ProjectGraphControls({
   selected,
   total,
   canClearSelection,
-  showOverview,
+  boxSelection,
   onClearSelection,
-  onToggleOverview,
+  onToggleBoxSelection,
   deleteControl,
   dependencies,
   onToggleDependencies,
@@ -242,12 +142,12 @@ function ProjectGraphControls({
         <Scan aria-hidden="true" />
       </ProjectGraphControlButton>
       <ProjectGraphControlButton
-        accessibleLabel={showOverview ? 'Hide overview' : 'Show overview'}
-        label="Overview"
-        active={showOverview}
-        onClick={onToggleOverview}
+        accessibleLabel={boxSelection ? 'Use pan mode' : 'Use box selection'}
+        label="Box selection"
+        active={boxSelection}
+        onClick={onToggleBoxSelection}
       >
-        <Map aria-hidden="true" />
+        <BoxSelect aria-hidden="true" />
       </ProjectGraphControlButton>
       {onToggleDependencies && (
         <ProjectGraphControlButton
@@ -336,11 +236,11 @@ export function ProjectGraphView({
   retry?: () => void;
   graph: ProjectGraphModel;
   fallback?: ReactNode;
-  nodes: { id: string; name: string }[];
+  nodes: { id: string; name: string; target: ObjectRef }[];
   selectedNodeIds: string[];
-  deleteNodes: (ids: string[]) => Promise<boolean>;
+  deleteNodes: (ids: ObjectRef[]) => void;
 }) {
-  const [showOverview, setShowOverview] = useState(false);
+  const [boxSelection, setBoxSelection] = useState(false);
   if (graph.isGraphLoading) {
     return <GraphLoadingState />;
   }
@@ -357,7 +257,7 @@ export function ProjectGraphView({
         nodeTypes={graph.nodeTypes}
         onNodesChange={graph.handleNodesChange}
         onEdgesChange={graph.handleEdgesChange}
-        onNodeClick={graph.handleNodeClick}
+        onNodeClick={boxSelection && !graph.pickingConnection ? undefined : graph.handleNodeClick}
         onNodeDoubleClick={graph.handleNodeDoubleClick}
         onPaneClick={graph.handlePaneClick}
         connectionLineType={graph.connectionLineType}
@@ -374,6 +274,9 @@ export function ProjectGraphView({
         nodesDraggable={!graph.pickingConnection}
         nodesConnectable={graph.pickingConnection}
         connectionDragThreshold={0}
+        selectionOnDrag={boxSelection}
+        panOnDrag={boxSelection ? [1, 2] : true}
+        onSelectionChange={boxSelection ? graph.handleSelectionChange : undefined}
         elementsSelectable
         deleteKeyCode={null}
         onEdgeClick={graph.handleEdgeClick}
@@ -393,28 +296,31 @@ export function ProjectGraphView({
           dependencies={dependencies}
           onToggleDependencies={onToggleDependencies}
           deleteControl={
-            <ProjectGraphDeleteControl
-              nodes={nodes}
-              selectedNodeIds={selectedNodeIds}
-              deleteNodes={deleteNodes}
-            />
+            <ProjectGraphControlButton
+              accessibleLabel={`Delete (${String(selectedNodeIds.length)})`}
+              label="Delete selection"
+              disabled={!selectedNodeIds.length}
+              destructive
+              onClick={() =>
+                deleteNodes(
+                  nodes
+                    .filter((node) => selectedNodeIds.includes(node.id))
+                    .map((node) => node.target),
+                )
+              }
+            >
+              <Trash2 aria-hidden="true" />
+            </ProjectGraphControlButton>
           }
           selected={graph.selectedCount}
           total={graph.totalNodes}
           canClearSelection={graph.canClearSelection}
-          showOverview={showOverview}
+          boxSelection={boxSelection}
           onClearSelection={() => graph.clearSelection?.()}
-          onToggleOverview={() => {
-            setShowOverview((value) => !value);
+          onToggleBoxSelection={() => {
+            setBoxSelection((value) => !value);
           }}
         />
-        {showOverview && (
-          <MiniMap
-            position="bottom-right"
-            nodeColor="var(--vscode-list-activeSelectionBackground)"
-            maskColor="color-mix(in srgb, var(--vscode-editor-background) 80%, transparent)"
-          />
-        )}
       </ReactFlow>
       {(loading === true || error != null) && (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center">

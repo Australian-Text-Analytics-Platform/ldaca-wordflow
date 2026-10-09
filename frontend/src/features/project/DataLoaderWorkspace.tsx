@@ -1,10 +1,11 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServer } from '@/features/server/context';
 import { FileLibrary } from '@/features/server/FileLibrary';
 import { importFiles, inspectImport } from '@/features/server/api';
 import { startUpload } from '@/features/server/uploads';
 import { needsFileImportSelection, type FileImportPlan } from './filesApi';
 import { OperationError } from './OperationError';
+import { getTasks } from './tasksApi';
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -24,6 +25,14 @@ export function DataLoaderWorkspace({
 }) {
   const server = useServer();
   const cache = useQueryClient();
+  // Observe the existing window-level task query without owning another fetch or stream.
+  const taskState = useQuery({
+    queryKey: ['native', base, 'tasks'],
+    queryFn: ({ signal }) => getTasks(base, signal),
+    enabled: false,
+    meta: { reportError: false },
+  });
+  const tasks = taskState.data?.tasks ?? [];
   const [incoming, setIncoming] = useState<{
     names: string[];
     projectId: string;
@@ -97,11 +106,12 @@ export function DataLoaderWorkspace({
                 Drop files here or onto the graph to upload and import them.
               </p>
               {uploaded.isPending && <p role="status">Uploading and importing…</p>}
-              {uploaded.error && (
+              {uploaded.error && !('taskId' in uploaded.error && uploaded.error.taskId) && (
                 <OperationError title="Could not import dropped files" error={uploaded.error} />
               )}
               <FileLibrary
                 library="data"
+                tasks={tasks}
                 visible={active && source === 'local'}
                 incoming={incoming}
                 onIncomingHandled={() => setIncoming(null)}
@@ -110,6 +120,8 @@ export function DataLoaderWorkspace({
           ) : (
             <LocalFileImport
               base={base}
+              active={active && source === 'local'}
+              tasks={tasks}
               dropped={dropped}
               onDropHandled={() => {
                 setDropped([]);
@@ -123,7 +135,7 @@ export function DataLoaderWorkspace({
           forceMount
           className="flex min-h-0 flex-col data-[state=inactive]:hidden"
         >
-          <NativeSampleImport base={base} active={active && source === 'samples'} />
+          <NativeSampleImport base={base} tasks={tasks} active={active && source === 'samples'} />
         </TabsContent>
         <TabsContent
           value="ldaca"
@@ -131,7 +143,7 @@ export function DataLoaderWorkspace({
           forceMount
           className="flex min-h-0 flex-col data-[state=inactive]:hidden"
         >
-          <NativeLdacaImport base={base} active={active && source === 'ldaca'} />
+          <NativeLdacaImport base={base} tasks={tasks} active={active && source === 'ldaca'} />
         </TabsContent>
       </Tabs>
     </section>

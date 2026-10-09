@@ -103,6 +103,26 @@ describe('native sample imports', () => {
     expect(useSelectionStore.getState().selectedNodeIds).toEqual(['selected']);
   });
 
+  it('keeps the selected files after an import failure and retries beside the form', async () => {
+    vi.mocked(filesApi.importSamples).mockRejectedValueOnce(
+      new Error('Original engine diagnostic'),
+    );
+    const user = await openSamples();
+    await user.click(screen.getByRole('checkbox', { name: 'Tweets' }));
+    await user.click(screen.getByRole('button', { name: 'Import selected' }));
+    const error = await screen.findByRole('alert', { name: 'Could not import samples' });
+    expect(error).toHaveTextContent('Original engine diagnostic');
+    expect(screen.getByRole('checkbox', { name: 'Tweets' })).toBeChecked();
+    await user.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
+    expect(filesApi.importSamples).toHaveBeenCalledTimes(2);
+    expect(filesApi.importSamples).toHaveBeenLastCalledWith('http://native', {
+      file_paths: [first, second],
+      as_views: true,
+    });
+    expect(screen.getByRole('button', { name: 'Import selected' })).toBeDisabled();
+  });
+
   it('disables import with no selected files', async () => {
     await openSamples();
     expect(screen.getByRole('button', { name: 'Import selected' })).toBeDisabled();

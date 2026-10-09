@@ -52,19 +52,19 @@ it('imports, materialization and table edits keep explicit object ownership', as
     .perform(true);
   await role('button', { name: 'Data Block actions' }).click();
   await screenshot('/tmp/wordflow-materialize-menu-light.png');
-  await role('menuitem', { name: 'Materialize', exact: true }).click();
+  await role('menuitem', { name: 'Materialise', exact: true }).click();
   await expect(card).toHaveText(expect.stringContaining('Type: Table'));
   await role('button', { name: 'Change data type for column amount' }).click();
-  await role('menuitemradio', { name: 'integer', exact: true }).click();
+  await role('menuitemradio', { name: 'whole number', exact: true }).click();
   await expect(role('button', { name: 'Change data type for column amount' })).toHaveText(
-    expect.stringContaining('integer'),
+    expect.stringContaining('whole number'),
   );
   await expect(card).toHaveText(expect.stringContaining('Type: Table'));
   await expect(role('button', { name: 'Undo Data Block edit' })).toBeDisabled();
   await role('button', { name: 'Change data type for column label' }).click();
-  await role('menuitemradio', { name: 'categorical', exact: true }).click();
+  await role('menuitemradio', { name: 'category', exact: true }).click();
   await expect(role('button', { name: 'Change data type for column label' })).toHaveText(
-    expect.stringContaining('categorical'),
+    expect.stringContaining('category'),
   );
   await role('button', { name: 'Column settings for label' }).click();
   await role('menuitem', { name: 'Rename', exact: true }).click();
@@ -102,6 +102,6 @@ it('imports, materialization and table edits keep explicit object ownership', as
     })
     .perform(true);
   await role('button', { name: 'Data Block actions' }).click();
-  await expect(role('menuitem', { name: 'Materialize', exact: true })).not.toExist();
+  await expect(role('menuitem', { name: 'Materialise', exact: true })).not.toExist();
   await screenshot('/tmp/wordflow-table-edits-light.png');
 });

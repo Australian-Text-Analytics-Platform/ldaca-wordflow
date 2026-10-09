@@ -11,7 +11,7 @@ its first tab; closing its last tab leaves the empty state until you enter again
 <h2 id="plots-parameters">Choose data and Run</h2>
 
 Use **Add data block** to select one Table or View. Prepare joins, reshaping and
-text-to-date conversions in Preprocessing. Select the mode's columns, then **Run**.
+text-to-date conversions in Data Editor. Select the mode's columns, then **Run**.
 There is no Preview. Run saves the submitted settings and replaces previous
 output; cancellation or failure retains the submitted settings without output.
 The progress card and Task Centre show the same task.
@@ -115,7 +115,7 @@ but never removes a Data Block previously added to the project.
 
 ## Large charts
 
-Saved data remains complete. Charts support up to 100,000 plotted values and 500 series, or 5,000 Sankey links. If a projection exceeds that budget, use wider intervals, fewer groups, case merging or a higher minimum group size where available. Otherwise refine the input in Preprocessing and Run again. Wordflow does not silently sample or truncate your chart. Very large charts may take several seconds to render or zoom.
+Saved data remains complete. Charts support up to 100,000 plotted values and 500 series, or 5,000 Sankey links. If a projection exceeds that budget, use wider intervals, fewer groups, case merging or a higher minimum group size where available. Otherwise refine the input in Data Builder and Run again. Wordflow does not silently sample or truncate your chart. Very large charts may take several seconds to render or zoom.
 
 Calendar groups form a responsive grid with the same date range and scale. Hover a date to inspect it in every group, or focus the chart and use left/right for days, up/down for weeks and Home/End for the range. Inspection does not select rows. Dense Trends markers hide automatically; lines and all observations remain. Wide Heatmaps and Sankey diagrams scroll inside the chart area. Downloads retain the viewport and selection but omit interactive controls.
 

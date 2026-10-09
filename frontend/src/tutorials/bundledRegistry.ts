@@ -1,4 +1,4 @@
-/** Bundled help target mappings. Remote delivery updates document content only. */
+/** Canonical targets for the bundled Help, Information and References pages. */
 
 export interface DocTarget {
   file: string;
@@ -12,15 +12,6 @@ export interface RegistryShape {
   tutorial: Record<string, DocTarget>;
   info: Record<string, DocTarget>;
   reference: Record<string, DocTarget>;
-  /**
-   * Optional registry metadata. Set on the remote payload only — bundled
-   * fallback never carries an EOL date.
-   */
-  meta?: {
-    version?: string;
-    /** Date (ISO-8601) when this docs version is no longer supported. */
-    eolDate?: string;
-  };
 }
 
 const tutorial = {

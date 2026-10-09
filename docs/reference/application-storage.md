@@ -71,7 +71,11 @@ the editor or updater. Missing files use defaults. Invalid/future files are
 preserved and reported, and require an explicit reset or operator repair. Save
 errors retain the last confirmed UI state and are surfaced to the user.
 
-Theme, layout and recent files no longer read or write browser localStorage.
+Theme, sidebar width and recent files no longer read or write browser localStorage.
+The two layout ratio fields remain accepted for wire/file compatibility, but the
+Editor graph/Data View and right-panel splitters use window-local ratios until
+reload. Their current default ratios are 0.5 and 0.3. Tools fits its contents until
+manually resized; sidebar section ratios likewise reset on reload.
 
 ## Credentials and model caches
 

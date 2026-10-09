@@ -38,7 +38,7 @@ it('switches graph projections, retains preview and canvas state, and clones wit
   await expect(role('button', { name: 'Deselect visible', exact: true })).toExist();
   await toolbar('data', 'visible_raw', 'Preview data');
   await expect(role('cell', { name: 'hidden rows', exact: true })).toBeDisplayed();
-  await expect(role('button', { name: 'Add Data Block to selection', exact: true })).not.toExist();
+  await expect(role('button', { name: 'Add to tool', exact: true })).not.toExist();
   await press('End', role('separator', { name: 'Resize graph and data panels' }));
   await testId('project-data-overlay').waitForStable();
   const dependencyViewport = await browser.$('.react-flow__viewport').getAttribute('style');
@@ -75,14 +75,14 @@ it('switches graph projections, retains preview and canvas state, and clones wit
   await toolbar('other', 'renamed', 'Preview data');
   await expect(role('cell', { name: '42', exact: true })).toBeDisplayed();
   await role('button', { name: 'Change data type for column n' }).click();
-  await role('menuitemradio', { name: 'string', exact: true }).click();
-  await expect(role('button', { name: 'Change data type for column n' })).toHaveText('string');
+  await role('menuitemradio', { name: 'text', exact: true }).click();
+  await expect(role('button', { name: 'Change data type for column n' })).toHaveText('text');
   await sql("SELECT CASE WHEN typeof(n)='VARCHAR' THEN true ELSE error('Wrong cast target') END FROM other.renamed");
   await role('button', { name: 'Close preview' }).click();
   await expect(testId('project-data-overlay')).not.toExist();
   await toolbar('other', 'renamed', 'Data Block actions');
   await role('menuitem', { name: 'Delete', exact: true }).click();
-  await role('button', { name: 'Delete', exact: true }, role('alertdialog')).click();
+  await role('button', { name: 'Delete 1', exact: true }, role('alertdialog')).click();
   await expect(objectCard('other', 'renamed')).not.toExist();
   await toggle.click();
   await expect(role('button', { name: 'Deselect visible', exact: true })).toExist();

@@ -1,3 +1,5 @@
+import type { NativeTask } from './tasksApi';
+import { RunError } from '@/features/tools/common/components/RunError';
 import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
@@ -15,6 +17,7 @@ import { ChevronRight, ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
 import { create } from 'zustand';
 import { OperationError } from './OperationError';
+import { externalLink } from '@/lib/externalLink';
 
 const useAccess = create<{ token: string }>(() => ({ token: '' }));
 
@@ -24,7 +27,15 @@ function portalUrl(record: filesApi.OniSearchResult) {
   return `https://data.ldaca.edu.au/collection?id=${encodeURIComponent(identifier)}&_crateId=${encodeURIComponent(record.crate_id ?? identifier)}`;
 }
 
-export default function NativeLdacaImport({ base, active }: { base: string; active: boolean }) {
+export default function NativeLdacaImport({
+  base,
+  active,
+  tasks = [],
+}: {
+  base: string;
+  active: boolean;
+  tasks?: NativeTask[];
+}) {
   const token = useAccess((state) => state.token);
   const [filterText, setFilterText] = useState('');
   const [query, setQuery] = useState('');
@@ -74,6 +85,7 @@ export default function NativeLdacaImport({ base, active }: { base: string; acti
           <a
             className="underline underline-offset-2"
             href="https://data.ldaca.edu.au"
+            onClick={externalLink}
             target="_blank"
             rel="noreferrer"
           >
@@ -169,7 +181,7 @@ export default function NativeLdacaImport({ base, active }: { base: string; acti
           </Button>
         </div>
         {catalogue.isFetching && <p role="status">Loading the LDaCA catalogue…</p>}
-        {catalogue.error && (
+        {active && catalogue.error && catalogue.error.name !== 'AbortError' && (
           <OperationError
             title="Could not load collections"
             error={catalogue.error}
@@ -238,6 +250,7 @@ export default function NativeLdacaImport({ base, active }: { base: string; acti
                     <h3 className="min-w-0 flex-[1_1_12rem] break-words text-body font-semibold">
                       <a
                         href={portalUrl(record)}
+                        onClick={externalLink}
                         target="_blank"
                         rel="noreferrer"
                         className="underline-offset-2 hover:underline"
@@ -344,13 +357,22 @@ export default function NativeLdacaImport({ base, active }: { base: string; acti
             Importing collection — follow progress or cancel in Tasks. You can switch sources.
           </p>
         )}
-        {imported.error && (
-          <OperationError
-            title="Could not import collection"
-            error={imported.error}
-            onRetry={() => imported.mutate(imported.variables)}
-          />
-        )}
+        <RunError
+          name="Import"
+          title="Could not import collection"
+          taskLabel="Import from LDaCA"
+          tasks={tasks}
+          active={active}
+          busy={imported.isPending}
+          error={imported.error}
+          onRetry={
+            imported.error && imported.variables
+              ? () => {
+                  if (imported.variables) imported.mutate(imported.variables);
+                }
+              : undefined
+          }
+        />
         {!!imported.data?.replaced_paths.length && (
           <div role="status" className="text-body-secondary">
             <p>

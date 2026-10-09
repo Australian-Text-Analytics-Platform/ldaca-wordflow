@@ -317,6 +317,16 @@ it('retains the previous display on a failed enabled list and blocks export inst
   await act(async () => {
     await client.invalidateQueries({ queryKey: ['native', base, 'rows'] });
   });
+  vi.mocked(frequencyApi.queryFrequency).mockRejectedValue(new Error('Stale projection column'));
+  await act(async () => {
+    await client.refetchQueries({
+      queryKey: ['native', base, 'analyses', result.id, 'rows'],
+      type: 'all',
+    });
+  });
+  expect(await screen.findByRole('alert')).toHaveTextContent('Missing column');
+  expect(screen.getAllByRole('alert')).toHaveLength(1);
+  expect(screen.queryByText('Could not update Frequency display')).not.toBeInTheDocument();
   expect(screen.getByText('alpha')).toBeInTheDocument();
   expect(await screen.findByText(/display is outdated/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Export Corpus list' })).toBeDisabled();
@@ -367,7 +377,9 @@ it('does not fall back to a cached unfiltered result when switching to an unread
   act(() => {
     select('missing');
   });
-  await screen.findByText('missing list');
+  expect(await screen.findByRole('alert', { name: 'Could not load stopwords' })).toHaveTextContent(
+    'missing list',
+  );
   expect(screen.getByText('alpha')).toBeInTheDocument();
   expect(screen.queryByText('unfiltered')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Export Corpus list' })).toBeDisabled();

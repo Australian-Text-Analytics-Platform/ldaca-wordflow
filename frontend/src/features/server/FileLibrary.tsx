@@ -1,3 +1,5 @@
+import { RunError } from '@/features/tools/common/components/RunError';
+import type { NativeTask } from '@/features/project/tasksApi';
 import { request } from '@/api/client';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -20,12 +22,14 @@ const parent = (name: string) => name.split('/').slice(0, -1).join('/');
 const basename = (name: string) => name.split('/').at(-1) ?? name;
 export function FileLibrary({
   library,
+  tasks = [],
   onOpenProject,
   visible = true,
   incoming,
   onIncomingHandled,
 }: {
   library: Library;
+  tasks?: NativeTask[];
   onOpenProject?: (name: string) => void;
   visible?: boolean;
   incoming?: { names: string[]; projectId: string; plan: FileImportPlan } | null;
@@ -265,13 +269,29 @@ export function FileLibrary({
       )}
       {report && <SkippedImportFiles files={report.skipped} />}
       {operation.isPending && <p role="status">Working…</p>}
-      {operation.error && !remove && !moving && (
-        <OperationError
+      {library === 'data' ? (
+        <RunError
+          name="Import"
           title="Could not complete file operation"
+          taskLabel="Import local data"
+          tasks={tasks}
+          active={visible && !remove && !moving}
+          busy={operation.isPending}
           error={operation.error}
-          onRetry={() => operation.mutate(operation.variables)}
+          onRetry={operation.error ? () => operation.mutate(operation.variables) : undefined}
         />
+      ) : (
+        operation.error &&
+        !remove &&
+        !moving && (
+          <OperationError
+            title="Could not complete file operation"
+            error={operation.error}
+            onRetry={() => operation.mutate(operation.variables)}
+          />
+        )
       )}
+
       {files.isPending && <p role="status">Loading files…</p>}
       {files.isError && (
         <OperationError

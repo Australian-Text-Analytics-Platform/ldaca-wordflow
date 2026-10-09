@@ -41,6 +41,15 @@ export function recordSessionError(
     error && typeof error === 'object' && 'message' in error
       ? String(error.message)
       : (details ?? String(error));
+  // The same accepted task can be presented again after its form remounts.
+  if (taskId) {
+    const existing = useSessionErrors
+      .getState()
+      .entries.find(
+        (entry) => entry.taskId === taskId && entry.message === message.slice(0, 16_384),
+      );
+    if (existing) return existing;
+  }
   const entry: SessionError = {
     id: crypto.randomUUID(),
     timestamp: new Date().toISOString(),

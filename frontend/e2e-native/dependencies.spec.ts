@@ -37,7 +37,7 @@ it('uses schema-qualified controls in the native dependency graph without regist
   await content.execute((el) => { el.focus(); });
   await $('button[aria-label="Preview data"]').click();
   await expect($('//td[normalize-space(.)="17"]')).toBeDisplayed();
-  await expect($('button[aria-label="Add Data Block to selection"]')).not.toExist();
+  await expect($('button[aria-label="Add to tool"]')).not.toExist();
   await toggle.click();
   await expect(card('source')).not.toExist();
   await expect($('//td[normalize-space(.)="17"]')).toBeDisplayed();
@@ -49,15 +49,15 @@ it('uses schema-qualified controls in the native dependency graph without regist
   await expect(card('source_cpy_1')).toExist();
   await expect($('[data-testid="project-data-overlay"]')).not.toExist();
   await actions('result');
-  await $('[role="menuitem"]=Materialize').click();
+  await $('[role="menuitem"]=Materialise').click();
   // Compact cards hide type details; the View-only action disappears in either presentation.
   await actions('result');
-  await expect($('[role="menuitem"]=Materialize')).not.toExist();
+  await expect($('[role="menuitem"]=Materialise')).not.toExist();
   await browser.keys('Escape');
   await sql("SELECT CASE WHEN (SELECT count(*) FROM wordflow.nodes WHERE table_name IN ('source','result','source_cpy_1'))=0 AND (SELECT count(*) FROM duckdb_tables() WHERE schema_name='native_dependencies' AND table_name='result')=1 AND (SELECT n FROM native_dependencies.source_cpy_1)=17 THEN true ELSE error('Native dependency controls changed registration or wrong object') END");
   await actions('source_cpy_1');
   await $('[role="menuitem"]=Delete').click();
-  await $('//div[@role="alertdialog"]//button[normalize-space(.)="Delete"]').click();
+  await $('//div[@role="alertdialog"]//button[normalize-space(.)="Delete 1"]').click();
   await expect(card('source_cpy_1')).not.toExist();
   if ((await $('html').getAttribute('data-theme')) !== originalTheme) {
     await $('button[aria-label="Open settings"]').click();

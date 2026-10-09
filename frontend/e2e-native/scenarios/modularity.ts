@@ -17,12 +17,12 @@ export async function directInputsAndBuilder(
   destinationActivation: 'keyboard' | 'pointer' = 'keyboard',
 ) {
   await seed(base);
-  await $('button=Preprocessing').click();
+  await $('button[aria-label="Data Builder"]').click();
   const source = $('[data-id="mod_input"]');
   const add = addFromGraph ?? (() => source.doubleClick());
-  await expect($('label=Preprocessing Inputs (0/1)')).toBeDisplayed();
+  await expect($('label=Data Builder inputs (0/1)')).toBeDisplayed();
   await add();
-  await expect($('label=Preprocessing Inputs (1/1)')).toBeDisplayed();
+  await expect($('label=Data Builder inputs (1/1)')).toBeDisplayed();
   await add();
   await expect($('li*=Already added')).toBeDisplayed();
   await $('#preprocessing-tab-join').click();
@@ -60,7 +60,7 @@ export async function directInputsAndBuilder(
   await $('button=Keep SQL').click();
   await expect(expression).toHaveText(expect.stringContaining('n'));
   await $('button=Export').click();
-  await $('button=Preprocessing').click();
+  await $('button[aria-label="Data Builder"]').click();
   await expect(expression).toHaveText(expect.stringContaining('n'));
   await pane.$('button=New visual expression').click();
   await $('button=Start new expression').click();

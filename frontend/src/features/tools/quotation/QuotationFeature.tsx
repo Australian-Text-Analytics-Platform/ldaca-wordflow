@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import * as projectApi from '@/features/project/api';
@@ -131,6 +132,7 @@ function QuotationTab({
     );
   const running = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: (request: quotationApi.QuotationRequest) =>
       quotationApi.runQuotation(base, tab.id, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'quotation'] }),
@@ -264,6 +266,14 @@ function QuotationTab({
           </>
         )}
       </section>
+      <RunError
+        tabId={tab.id}
+        name="Quotation"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={run.isPending || Boolean(running)}
+      />
       {run.isPending || running ? (
         <AnalysisProgress
           name={tab.name}

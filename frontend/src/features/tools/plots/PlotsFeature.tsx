@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Tabs as ModeTabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -130,6 +131,7 @@ function PlotTab({
   });
   const running = tasks.find((t) => t.tab_id === tab.id && t.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: (request: plotsApi.PlotRequest) => plotsApi.runPlot(base, tab.id, mode, request),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', mode] }),
   });
@@ -218,6 +220,14 @@ function PlotTab({
           </Button>
         </div>
       </section>
+      <RunError
+        tabId={tab.id}
+        name="Plots"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={busy}
+      />
       {busy ? (
         <AnalysisProgress
           name={tab.name}

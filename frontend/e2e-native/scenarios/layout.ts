@@ -17,12 +17,13 @@ export async function layoutScenario(prefix: string) {
   await browser.saveScreenshot(`.tmp/wdio/${prefix}-layout-normal.png`);
   try {
     await setAnalysisPaneSize('narrow');
-    await browser.refresh();
     await expect(splitter).toHaveAttribute('aria-valuenow', (await splitter.getAttribute('aria-valuemax')) ?? '');
     await browser.waitUntil(async () => splitter.execute((element) =>
       (element.parentElement?.querySelector('aside')?.getBoundingClientRect().width ?? Infinity) <= 801,
     ));
     await browser.saveScreenshot(`.tmp/wdio/${prefix}-layout-narrow.png`);
+    await browser.refresh();
+    await expect(splitter).toHaveAttribute('aria-valuenow', '30');
     await setAnalysisPaneSize('wide');
     if (await browser.execute(() => '__TAURI_INTERNALS__' in window)) {
       // The embedded driver emits two detail=0 clicks, not a dblclick event.

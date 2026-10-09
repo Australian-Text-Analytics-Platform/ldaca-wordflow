@@ -33,7 +33,7 @@ it('desktop keeps the three panes, imports inline, and reopens embedded data', a
       (element) => element.getBoundingClientRect().height,
     );
     await screenshot('/tmp/wordflow-graph-no-selection.png');
-    await expect(role('button', { name: 'Preprocessing', exact: true })).toBeEnabled();
+    await expect(role('button', { name: 'Data Builder', exact: true })).toBeEnabled();
     await expect(role('button', { name: 'Frequency', exact: true })).toBeEnabled();
     await expect(role('tab', { name: 'LDaCA', exact: true })).toBeDisplayed();
     await expect(role('button', { name: 'SQL console' })).not.toExist();
@@ -58,7 +58,7 @@ it('desktop keeps the three panes, imports inline, and reopens embedded data', a
     await press('ArrowDown', split);
     const savedRatio = await split.getAttribute('aria-valuenow');
     await browser.waitUntil(
-      async () => Math.abs((await rect(graph)).height - fullGraphHeight) < 0.5,
+      async () => (await rect(graph)).height < fullGraphHeight - 100,
     );
     await role('button', { name: 'Close preview', exact: true }).click();
     await expect(split).not.toExist();

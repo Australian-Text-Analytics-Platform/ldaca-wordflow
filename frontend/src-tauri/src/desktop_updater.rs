@@ -503,9 +503,12 @@ fn open_updater_window(app: &AppHandle, manual: bool) -> Result<(), String> {
 }
 
 pub(crate) fn show_manual_check(app: AppHandle) {
-    if let Err(error) = open_updater_window(&app, true) {
-        eprintln!("Failed to open the updater window: {error}");
-    }
+    // WebView2 creation must run outside the Windows menu/UI callback.
+    tauri::async_runtime::spawn_blocking(move || {
+        if let Err(error) = open_updater_window(&app, true) {
+            eprintln!("Failed to open the updater window: {error}");
+        }
+    });
 }
 
 pub(crate) fn schedule_automatic_check(app: AppHandle) {

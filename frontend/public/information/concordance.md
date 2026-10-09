@@ -8,7 +8,7 @@ analysis without materializing a whole-corpus result in the browser.
 
 - What do I select?
   Add one or two Data Blocks and choose a source text column for each. Document
-  Column and Tokenizer Preferences initialize fresh selectors independently;
+  Column and Tokeniser Preferences initialize fresh selectors independently;
   reopening a tab restores its submitted Preview request or latest successful
   Run settings.
 

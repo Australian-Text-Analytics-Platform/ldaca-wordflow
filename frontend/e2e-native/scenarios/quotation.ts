@@ -71,7 +71,7 @@ export async function quotationScenario(base: string, prefix: string) {
   expect(outputAnalysisId(tab)).toBeNull();
   expect(tab.settings.preview).toBeUndefined();
   expect(tab.analysis).toBeNull();
-  await $('button=Data Loader').click();
+  await $('button[aria-label="Data Loader"]').click();
   await projectApi.executeSql(
     base,
     [

@@ -20,7 +20,7 @@ const DOCUMENT_PRESENTATION: Record<
 > = {
   tutorial: {
     docType: 'tutorial',
-    title: 'Tutorial',
+    title: 'Help',
     spinnerColor: 'border-button',
   },
   info: {
@@ -30,7 +30,7 @@ const DOCUMENT_PRESENTATION: Record<
   },
   reference: {
     docType: 'reference',
-    title: 'Reference',
+    title: 'References',
     spinnerColor: 'border-[var(--vscode-charts-green)]',
   },
 };

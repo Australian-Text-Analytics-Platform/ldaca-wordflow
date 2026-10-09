@@ -138,7 +138,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

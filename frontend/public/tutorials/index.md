@@ -1,83 +1,64 @@
 <!-- markdownlint-disable MD033 -->
 
-<h1 id="help-tutorial-index">LDaCA Wordflow Help</h1>
+<h1 id="help-tutorial-index">Wordflow Help</h1>
 
-<p align="center">
-  <img src="/LDaCA_logo_Dark.png" alt="LDaCA" width="360" />
-</p>
-
-Welcome to LDaCA Wordflow. This Help guide provides written instructions for
-the interface and each analysis feature. Open it at any time from **Help** in
-the sidebar or jump directly to a section with a **?** icon.
-
-## Overview
-
-Wordflow offers an interface that prioritizes ease of use and efficient navigation. The main user interface includes the following main sections, systematically presented in three primary columns.
+Wordflow keeps your texts, metadata, live queries and saved analyses together in
+`.wfpj` projects. Open Help from the sidebar or use a **?** beside a control to
+jump to its explanation. All written Help is bundled with your application.
 
 ![Wordflow main view](tutorials/assets/ldaca_main.png)
 
-1.	Tool Choice: Choose and customise which tool module to use.
-2.	Data Selection: Select the data block to be analysed.
-3.	Task Centre: Show progress of time-consuming tasks.
-4.	Project Graph: Select Data Blocks and open their previews.
-5.	Data Viewer: Preview one Data Block as a table.
-6.	Tool Interface: The main interface of the selected analytic tool.
-7.	Project File: Use the native File menu to open or save a `.wfpj` database.
-8.	Help and Feedback: When you encounter problems.
+## Quick start
 
-For detailed explanation of how each of the above sections work, please refer to [User Interface Overview](./ui.md).
+1. Create or open a project.
+2. Use **Data Loader** to add files, sample data or an LDaCA collection.
+3. Use **Data Editor** to change columns in place, or **Data Builder** to derive
+   Data Blocks with Filter, Group, Join, Aggregate, Sample, Deduplicate, Stack,
+   Build or SQL.
+4. Choose an analysis, select its Data Blocks and document columns, then Run.
+5. Explore the results, export figures or use **Add to Project** to publish rows.
 
+A **Data Block** is a table of documents and their metadata. A **Table** stores
+rows; a **View** reads its sources through a live SQL query. The Project Graph
+shows their relationships. Saved analyses retain the inputs captured by their
+successful Run; later source edits do not silently recalculate those results.
 
-## Concept: How the Analyses Interoperate
-Wordflow's analyses are designed to work together seamlessly, allowing you to conduct comprehensive text analyses. Here’s how the components interact:
-- **Data block**: Tabular data consists of at least one column of analysable textual contents. Each row represents a unit of text (document, post, comment, speech etc.) and its associated metadata in columns. A data block can be viewed as a collection of texts with various types of metadata.
-- **Project**: A set of data blocks that can be processed, analysed and derived from each other. The project is a virtual space where the user uploads, processes and manipulates all relevant data blocks to a project or task. The project is visualised as a graph of interconnecting data blocks, where the links indicates how new data blocks are derived from their parent data blocks through various operations. The user can select, rename, delete or clone the data blocks from the graph and sidebar.
+<h2 id="help-analysis-lifecycle">How Preview, Run and Clear work</h2>
 
-Data Blocks supply the inputs to preprocessing and analysis. Preprocessing can create derived Data Blocks, while Frequency keeps its saved results privately in named analysis tabs rather than adding graph nodes.
-The text corpus and metadata can be uploaded to Wordflow then loaded as a data block to an active project.
-Preprocessing can create derived Data Blocks or update an existing Table or View.
+**Preview**, where offered, inspects the current settings without saving an
+analysis result. Preview is temporary and disappears when you leave the tool or
+reload. Topic Preview uses the selected sample; AI Preview always makes a fresh
+request. Data Builder Preview reads the query that Apply will use.
 
-- Data Loader: Upload your text files and load  the text corpus (e.g., interview transcripts, articles) into a project.
-- Preprocessing: Filter, sample, join, stack, find patterns, create columns, or write DuckDB SQL.
-- Frequency: Count tokens in one Data Block or compare two corpora, then explore saved lists, clouds and keyness statistics. Other analysis modules remain unavailable; their help pages are retained for reference.
-- Export & Share: Export a full Data Block as CSV, JSON, NDJSON, Parquet or Arrow IPC. Close the export dialog while work continues; use the Task Centre to cancel. Save the project as a `.wfpj` file to preserve its stored data and SQL.
+**Run** submits the current settings against the current Data Blocks and saves
+the analysis output. It creates one task with progress and cancellation in
+**Tasks**. You can switch tools or projects while accepted work continues.
+Frequency and Plots have no Preview. AI Run writes predictions to its Table;
+manual annotation edits use their own Save and Cancel.
 
-## How to use the help icons
+**Clear results** removes owned analysis outputs and artifacts, preserving your
+settings. For tools whose matching saved settings disable Run, Clear allows
+another Run against changed source data. Topic result adjustments reuse retained
+stages; an explicit Run always enters every stage. Older analyses missing those
+stages ask you to Rerun.
 
-- Click a **?** icon next to a control to jump straight to its explanation.
-- Help will scroll to that section and briefly highlight it.
-- If a help link is missing, you will see a toast and Help will stay closed.
-
-## Quick start (first session)
-
-1. **Create or load a project** so your work is saved together.
-2. **Upload files** or import sample data to explore quickly.
-3. **Clean and join** your data if needed.
-4. **Preview** Data Blocks or use **SQL** to inspect the database.
-5. **Run Frequency** to count or compare terms, and **export** tables or charts for sharing.
-
+A failure stays beside the responsible form or result with its original
+diagnostic, Details, copy and Feedback actions. **Retry** rereads or repeats the
+failed operation; **Rerun** recomputes an analysis. Neither happens automatically.
+A toast reports a failure when its responsible panel is not visible.
 
 ## Help sections
 
-- [User Interface Overview](./ui.md) — learn what each section of the main screen does.
-- [Data loader](./data-loader.md) — create projects and upload data.
-- [Data Preprocessing](./preprocessing.md) — Filter, Sample, Join, Stack, Find, Build, and SQL.
-- [Frequency](./token-frequency.md) — count and compare terms in saved analysis tabs.
-- [Concordance](./concordance.md) — inspect terms in context.
-- [Topic modelling](./topic-modeling.md) — discover themes with native semantic clustering.
-- [Sequential analysis](./sequential-analysis.md) — analyze sequences over time.
-- [Quotation extraction](./quotation.md) — capture quoted segments with context.
-- [Annotation](./annotation.md) — label text manually or with a configured AI provider.
-- [Export](./export.md) — download tables or reports.
+- [Interface](./ui.md) — navigation, Editor, graph, Tasks and project files.
+- [Data Loader](./data-loader.md) — files, folders, workbooks and LDaCA.
+- [Data Editor and Data Builder](./preprocessing.md) — column edits and derived Data Blocks.
+- [Frequency](./token-frequency.md) — token counts, clouds and keyness.
+- [Concordance](./concordance.md) — matching words and their context.
+- [Topic Modelling](./topic-modeling.md) — topics, metadata groups and retained adjustments.
+- [Quotation](./quotation.md) — highlighted quotation rows and whole documents.
+- [Annotation](./annotation.md) — manual drafts and AI predictions.
+- [Plots](./plots.md) — Trends, Compare, Scatter, Heatmap and Sankey.
+- [Export](./export.md) — CSV, XLSX, JSON and Parquet, plus analysis figures.
 
-## Questions to check your understanding
-
-**Q: What is a project?**
-
-A project is a DuckDB database file containing stored data, View definitions, saved SQL cells, saved analysis results and project metadata. Each project opens in its own independent window. Successful changes commit immediately. Every Untitled window asks where to save when closing; named projects do not need an unsaved-content prompt.
-
-**Q: Why are there separate tutorial pages?**
-
-Each page focuses on a single area so you can learn in small steps and jump directly from a help icon.
-
-- [Plots: Trends, Compare, Scatter, Heatmap and Sankey](./plots.md)
+Help opens one initial anchor scroll below its pinned header. External links
+open normally in your browser; desktop website links open in the system browser.

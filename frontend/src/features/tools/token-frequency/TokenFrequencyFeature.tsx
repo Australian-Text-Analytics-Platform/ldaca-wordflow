@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,6 +179,7 @@ function FrequencyTab({
   );
   const currentTask = tasks.find((task) => task.tab_id === tab.id && task.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: async (request: frequencyApi.FrequencyRequest) => {
       // Resolve saved positional colours before a new run can change the corpus order.
       await persistSettings({
@@ -234,7 +236,7 @@ function FrequencyTab({
         className="min-w-0 rounded-lg border border-surface-border bg-surface"
       >
         <header className="flex items-center gap-2 px-3 py-2.5">
-          <h1 className="text-body font-semibold">Token Frequency Analysis</h1>
+          <h1 className="text-body font-semibold">Frequency Analysis</h1>
           <HelpIcon targetKey="analysis.token-frequency.parameters" label="Frequency parameters" />
         </header>
         {analysisId && !result.data && !stored && !tab.analysis?.request && !result.isError ? (
@@ -348,7 +350,7 @@ function FrequencyTab({
             />
             {tokenizers.isError && (
               <p role="alert" className="px-3 pb-2 text-body-secondary">
-                Tokenizer choices could not be loaded.{' '}
+                Tokeniser choices could not be loaded.{' '}
                 <Button
                   variant="link"
                   onClick={() => {
@@ -423,6 +425,14 @@ function FrequencyTab({
           </>
         )}
       </section>
+      <RunError
+        tabId={tab.id}
+        name="Frequency"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={running}
+      />
       {running ? (
         <AnalysisProgress
           name={tab.name}
@@ -455,7 +465,7 @@ function FrequencyTab({
             result={result.data}
             onOpenConcordance={onOpenConcordance}
             outdated={JSON.stringify(captured) !== JSON.stringify(result.data.request)}
-            active={active}
+            active={active && !result.isFetching}
           />
         </AnalysisResultBoundary>
       ) : analysisId ? (

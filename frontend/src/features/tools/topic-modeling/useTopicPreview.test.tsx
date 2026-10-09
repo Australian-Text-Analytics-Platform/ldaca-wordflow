@@ -128,3 +128,28 @@ describe('Topic Preview connection ownership', () => {
     unmount();
   });
 });
+
+it('retains original Preview and cancellation diagnostics in the existing owner without a toast', async () => {
+  const failure = Object.assign(new Error('Original provider detail'), {
+    details: 'HTTP 502 from the provider',
+  });
+  vi.mocked(topicApi.streamTopicPreview).mockRejectedValueOnce(failure);
+  const { result, unmount } = setup();
+  await act(async () => result.current.submit(request, sampling));
+  expect(result.current.state?.diagnostic).toBe(failure);
+  expect(reportProjectError).not.toHaveBeenCalled();
+  vi.mocked(topicApi.streamTopicPreview).mockImplementation(() => new Promise(() => {}));
+  act(() => result.current.submit(request, sampling));
+  const stream = vi.mocked(topicApi.streamTopicPreview).mock.calls.at(-1)!;
+  act(() => stream[4](update('preview')));
+  vi.mocked(topicApi.deleteTopicPreview).mockRejectedValueOnce(failure);
+  await act(async () => result.current.cancel());
+  expect(result.current.state?.diagnostic).toBe(failure);
+  expect(result.current.state?.cancelling).toBe(false);
+  expect(stream[3].aborted).toBe(false);
+  vi.mocked(topicApi.deleteTopicPreview).mockResolvedValueOnce(undefined);
+  await act(async () => result.current.cancel());
+  expect(result.current.state).toBeNull();
+  expect(stream[3].aborted).toBe(true);
+  unmount();
+});

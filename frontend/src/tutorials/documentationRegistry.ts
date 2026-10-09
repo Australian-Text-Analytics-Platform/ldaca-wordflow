@@ -21,7 +21,7 @@ export type DocumentKey<Kind extends DocLinkKind> =
 /**
  * Canonical target passed from registry lookup through UI intent to the
  * document viewer. Keeping kind and key with the resolved location removes
- * parallel modal/type contracts for bundled and remotely delivered content.
+ * parallel modal/type contracts for bundled content.
  */
 export interface DocumentTarget<Kind extends DocLinkKind = DocLinkKind> {
   kind: Kind;
@@ -51,7 +51,7 @@ export const tutorialIndexTarget: DocumentTarget<'tutorial'> = {
   ...TUTORIAL_INDEX_TARGET,
 };
 
-/** Local files that must never be redirected to the optional remote docs host. */
+/** The complete allowlist of bundled documents the viewer can load. */
 export const BUNDLED_DOCUMENT_FILES: ReadonlySet<string> = new Set([
   ...BUNDLED_FILES,
   tutorialIndexTarget.file,

@@ -7,7 +7,8 @@
  * component owns only transient drag and inline-rename state.
  */
 
-import { Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, X } from 'lucide-react';
+import { OperationError } from '@/features/project/OperationError';
 import {
   type KeyboardEvent,
   type ReactNode,
@@ -48,7 +49,7 @@ export interface EditorTabsProps {
   onReorder?: (orderedIds: string[]) => void;
   onClose?: (id: string) => void;
   onCreate?: () => void;
-  onRename?: (id: string, title: string) => void;
+  onRename?: (id: string, title: string) => void | Promise<void>;
   className?: string;
   'aria-label'?: string;
 }
@@ -98,6 +99,10 @@ export function EditorTabs({
   const tabRefs = useRef(new Map<string, HTMLDivElement>());
   const titleMeasureRefs = useRef(new Map<string, HTMLSpanElement>());
   const [naturalWidths, setNaturalWidths] = useState<Map<string, number>>(() => new Map());
+  const submitting = useRef(false);
+  const [renamePending, setRenamePending] = useState(false);
+  const [renameError, setRenameError] = useState<unknown>();
+  const [edges, setEdges] = useState({ left: false, right: false });
 
   useEffect(() => {
     const element = scrollRef.current;
@@ -137,6 +142,32 @@ export function EditorTabs({
   const widths = computeContentTabWidths(orderedNatural);
   const positions = computeTabPositions(widths);
   const totalWidth = computeTotalWidth(widths);
+  const activeIndex = orderIds.indexOf(activeTabId ?? '');
+  const activeLeft = positions[activeIndex];
+  const activeWidth = widths[activeIndex];
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element || activeLeft === undefined || activeWidth === undefined || !element.clientWidth)
+      return;
+    const left = activeLeft + 8;
+    const right = left + activeWidth;
+    if (left < element.scrollLeft + 8) element.scrollLeft = Math.max(0, left - 8);
+    else if (right > element.scrollLeft + element.clientWidth - 8)
+      element.scrollLeft = Math.max(0, right - element.clientWidth + 8);
+    // Resize updates indicators, not this activation/target-slot reveal.
+  }, [activeTabId, activeLeft, activeWidth]);
+  useEffect(() => {
+    const element = scrollRef.current;
+    if (!element) return;
+    const update = () =>
+      setEdges({
+        left: element.scrollLeft > 1,
+        right: element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
+      });
+    update();
+    element.addEventListener('scroll', update);
+    return () => element.removeEventListener('scroll', update);
+  }, [containerWidth, totalWidth]);
 
   const titlesKey = tabs.map((tab) => `${tab.id}:${tab.title}`).join('|');
   const widthsKey = widths.join(',');
@@ -168,15 +199,25 @@ export function EditorTabs({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- keyed by layout signature; maps update functionally
   }, [titlesKey, widthsKey, containerWidth]);
 
-  const finishRename = () => {
-    if (renamingId) {
-      const trimmed = draftTitle.trim();
-      if (trimmed) onRename?.(renamingId, trimmed);
+  const finishRename = async () => {
+    if (!renamingId || submitting.current || !draftTitle.trim()) return;
+    submitting.current = true;
+    setRenamePending(true);
+    setRenameError(undefined);
+    try {
+      await onRename?.(renamingId, draftTitle.trim());
+      dispatchInteraction({ type: 'renameCancelled' });
+    } catch (error) {
+      setRenameError(error);
+      renameInputRef.current?.focus();
+    } finally {
+      submitting.current = false;
+      setRenamePending(false);
     }
-    dispatchInteraction({ type: 'renameCancelled' });
   };
 
   const beginRename = (tab: EditorTabItem) => {
+    setRenameError(undefined);
     dispatchInteraction({ type: 'renameStarted', tabId: tab.id, title: tab.title });
   };
 
@@ -242,14 +283,16 @@ export function EditorTabs({
     }
 
     dragRef.current = null;
-    if (tab.id === activeTabId && onRename) beginRename(tab);
-    else onActivate(tab.id);
+    onActivate(tab.id);
   };
 
   const handleRenameKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     event.stopPropagation();
-    if (event.key === 'Enter') finishRename();
-    else if (event.key === 'Escape') dispatchInteraction({ type: 'renameCancelled' });
+    if (event.key === 'Enter') void finishRename();
+    else if (event.key === 'Escape' && !renamePending) {
+      dispatchInteraction({ type: 'renameCancelled' });
+      setRenameError(undefined);
+    }
   };
 
   const handleTabKeyDown = (tab: EditorTabItem, event: KeyboardEvent<HTMLDivElement>) => {
@@ -277,189 +320,236 @@ export function EditorTabs({
 
   return (
     <TooltipProvider delayDuration={300} skipDelayDuration={100}>
-      <div
-        ref={scrollRef}
-        className={cn('relative overflow-x-auto overflow-y-hidden px-[8px] pt-[8px]', className)}
-        role="tablist"
-        aria-label={ariaLabel}
-      >
+      <div className="relative min-w-0 max-w-full">
         <div
-          className="relative"
-          style={{ height: TAB_HEIGHT, width: totalWidth + (onCreate ? CREATE_BUTTON_WIDTH : 0) }}
+          ref={scrollRef}
+          className={cn(
+            'relative max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain px-[8px] pt-[8px]',
+            className,
+          )}
+          role="tablist"
+          aria-label={ariaLabel}
         >
-          {orderIds.map((id, index) => {
-            const tab = tabsById.get(id);
-            if (!tab) return null;
-            const isActive = id === activeTabId;
-            const isRenaming = id === renamingId;
-            const isDragging = id === dragTabId;
-            const isOverflowing =
-              (naturalWidths.get(id) ?? TAB_MAX_WIDTH) > (widths[index] ?? TAB_MAX_WIDTH) + 1;
-            const displayTitle = tab.title || 'Untitled';
-            const slotLeft = positions[index] ?? 0;
-            const translateX = isDragging ? dragHomeLeft + dragDeltaX : slotLeft;
+          <div
+            className="relative"
+            style={{ height: TAB_HEIGHT, width: totalWidth + (onCreate ? CREATE_BUTTON_WIDTH : 0) }}
+          >
+            {orderIds.map((id, index) => {
+              const tab = tabsById.get(id);
+              if (!tab) return null;
+              const isActive = id === activeTabId;
+              const isRenaming = id === renamingId;
+              const isDragging = id === dragTabId;
+              const isOverflowing =
+                (naturalWidths.get(id) ?? TAB_MAX_WIDTH) > (widths[index] ?? TAB_MAX_WIDTH) + 1;
+              const displayTitle = tab.title || 'Untitled';
+              const slotLeft = positions[index] ?? 0;
+              const translateX = isDragging ? dragHomeLeft + dragDeltaX : slotLeft;
 
-            return (
-              <Tooltip key={id}>
-                <TooltipTrigger asChild>
-                  <div
-                    ref={(element) => {
-                      if (element) tabRefs.current.set(id, element);
-                      else tabRefs.current.delete(id);
-                    }}
-                    id={tab.tabDomId}
-                    role="tab"
-                    aria-selected={isActive}
-                    aria-controls={tab.panelDomId}
-                    tabIndex={isActive ? 0 : -1}
-                    data-guidance={tab['data-guidance']}
-                    data-editor-tab
-                    onKeyDown={(event) => {
-                      handleTabKeyDown(tab, event);
-                    }}
-                    onPointerDown={(event) => {
-                      handlePointerDown(tab, event);
-                    }}
-                    onPointerMove={handlePointerMove}
-                    onPointerUp={(event) => {
-                      handlePointerUp(tab, event);
-                    }}
-                    style={{
-                      width: widths[index],
-                      transform: `translateX(${String(translateX)}px)`,
-                    }}
-                    className={cn(
-                      'group absolute top-0 left-0 flex h-[32px] items-center text-[13px] select-none',
-                      isDragging
-                        ? 'z-20 cursor-grabbing'
-                        : cn(
-                            'z-1 transition-[transform,color] duration-150 ease-out',
-                            onReorder ? 'cursor-grab' : 'cursor-default',
-                          ),
-                      isActive ? 'z-10 text-foreground' : 'text-description hover:text-foreground',
-                    )}
-                  >
-                    <span
-                      aria-hidden="true"
-                      data-testid="editor-tab-fill"
-                      className={cn(
-                        'pointer-events-none absolute inset-x-[2px] inset-y-[4px] rounded-[4px] transition-colors duration-150',
-                        isActive
-                          ? 'bg-editor-tab-active-background'
-                          : 'bg-transparent group-hover:bg-editor-tab-hover-background group-focus-within:bg-editor-tab-hover-background',
-                      )}
-                    />
-
-                    {isRenaming ? (
-                      <input
-                        ref={renameInputRef}
-                        value={draftTitle}
-                        onChange={(event) => {
-                          dispatchInteraction({
-                            type: 'renameDraftChanged',
-                            title: event.target.value,
-                          });
-                        }}
-                        onBlur={finishRename}
-                        onKeyDown={handleRenameKeyDown}
-                        onPointerDown={(event) => {
-                          event.stopPropagation();
-                        }}
-                        className="relative z-10 mx-[8px] h-[24px] w-full min-w-0 bg-transparent text-[13px] outline-none"
-                        aria-label="Rename tab"
-                      />
-                    ) : (
-                      <span
-                        className={cn(
-                          'pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-[6px] pl-[8px] text-left whitespace-nowrap',
-                          onClose ? 'pr-[28px]' : 'pr-[8px]',
-                        )}
-                        data-testid="editor-tab-title"
-                      >
-                        {tab.icon ? <span className="shrink-0">{tab.icon}</span> : null}
-                        <span
-                          className="min-w-0 overflow-hidden [text-overflow:clip]"
-                          style={
-                            isOverflowing
-                              ? {
-                                  maskImage:
-                                    'linear-gradient(to right, black calc(100% - 24px), transparent)',
-                                  WebkitMaskImage:
-                                    'linear-gradient(to right, black calc(100% - 24px), transparent)',
-                                }
-                              : undefined
-                          }
-                        >
-                          {displayTitle}
-                        </span>
-                      </span>
-                    )}
-
-                    <span
+              return (
+                <Tooltip key={id}>
+                  <TooltipTrigger asChild>
+                    <div
                       ref={(element) => {
-                        if (element) titleMeasureRefs.current.set(id, element);
-                        else titleMeasureRefs.current.delete(id);
+                        if (element) tabRefs.current.set(id, element);
+                        else tabRefs.current.delete(id);
                       }}
-                      aria-hidden="true"
-                      data-testid="editor-tab-title-measure"
-                      className="pointer-events-none invisible absolute w-max text-[13px] whitespace-nowrap"
+                      id={tab.tabDomId}
+                      role="tab"
+                      aria-selected={isActive}
+                      aria-controls={tab.panelDomId}
+                      tabIndex={isActive ? 0 : -1}
+                      data-guidance={tab['data-guidance']}
+                      data-editor-tab
+                      onKeyDown={(event) => {
+                        handleTabKeyDown(tab, event);
+                      }}
+                      onPointerDown={(event) => {
+                        handlePointerDown(tab, event);
+                      }}
+                      onPointerMove={handlePointerMove}
+                      onPointerUp={(event) => {
+                        handlePointerUp(tab, event);
+                      }}
+                      onDoubleClick={() => {
+                        if (onRename && !renamingId) beginRename(tab);
+                      }}
+                      style={{
+                        width: widths[index],
+                        transform: `translateX(${String(translateX)}px)`,
+                      }}
+                      className={cn(
+                        'group absolute top-0 left-0 flex h-[32px] items-center text-[13px] select-none',
+                        isDragging
+                          ? 'z-20 cursor-grabbing'
+                          : cn(
+                              'z-1 transition-[transform,color] duration-150 ease-out',
+                              onReorder ? 'cursor-grab' : 'cursor-default',
+                            ),
+                        isActive
+                          ? 'z-10 text-foreground'
+                          : 'text-description hover:text-foreground',
+                      )}
                     >
-                      {displayTitle}
-                    </span>
-
-                    {onClose && !isRenaming ? (
-                      <button
-                        type="button"
-                        aria-label="Close tab"
-                        onPointerDown={(event) => {
-                          event.stopPropagation();
-                        }}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onClose(id);
-                        }}
+                      <span
+                        aria-hidden="true"
+                        data-testid="editor-tab-fill"
                         className={cn(
-                          'group/close absolute top-[4px] right-[2px] z-20 flex size-[24px] items-center justify-center transition-[color,opacity] hover:text-foreground focus-visible:text-foreground focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100 group-focus-within:opacity-100',
+                          'pointer-events-none absolute inset-x-[2px] inset-y-[4px] rounded-[4px] transition-colors duration-150',
                           isActive
-                            ? 'text-foreground/70 opacity-100'
-                            : 'text-description opacity-0',
+                            ? 'bg-editor-tab-active-background'
+                            : 'bg-transparent group-hover:bg-editor-tab-hover-background group-focus-within:bg-editor-tab-hover-background',
                         )}
-                      >
-                        <span
-                          aria-hidden="true"
-                          data-testid="close-tab-highlight"
-                          className="pointer-events-none absolute inset-[2px] rounded-[3px] bg-transparent transition-colors group-hover/close:bg-foreground/10 group-focus-visible/close:bg-foreground/10"
-                        />
-                        <X className="relative z-10 size-[16px]" />
-                      </button>
-                    ) : null}
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  className="max-w-xs border border-surface-border bg-widget px-3 py-2 text-body text-widget-foreground"
-                >
-                  {displayTitle}
-                </TooltipContent>
-              </Tooltip>
-            );
-          })}
+                      />
 
-          {onCreate ? (
-            <button
-              type="button"
-              aria-label="New tab"
-              onClick={onCreate}
-              style={{ transform: `translateX(${String(totalWidth)}px)` }}
-              className="group/create absolute top-0 left-0 z-1 flex size-[32px] items-center justify-center text-description transition-colors hover:text-foreground focus-visible:outline-none"
-            >
-              <span className="flex size-[24px] items-center justify-center rounded-[4px] group-hover/create:bg-panel group-focus-visible/create:bg-panel">
-                <Plus className="size-[16px]" />
-              </span>
-            </button>
-          ) : null}
+                      {isRenaming ? (
+                        <input
+                          ref={renameInputRef}
+                          value={draftTitle}
+                          readOnly={renamePending}
+                          aria-busy={renamePending}
+                          onChange={(event) => {
+                            dispatchInteraction({
+                              type: 'renameDraftChanged',
+                              title: event.target.value,
+                            });
+                          }}
+                          onBlur={() => {
+                            if (renameError === undefined) void finishRename();
+                          }}
+                          onKeyDown={handleRenameKeyDown}
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                          className="relative z-10 mx-[8px] h-[24px] w-full min-w-0 bg-transparent text-[13px] outline-none"
+                          aria-label="Rename tab"
+                        />
+                      ) : (
+                        <span
+                          className={cn(
+                            'pointer-events-none relative z-10 flex min-w-0 flex-1 items-center gap-[6px] pl-[8px] text-left whitespace-nowrap',
+                            onClose ? 'pr-[28px]' : 'pr-[8px]',
+                          )}
+                          data-testid="editor-tab-title"
+                        >
+                          {tab.icon ? <span className="shrink-0">{tab.icon}</span> : null}
+                          <span
+                            className="min-w-0 overflow-hidden [text-overflow:clip]"
+                            style={
+                              isOverflowing
+                                ? {
+                                    maskImage:
+                                      'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                                    WebkitMaskImage:
+                                      'linear-gradient(to right, black calc(100% - 24px), transparent)',
+                                  }
+                                : undefined
+                            }
+                          >
+                            {displayTitle}
+                          </span>
+                        </span>
+                      )}
+
+                      <span
+                        ref={(element) => {
+                          if (element) titleMeasureRefs.current.set(id, element);
+                          else titleMeasureRefs.current.delete(id);
+                        }}
+                        aria-hidden="true"
+                        data-testid="editor-tab-title-measure"
+                        className="pointer-events-none invisible absolute w-max text-[13px] whitespace-nowrap"
+                      >
+                        {displayTitle}
+                      </span>
+
+                      {onClose && !isRenaming ? (
+                        <button
+                          type="button"
+                          aria-label="Close tab"
+                          onPointerDown={(event) => {
+                            event.stopPropagation();
+                          }}
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            onClose(id);
+                          }}
+                          className={cn(
+                            'group/close absolute top-[4px] right-[2px] z-20 flex size-[24px] items-center justify-center transition-[color,opacity] hover:text-foreground focus-visible:text-foreground focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100 group-focus-within:opacity-100',
+                            isActive
+                              ? 'text-foreground/70 opacity-100'
+                              : 'text-description opacity-0',
+                          )}
+                        >
+                          <span
+                            aria-hidden="true"
+                            data-testid="close-tab-highlight"
+                            className="pointer-events-none absolute inset-[2px] rounded-[3px] bg-transparent transition-colors group-hover/close:bg-foreground/10 group-focus-visible/close:bg-foreground/10"
+                          />
+                          <X className="relative z-10 size-[16px]" />
+                        </button>
+                      ) : null}
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="bottom"
+                    className="max-w-xs border border-surface-border bg-widget px-3 py-2 text-body text-widget-foreground"
+                  >
+                    {displayTitle}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
+
+            {onCreate ? (
+              <button
+                type="button"
+                aria-label="New tab"
+                onClick={onCreate}
+                style={{ transform: `translateX(${String(totalWidth)}px)` }}
+                className="group/create absolute top-0 left-0 z-1 flex size-[32px] items-center justify-center text-description transition-colors hover:text-foreground focus-visible:outline-none"
+              >
+                <span className="flex size-[24px] items-center justify-center rounded-[4px] group-hover/create:bg-panel group-focus-visible/create:bg-panel">
+                  <Plus className="size-[16px]" />
+                </span>
+              </button>
+            ) : null}
+          </div>
         </div>
+        {edges.left && (
+          <button
+            type="button"
+            aria-label="Scroll tabs left"
+            className="absolute left-0 top-3 z-30 rounded bg-panel p-1"
+            onClick={() => {
+              const element = scrollRef.current;
+              if (element) element.scrollLeft -= element.clientWidth / 2;
+            }}
+          >
+            <ChevronLeft className="size-3" />
+          </button>
+        )}
+        {edges.right && (
+          <button
+            type="button"
+            aria-label="Scroll tabs right"
+            className="absolute right-0 top-3 z-30 rounded bg-panel p-1"
+            onClick={() => {
+              const element = scrollRef.current;
+              if (element) element.scrollLeft += element.clientWidth / 2;
+            }}
+          >
+            <ChevronRight className="size-3" />
+          </button>
+        )}
       </div>
+      {renameError !== undefined && (
+        <OperationError
+          title="Couldn't rename tab"
+          error={renameError}
+          onRetry={() => void finishRename()}
+        />
+      )}
     </TooltipProvider>
   );
 }

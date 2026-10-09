@@ -1,3 +1,4 @@
+import { RunError } from '../common/components/RunError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -83,6 +84,7 @@ export function AnnotationAi({
   const restored = useRequestRestoration('annotation', tab.analysis, [base, tab.id]);
   const running = tasks.find((t) => t.tab_id === tab.id && t.finished_at === null);
   const run = useMutation({
+    meta: { reportError: false },
     mutationFn: (value: annotationApi.AnnotationRequest) =>
       annotationApi.runAnnotation(base, tab.id, value),
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'annotation'] }),
@@ -273,9 +275,9 @@ export function AnnotationAi({
               {(['batch_size', 'retries', 'concurrency'] as const).map((key) => (
                 <label className="min-w-32 flex-1" key={key}>
                   {key === 'batch_size'
-                    ? 'Batch size'
+                    ? 'Rows per request'
                     : key === 'retries'
-                      ? 'Retries'
+                      ? 'Retries per request'
                       : 'Concurrent requests'}
                   <Input
                     type="number"
@@ -395,7 +397,7 @@ export function AnnotationAi({
             reason={
               reason ??
               (!writable
-                ? 'Materialize the source in place before Run.'
+                ? 'Materialise the source in place before Run.'
                 : !request.setup.annotation
                   ? 'Choose an annotation destination before Run.'
                   : undefined)
@@ -429,6 +431,14 @@ export function AnnotationAi({
           </AnalysisAction>
         </div>
       </section>
+      <RunError
+        tabId={tab.id}
+        name="AI Annotation"
+        tasks={tasks}
+        error={run.error}
+        active={active}
+        busy={busy}
+      />
       {busy ? (
         <AnalysisProgress
           name={tab.name}

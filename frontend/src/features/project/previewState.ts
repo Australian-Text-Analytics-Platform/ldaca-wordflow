@@ -1,4 +1,4 @@
-import { sameTarget, targetKey, type DataTarget } from '@/features/project/objects';
+import { objectRef, sameTarget, targetKey, type DataTarget } from '@/features/project/objects';
 import { create } from 'zustand';
 import { initialEditorDraft, type EditorDraft, type EditorTool } from './data-editor/expressions';
 
@@ -48,11 +48,14 @@ export const useProjectPreview = create<State>((set) => ({
     set((state) => (sameTarget(state.active, id) ? { active: null, editor: null } : state));
   },
   rename: (old, next) => {
-    set((state) =>
-      sameTarget(state.active, old)
-        ? { active: next, editor: state.editor ? { ...state.editor, target: next } : null }
-        : state,
-    );
+    set((state) => {
+      if (!sameTarget(state.active, old)) return state;
+      const active =
+        typeof state.active === 'string' && objectRef(next).schema === 'data'
+          ? objectRef(next).name
+          : next;
+      return { active, editor: state.editor ? { ...state.editor, target: active } : null };
+    });
   },
   retainObjects: (keys) => {
     set((state) =>

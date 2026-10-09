@@ -14,7 +14,7 @@ describe('ProjectControls', () => {
 
     expect(screen.queryByRole('button', { name: 'Rename project' })).not.toBeInTheDocument();
     expect(screen.queryByText('Main Project')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Project Graph', exact: true })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Editor', exact: true })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument();
   });
 });

@@ -1,14 +1,4 @@
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -111,7 +101,6 @@ export function NodeActionsToolbar({
 }: NodeActionsToolbarProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState(node.name);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   /** Opens the rename dialog seeded with the current name. */
   const openRename = () => {
@@ -149,7 +138,7 @@ export function NodeActionsToolbar({
                 onMaterialize(node.id);
               }}
             >
-              Materialize
+              Materialise
             </DropdownMenuItem>
           )}
           <NodeMoreMenu
@@ -171,7 +160,7 @@ export function NodeActionsToolbar({
           <DropdownMenuItem
             className="text-error focus:text-error"
             onSelect={() => {
-              setDeleteOpen(true);
+              onDelete(node.id);
             }}
           >
             Delete
@@ -204,29 +193,6 @@ export function NodeActionsToolbar({
         onValueChange={setRenameValue}
         onRename={(name) => onRename(node.id, name)}
       />
-
-      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete &ldquo;{node.name}&rdquo;?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete this data block and its data. This action cannot be
-              undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-error text-button-foreground hover:bg-error/90"
-              onClick={() => {
-                onDelete(node.id);
-              }}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

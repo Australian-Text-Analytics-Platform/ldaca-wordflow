@@ -84,7 +84,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                 Slice
               </TabsTrigger>
               <TabsTrigger value="random_sample" disabled={!hasSelection}>
-                Random Sample
+                Random sample
               </TabsTrigger>
             </TabsList>
 
@@ -92,8 +92,8 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <Label htmlFor="slice-offset">Offset</Label>
-                    <HelpIcon targetKey="preprocessing.slice.offset" label="Slice offset" />
+                    <Label htmlFor="slice-offset">Start row</Label>
+                    <HelpIcon targetKey="preprocessing.slice.offset" label="Start row" />
                   </div>
                   <Input
                     id="slice-offset"
@@ -105,9 +105,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                     }}
                     disabled={!hasSelection}
                   />
-                  <p className="text-label-secondary text-description">
-                    Zero-based index of the first row to include.
-                  </p>
+                  <p className="text-label-secondary text-description">0 means the first row.</p>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -189,7 +187,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
                     </Label>
                   </div>
                   <p className="text-label-secondary text-description">
-                    Seeded parallel sampling can vary. Preview and Apply run separately. Materialize
+                    Seeded parallel sampling can vary. Preview and Apply run separately. Materialise
                     the resulting View from the graph menu to keep a fixed sample.
                   </p>
                 </div>
@@ -245,7 +243,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
               ) : (
                 <>
                   <Plus className="mr-2 h-4 w-4" />
-                  Create Data Block
+                  Add to Project
                 </>
               )}
             </Button>

@@ -21,10 +21,11 @@ separate ephemeral embedded-backend ports discovered through Tauri IPC.
 
 ## Optional build variables
 
-- `VITE_DOCS_ORIGIN`: online documentation root, with bundled documentation as
-  fallback. May be set in `.env.local` during development.
 - `VITE_DEPLOYMENT_ID`: deployment label displayed in Feedback.
 
 App version, build revision and build date are supplied by Vite from the
 package and checkout. The retired FastAPI OAuth and API-base settings do not
 configure the current project interface.
+
+Help, Information and References load only bundled content. There is no remote
+documentation origin setting. Normal external links remain available.

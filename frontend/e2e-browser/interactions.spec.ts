@@ -54,9 +54,9 @@ it('restored native controls retain selection, pagination and SQL editing', asyn
     .perform(true);
   const position = await (await dragged.getElement()).execute((element) => element.style.transform);
   await role('button', { name: 'Change data type for column category' }).click();
-  await role('menuitemradio', { name: 'categorical', exact: true }).click();
+  await role('menuitemradio', { name: 'category', exact: true }).click();
   await expect(role('button', { name: 'Change data type for column category' })).toHaveText(
-    expect.stringContaining('categorical'),
+    expect.stringContaining('category'),
   );
   expect(await (await dragged.getElement()).execute((element) => element.style.transform)).toBe(
     position,
@@ -87,24 +87,18 @@ it('restored native controls retain selection, pagination and SQL editing', asyn
   expect(invalidPages).toEqual([]);
   const rail = role('button', { name: 'Zoom in' });
   const box = await rect(rail);
-  await browser
-    .action('pointer', { id: 'mouse' })
-    .move({ x: Math.round(box.x + 5), y: Math.round(box.y + 5), duration: 0 })
-    .perform(true);
-  const transfer = browser.action('pointer', { id: 'mouse' });
-  for (let step = 1; step <= 15; step++)
-    transfer.move({ x: Math.round(box.x + 5 + step * 7), y: Math.round(box.y + 5), duration: 20 });
-  await transfer.perform(true);
-  await browser.waitUntil(async () => (await rect(rail)).width > 100);
+  await hover(rail);
+  await expect(role('tooltip', { name: 'Zoom in', exact: true })).toBeDisplayed();
+  expect((await rect(rail)).width).toBe(box.width);
   for (let i = 0; i < 7; i++) {
     await role('button', { name: 'Zoom out' }).click();
   }
   await expect(testId('custom-node-compact-card')).toBeDisplayed();
   await role('button', { name: 'Fit view' }).click();
-  await role('button', { name: 'Rename node' }).click();
-  await press('ControlOrMeta+a', role('textbox', { name: 'Node name' }));
-  await role('textbox', { name: 'Node name' }).addValue('renamed_pages');
-  await press('Enter', role('textbox', { name: 'Node name' }));
+  await role('button', { name: 'Rename Data Block' }).click();
+  await press('ControlOrMeta+a', role('textbox', { name: 'Data Block name' }));
+  await role('textbox', { name: 'Data Block name' }).addValue('renamed_pages');
+  await press('Enter', role('textbox', { name: 'Data Block name' }));
   await expect(role('button', { name: 'Deselect renamed_pages' })).toBeDisplayed();
   const row = role('button', { name: 'Deselect renamed_pages' });
   await hover(row);
@@ -203,7 +197,7 @@ for (const kind of ['table', 'view'] as const) {
     await role('button', { name: 'Cast', exact: true }, dialog).click();
     await expect(dialog).not.toExist();
     await expect(role('button', { name: 'Change data type for column created_at' })).toHaveText(
-      expect.stringContaining('datetime'),
+      expect.stringContaining('date and time'),
     );
     const checked = await post('/api/project/sql', {
       statements: [
@@ -219,7 +213,7 @@ for (const kind of ['table', 'view'] as const) {
     if (kind === 'view') {
       await role('button', { name: 'Undo Data Block edit' }).click();
       await expect(role('button', { name: 'Change data type for column created_at' })).toHaveText(
-        expect.stringContaining('string'),
+        expect.stringContaining('text'),
       );
     } else {
       await expect(role('button', { name: 'Undo Data Block edit' })).toBeDisabled();
@@ -241,10 +235,10 @@ it('native datetime targets stay explicit and invalid casts report once', async 
   await role('button', { name: 'Select cast_targets', exact: true }).click();
   const header = role('button', { name: 'Change data type for column stamp' });
   await header.click();
-  await role('menuitemradio', { name: 'datetime', exact: true }).click();
-  const dialog = role('dialog', { name: 'Convert stamp to datetime', exact: true });
+  await role('menuitemradio', { name: 'date and time', exact: true }).click();
+  const dialog = role('dialog', { name: 'Convert stamp to date and time', exact: true });
   await expect(dialog).not.toExist();
-  await expect(header).toHaveText(expect.stringContaining('datetime'));
+  await expect(header).toHaveText(expect.stringContaining('date and time'));
   const check = await post('/api/project/sql', {
     statements: [
       {
@@ -254,25 +248,26 @@ it('native datetime targets stay explicit and invalid casts report once', async 
   });
   expect(check.ok).toBe(true);
   await header.click();
-  await expect(role('menuitemradio', { name: 'datetime with timezone', exact: true })).not.toExist();
+  await expect(role('menuitemradio', { name: 'date and time with timezone', exact: true })).not.toExist();
   await role('menuitem', { name: 'More SQL types…', exact: true }).click();
   const typeDialog = role('dialog', { name: 'Cast column' });
   await role('textbox', { name: 'SQL type' }, typeDialog).setValue('TIMESTAMPTZ');
   await role('button', { name: 'Cast', exact: true }, typeDialog).click();
   await expect(typeDialog).not.toExist();
-  await expect(header).toHaveText(expect.stringContaining('datetime with timezone'));
+  await expect(header).toHaveText(expect.stringContaining('date and time with timezone'));
   expectAppError(/Could not parse string/);
   await role('button', { name: 'Change data type for column broken' }).click();
-  await role('menuitemradio', { name: 'datetime', exact: true }).click();
-  await role('textbox', { name: 'Datetime format' }, role('dialog', { name: 'Convert broken to datetime', exact: true })).setValue('%Y-%m-%d');
+  await role('menuitemradio', { name: 'date and time', exact: true }).click();
+  await role('textbox', { name: 'Date and time format' }, role('dialog', { name: 'Convert broken to date and time', exact: true })).setValue('%Y-%m-%d');
   await role(
     'button',
     { name: 'Convert', exact: true },
-    role('dialog', { name: 'Convert broken to datetime', exact: true }),
+    role('dialog', { name: 'Convert broken to date and time', exact: true }),
   ).click();
-  await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(1);
-  await role('button', { name: 'Cancel', exact: true }, role('dialog', { name: 'Convert broken to datetime', exact: true })).click();
+  await expect(role('alert', { name: "Couldn't convert date and time" })).toHaveText(expect.stringContaining('Could not parse string'));
+  await expect(browser.$('[data-sonner-toast]')).not.toExist();
+  await role('button', { name: 'Cancel', exact: true }, role('dialog', { name: 'Convert broken to date and time', exact: true })).click();
   await expect(role('button', { name: 'Change data type for column broken' })).toHaveText(
-    expect.stringContaining('string'),
+    expect.stringContaining('text'),
   );
 });

@@ -123,9 +123,9 @@ const cases: Record<BuildOperation['kind'], [string, BuildOperation['arguments']
   starts_with: ['txt', { value: ' A' }, true],
   ends_with: ['txt', { value: 'ç ' }, true],
   split: ['txt', { delimiter: ' ' }, ['', 'Abç', 'Abç', '']],
-  parse_datetime: ['date_text', { format: '%Y-%m-%d %H:%M:%S.%f %z' }, '2026-09-15T02:34:56.123Z'],
+  parse_datetime: ['date_text', { format: '%Y-%m-%d %H:%M:%S.%f %z' }, '2026-09-15T02:34:56.123456Z'],
   date_part: ['d', { part: 'isodow' }, '2'],
-  date_trunc: ['ts', { unit: 'day' }, '2026-09-15T00:00:00.000Z'],
+  date_trunc: ['ts', { unit: 'day' }, '2026-09-15T00:00:00.000000Z'],
   format_datetime: ['ts', { format: '%Y-%m-%d %H:%M:%S.%f' }, '2026-09-15 12:34:56.123456'],
   not: ['b', {}, false],
   is_true: ['b', {}, true],
@@ -318,7 +318,7 @@ it('Build menus, parameter editing and chip contrast work in both themes and nar
   ], { all: true });
   await browser.setViewport({ width: 1100, height: 850 });
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'Build', exact: true }).click();
   const pane = role('tabpanel', { name: 'Build', exact: true });
   await role('button', { name: 'Add data block', exact: true }, pane).click();
@@ -514,7 +514,7 @@ it('handwritten Build expressions create Views, preserve inputs and reject confl
 it('Build SQL handoff inserts columns at the cursor, retains output on errors and reconstructs edited SQL', async () => {
   await seed();
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'Build', exact: true }).click();
   const pane = role('tabpanel', { name: 'Build', exact: true });
   await role('button', { name: 'Add data block', exact: true }, pane).click();
@@ -537,7 +537,7 @@ it('Build SQL handoff inserts columns at the cursor, retains output on errors an
     text('Outdated preview — showing the last successful result.', {}, pane),
   ).toBeDisplayed();
   await expect(role('cell', { name: 'ABÇ ABÇ', exact: true }, pane)).toBeDisplayed();
-  await expect(role('button', { name: 'Create Data Block', exact: true }, pane)).toBeEnabled();
+  await expect(role('button', { name: 'Add to Project', exact: true }, pane)).toBeEnabled();
   await expect(browser.$('[data-sonner-toast]')).not.toExist();
   await role('button', { name: 'New visual expression' }, pane).click();
   await role('button', {name:'Keep SQL'}).click();
@@ -600,7 +600,7 @@ it('palette drag copies, nested drops move subtrees, and second-root cancellatio
   await browser.setViewport({ width: 1400, height: 1100 });
   await seed();
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'Build', exact: true }).click();
   const pane = role('tabpanel', { name: 'Build', exact: true });
   await role('button', { name: 'Add data block', exact: true }, pane).click();

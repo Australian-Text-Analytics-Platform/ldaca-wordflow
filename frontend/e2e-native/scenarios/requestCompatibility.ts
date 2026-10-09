@@ -78,8 +78,8 @@ export async function requestCompatibilityScenario(
     { resources: ['tabs'] },
   );
   await browser.refresh();
-  await $(`button=${plot ? 'Plots' : title}`).waitForEnabled();
-  await $(`button=${plot ? 'Plots' : title}`).click();
+  await $(`button[aria-label="${plot ? 'Plots' : title}"]`).waitForEnabled();
+  await $(`button[aria-label="${plot ? 'Plots' : title}"]`).click();
   if (plot) await $('[role="tablist"][aria-label="Plot modes"]').$(`[role="tab"]=${title}`).click();
   const compatibilityTab = $(`[role="tab"]*=${title} compatibility`);
   await compatibilityTab.execute((element) => {

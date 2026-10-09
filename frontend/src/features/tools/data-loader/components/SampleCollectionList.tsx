@@ -17,8 +17,8 @@ export interface SampleCollection {
 
 const TOOL_LABELS: Record<string, string> = {
   concordance: 'Concordance',
-  'token-frequency': 'Token Frequency',
-  preprocessing: 'Preprocessing',
+  'token-frequency': 'Frequency',
+  preprocessing: 'Data Builder',
   'data-loader': 'Data Loader',
   'topic-modeling': 'Topic Modelling',
   'sequential-analysis': 'Sequential Analysis',

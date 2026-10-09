@@ -41,9 +41,12 @@ it('one toggled preview switches data without changing selection or graph positi
     })
     .perform(true);
   const viewport = graph.$('.react-flow__viewport');
-  const position = await viewport.getAttribute('style');
+  let position = await viewport.getAttribute('style');
   await preview().click();
   await overlay().waitForStable();
+  await role('button', { name: 'Fit view', exact: true }).click();
+  await hover(card('alpha'));
+  position = await viewport.getAttribute('style');
   await expect(preview()).toHaveAttribute('aria-pressed', 'true');
   await expect(title()).toHaveText('alpha');
   await expect(roles('tab', {}, overlay())).toBeElementsArrayOfSize(0);
@@ -80,10 +83,10 @@ it('one toggled preview switches data without changing selection or graph positi
   await role('button', { name: 'Select beta', exact: true }).click();
   await expect(title()).toHaveText('beta');
   await keyboardPreview('alpha');
-  await role('button', { name: 'Rename node' }).click();
-  await press('ControlOrMeta+a', role('textbox', { name: 'Node name' }));
-  await role('textbox', { name: 'Node name' }).addValue('renamed');
-  await press('Enter', role('textbox', { name: 'Node name' }));
+  await role('button', { name: 'Rename Data Block' }).click();
+  await press('ControlOrMeta+a', role('textbox', { name: 'Data Block name' }));
+  await role('textbox', { name: 'Data Block name' }).addValue('renamed');
+  await press('Enter', role('textbox', { name: 'Data Block name' }));
   await expect(title()).toHaveText('renamed');
   await expect(role('cell', { name: '20', exact: true })).toBeDisplayed();
   const row = role('button', { name: 'Select renamed', exact: true });
@@ -105,7 +108,8 @@ it('one toggled preview switches data without changing selection or graph positi
   expectAppError(/Could not drop the table.*main key table.*beta_guard/i);
   await role('button', { name: 'Delete (2)', exact: true }).click();
   await role('button', { name: /Delete/ }, role('alertdialog')).click();
-  await expect(role('button', { name: 'Select renamed_cpy_1', exact: true })).not.toExist();
+  await expect(role('button', { name: 'Deselect renamed_cpy_1', exact: true, hidden: true })).toExist();
+  await role('button', { name: 'Cancel', exact: true }, role('alertdialog')).click();
   await expect(title()).toHaveText('beta');
   await role('button', { name: 'Close preview' }).click();
   await expect(overlay()).not.toExist();

@@ -22,7 +22,7 @@ interface ProjectDataHeaderProps {
  * Flow: measure the label against its wrapper, switch to RTL clipping when it
  * overflows, and draw a muted left-edge fade over the hidden prefix.
  */
-function HeaderNodeLabel({ label }: { label: string }) {
+function HeaderNodeLabel({ label, onRename }: { label: string; onRename?: () => void }) {
   const wrapRef = useRef<HTMLSpanElement>(null);
   const textRef = useRef<HTMLSpanElement>(null);
   const [overflowing, setOverflowing] = useState(false);
@@ -50,6 +50,7 @@ function HeaderNodeLabel({ label }: { label: string }) {
       className="relative min-w-0 flex-1 overflow-hidden"
       data-testid="project-data-node-label"
       title={label}
+      onDoubleClick={onRename}
     >
       <span
         ref={textRef}
@@ -167,17 +168,17 @@ export const ProjectDataHeader = ({
                   setRenameDraft(undefined);
                 }
               }}
-              aria-label="Node name"
+              aria-label="Data Block name"
             />
           ) : (
-            <HeaderNodeLabel label={info.nodeLabel} />
+            <HeaderNodeLabel label={info.nodeLabel} onRename={onRename ? startRename : undefined} />
           )}
           {onRename && !isRenaming && (
             <button
               className="inline-flex shrink-0 items-center gap-1 rounded-sm border px-1.5 py-0.5 text-label-secondary text-description hover:text-foreground"
               onClick={startRename}
               title="Rename"
-              aria-label="Rename node"
+              aria-label="Rename Data Block"
             >
               <Pencil className="h-3 w-3" />
               Rename

@@ -295,7 +295,7 @@ function AnnotationTab({
                   materialize.mutate(objectsApi.objectRef(setup.source));
                 }}
               >
-                Materialize in place
+                Materialise in place
               </Button>
             </div>
           )}
@@ -382,7 +382,7 @@ function AnnotationTab({
                     materialize.mutate(objectsApi.objectRef(setup.codebook.source));
                 }}
               >
-                Materialize Codebook in place
+                Materialise Codebook in place
               </Button>
             )}
           </div>

@@ -135,7 +135,7 @@ impl Request {
             let is_table: bool = conn.query_row("SELECT count(*)=1 FROM duckdb_tables() WHERE database_name=current_database() AND schema_name=? AND table_name=?", params![relation.schema, relation.name], |r| r.get(0))?;
             if !is_table {
                 return Err(Error::invalid(
-                    "Materialize this View in place before running Annotation",
+                    "Materialise this View in place before running Annotation",
                 ));
             }
             if self.setup.annotation.eq_ignore_ascii_case("rowid") {

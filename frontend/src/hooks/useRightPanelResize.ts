@@ -11,7 +11,7 @@ import {
  * Percent-based right panel resize + collapse toggle.
  *
  * Collapse is a real visibility mode owned by the shell; it does not rewrite
- * the persisted split ratio, so expanding restores the exact live layout
+ * the live split ratio, so expanding restores the exact live layout
  * without a second ratio state.
  */
 export const useRightPanelResize = () => {
@@ -32,7 +32,6 @@ export const useRightPanelResize = () => {
     min: ASIDE_PANEL_MIN_RATIO,
     max: ASIDE_PANEL_MAX_RATIO,
     maxPixels: ASIDE_PANEL_MAX_PIXELS,
-    persistKey: 'ldaca.layout.asidePanelRatio',
     onLiveUpdate: (next) => {
       if (mainRef.current) mainRef.current.style.width = `${String((1 - next) * 100)}%`;
       if (asideRef.current) asideRef.current.style.width = `${String(next * 100)}%`;

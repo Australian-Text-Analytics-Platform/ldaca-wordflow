@@ -474,9 +474,8 @@ mod tests {
         for format in [
             ExportFormat::Csv,
             ExportFormat::Json,
-            ExportFormat::Ndjson,
+            ExportFormat::Xlsx,
             ExportFormat::Parquet,
-            ExportFormat::Ipc,
         ] {
             let target = directory
                 .path()
@@ -504,7 +503,7 @@ mod tests {
         .wait()
         .await
         .unwrap();
-        assert_eq!(std::fs::read_to_string(explicit).unwrap(), "n\n7\n");
+        assert_eq!(std::fs::read_to_string(explicit).unwrap(), "\u{feff}n\n7\n");
         let target = directory.path().join("detached.csv");
         let task = start_export(
             project.clone(),

@@ -1,14 +1,26 @@
+import type { NativeTask } from './tasksApi';
+import { RunError } from '@/features/tools/common/components/RunError';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import * as filesApi from '@/features/project/filesApi';
+import { OperationError } from './OperationError';
 import { SampleCollectionList } from '@/features/tools/data-loader/components/SampleCollectionList';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
-export default function NativeSampleImport({ base, active }: { base: string; active: boolean }) {
+export default function NativeSampleImport({
+  base,
+  active,
+  tasks = [],
+}: {
+  base: string;
+  active: boolean;
+  tasks?: NativeTask[];
+}) {
   const imported = useMutation({
+    meta: { reportError: false },
     mutationFn: (input: filesApi.SampleImportRequest) => filesApi.importSamples(base, input),
     onSuccess: () => {
       setSelected([]);
@@ -23,11 +35,14 @@ export default function NativeSampleImport({ base, active }: { base: string; act
     enabled: active,
     staleTime: 0,
     retry: false,
+    meta: { reportError: false },
   });
-  const collections = (catalogue.data?.collections ?? []).map((collection) => ({
-    ...collection,
-    files: collection.files.filter((file) => file.path.endsWith('.parquet')),
-  }));
+  const collections = (catalogue.data?.collections ?? [])
+    .map((collection) => ({
+      ...collection,
+      files: collection.files.filter((file) => file.path.endsWith('.parquet')),
+    }))
+    .filter((collection) => collection.files.length > 0);
   const selectedFiles = collections
     .flatMap((collection) => collection.files)
     .filter((file) => selected.includes(file.path))
@@ -36,7 +51,8 @@ export default function NativeSampleImport({ base, active }: { base: string; act
     <>
       <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-5">
         <p className="mb-4 text-body text-description">
-          Choose sample files for this project. Expand a collection to select individual files.
+          Choose sample files for this project. Expand a collection to select individual files. Only
+          collections with Parquet files are listed.
         </p>
         {catalogue.isPending && (
           <div
@@ -49,19 +65,18 @@ export default function NativeSampleImport({ base, active }: { base: string; act
             <Skeleton className="h-16 w-full" />
           </div>
         )}
-        {catalogue.isError && (
-          <div className="flex flex-col items-start gap-2">
-            <p className="text-body text-description">Sample collections could not be loaded.</p>
-            <Button
-              variant="outline"
-              onClick={() => {
+        {active &&
+          !catalogue.isFetching &&
+          catalogue.error &&
+          catalogue.error.name !== 'AbortError' && (
+            <OperationError
+              title="Could not load sample collections"
+              error={catalogue.error}
+              onRetry={() => {
                 void catalogue.refetch();
               }}
-            >
-              Retry
-            </Button>
-          </div>
-        )}
+            />
+          )}
         {catalogue.data && (
           <div>
             <SampleCollectionList
@@ -115,6 +130,22 @@ export default function NativeSampleImport({ base, active }: { base: string; act
         )}
       </div>
       <footer className="flex shrink-0 flex-col gap-3 border-t pt-3">
+        <RunError
+          name="Import"
+          title="Could not import samples"
+          taskLabel="Import sample data"
+          tasks={tasks}
+          active={active}
+          busy={imported.isPending}
+          error={imported.error}
+          onRetry={
+            imported.error && imported.variables
+              ? () => {
+                  if (imported.variables) imported.mutate(imported.variables);
+                }
+              : undefined
+          }
+        />
         <div className="flex shrink-0 items-start gap-2">
           <Checkbox
             id="sample-import-as-views"

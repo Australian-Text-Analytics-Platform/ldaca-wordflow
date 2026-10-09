@@ -41,7 +41,7 @@ vi.mock('./ProjectView', () => ({
           setActiveTool('filter');
         }}
       >
-        Preprocessing
+        Data Builder
       </button>
     </div>
   ),
@@ -140,8 +140,8 @@ describe('native document snapshot', () => {
     await waitFor(() => {
       expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ Frequency 1');
     });
-    await user.click(screen.getByRole('button', { name: 'Preprocessing' }));
-    expect(location).toHaveAttribute('title', 'Untitled ▸ Preprocessing');
+    await user.click(screen.getByRole('button', { name: 'Data Builder' }));
+    expect(location).toHaveAttribute('title', 'Untitled ▸ Data Builder');
     await user.click(screen.getByRole('button', { name: 'Data Loader' }));
     expect(location).toHaveAttribute('title', 'Untitled ▸ Data Loader');
     expect(mocks.tabs).not.toHaveBeenCalled();

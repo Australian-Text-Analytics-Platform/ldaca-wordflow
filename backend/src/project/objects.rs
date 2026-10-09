@@ -104,6 +104,102 @@ pub(super) fn catalogue_relations(conn: &Connection) -> Result<Vec<Relation>> {
 }
 
 impl Database {
+    /// Drop a confirmed dependent closure in one transaction, rechecking the current catalogue.
+    pub(super) fn delete_objects(&mut self, targets: Vec<ObjectTarget>) -> Result<Vec<Relation>> {
+        if targets.is_empty() {
+            return Err(Error::invalid("Select at least one Data Block"));
+        }
+        let tx = self.conn.transaction()?;
+        let graph = inspect_dependencies(&tx, &self.cancellation)?;
+        let selected = targets
+            .iter()
+            .map(|target| {
+                graph
+                    .nodes
+                    .iter()
+                    .find(|node| {
+                        node.object
+                            .schema
+                            .eq_ignore_ascii_case(target.schema.as_deref().unwrap_or("data"))
+                            && node.object.name.eq_ignore_ascii_case(&target.name)
+                            && (target.schema.is_some() || node.registered)
+                    })
+                    .map(|node| node.object.clone())
+                    .ok_or_else(|| Error::new("object_not_found", "Database object is unavailable"))
+            })
+            .collect::<Result<std::collections::HashSet<_>>>()?;
+        for edge in &graph.edges {
+            if selected.contains(&edge.source) && !selected.contains(&edge.target) {
+                return Err(Error::new(
+                    "dependent_objects",
+                    format!(
+                        "{} also depends on this selection. Review the dependent Data Blocks again.",
+                        edge.target.sql()
+                    ),
+                ));
+            }
+        }
+        if graph
+            .nodes
+            .iter()
+            .any(|node| !selected.contains(&node.object) && node.uncertain)
+        {
+            return Err(Error::new(
+                "uncertain_dependencies",
+                "A View has dynamic SQL dependencies. Resolve them before deleting this selection.",
+            ));
+        }
+        let mut remaining = selected.clone();
+        let mut ordered = Vec::new();
+        while !remaining.is_empty() {
+            let mut leaves = remaining
+                .iter()
+                .filter(|object| {
+                    !graph
+                        .edges
+                        .iter()
+                        .any(|edge| &edge.source == *object && remaining.contains(&edge.target))
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            if leaves.is_empty() {
+                return Err(Error::invalid("Dependent Data Blocks contain a cycle"));
+            }
+            leaves.sort_by_key(Relation::sql);
+            for object in leaves {
+                remaining.remove(&object);
+                ordered.push(object);
+            }
+        }
+        let change = PendingChange::new(
+            &tx,
+            ChangeScope {
+                objects: ordered.clone(),
+                resources: vec![changes::Resource::Graph],
+                ..Default::default()
+            },
+            &self.cancellation,
+        );
+        for relation in &ordered {
+            let node = graph
+                .nodes
+                .iter()
+                .find(|node| &node.object == relation)
+                .ok_or_else(|| Error::invalid("Data Block is unavailable"))?;
+            arrow_metadata::delete_relation(&tx, relation)?;
+            if node.registered {
+                metadata::delete_node(&tx, &relation.name)?;
+            }
+            if node.kind != "missing" {
+                let kind = if node.kind == "view" { "VIEW" } else { "TABLE" };
+                tx.execute_batch(&format!("DROP {kind} {}", relation.sql()))?;
+            }
+        }
+        check_cancellation(&self.cancellation)?;
+        change.commit(tx, &self.changes, &self.cancellation)?;
+        Ok(ordered)
+    }
+
     pub(super) fn dependency_graph(&self) -> Result<DependencyGraph> {
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         let graph = inspect_dependencies(&self.conn, &self.cancellation)?;
@@ -187,6 +283,34 @@ pub(super) fn inspect_dependencies(
         }
         nodes.push(node);
     }
+    // A registered Data Block can outlive its SQL object. Keep it selectable for
+    // atomic metadata cleanup, as the original single-Block deletion allowed.
+    let registered = conn
+        .prepare("SELECT table_name,visible,color,document_column FROM wordflow.nodes")?
+        .query_map([], read_node)?
+        .collect::<duckdb::Result<Vec<_>>>()?;
+    for node in registered {
+        if !nodes.iter().any(|entry| {
+            entry.object.schema.eq_ignore_ascii_case("data")
+                && entry.object.name.eq_ignore_ascii_case(&node.table_name)
+        }) {
+            nodes.push(DependencyNode {
+                object: node.relation(),
+                kind: "missing".into(),
+                column_count: None,
+                registered: true,
+                visible: node.visible,
+                color: node.color,
+                can_undo: false,
+                uncertain: false,
+                diagnostic: Some(Error::new(
+                    "object_unavailable",
+                    "Registered object is unavailable",
+                )),
+            });
+        }
+    }
+    nodes.sort_by_key(|node| node.object.sql());
     Ok(DependencyGraph { nodes, edges })
 }
 

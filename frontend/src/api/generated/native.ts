@@ -929,6 +929,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/objects/delete': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['api_delete_objects'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/objects/{schema}/{table_name}/cell-edit': {
     parameters: {
       query?: never;
@@ -2405,6 +2421,9 @@ export interface components {
           /** @enum {string} */
           action: 'remove';
         };
+    DeleteObjects: {
+      objects: components['schemas']['ObjectTarget'][];
+    };
     DependencyEdge: {
       source: components['schemas']['Relation'];
       target: components['schemas']['Relation'];
@@ -8150,6 +8169,48 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  api_delete_objects: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DeleteObjects'];
+      };
+    };
+    responses: {
+      /** @description Atomically deleted objects in dependent-first order */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Relation'][];
+        };
+      };
+      /** @description Invalid selection or mutation failed */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Mutation conflict */
+      409: {
         headers: {
           [name: string]: unknown;
         };

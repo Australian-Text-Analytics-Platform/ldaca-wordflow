@@ -1,8 +1,9 @@
 import { suggestDataBlockNames } from '../../src/features/project/automaticNames';
-import { $, expect } from '@wdio/globals';
+import { $, browser, expect } from '@wdio/globals';
 import * as analysesApi from '@/features/tools/common/analysisApi';
 import * as topicApi from '@/features/tools/topic-modeling/api';
 import * as projectApi from '@/features/project/api';
+import * as tasksApi from '@/features/project/tasksApi';
 import * as objectsApi from '@/features/project/objects';
 import {
   withResearchFile,
@@ -25,7 +26,7 @@ export async function topicModelingScenario(
     second = `${prefix}_study`;
   await withResearchFile('topic-consultation-reference.json', first, async () => {
     await withResearchFile('topic-consultation-study.json', second, async () => {
-      await $('button=Topic Modelling').click();
+      await $('button[aria-label="Topic Modelling"]').click();
       const panel = $('[data-testid="topic-modeling-workspace"]');
       for (const [index, name] of [first, second].entries()) {
         await addResearchInput(panel, name);
@@ -38,10 +39,10 @@ export async function topicModelingScenario(
 
       const tokenizer = panel.$(`[aria-label="${first} tokenizer"]`);
       await tokenizer.click();
-      await $('[role="option"]=Jieba').click();
+      await $('[role="option"][aria-label="Jieba"]').click();
       await expect(panel.$(`[aria-label="${second} tokenizer"]`)).toHaveText('Jieba');
       await panel.$(`[aria-label="${second} tokenizer"]`).click();
-      await $('[role="option"]=Plain words (English)').click();
+      await $('[role="option"][aria-label="Plain words (English)"]').click();
       await expect(panel.$(`[aria-label="${second} tokenizer"]`)).toHaveText(
         await tokenizer.getText(),
       );
@@ -63,8 +64,8 @@ export async function topicModelingScenario(
       await expect(inspector.$('table')).toBeDisplayed();
       await inspector.$('button=Close').click();
       await researchScreenshot(`${prefix}-topic-preview`, results);
-      await $('button=Data Loader').click();
-      await $('button=Topic Modelling').click();
+      await $('button[aria-label="Data Loader"]').click();
+      await $('button[aria-label="Topic Modelling"]').click();
       await expect(results).not.toExist();
       const id = await runResearchAnalysis(base, 'topic-modeling', panel);
       results = $(
@@ -98,8 +99,55 @@ export async function topicModelingScenario(
       if (!bubble) throw new Error('Expected a visible Topic bubble');
       await bubble.click();
       await expect(bubble).toHaveAttribute('aria-pressed', 'true');
-      await expect(results.$('button=Clear all')).toBeEnabled();
-      await results.$('button=Clear all').click();
+      await expect(results.$('button[aria-label="Clear selected topics"]')).toBeEnabled();
+      await results.$('button[aria-label="Clear selected topics"]').click();
+      // Presentation reuses retained representative words and leaves Run provenance intact.
+      const rawWords = await topicApi.queryTopicModel(base, { analysis: id }, {
+        projection: 'words', topic_count: saved.result.payload.natural_topic_count,
+      });
+      if (rawWords.projection !== 'words') throw new Error('Expected representative words');
+      const entry = Object.entries(rawWords.words).find(([, words]) => words.length > 0);
+      if (!entry?.[1][0]) throw new Error('Expected a nonempty representative-word list');
+      const [topicId, words] = entry;
+      const removedWord = words[0]!.word;
+      const wordInput = results.$('[aria-label="Words per topic"]');
+      await wordInput.setValue('3');
+      await browser.keys('Tab');
+      const topicBubble = results.$(`[data-testid="topic-flow-node-${topicId}"]`);
+      await topicBubble.execute(element => element.focus());
+      const tooltip = $(`[data-testid="topic-flow-tooltip-${topicId}"]`);
+      await tooltip.waitForExist();
+      const labels = async () => String(await tooltip.$('span.sr-only').execute(element => element.textContent ?? ''));
+      await browser.waitUntil(async () => (await labels()).split('; ').length <= 3);
+      expect(await labels()).toContain(`${removedWord},`);
+      await browser.keys('Escape');
+      const stopwordName = `${prefix}_stopwords`;
+      await projectApi.executeSql(base, [
+        { sql: `CREATE TABLE data.${objectsApi.identifier(stopwordName)} AS SELECT ?::VARCHAR AS word`, parameters: [removedWord] },
+        { sql: 'INSERT INTO wordflow.nodes(table_name) VALUES (?)', parameters: [stopwordName] },
+      ], { all: true });
+      await results.$('[role="switch"][aria-label="Filter stopwords from results"]').click();
+      const stopwords = results.$('[aria-label="Stopwords"]');
+      await addResearchInput(stopwords, stopwordName);
+      await stopwords.$('[aria-label="Stopword column"]').waitForEnabled();
+      await stopwords.$('[aria-label="Stopword column"]').scrollIntoView();
+      await stopwords.$('[aria-label="Stopword column"]').click();
+      await $('[role="option"]=word').click();
+      await browser.waitUntil(async () => {
+        await topicBubble.execute(element => { element.blur(); element.focus(); });
+        return tooltip.isExisting();
+      }, { timeoutMsg: 'Representative-word tooltip did not open after choosing stopwords' });
+      await browser.waitUntil(async () => !(await labels()).includes(`${removedWord},`));
+      await browser.keys('Escape');
+      const filtered = await topicApi.queryTopicModel(base, { analysis: id }, {
+        projection: 'words', topic_count: saved.result.payload.natural_topic_count,
+        stopword_source: { source: { schema: 'data', name: stopwordName }, column: 'word' },
+      });
+      if (filtered.projection !== 'words') throw new Error('Expected filtered representative words');
+      expect(Object.values(filtered.words).flat().some(word => word.word === removedWord)).toBe(false);
+      expect((await topicApi.getTopicResult(base, id))?.request).toEqual(saved.request);
+      const tab = (await analysesApi.listTabs(base, undefined, 'topic-modeling'))[0]!;
+      expect((await tasksApi.getTasks(base)).tasks.filter(task => task.tab_id === tab.id)).toHaveLength(1);
       const published = suggestDataBlockNames([first, second].map((source) => ({ source, sources: [source], operation: 'tm' })), (await projectApi.graph(base)).nodes.map((node) => node.table_name));
       const publishedName = (source: string) => {
         const output = published.find((output) => output.source === source);

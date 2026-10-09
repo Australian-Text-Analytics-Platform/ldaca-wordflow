@@ -87,8 +87,8 @@ export default function ProjectGraph({
   previewed: string | null;
   onAddToSelection?: (id: string) => void;
   onClear: () => void;
-  onDelete: (id: string) => Promise<unknown>;
-  onDeleteMany: (ids: string[]) => Promise<boolean>;
+  onDelete: (id: string) => void;
+  onDeleteMany: (ids: objectsApi.ObjectRef[]) => void;
   onRename: (id: string, name: string) => void | Promise<unknown>;
   onClone: (id: string) => void;
   onUndo: (id: string) => void;
@@ -220,7 +220,7 @@ export default function ProjectGraph({
         picking.gesture === 'drag' &&
         picking.anchor !== n.table_name,
       onDelete: (id) => {
-        void onDelete(id);
+        onDelete(id);
       },
       onRename,
       onPreview,
@@ -293,7 +293,11 @@ export default function ProjectGraph({
       aria-label="Data Block graph"
     >
       <ProjectGraphView
-        nodes={graph.nodes.map((n) => ({ id: n.table_name, name: n.label ?? n.table_name }))}
+        nodes={graph.nodes.map((n) => ({
+          id: n.table_name,
+          name: n.label ?? n.table_name,
+          target: objectsApi.objectRef(n.object ?? n.table_name),
+        }))}
         selectedNodeIds={selected}
         deleteNodes={onDeleteMany}
         dependencies={mode === 'dependencies'}
@@ -350,6 +354,11 @@ export default function ProjectGraph({
             event.preventDefault();
             event.stopPropagation();
             if (!picking) onAddToSelection?.(node.id);
+          },
+          handleSelectionChange: ({ nodes: selectedNodes }) => {
+            const next = new Set(selectedNodes.map((node) => node.id));
+            for (const id of new Set([...selected, ...next]))
+              if (selected.includes(id) !== next.has(id)) onSelect(id);
           },
           handleNodesChange: (changes) => {
             useGraphState.setState((state) => {

@@ -55,7 +55,7 @@ export async function withResearchFile(
   await copyFile(join(researchDirectory, file), path);
   const previousRecents = (await getTestPreferences()).recentDataFiles;
   try {
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     await $('[role="tab"]=Local files').click();
     const input = $('input[aria-label="Data file path"]');
     if (await input.isExisting()) {

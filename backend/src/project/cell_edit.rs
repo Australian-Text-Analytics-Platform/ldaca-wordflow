@@ -125,7 +125,7 @@ impl Editor {
         )?;
         if !table {
             return Err(Error::invalid(
-                "Materialize this view before editing its cells",
+                "Materialise this View before editing its cells",
             ));
         }
         let conn = writer.try_clone()?;
@@ -1323,7 +1323,7 @@ mod tests {
                 )
                 .unwrap_err()
                 .message
-                .contains("Materialize")
+                .contains("Materialise")
         );
         assert!(editor.sessions.is_empty());
     }

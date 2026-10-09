@@ -7,7 +7,7 @@ const base = 'http://127.0.0.1:3212';
 
 it('SQL cells persist, format, paginate captured writes and remain independent of graph previews', async () => {
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();
   const console = testId('sql-console');
   const editor = console.$('.cm-content');
@@ -60,7 +60,7 @@ it('SQL cells persist, format, paginate captured writes and remain independent o
   }
   await browser.refresh();
   await browser.$('[aria-label="Data Block graph"]').waitForExist();
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();
   await expect(console.$$('.cm-content')).toBeElementsArrayOfSize(1);
   await expect(console.$('.cm-content')).toHaveText(expect.stringContaining('"MixedCase"'));
@@ -72,7 +72,7 @@ it('Live previews are read only, truncate output and do not execute persisted ce
     { sql: "INSERT INTO wordflow.sql_cells VALUES (uuid(),0,'SELECT 1','live')" },
   ], { all: true });
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();
   const console = testId('sql-console');
   const editor = console.$('.cm-content');

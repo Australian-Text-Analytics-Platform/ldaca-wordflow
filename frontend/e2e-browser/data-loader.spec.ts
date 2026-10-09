@@ -1,3 +1,4 @@
+import { expectAppError } from './diagnostics';
 import { setTestPreferences } from './fixtures';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
@@ -107,7 +108,7 @@ for (const theme of ['light-2026', 'dark-2026']) {
       await expect(role('article', { name: 'Example research corpus' })).toBeDisplayed();
       await role('button', { name: 'Details', exact: true }).click();
       await screenshot(`loader-ldaca-${theme}.png`);
-      await role('button', { name: 'Preprocessing', exact: true }).click();
+      await role('button', { name: 'Data Builder', exact: true }).click();
       await role('button', { name: 'Data Loader', exact: true }).click();
       await expect(role('textbox', { name: 'Search', exact: true })).toHaveValue('example');
       await role('tab', { name: 'Local files' }).click();
@@ -142,3 +143,30 @@ for (const theme of ['light-2026', 'dark-2026']) {
     } finally { await rm(dir, { recursive: true, force: true }); await browser.setWindowSize(1280, 900); }
   });
 }
+
+it('accepted import failures stay beside the source form once and Retry recovers atomically', async () => {
+  const temp = process.env.WORDFLOW_E2E_TEMP_DIR;
+  if (!temp) throw new Error('Missing runner-owned temporary directory');
+  const dir = await mkdtemp(join(temp, 'failed-import-'));
+  const path = join(dir, 'retry.parquet');
+  await writeFile(path, 'This is not a Parquet file.');
+  try {
+    expectAppError(/parquet/i);
+    await browser.url('/');
+    await label('Data file path').setValue(path);
+    await role('button', { name: 'Choose files…' }).click();
+    const error = role('alert', { name: 'Could not import files', exact: true });
+    await expect(error).toHaveText(expect.stringContaining('Parquet'));
+    await expect(role('button', { name: 'Retry' }, error)).toBeEnabled();
+    await expect(browser.$('[data-sonner-toast]')).not.toExist();
+    expect(await projectApi.graph(baseUrl)).toMatchObject({ nodes: [] });
+    await rm(path);
+    await projectApi.runSqlScript(baseUrl, `COPY (SELECT 1 AS id, 'Recovered' AS document) TO '${path.replaceAll("'", "''")}' (FORMAT PARQUET)`, 'execute');
+    await role('button', { name: 'Retry' }, error).click();
+    await expect(role('button', { name: 'Select retry', exact: true })).toBeDisplayed();
+    await expect(error).not.toExist();
+    await expect(browser.$('[data-sonner-toast]')).not.toExist();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});

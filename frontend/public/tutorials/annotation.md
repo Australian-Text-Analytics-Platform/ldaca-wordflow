@@ -12,7 +12,7 @@ source Table; a saved AI result is a report of its Run.
 1. Add one Data Block and choose its document column.
 2. Choose an annotation destination, or create a string column. AI Preview does
    not require a destination. To write labels into a View, explicitly choose
-   **Materialize in place** first.
+   **Materialise in place** first.
 3. Select a Codebook and its code and description columns. **Create Codebook**
    creates an empty Table; **Edit Codebook** opens staged editing. Views can be
    used as read-only Codebooks.

@@ -1,14 +1,5 @@
 import { DataBlockName } from '@/components/DataBlockName';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+
 import { DataBlockExportDialog } from '@/features/project/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/project/common/components/DataBlockRenameDialog';
 import type { DataBlockExportFormat } from '@/features/project/common/exportFormats';
@@ -60,7 +51,7 @@ const COMPACT_NODE_ZOOM_THRESHOLD = 0.6;
 
 interface CustomNodeUiState {
   showMenu: boolean;
-  dialog: { kind: 'rename'; draft: string } | { kind: 'delete' | 'export' } | null;
+  dialog: { kind: 'rename'; draft: string } | { kind: 'export' } | null;
   copied: boolean;
   isHovered: boolean;
   isFocused: boolean;
@@ -78,8 +69,6 @@ type CustomNodeUiAction =
   | { type: 'show-toolbar' }
   | { type: 'set-toolbar-hovered'; isToolbarHovered: boolean }
   | { type: 'hide-toolbar' }
-  | { type: 'open-delete-confirm' }
-  | { type: 'set-delete-confirm'; showDeleteConfirm: boolean }
   | { type: 'open-export-dialog' }
   | { type: 'set-export-dialog'; showExportDialog: boolean };
 
@@ -95,8 +84,8 @@ const initialCustomNodeUiState: CustomNodeUiState = {
 /**
  * Keeps CustomNode's transient interaction modes in one reducer.
  * Used by: CustomNode because menu, rename, copy feedback, hover toolbar, and
- * delete confirmation are mutually related UI modes for the same graph card.
- * Flow: menu actions can enter rename/delete, rename owns the draft name until
+ * export dialog are mutually related UI modes for the same graph card.
+ * Flow: menu actions can enter rename/export, rename owns the draft name until
  * submit/cancel, hover actions reveal or hide the floating toolbar, and copy id
  * toggles short-lived feedback without affecting graph selection.
  */
@@ -137,10 +126,6 @@ function customNodeUiReducer(
       return { ...state, isToolbarHovered: action.isToolbarHovered };
     case 'hide-toolbar':
       return { ...state, isHovered: false, isToolbarHovered: false };
-    case 'open-delete-confirm':
-      return { ...state, showMenu: false, dialog: { kind: 'delete' } };
-    case 'set-delete-confirm':
-      return { ...state, dialog: action.showDeleteConfirm ? { kind: 'delete' } : null };
     case 'open-export-dialog':
       return { ...state, showMenu: false, dialog: { kind: 'export' } };
     case 'set-export-dialog':
@@ -225,21 +210,11 @@ export function CustomNodeView({
   );
 
   /**
-   * Opens delete confirmation without letting the graph select the node.
+   * Opens export dialog without letting the graph select the node.
    */
   const handleDeleteClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    dispatchUi({ type: 'open-delete-confirm' });
-  };
-
-  /**
-   * Confirms deletion through the graph action passed from useProjectGraph.
-   */
-  const handleDeleteConfirm = () => {
-    if (node.id) {
-      onDelete(node.id);
-    }
-    dispatchUi({ type: 'set-delete-confirm', showDeleteConfirm: false });
+    onDelete(node.id);
   };
 
   /**
@@ -445,43 +420,13 @@ export function CustomNodeView({
           onClick={handleAddClick}
           className={CUSTOM_NODE_TOOLBAR_BUTTON_CLASS}
           disabled={!onAddToSelection}
-          title={!onAddToSelection ? 'Choose Preprocessing to add inputs' : 'Add to selection'}
-          aria-label="Add Data Block to selection"
+          title={!onAddToSelection ? 'Choose Data Builder to add inputs' : 'Add to tool'}
+          aria-label="Add to tool"
         >
           <Plus className="h-4 w-4" />
         </button>
       )}
     </NodeToolbar>
-  );
-
-  const deleteDialog = (
-    <AlertDialog
-      open={dialog?.kind === 'delete'}
-      onOpenChange={(open) => {
-        dispatchUi({ type: 'set-delete-confirm', showDeleteConfirm: open });
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle className="break-all">
-            Delete &ldquo;{nodeName}&rdquo;?
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete this{' '}
-            {data.databaseObject ? 'database object' : 'Data Block'}. This action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDeleteConfirm}
-            className="bg-error text-button-foreground hover:bg-error/90"
-          >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
   );
 
   const exportDialog = (
@@ -620,7 +565,7 @@ export function CustomNodeView({
           position={sourcePosition}
           style={{ width: 12, height: 12, borderWidth: 2 }}
         />
-        {deleteDialog}
+
         {reconnectHandle}
         {exportDialog}
         {renameDialog}
@@ -705,7 +650,7 @@ export function CustomNodeView({
       />
       {nodeToolbar}
       {reconnectHandle}
-      {deleteDialog}
+
       {exportDialog}
       {renameDialog}
     </div>

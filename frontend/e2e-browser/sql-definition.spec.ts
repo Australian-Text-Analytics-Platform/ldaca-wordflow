@@ -86,7 +86,7 @@ it('view SQL is editable through the shared More hover submenu', async () => {
   await role('button', { name: 'Cancel', exact: true }, dialog()).click();
   await hover(card);
   await role('button', { name: 'Data Block actions' }).click();
-  await role('menuitem', { name: 'Materialize', exact: true }).click();
+  await role('menuitem', { name: 'Materialise', exact: true }).click();
   await expect(card).toHaveText(expect.stringContaining('Type: Table'));
   await hover(card);
   await role('button', { name: 'Data Block actions' }).click();

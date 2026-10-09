@@ -243,7 +243,7 @@ async function fixture(base: string, prefix: string) {
 
 async function cleanup(base: string, prefix: string) {
   await setAnalysisPaneSize('normal');
-  await $('button=Data Loader').click();
+  await $('button[aria-label="Data Loader"]').click();
   await $('h1=Data Loader').waitForDisplayed();
   const owned = (await analysesApi.listTabs(base, undefined, 'frequency')).filter((tab) => tab.name.startsWith(prefix));
   for (const tab of owned) await analysesApi.deleteTab(base, tab.id);
@@ -280,9 +280,9 @@ export async function frequencyInitialTabScenario(base: string) {
   const location = $('nav[aria-label="Current location"]');
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency ▸ FR-1');
   expect(outputAnalysisId(initial)).toBeNull();
-  await expect($('h1=Token Frequency Analysis')).toBeDisplayed();
+  await expect($('h1=Frequency Analysis')).toBeDisplayed();
   await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
-  await $('button=Data Loader').click();
+  await $('button[aria-label="Data Loader"]').click();
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Data Loader');
   await openFrequency();
   expect((await analysesApi.listTabs(base, undefined, 'frequency')).map((tab) => tab.id)).toEqual([initial?.id]);
@@ -317,7 +317,7 @@ export async function frequencyInitialTabScenario(base: string) {
   await expect(workspace().$('button=New Frequency analysis')).toBeDisplayed();
   expect(await analysesApi.listTabs(base, undefined, 'frequency')).toHaveLength(0);
   await expect(location).toHaveAttribute('title', 'Untitled ▸ Frequency');
-  await $('button=Data Loader').click();
+  await $('button[aria-label="Data Loader"]').click();
   await openFrequency();
   await browser.waitUntil(async () => {
     const tabs = await analysesApi.listTabs(base, undefined, 'frequency');
@@ -389,7 +389,7 @@ export async function frequencyConcordanceScenario(base: string, prefix: string)
     ).toBe(saved.id);
     await expect($('[data-sonner-toast]')).not.toExist();
   } finally {
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     if (created) await analysesApi.deleteTab(base, created.id);
     await cleanup(base, prefix);
   }
@@ -401,7 +401,7 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     const tab = await createTab(base, `${prefix} recovery`);
     await addInput(base, names.reference);
     const saved = await run(base, tab);
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     // Native click dispatch can finish before the hidden pane becomes inactive.
     await workspace().waitForDisplayed({ reverse: true });
     await projectApi.executeSql(base, [{
@@ -409,7 +409,6 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
       parameters: [saved.id],
     }], { all: true });
     expectAppError(/Frequency result version is not supported/);
-    expectAppError(/This analysis result version is not supported/);
     await openFrequency();
     await expect(workspace().$('button=Rerun')).toHaveAttribute('aria-disabled', 'false');
     // Restoring readability and retrying must neither clear output nor submit a task.
@@ -422,7 +421,7 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     await expect(workspace().$('button=Run')).toHaveAttribute('aria-disabled', 'true');
     expect((await tasksApi.getTasks(base)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(1);
 
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     await workspace().waitForDisplayed({ reverse: true });
     const artifact = saved.result.payload.corpora[0]?.artifact_id;
     if (!artifact) throw new Error('Missing Frequency artifact');
@@ -508,7 +507,7 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
     ]);
 
     await filter.setValue('a*');
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     await openFrequency();
     await expect(filter).toHaveValue('a*');
     expect(
@@ -544,8 +543,10 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
         (task) => task.tab_id === tab.id && task.state === 'failed',
       ),
     );
-    await browser.waitUntil(async () => (await $$('[data-sonner-toast]').length) > 0);
-    expect(await $$('[data-sonner-toast]').map((toast) => toast.getText())).toHaveLength(1);
+    const failure = workspace().$('[role="alert"][aria-label="Could not run Frequency"]');
+    await expect(failure).toHaveText(expect.stringContaining('Could not run Frequency'));
+    await expect(failure).toHaveText(expect.stringContaining(names.backing));
+    await expect($('[data-sonner-toast]')).not.toExist();
     await expect(workspace().$('button=Run')).toBeEnabled();
     await expect(results()).not.toExist();
     const failedTab = (await analysesApi.listTabs(base, undefined, 'frequency')).find((entry) => entry.id === tab.id);
@@ -1312,12 +1313,11 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       saved.id,
     );
   } finally {
-    for (const node of (await projectApi.graph(base)).nodes.filter(
+    const owned = (await projectApi.graph(base)).nodes.filter(
       (n) =>
         n.table_name.startsWith(prefix) && ![names.reference, names.study].includes(n.table_name),
-    )) {
-      await projectApi.deleteNode(base, node.table_name);
-    }
+    );
+    if (owned.length) await projectApi.deleteObjects(base, owned.map(node => node.table_name));
     await cleanup(base, prefix);
   }
 }

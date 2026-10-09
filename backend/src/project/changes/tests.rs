@@ -192,3 +192,31 @@ fn mutation_stamps_change_only_after_relevant_commits() {
     db.sql(batch("CREATE TABLE data.c(n INT)", None)).unwrap();
     assert_ne!(db.changes.stamp(&a), second);
 }
+
+#[tokio::test]
+async fn confirmed_delete_notifies_the_graph_only_after_atomic_commit() {
+    let runtime = ProjectRuntime::new(CancellationToken::new());
+    runtime.create(None).await.unwrap();
+    runtime.sql(batch("CREATE TABLE source(n INTEGER); CREATE VIEW child AS SELECT error('must not execute') AS n FROM source; INSERT INTO wordflow.nodes(table_name) VALUES ('source'),('child')", None)).await.unwrap();
+    let mut events = runtime.changes();
+    assert!(
+        runtime
+            .delete_objects(vec![ObjectTarget::from("source")])
+            .await
+            .is_err()
+    );
+    assert!(events.try_recv().is_err());
+    let deleted = runtime
+        .delete_objects(vec![
+            ObjectTarget::from("source"),
+            ObjectTarget::from("child"),
+        ])
+        .await
+        .unwrap();
+    assert_eq!(deleted, [object("data", "child"), object("data", "source")]);
+    let event = events.try_recv().unwrap();
+    assert_eq!(event.resources, [Resource::Graph]);
+    assert_eq!(event.objects, deleted);
+    assert!(events.try_recv().is_err());
+    runtime.close().await.unwrap();
+}

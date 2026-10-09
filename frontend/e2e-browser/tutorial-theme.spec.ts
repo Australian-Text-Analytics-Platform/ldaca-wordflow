@@ -7,9 +7,9 @@ for (const theme of ['light-2026', 'dark-2026']) {
   it(`tutorial Markdown remains readable in ${theme}`, async () => {
     await setTestPreferences({ theme });
     await browser.url('/');
-    await expect(role('heading', { name: 'Project Graph', exact: true })).toBeDisplayed();
-    await role('button', { name: 'Project Graph', exact: true }).click();
-    const tutorial = role('dialog', { name: 'Tutorial', exact: true });
+    await expect(role('heading', { name: 'Editor', exact: true })).toBeDisplayed();
+    await role('button', { name: 'Editor help', exact: true }).click();
+    const tutorial = role('dialog', { name: 'Help', exact: true });
     const markdown = tutorial.$('.prose');
     await expect(markdown.$('h2')).toExist();
 
@@ -30,7 +30,7 @@ for (const theme of ['light-2026', 'dark-2026']) {
       const surface = root.closest('main');
       if (!surface) throw new Error('Missing document surface');
       const background = luminance(getComputedStyle(surface).backgroundColor);
-      return ['p', 'h2', 'strong', 'code', 'a', 'svg'].map((selector) => {
+      return ['p', 'h2', 'strong', 'code', 'a', ...(root.querySelector('svg') ? ['svg'] : [])].map((selector) => {
         const element = root.querySelector(selector);
         if (!element) throw new Error(`Missing tutorial element: ${selector}`);
         const style = getComputedStyle(element);

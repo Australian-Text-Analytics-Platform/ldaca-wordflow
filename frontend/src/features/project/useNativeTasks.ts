@@ -72,7 +72,15 @@ export function useNativeTasks(base: string) {
         if (initial) continue;
         if (task.state === 'succeeded' && task.notice)
           toast.info(task.label, { description: task.notice, id: `task-${base}-${task.id}` });
-        if (task.state === 'failed' && task.error)
+        const visibleOwner = Array.from(
+          document.querySelectorAll<HTMLElement>('[data-task-owner], [data-task-label]'),
+        ).some(
+          (element) =>
+            (task.tab_id
+              ? element.dataset.taskOwner === task.tab_id
+              : element.dataset.taskLabel === task.label) && element.getClientRects().length > 0,
+        );
+        if (task.state === 'failed' && task.error && !visibleOwner)
           reportProjectError(task.error, task.label, `task-${base}-${task.id}`, task.id);
       }
     }

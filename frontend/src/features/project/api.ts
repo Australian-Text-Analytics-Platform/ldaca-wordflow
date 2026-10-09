@@ -178,16 +178,13 @@ export async function nodeSchema(base: string, name: DataTarget, signal?: AbortS
   return (await decodeArrowTable(await response.arrayBuffer())).schema;
 }
 
-export async function deleteNode(base: string, name: DataTarget) {
-  await (typeof name === 'string'
-    ? request(base, '/api/project/nodes/{table_name}/delete', 'post', {
-        path: { table_name: name },
-        body: {},
-      })
-    : request(base, '/api/project/objects/{schema}/{table_name}/delete', 'post', {
-        path: { schema: objectRef(name).schema, table_name: name.name },
-        body: {},
-      }));
+/** The native owner revalidates and drops the complete selection atomically. */
+export async function deleteObjects(base: string, objects: DataTarget[]): Promise<ObjectRef[]> {
+  return (
+    await request(base, '/api/project/objects/delete', 'post', {
+      body: { objects: objects.map(objectRef) },
+    })
+  ).json() as Promise<ObjectRef[]>;
 }
 
 export async function materializeNode(base: string, name: DataTarget) {

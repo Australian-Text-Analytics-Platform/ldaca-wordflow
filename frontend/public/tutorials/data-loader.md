@@ -60,7 +60,7 @@ cannot be moved or deleted until upload cleanup finishes.
 
 Local data is stored inside the project. Imports preserve an internal raw Table
 and show a View over it. You can move or remove the original file afterward.
-To edit stored cells, choose **Materialize**, then **More → Edit Table**.
+To edit stored cells, choose **Materialise**, then **More → Edit Table**.
 New Data Blocks appear in the graph and sidebar without changing selection or
 opening the Data Viewer. Use **Preview data** or select a sidebar row to inspect them.
 

@@ -40,7 +40,7 @@ it('initially selects every group and creates the selected live Views atomically
   mount();
   expect(await screen.findByRole('checkbox', { name: 'A — 3 rows' })).toBeChecked();
   expect(screen.getByRole('checkbox', { name: '(empty) — 2 rows' })).toBeChecked();
-  await userEvent.click(screen.getByRole('button', { name: 'Create 2 Data Blocks' }));
+  await userEvent.click(screen.getByRole('button', { name: 'Add 2 to Project' }));
   await waitFor(() => expect(screen.getByRole('alert')).toHaveTextContent('second View failed'));
   expect(api.createViews).toHaveBeenCalledTimes(1);
   expect(api.createViews.mock.calls[0]?.[1]).toHaveLength(2);
@@ -54,6 +54,6 @@ it('requires narrowing when there are more than 50 groups', async () => {
   );
   mount();
   expect(await screen.findByRole('status')).toHaveTextContent('More than 50 groups');
-  expect(screen.getByRole('button', { name: 'Create 51 Data Blocks' })).toBeDisabled();
+  expect(screen.getByRole('button', { name: 'Add 51 to Project' })).toBeDisabled();
   expect(api.createViews).not.toHaveBeenCalled();
 });

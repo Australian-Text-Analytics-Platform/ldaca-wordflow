@@ -45,7 +45,7 @@ describe('ProjectDataHeader', () => {
     expect(nodeName).toBeInTheDocument();
     expect(screen.getByTestId('project-data-node-label')).toHaveClass('overflow-hidden');
     expect(screen.getByTestId('project-data-node-label-fade')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Rename node' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Rename Data Block' })).toBeInTheDocument();
   });
 
   it('drives Undo and Redo disabled state solely from backend flags', () => {

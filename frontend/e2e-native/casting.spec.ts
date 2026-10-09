@@ -120,7 +120,7 @@ it('confirms SQL type casts explicitly in the native Table and View UI in both t
         await $('button[aria-label="Undo Data Block edit"]').click();
         await expect($('button[aria-label="Undo Data Block edit"]')).toBeDisabled();
         await expect($('button[aria-label="Change data type for column amount"]')).toHaveText(
-          expect.stringContaining('string'),
+          expect.stringContaining('text'),
         );
       }
       await $('button[aria-label="Close preview"]').click();

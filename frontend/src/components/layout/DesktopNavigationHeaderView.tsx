@@ -4,6 +4,7 @@ import InfoIcon from '@/components/help/InfoIcon';
 import ReferenceIcon from '@/components/help/ReferenceIcon';
 import { cn } from '@/lib/utils';
 import logo from '@/logo.png';
+import { externalLink } from '@/lib/externalLink';
 
 /** Current project location and native application controls. */
 export function DesktopNavigationHeaderView({
@@ -28,7 +29,16 @@ export function DesktopNavigationHeaderView({
       )}
     >
       <div className="flex min-w-0 items-center gap-0.5 overflow-hidden whitespace-nowrap">
-        <span className="truncate text-[15px] leading-none font-semibold">Wordflow</span>
+        <a
+          href="https://sih.tools/wordflow"
+          onClick={externalLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-tauri-drag-region="false"
+          className="truncate text-[15px] leading-none font-semibold"
+        >
+          Wordflow
+        </a>
         <span
           data-testid="desktop-header-about-control"
           data-tauri-drag-region="false"
@@ -56,11 +66,20 @@ export function DesktopNavigationHeaderView({
         <span className="ml-1 text-[13px] leading-none text-description max-[700px]:hidden">
           by
         </span>
-        <img
-          src={logo}
-          alt="LDaCA Logo"
-          className="ml-1.5 h-[28px] w-auto shrink-0 object-contain max-[700px]:hidden"
-        />
+        <a
+          href="https://www.ldaca.edu.au"
+          onClick={externalLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="LDaCA website"
+          data-tauri-drag-region="false"
+        >
+          <img
+            src={logo}
+            alt="LDaCA Logo"
+            className="ml-1.5 h-[28px] w-auto shrink-0 object-contain max-[700px]:hidden"
+          />
+        </a>
       </div>
 
       <nav

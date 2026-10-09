@@ -35,7 +35,7 @@ export function AnnotationOutput({
   editorSession?: CorrectionSession | null;
   onEditorFinished: () => void;
   previewMode?: boolean;
-  pending?: { error?: string; startedAt: number };
+  pending?: { error?: string; diagnostic?: unknown; startedAt: number };
   onCancelPreview?: () => void;
   onRetryPreview?: () => void;
   base: string;
@@ -384,8 +384,13 @@ export function AnnotationOutput({
         {pending ? (
           <AnalysisProgress
             name="Annotation Preview"
-            message={pending.error ?? 'Predicting this document page…'}
+            message={
+              pending.error
+                ? 'Could not complete Annotation Preview'
+                : 'Predicting this document page…'
+            }
             error={Boolean(pending.error)}
+            diagnostic={pending.diagnostic}
             startedAt={pending.startedAt}
             onCancel={onCancelPreview}
             onRetry={pending.error ? onRetryPreview : undefined}

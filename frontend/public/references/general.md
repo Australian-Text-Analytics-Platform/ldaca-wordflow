@@ -2,12 +2,13 @@
 
 <h1 id="ref-general-platform">LDaCA Wordflow</h1>
 
+Version {{VERSION}}
 
 ## How to cite LDaCA Wordflow
 
 If you use LDaCA Wordflow in your research, please include the following statement (or an appropriate variation):
 
-> This study has utilised **LDaCA Wordflow**, developed for the Language Data Commons of Australia (LDaCA), available at [https://www.ldaca.edu.au](https://www.ldaca.edu.au).
+> This study has utilised **LDaCA Wordflow**, developed for the Language Data Commons of Australia (LDaCA), available at [https://www.ldaca.edu.au](https://www.ldaca.edu.au), with concept DOI [10.5281/zenodo.20408328](https://doi.org/10.5281/zenodo.20408328).
 
 Where relevant, please also cite specific tools, notebooks, datasets, or software releases used in your analysis (e.g. via provided DOIs or repository references). For the latest version or updates, please visit the [GitHub repository](https://github.com/Australian-Text-Analytics-Platform/Ldaca_Text_Analytics_Tools).
 
@@ -55,7 +56,6 @@ These contributions have been essential in ensuring that LDaCA Wordflow meets th
 
 © Language Data Commons of Australia (LDaCA)
 
-Version {{VERSION}} - released on {{BUILD_DATE}}.
 
 
 ## Stopword list sources and licences

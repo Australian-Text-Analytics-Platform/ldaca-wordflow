@@ -118,7 +118,7 @@ export function CustomNodeActionMenu({
               title="Store current results as a Table. Ends SQL-layer Undo and live source updates."
               className="min-h-control w-full rounded-sm px-2 py-1 text-left text-label-secondary hover:bg-panel/60"
             >
-              Materialize
+              Materialise
             </DropdownMenuItem>
           )}
 

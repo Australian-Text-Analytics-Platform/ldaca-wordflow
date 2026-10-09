@@ -29,7 +29,7 @@ export async function exportScenario(visit: (panel: ChainablePromiseElement, sou
     }
     await setAnalysisPaneSize('normal');
     await setResearchTheme(false);
-    await $('button=Data Loader').click();
+    await $('button[aria-label="Data Loader"]').click();
     await $('button=Export').click();
     await expect(panel).toHaveText(expect.stringContaining(source));
     await panel.$('[role="tab"]=Data files').click();

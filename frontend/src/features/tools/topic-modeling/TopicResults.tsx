@@ -126,7 +126,7 @@ export function TopicResults({
         summary.natural_projection,
       ),
     enabled: active,
-    meta: { report: false },
+    meta: { reportError: false },
     staleTime: Infinity,
     placeholderData: keepPreviousData,
   });
@@ -149,7 +149,7 @@ export function TopicResults({
     placeholderData: keepPreviousData,
     meta: {
       ...objectDependencies(...(appliedStopwords ? [appliedStopwords.source] : [])),
-      report: false,
+      reportError: false,
     },
   });
   const [applied, setApplied] = useState<{
@@ -565,6 +565,7 @@ export function TopicResults({
         </label>
       </div>
       <StopwordControl
+        active={active}
         base={base}
         nodes={nodes}
         selected={stopwordSource}
@@ -611,7 +612,7 @@ export function TopicResults({
       {applied.basis.topics.length === 0 ? (
         <p>
           No topics were found. The model may have insufficient usable text or all segments may be
-          outliers.
+          assigned to No topic.
         </p>
       ) : (
         <>

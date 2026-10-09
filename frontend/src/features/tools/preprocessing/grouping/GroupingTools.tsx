@@ -373,7 +373,7 @@ export function GroupTool(props: Props) {
           onClick={apply}
           disabled={!chosen.length || tooMany || state.pending || counts.isFetching}
         >
-          Create {chosen.length || ''} Data Blocks
+          {chosen.length > 1 ? `Add ${chosen.length} to Project` : 'Add to Project'}
         </Button>
       </fieldset>
       <Outcome state={state} retry={apply} />
@@ -501,7 +501,7 @@ export function AggregateTool(props: Props) {
         <OutputName value={name} suggested={props.suggested} onChange={setName} />
         {invalid && <p className="text-body">{invalid}</p>}
         <Button onClick={apply} disabled={!operation || state.pending}>
-          Create Data Block
+          Add to Project
         </Button>
       </fieldset>
       <Outcome state={state} retry={apply} />
@@ -592,7 +592,7 @@ export function DeduplicateTool(props: Props) {
         </p>
         {invalid && <p className="text-body">{invalid}</p>}
         <Button onClick={apply} disabled={!operations || state.pending}>
-          Create both Data Blocks
+          Add 2 to Project
         </Button>
       </fieldset>
       <Outcome state={state} retry={apply} />

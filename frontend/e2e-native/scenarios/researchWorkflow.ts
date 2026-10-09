@@ -41,7 +41,7 @@ export async function researchWorkflow(base: string) {
   await prepareResearchVisit();
   await withResearchFile('community-survey.parquet', 'survey_wave', async () => {
     await withResearchFile('survey-participants.json', 'survey_panel', async () => {
-      await $('button=Preprocessing').click();
+      await $('button[aria-label="Data Builder"]').click();
       await $('#preprocessing-tab-join').waitForDisplayed();
       await $('#preprocessing-tab-join').execute((element) => {
         element.focus();
@@ -59,10 +59,10 @@ export async function researchWorkflow(base: string) {
       await chooseColumn('Left column:', 'row_id', join);
       await chooseColumn('Right column:', 'row_id', join);
       await join.$('#join-type').click();
-      await $('[role="option"]=left').click();
+      await $('[role="option"]*=Left —').click();
       await join.$('#join-new-node-name').setValue('survey_joined');
-      await join.$('button=Create Data Block').waitForEnabled();
-      await join.$('button=Create Data Block').click();
+      await join.$('button=Add to Project').waitForEnabled();
+      await join.$('button=Add to Project').click();
       await $('[aria-label="Select survey_joined"]').waitForDisplayed();
       expect(await readRows('survey_joined')).toEqual(expected);
       expect(expected.length).toBe(494); // Duplicate participant keys multiply only matching rows.
@@ -82,6 +82,7 @@ export async function researchWorkflow(base: string) {
       expect(counts).toEqual({ '[null]': 320, '["Panel A"]': 160, '["Panel B"]': 14 });
       const result = panel.$('[aria-label="Plot results"]');
       await result.$('button=Add to Project').waitForEnabled();
+      await result.$('button=Add to Project').scrollIntoView();
       await result.$('button=Add to Project').click();
       const dialog = $('[role="dialog"]');
       await dialog.waitForDisplayed();

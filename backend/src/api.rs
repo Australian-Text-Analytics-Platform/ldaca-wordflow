@@ -17,6 +17,12 @@ use std::path::PathBuf;
 struct Empty {}
 
 #[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+struct DeleteObjects {
+    objects: Vec<ObjectTarget>,
+}
+
+#[derive(Deserialize, utoipa::ToSchema)]
 #[schema(as = ProjectPathRequest)]
 #[serde(deny_unknown_fields)]
 struct Create {
@@ -123,6 +129,7 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(close))
         .routes(utoipa_axum::routes!(save))
         .routes(utoipa_axum::routes!(delete_node))
+        .routes(utoipa_axum::routes!(delete_objects))
         .routes(utoipa_axum::routes!(rename_node))
         .routes(utoipa_axum::routes!(set_node_preference))
         .routes(utoipa_axum::routes!(clone_node))
@@ -630,7 +637,7 @@ async fn materialize(
     InputJson(_input): InputJson<Empty>,
 ) -> Result<impl IntoResponse> {
     let runtime = project.clone();
-    let task = project.submit_task(format!("Materialize {id}"), move |context| async move {
+    let task = project.submit_task(format!("Materialise {id}"), move |context| async move {
         context.progress("Storing view data", None);
         runtime.materialize(id).await?;
         Ok(StatusCode::NO_CONTENT)
@@ -664,6 +671,18 @@ async fn delete_node(
 ) -> Result<impl IntoResponse> {
     project.delete_node(id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[utoipa::path(
+    post, path = "/api/project/objects/delete", operation_id = "api_delete_objects", tag = "api",
+    request_body = DeleteObjects,
+    responses((status = 200, description = "Atomically deleted objects in dependent-first order", body = Vec<crate::query::Relation>), (status = 400, description = "Invalid selection or mutation failed", body = crate::error::ErrorEnvelope), (status = 409, description = "Mutation conflict", body = crate::error::ErrorEnvelope))
+)]
+async fn delete_objects(
+    State(project): State<ProjectRuntime>,
+    InputJson(input): InputJson<DeleteObjects>,
+) -> Result<impl IntoResponse> {
+    Ok(Json(project.delete_objects(input.objects).await?))
 }
 
 #[utoipa::path(

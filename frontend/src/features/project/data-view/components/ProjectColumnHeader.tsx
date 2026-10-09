@@ -123,6 +123,7 @@ export function ProjectColumnHeader({
         <div className="min-w-0">
           <span
             className="block max-w-[160px] truncate text-label-secondary font-medium text-foreground"
+            onDoubleClick={canRename ? onStartRename : undefined}
             title={column}
           >
             {column}

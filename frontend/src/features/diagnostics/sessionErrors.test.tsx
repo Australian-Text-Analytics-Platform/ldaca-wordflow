@@ -77,6 +77,26 @@ it('records each failure once, independently of toast expansion and stable toast
   expect(useSessionErrors.getState().entries).toHaveLength(2);
 });
 
+it('retains one diagnostic when the same accepted task failure is presented after a remount', () => {
+  const first = recordSessionError(
+    new Error('Corrupt footer'),
+    'Import failed',
+    'notification',
+    'import-1',
+  );
+  const repeated = recordSessionError(
+    { message: 'Corrupt footer' },
+    'Import failed',
+    'notification',
+    'import-1',
+  );
+  expect(repeated.id).toBe(first.id);
+  expect(useSessionErrors.getState().entries).toHaveLength(1);
+  recordSessionError(new Error('Corrupt footer'), 'Import failed', 'notification', 'import-2');
+  recordSessionError(new Error('Different failure'), 'Import failed', 'notification', 'import-1');
+  expect(useSessionErrors.getState().entries).toHaveLength(3);
+});
+
 it('shows the cause immediately and retains HTTP and Rust details in the toast and history', async () => {
   const body = JSON.stringify({
     error: { code: 'sql_error', message: 'Binder failed', statement_index: 0 },

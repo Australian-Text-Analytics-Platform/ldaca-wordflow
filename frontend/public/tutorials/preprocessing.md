@@ -4,9 +4,6 @@
 
 <h1 id="help-preprocessing-section">Data Editor and Data Builder</h1>
 
-Preprocessing transforms Data Blocks with DuckDB SQL. The existing tools work with
-both Tables and Views, without loading a Python or Polars runtime.
-
 Data Builder creates live Views from selected inputs. Data Editor changes columns
 in the selected Data Block and shows its form above the collapsible Data View.
 
@@ -26,9 +23,9 @@ in the selected Data Block and shows its form above the collapsible Data View.
 
 <h3 id="help-preprocessing-common-node-selection">Data Block selection</h3>
 
-Use **Preprocessing Inputs** to select inputs. Double-click a graph card, or use its
+Use **Data Builder inputs** to select inputs. Double-click a graph card, or use its
 add button or the sidebar's add button, to add that Data Block to the active tool.
-When a view has more than one input area, choose its labelled destination from the **Add to input** menu. A single area receives the Data Block immediately. Escape closes the menu.
+When a view has more than one input area, choose its labelled destination from the **Add to tool** menu. A single area receives the Data Block immediately. Escape closes the menu.
 
 Inputs are independent of graph selection and opened data previews. New results leave existing previews and graph selection unchanged. Filter, Group, Aggregate, Sample, Deduplicate and
 Build accept one input; Join accepts two; Stack accepts two or more. SQL uses actual
@@ -55,17 +52,17 @@ the date portion and the time text field for seconds or fractional seconds. Expl
 timezone text is preserved. Opening the picker does not change a value; DuckDB
 validates it. Date, time and interval columns show controls appropriate to their type.
 
-<h3 id="help-preprocessing-common-apply-button">Create Data Block</h3>
+<h3 id="help-preprocessing-common-apply-button">Add to Project</h3>
 
 For Filter, Sample, Join, Stack and Build, accept the short numbered suggestion or choose an unused Data Block name and
-click **Create Data Block**. The result is
+click **Add to Project**. The result is
 always a View: it stores the query and follows changes to its sources. Its inputs
 appear as SQL dependencies in the graph. Existing names are never silently overwritten.
 There is no result-type or update-input selector. Data Editor uses **Apply** to
 change the selected Data Block in place. Successful Apply closes its form; failure
 leaves the editable draft open with Retry.
 
-To store fixed rows afterward, choose **Materialize** in the result's graph menu.
+To store fixed rows afterward, choose **Materialise** in the result's graph menu.
 Table cell-edit sessions must finish before preprocessing can apply changes;
 schema reads and previews remain available. The SQL console remains independent
 and executes the SQL you write.
@@ -120,7 +117,7 @@ input. No user-defined random sampling algorithm runs in Wordflow.
 The default seed is **0**; **No Random Seed** omits it. A seed alone does not promise
 identical results across repeated parallel executions. DuckDB guarantees seeded
 repeatability with single-threaded execution, while Wordflow keeps the runtime's
-normal threading. To preserve one evaluated sample, **Materialize** the resulting
+normal threading. To preserve one evaluated sample, **Materialise** the resulting
 View from its graph menu. This stores the rows evaluated during materialization,
 which may differ from the preview.
 The preview is illustrative. See [DuckDB sampling](https://duckdb.org/docs/stable/sql/samples).

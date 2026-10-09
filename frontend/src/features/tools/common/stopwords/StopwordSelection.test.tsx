@@ -1,7 +1,7 @@
 import * as projectApi from '@/features/project/api';
 import * as filesApi from '@/features/project/filesApi';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Field, Int32, Utf8 } from 'apache-arrow';
 import { useState } from 'react';
@@ -78,10 +78,25 @@ function mount(
 }
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(filesApi.readStopwords).mockResolvedValue(['the', 'and']);
   vi.mocked(projectApi.nodeSchema).mockResolvedValue([
     { name: 'word', field: new Field('word', new Utf8(), true) },
     { name: 'code', field: new Field('code', new Int32(), true) },
   ]);
+});
+
+it('keeps original read diagnostics beside the stopword list and recovers with Retry', async () => {
+  vi.mocked(filesApi.readStopwords).mockRejectedValueOnce(
+    new Error('Provider retained diagnostic 日本語'),
+  );
+  mount(words);
+  const alert = await screen.findByRole('alert', { name: 'Could not load stopwords' });
+  expect(alert).toHaveTextContent('Provider retained diagnostic 日本語');
+  expect(alert).toHaveTextContent('Details');
+  expect(alert).toHaveTextContent('Copy details');
+  fireEvent.click(within(alert).getByRole('button', { name: 'Retry', exact: true }));
+  await screen.findByRole('button', { name: 'Remove stopword the' });
+  await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
 });
 
 it('uses the shared searchable Add control, selected card and unrestricted column picker', async () => {

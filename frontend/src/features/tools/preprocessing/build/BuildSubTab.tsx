@@ -177,7 +177,7 @@ function BuildSubTabContent(props: Props) {
               }}
             >
               {apply.loading && <Loader2 className="animate-spin" />}
-              Create Data Block
+              Add to Project
             </Button>
           </DisabledReasonTooltip>
         </CardFooter>

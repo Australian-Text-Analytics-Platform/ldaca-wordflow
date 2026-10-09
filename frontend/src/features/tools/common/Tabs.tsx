@@ -69,6 +69,7 @@ export function Tabs({
       createTab();
   }, [active, editing, tabs.isSuccess, tabs.isFetching, tabs.data, cache, base, kind, createTab]);
   const rename = useMutation({
+    meta: { reportError: false },
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       analysesApi.updateTab(base, id, { name }),
     onSuccess: (updated) =>
@@ -133,8 +134,8 @@ export function Tabs({
           onRename={
             editing
               ? undefined
-              : (id, name) => {
-                  rename.mutate({ id, name });
+              : async (id, name) => {
+                  await rename.mutateAsync({ id, name });
                 }
           }
           onReorder={

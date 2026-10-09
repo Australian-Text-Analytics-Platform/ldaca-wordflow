@@ -4,6 +4,33 @@ import { describe, expect, it, vi } from 'vite-plus/test';
 import { useStackedSplits } from '../useStackedSplits';
 
 describe('useStackedSplits', () => {
+  it('fits Tools until resizing and starts keyboard changes from rendered heights', () => {
+    const { result } = renderHook(() =>
+      useStackedSplits(['tools', 'nodes'] as const, { contentSized: ['tools'] }),
+    );
+    expect(result.current.getSectionFlexStyle('tools')).toMatchObject({ flex: '0 1 auto' });
+    act(() => {
+      result.current.containerRef.current = Object.assign(document.createElement('div'), {
+        getBoundingClientRect: () => ({ height: 500 }),
+      });
+      for (const [key, height] of [
+        ['tools', 180],
+        ['nodes', 320],
+      ] as const) {
+        const section = document.createElement('div');
+        section.dataset.sidebarSection = key;
+        section.getBoundingClientRect = () => ({ height }) as DOMRect;
+        result.current.assignSectionScrollRef(key, section);
+      }
+      result.current.handleResizeKey('tools', 'nodes', {
+        key: 'ArrowDown',
+        preventDefault: vi.fn(),
+      } as unknown as React.KeyboardEvent<HTMLDivElement>);
+    });
+    expect(result.current.getSectionFlexStyle('tools')).toMatchObject({ flexGrow: 0.39 });
+    expect(result.current.getSectionFlexStyle('nodes')).toMatchObject({ flexGrow: 0.61 });
+  });
+
   it('derives collapse state and flex ratios from the latest render state', () => {
     const { result } = renderHook(() =>
       useStackedSplits(['tools', 'nodes'] as const, {

@@ -52,6 +52,8 @@ export async function researchTextScenario(base: string, prefix: string) {
             await $('[role="option"]=text').click();
             await chooseColumn(`${name} tokenizer`, tokenizer.label, panel);
           }
+          await panel.$(`[aria-label="${refName} corpus role"]`).click();
+          await $('[role="option"]=Reference corpus').click();
           const id = await runResearchAnalysis(base, 'frequency', panel);
           const result = await frequencyApi.getFrequencyResult(base, id);
           if (!result) throw new Error('Completed Frequency analysis has no saved output');
@@ -170,6 +172,7 @@ export async function researchQuotationScenario(base: string, prefix: string) {
     expect(saved.result.payload.document_count).toBe(28);
     expect(saved.result.payload.matching_documents).toBe(26);
     expect(saved.result.payload.match_count).toBe(39);
+    await results.$('[role="tab"]=Documents').click();
     await results.$('th=tags').waitForExist();
     await researchScreenshot(`${prefix}-quotation-documents`, results);
     await results.$('a[aria-label="Go to next page"]').click();

@@ -240,7 +240,7 @@ it('keeps the named tab rail outside the scrollable request and results panels',
   expect(content).not.toContainElement(tabs);
   expect(content).toContainElement(screen.getByRole('region', { name: 'Frequency request' }));
   expect(screen.queryByRole('region', { name: 'Frequency results' })).not.toBeInTheDocument();
-  expect(screen.getByRole('heading', { name: 'Token Frequency Analysis' })).toBeVisible();
+  expect(screen.getByRole('heading', { name: 'Frequency Analysis' })).toBeVisible();
 
   expect(screen.queryByRole('button', { name: 'Delete analysis' })).not.toBeInTheDocument();
   expect(analysesApi.createTab).not.toHaveBeenCalled();

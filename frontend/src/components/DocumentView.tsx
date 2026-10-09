@@ -1,15 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import rehypeRaw from 'rehype-raw';
-import logo from '../logo.png';
+import { PartnerLogos } from './help/PartnerLogos';
 import 'katex/dist/katex.min.css';
 import { BUNDLED_DOCUMENT_FILES, type DocumentTarget } from '@/tutorials/documentationRegistry';
-import { APP_VERSION, APP_BUILD_DATE, APP_BUILD, getDocsBaseUrl } from '@/config/env';
+import { APP_VERSION } from '@/config/env';
 import { useZoom } from '@/hooks/useZoom';
 import { useDocumentAnchor } from '@/hooks/useDocumentAnchor';
+import { externalLink } from '@/lib/externalLink';
 
 type DocumentType = 'tutorial' | 'information' | 'reference';
 
@@ -20,9 +21,9 @@ interface NavigationState {
 
 /** Document viewer presentation keyed by canonical help/info/reference kind. */
 const DOC_CONFIG: Record<DocumentType, { title: string }> = {
-  tutorial: { title: 'LDaCA Help' },
-  information: { title: 'LDaCA Information' },
-  reference: { title: 'LDaCA References' },
+  tutorial: { title: 'Help' },
+  information: { title: 'Information' },
+  reference: { title: 'References' },
 };
 
 /** Called by: DocumentView link handlers when resolving local markdown hrefs. */
@@ -46,7 +47,7 @@ const isExternalLink = (href?: string | null): boolean => {
   return /^(https?:)?\/\//i.test(href) || href.startsWith('mailto:') || href.startsWith('tel:');
 };
 
-/** Called by: resolveDocUrl when bundled docs need desktop/web base-path resolution. */
+/** Resolves bundled documents against the desktop or server application URL. */
 const resolveLocalDocUrl = (requestedFile: string): string => {
   if (typeof window === 'undefined') {
     return requestedFile;
@@ -71,7 +72,7 @@ const resolveLocalDocUrl = (requestedFile: string): string => {
 
 /**
  * Resolves a requested doc file to the URL fetched by `DocumentView`.
- * Called by: DocumentView when constructing its bundled fallback source.
+ * Called by: DocumentView when constructing its bundled source.
  */
 const resolveFromRoot = (requestedPath: string, root: string): string => {
   const rootWithSlash = root.endsWith('/') ? root : `${root}/`;
@@ -97,8 +98,8 @@ const resolveAssetUrl = (
  * routes. It owns loading, intra-doc navigation, anchor highlighting, and zoom
  * controls so help icons can open the same viewer for tutorials, information,
  * and references.
- * Why: all help/reference entry points need one markdown viewer that works for bundled, remote, modal, and standalone docs.
- * Flow: resolve the active document target, fetch markdown with build placeholders, sync anchors and zoom state, then render markdown navigation controls.
+ * Why: all help/reference entry points need one markdown viewer that works for bundled, modal, and standalone docs.
+ * Flow: fetch the registered bundled document, substitute its version, apply one anchor scroll and render navigation and zoom controls.
  */
 function DocumentView({
   docType,
@@ -111,6 +112,9 @@ function DocumentView({
 }) {
   const config = DOC_CONFIG[docType];
   const [content, setContent] = useState<string>('');
+  const [loadedFile, setLoadedFile] = useState('');
+  const documentRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [documentSourceRoot, setDocumentSourceRoot] = useState<string>('');
@@ -124,68 +128,45 @@ function DocumentView({
 
   const { zoom, zoomIn, zoomOut, zoomReset } = useZoom({ keyboardShortcuts: true });
 
-  useDocumentAnchor({ activeAnchor, loading, error });
+  const waiting = loading || loadedFile !== currentTarget.file;
+  useDocumentAnchor({
+    activeAnchor,
+    loading: waiting,
+    error,
+    documentKey: currentTarget.file,
+    documentRef,
+    headerRef,
+  });
 
   useEffect(() => {
     const controller = new AbortController();
     const { signal } = controller;
     /**
      * Called by: DocumentView's markdown-loading effect whenever the selected file changes.
-     * Flow: derive the requested doc URL, fetch markdown without cache, replace build placeholders, then update content/error/loading if still mounted.
+     * Fetch the registered bundled URL, substitute its version and update only the current document.
      */
     const load = async () => {
       setLoading(true);
       setError(null);
       try {
         const requestedFile = currentTarget.file;
-        const remoteBase = getDocsBaseUrl();
-        const localRoot = resolveLocalDocUrl('');
-        const sources: { url: string; root: string }[] = [];
-        if (remoteBase) {
-          sources.push({ url: resolveFromRoot(requestedFile, remoteBase), root: remoteBase });
-        }
-        if (!remoteBase || BUNDLED_DOCUMENT_FILES.has(requestedFile)) {
-          sources.push({ url: resolveLocalDocUrl(requestedFile), root: localRoot });
-        }
-
-        let text: string | null = null;
-        let sourceRoot = '';
-        let lastError: Error = new Error('Failed to load document');
-        for (const source of sources) {
-          signal.throwIfAborted();
-          try {
-            const resp = await fetch(source.url, { cache: 'no-store', signal });
-            if (!resp.ok) {
-              lastError = new Error(`HTTP ${String(resp.status)}`);
-              continue;
-            }
-            text = await resp.text();
-            sourceRoot = source.root;
-            break;
-          } catch (sourceError: unknown) {
-            signal.throwIfAborted();
-            lastError =
-              sourceError instanceof Error ? sourceError : new Error('Failed to load document');
-          }
-        }
-        if (text === null) throw lastError;
-        // Substitute build-time placeholders so docs like
-        // `references/general.md` can show the current app version /
-        // build date without manual edits per release. Inserted via
-        // Vite's `define` (see vite.config.ts).
-        const rendered = text
-          .replace(/\{\{\s*VERSION\s*\}\}/g, APP_VERSION)
-          .replace(/\{\{\s*BUILD_DATE\s*\}\}/g, APP_BUILD_DATE)
-          .replace(/\{\{\s*BUILD\s*\}\}/g, APP_BUILD);
+        if (!BUNDLED_DOCUMENT_FILES.has(requestedFile))
+          throw new Error('Bundled document is unavailable');
+        const response = await fetch(resolveLocalDocUrl(requestedFile), { signal });
+        if (!response.ok) throw new Error(`HTTP ${String(response.status)}`);
+        const text = await response.text();
+        const rendered = text.replace(/\{\{\s*VERSION\s*\}\}/g, APP_VERSION);
         if (!signal.aborted) {
           setContent(rendered);
-          setDocumentSourceRoot(sourceRoot);
+          setDocumentSourceRoot(resolveLocalDocUrl(''));
+          setLoadedFile(currentTarget.file);
         }
       } catch (err: unknown) {
         if (!signal.aborted) {
           const message =
             err instanceof Error && err.message ? err.message : 'Failed to load document';
           setError(message);
+          setLoadedFile(currentTarget.file);
         }
       } finally {
         if (!signal.aborted) setLoading(false);
@@ -260,6 +241,7 @@ function DocumentView({
           <a
             {...props}
             href={href}
+            onClick={externalLink}
             target={linkTarget ?? '_blank'}
             rel={rel ?? 'noopener noreferrer'}
           >
@@ -281,14 +263,17 @@ function DocumentView({
   };
 
   return (
-    <div className="min-h-screen bg-editor">
-      <header className="bg-surface border-b border-surface-border px-6 py-4 pr-12">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="LDaCA Logo" className="h-8 w-auto object-contain" />
+    <div ref={documentRef} className="@container/document min-h-screen bg-editor">
+      <header
+        ref={headerRef}
+        className="sticky top-0 z-20 border-b border-surface-border bg-surface px-4 py-3 pr-12"
+      >
+        <div className="flex flex-col gap-3 @min-[560px]/document:flex-row @min-[560px]/document:items-center @min-[560px]/document:justify-between">
+          <div className="flex min-w-0 flex-col items-start gap-2">
             <h1 className="text-heading-2 font-semibold text-foreground">{config.title}</h1>
+            <PartnerLogos />
           </div>
-          <div className="flex flex-wrap items-center gap-3 sm:justify-end">
+          <div className="flex flex-wrap items-center gap-3 @min-[560px]/document:justify-end">
             <button
               type="button"
               className="text-body text-link hover:text-link whitespace-nowrap"
@@ -342,9 +327,9 @@ function DocumentView({
             transformOrigin: 'top center',
           }}
         >
-          {loading && <div className="text-center text-description">Loading…</div>}
+          {waiting && <div className="text-center text-description">Loading…</div>}
           {error && <div className="text-error">{error}</div>}
-          {!loading && !error && (
+          {!waiting && !error && (
             <ReactMarkdown
               remarkPlugins={[remarkGfm, remarkMath]}
               rehypePlugins={[rehypeRaw, rehypeKatex]}

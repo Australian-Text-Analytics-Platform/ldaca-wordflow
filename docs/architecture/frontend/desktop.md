@@ -376,11 +376,10 @@ remain available. Console source persistence still must succeed before execution
 ## Transient interaction ownership
 
 Graph menus use Radix collision handling against the graph container. A node owns
-one active Rename/Delete/Export dialog, while menu-open, hover, focus and copy
+one active Rename/Export dialog; confirmed deletion belongs to the project, while menu-open, hover, focus and copy
 feedback remain independent. Resize separators own pointer capture and local
 listeners; release, cancellation and lost capture finish the interaction. Help
-requests use AbortController so replaced/unmounted documents stop downloads and
-fallback attempts. Genuine remote failures still use the bundled fallback.
+requests use AbortController so replaced/unmounted documents stop obsolete bundled-document reads. No remote Markdown channel is used.
 
 ### Optional native resources
 
@@ -431,3 +430,12 @@ bundle identity, rather than webview profile. Test native menu history in a dedi
 verifying a clean production bundle.
 
 Application preferences use typed Rust IPC and Tauri Store at the resolved config path. Startup loads them before editor/updater rendering; successful field patches broadcast across windows. See the canonical [storage and preference contract](../../reference/application-storage.md).
+
+### Independent feedback and external links
+
+The native Help menu and renderer feedback action create unique `feedback-*`
+webview windows. They do not acquire project sessions or project-window close
+handlers. The command accepts only the configured survey origin and path. Website
+links pass through the existing native opener after scheme validation. Windows
+manual-update webview creation runs on a blocking worker, outside the synchronous
+menu callback. Server feedback remains an application dialog.

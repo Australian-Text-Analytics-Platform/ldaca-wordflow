@@ -477,7 +477,7 @@ impl Database {
             check_cancellation(&self.cancellation)?;
             if item.action == "materialize_view" {
                 if let Some(progress) = progress {
-                    progress.progress(format!("Materializing {}", item.entry.relation.sql()), None);
+                    progress.progress(format!("Materialising {}", item.entry.relation.sql()), None);
                 }
                 self.conn.execute_batch(&format!(
                     "CREATE SCHEMA IF NOT EXISTS {}",

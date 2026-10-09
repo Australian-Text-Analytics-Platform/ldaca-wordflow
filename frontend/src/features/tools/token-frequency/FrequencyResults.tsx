@@ -367,6 +367,7 @@ export function FrequencyResults({
         </p>
       )}
       <StopwordControl
+        active={active}
         base={base}
         nodes={nodes}
         selected={settings.stopwordSource}
@@ -451,7 +452,7 @@ export function FrequencyResults({
           Updating display…
         </p>
       )}
-      {queryError && (
+      {queryError && active && !querying && !stopwordsUnavailable && (
         <OperationError
           title="Could not update Frequency display"
           error={queryError.error}

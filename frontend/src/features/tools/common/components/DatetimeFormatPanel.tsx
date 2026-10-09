@@ -49,7 +49,7 @@ function DatetimeFormatForm({
   return (
     <DialogContent className="max-w-lg">
       <DialogHeader>
-        <DialogTitle>Convert {columnName} to datetime</DialogTitle>
+        <DialogTitle>Convert {columnName} to date and time</DialogTitle>
         <DialogDescription>
           Automatic conversion could not determine a format from up to 200 rows. Enter a format;
           timezone directives preserve timezone-aware values.
@@ -82,7 +82,7 @@ function DatetimeFormatForm({
           <OperationError title="Couldn't load source examples" error={examplesError} />
         )}
         <div className="flex flex-col gap-2">
-          <Label htmlFor="datetime-format">Datetime format</Label>
+          <Label htmlFor="datetime-format">Date and time format</Label>
           <Input
             id="datetime-format"
             value={format}

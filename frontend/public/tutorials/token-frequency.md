@@ -8,9 +8,9 @@ Frequency counts the tokens in one or two text corpora. A single corpus produces
 
 Open Frequency to start: if no analyses exist, an empty **FR-1** tab is created automatically. Use **+** on the tab strip to add another analysis. New tabs use the first available number: **FR-1**, **FR-2**, and so on. You can rename them; existing names stay unchanged. The titlebar shows your location, for example **Untitled ▸ Frequency ▸ FR-1**, and follows the selected tab and its name. Closing the last tab leaves an empty state; use **New Frequency analysis** to create another, or leave Frequency and return to start a fresh tab automatically. Each named tab keeps its latest successful result inside the project. Tabs are independent: another tab can run while this one is working. Concordance and Quotation are also available; the other analysis tools remain unavailable.
 
-The named tabs stay at the top of the pane while the content scrolls. Each tab contains two cards: **Token Frequency Analysis** for its inputs and Run controls, followed by **Token Frequency Results** for saved output. Both share the same scroll area, so you can move between settings and results without changing tabs.
+The named tabs stay at the top of the pane while the content scrolls. Each tab contains two cards: **Frequency Analysis** for its inputs and Run controls, followed by **Frequency results** for saved output. Both share the same scroll area, so you can move between settings and results without changing tabs.
 
-<h2 id="help-token-frequency-parameters">Token Frequency Analysis</h2>
+<h2 id="help-token-frequency-parameters">Frequency Analysis</h2>
 
 Choose each corpus colour in its input card. The colour stays with that Data Block when you swap Reference and Study, and updates its clouds and comparison legend without rerunning.
 
@@ -90,7 +90,7 @@ Only one run may be active in a tab. You can continue editing its parameters whi
 
 An accepted Run first saves its request and clears the previous result atomically. A later failure or cancellation leaves no completed result, but retains the submitted request and your draft. You can run again without clearing. If the displayed result used different parameters from the current draft, it is marked accordingly.
 
-<h2 id="help-token-frequency-results">Token Frequency Results</h2>
+<h2 id="help-token-frequency-results">Frequency results</h2>
 
 Results are saved privately in the project, separate from graph Data Blocks. Reading or exporting a saved result does not re-read its original source. It remains available if that source is changed, renamed or removed. Statistics are calculated from the saved token counts, with the original corpus totals preserved when you filter or sort. To rerun, select valid current inputs; saved results do not track changes to their sources.
 

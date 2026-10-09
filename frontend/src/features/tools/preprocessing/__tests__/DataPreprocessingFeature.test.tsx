@@ -115,11 +115,11 @@ describe('project preprocessing presentation', () => {
     mount();
     const labels = () =>
       useInputDestinations.getState().destinations.map((destination) => destination.label);
-    await waitFor(() => expect(labels()).toEqual(['Preprocessing Inputs']));
+    await waitFor(() => expect(labels()).toEqual(['Data Builder inputs']));
     await tab('Join');
     await waitFor(() => expect(labels()).toEqual(['Left input', 'Right input']));
     await tab('Build');
-    await waitFor(() => expect(labels()).toEqual(['Preprocessing Inputs']));
+    await waitFor(() => expect(labels()).toEqual(['Data Builder inputs']));
     await tab('Join');
     await waitFor(() => expect(labels()).toEqual(['Left input', 'Right input']));
   });
@@ -168,7 +168,7 @@ describe('project preprocessing presentation', () => {
     const sample = within(screen.getByRole('tabpanel', { name: 'Sample' }));
     await waitFor(() => expect(sample.getByRole('columnheader', { name: /Body/ })).toBeVisible());
     expect(sample.getByRole('link', { name: /next/i })).toBeVisible();
-    const apply = sample.getByRole('button', { name: 'Create Data Block', exact: true });
+    const apply = sample.getByRole('button', { name: 'Add to Project', exact: true });
     await waitFor(() => expect(apply).toBeEnabled());
     {
       await userEvent.click(apply);
@@ -184,8 +184,8 @@ describe('project preprocessing presentation', () => {
     await tab('SQL');
     const sql = within(screen.getByRole('tabpanel', { name: 'SQL', exact: true }));
     expect(await sql.findByRole('button', { name: 'Run cell 1' })).toBeVisible();
-    expect(sql.queryByText(/Preprocessing Inputs/)).not.toBeInTheDocument();
-    expect(sql.queryByRole('button', { name: 'Create Data Block' })).not.toBeInTheDocument();
+    expect(sql.queryByText(/Data Builder inputs/)).not.toBeInTheDocument();
+    expect(sql.queryByRole('button', { name: 'Add to Project' })).not.toBeInTheDocument();
     expect(sql.queryByRole('combobox', { name: 'Result type' })).not.toBeInTheDocument();
     expect(sql.getByRole('button', { name: 'Add Cell' })).toBeVisible();
   });
@@ -264,12 +264,12 @@ it('Build failures keep drafts and report once without changing graph selection'
   const build = within(screen.getByRole('tabpanel', { name: 'Build', exact: true }));
   await userEvent.click(build.getByRole('button', { name: 'Add column Count', exact: true }));
   mocks.apply.mockRejectedValueOnce(new Error('constraint failure'));
-  await userEvent.click(build.getByRole('button', { name: 'Create Data Block', exact: true }));
+  await userEvent.click(build.getByRole('button', { name: 'Add to Project', exact: true }));
   await waitFor(() => expect(build.getByRole('alert')).toHaveTextContent('constraint failure'));
   expect(mocks.report).not.toHaveBeenCalled();
   expect(build.getByRole('button', { name: 'Count', exact: true })).toBeVisible();
   expect(useSelectionStore.getState().selectedNodeIds).toEqual(['Corpus']);
-  await userEvent.click(build.getByRole('button', { name: 'Create Data Block', exact: true }));
+  await userEvent.click(build.getByRole('button', { name: 'Add to Project', exact: true }));
   await waitFor(() => expect(mocks.apply).toHaveBeenCalledTimes(2));
   await waitFor(() => expect(build.queryByText('Applying…')).not.toBeInTheDocument());
   expect(useProjectPreview.getState()).toMatchObject({ active: 'existing' });
@@ -281,7 +281,7 @@ it('Build keeps incomplete roots, combines bubbles and requires confirmation bef
   const build = panel('Build');
   await userEvent.click(build.getByRole('button', { name: 'Add column Body' }));
   await userEvent.click(build.getByRole('button', { name: 'Add column Count' }));
-  expect(build.getByRole('button', { name: 'Create Data Block', exact: true })).toBeDisabled();
+  expect(build.getByRole('button', { name: 'Add to Project', exact: true })).toBeDisabled();
   await userEvent.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
   expect(build.getAllByTestId('build-bubble')).toHaveLength(2);
   await userEvent.click(build.getByRole('button', { name: 'Choose how to combine' }));
@@ -343,7 +343,7 @@ it('SQL preview errors retain the previous output and leave Apply advisory', asy
   await waitFor(() => expect(build.getByRole('status')).toHaveTextContent('Parser Error'));
   expect(build.getByRole('columnheader', { name: /Body/ })).toBeVisible();
   expect(build.getByText(/Outdated preview/)).toBeVisible();
-  expect(build.getByRole('button', { name: 'Create Data Block', exact: true })).toBeEnabled();
+  expect(build.getByRole('button', { name: 'Add to Project', exact: true })).toBeEnabled();
   expect(mocks.report).not.toHaveBeenCalled();
 });
 
@@ -359,7 +359,7 @@ it('hands unfinished SQL to the editor and previews a corrected expression', asy
   await userEvent.keyboard('{Escape}');
   expect(build.getByText('Needs input')).toBeVisible();
   expect(build.getByText('Draft SQL', { exact: true })).toBeVisible();
-  expect(build.getByRole('button', { name: 'Create Data Block', exact: true })).toBeDisabled();
+  expect(build.getByRole('button', { name: 'Add to Project', exact: true })).toBeDisabled();
   expect(build.getByRole('columnheader', { name: /Body/ })).toBeVisible();
   expect(build.getByText(/Outdated preview/)).toBeVisible();
   await userEvent.click(build.getByRole('button', { name: 'Edit SQL expression' }));

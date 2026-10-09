@@ -17,6 +17,7 @@ interface UseStackedSplitsOptions {
   initialRatios?: Record<string, number>;
   /** Initial collapsed map. Defaults to all-expanded. */
   initialCollapsed?: Record<string, boolean>;
+  contentSized?: readonly string[];
 }
 
 export interface StackedSplitsApi<KeyT extends string> {
@@ -48,6 +49,11 @@ export interface StackedSplitsApi<KeyT extends string> {
     lowerKey: KeyT,
     event: ReactPointerEvent<HTMLDivElement>,
   ) => void;
+  handleResizeKey: (
+    upperKey: KeyT,
+    lowerKey: KeyT,
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => void;
 }
 
 /**
@@ -64,7 +70,14 @@ export const useStackedSplits = <KeyT extends string>(
   keys: readonly KeyT[],
   options: UseStackedSplitsOptions = {},
 ): StackedSplitsApi<KeyT> => {
-  const { minSectionPx = 120, sectionMinPx, initialRatios, initialCollapsed } = options;
+  const {
+    minSectionPx = 120,
+    sectionMinPx,
+    initialRatios,
+    initialCollapsed,
+    contentSized = [],
+  } = options;
+  const [resized, setResized] = useState<Set<string>>(() => new Set());
 
   const defaultRatio = keys.length > 0 ? 1 / keys.length : 0;
   const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>(() => {
@@ -114,7 +127,7 @@ export const useStackedSplits = <KeyT extends string>(
 
   const activeSectionTotal =
     keys.reduce((sum, key) => {
-      if (collapsedSections[key]) return sum;
+      if (collapsedSections[key] || (contentSized.includes(key) && !resized.has(key))) return sum;
       return sum + (sectionHeights[key] ?? 0);
     }, 0) || 1;
 
@@ -128,6 +141,8 @@ export const useStackedSplits = <KeyT extends string>(
     if (collapsedSections[key]) {
       return { flex: '0 0 auto' };
     }
+    if (contentSized.includes(key) && !resized.has(key))
+      return { flex: '0 1 auto', maxHeight: '60%', minHeight: sectionMinPx?.[key] ?? minSectionPx };
     const ratio = (sectionHeights[key] ?? 0) / activeSectionTotal;
     return { flexGrow: ratio, flexShrink: 0, flexBasis: 0 };
   };
@@ -162,8 +177,19 @@ export const useStackedSplits = <KeyT extends string>(
       const handle = event.currentTarget;
       const pointerId = event.pointerId;
       const startY = event.clientY;
-      const startUpper = sectionHeights[upperKey] ?? 0;
-      const startLower = sectionHeights[lowerKey] ?? 0;
+      // Seed the drag from rendered sizes, including content-sized sections.
+      const measured = Object.fromEntries(
+        keys.map((key) => [
+          key,
+          (sectionScrollRefs.current[key]
+            ?.closest('[data-sidebar-section]')
+            ?.getBoundingClientRect().height ?? 0) / height ||
+            sectionHeights[key] ||
+            0,
+        ]),
+      );
+      const startUpper = measured[upperKey] ?? 0;
+      const startLower = measured[lowerKey] ?? 0;
       const pairTotal = startUpper + startLower;
       if (pairTotal <= 0) return;
 
@@ -187,6 +213,8 @@ export const useStackedSplits = <KeyT extends string>(
       }
 
       releaseDrag.current?.();
+      setSectionHeights(measured);
+      setResized((previous) => new Set([...previous, upperKey, lowerKey]));
       handle.setPointerCapture(pointerId);
       setResizingLowerKey(lowerKey);
 
@@ -243,8 +271,56 @@ export const useStackedSplits = <KeyT extends string>(
       handle.addEventListener('pointercancel', onEnd);
       handle.addEventListener('lostpointercapture', onEnd);
     },
-    [collapsedSections, containerHeight, sectionHeights, minSectionPx, sectionMinPx, scrollSection],
+    [
+      collapsedSections,
+      containerHeight,
+      sectionHeights,
+      minSectionPx,
+      sectionMinPx,
+      scrollSection,
+      keys,
+    ],
   );
+
+  const handleResizeKey = (
+    upper: KeyT,
+    lower: KeyT,
+    event: React.KeyboardEvent<HTMLDivElement>,
+  ) => {
+    if (
+      !['ArrowUp', 'ArrowDown'].includes(event.key) ||
+      collapsedSections[upper] ||
+      collapsedSections[lower]
+    )
+      return;
+    event.preventDefault();
+    const height = containerRef.current?.getBoundingClientRect().height || containerHeight;
+    if (!height) return;
+    const measured = Object.fromEntries(
+      keys.map((key) => [
+        key,
+        (sectionScrollRefs.current[key]?.closest('[data-sidebar-section]')?.getBoundingClientRect()
+          .height ?? 0) / height ||
+          sectionHeights[key] ||
+          0,
+      ]),
+    );
+    const total = measured[upper]! + measured[lower]!;
+    let minUpper = Math.max((sectionMinPx?.[upper] ?? minSectionPx) / height, 0.02);
+    let minLower = Math.max((sectionMinPx?.[lower] ?? minSectionPx) / height, 0.02);
+    if (minUpper + minLower >= total) {
+      const scale = (total - 0.02) / (minUpper + minLower);
+      if (!Number.isFinite(scale) || scale <= 0) return;
+      minUpper *= scale;
+      minLower *= scale;
+    }
+    const next = Math.max(
+      minUpper,
+      Math.min(total - minLower, measured[upper]! + (event.key === 'ArrowUp' ? -0.03 : 0.03)),
+    );
+    setSectionHeights({ ...measured, [upper]: next, [lower]: total - next });
+    setResized((previous) => new Set([...previous, upper, lower]));
+  };
 
   return {
     containerRef,
@@ -254,5 +330,6 @@ export const useStackedSplits = <KeyT extends string>(
     assignSectionScrollRef,
     resizingLowerKey,
     handleResizeStart,
+    handleResizeKey,
   };
 };

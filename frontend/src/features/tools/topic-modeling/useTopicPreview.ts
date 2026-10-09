@@ -1,5 +1,4 @@
 import { objectDependencies } from '@/features/project/projectChanges';
-import { reportProjectError } from '@/features/project/projectErrors';
 import * as topicApi from '@/features/tools/topic-modeling/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -16,6 +15,7 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
     startedAt: number;
     update?: topicApi.TopicPreviewUpdate;
     error?: string;
+    diagnostic?: unknown;
     cancelling?: boolean;
     outdated?: boolean;
   } | null>(null);
@@ -100,11 +100,11 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
             ? {
                 ...old,
                 error: error instanceof Error ? error.message : String(error),
+                diagnostic: error,
                 outdated: true,
               }
             : old,
         );
-        reportProjectError(error, 'Topic Modelling Preview');
       });
   };
   const cancel = async () => {
@@ -115,10 +115,20 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
     try {
       if (current.id) await topicApi.deleteTopicPreview(base, tab, current.id);
     } catch (error) {
-      if (!current.controller.signal.aborted) reportProjectError(error);
-    } finally {
-      if (connection.current === current) clear();
+      if (!current.controller.signal.aborted && connection.current === current)
+        setState((old) =>
+          old
+            ? {
+                ...old,
+                cancelling: false,
+                error: error instanceof Error ? error.message : String(error),
+                diagnostic: error,
+              }
+            : old,
+        );
+      return;
     }
+    if (connection.current === current) clear();
   };
   const adjust = (summary: topicApi.TopicSummary) => {
     setState((old) =>

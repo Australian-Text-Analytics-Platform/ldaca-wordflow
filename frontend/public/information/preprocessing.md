@@ -1,6 +1,6 @@
 <!-- markdownlint-disable MD033 -->
 
-<h2 id="info-preprocessing-overview">About Data Preprocessing</h2>
+<h2 id="info-preprocessing-overview">About Data Builder</h2>
 
 Filter, Sample, Join, Stack and Build create new live Views using DuckDB.
 Their input Data Blocks stay unchanged. Find adds or replaces a column in its

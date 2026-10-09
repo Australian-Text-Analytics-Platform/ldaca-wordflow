@@ -255,3 +255,79 @@ its original primary website was unavailable for fresh verification. Native
 macOS/WebKit and Windows acceptance remain open globally. Batch 7 completes
 form-owned Run errors and shell wording. No publication or production storage
 mutation was performed.
+
+## Batch 7: shell, bundled Help and native windows
+
+Tab Rename awaits confirmation, guards duplicate submission and retains editable
+failed drafts. Active tabs reveal on mount, activation and target-slot changes;
+resize preserves manual scrolling. Graph box selection and confirmed dependency
+deletion share the native catalogue and one transaction, including cleanup of a
+registered Data Block whose source was removed through SQL. No MiniMap remains.
+
+Tools initially fits its content; manual resizing starts at the visible size.
+Loader, Builder and Topics use short sidebar labels and full headers/accessibility
+names. Builder actions use Add to Project. Editor and right-panel ratios remain
+window-local until reload. The compact
+Editor strip always offers an alphabetical Data Block picker. Bundled Help has
+one initial anchor scroll below its measured header, responsive partner marks,
+current terminology and the approved acknowledgement/concept DOI. Remote Help
+loading and configuration are removed. The logo strip has two explained,
+file-and-colour-specific theme exemptions.
+
+Original Run, import, Preview, stopword and result errors remain with their visible
+owners, with Retry and diagnostic actions. Import forms observe the existing task
+query; they create no additional stream or task-state authority. Intentional navigation cancellation
+does not appear as failure. A rejected result adapter no longer races an extra
+projection request that produces a duplicate version error. Native feedback uses
+independent windows; server feedback remains a dialog. Website links use the
+external desktop browser, and Windows updater window creation is asynchronous.
+
+Observed checks:
+
+- Backend: 219 library tests, 58 project integration tests and two CLI tests pass;
+  14 optional library tests and one subprocess helper remain ignored. The final
+  missing-registration/case-insensitive deletion regression also passes. Strict
+  all-target/all-feature Clippy and formatting pass.
+- Tauri: 36 Rust tests and strict all-target/all-feature Clippy pass. Server:
+  nine library and nine lifecycle tests pass; four storage tests pass. No
+  production application process or project storage was modified.
+- Frontend: 765 unit tests across 177 files and 17 script tests pass. The new
+  regressions cover accepted-task diagnostic deduplication, cancelled reads and
+  a failed enabled stopword list retaining its last valid display. Formatting,
+  lint, tooling types, Knip and generated API checks pass.
+- Chromium: all 37 spec files pass across the full run and focused reruns. The
+  final reruns cover short sidebar labels, real failed-import Retry with one
+  diagnostic and atomic recovery, file/workbook selection, both themes, current
+  graph controls, pane minimums, sample Views/Tables and reopening, real-model
+  Topics retained adjustments and PNG/SVG/JPEG/ZIP figures. The Topics selection
+  action has a specific accessible name so it cannot be confused with stopwords.
+- The live sample catalogue now includes non-Parquet collections. Its native
+  Parquet-only contract remains unchanged: unsupported empty collections are
+  omitted. Reddit plus Hansard GST import seven commit-pinned Views; individual
+  speaker-detail selection materialises one Table in both themes.
+- Fresh shell and anchored bundled Help screenshots were inspected in both
+  themes. The shared tutorial screenshot now depicts the current three-column
+  shell, Editor strip and upper/lower Data View. Help contrast checks pass.
+- macOS WebKit: all 24 native spec files pass in one refreshed full run
+  (five minutes). This includes both themes, Table/View Editor Apply and Undo, dependency
+  deletion, independent feedback windows, task recovery, real-model Topics,
+  representative-word and stopword adjustments, figure exports and whole-document
+  publication. The embedded driver's native-select event adapter is test-only;
+  this is not a physical OS picker or menu check.
+- Native acceptance used the isolated Test identity, debug profile and
+  instrumentation, built 2026-10-09T19:45:44.143Z, executable SHA-256
+  `889737fcdcea59eb71b5f405cbbf4bf9756e515bf6b20f287608f4dd38b5d3b2`.
+  This evidence is not uninstrumented production packaging acceptance.
+
+- Uninstrumented macOS release bundle: normal production frontend guards and
+  optimized native build pass. Deep/strict code-signature and Quick Look extension
+  checks pass with ad-hoc signing, identity `au.edu.ldaca.wordflow`, version 8.0.0,
+  executable SHA-256 `76a2633aeacc9961f90bff6ab52de79445dd09e30ec51ad438b54d0a437df74b`.
+  The production bundle was not launched. This verifies static packaging, not
+  Developer ID/notarization or production-runtime acceptance in a dedicated VM.
+
+Chromium emits the existing benign ResizeObserver-loop warnings already filtered
+by the application. Native UDPipe/linker warnings and expected jsdom canvas
+limitations remain; no Safari remount or geometry workaround was introduced.
+Windows native behavior, physical native pickers/Help menus and signed production
+packaging remain open.

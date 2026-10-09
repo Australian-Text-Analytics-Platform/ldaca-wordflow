@@ -24,7 +24,6 @@ import { EditTableDialog } from './EditTableDialog';
 import { useGraphState } from './graphState';
 import NativeDataView from './NativeDataView';
 import { useProjectPreview } from './previewState';
-import { reportProjectError } from './projectErrors';
 import ProjectGraph from './ProjectGraph';
 import { useProjectViewState } from './projectViewState';
 import { useRenameWorkspace } from './reconcileRenames';
@@ -36,6 +35,7 @@ import { ViewSqlDialog } from './ViewSqlDialog';
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
 import { listTabs } from '@/features/tools/common/analysisApi';
 import { openAnalysisTab } from './openAnalysisTab';
+import { DeleteObjectsDialog } from './DeleteObjectsDialog';
 import { DataEditorPanel } from './data-editor/DataEditorPanel';
 
 export type ProjectTool = ToolId;
@@ -60,6 +60,7 @@ function ProjectViewContent({
   setActiveTool: (tool: ProjectTool) => void;
 }) {
   useRenameWorkspace(base);
+  const [deleting, setDeleting] = useState<objectsApi.ObjectRef[] | null>(null);
   const navigate = useEditingNavigation();
   const setActiveTool = (tool: ProjectTool) => {
     navigate(() => {
@@ -149,34 +150,25 @@ function ProjectViewContent({
     if (!startEditing.isPending && !editingTable) startEditing.mutate(name);
   };
   const removeMany = async (ids: objectsApi.DataTarget[]) => {
-    const errors: string[] = [];
-    for (const id of ids) {
-      try {
-        await projectApi.deleteNode(base, id);
-        const object = objectsApi.objectRef(id);
-        if (object.schema === 'data') {
-          useSelectionStore.getState().removeNode(object.name);
-          usePinnedNodesStore.getState().unpinNode(object.name);
-        }
-        useGraphState.setState((state) => ({
-          selected: state.selected.filter((key) => key !== objectsApi.targetKey(id)),
-        }));
-        const views = useProjectViewState.getState();
-        views.retain(
-          new Set([...views.nodes.keys()].filter((key) => key !== objectsApi.targetKey(id))),
-        );
-        useProjectPreview.getState().remove(id);
-      } catch (error) {
-        errors.push(
-          `${objectsApi.targetLabel(id)}: ${error instanceof Error ? error.message : String(error)}`,
-        );
+    const deleted = await projectApi.deleteObjects(base, ids);
+    for (const object of deleted) {
+      if (object.schema === 'data') {
+        useSelectionStore.getState().removeNode(object.name);
+        usePinnedNodesStore.getState().unpinNode(object.name);
       }
+      useGraphState.setState((state) => ({
+        selected: state.selected.filter((key) => key !== objectsApi.targetKey(object)),
+      }));
+      const views = useProjectViewState.getState();
+      views.retain(
+        new Set([...views.nodes.keys()].filter((key) => key !== objectsApi.targetKey(object))),
+      );
+      useProjectPreview.getState().remove(object);
     }
-    if (errors.length)
-      reportProjectError(new Error(errors.join('\n\n')), 'Could not delete Data Blocks');
-    return errors.length === 0;
+    return true;
   };
-  const remove = (id: objectsApi.DataTarget) => removeMany([id]);
+  const requestDelete = (ids: objectsApi.DataTarget[]) =>
+    setDeleting(ids.map(objectsApi.objectRef));
   const renamed = useMutation({
     meta: { reportError: false },
     mutationFn: ({ id, name }: { id: objectsApi.DataTarget; name: string }) =>
@@ -220,7 +212,20 @@ function ProjectViewContent({
     <ThreeColumnLayout
       isTabbedMain={isTabbedTool(activeTool)}
       scrollMain={!isTabbedTool(activeTool) && activeTool !== 'data-loader'}
-      hosts={<InputDestinationChooser base={base} tool={activeTool} />}
+      hosts={
+        <>
+          <InputDestinationChooser base={base} tool={activeTool} />
+          {deleting && (
+            <DeleteObjectsDialog
+              key={JSON.stringify(deleting)}
+              base={base}
+              roots={deleting}
+              onClose={() => setDeleting(null)}
+              deleteNodes={removeMany}
+            />
+          )}
+        </>
+      }
       sidebar={
         <SidebarView
           onFeedback={() => {
@@ -242,6 +247,7 @@ function ProjectViewContent({
               {TOOL_DEFINITIONS.filter((v) => visibleTools.includes(v.id)).map((tool) => (
                 <SidebarMenuItem key={tool.id}>
                   <SidebarMenuButton
+                    aria-label={tool.label}
                     isActive={tool.id === activeTool}
                     onClick={() => {
                       if (isProjectTool(tool.id)) {
@@ -256,7 +262,7 @@ function ProjectViewContent({
                     }
                   >
                     <tool.icon />
-                    <span>{tool.label}</span>
+                    <span>{tool.shortLabel ?? tool.label}</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
@@ -304,7 +310,7 @@ function ProjectViewContent({
                       : undefined
                   }
                   onDelete={(id) => {
-                    void remove(id);
+                    requestDelete([id]);
                   }}
                 />
               )}
@@ -325,7 +331,14 @@ function ProjectViewContent({
         <ProjectPanels
           collapsed={collapsed}
           onToggleCollapse={toggle}
-          controls={<ProjectControlsView onToggleCollapse={toggle} />}
+          controls={
+            <ProjectControlsView
+              onToggleCollapse={toggle}
+              names={nodes.map((node) => node.table_name)}
+              activeName={preview.active ? objectsApi.objectRef(preview.active).name : ''}
+              onSelect={(name) => preview.open(name)}
+            />
+          }
           graph={
             preview.editor ? (
               <DataEditorPanel
@@ -381,8 +394,8 @@ function ProjectViewContent({
                   if (isDependencies) useGraphState.setState({ selected: [] });
                   else selection.clearSelection();
                 }}
-                onDelete={(id) => remove(graphTarget(id))}
-                onDeleteMany={(ids) => removeMany(ids.map(graphTarget))}
+                onDelete={(id) => requestDelete([graphTarget(id)])}
+                onDeleteMany={requestDelete}
                 onRename={(id, next) => rename(graphTarget(id), next)}
                 onClone={(id) => {
                   clone(graphTarget(id));

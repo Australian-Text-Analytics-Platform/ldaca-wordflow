@@ -958,6 +958,12 @@ impl ProjectRuntime {
         self.with_mutation(id.clone(), move |project| project.delete_node(&id))
             .await
     }
+    pub(crate) async fn delete_objects(&self, targets: Vec<ObjectTarget>) -> Result<Vec<Relation>> {
+        self.run(Access::ExclusiveSql, move |project, _| {
+            project.delete_objects(targets)
+        })
+        .await
+    }
     pub(crate) async fn parse_expression(
         &self,
         expression: String,

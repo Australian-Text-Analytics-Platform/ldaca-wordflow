@@ -1,3 +1,4 @@
+import { externalLink } from '@/lib/externalLink';
 import {
   Select,
   SelectContent,
@@ -63,7 +64,7 @@ export function TokenizerChoice({
   return (
     <>
       <NodeInputField
-        label="Tokenizer"
+        label="Tokeniser"
         value={models.find((model) => model.model_id === value)?.label ?? value}
       >
         <Select
@@ -120,6 +121,7 @@ export function TokenizerChoice({
         <a
           className="text-description underline"
           href={selectedModel.about_url}
+          onClick={externalLink}
           target="_blank"
           rel="noreferrer"
         >

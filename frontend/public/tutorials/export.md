@@ -47,7 +47,7 @@ incomplete analysis retains its submitted settings without resuming its task.
 
 The contents list explains which Views remain Views and which become Tables.
 Views whose dependencies are excluded, external or cannot be safely inspected
-are materialized. This makes their exported data independent of the original
+are materialised. This makes their exported data independent of the original
 project. A required View that cannot be read prevents the export; no partial
 project is saved. Inspection is repeated during export. External files can still
 change while they are being read. SQL cells are preserved as authored; export

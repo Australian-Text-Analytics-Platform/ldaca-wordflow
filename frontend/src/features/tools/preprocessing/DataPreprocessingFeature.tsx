@@ -239,7 +239,7 @@ function ToolPane({
         onColumnChange={picker.setColumn}
         showColumnPicker={false}
         columnLabel="Text column:"
-        title="Preprocessing Inputs"
+        title="Data Builder inputs"
       />
     );
   const existingNames = nodes.map((node) => node.table_name);

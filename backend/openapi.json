@@ -1650,6 +1650,21 @@
           }
         ]
       },
+      "DeleteObjects": {
+        "additionalProperties": false,
+        "properties": {
+          "objects": {
+            "items": {
+              "$ref": "#/components/schemas/ObjectTarget"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "objects"
+        ],
+        "type": "object"
+      },
       "DependencyEdge": {
         "properties": {
           "source": {
@@ -12731,6 +12746,59 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/api/project/objects/delete": {
+      "post": {
+        "operationId": "api_delete_objects",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteObjects"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/Relation"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Atomically deleted objects in dependent-first order"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid selection or mutation failed"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Mutation conflict"
           }
         },
         "tags": [

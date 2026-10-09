@@ -3542,3 +3542,81 @@ async fn node_preferences_are_immediate_and_survive_reopen_without_run() {
     );
     app.finish().await;
 }
+
+#[tokio::test]
+async fn confirmed_deletion_rechecks_dependents_and_rolls_back_the_whole_batch() {
+    let app = App::start().await;
+    app.create().await;
+    app.sql(&["CREATE TABLE source AS SELECT 1 n", "CREATE VIEW child AS SELECT * FROM source", "CREATE VIEW grandchild AS SELECT * FROM child", "CREATE TABLE independent AS SELECT 2 n", "CREATE TABLE guarded(n INTEGER PRIMARY KEY)", "CREATE TABLE guard(n INTEGER REFERENCES guarded(n))", "INSERT INTO wordflow.nodes(table_name) VALUES ('source'),('child'),('grandchild'),('independent'),('guarded')"]).await;
+    let one = |name: &str| json!({"schema":"data","name":name});
+    let stale = app
+        .post(
+            "/objects/delete",
+            json!({"objects":[one("source"),one("child")]}),
+        )
+        .await;
+    assert_eq!(stale.status(), 400);
+    assert_eq!(
+        stale.json::<Value>().await.unwrap()["error"]["code"],
+        "dependent_objects"
+    );
+    let failed = app
+        .post(
+            "/objects/delete",
+            json!({"objects":[one("independent"),one("guarded")]}),
+        )
+        .await;
+    assert_eq!(failed.status(), 400);
+    assert_eq!(app.number("SELECT count(*) FROM independent").await, 1);
+    let deleted = app
+        .post(
+            "/objects/delete",
+            json!({"objects":[one("source"),one("child"),one("grandchild")]}),
+        )
+        .await;
+    let status = deleted.status();
+    let objects = deleted.json::<Value>().await.unwrap();
+    assert_eq!(status, 200, "{objects}");
+    assert_eq!(objects[0]["name"], "grandchild");
+    assert_eq!(objects[2]["name"], "source");
+    assert_eq!(app.number("SELECT count(*) FROM wordflow.nodes WHERE table_name IN ('source','child','grandchild')").await, 0);
+    app.sql(&["INSERT INTO wordflow.nodes(table_name) VALUES ('missing_block')"])
+        .await;
+    let catalogue: Value = app
+        .client
+        .get(format!("{}/api/project/graph?mode=dependencies", app.url))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(
+        catalogue["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|node| node["object"]["name"] == "missing_block" && node["kind"] == "missing")
+    );
+    let unknown = app
+        .post(
+            "/objects/delete",
+            json!({"objects":[one("missing_block"),one("never_existed")]}),
+        )
+        .await;
+    assert_eq!(unknown.status(), 404);
+    assert_eq!(
+        app.number("SELECT count(*) FROM wordflow.nodes WHERE table_name='missing_block'")
+            .await,
+        1
+    );
+    let removed = app
+        .post(
+            "/objects/delete",
+            json!({"objects":[one("missing_block"),one("independent")]}),
+        )
+        .await;
+    assert_eq!(removed.status(), 200, "{}", removed.text().await.unwrap());
+    assert_eq!(app.number("SELECT count(*) FROM wordflow.nodes WHERE table_name IN ('missing_block','independent')").await, 0);
+    app.shutdown.cancel();
+}

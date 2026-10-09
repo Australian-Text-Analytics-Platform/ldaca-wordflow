@@ -64,9 +64,9 @@ it('join metadata follows native merged keys and duplicate output names', async 
   const columns = (source: string) =>
     ['id', 'label'].map((column) => ({ source, column, output: column }));
   const apply = async (kind: 'right' | 'full', name: string) => {
-    const select = joinSelect('jl', 'jr', kind, 'id', 'id');
+    const select = joinSelect('jl', 'jr', kind, 'id', 'id', ['id', 'label'], ['id', 'label']);
     const preview = await previewSql(base, select, 1, 10);
-    expect(preview.columns).toEqual(['id', 'label', 'label_1']);
+    expect(preview.columns).toEqual(['id', 'label', 'label_jr']);
     await applyTransformation(
       base,
       {
@@ -94,7 +94,7 @@ it('join metadata follows native merged keys and duplicate output names', async 
   ).toEqual({ model: 'right_model' });
   expect(
     await scalar(
-      "SELECT extension_metadata AS descriptor FROM wordflow.arrow_metadata WHERE relation_name='right_join' AND field_path=json_array('label_1')",
+      "SELECT extension_metadata AS descriptor FROM wordflow.arrow_metadata WHERE relation_name='right_join' AND field_path=json_array('label_jr')",
     ),
   ).toEqual({ descriptor: '{"note":"right label"}' });
   expect(await apply('full', 'full_join')).toBeUndefined();
@@ -242,7 +242,7 @@ it('DuckDB preprocessing: native Sample, Join, Stack and Build', async () => {
 it('restored preprocessing keeps nine tabs, native previews and drafts', async () => {
   await seed();
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await expect(role('heading', { name: 'Data Builder', exact: true })).toBeDisplayed();
   for (const title of ['Filter', 'Group', 'Join', 'Aggregate', 'Sample', 'Deduplicate', 'Stack', 'Build', 'SQL'])
     await expect(role('tab', { name: title, exact: true })).toBeDisplayed();
@@ -252,19 +252,19 @@ it('restored preprocessing keeps nine tabs, native previews and drafts', async (
   await role('button', { name: 'Run cell 1', exact: true }).click();
   await expect(role('columnheader', { name: /doubled/ })).toBeDisplayed();
   await role('button', { name: 'Data Loader', exact: true }).click();
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await expect(editor).toHaveText(expect.stringContaining('range(25)'));
-  await expect(role('button', { name: 'Create Data Block', exact: true })).not.toExist();
+  await expect(role('button', { name: 'Add to Project', exact: true })).not.toExist();
   await screenshot('/tmp/wordflow-preprocessing-light.png');
 });
 
 it('graph double-click adds inputs only to the active preprocessing tool', async () => {
   await seed();
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   const source = browser.$('[data-id=' + JSON.stringify("source's table") + ']');
   const live = browser.$('[data-id=' + JSON.stringify('live') + ']');
-  await expect(text('Preprocessing Inputs (0/1)', { exact: true })).toBeDisplayed();
+  await expect(text('Data Builder inputs (0/1)', { exact: true })).toBeDisplayed();
   await browser.execute(() => {
     const observer = new MutationObserver((records) => {
       for (const record of records)
@@ -280,12 +280,12 @@ it('graph double-click adds inputs only to the active preprocessing tool', async
     observer.observe(document.body, { childList: true, subtree: true });
   });
   await source.doubleClick();
-  await expect(text('Preprocessing Inputs (1/1)', { exact: true })).toBeDisplayed();
+  await expect(text('Data Builder inputs (1/1)', { exact: true })).toBeDisplayed();
   await expect(role('status', { name: /Carrying/ })).not.toExist();
   await role('tab', { name: 'Stack', exact: true }).click();
   await source.doubleClick();
   await live.doubleClick();
-  await expect(text('Preprocessing Inputs (2/6)', { exact: true })).toBeDisplayed();
+  await expect(text('Data Builder inputs (2/6)', { exact: true })).toBeDisplayed();
   await expect(testId('project-data-overlay')).not.toExist();
   await expect(browser.$('html')).not.toHaveAttribute('data-unexpected-preview');
   await expect(
@@ -293,11 +293,11 @@ it('graph double-click adds inputs only to the active preprocessing tool', async
   ).toBeDisplayed();
   await screenshot('/tmp/wordflow-double-click-inputs.png');
   await role('tab', { name: 'Filter', exact: true }).click();
-  await expect(text('Preprocessing Inputs (1/1)', { exact: true })).toBeDisplayed();
+  await expect(text('Data Builder inputs (1/1)', { exact: true })).toBeDisplayed();
   await role('button', { name: 'Data Loader', exact: true }).click();
   await live.doubleClick();
-  await role('button', { name: 'Preprocessing', exact: true }).click();
-  await expect(text('Preprocessing Inputs (1/1)', { exact: true })).toBeDisplayed();
+  await role('button', { name: 'Data Builder', exact: true }).click();
+  await expect(text('Data Builder inputs (1/1)', { exact: true })).toBeDisplayed();
 });
 
 it('preprocessing preserves mapped metadata and uses native typed filtering', async () => {
@@ -413,7 +413,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
   });
   await browser.setViewport({ width: 1200, height: 950 });
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   for (const theme of ['light', 'dark']) {
     await browser.execute((value) => {
       document.documentElement.setAttribute('data-theme', `${value}-2026`);
@@ -440,7 +440,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
           await press('Enter', role('searchbox', { name: 'Filter options' }));
           await placeholder('Enter value', {}, pane).setValue('one');
           await expect(
-            role('button', { name: 'Create Data Block', exact: true }, pane),
+            role('button', { name: 'Add to Project', exact: true }, pane),
           ).toBeEnabled();
         }
         if (title === 'Build') {
@@ -453,7 +453,7 @@ it('visual tools render with native inputs in light and dark narrow panes', asyn
       if (theme === 'light') {
         const before = (await projectApi.graph(base)).nodes.map((node) => node.table_name);
 
-          await role('button', { name: 'Create Data Block', exact: true }, pane).click();
+          await role('button', { name: 'Add to Project', exact: true }, pane).click();
           await browser.waitUntil(
             async () => (await projectApi.graph(base)).nodes.length === before.length + 1,
           );
@@ -544,7 +544,7 @@ it('self-joins keep independent keys, canonical output metadata, and one calcula
 it('Join graph additions choose separate roles for the same Data Block', async () => {
   await seed();
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'Join', exact: true }).click();
   const pane = role('tabpanel', { name: 'Join', exact: true });
   const source = browser.$('[data-id=' + JSON.stringify("source's table") + ']');
@@ -571,7 +571,7 @@ it('Join graph additions choose separate roles for the same Data Block', async (
     expect.stringContaining('n'),
   );
   await role('textbox', { name: 'New data block name', exact: true }, pane).setValue('self_roles');
-  await role('button', { name: 'Create Data Block', exact: true }, pane).click();
+  await role('button', { name: 'Add to Project', exact: true }, pane).click();
   await expect(role('button', { name: 'Select self_roles', exact: true })).toBeDisplayed();
   await expect(testId('project-data-overlay')).not.toExist();
   const graph = await projectApi.graph(base);
@@ -586,7 +586,7 @@ it('precise temporal Filter text survives shadcn calendar interaction in both th
     { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('temporal')" },
   ], { all: true });
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   const pane = role('tabpanel', { name: 'Filter', exact: true });
   await role('button', { name: 'Add data block', exact: true }, pane).click();
   await role('button', { name: 'temporal', exact: true }).click();

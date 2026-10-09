@@ -1,5 +1,4 @@
 import { objectDependencies } from '@/features/project/projectChanges';
-import { reportProjectError } from '@/features/project/projectErrors';
 import * as annotationApi from '@/features/tools/annotation/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
@@ -14,6 +13,7 @@ export function useAnnotationPreview(base: string, tab: string, active: boolean)
     startedAt: number;
     data?: annotationApi.AnnotationPreview;
     error?: string;
+    diagnostic?: unknown;
     outdated?: boolean;
   } | null>(null);
   const [wasActive, setWasActive] = useState(active);
@@ -89,9 +89,14 @@ export function useAnnotationPreview(base: string, tab: string, active: boolean)
       .catch((error: unknown) => {
         if (controller.current !== current || current.signal.aborted) return;
         setState((old) =>
-          old ? { ...old, error: error instanceof Error ? error.message : String(error) } : old,
+          old
+            ? {
+                ...old,
+                error: error instanceof Error ? error.message : String(error),
+                diagnostic: error,
+              }
+            : old,
         );
-        reportProjectError(error, 'Annotation Preview');
       });
   };
   return { state, submit, clear };

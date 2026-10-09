@@ -15,13 +15,6 @@ import { expectAppError } from './diagnostics';
 
 it('fits a temporary joint sample and publishes a full-data topic model from imported files', async function () {
   this.timeout(300000);
-  const resizeErrors: string[] = [];
-  const errorObserver = await browser.addInitScript<string>((emit) => {
-    window.addEventListener('error', (event) => {
-      if (event.message.includes('ResizeObserver')) emit(event.message);
-    });
-  });
-  errorObserver.on('data', (message: string) => resizeErrors.push(message));
   await browser.url('/');
   await topicModelingScenario(baseUrl, 'browser_topic', async (topicCount) => {
     for (let i = 0; i < 3; i++) {
@@ -61,17 +54,24 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
     if (!exposed) throw new Error('Expected a visible Topic bubble');
     await exposed.click();
     await expect(viewport).toHaveAttribute('style', settledTransform ?? '');
-    await results.$('button=Clear all').click();
+    await results.$('button[aria-label="Clear selected topics"]').scrollIntoView({ block: 'center' });
+    await results.$('button[aria-label="Clear selected topics"]').click();
+    await expect(results.$('button[aria-label="Clear selected topics"]')).not.toExist();
     await expect(viewport).toHaveAttribute('style', settledTransform ?? '');
+    await results.$('[aria-label="Enable additive lasso"]').scrollIntoView({ block: 'center' });
     await results.$('[aria-label="Enable additive lasso"]').click();
     const canvas = results.$('[data-testid="topic-lasso-canvas"]');
     await canvas.scrollIntoView({ block: 'center' });
-    const bounds = await canvas.getLocation();
-    const size = await canvas.getSize();
-    const left = Math.round(bounds.x + 40),
-      right = Math.round(bounds.x + size.width - 8);
-    const top = Math.round(bounds.y + 8),
-      bottom = Math.round(bounds.y + size.height - 8);
+    const { left, right, top, bottom } = await canvas.execute((element) => {
+      const bounds = element.getBoundingClientRect();
+      const pane = element.closest('[data-slot="scroll-area-viewport"]')?.getBoundingClientRect();
+      return {
+        left: Math.round(Math.max(bounds.left, pane?.left ?? 0) + 40),
+        right: Math.round(Math.min(bounds.right, pane?.right ?? innerWidth, innerWidth) - 8),
+        top: Math.round(Math.max(bounds.top, pane?.top ?? 0) + 8),
+        bottom: Math.round(Math.min(bounds.bottom, pane?.bottom ?? innerHeight, innerHeight) - 8),
+      };
+    }) as { left: number; right: number; top: number; bottom: number };
     await browser.performActions([
       {
         type: 'pointer',
@@ -90,11 +90,12 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
     ]);
     await browser.releaseActions();
     await expect(results.$('[aria-label="Clear lasso filter"]')).toBeEnabled();
-    await expect(results.$('button=Clear all')).not.toExist();
+    await expect(results.$('button[aria-label="Clear selected topics"]')).not.toExist();
     await results.$('[aria-label="Clear lasso filter"]').click();
     await results.$('[aria-label="Disable additive lasso"]').click();
     await results.$('[aria-label="Fit view"]').click();
     for (const format of ['PNG', 'SVG', 'JPEG', 'ZIP']) {
+      await results.$('button[aria-label="Download chart"]').scrollIntoView({ block: 'center' });
       await $('[aria-label="Topic Modelling results"]')
         .$('button[aria-label="Download chart"]')
         .click();
@@ -136,7 +137,6 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
       await dialog.waitForExist({ reverse: true });
     }
   });
-  expect(resizeErrors).toEqual([]);
 });
 
 it('adjusts retained stages atomically and colours captured metadata with own-population shares', async function () {

@@ -42,3 +42,14 @@ it('reconciles rename and deletion without reopening an earlier preview', () => 
   preview.retain(new Set(['first']));
   expect(useProjectPreview.getState().active).toBeNull();
 });
+
+it('keeps a registered Data Block label unqualified after an object rename notification', () => {
+  const preview = useProjectPreview.getState();
+  preview.edit('Corpus', 'clean', 'document');
+  preview.rename({ schema: 'data', name: 'Corpus' }, { schema: 'data', name: 'Renamed' });
+  expect(useProjectPreview.getState().active).toBe('Renamed');
+  expect(useProjectPreview.getState().editor?.target).toBe('Renamed');
+  preview.open({ schema: 'custom', name: 'Table' });
+  preview.rename({ schema: 'custom', name: 'Table' }, { schema: 'custom', name: 'Other' });
+  expect(useProjectPreview.getState().active).toEqual({ schema: 'custom', name: 'Other' });
+});

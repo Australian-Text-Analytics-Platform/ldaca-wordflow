@@ -132,7 +132,7 @@ export async function plotsScenario(base: string, prefix: string) {
   }
   await $('[role="tablist"][aria-label="Plot modes"]').$('[role="tab"]=Trends').click();
   await $('[aria-label="Plot presentation"]').click();
-  await $('[role="option"]=calendar').click();
+  await $('[role="option"]=Calendar').click();
   await $('[aria-label="Plot results"] svg').waitForExist();
   await browser.saveScreenshot(resolve(outputDir, `${prefix}-calendar.png`));
   await $('[aria-label="Plot results"]').execute((element) => {

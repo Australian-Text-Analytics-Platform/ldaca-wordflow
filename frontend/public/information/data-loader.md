@@ -26,7 +26,7 @@ remain in Tasks, and new Data Blocks do not automatically open a preview.
 
 Local files and LDaCA imports preserve their data in a hidden raw Table and show
 an editable View in the graph. Column transformations change the View and can
-use SQL-layer Undo. **Materialize** in the Data Block menu stores its current
+use SQL-layer Undo. **Materialise** in the Data Block menu stores its current
 results as a Table. Further column changes modify that Table directly and have
-no Undo. The original imported data remains stored separately. Sample data imported as Views stays online until materialized; samples imported
+no Undo. The original imported data remains stored separately. Sample data imported as Views stays online until materialised; samples imported
 as Tables already contain their data.

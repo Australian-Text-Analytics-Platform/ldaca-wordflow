@@ -79,7 +79,7 @@ it('real SQL tasks cancel independently, refresh project data and keep failed so
     if (task.finished_at !== null) await remove(`/api/project/tasks/${task.id}`);
   }
   await browser.url('/');
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();
   const console = () => testId('sql-console');
   const editor = () => console().$('.cm-content');
@@ -106,7 +106,7 @@ it('real SQL tasks cancel independently, refresh project data and keep failed so
   const materialize = await post('/api/project/nodes/Task%20import/materialize', {});
   expect(materialize.ok).toBe(true);
   await expect(role('button', { name: /Task: Clone Task import/ }, rows())).toBeDisplayed();
-  await expect(role('button', { name: /Task: Materialize Task import/ }, rows())).toBeDisplayed();
+  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).toBeDisplayed();
   expectAppError(/missing_task_source/);
   await editor().setValue('SELECT * FROM missing_task_source');
   await press('ControlOrMeta+Enter', editor());
@@ -122,9 +122,9 @@ it('real SQL tasks cancel independently, refresh project data and keep failed so
   }
   await browser.refresh();
   await browser.$('[aria-label="Data Block graph"]').waitForExist();
-  await expect(role('button', { name: /Task: Materialize Task import/ }, rows())).toBeDisplayed();
+  await expect(role('button', { name: /Task: Materialise Task import/ }, rows())).toBeDisplayed();
   await expect(browser.$('[data-sonner-toast]')).not.toExist();
-  await role('button', { name: 'Preprocessing', exact: true }).click();
+  await role('button', { name: 'Data Builder', exact: true }).click();
   await role('tab', { name: 'SQL', exact: true }).click();
   await expect(editor()).toHaveText(expect.stringContaining('missing_task_source'));
   await expect(text(/statements? completed/, {}, console())).not.toExist();

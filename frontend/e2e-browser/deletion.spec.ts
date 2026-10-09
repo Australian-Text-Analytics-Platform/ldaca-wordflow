@@ -1,44 +1,29 @@
 import { expectAppError } from './diagnostics';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
-import { role, testId, post } from './fixtures';
-
-it('batch deletion is sequential and keeps failed nodes selected with one error', async () => {
+import { role, post } from './fixtures';
+it('deletes a dependent closure atomically and lets confirmation keep selected entries', async () => {
   await browser.url('/');
-  const seeded = await post('/api/project/sql', {
-    script:
-      "CREATE TABLE a AS SELECT 1 n; CREATE TABLE b(n INTEGER PRIMARY KEY); INSERT INTO b VALUES (2); CREATE TABLE b_guard(n INTEGER REFERENCES b(n)); CREATE TABLE c AS SELECT 3 n; INSERT INTO wordflow.nodes(table_name) VALUES ('a'),('b'),('c')",
-  });
-  expect(seeded.ok).toBe(true);
+  expect((await post('/api/project/sql', { script: "CREATE TABLE a AS SELECT 1 n; CREATE VIEW a_child AS SELECT * FROM a; CREATE VIEW a_grandchild AS SELECT * FROM a_child; CREATE TABLE b(n INTEGER PRIMARY KEY); CREATE TABLE b_guard(n INTEGER REFERENCES b(n)); CREATE TABLE c AS SELECT 3 n; INSERT INTO wordflow.nodes(table_name) VALUES ('a'),('a_child'),('a_grandchild'),('b'),('c')" })).ok).toBe(true);
   await browser.refresh();
   await browser.$('[aria-label="Data Block graph"]').waitForExist();
-  for (const name of ['a', 'b', 'c'])
-    await role('button', { name: `Select ${name}`, exact: true }).click();
-  let inFlight = 0;
-  let maxInFlight = 0;
-  const calls: string[] = [];
-  await browser.sessionSubscribe({
-    events: ['network.beforeRequestSent', 'network.responseStarted'],
-  });
-  browser.on('network.beforeRequestSent', (event) => {
-    if (!event.request.url.endsWith('/delete')) return;
-    calls.push(event.request.url.split('/').at(-2) ?? '');
-    maxInFlight = Math.max(maxInFlight, ++inFlight);
-  });
-  browser.on('network.responseStarted', (event) => {
-    if (event.request.url.endsWith('/delete')) inFlight--;
-  });
+  for (const name of ['a','b','c']) await role('button', { name: `Select ${name}`, exact: true }).click();
   await role('button', { name: 'Delete (3)', exact: true }).click();
+  const dialog = role('alertdialog');
+  await expect(dialog.$$('input[type="checkbox"]')).toBeElementsArrayOfSize(5);
   expectAppError(/Could not drop the table.*main key table.*b_guard/i);
-  await role('button', { name: 'Delete 3', exact: true }, role('alertdialog')).click();
-  await expect(role('button', { name: 'Deselect b', exact: true })).toBeDisplayed();
-  await expect(role('button', { name: 'Deselect a', exact: true })).not.toExist();
+  await role('button', { name: 'Delete 5', exact: true }, dialog).click();
+  await expect(dialog.$('[role="alert"]')).toHaveText(expect.stringContaining('b_guard'));
+  for (const name of ['a','b','c']) await expect(role('button', { name: `Deselect ${name}`, exact: true, hidden: true })).toExist();
+  await expect(browser.$('[data-sonner-toast]')).not.toExist();
+  await role('checkbox', { name: 'a_child', exact: true }, dialog).click();
+  await expect(role('checkbox', { name: 'a', exact: true }, dialog)).not.toBeChecked();
+  await expect(role('checkbox', { name: 'a_grandchild', exact: true }, dialog)).toBeChecked();
+  await role('checkbox', { name: 'b', exact: true }, dialog).click();
+  await role('button', { name: 'Delete 2', exact: true }, dialog).click();
+  await expect(dialog).not.toExist();
+  await expect(role('button', { name: 'Deselect a', exact: true })).toExist();
+  await expect(role('button', { name: 'Select a_child', exact: true })).toExist();
+  await expect(role('button', { name: 'Select a_grandchild', exact: true })).not.toExist();
   await expect(role('button', { name: 'Deselect c', exact: true })).not.toExist();
-  await expect(browser.$$('[data-sonner-toast]')).toBeElementsArrayOfSize(1);
-  await expect(browser.$('[data-sonner-toast]')).toHaveText(
-    expect.stringContaining('Could not delete Data Blocks'),
-  );
-  expect(calls).toEqual(['a', 'b', 'c']);
-  expect(maxInFlight).toBe(1);
-  await expect(testId('project-data-overlay')).not.toExist();
 });

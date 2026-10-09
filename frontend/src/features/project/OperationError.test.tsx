@@ -5,6 +5,18 @@ import { expect, it, vi } from 'vite-plus/test';
 import { useSessionErrors } from '@/features/diagnostics/sessionErrors';
 import { OperationError } from './OperationError';
 
+it('does not present or record a cancelled read while its owner is leaving', () => {
+  useSessionErrors.getState().clear();
+  render(
+    <OperationError
+      title="Couldn't load Data Block"
+      error={new DOMException('Navigation cancelled', 'AbortError')}
+    />,
+  );
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(useSessionErrors.getState().entries).toEqual([]);
+});
+
 it('retains original diagnostics, supports recovery and records a Strict Mode failure once', async () => {
   useSessionErrors.getState().clear();
   const user = userEvent.setup();

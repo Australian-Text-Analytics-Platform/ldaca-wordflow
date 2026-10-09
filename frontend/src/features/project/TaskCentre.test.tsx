@@ -246,3 +246,35 @@ it('accepts analysis publication changes without needing a task summary', async 
     client.getQueryState(['native', 'http://project', 'graph', 'logical'])?.isInvalidated,
   ).toBe(false);
 });
+
+it('leaves a failed Run beside its visible form and falls back to a toast when that owner is hidden', async () => {
+  const owner = document.createElement('div');
+  owner.dataset.taskOwner = 'tab-one';
+  owner.getClientRects = vi.fn(() => [new DOMRect()] as unknown as DOMRectList);
+  document.body.append(owner);
+  const view = mount();
+  await waitFor(() => expect(tasksApi.getTasks).toHaveBeenCalled());
+  view.stream.send(1, [{ ...task('running'), tab_id: 'tab-one' }]);
+  view.stream.send(2, [{ ...task('failed'), tab_id: 'tab-one' }]);
+  expect(reportProjectError).not.toHaveBeenCalled();
+  owner.remove();
+  view.stream.send(3, [{ ...task('failed'), id: 'two', tab_id: 'tab-one' }]);
+  expect(reportProjectError).toHaveBeenCalledTimes(1);
+  view.unmount();
+});
+
+it('leaves unassociated import failures with their visible source form', async () => {
+  const owner = document.createElement('div');
+  owner.dataset.taskLabel = 'Import sample data';
+  owner.getClientRects = vi.fn(() => [new DOMRect()] as unknown as DOMRectList);
+  document.body.append(owner);
+  const view = mount();
+  await waitFor(() => expect(tasksApi.getTasks).toHaveBeenCalled());
+  view.stream.send(1, [{ ...task('running'), label: 'Import sample data' }]);
+  view.stream.send(2, [{ ...task('failed'), label: 'Import sample data' }]);
+  expect(reportProjectError).not.toHaveBeenCalled();
+  owner.remove();
+  view.stream.send(3, [{ ...task('failed'), id: 'two', label: 'Import sample data' }]);
+  expect(reportProjectError).toHaveBeenCalledTimes(1);
+  view.unmount();
+});

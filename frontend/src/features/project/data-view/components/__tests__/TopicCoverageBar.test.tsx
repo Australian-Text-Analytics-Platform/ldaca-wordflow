@@ -16,10 +16,10 @@ describe('TopicCoverageBar', () => {
     );
 
     const bar = screen.getByRole('img');
-    expect(bar).toHaveAttribute('aria-label', 'Topic 0: 60.0%, Topic 1: 30.0%, Topic -1: 10.0%');
+    expect(bar).toHaveAttribute('aria-label', 'Topic 0: 60.0%, Topic 1: 30.0%, No topic: 10.0%');
     expect(screen.getByText('T0 60%')).toBeInTheDocument();
     expect(screen.getByText('T1 30%')).toBeInTheDocument();
-    expect(screen.getByText('outlier 10%')).toBeInTheDocument();
+    expect(screen.getByText('No topic 10%')).toBeInTheDocument();
     const leadingSegment = screen.getByTitle('Topic 0: 60.0%');
     expect(Number.parseFloat(leadingSegment.style.width)).toBeCloseTo(60);
     expect(leadingSegment.style.backgroundColor).not.toBe('');

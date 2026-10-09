@@ -122,7 +122,7 @@ describe('EditorTabs', () => {
     expect(await screen.findByRole('tooltip')).toHaveTextContent('Analysis 1');
   });
 
-  it('renames the active tab when it is clicked again', async () => {
+  it('keeps a single click as activation and double-clicks to rename', async () => {
     const user = userEvent.setup();
     const { onRename, onActivate } = renderTabs();
     const first = screen.getAllByRole('tab')[0]!;
@@ -130,12 +130,14 @@ describe('EditorTabs', () => {
     fireEvent.pointerDown(first, { button: 0, pointerId: 1, clientX: 0 });
     fireEvent.pointerUp(first, { pointerId: 1, clientX: 0 });
 
+    expect(screen.queryByRole('textbox', { name: /rename tab/i })).not.toBeInTheDocument();
+    fireEvent.doubleClick(first);
     const input = screen.getByRole('textbox', { name: /rename tab/i });
     await user.clear(input);
     await user.type(input, 'Renamed tab{ArrowLeft}{ArrowRight}{Enter}');
 
     expect(onRename).toHaveBeenCalledWith('tab-1', 'Renamed tab');
-    expect(onActivate).not.toHaveBeenCalled();
+    expect(onActivate).toHaveBeenCalledWith('tab-1');
   });
 
   it('keeps the active close action visible and reveals inactive actions on interaction', () => {
@@ -231,4 +233,54 @@ describe('EditorTabs', () => {
     expect(screen.queryByRole('button', { name: /new tab/i })).toBeNull();
     expect(screen.queryByRole('button', { name: /close tab/i })).toBeNull();
   });
+});
+
+it('reveals activation and target-slot changes while preserving manual scroll on resize', async () => {
+  const view = render(<EditorTabs tabs={tabs} activeTabId="tab-1" onActivate={vi.fn()} />);
+  const strip = screen.getByRole('tablist');
+  Object.defineProperty(strip, 'clientWidth', { configurable: true, value: 80 });
+  fireEvent.resize(window);
+  view.rerender(<EditorTabs tabs={tabs} activeTabId="tab-3" onActivate={vi.fn()} />);
+  await waitFor(() => expect(strip.scrollLeft).toBeGreaterThan(0));
+  strip.scrollLeft = 0;
+  fireEvent.scroll(strip);
+  Object.defineProperty(strip, 'clientWidth', { configurable: true, value: 70 });
+  fireEvent.resize(window);
+  expect(strip.scrollLeft).toBe(0);
+  view.rerender(
+    <EditorTabs tabs={[tabs[2]!, tabs[0]!, tabs[1]!]} activeTabId="tab-3" onActivate={vi.fn()} />,
+  );
+  expect(strip.scrollLeft).toBe(0);
+  view.rerender(<EditorTabs tabs={tabs} activeTabId="tab-3" onActivate={vi.fn()} />);
+  await waitFor(() => expect(strip.scrollLeft).toBeGreaterThan(0));
+});
+
+it('guards pending renames and retains an editable failed value with Retry and Escape', async () => {
+  const user = userEvent.setup();
+  let reject!: (error: Error) => void;
+  const rename = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((_resolve, fail) => {
+          reject = fail;
+        }),
+    )
+    .mockResolvedValue(undefined);
+  renderTabs({ onRename: rename });
+  fireEvent.doubleClick(screen.getAllByRole('tab')[0]!);
+  const input = screen.getByRole('textbox', { name: 'Rename tab' });
+  await user.clear(input);
+  await user.type(input, '  New title  {Enter}{Enter}');
+  expect(rename).toHaveBeenCalledTimes(1);
+  expect(rename).toHaveBeenCalledWith('tab-1', 'New title');
+  expect(screen.queryByText('New title')).not.toBeInTheDocument();
+  reject(new Error('Name already exists'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Name already exists');
+  expect(input).not.toHaveAttribute('readonly');
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(screen.queryByRole('textbox')).not.toBeInTheDocument());
+  fireEvent.doubleClick(screen.getAllByRole('tab')[0]!);
+  await user.keyboard('{Escape}');
+  expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
 });

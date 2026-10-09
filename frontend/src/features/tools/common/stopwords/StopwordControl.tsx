@@ -14,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tag } from '@/components/ui/tag';
 import * as projectApi from '@/features/project/api';
+import { OperationError } from '@/features/project/OperationError';
 import { mapArrowColumnsToInfo } from '@/features/project/data-view/utils/columnTypes';
 import * as objectsApi from '@/features/project/objects';
 import { schemaQuery } from '@/features/project/projectQueries';
@@ -33,6 +34,7 @@ export function StopwordControl({
   selected,
   enabled,
   disabled,
+  active = true,
   controller,
   onSelect,
   onEnabledChange,
@@ -42,12 +44,13 @@ export function StopwordControl({
   selected: StopwordSource | null;
   enabled: boolean;
   disabled: boolean;
+  active?: boolean;
   controller: ReturnType<typeof useStopwords>;
   onSelect: (selected: StopwordSource | null) => Promise<void>;
   onEnabledChange: (enabled: boolean) => void;
 }) {
   const id = useId();
-  const select = useMutation({ mutationFn: onSelect });
+  const select = useMutation({ mutationFn: onSelect, meta: { reportError: false } });
   const savedKey = JSON.stringify(selected);
   const [draft, setDraft] = useState<{ savedKey: string; value: StopwordSource | null } | null>(
     null,
@@ -58,7 +61,8 @@ export function StopwordControl({
   const sourceName = choice?.source.name ?? '';
   const schema = useQuery({
     ...schemaQuery(base, { schema: sourceSchema, name: sourceName }),
-    enabled: Boolean(choice?.source.schema && choice.source.name),
+    enabled: active && Boolean(choice?.source.schema && choice.source.name),
+    meta: { reportError: false },
   });
   const node = nodes.find((node) =>
     objectsApi.sameTarget(node.object ?? node.table_name, choice?.source ?? null),
@@ -68,6 +72,10 @@ export function StopwordControl({
   );
   const unavailable = choice !== null && (!node || node.kind === 'missing');
   const busy = controller.create.isPending || controller.edit.isPending;
+  const readError =
+    choice?.column && objectsApi.sameTarget(choice.source, selected?.source ?? null)
+      ? controller.words.error
+      : schema.error;
   const picker = useNodeInputs({
     value: choice ? [{ node_id: choice.source.name, column: choice.column }] : [],
     onChange: (next) => {
@@ -170,21 +178,42 @@ export function StopwordControl({
                   : 'Choose the stopword column. The previous applied words are unchanged.'}
               </p>
             )}
-            {(schema.isError || controller.words.isError) && (
-              <div className="text-body-secondary text-description" role="alert">
-                <span>{(schema.error ?? controller.words.error)?.message}</span>{' '}
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={() => {
+            {active &&
+              !schema.isFetching &&
+              !controller.words.isFetching &&
+              readError &&
+              readError.name !== 'AbortError' && (
+                <OperationError
+                  title="Could not load stopwords"
+                  error={readError}
+                  onRetry={() => {
                     void schema.refetch();
                     if (selected?.column) void controller.words.refetch();
                   }}
-                >
-                  Retry
-                </Button>
-              </div>
-            )}
+                />
+              )}
+            {active &&
+              (select.error ??
+                controller.create.error ??
+                controller.edit.error ??
+                controller.add.error) && (
+                <OperationError
+                  title="Could not update stopwords"
+                  error={
+                    select.error ??
+                    controller.create.error ??
+                    controller.edit.error ??
+                    controller.add.error
+                  }
+                  onRetry={() => {
+                    if (select.error) select.mutate(select.variables ?? null);
+                    else if (controller.create.error) controller.create.mutate();
+                    else if (controller.edit.error) controller.edit.mutate();
+                    else if (controller.add.variables)
+                      controller.add.mutate(controller.add.variables);
+                  }}
+                />
+              )}
             <div className="flex flex-wrap gap-1.5">
               <Button
                 variant="outline"
@@ -220,6 +249,7 @@ export function StopwordControl({
                     : undefined
                 }
                 copying={busy}
+                active={active}
               />
             ) : (
               <p className="text-body-secondary text-description">
@@ -241,6 +271,7 @@ export function StopwordEditor({
   readOnly = false,
   onCreateCopy,
   copying = false,
+  active = true,
 }: {
   base: string;
   target: StopwordSource;
@@ -249,15 +280,17 @@ export function StopwordEditor({
   readOnly?: boolean;
   onCreateCopy?: () => void;
   copying?: boolean;
+  active?: boolean;
 }) {
   const id = useId();
-  const list = useQuery(stopwordQuery(base, target));
+  const list = useQuery(stopwordQuery(base, target, active));
   const [entry, setEntry] = useState('');
   const input = useRef<HTMLInputElement>(null);
   const [presets, setPresets] = useState(false);
   const [clearing, setClearing] = useState(false);
   const current = list.data ?? [];
   const save = useMutation({
+    meta: { reportError: false },
     mutationFn: ({
       before = [],
       after = [],
@@ -305,6 +338,13 @@ export function StopwordEditor({
         </div>
       )}
       <div className="min-h-0 space-y-2 overflow-y-auto">
+        {active && save.error && (
+          <OperationError
+            title="Could not update stopwords"
+            error={save.error}
+            onRetry={save.variables ? () => save.mutate(save.variables!) : undefined}
+          />
+        )}
         <Label htmlFor={id}>Stopwords</Label>
         <div
           role="group"
