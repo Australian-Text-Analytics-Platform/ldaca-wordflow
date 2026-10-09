@@ -243,6 +243,8 @@ describe('WorkspaceGraphFeature', () => {
       panOnDrag: true,
       selectionOnDrag: false,
       selectionMode: 'partial',
+      // Data Blocks stay where the layout puts them (Chao, 2026-10-09).
+      nodesDraggable: false,
       panOnScroll: true,
       // The same zoom key as every chart (issue 215); jsdom is not macOS.
       zoomActivationKeyCode: 'Control',

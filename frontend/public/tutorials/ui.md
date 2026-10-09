@@ -118,7 +118,7 @@ To switch Projects without going to the Data Loader, use **Switch Project** at t
 
 - More of the graph is visible when you make the right column wider (drag its left edge) or give the graph more height (drag the line between the graph and the Data Editor). A copy is named after the original with `_copy` added (for example `speeches_copy`). Undo and Redo availability comes from that Data Block's current backend session history.
 - Use **Rename** beside the Project name in the title bar to rename the active Project.
-- To move around a large Project, drag an empty part of the graph, or scroll with two fingers on a trackpad (or with the mouse wheel). To zoom, pinch on a trackpad, or hold Ctrl (⌘ on a Mac) while scrolling.
+- To move around a large Project, drag anywhere on the graph, also over a Data Block, or scroll with two fingers on a trackpad (or with the mouse wheel). Data Blocks stay where the layout places them; they cannot be dragged. To zoom, pinch on a trackpad, or hold Ctrl (⌘ on a Mac) while scrolling.
 - To select several Data Blocks at once, hold Shift and drag a box around them, or switch the panel's drag button to **Drag to select** and drag without Shift. Every Data Block the box touches is added to the selection, as if you had clicked it. In **Drag to select** mode, drag with the right mouse button to move the graph.
 
 ![Project Graph control panel, with the drag-mode button showing its name](tutorials/assets/ui/graph_controls.png)

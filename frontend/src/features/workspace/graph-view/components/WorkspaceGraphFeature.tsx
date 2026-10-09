@@ -522,7 +522,10 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
         panOnScroll
         zoomActivationKeyCode={CHART_ZOOM_KEY}
         connectOnClick={false}
-        nodesDraggable
+        // Data Blocks stay where the layout puts them: a block dragged far
+        // away shrank the whole graph on Fit view and was hard to bring back,
+        // and its edges grew long (Monika, via Chao, 2026-10-09).
+        nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable
         onConnect={graph.handleConnect}
