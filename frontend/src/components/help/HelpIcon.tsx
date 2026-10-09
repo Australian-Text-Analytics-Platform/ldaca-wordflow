@@ -6,6 +6,7 @@ interface HelpIconProps {
   label?: string;
   tooltip?: string;
   className?: string;
+  tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 /**

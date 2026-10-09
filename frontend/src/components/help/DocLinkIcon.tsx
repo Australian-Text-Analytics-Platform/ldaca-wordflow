@@ -46,6 +46,8 @@ export interface DocLinkIconProps<Kind extends DocLinkKind> {
   tooltip?: string;
   className?: string;
   iconClassName?: string;
+  /** Where the tooltip opens; `top` unless it would cover a nearby control. */
+  tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 /**
@@ -62,6 +64,7 @@ export function DocLinkIcon<Kind extends DocLinkKind>({
   tooltip,
   className,
   iconClassName,
+  tooltipSide = 'top',
 }: DocLinkIconProps<Kind>) {
   const config = CONFIG[kind];
   const resolvedLabel = label ?? config.defaultLabel;
@@ -111,7 +114,7 @@ export function DocLinkIcon<Kind extends DocLinkKind>({
           </a>
         </Button>
       </TooltipTrigger>
-      <TooltipContent side="top">{tooltipText}</TooltipContent>
+      <TooltipContent side={tooltipSide}>{tooltipText}</TooltipContent>
     </Tooltip>
   );
 }
