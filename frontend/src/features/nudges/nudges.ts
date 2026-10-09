@@ -58,14 +58,12 @@ export const NUDGES = {
   },
   'topic-giant-topic': {
     title: 'One topic holds most segments',
-    message:
-      'A lower Max topic size splits it into smaller topics. Change it and Run again.',
+    message: 'A lower Max topic size splits it into smaller topics. Change it and Run again.',
     targets: [NUDGE_TARGETS.topicMaxClusterSize],
   },
   'topic-few-topics': {
     title: 'Only a few topics',
-    message:
-      'A slightly lower Min topic size finds more topics. Change it and Run again.',
+    message: 'A slightly lower Min topic size finds more topics. Change it and Run again.',
     targets: [NUDGE_TARGETS.topicMinClusterSize],
   },
   'topic-many-ungrouped': {
