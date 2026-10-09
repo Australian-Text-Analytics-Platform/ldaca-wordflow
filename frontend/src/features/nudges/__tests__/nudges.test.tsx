@@ -79,7 +79,10 @@ describe('the Suggestions outline', () => {
 
     fireEvent.pointerDown(input);
     fireEvent.pointerDown(screen.getByText('Elsewhere'));
+    // Typing is not an action; Enter is.
     fireEvent.keyDown(document.body, { key: 'a' });
+    fireEvent.keyDown(document.body, { key: 'b' });
+    fireEvent.keyDown(document.body, { key: 'Enter' });
     expect(input).toHaveAttribute('data-nudge-active', '');
     fireEvent.pointerDown(screen.getByText('Elsewhere'));
     expect(input).toHaveAttribute('data-nudge-active', 'fading');

@@ -300,11 +300,27 @@
 [data-nudge-active] {
   outline: 2px solid var(--vscode-inputValidation-warningBorder);
   outline-offset: 2px;
+  /* The same pulse as a settings walk's gear (Chao, issue 360). */
+  animation: nudge-target-pulse 1.4s ease-in-out infinite;
   transition: outline-color 0.6s ease-out;
 }
 
 [data-nudge-active="fading"] {
+  animation: none;
   outline-color: transparent;
+}
+
+@keyframes nudge-target-pulse {
+  50% {
+    outline-offset: 5px;
+    outline-color: color-mix(in srgb, var(--vscode-inputValidation-warningBorder) 40%, transparent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-nudge-active] {
+    animation: none;
+  }
 }
 
 /* A settings walk's gear step outlines the gear itself (issue 360). */

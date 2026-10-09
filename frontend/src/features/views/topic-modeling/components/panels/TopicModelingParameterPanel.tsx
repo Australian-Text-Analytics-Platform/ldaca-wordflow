@@ -463,7 +463,9 @@ export function TopicModelingParameterPanel({
           documents={sampledDocumentCount}
           segments={estimatedSegmentCount}
           topicSampling={clusterSample}
-          occurrence={nodeInputs.inputs.map((input) => input.node_id).join('\0')}
+          // New numbers that are still large count as the situation happening
+          // again, such as a smaller Max tokens doubling the segments.
+          occurrence={`${nodeInputs.inputs.map((input) => input.node_id).join('\0')}\0${String(sampledDocumentCount)}\0${String(estimatedSegmentCount)}`}
         />
       )}
       {firstRunNote ? (

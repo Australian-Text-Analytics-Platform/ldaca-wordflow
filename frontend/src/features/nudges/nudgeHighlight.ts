@@ -30,8 +30,9 @@ interface WatchOptions {
 }
 
 /**
- * Calls `onFade` after a number of other clicks or key presses, or after a
- * timeout. Listens from the next tick, so the click that started it does not
+ * Calls `onFade` after a number of other actions, or after a timeout. An
+ * action is a click, or Enter or Escape; typing in a field is not, so setting
+ * up a run does not wear a suggestion out key by key. Listens from the next tick, so the click that started it does not
  * count. Returns a function that stops listening.
  */
 export function fadeAfterOtherActions({
@@ -49,6 +50,7 @@ export function fadeAfterOtherActions({
     onFade();
   };
   const onAction = (event: Event) => {
+    if (event instanceof KeyboardEvent && event.key !== 'Enter' && event.key !== 'Escape') return;
     const target = event.target;
     if (target instanceof Element && isOwnAction(target)) return;
     remaining -= 1;
