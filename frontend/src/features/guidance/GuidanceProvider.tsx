@@ -239,10 +239,14 @@ export function GuidanceProvider({
   // (issue 358). It also loads a moment after the gear is clicked, before it
   // registers as a dialog.
   const settingsOpen = useSettingsDialogStore((state) => state.open);
+  // After a hint closes, the next one waits for the person's next click or
+  // key press, so they can first do what it showed (Chao, issue 364).
+  const [awaitingAction, setAwaitingAction] = useState(false);
   const hintSession: GuidanceSession | null =
     userId &&
     contextualHintsEnabled &&
     !settingsOpen &&
+    !awaitingAction &&
     visitState.activeView &&
     !visitState.paused &&
     nextDefinition
@@ -268,6 +272,7 @@ export function GuidanceProvider({
 
   const acknowledgeCurrentHint = () => {
     if (session?.kind !== 'hint' || !userId) return;
+    setAwaitingAction(true);
     acknowledge(userId, session.definition.id, session.definition.version);
     dispatchContextualHintVisit({
       type: 'acknowledge',
@@ -297,6 +302,23 @@ export function GuidanceProvider({
     );
   };
 
+  useEffect(() => {
+    if (!awaitingAction) return;
+    const release = () => {
+      setAwaitingAction(false);
+    };
+    // From the next tick, so the click that closed the hint does not count.
+    const start = setTimeout(() => {
+      document.addEventListener('pointerdown', release, true);
+      document.addEventListener('keydown', release, true);
+    }, 0);
+    return () => {
+      clearTimeout(start);
+      document.removeEventListener('pointerdown', release, true);
+      document.removeEventListener('keydown', release, true);
+    };
+  }, [awaitingAction]);
+
   // A hint outlines what it points at, which a spotlight on a large area did
   // not show well (Chao, issue 360): a button or link to click pulses, like a
   // settings walk; an area to look at gets a still outline, so the pulse
@@ -323,7 +345,15 @@ export function GuidanceProvider({
     if (!(element instanceof HTMLElement)) return;
     const clickable = element.matches('button, a[href], [role="button"]');
     element.setAttribute('data-hint-target', clickable ? 'click' : 'look');
-    return clearMarks;
+    // Clicking the button a hint points at does its job and counts as Got it.
+    const acknowledgeByClick = () => {
+      acknowledgeCurrentHint();
+    };
+    if (clickable) element.addEventListener('click', acknowledgeByClick);
+    return () => {
+      element.removeEventListener('click', acknowledgeByClick);
+      clearMarks();
+    };
   });
 
   // The gear step outlines the gear itself, and a click anywhere but the gear
@@ -367,6 +397,11 @@ export function GuidanceProvider({
             title: session.definition.title,
             content: session.definition.content,
             placement: session.definition.placement ?? 'auto',
+            // Hints never dim or block the page: people can work while one
+            // shows, and click the button it points at (Chao, issue 364).
+            hideOverlay: true,
+            blockTargetInteraction: false,
+            disableFocusTrap: true,
             ...(session.definition.settingsWalk
               ? { data: { settingsWalk: session.definition.settingsWalk } }
               : {}),

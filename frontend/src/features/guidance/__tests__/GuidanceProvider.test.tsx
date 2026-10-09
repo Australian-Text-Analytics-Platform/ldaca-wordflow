@@ -206,7 +206,7 @@ describe('GuidanceProvider', () => {
     expect(await screen.findByTestId('joyride')).toBeInTheDocument();
   });
 
-  it('configures a blocking, dismissible Contextual Hint', async () => {
+  it('configures a dismissible Contextual Hint that never blocks the page (issue 364)', async () => {
     const user = userEvent.setup();
     renderGuidance();
     await user.click(screen.getByRole('button', { name: 'Reach hint' }));
@@ -222,6 +222,12 @@ describe('GuidanceProvider', () => {
       width: 360,
     });
     expect(fixture.joyrideProps?.steps[0]?.placement).toBe('auto');
+    // The hint step itself lets people work: no dimming, target clickable.
+    expect(fixture.joyrideProps?.steps[0]).toMatchObject({
+      hideOverlay: true,
+      blockTargetInteraction: false,
+      disableFocusTrap: true,
+    });
     expect(screen.getByRole('button', { name: 'Not now' })).toBeInTheDocument();
     expect(screen.getByText('Esc = Not now · Enter = Got it')).toBeInTheDocument();
   });
@@ -242,7 +248,7 @@ describe('GuidanceProvider', () => {
     expect(fixture.joyrideProps?.options?.scrollDuration).toBe(0);
   });
 
-  it('acknowledges with Enter and advances to another reached milestone', async () => {
+  it('acknowledges with Enter, then waits for the next action before the next hint (issue 364)', async () => {
     const user = userEvent.setup();
     renderGuidance({ hints: [hint(), hint('hint-two')] });
     await user.click(screen.getByRole('button', { name: 'Reach hint' }));
@@ -253,7 +259,29 @@ describe('GuidanceProvider', () => {
     expect(useGuidanceAcknowledgmentsStore.getState().byUser['user-1']).toEqual({
       'hint-one': 1,
     });
+    // No chain: people first do what the hint showed.
+    await waitFor(() => expect(screen.queryByTestId('joyride')).not.toBeInTheDocument());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    fireEvent.pointerDown(document.body);
     await waitFor(() => expect(fixture.joyrideProps?.steps[0]?.id).toBe('hint-two'));
+  });
+
+  it('counts a click on the button a hint points at as Got it (issue 364)', async () => {
+    const button = document.createElement('button');
+    button.id = 'target-button';
+    document.body.append(button);
+    const user = userEvent.setup();
+    renderGuidance({ hints: [{ ...hint(), target: '#target-button' }] });
+    await user.click(screen.getByRole('button', { name: 'Reach hint' }));
+    expect(button).toHaveAttribute('data-hint-target', 'click');
+
+    fireEvent.click(button);
+    expect(useGuidanceAcknowledgmentsStore.getState().byUser['user-1']).toEqual({
+      'hint-one': 1,
+    });
+    button.remove();
   });
 
   it('defers the visit without acknowledging when Not now is chosen', async () => {

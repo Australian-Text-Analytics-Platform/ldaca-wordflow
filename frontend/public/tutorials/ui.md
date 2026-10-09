@@ -325,10 +325,12 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 
 <span id="help-ui-hint-system"></span>
 - Each of the nine functions can show brief **Contextual Hints** as you reach
-  useful milestones. Several hints may form a progressive sequence, but each
-  is acknowledged independently. Choose **Got it** or press **Enter** to
-  acknowledge the current version and continue to another milestone already
-  reached.
+  useful milestones. A hint never dims or blocks the page: it outlines what it
+  points at (pulsing when it is a button to click), and you can keep working
+  while it shows. Clicking the button it points at does its job and counts as
+  **Got it**; so does choosing **Got it** or pressing **Enter**. The next hint
+  waits until your next click or key press, so you can first do what the hint
+  showed.
 - Choose **Not now** or press **Escape** to pause hints for the current function
   visit without acknowledging anything. Switching Analysis Tabs does not
   resume them; leave the function and return to retry the earliest eligible
