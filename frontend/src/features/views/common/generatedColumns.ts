@@ -87,38 +87,67 @@ export function sourceTextColumnName(
 }
 
 /**
- * Plain explanations shown small and grey under the stored names of generated
- * columns (issue 205). The stored names stay as they are, because they are the
- * column names in created Data Blocks and exports.
+ * Short plain labels shown small and grey under the stored names of generated
+ * columns (issue 205), a few words so the columns stay narrow. The stored
+ * names stay as they are, because they are the column names in created Data
+ * Blocks and exports. GENERATED_COLUMN_DETAILS says more, in a tooltip.
  */
 export const GENERATED_COLUMN_EXPLANATIONS: Readonly<Record<string, string>> = {
+  CONC_source: 'Searched text',
+  QUOTE_source: 'Searched text',
+  CONC_left_context: 'Text before',
+  CONC_matched_text: 'The match',
+  CONC_right_context: 'Text after',
+  CONC_start_idx: 'Match start',
+  CONC_end_idx: 'Match end',
+  CONC_l1: 'Word before (L1)',
+  CONC_r1: 'Word after (R1)',
+  CONC_l1_freq: 'L1 frequency',
+  CONC_r1_freq: 'R1 frequency',
+  CONC_dispersion: 'Match positions',
+  CONC_extraction: 'Matches found',
+  QUOTE_extraction: 'Quotes highlighted',
+  QUOTE_speaker: 'Who is quoted',
+  QUOTE_speaker_start_idx: 'Speaker start',
+  QUOTE_speaker_end_idx: 'Speaker end',
+  QUOTE_quote: 'The quote',
+  QUOTE_quote_start_idx: 'Quote start',
+  QUOTE_quote_end_idx: 'Quote end',
+  QUOTE_verb: 'Reporting verb',
+  QUOTE_verb_start_idx: 'Verb start',
+  QUOTE_verb_end_idx: 'Verb end',
+  QUOTE_quote_type: 'How found',
+  QUOTE_quote_token_count: 'Words in quote',
+  QUOTE_is_floating_quote: 'Continues quote',
+  QUOTE_quote_row_idx: 'Quote number',
+};
+
+/** The full explanation of a generated column, shown in a tooltip on its label. */
+export const GENERATED_COLUMN_DETAILS: Readonly<Record<string, string>> = {
   CONC_source: 'The searched text, renamed from a Concordance column',
   QUOTE_source: 'The text searched for quotes, renamed from a Quotation column',
   CONC_left_context: 'Text before the match',
-  CONC_matched_text: 'The match',
   CONC_right_context: 'Text after the match',
-  CONC_start_idx: 'Where the match starts (character)',
-  CONC_end_idx: 'Where the match ends (character)',
-  CONC_l1: 'Word just before (L1)',
-  CONC_r1: 'Word just after (R1)',
+  CONC_start_idx: 'Where the match starts, in characters from the start of the document',
+  CONC_end_idx: 'Where the match ends, in characters from the start of the document',
+  CONC_l1: 'The word just before the match',
+  CONC_r1: 'The word just after the match',
   CONC_l1_freq:
     'How often that L1 word occurs (ignoring capitals unless the search was case sensitive)',
   CONC_r1_freq:
     'How often that R1 word occurs (ignoring capitals unless the search was case sensitive)',
   CONC_dispersion: 'Where the matches occur in the document',
   CONC_extraction: 'The matches found in this document',
-  QUOTE_extraction: 'Document, with quotes highlighted',
-  QUOTE_speaker: 'Who is quoted',
-  QUOTE_speaker_start_idx: 'Where the speaker starts (character)',
-  QUOTE_speaker_end_idx: 'Where the speaker ends (character)',
-  QUOTE_quote: 'The quote',
-  QUOTE_quote_start_idx: 'Where the quote starts (character)',
-  QUOTE_quote_end_idx: 'Where the quote ends (character)',
-  QUOTE_verb: 'Reporting verb, such as said',
-  QUOTE_verb_start_idx: 'Where the verb starts (character)',
-  QUOTE_verb_end_idx: 'Where the verb ends (character)',
+  QUOTE_extraction: 'The document, with its quotes highlighted',
+  QUOTE_speaker_start_idx: 'Where the speaker starts, in characters',
+  QUOTE_speaker_end_idx: 'Where the speaker ends, in characters',
+  QUOTE_quote_start_idx: 'Where the quote starts, in characters',
+  QUOTE_quote_end_idx: 'Where the quote ends, in characters',
+  QUOTE_verb: 'The reporting verb, such as said',
+  QUOTE_verb_start_idx: 'Where the verb starts, in characters',
+  QUOTE_verb_end_idx: 'Where the verb ends, in characters',
   QUOTE_quote_type: 'How the quote was found',
   QUOTE_quote_token_count: 'Words in the quote',
   QUOTE_is_floating_quote: 'Continues the previous quote',
-  QUOTE_quote_row_idx: 'Quote number in the document',
+  QUOTE_quote_row_idx: "The quote's number in the document",
 };

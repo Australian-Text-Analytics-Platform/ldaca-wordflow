@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GENERATED_COLUMN_EXPLANATIONS, sourceTextColumnName } from '../generatedColumns';
+import { GENERATED_COLUMN_DETAILS, sourceTextColumnName } from '../generatedColumns';
 
 // The same cases as the backend's test_the_source_text_name_skips_names_already_taken.
 describe('sourceTextColumnName (issue 244)', () => {
@@ -23,7 +23,7 @@ describe('sourceTextColumnName (issue 244)', () => {
   });
 
   it('explains the renamed columns', () => {
-    expect(GENERATED_COLUMN_EXPLANATIONS.CONC_source).toMatch(/searched text/);
-    expect(GENERATED_COLUMN_EXPLANATIONS.QUOTE_source).toMatch(/quotes/);
+    expect(GENERATED_COLUMN_DETAILS.CONC_source).toMatch(/searched text/);
+    expect(GENERATED_COLUMN_DETAILS.QUOTE_source).toMatch(/quotes/);
   });
 });

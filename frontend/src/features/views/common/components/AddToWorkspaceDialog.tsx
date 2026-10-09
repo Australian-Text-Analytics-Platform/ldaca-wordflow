@@ -13,7 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ColumnSelectionActions } from './ColumnSelectionActions';
-import { GENERATED_COLUMN_EXPLANATIONS } from '../generatedColumns';
+import { GENERATED_COLUMN_DETAILS, GENERATED_COLUMN_EXPLANATIONS } from '../generatedColumns';
 
 export interface AddToWorkspaceColumn {
   name: string;
@@ -114,6 +114,13 @@ const reconcileSyncedColumns = (
     next[source.id] = normalizeSelectedColumns(source, selectedShared);
   }
   return next;
+};
+
+/** A column's hover text: its full explanation when it has one (issue 205). */
+const columnHoverText = (column: AddToWorkspaceColumn): string => {
+  if (column.title) return column.title;
+  const detail = GENERATED_COLUMN_DETAILS[column.name];
+  return detail ? `${column.name}: ${detail}` : column.name;
 };
 
 /** Selects immutable Result columns for Derived Data Block Creation. */
@@ -334,7 +341,7 @@ export function AddToWorkspaceDialog({
                                   toggleColumn(source, column.name);
                                 }}
                               />
-                              <span className="truncate" title={column.title ?? column.name}>
+                              <span className="truncate" title={columnHoverText(column)}>
                                 {column.name}{' '}
                                 {unavailable ? (
                                   // Before the explanation, so a long one cannot hide it.
@@ -343,7 +350,7 @@ export function AddToWorkspaceDialog({
                                   </span>
                                 ) : null}
                                 {GENERATED_COLUMN_EXPLANATIONS[column.name] ? (
-                                  // A plain explanation beside the stored name (issue 205).
+                                  // A short label beside the stored name (issue 205); the full one is in the hover text.
                                   <span aria-hidden="true" className="text-description">
                                     {GENERATED_COLUMN_EXPLANATIONS[column.name]}{' '}
                                   </span>
