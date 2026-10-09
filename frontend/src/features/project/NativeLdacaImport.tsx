@@ -10,9 +10,13 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as filesApi from '@/features/project/filesApi';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { ChevronRight, ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
+import { create } from 'zustand';
+import { OperationError } from './OperationError';
+
+const useAccess = create<{ token: string }>(() => ({ token: '' }));
 
 function portalUrl(record: filesApi.OniSearchResult) {
   const identifier = record.crate_id?.trim() ? record.crate_id : record.id;
@@ -20,13 +24,23 @@ function portalUrl(record: filesApi.OniSearchResult) {
   return `https://data.ldaca.edu.au/collection?id=${encodeURIComponent(identifier)}&_crateId=${encodeURIComponent(record.crate_id ?? identifier)}`;
 }
 
-export default function NativeLdacaImport({ base }: { base: string }) {
-  const [token, setToken] = useState('');
+export default function NativeLdacaImport({ base, active }: { base: string; active: boolean }) {
+  const token = useAccess((state) => state.token);
+  const [filterText, setFilterText] = useState('');
   const [query, setQuery] = useState('');
   const [method, setMethod] = useState<'keyword' | 'identifier'>('keyword');
   const [collection, setCollection] = useState('all');
   const [format, setFormat] = useState('all');
+  const catalogue = useQuery({
+    meta: { reportError: false },
+    queryKey: [base, 'ldaca-catalogue'],
+    queryFn: ({ signal }) => filesApi.browseLdaca(base, token, signal),
+    enabled: active,
+    staleTime: Infinity,
+    retry: false,
+  });
   const search = useMutation({
+    meta: { reportError: false },
     mutationFn: (input: { method: 'keyword' | 'identifier'; query: string; token: string }) =>
       filesApi.searchLdaca(base, input.method, input.query, input.token),
     onSuccess: () => {
@@ -35,16 +49,20 @@ export default function NativeLdacaImport({ base }: { base: string }) {
     },
   });
   const imported = useMutation({
-    mutationFn: (input: { id: string; token: string }) =>
-      filesApi.importLdaca(base, input.id, input.token || undefined),
+    meta: { reportError: false },
+    mutationFn: (input: { id: string; token: string; metadataOnly: boolean }) =>
+      filesApi.importLdaca(base, input.id, input.token || undefined, input.metadataOnly),
   });
-  const records = search.data ?? [];
+  const records = search.data ?? catalogue.data ?? [];
   const options = (field: 'collections' | 'file_formats') =>
     [...new Set(records.flatMap((record) => record[field] ?? []))].sort();
   const collections = options('collections');
   const formats = options('file_formats');
   const filtered = records.filter(
     (record) =>
+      `${record.title} ${record.description ?? ''} ${record.id}`
+        .toLocaleLowerCase()
+        .includes(filterText.toLocaleLowerCase()) &&
       (collection === 'all' || record.collections?.includes(collection)) &&
       (format === 'all' || record.file_formats?.includes(format)),
   );
@@ -52,7 +70,7 @@ export default function NativeLdacaImport({ base }: { base: string }) {
     <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-5">
       <div className="flex flex-col gap-4">
         <p className="text-body text-description">
-          Search the{' '}
+          Browse the{' '}
           <a
             className="underline underline-offset-2"
             href="https://data.ldaca.edu.au"
@@ -113,14 +131,14 @@ export default function NativeLdacaImport({ base }: { base: string }) {
           </CollapsibleTrigger>
           <CollapsibleContent>
             <label className="flex flex-col gap-1 text-body">
-              Portal token
+              LDaCA access token
               <Input
-                aria-label="Portal token"
+                aria-label="LDaCA access token"
                 type="password"
                 autoComplete="off"
                 value={token}
                 onChange={(event) => {
-                  setToken(event.target.value);
+                  useAccess.setState({ token: event.target.value });
                 }}
               />
               <span className="text-label-secondary text-description">
@@ -130,22 +148,49 @@ export default function NativeLdacaImport({ base }: { base: string }) {
             </label>
           </CollapsibleContent>
         </Collapsible>
+        <div className="flex flex-wrap items-end gap-2">
+          <label className="min-w-0 flex-1 text-label-secondary">
+            Filter collections
+            <Input
+              value={filterText}
+              onChange={(event) => setFilterText(event.target.value)}
+              placeholder="Filter loaded names and descriptions…"
+            />
+          </label>
+          <Button
+            variant="outline"
+            disabled={catalogue.isFetching}
+            onClick={() => {
+              search.reset();
+              void catalogue.refetch();
+            }}
+          >
+            Refresh collections
+          </Button>
+        </div>
+        {catalogue.isFetching && <p role="status">Loading the LDaCA catalogue…</p>}
+        {catalogue.error && (
+          <OperationError
+            title="Could not load collections"
+            error={catalogue.error}
+            onRetry={() => {
+              void catalogue.refetch();
+            }}
+          />
+        )}
         {search.isPending && (
           <p role="status" className="text-body text-description">
             Searching the LDaCA catalogue…
           </p>
         )}
-        {search.isError && (
-          <p role="status" className="text-body text-description">
-            Search could not finish. Check your query or access token and try again.
-          </p>
+        {search.error && (
+          <OperationError
+            title="Could not search LDaCA"
+            error={search.error}
+            onRetry={() => search.mutate(search.variables)}
+          />
         )}
-        {search.isIdle && (
-          <p className="py-6 text-body text-description">
-            Search by keyword or collection ID to find data to import.
-          </p>
-        )}
-        {search.isSuccess && (
+        {(search.isSuccess || catalogue.isSuccess) && (
           <>
             <div className="flex flex-wrap items-end gap-3">
               <h2 className="mr-auto text-body font-semibold">
@@ -201,18 +246,44 @@ export default function NativeLdacaImport({ base }: { base: string }) {
                         <ExternalLink className="ml-1 inline size-3.5" />
                       </a>
                     </h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={!record.importable || imported.isPending}
-                      onClick={() => {
-                        imported.mutate({ id: record.id, token });
-                      }}
-                    >
-                      {imported.isPending && imported.variables.id === record.id
-                        ? 'Importing…'
-                        : 'Import'}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={!record.importable || imported.isPending}
+                        onClick={() => {
+                          imported.mutate({
+                            id: record.crate_id ?? record.id,
+                            token,
+                            metadataOnly: false,
+                          });
+                        }}
+                      >
+                        {imported.isPending &&
+                        !imported.variables.metadataOnly &&
+                        imported.variables.id === (record.crate_id ?? record.id)
+                          ? 'Importing…'
+                          : 'Import'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={imported.isPending}
+                        onClick={() =>
+                          imported.mutate({
+                            id: record.crate_id ?? record.id,
+                            token,
+                            metadataOnly: true,
+                          })
+                        }
+                      >
+                        {imported.isPending &&
+                        imported.variables.metadataOnly &&
+                        imported.variables.id === (record.crate_id ?? record.id)
+                          ? 'Importing metadata…'
+                          : 'Import metadata only'}
+                      </Button>
+                    </div>
                   </div>
                   {record.description && (
                     <p className="line-clamp-2 break-words text-body text-description">
@@ -236,7 +307,7 @@ export default function NativeLdacaImport({ base }: { base: string }) {
                   )}
                   {!record.importable && (
                     <p className="text-label-secondary text-description">
-                      This record cannot be imported.
+                      Text requires access. Public metadata can be imported separately.
                     </p>
                   )}
                   <Collapsible>
@@ -272,6 +343,30 @@ export default function NativeLdacaImport({ base }: { base: string }) {
           <p role="status" className="text-body text-description">
             Importing collection — follow progress or cancel in Tasks. You can switch sources.
           </p>
+        )}
+        {imported.error && (
+          <OperationError
+            title="Could not import collection"
+            error={imported.error}
+            onRetry={() => imported.mutate(imported.variables)}
+          />
+        )}
+        {!!imported.data?.replaced_paths.length && (
+          <div role="status" className="text-body-secondary">
+            <p>
+              Invalid text encoding was replaced in {imported.data.replaced_paths.length} files.
+              Their rows were retained.
+            </p>
+            <details>
+              <summary>Affected files</summary>
+              <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-all">
+                {imported.data.replaced_paths.slice(0, 100).join('\n')}
+                {imported.data.replaced_paths.length > 100
+                  ? '\nAdditional files omitted from this display.'
+                  : ''}
+              </pre>
+            </details>
+          </div>
         )}
       </div>
     </div>

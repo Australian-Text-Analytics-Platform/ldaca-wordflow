@@ -62,6 +62,16 @@ export async function searchLdaca(
   return items;
 }
 
+export async function browseLdaca(base: string, token?: string, signal?: AbortSignal) {
+  const response = await request(base, '/api/project/ldaca/browse', 'post', {
+    body: { token: token || undefined },
+    signal,
+  });
+  const { items } = await response.json();
+  if (!items.every(isOniSearchResult)) throw new Error('Unsupported LDaCA catalogue response');
+  return items;
+}
+
 export type SampleCatalogue = components['schemas']['SampleSnapshot'];
 
 export async function sampleCatalogue(
@@ -116,9 +126,16 @@ export async function importSamples(base: string, input: SampleImportRequest) {
   return (await request(base, '/api/project/samples/import', 'post', { body: input })).json();
 }
 
-export async function importLdaca(base: string, identifier: string, token?: string) {
+export async function importLdaca(
+  base: string,
+  identifier: string,
+  token?: string,
+  metadataOnly = false,
+) {
   return (
-    await request(base, '/api/project/ldaca/import', 'post', { body: { identifier, token } })
+    await request(base, '/api/project/ldaca/import', 'post', {
+      body: { identifier, token, metadata_only: metadataOnly },
+    })
   ).json();
 }
 

@@ -68,7 +68,7 @@ impl RoCrate {
         }
         result
     }
-    pub fn name(&self, fallback: &str) -> String {
+    pub fn root(&self, fallback: &str) -> Option<&Map<String, Value>> {
         let described_root = self.entities.values().find_map(|entity| {
             let id = entity.get("@id")?.as_str()?;
             if !id.ends_with("ro-crate-metadata.json") {
@@ -81,6 +81,9 @@ impl RoCrate {
             .or_else(|| self.entity("./"))
             .or_else(|| self.entity(fallback))
             .or_else(|| self.entity(&format!("{}/", fallback.trim_end_matches('/'))))
+    }
+    pub fn name(&self, fallback: &str) -> String {
+        self.root(fallback)
             .and_then(|e| first_string(e.get("name")).or_else(|| first_string(e.get("title"))))
             .or_else(|| first_string(self.original.get("name")))
             .filter(|s| !s.is_empty())

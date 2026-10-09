@@ -641,6 +641,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/ldaca/browse': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['ldaca_browse'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/ldaca/import': {
     parameters: {
       query?: never;
@@ -2622,9 +2638,17 @@ export interface components {
       /** Format: double */
       sidebarWidth: number;
     };
+    LdacaBrowse: {
+      token?: string | null;
+    };
     LdacaImport: {
       identifier: string;
+      metadata_only?: boolean;
       token?: string | null;
+    };
+    LdacaImportResponse: {
+      replaced_paths: string[];
+      table_names: string[];
     };
     LdacaSearch: {
       method: components['schemas']['LdacaSearchMethod'];
@@ -6517,6 +6541,39 @@ export interface operations {
       };
     };
   };
+  ldaca_browse: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LdacaBrowse'];
+      };
+    };
+    responses: {
+      /** @description Collections */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['SearchResponse'];
+        };
+      };
+      /** @description Portal error */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
   ldaca_import: {
     parameters: {
       query?: never;
@@ -6538,7 +6595,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['TableNames'];
+          'application/json': components['schemas']['LdacaImportResponse'];
         };
       };
       /** @description Invalid request or operation failed */

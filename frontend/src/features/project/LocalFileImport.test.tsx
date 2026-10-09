@@ -23,6 +23,7 @@ vi.mock('@/features/project/filesApi', async (load) => ({
   importFiles: vi.fn(),
   inspectFileImport: vi.fn(),
   sampleCatalogue: vi.fn(),
+  browseLdaca: vi.fn(async () => []),
 }));
 vi.mock('@/features/project/api', async (load) => ({
   ...(await load<object>()),

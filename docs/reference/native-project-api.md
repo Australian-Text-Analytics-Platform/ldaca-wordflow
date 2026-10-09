@@ -430,14 +430,29 @@ references for reusable pipelines.
 
 `POST /api/project/ldaca/search` accepts `method` (`keyword` or `identifier`),
 `query`, and optional session `token`. It returns up to 25 normalized Oni `items`.
-`POST /api/project/ldaca/import` accepts `identifier` and optional `token` and
-returns `{"table_names":["created_name"]}` after embedding the selected corpus. The
+`POST /api/project/ldaca/browse` accepts optional `token` and returns top-level
+collections, sorted by title, with access information. The catalogue is bounded
+to 500 entries; filtering loaded names/descriptions is local.
+`POST /api/project/ldaca/import` accepts `identifier`, optional `token` and
+`metadata_only` (default false). It returns `table_names` and `replaced_paths`
+after embedding the selected corpus. Metadata-only imports never download text.
+Collection members are discovered by the portal's root membership index, bounded
+by the native client's document limit (10,000 by default). Metadata requests do
+not recursively resolve additional crates. Each member is staged and the combined
+output commits once; any member failure leaves no partial Data Blocks.
+The collection title proposes its name, with ` (metadata)` for metadata-only
+imports. Source metadata and referenced Person/Speaker fields accompany documents;
+metadata-only output uses the existing profile and falls back to public root
+metadata when there are no configured member entities. Invalid text encoding
+uses replacement characters and reports affected paths, retaining those rows.
+The existing native network/document/download bounds remain in force. The
 existing `ldaca-rs` adapter owns ONI requests and RO-Crate conversion.
 Conversion and temporary Parquet writing finish in task-owned blocking preparation
 before database permission is acquired. The write stage rechecks permission; staging
 is deleted on success, cancellation or failure.
 Imports belong to their runtime throughout and cancel network work on interruption.
-Tokens are never written to project metadata.
+Tokens stay in window memory and request bodies, never project metadata, settings
+or persistent browser storage. Refresh collections reapplies a changed token.
 
 Local file selection uses `POST /api/project/import/inspect` and then
 `POST /api/project/import/files`. Both accept `paths`, optional `root` and optional

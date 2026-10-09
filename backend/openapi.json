@@ -2886,11 +2886,26 @@
         ],
         "type": "object"
       },
+      "LdacaBrowse": {
+        "additionalProperties": false,
+        "properties": {
+          "token": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "LdacaImport": {
         "additionalProperties": false,
         "properties": {
           "identifier": {
             "type": "string"
+          },
+          "metadata_only": {
+            "type": "boolean"
           },
           "token": {
             "type": [
@@ -2901,6 +2916,27 @@
         },
         "required": [
           "identifier"
+        ],
+        "type": "object"
+      },
+      "LdacaImportResponse": {
+        "properties": {
+          "replaced_paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "table_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "table_names",
+          "replaced_paths"
         ],
         "type": "object"
       },
@@ -10302,6 +10338,46 @@
         ]
       }
     },
+    "/api/project/ldaca/browse": {
+      "post": {
+        "operationId": "ldaca_browse",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LdacaBrowse"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            },
+            "description": "Collections"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Portal error"
+          }
+        },
+        "tags": [
+          "ldaca"
+        ]
+      }
+    },
     "/api/project/ldaca/import": {
       "post": {
         "operationId": "ldaca_import",
@@ -10320,7 +10396,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TableNames"
+                  "$ref": "#/components/schemas/LdacaImportResponse"
                 }
               }
             },

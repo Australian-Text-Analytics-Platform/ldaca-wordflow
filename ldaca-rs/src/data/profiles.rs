@@ -1,6 +1,6 @@
 //! Explicit compatibility profiles. Generic conversion never selects these implicitly.
 use crate::data::{
-    metadata::{entity_types, first_string},
+    metadata::{as_list, entity_types, first_string, jsonld_value, reference},
     table::Row,
     tabulate::{convert, Config},
     Error, Result, RoCrate, Table,
@@ -67,13 +67,55 @@ pub fn wordflow_metadata(
         .unwrap_or_else(|| load_wordflow_config(identifier))?;
     let selected = ["RepositoryObject", "CreativeWork", "File"]
         .into_iter()
-        .find(|name| config.tables.contains_key(*name))
+        .find(|name| {
+            config.tables.contains_key(*name)
+                && krate
+                    .entities()
+                    .values()
+                    .any(|entity| entity_types(entity).iter().any(|kind| kind == name))
+        })
         .map(str::to_owned)
         .or_else(|| config.tables.first().map(|(k, _)| k.clone()))
         .ok_or_else(|| {
             Error::InvalidInput("RO-Crate tabular configuration has no tables".into())
         })?;
     config.tables.retain(|kind, _| kind == &selected);
+    if !krate
+        .entities()
+        .values()
+        .any(|entity| entity_types(entity).contains(&selected))
+    {
+        let root = krate
+            .root(identifier)
+            .ok_or_else(|| Error::Conversion("RO-Crate contains no importable metadata".into()))?;
+        return Table::from_rows(
+            "metadata",
+            &[root
+                .iter()
+                .map(|(key, value)| (key.clone(), jsonld_value(value)))
+                .collect()],
+            HashMap::new(),
+        );
+    }
+    // Preserve referenced people/speakers through the existing metadata expansion owner.
+    if let Some(table) = config.tables.get_mut(&selected) {
+        for entity in krate
+            .entities()
+            .values()
+            .filter(|entity| entity_types(entity).contains(&selected))
+        {
+            for (property, value) in entity {
+                if as_list(value).iter().any(|value| {
+                    reference(value)
+                        .and_then(|id| krate.entity(id))
+                        .is_some_and(is_person)
+                }) && !table.expand_props.contains(property)
+                {
+                    table.expand_props.push(property.clone());
+                }
+            }
+        }
+    }
     convert(krate, &config, true)?
         .tables
         .shift_remove(&selected)
@@ -89,6 +131,55 @@ pub struct Document {
     pub annotation_of: Option<String>,
     pub work_name: Option<String>,
     pub date_created: Option<String>,
+    #[serde(skip)]
+    pub metadata: Row,
+}
+fn is_person(entity: &serde_json::Map<String, Value>) -> bool {
+    entity_types(entity)
+        .iter()
+        .any(|kind| matches!(kind.as_str(), "Person" | "Speaker"))
+}
+fn document_metadata(
+    krate: &RoCrate,
+    file: &serde_json::Map<String, Value>,
+    work: Option<&serde_json::Map<String, Value>>,
+) -> Row {
+    let mut metadata = Row::new();
+    for (prefix, entity) in [("file", Some(file)), ("work", work)] {
+        let Some(entity) = entity else { continue };
+        for (property, value) in entity {
+            if !property.starts_with('@') {
+                metadata.insert(format!("{prefix}_{property}"), jsonld_value(value));
+            }
+            let people = as_list(value)
+                .into_iter()
+                .filter_map(|value| reference(value).and_then(|id| krate.entity(id)))
+                .filter(|entity| is_person(entity))
+                .collect::<Vec<_>>();
+            let mut fields = IndexMap::<String, Vec<Value>>::new();
+            for person in people {
+                for (field, value) in person {
+                    if !field.starts_with('@') {
+                        fields
+                            .entry(field.clone())
+                            .or_default()
+                            .push(jsonld_value(value));
+                    }
+                }
+            }
+            for (field, mut values) in fields {
+                metadata.insert(
+                    format!("{property}_{field}"),
+                    if values.len() == 1 {
+                        values.remove(0)
+                    } else {
+                        Value::Array(values)
+                    },
+                );
+            }
+        }
+    }
+    metadata
 }
 pub fn content_size(value: Option<&Value>) -> Option<i64> {
     first_string(value)?.parse::<i64>().ok().filter(|s| *s >= 0)
@@ -135,6 +226,7 @@ pub fn select_documents(krate: &RoCrate) -> Vec<Document> {
             work_name: work.and_then(|w| first_string(w.get("name"))),
             date_created: work.and_then(|w| first_string(w.get("dateCreated"))),
             encoding_format: "text/plain".into(),
+            metadata: document_metadata(krate, entity, work),
             path,
         };
         if selected.get(&key).is_none_or(|current| {
@@ -158,6 +250,9 @@ pub fn document_table(documents: &[Document], texts: &IndexMap<String, String>) 
         };
         let mut row: Row = object.into_iter().collect();
         row.insert("text".into(), Value::String(text.clone()));
+        for (key, value) in &document.metadata {
+            row.entry(key.clone()).or_insert_with(|| value.clone());
+        }
         rows.push(row);
     }
     Table::from_rows_with_columns(

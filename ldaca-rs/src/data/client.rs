@@ -75,6 +75,11 @@ pub struct BrowseOptions {
     pub offset: u64,
     pub limit: Option<u64>,
 }
+pub struct DownloadedTexts {
+    pub texts: IndexMap<String, String>,
+    pub replaced_paths: Vec<String>,
+    pub bytes: u64,
+}
 pub type ByteStream = Pin<Box<dyn Stream<Item = Result<Vec<u8>>> + Send>>;
 impl Client {
     pub fn new(api_key: Option<&str>, options: ClientOptions) -> Result<Self> {
@@ -367,6 +372,99 @@ impl Client {
         .await?;
         summaries.iter().flatten().map(normalize_record).collect()
     }
+    pub async fn collections(&self) -> Result<Vec<Value>> {
+        let mut records = IndexMap::new();
+        let mut offset = 0;
+        loop {
+            let page = self
+                .browse(&BrowseOptions {
+                    member_of: vec!["null".into()],
+                    conforms_to: Some("https://w3id.org/ldac/profile#Collection".into()),
+                    offset,
+                    limit: Some(100),
+                })
+                .await?;
+            let items = page
+                .get("data")
+                .and_then(Value::as_array)
+                .ok_or_else(|| Error::InvalidResponse("invalid collection catalogue".into()))?;
+            if page
+                .get("total")
+                .and_then(Value::as_u64)
+                .is_some_and(|total| total > 500)
+            {
+                return Err(Error::Limit(
+                    "collection catalogue exceeds 500 entries".into(),
+                ));
+            }
+            for item in items {
+                let record = normalize_record(item)?;
+                records.insert(record["id"].as_str().unwrap_or_default().to_owned(), record);
+                if records.len() > 500 {
+                    return Err(Error::Limit(
+                        "collection catalogue exceeds 500 entries".into(),
+                    ));
+                }
+            }
+            offset += items.len() as u64;
+            if items.len() < 100
+                || page
+                    .get("total")
+                    .and_then(Value::as_u64)
+                    .is_some_and(|total| offset >= total)
+            {
+                break;
+            }
+            if offset >= 500 {
+                return Err(Error::Limit(
+                    "collection catalogue exceeds 500 entries".into(),
+                ));
+            }
+        }
+        let mut records = records.into_values().collect::<Vec<_>>();
+        records.sort_by_cached_key(|record| {
+            record["title"].as_str().unwrap_or_default().to_lowercase()
+        });
+        Ok(records)
+    }
+    pub async fn member_object_ids(&self, collection: &str) -> Result<Vec<String>> {
+        let mut ids = IndexMap::new();
+        let mut offset = 0;
+        loop {
+            let page = self
+                .search_raw(
+                    "items",
+                    &json!({
+                        "size":100,"from":offset,"_source":["@id"],"sort":["_doc"],
+                        "query":{"bool":{"filter":[
+                            {"term":{"@type.keyword":"RepositoryObject"}},
+                            {"term":{"_root.@id.keyword":collection}}
+                        ]}}
+                    }),
+                )
+                .await?;
+            if page.total > self.options.max_documents as u64 {
+                return Err(Error::Limit("too many member crates".into()));
+            }
+            let count = page.items.len();
+            for record in page.items {
+                if let Some(id) = record["id"].as_str() {
+                    ids.insert(id.to_owned(), ());
+                    if ids.len() > self.options.max_documents {
+                        return Err(Error::Limit("too many member crates".into()));
+                    }
+                }
+            }
+            offset += count;
+            if count == 0 || offset as u64 >= page.total {
+                break;
+            }
+            if offset >= self.options.max_documents {
+                return Err(Error::Limit("too many member crates".into()));
+            }
+        }
+        Ok(ids.into_keys().collect())
+    }
     pub async fn stream_file(&self, id: &str, path: &str, max_bytes: u64) -> Result<ByteStream> {
         let response = self
             .request(
@@ -411,11 +509,31 @@ impl Client {
         paths: &[String],
         max_total_bytes: u64,
     ) -> Result<IndexMap<String, String>> {
+        Ok(self
+            .decode_texts(id, paths, max_total_bytes, false)
+            .await?
+            .texts)
+    }
+    pub async fn download_texts_with_report(
+        &self,
+        id: &str,
+        paths: &[String],
+        max_total_bytes: u64,
+    ) -> Result<DownloadedTexts> {
+        self.decode_texts(id, paths, max_total_bytes, true).await
+    }
+    async fn decode_texts(
+        &self,
+        id: &str,
+        paths: &[String],
+        max_total_bytes: u64,
+        replace_invalid: bool,
+    ) -> Result<DownloadedTexts> {
         if paths.len() > self.options.max_documents {
             return Err(Error::Limit("too many documents".into()));
         }
         let total = Arc::new(AtomicU64::new(0));
-        stream::iter(paths.iter().cloned().map(|path| {
+        let downloaded: Vec<_> = stream::iter(paths.iter().cloned().map(|path| {
             let total = total.clone();
             let client = self.clone();
             let id = id.to_owned();
@@ -446,25 +564,44 @@ impl Client {
                         .map_err(|_| Error::Limit("aggregate download size".into()))?;
                     bytes.extend(chunk);
                 }
-                let text = if let Some(charset) = charset {
-                    let encoding = encoding_rs::Encoding::for_label(charset.as_bytes())
-                        .ok_or_else(|| {
-                            Error::InvalidResponse("unsupported text encoding".into())
-                        })?;
-                    encoding
-                        .decode_without_bom_handling_and_without_replacement(&bytes)
-                        .ok_or_else(|| Error::InvalidResponse("invalid document encoding".into()))?
-                        .into_owned()
+                let encoding = if let Some(charset) = charset {
+                    encoding_rs::Encoding::for_label(charset.as_bytes())
+                        .ok_or_else(|| Error::InvalidResponse("unsupported text encoding".into()))?
                 } else {
-                    String::from_utf8(bytes)
-                        .map_err(|_| Error::InvalidResponse("invalid UTF-8 document".into()))?
+                    encoding_rs::UTF_8
                 };
-                Ok((path.clone(), text))
+                let (text, replaced) = if replace_invalid {
+                    let (text, replaced) = encoding.decode_without_bom_handling(&bytes);
+                    (text.into_owned(), replaced)
+                } else {
+                    (
+                        encoding
+                            .decode_without_bom_handling_and_without_replacement(&bytes)
+                            .ok_or_else(|| {
+                                Error::InvalidResponse("invalid document encoding".into())
+                            })?
+                            .into_owned(),
+                        false,
+                    )
+                };
+                Ok::<_, Error>((path, text, replaced))
             }
         }))
         .buffered(self.options.concurrency)
         .try_collect()
-        .await
+        .await?;
+        let mut result = DownloadedTexts {
+            texts: IndexMap::new(),
+            replaced_paths: Vec::new(),
+            bytes: total.load(Ordering::Relaxed),
+        };
+        for (path, text, replaced) in downloaded {
+            if replaced {
+                result.replaced_paths.push(path.clone());
+            }
+            result.texts.insert(path, text);
+        }
+        Ok(result)
     }
     pub async fn document_table(
         &self,
@@ -564,8 +701,15 @@ pub fn normalize_record(summary: &Value) -> Result<Value> {
             }
         }
     }
+    let access = object
+        .get("_access")
+        .or_else(|| nested.and_then(|v| v.get("_access")));
+    let allowed = access
+        .and_then(|a| a.get("hasAccess"))
+        .and_then(Value::as_bool)
+        .unwrap_or(object.get("locked").and_then(Value::as_bool) != Some(true));
     Ok(
-        json!({"id":id,"crate_id":crate_id,"title":first_string(object.get("name")).or_else(||first_string(nested.and_then(|v|v.get("name")))) .unwrap_or(id),"description":first_string(object.get("description")).or_else(||first_string(nested.and_then(|v|v.get("description")))),"types":strings(object.get("recordType").or_else(||object.get("@type"))),"license":first_string(object.get("license")),"importable":object.get("error")!=Some(&json!("not_authorized")) && object.get("_access").and_then(|a|a.get("hasAccess")).and_then(Value::as_bool)!=Some(false),"access":strings(object.get("_access")),"collections":collections,"file_formats":strings(object.get("encodingFormat"))}),
+        json!({"id":id,"crate_id":crate_id,"title":first_string(object.get("name")).or_else(||first_string(nested.and_then(|v|v.get("name")))) .unwrap_or(id),"description":first_string(object.get("description")).or_else(||first_string(nested.and_then(|v|v.get("description")))),"types":strings(object.get("recordType").or_else(||object.get("@type"))),"license":first_string(object.get("license")),"importable":object.get("error")!=Some(&json!("not_authorized")) && allowed,"access":strings(access.and_then(|a| a.get("group")).or_else(|| access.filter(|a| !a.is_object()))),"collections":collections,"file_formats":strings(object.get("encodingFormat"))}),
     )
 }
 fn search_page(raw: Value, offset: u64, limit: u64) -> Result<SearchPage> {

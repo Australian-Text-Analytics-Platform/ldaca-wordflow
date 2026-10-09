@@ -116,6 +116,7 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(crate::samples::catalogue))
         .routes(utoipa_axum::routes!(crate::samples::import))
         .routes(utoipa_axum::routes!(crate::ldaca::search))
+        .routes(utoipa_axum::routes!(crate::ldaca::browse))
         .routes(utoipa_axum::routes!(crate::ldaca::import))
         .routes(utoipa_axum::routes!(create))
         .routes(utoipa_axum::routes!(open))

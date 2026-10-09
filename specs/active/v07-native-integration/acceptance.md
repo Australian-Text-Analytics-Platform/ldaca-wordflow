@@ -56,3 +56,28 @@ Observed checks:
 LDaCA catalogue/member imports remain outstanding in batch 2. Permanent server
 projects and remaining task navigation follow in batch 3. Native OS picker,
 WebKit, Windows and broader server-browser acceptance remain outstanding.
+
+## Batch 2 LDaCA completion
+
+The collection catalogue loads on opening LDaCA and filters locally. Text access
+and public metadata-only choices remain distinct. Member crates use bounded
+index discovery, nonrecursive metadata requests, sequential preparation and one
+atomic combined import. Referenced speaker/person fields accompany documents and
+metadata. Invalid encoding uses replacement plus affected-file reporting; local
+text-folder skipping remains a separate policy. Tokens remain in window memory.
+
+Observed checks:
+
+- The live portal configuration and OpenAPI were checked before implementation.
+- All-feature library suite: 107 unit tests and 23 data integration tests passed;
+  two explicitly model/download-dependent tests ignored. Data-only compilation
+  and the 19 focused client/tabulation tests pass.
+- Native LDaCA fixtures verify member failure rollback, retained invalid text,
+  speaker fields, metadata-only zero downloads, task ownership and cancellation.
+- Frontend: 731 unit and 17 script tests passed; focused LDaCA/import/schema
+  tests passed. Production build, lint, Knip, generated API, docs and links pass.
+- Chromium: all three Loader journeys pass, including both themes and mixed ZIP
+  sheet selection. Live authenticated collection import and platform-native
+  picker acceptance remain outside this local fixture evidence.
+
+Batch 2 behavior is implemented; global native/platform acceptance remains open.

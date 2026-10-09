@@ -83,6 +83,7 @@ for (const theme of ['light-2026', 'dark-2026']) {
     try {
       await setTestPreferences({ theme, recentDataFiles: [jsonPath, tsvPath] });
       await stubResponse('/api/project/samples', () => JSON.stringify({ commit: 'a'.repeat(40), collections: [{ id: 'sample', name: 'Example text collection', description: 'Text and accompanying metadata.', total_size_bytes: 32000, files: [{ path: 'sample/text.parquet' }, { path: 'sample/metadata.parquet' }] }] }));
+      await stubResponse('/api/project/ldaca/browse', () => JSON.stringify({ items: [{ id: 'example', title: 'Example research corpus', description: 'A collection description with source information available before importing.', license: 'CC BY 4.0', file_formats: ['text/plain'], access: ['Open'], collections: ['Research'], types: ['Dataset'], importable: true }] }));
       await stubResponse('/api/project/ldaca/search', () => JSON.stringify({ items: [{ id: 'example', title: 'Example research corpus', description: 'A collection description with source information available before importing.', license: 'CC BY 4.0', file_formats: ['text/plain'], access: ['Open'], collections: ['Research'], types: ['Dataset'], importable: true }] }));
       await browser.setWindowSize(1600, 1000);
       await browser.url('/');

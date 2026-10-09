@@ -94,11 +94,24 @@ impl ProjectRuntime {
         name: String,
     ) -> Result<Vec<String>> {
         self.with_writable_project(move |project| {
+            let mut paths = std::fs::read_dir(staged.path())?
+                .map(|entry| entry.map(|entry| entry.path()))
+                .collect::<std::io::Result<Vec<_>>>()?;
+            paths.sort();
+            if paths.is_empty() {
+                return Err(Error::invalid("The collection contains no importable data"));
+            }
+            let placeholders = vec!["?"; paths.len()].join(",");
             project.import_tables(vec![(
                 name,
                 SqlStatement {
-                    sql: "SELECT * FROM read_parquet(?)".into(),
-                    parameters: vec![serde_json::json!(staged.path().join("import.parquet"))],
+                    sql: format!(
+                        "SELECT * FROM read_parquet([{placeholders}], union_by_name=true)"
+                    ),
+                    parameters: paths
+                        .into_iter()
+                        .map(|path| serde_json::json!(path))
+                        .collect(),
                 },
             )])
         })

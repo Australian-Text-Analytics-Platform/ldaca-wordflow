@@ -347,3 +347,33 @@ proptest::proptest! {
         proptest::prop_assert_eq!(actual, values.into_iter().map(Some).collect::<Vec<_>>());
     }
 }
+
+#[test]
+fn wordflow_import_retains_speaker_fields_and_public_root_metadata() {
+    let krate = RoCrate::from_value(json!({"@graph":[
+        {"@id":"./","@type":"Dataset","name":"Public collection"},
+        {"@id":"work","@type":"RepositoryObject","name":"Interview","speaker":{"@id":"person"}},
+        {"@id":"person","@type":["Person","Speaker"],"name":"Pat","gender":"example"},
+        {"@id":"text.txt","@type":"File","encodingFormat":"text/plain","ldac:annotationOf":{"@id":"work"}}
+    ]})).unwrap();
+    let documents = profiles::select_documents(&krate);
+    let table = profiles::document_table(
+        &documents,
+        &indexmap::IndexMap::from([("text.txt".into(), "whole text".into())]),
+    )
+    .unwrap();
+    assert_eq!(strings(&table, "speaker_name"), [Some("Pat".into())]);
+    assert_eq!(strings(&table, "speaker_gender"), [Some("example".into())]);
+    let metadata = profiles::wordflow_metadata(&krate, "collection", None).unwrap();
+    assert_eq!(strings(&metadata, "speaker_name"), [Some("Pat".into())]);
+    let root = RoCrate::from_value(
+        json!({"@graph":[{"@id":"./","@type":"Dataset","name":"Public collection"}]}),
+    )
+    .unwrap();
+    let metadata = profiles::wordflow_metadata(&root, "collection", None).unwrap();
+    assert_eq!(metadata.num_rows(), 1);
+    assert_eq!(
+        strings(&metadata, "name"),
+        [Some("Public collection".into())]
+    );
+}

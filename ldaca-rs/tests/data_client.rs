@@ -248,3 +248,61 @@ async fn redirect_limits_cross_origin_headers_and_bad_responses() {
     drop(task);
     drop(destination_task);
 }
+
+#[tokio::test]
+async fn catalogue_access_member_bounds_and_replacement_reports() {
+    let app = Router::new()
+        .route("/api/object", get(|| async {
+            Json(json!({"total":2,"data":[
+                {"crateId":"locked","name":"Z restricted","locked":true,"_access":{"group":["Researchers"],"hasAccess":false}},
+                {"crateId":"open","name":"A public","locked":false}
+            ]}))
+        }))
+        .route("/api/search/index/items", post(|Json(body): Json<Value>| async move {
+            assert_eq!(body["query"]["bool"]["filter"][1]["term"]["_root.@id.keyword"], "collection");
+            assert_eq!(body["sort"], json!(["_doc"]));
+            Json(json!({"hits":{"total":{"value":2},"hits":[
+                {"_source":{"@id":"member-a"}},{"_source":{"@id":"member-b"}}
+            ]}}))
+        }))
+        .route("/api/stream", get(|| async { ([("content-type", "text/plain; charset=utf-8")], vec![b'a', 0xff, b'b']) }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let base_url = format!("http://{}/api", listener.local_addr().unwrap());
+    let _server = Server(tokio::spawn(async move {
+        axum::serve(listener, app).await.unwrap();
+    }));
+    let client = Client::new(
+        None,
+        ClientOptions {
+            base_url,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let catalogue = client.collections().await.unwrap();
+    assert_eq!(catalogue[0]["id"], "open");
+    assert_eq!(catalogue[1]["importable"], false);
+    assert_eq!(catalogue[1]["access"], json!(["Researchers"]));
+    assert_eq!(
+        client.member_object_ids("collection").await.unwrap(),
+        ["member-a", "member-b"]
+    );
+    let mut bounded = client.clone();
+    bounded.options.max_documents = 1;
+    assert!(matches!(
+        bounded.member_object_ids("collection").await,
+        Err(Error::Limit(_))
+    ));
+    let paths = vec!["invalid.txt".into()];
+    assert!(client
+        .download_texts("collection", &paths, 100)
+        .await
+        .is_err());
+    let result = client
+        .download_texts_with_report("collection", &paths, 100)
+        .await
+        .unwrap();
+    assert_eq!(result.texts["invalid.txt"], "a�b");
+    assert_eq!(result.replaced_paths, paths);
+    assert_eq!(result.bytes, 3);
+}

@@ -131,7 +131,7 @@ export function DataLoaderWorkspace({
           forceMount
           className="flex min-h-0 flex-col data-[state=inactive]:hidden"
         >
-          <NativeLdacaImport base={base} />
+          <NativeLdacaImport base={base} active={active && source === 'ldaca'} />
         </TabsContent>
       </Tabs>
     </section>

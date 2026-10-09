@@ -77,14 +77,20 @@ Views keep their original revision when newer samples are published.
 
 <h2 id="help-data-loader-import-ldaca-button">LDaCA</h2>
 
-Open **LDaCA**, search by keyword or collection ID, and use the collection and
-file-type filters to narrow the results. Expand **Access token** when a collection
-requires credentials; the token stays in this window and is not saved in the project.
+Open **LDaCA** to browse collections. **Filter collections** narrows loaded names
+and descriptions immediately. You can also search by keyword or collection ID,
+then use the collection and file-type filters. Expand **Access token** to enter
+an **LDaCA access token**, then choose **Refresh collections** to update access.
+The token stays in this window, including when switching projects, and is not
+saved in settings or the project. Reloading the window discards it.
 
 Review each result's source, access information and licence. **Details** exposes
 the complete description and identifier; the title opens its source portal page.
-Choose **Import** to embed an importable collection in the project. Search results
-remain available afterward.
+Choose **Import** to embed accessible text and metadata, or **Import metadata only**
+for public metadata without downloading text. Restricted text remains disabled.
+Member crates import together atomically. Invalid text encoding is replaced,
+with affected files reported and their rows retained. Search results remain
+available afterward; failures retain their diagnostic and **Retry**.
 
 All imports appear in **Tasks**, which owns progress and cancellation. You can
 switch sources or leave Data Loader while accepted work continues. Cancelling
