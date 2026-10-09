@@ -46,14 +46,28 @@ describe('Data Loader guidance registry', () => {
     expect(resolveAddDataBlockTarget()).toBe(screen.getByText('File toolbar'));
   });
 
-  it('defines 46 unique, automatically placed hints in exactly one view sequence', () => {
+  it('defines 47 unique, automatically placed hints, each in one view sequence except the tabs hint', () => {
     const ids = contextualHintRegistry.map((definition) => definition.id);
-    const sequencedIds = Object.values(contextualHintSequences).flat();
+    const tabsHint = CONTEXTUAL_HINT_IDS.analysisTabs.newTab;
+    const sequencedIds = Object.values(contextualHintSequences)
+      .flat()
+      .filter((id) => id !== tabsHint);
 
-    expect(ids).toHaveLength(46);
-    expect(new Set(ids).size).toBe(46);
+    expect(ids).toHaveLength(47);
+    expect(new Set(ids).size).toBe(47);
     expect(sequencedIds).toHaveLength(46);
-    expect(new Set(sequencedIds)).toEqual(new Set(ids));
+    expect(new Set([...sequencedIds, tabsHint])).toEqual(new Set(ids));
+    // The tabs hint opens each analysis tool's sequence; it shows once (issue 359).
+    for (const view of [
+      'token-frequency',
+      'concordance',
+      'analysis',
+      'topic-modeling',
+      'quotation',
+      'annotation',
+    ] as const) {
+      expect(contextualHintSequences[view][0]).toBe(tabsHint);
+    }
     expect(contextualHintRegistry.every((definition) => definition.placement === 'auto')).toBe(
       true,
     );

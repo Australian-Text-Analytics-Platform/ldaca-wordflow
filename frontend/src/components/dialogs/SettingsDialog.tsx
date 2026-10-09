@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { type SettingsTab, useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useGuidanceAcknowledgmentsStore } from '@/features/guidance/acknowledgmentsStore';
+import { SETTINGS_WALKS } from '@/features/guidance/settingsWalks';
 import {
   useUpdateUserPreferences,
   useUserPreferences,
@@ -75,11 +76,13 @@ export function SettingsDialog({
     userId ? state.byUser[userId] : undefined,
   );
   const resetAcknowledgments = useGuidanceAcknowledgmentsStore((state) => state.reset);
-  // A hint's Turn off hints walks people here: point out the Guidance tab,
-  // then the option, which they untick themselves (issue 358).
-  const guidingHints = useSettingsDialogStore((state) => state.guide) === 'contextual-hints';
+  // A settings walk (Turn off hints, Turn off tabs) ends here: point out the
+  // tab, then the option, which people change themselves (issues 358, 359).
+  const guide = useSettingsDialogStore((state) => state.guide);
   const endGuide = useSettingsDialogStore((state) => state.endGuide);
+  const walk = guide ? SETTINGS_WALKS[guide] : null;
   const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const onWalkTab = walk !== null && tab === walk.tab;
   const {
     preferences,
     isError: preferencesError,
@@ -89,7 +92,7 @@ export function SettingsDialog({
   const updatePreferences = useUpdateUserPreferences();
   const activeTheme = useActiveTheme();
   const favoriteWorkspaces = preferences.favorite_workspaces ?? [];
-  const analysisMultiTabEnabled = preferences.analysis_multi_tab_enabled ?? false;
+  const analysisMultiTabEnabled = preferences.analysis_multi_tab_enabled ?? true;
   const contextualHintsEnabled = preferences.contextual_hints_enabled ?? false;
   /**
    * Called by: the shadcn Switch for the analysis multi-tab preference.
@@ -98,6 +101,7 @@ export function SettingsDialog({
    */
   const handleAnalysisMultiTabChange = (enabled: boolean) => {
     updatePreferences.mutate({ analysis_multi_tab_enabled: enabled });
+    if (guide === 'multi-tab') endGuide();
   };
 
   /** Applies the selected theme immediately, then lets the account mutation confirm or roll it back. */
@@ -157,15 +161,10 @@ export function SettingsDialog({
                 <TabsTrigger
                   key={value}
                   value={value}
-                  data-guide-target={
-                    guidingHints && value === 'guidance' && tab !== 'guidance' ? '' : undefined
-                  }
+                  data-guide-target={walk?.tab === value && !onWalkTab ? '' : undefined}
                   className={cn(
                     'h-9 w-full justify-start gap-2 px-3 text-left flex-none',
-                    guidingHints &&
-                      value === 'guidance' &&
-                      tab !== 'guidance' &&
-                      'ring-2 ring-focus',
+                    walk?.tab === value && !onWalkTab && 'ring-2 ring-focus',
                   )}
                 >
                   <Icon className="h-4 w-4" />
@@ -174,14 +173,12 @@ export function SettingsDialog({
               ))}
             </TabsList>
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
-              {guidingHints ? (
+              {walk ? (
                 <p
                   role="status"
                   className="mb-4 rounded-md border border-focus bg-list-hover px-3 py-2 text-body text-foreground"
                 >
-                  {tab === 'guidance'
-                    ? 'Untick Show contextual hints to turn hints off. Come back here to turn them on again.'
-                    : 'To turn hints off, open Guidance on the left.'}
+                  {onWalkTab ? walk.settingNote : walk.tabNote}
                 </p>
               ) : null}
               <TabsContent value="general" className="mt-0 space-y-5">
@@ -242,7 +239,13 @@ export function SettingsDialog({
                   </div>
                 </section>
                 <section className="border-t border-surface-border/60 pt-4">
-                  <div className="flex items-center justify-between gap-4 rounded-md border border-surface-border/70 px-3 py-2">
+                  <div
+                    data-highlighted={guide === 'multi-tab' && onWalkTab ? '' : undefined}
+                    className={cn(
+                      'flex items-center justify-between gap-4 rounded-md border border-surface-border/70 px-3 py-2',
+                      guide === 'multi-tab' && 'border-focus ring-2 ring-focus',
+                    )}
+                  >
                     <Label htmlFor="settings-analysis-multi-tab" className="text-body font-medium">
                       Enable multi-tab
                     </Label>
@@ -369,10 +372,10 @@ export function SettingsDialog({
                   </p>
                   <Label
                     htmlFor="settings-hints-enabled"
-                    data-highlighted={guidingHints && tab === 'guidance' ? '' : undefined}
+                    data-highlighted={guide === 'contextual-hints' && onWalkTab ? '' : undefined}
                     className={cn(
                       'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
-                      guidingHints && 'border-focus ring-2 ring-focus',
+                      guide === 'contextual-hints' && 'border-focus ring-2 ring-focus',
                     )}
                   >
                     <Checkbox
@@ -382,7 +385,7 @@ export function SettingsDialog({
                         updatePreferences.mutate({
                           contextual_hints_enabled: checked === true,
                         });
-                        endGuide();
+                        if (guide === 'contextual-hints') endGuide();
                       }}
                     />
                     <span>Show contextual hints</span>

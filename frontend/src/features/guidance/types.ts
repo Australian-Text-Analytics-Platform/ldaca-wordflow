@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { Step, StepTarget } from 'react-joyride';
+import type { SettingsGuide } from '@/stores/settingsDialogStore';
 
 export interface ContextualHintDefinition {
   id: string;
@@ -8,6 +9,8 @@ export interface ContextualHintDefinition {
   placement?: Step['placement'];
   title?: ReactNode;
   content: ReactNode;
+  /** A setting this hint can walk people to, such as turning tabs off (issue 359). */
+  settingsWalk?: { label: string; guide: SettingsGuide };
 }
 
 export interface GuidedTourDefinition {

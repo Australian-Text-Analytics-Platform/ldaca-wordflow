@@ -10,7 +10,8 @@ const mocks = vi.hoisted(() => ({
   useAuth: vi.fn(),
   useWorkspaceTabs: vi.fn(),
   refreshAnalyses: vi.fn(),
-  multiTabEnabled: false,
+  multiTabEnabled: false as boolean | undefined,
+  useProgressiveContextualHints: vi.fn(),
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
@@ -36,6 +37,10 @@ vi.mock('../../hooks/useTabAnalysisForest', () => ({
     active: null,
     refresh: mocks.refreshAnalyses,
   }),
+}));
+
+vi.mock('@/features/guidance/useProgressiveContextualHints', () => ({
+  useProgressiveContextualHints: mocks.useProgressiveContextualHints,
 }));
 
 vi.mock('@/features/preferences/useUserPreferences', () => ({
@@ -178,7 +183,7 @@ describe('AnalysisTabsHost', () => {
     expect(createTab).not.toHaveBeenCalled();
   });
 
-  it('hides multi-tab chrome by default while still rendering the active feature', () => {
+  it('hides multi-tab chrome when it is turned off, while still rendering the active feature', () => {
     mocks.useWorkspaceTabs.mockReturnValue(
       makeTabsResult({
         tabs: [tab],
@@ -190,6 +195,22 @@ describe('AnalysisTabsHost', () => {
 
     expect(screen.queryByRole('tablist', { name: /analysis tabs/i })).not.toBeInTheDocument();
     expect(screen.getByText('Feature panel')).toBeInTheDocument();
+  });
+
+  it('shows tabs by default, with the hint about them (issue 359)', () => {
+    mocks.multiTabEnabled = undefined;
+    mocks.useWorkspaceTabs.mockReturnValue(
+      makeTabsResult({ tabs: [tab], activeTabId: tab.tab_id }),
+    );
+
+    render(<AnalysisTabsHost tabGroup="token_frequencies" Feature={Feature} />);
+
+    expect(screen.getByRole('tablist', { name: /analysis tabs/i })).toBeInTheDocument();
+    expect(mocks.useProgressiveContextualHints).toHaveBeenLastCalledWith(['analysis-tabs.new-tab']);
+    expect(screen.getByRole('button', { name: 'New tab' })).toHaveAttribute(
+      'data-guidance',
+      'new-tab',
+    );
   });
 
   it('shows multi-tab chrome when the preference is enabled', () => {

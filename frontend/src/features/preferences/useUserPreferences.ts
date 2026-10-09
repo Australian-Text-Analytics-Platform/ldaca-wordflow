@@ -13,7 +13,8 @@ import { toastError } from '@/lib/toastError';
 const DEFAULT_PREFERENCES: Required<UserPreferences> = {
   hidden_views: [],
   favorite_workspaces: [],
-  analysis_multi_tab_enabled: false,
+  // On by default from the next 0.7.x update (issue 359).
+  analysis_multi_tab_enabled: true,
   contextual_hints_enabled: true,
   color_theme: 'light-2026',
 };

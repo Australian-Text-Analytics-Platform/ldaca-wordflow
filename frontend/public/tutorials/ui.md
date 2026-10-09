@@ -237,6 +237,7 @@ The centre column is the main working area and shows the interface of whichever 
 
 - The tool name and a short description appear at the top.
 - Sub-tabs (e.g. Filter, Group, Join, and Stack in the Data Builder) let you switch between related operations within the same tool.
+- Each analysis tool can hold several tabs, so you can keep several analyses side by side: **+** in the tab strip opens another. Tabs are on by default; to keep one tab in each tool, turn off **Enable multi-tab** under **Settings → General** (the **+** button's tooltip says so too). A hint at **+** offers **Turn off tabs…**, which shows the way there step by step.
 - Most tools follow a common workflow: configure parameters → review a preview → create the result. Data Builder tools always create new Data Blocks and leave their sources unchanged; the Data Editor's column tools always update the selected Data Block in place without changing its rows.
 - <span id="help-ui-analysis-layout"></span>In the analysis tools (Frequency, Concordance, Trends, Topic Modelling, Quotation, Annotation), the parameters sit above the results, and each part scrolls on its own. Once there are results, drag the bar between them to give either part more height, or use the arrow keys when the bar is focused; double-click the bar to go back to the default. Each tool remembers its own setting.
 - The main results (tables, lists, and charts) fill the space below the bar, sharing it when there are several, so the bar makes them taller or shorter. To size one result on its own, drag its bottom-right corner, as with the Stop words box; the others share the space that is left. Double-click the corner to let it fill the space again. For example, in Topic Modelling make the bubble chart shorter to give the topic lists more room. Word clouds keep their width-based height until you resize them.
@@ -332,7 +333,10 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   visit without acknowledging anything. Switching Analysis Tabs does not
   resume them; leave the function and return to retry the earliest eligible
   unacknowledged hint.
-- Contextual Hints can be disabled under **Settings → Guidance**. The same page
+- Contextual Hints are turned off, and back on, under **Settings → Guidance**.
+  A hint's **Turn off hints…** shows the way there: it points at the Settings
+  gear at the top right, then Settings points out **Guidance** and the
+  **Show contextual hints** option, which you untick yourself. The same page
   can reset acknowledgement history for the current user, causing eligible hint
   versions to appear again on this device.
 - A replayable **Guided Tour** is shown in Help only when one is available. A

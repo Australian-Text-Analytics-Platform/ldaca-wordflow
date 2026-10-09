@@ -2,6 +2,10 @@ import type { ViewType } from '@/features/views/viewIds';
 import type { ContextualHintDefinition, GuidedTourDefinition } from './types';
 
 export const CONTEXTUAL_HINT_IDS = {
+  // Shown once, in whichever analysis tool is opened first (issue 359).
+  analysisTabs: {
+    newTab: 'analysis-tabs.new-tab',
+  },
   dataLoader: {
     workspace: 'data-loader.workspace',
     workspaceLoad: 'data-loader.workspace-load',
@@ -87,12 +91,27 @@ const resolveAnnotationAiSetupTarget = () =>
 export const contextualHintSequences: Readonly<Record<ViewType, readonly string[]>> = {
   'data-loader': Object.values(CONTEXTUAL_HINT_IDS.dataLoader),
   filter: Object.values(CONTEXTUAL_HINT_IDS.preprocessing),
-  'token-frequency': Object.values(CONTEXTUAL_HINT_IDS.tokenFrequency),
-  concordance: Object.values(CONTEXTUAL_HINT_IDS.concordance),
-  analysis: Object.values(CONTEXTUAL_HINT_IDS.trends),
-  'topic-modeling': Object.values(CONTEXTUAL_HINT_IDS.topicModeling),
-  quotation: Object.values(CONTEXTUAL_HINT_IDS.quotation),
-  annotation: Object.values(CONTEXTUAL_HINT_IDS.annotation),
+  'token-frequency': [
+    CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+    ...Object.values(CONTEXTUAL_HINT_IDS.tokenFrequency),
+  ],
+  concordance: [
+    CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+    ...Object.values(CONTEXTUAL_HINT_IDS.concordance),
+  ],
+  analysis: [CONTEXTUAL_HINT_IDS.analysisTabs.newTab, ...Object.values(CONTEXTUAL_HINT_IDS.trends)],
+  'topic-modeling': [
+    CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+    ...Object.values(CONTEXTUAL_HINT_IDS.topicModeling),
+  ],
+  quotation: [
+    CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+    ...Object.values(CONTEXTUAL_HINT_IDS.quotation),
+  ],
+  annotation: [
+    CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+    ...Object.values(CONTEXTUAL_HINT_IDS.annotation),
+  ],
   export: Object.values(CONTEXTUAL_HINT_IDS.export),
 };
 
@@ -106,6 +125,15 @@ const hint = (
 
 /** Canonical copy, version, target, and placement for every production Contextual Hint. */
 export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
+  {
+    ...hint(
+      CONTEXTUAL_HINT_IDS.analysisTabs.newTab,
+      '[data-guidance="new-tab"]',
+      'Several analyses in one tool',
+      'Click + to open another tab, so you can keep several analyses side by side in this tool.',
+    ),
+    settingsWalk: { label: 'Turn off tabs…', guide: 'multi-tab' },
+  },
   hint(
     CONTEXTUAL_HINT_IDS.dataLoader.workspace,
     '[data-guidance="workspace-setup"]',
@@ -399,25 +427,3 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
 
 /** Guided Tours remain deliberate and replayable; this release defines none. */
 export const guidedTourRegistry: readonly GuidedTourDefinition[] = [];
-
-/**
- * Started by a hint's Turn off hints (issue 358): points at the Settings gear
- * and waits for people to click it themselves, so they learn where hints are
- * turned off and back on. Settings then points out Guidance and the option.
- */
-export const turnOffHintsTour: GuidedTourDefinition = {
-  id: 'turn-off-hints',
-  steps: [
-    {
-      id: 'turn-off-hints-settings',
-      target: '[data-guidance="settings-button"]',
-      title: 'Hints are turned off in Settings',
-      content:
-        'Click Settings, the gear here. Hints are turned off there, and turned back on there too.',
-      placement: 'bottom-end',
-      clickTarget: true,
-      // Joyride shows no Skip on a last step; Close leaves the walk.
-      buttons: ['close'],
-    },
-  ],
-};

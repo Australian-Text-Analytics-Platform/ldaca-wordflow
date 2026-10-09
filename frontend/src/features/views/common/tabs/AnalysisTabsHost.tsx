@@ -27,6 +27,8 @@ import { useTabAnalysisForest } from '../hooks/useTabAnalysisForest';
 import { AnalysisTabbedPanel } from './AnalysisTabbedPanel';
 import type { AnalysisTabInput, AnalysisTabInputSets } from './tabStateOps';
 import { useWorkspaceTabs } from './useWorkspaceTabs';
+import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
+import { useProgressiveContextualHints } from '@/features/guidance/useProgressiveContextualHints';
 
 /**
  * Canonical owner passed to every analysis feature. Values are normalized at
@@ -83,7 +85,7 @@ export function AnalysisTabsHost({
 }: AnalysisTabsHostProps) {
   const { currentWorkspaceId } = useWorkspaceData();
   const { preferences } = useUserPreferences();
-  const analysisMultiTabEnabled = preferences.analysis_multi_tab_enabled ?? false;
+  const analysisMultiTabEnabled = preferences.analysis_multi_tab_enabled ?? true;
   const autoCreateKeyRef = useRef<string | null>(null);
 
   const {
@@ -133,6 +135,8 @@ export function AnalysisTabsHost({
   // flows may still create additional tabs, which must immediately reveal the
   // complete tab UI so every persisted tab stays reachable.
   const showTabChrome = analysisMultiTabEnabled || tabs.length > 1;
+  // Each tool can hold many tabs; the hint offers Turn off tabs (issue 359).
+  useProgressiveContextualHints(showTabChrome ? [CONTEXTUAL_HINT_IDS.analysisTabs.newTab] : []);
   const preferredTab = preferredTabId
     ? (tabs.find((tab) => tab.tab_id === preferredTabId) ?? null)
     : null;

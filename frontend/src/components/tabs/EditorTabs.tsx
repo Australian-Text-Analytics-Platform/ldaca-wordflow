@@ -557,17 +557,26 @@ export function EditorTabs({
             })}
 
             {onCreate ? (
-              <button
-                type="button"
-                aria-label="New tab"
-                onClick={onCreate}
-                style={{ transform: `translateX(${String(totalWidth)}px)` }}
-                className="group/create absolute top-0 left-0 z-1 flex size-[32px] items-center justify-center text-description transition-colors hover:text-foreground focus-visible:outline-none"
-              >
-                <span className="flex size-[24px] items-center justify-center rounded-[4px] group-hover/create:bg-panel group-focus-visible/create:bg-panel">
-                  <Plus className="size-[16px]" />
-                </span>
-              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="New tab"
+                    data-guidance="new-tab"
+                    onClick={onCreate}
+                    style={{ transform: `translateX(${String(totalWidth)}px)` }}
+                    className="group/create absolute top-0 left-0 z-1 flex size-[32px] items-center justify-center text-description transition-colors hover:text-foreground focus-visible:outline-none"
+                  >
+                    <span className="flex size-[24px] items-center justify-center rounded-[4px] group-hover/create:bg-panel group-focus-visible/create:bg-panel">
+                      <Plus className="size-[16px]" />
+                    </span>
+                  </button>
+                </TooltipTrigger>
+                {/* Says where tabs are turned off, without relying on hints (issue 359). */}
+                <TooltipContent side="bottom">
+                  New tab. Tabs can be turned off in Settings → General.
+                </TooltipContent>
+              </Tooltip>
             ) : null}
           </div>
         </div>

@@ -18,7 +18,9 @@ class UserPreferences(_StrictModel):
 
     hidden_views: list[str] = Field(default_factory=list)
     favorite_workspaces: list[str] = Field(default_factory=list)
-    analysis_multi_tab_enabled: bool = False
+    # On by default from the next 0.7.x update (issue 359). Saved preferences
+    # keep the value they hold.
+    analysis_multi_tab_enabled: bool = True
     contextual_hints_enabled: bool = True
     color_theme: Literal["light-2026", "dark-2026"] = "light-2026"
 

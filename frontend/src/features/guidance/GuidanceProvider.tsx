@@ -12,7 +12,7 @@ import {
 } from 'react-joyride';
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
+import { type SettingsGuide, useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import type { ViewType } from '@/features/views/viewIds';
 import { useGuidanceAcknowledgmentsStore } from './acknowledgmentsStore';
@@ -27,8 +27,8 @@ import {
   contextualHintRegistry,
   contextualHintSequences as productionContextualHintSequences,
   guidedTourRegistry,
-  turnOffHintsTour,
 } from './registry';
+import { isSettingsWalkTour, settingsWalkTour } from './settingsWalks';
 import type { ContextualHintDefinition, GuidedTourDefinition } from './types';
 
 type GuidanceSession =
@@ -40,8 +40,9 @@ type GuidanceSession =
     }
   | { kind: 'tour'; definition: GuidedTourDefinition; started: boolean };
 
-// Opens Settings → Guidance, where hints are turned off and back on (issue 358).
-const OpenHintSettingsContext = createContext<(() => void) | null>(null);
+// Walks people to a setting: the Settings gear, then its tab and option
+// (issues 358, 359). Hints use it for Turn off hints and their own actions.
+const SettingsWalkContext = createContext<((guide: SettingsGuide) => void) | null>(null);
 
 const guidanceStyles = {
   floater: { filter: 'none' },
@@ -93,8 +94,12 @@ function ContextualHintTooltip({
   step,
   tooltipProps,
 }: TooltipRenderProps) {
-  const openHintSettings = useContext(OpenHintSettingsContext);
+  const startSettingsWalk = useContext(SettingsWalkContext);
   const { content, styles, title } = step;
+  const stepData = step.data as
+    | { settingsWalk?: ContextualHintDefinition['settingsWalk'] }
+    | undefined;
+  const settingsWalk = stepData?.settingsWalk;
 
   return (
     <div
@@ -114,6 +119,17 @@ function ContextualHintTooltip({
         <div id="joyride-tooltip-content" style={styles.tooltipContent}>
           {content}
         </div>
+        {settingsWalk ? (
+          <button
+            type="button"
+            className="mt-2 text-label-secondary text-link hover:underline focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
+            onClick={() => {
+              startSettingsWalk?.(settingsWalk.guide);
+            }}
+          >
+            {settingsWalk.label}
+          </button>
+        ) : null}
       </div>
       <div style={styles.tooltipFooter} className="flex flex-wrap items-center gap-3">
         <div style={styles.tooltipFooterSpacer}>
@@ -122,7 +138,9 @@ function ContextualHintTooltip({
           <button
             type="button"
             className="rounded-md border border-surface-border px-3 py-2 text-label-secondary text-foreground transition-colors hover:bg-list-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
-            onClick={openHintSettings ?? undefined}
+            onClick={() => {
+              startSettingsWalk?.('contextual-hints');
+            }}
           >
             Turn off hints…
           </button>
@@ -274,6 +292,9 @@ export function GuidanceProvider({
             title: session.definition.title,
             content: session.definition.content,
             placement: session.definition.placement ?? 'auto',
+            ...(session.definition.settingsWalk
+              ? { data: { settingsWalk: session.definition.settingsWalk } }
+              : {}),
           },
         ]
       : (session?.definition.steps.map((step) => ({
@@ -318,10 +339,10 @@ export function GuidanceProvider({
       event.status === STATUS.SKIPPED ||
       event.action === ACTIONS.SKIP
     ) {
-      // Leaving the Turn off hints walk before opening Settings ends it.
+      // Leaving a settings walk before opening Settings ends it.
       if (
         session?.kind === 'tour' &&
-        session.definition.id === turnOffHintsTour.id &&
+        isSettingsWalkTour(session.definition.id) &&
         !useSettingsDialogStore.getState().open
       ) {
         useSettingsDialogStore.getState().endGuide();
@@ -336,7 +357,7 @@ export function GuidanceProvider({
       useSettingsDialogStore.subscribe((state, previous) => {
         if (state.open && !previous.open) {
           setTourSession((current) =>
-            current?.definition.id === turnOffHintsTour.id ? null : current,
+            current && isSettingsWalkTour(current.definition.id) ? null : current,
           );
         }
       }),
@@ -345,12 +366,13 @@ export function GuidanceProvider({
 
   const modalOpen = modalCount > 0;
   const isHint = session?.kind === 'hint';
-  // Turn off hints walks people to the setting instead of turning hints off
-  // here (issue 358): first the Settings gear, then, inside Settings, the
-  // Guidance tab and the option, where they untick it themselves.
-  const openHintSettings = () => {
-    useSettingsDialogStore.getState().startGuide('contextual-hints');
-    setTourSession({ kind: 'tour', definition: turnOffHintsTour, started: true });
+  // Turn off hints (and a hint's own action, such as Turn off tabs) walks
+  // people to the setting instead of changing it here (issues 358, 359):
+  // first the Settings gear, then, inside Settings, the tab and the option,
+  // which they change themselves.
+  const startSettingsWalk = (guide: SettingsGuide) => {
+    useSettingsDialogStore.getState().startGuide(guide);
+    setTourSession({ kind: 'tour', definition: settingsWalkTour(guide), started: true });
   };
   const guidanceInteractive = Boolean(session) && !modalOpen;
 
@@ -381,7 +403,7 @@ export function GuidanceProvider({
 
   return (
     <GuidanceContext.Provider value={{ dispatchContextualHintVisit, startGuidedTour }}>
-      <OpenHintSettingsContext.Provider value={openHintSettings}>
+      <SettingsWalkContext.Provider value={startSettingsWalk}>
         {children}
         <div
           ref={setPortalElement}
@@ -429,7 +451,7 @@ export function GuidanceProvider({
             />
           </GuidancePresentationBoundary>
         ) : null}
-      </OpenHintSettingsContext.Provider>
+      </SettingsWalkContext.Provider>
     </GuidanceContext.Provider>
   );
 }

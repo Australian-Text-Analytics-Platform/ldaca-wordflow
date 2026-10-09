@@ -73,7 +73,7 @@ async def test_missing_preferences_return_schema_versioned_defaults(tmp_path: Pa
     assert result.model_dump() == {
         "hidden_views": [],
         "favorite_workspaces": [],
-        "analysis_multi_tab_enabled": False,
+        "analysis_multi_tab_enabled": True,
         "contextual_hints_enabled": True,
         "color_theme": "light-2026",
     }
@@ -358,7 +358,8 @@ def test_preferences_api_reads_and_patches_current_user(files_test_client) -> No
     assert updated.status_code == 200
     assert updated.json()["favorite_workspaces"] == ["workspace-a"]
     assert updated.json()["contextual_hints_enabled"] is False
-    assert updated.json()["analysis_multi_tab_enabled"] is False
+    # Untouched by the patch, so it keeps the default: on (issue 359).
+    assert updated.json()["analysis_multi_tab_enabled"] is True
     assert updated.json()["color_theme"] == "dark-2026"
 
     invalid = files_test_client.patch(
