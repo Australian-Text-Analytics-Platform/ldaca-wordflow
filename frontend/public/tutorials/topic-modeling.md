@@ -112,21 +112,22 @@ Limits the largest number of Topic Segments one Topic can hold. Topic size
 counts segments, not documents. Leave it empty for **Auto**: sometimes one huge
 Topic swallows most of the corpus, so Auto steps in when one Topic is the main
 topic of more than half of the documents (a document's main topic is the one
-that covers most of its text). It then splits that Topic into smaller ones, and
-keeps the split only if most of its segments still belong to a Topic
-afterwards. A fixed value must be larger than Min topic size.
+that covers most of its text). It then splits that Topic into smaller ones and
+keeps the split whenever it gives more Topics; segments that fit none of them
+become [Ungrouped](#help-topic-modeling-ungrouped). A fixed value must be larger
+than Min topic size, and is used exactly as you set it: Auto never changes it.
 
 After a run with Auto, the empty field shows in grey the size Auto worked
 with: the cap it applied, or the size of the largest Topic when nothing was
 split. It tells you which way to go: a smaller Max gives more, smaller Topics,
-and a larger one fewer. Press **Tab** to fill it in and change it, or type a
-number.
+though more text may become Ungrouped; a larger one gives fewer, broader Topics.
+Press **Tab** to fill it in and change it, or type a number.
 
 After each run, the line under the settings shows the segment count and what
 Auto decided, for example *one topic was the main topic of 83% of documents, so
-topics larger than 1,540 segments were split*. When splitting would have left
-most of that Topic's segments without a topic, Auto keeps it and says so; try a
-fixed Max topic size then, for example a few thousand segments, and compare.
+topics larger than 1,540 segments were split*. When splitting does not give
+more Topics, Auto keeps the large Topic and says so; try a fixed Max topic size
+then, for example a few thousand segments, and compare.
 
 <h4 id="help-topic-modeling-random-seed">Seed (random seed)</h4>
 
