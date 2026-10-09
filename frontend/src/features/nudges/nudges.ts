@@ -71,7 +71,7 @@ export const NUDGES = {
   'topic-many-ungrouped': {
     title: 'Many documents are Ungrouped',
     message:
-      'A slightly smaller Min topic size groups more of them, into more and smaller topics. Change it and Run again.',
+      'That mostly comes from the text itself, which settings do not change, so expect only a small difference: a slightly smaller Min topic size may group a few more, into more and smaller topics.',
     targets: [NUDGE_TARGETS.topicMinClusterSize],
   },
   'topic-slow-start': {

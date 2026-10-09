@@ -357,7 +357,8 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
   - Topic Modelling puts most segments in one topic (try a lower **Max topic
     size**), finds only a few topics, or leaves many documents
     [Ungrouped](./topic-modeling.md#help-topic-modeling-ungrouped) (try a
-    slightly lower **Min topic size**), then **Run** again;
+    slightly lower **Min topic size**, which may help only a little), then
+    **Run** again;
   - a Topic Modelling run is still splitting or reading the text after five
     minutes: reading takes most of a first run, so **Stop**, then lower
     **Sampling** to read fewer documents;

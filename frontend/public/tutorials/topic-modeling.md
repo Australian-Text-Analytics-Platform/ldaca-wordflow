@@ -303,11 +303,14 @@ search term, such as *obesity*, that term is the background of every document;
 the Topics are the many settings it appears in (sleep, school canteens, a sugar
 tax, a sports doping case).
 
-**Fewer Ungrouped documents.** A slightly smaller **Min topic size** leaves
-fewer documents Ungrouped, but makes many more, smaller Topics; in the
-benchmark, 37% fell to 30% at 5, with 2,848 Topics instead of 782. A larger
-size can put almost everything into one Topic. With **Suggestions** on, a
-result with many Ungrouped documents suggests this.
+**Fewer Ungrouped documents.** How much is Ungrouped mostly comes from the
+text itself, which no setting changes, so settings make only a small
+difference. A slightly smaller **Min topic size** may group a few more
+documents, but makes many more, smaller Topics; in the benchmark, 37% fell to
+30% at 5, with 2,848 Topics instead of 782, and on other corpora the change
+can be about one percentage point. A larger size can put almost everything into
+one Topic. With **Suggestions** on, a result with many Ungrouped documents
+suggests trying a smaller Min topic size.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Per document (top topics per document)</h3>
 
@@ -583,7 +586,7 @@ available for the next run.
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
 | A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
 | Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
-| Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size groups more of them |
+| Many documents are Ungrouped | Expected on varied text; see [Ungrouped](#help-topic-modeling-ungrouped). A slightly smaller Min topic size may group a few more |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
