@@ -1,5 +1,49 @@
 <!-- markdownlint-disable MD033 MD041 -->
 
+<h2 id="help-topic-modeling-benchmark">Appendix: an informal benchmark of Max tokens</h2>
+
+This is one ad hoc comparison, made once while developing Wordflow. It used one
+corpus, one computer and two seeds. It is here for reference only and is not
+guidance: other corpora, languages, computers and settings can behave quite
+differently, so try settings on your own data.
+
+- **Corpus**: 26,163 news articles that mention obesity (about 25 million
+  tokens, about 3,800 characters per article).
+- **Computer**: Apple M5 Pro, 18 cores, 64 GB memory.
+- **Settings**: Automatic segments, Topic size 10 to Auto, no sampling, no
+  Topic sampling, seeds 0 and 1. Max tokens 128 and 256.
+- **Times**: the first run of each Max tokens read the text into the model;
+  the second seed reused that work.
+
+| | Max tokens 128 | Max tokens 256 |
+| --- | --- | --- |
+| Segments | 224,502 | 107,551 |
+| First run (seed 0) | 13 minutes | 14 minutes |
+| Second run, reading reused (seed 1) | 2.9 minutes | 1.0 minute |
+| Topics (seed 0, seed 1) | 1,215 and 60 | 782 and 815 |
+| Largest topic's share of segments (seed 0, seed 1) | 2% and 95% | 2% and 2% |
+| Topics that are the main topic of 10 or more documents | 83 and 4 | 167 and 157 |
+| Text with No topic (seed 0) | 69% | 62% |
+| Agreement between the two seeds on each document's main topic (0 to 1) | 0.22 | 0.68 |
+| Topic word coherence, 20 largest topics (seed 0, seed 1) | 0.29 and 0.16 | 0.26 and 0.29 |
+
+What it showed for this corpus:
+
+- Reading the text took about as long at both sizes; it follows the amount of
+  text, not the segment size.
+- 256 grouped the segments about three times faster, because there were half
+  as many.
+- 256 gave similar results with both seeds. 128 did not: with seed 1, one
+  Topic took 95% of the segments.
+- The largest Topics were much the same at both sizes (for example sleep, junk
+  food advertising, a sugar tax, weight-loss surgery), so 128 did not give
+  sharper Topics.
+
+Topic word coherence is the average normalised pointwise mutual information of
+each Topic's top 10 words, counted over the corpus's paragraphs; higher means
+the words appear together more often. Agreement is the normalised mutual
+information of the documents' main topics in the two runs.
+
 [← Back to Help home](./index.md)
 
 <h1 id="help-topic-modeling-section">Topic Modelling</h1>
@@ -241,6 +285,35 @@ row, Wordflow sends one update with that value clamped to the new count.
 Running again starts from the natural count and Top 2. Export and Add to
 Project use the topics on screen and are unavailable while an update is
 pending.
+
+<h3 id="help-topic-modeling-no-topic">Text with No topic</h3>
+
+A segment joins a Topic only when it sits in a dense group of similar segments.
+Segments that are not close enough to any group are marked **No topic** rather
+than forced into the nearest one, so a Topic stays a group of passages that
+really are alike. On varied text such as news, a large share can be left out:
+in the [informal benchmark](#help-topic-modeling-benchmark) below, about 60% of
+the text had No topic, and No topic was the largest share of two thirds of the
+documents. This is expected, not an error:
+
+- A document's main topic (`TOPIC_top1`) is the label that covers most of its
+  text, and No topic counts. A document with 40% of its text in a Topic and 60%
+  in No topic has No topic as its main topic, but still counts toward that
+  Topic's bubble.
+- **Per document** (Top topics per document) does not change this. It only
+  sets how many of a document's real Topics count it in their bubbles. No topic
+  never counts, and a document with no real Topic is in no bubble at any value.
+- A theme every document shares does not become a Topic. Topics come from what
+  makes groups of passages different from one another, and topic words favour
+  what one Topic has that the others do not. In a corpus collected with a
+  search term, such as *obesity*, that term is the background of every
+  document; the Topics are the many settings it appears in (sleep, school
+  canteens, a sugar tax, a sports doping case).
+- A smaller **Min topic size** often lets smaller groups form, which leaves
+  less text with No topic. To place every document, use each document's topic
+  shares (`TOPIC_coverage`, or **One row per topic** in
+  [Add to Project](#help-topic-modeling-add-to-project)) rather than its main
+  topic alone.
 
 <h3 id="help-topic-modeling-top-topics-per-row">Per document (top topics per document)</h3>
 
@@ -513,7 +586,8 @@ available for the next run.
 | Topics change substantially between runs | Increase sampling and compare runs with fixed seeds |
 | Representative words describe formatting rather than subject matter | Clean boilerplate or choose a segmentation method that better matches the document structure |
 | A structural unit becomes many segments | Increase Maximum tokens per segment or choose a coarser segmentation mode |
-| Run time is very long | Use Automatic segments with a larger Max tokens, try [Topic sampling](#help-topic-modeling-topic-sampling), or reduce the per-Data-Block sampling percentage |
+| Run time is very long | Reading the text takes most of a first run and depends on how much text there is, so reduce the per-Data-Block sampling percentage. A larger Max tokens and [Topic sampling](#help-topic-modeling-topic-sampling) shorten only the later grouping step |
+| Most documents have No topic as their main topic | Expected on varied text; see [Text with No topic](#help-topic-modeling-no-topic) |
 
 <h2 id="help-topic-modeling-defaults">Quick-reference defaults</h2>
 
