@@ -44,11 +44,13 @@ try {
   const asset=/src="\.\/(assets\/[^\"]+)"/.exec(html)?.[1];
   assert.ok(asset,'Production module asset'); assert.equal((await fetch(`${base}/${asset}`)).status,200);
   const opened=await (await fetch(`${base}/api/server/project`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:null})})).json();
+  assert.ok((await readdir(path.join(data,'admin/projects'))).some(name=>/^Untitled-\d+\.wfpj$/.test(name)), 'New is immediately permanent');
   const zonesResponse=await fetch(`${base}/project/${opened.project_id}/api/project/timezones`);
   assert.equal(zonesResponse.status,200,await zonesResponse.clone().text());
   assert.ok((await zonesResponse.json()).includes('Australia/Sydney'), 'Signed ICU downloads on first use');
-  const save=await fetch(`${base}/api/server/project/save`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project_id:opened.project_id,name:'relocated.wfpj'})});
-  assert.equal(save.status,200,await save.text());
+  const renamed=await fetch(`${base}/api/server/project/rename`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({project_id:opened.project_id,name:'relocated.wfpj'})});
+  assert.equal(renamed.status,200,await renamed.clone().text());
+  assert.equal((await renamed.json()).project_id,opened.project_id,'Rename preserves the shared runtime identity');
   assert.ok((await readdir(path.join(data,'admin/projects'))).includes('relocated.wfpj'));
   child.kill('SIGTERM'); await stopped; child=undefined;
   console.log(`Relocation, embedded assets, on-demand ICU and project persistence passed: ${target}`);

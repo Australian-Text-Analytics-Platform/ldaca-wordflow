@@ -36,6 +36,13 @@ project files may be shared between identities; identity separation does not cop
 those files. OS-managed WebView profiles, credential stores and native recent
 items retain their own adapters and isolation procedures.
 
+Upload destinations, new-project and Save As destinations, and the ICU cache
+must support hard links. Wordflow stages beside each destination so installation
+uses a same-filesystem, no-overwrite hard link. The destination filesystem must
+permit that operation for the service account or desktop user. A failed link
+reports its original filesystem error; there is no copy or rename fallback.
+Moving staging to a different filesystem does not relax this requirement.
+
 ## Preferences
 
 `config/preferences.json` contains this complete JSON object:

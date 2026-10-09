@@ -74,7 +74,7 @@ it('keeps windows on independent projects, reuses the same file and broadcasts s
   await browser.switchToWindow(initial);
 });
 
-it('preserves independent preprocessing inputs when switching projects with matching table names', async () => {
+it('preserves independent Builder inputs when switching projects with matching table names', async () => {
   const projects = [];
   for (const name of ['switch-a.wfpj', 'switch-b.wfpj']) {
     const project = await api('/api/server/project', 'POST', { name: null });
@@ -86,7 +86,7 @@ it('preserves independent preprocessing inputs when switching projects with matc
     projects.push(project);
   }
   async function showJoin() {
-    await $('button=Preprocessing').click();
+    await $('button[aria-label="Data Builder"]').click();
     await expect($('#preprocessing-tab-join')).toBeDisplayed();
     await $('#preprocessing-tab-join').click();
   }

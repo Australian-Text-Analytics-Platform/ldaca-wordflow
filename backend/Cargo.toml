@@ -36,6 +36,8 @@ calamine = { version = "0.36.1", features = ["dates"] }
 apache-avro = "0.21"
 quick-xml = "0.42"
 arrow-avro = "58.4.0"
+# Keep Arrow Avro's XZ reader independent of a runner's system liblzma.
+liblzma = { version = "0.4.8", default-features = false, features = ["static"] }
 parquet = { version = "58.4.0", default-features = false, features = ["arrow", "snap"] }
 
 [target.'cfg(unix)'.dependencies]

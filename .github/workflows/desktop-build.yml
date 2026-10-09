@@ -313,6 +313,18 @@ jobs:
           $destination = Join-Path $outputDir "ldaca-wordflow_windows-x86_64.msi"
           Copy-Item $source.FullName $destination -Force
           Copy-Item "$($source.FullName).sig" "$destination.sig" -Force
+          node ../scripts/release-artifacts.mjs record ldaca-desktop-windows-msi $outputDir $profile
+
+      - name: Stage macOS release evidence
+        if: inputs.platform == 'macos'
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          output="target/release-assets/macos"
+          mkdir -p "$output"
+          cp target/aarch64-apple-darwin/release/bundle/dmg/*.dmg "$output/"
+          cp target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz* "$output/"
+          node scripts/release-artifacts.mjs record ldaca-desktop-macos-apple-silicon "$output" release
 
       - name: Upload Windows release artifacts
         if: inputs.platform == 'windows'
@@ -328,10 +340,7 @@ jobs:
         uses: actions/upload-artifact@v7.0.1
         with:
           name: ldaca-desktop-macos-apple-silicon
-          path: |
-            target/aarch64-apple-darwin/release/bundle/dmg/*.dmg
-            target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz
-            target/aarch64-apple-darwin/release/bundle/updater/*.app.tar.gz.sig
+          path: target/release-assets/macos/*
           if-no-files-found: error
           retention-days: 14
 

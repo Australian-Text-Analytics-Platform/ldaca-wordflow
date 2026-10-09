@@ -218,6 +218,9 @@ jobs:
       - name: Run frontend checks
         run: vp -C frontend run check
 
+      - name: Verify nonpublishing production artifact promotion
+        run: node --test scripts/release-artifacts.test.mjs
+
       - name: Check engineering documentation links
         run: vp run docs:links
 

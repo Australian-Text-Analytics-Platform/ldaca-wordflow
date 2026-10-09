@@ -7,10 +7,10 @@
 - [x] 5. Topic Modelling retained stages, adjustments and colouring.
 - [x] 6. Frequency, Concordance, Quotation, Annotation and charts.
 - [x] 7. Shell, navigation, bundled Help and desktop behavior.
-- [ ] 8. Production artifact promotion and operational guidance; final local commit.
+- [x] 8. Production artifact promotion and operational guidance; final local commit.
 - [x] Required Rust/frontend checks and generated API/docs verification.
 - [x] Chromium and isolated native macOS WebKit acceptance.
-- [ ] Complete the last two release/operational evidence rows and commit batch 8.
+- [x] Complete all 232 decision/evidence rows and the 53-commit audit.
 - [ ] Windows native behavior, physical native pickers/menus and signed production runtime acceptance in a dedicated OS account/VM.
 - [ ] Archive the integration spec after the outstanding platform acceptance gates pass.
 

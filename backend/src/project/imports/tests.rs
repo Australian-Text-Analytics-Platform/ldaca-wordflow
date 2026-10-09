@@ -161,6 +161,46 @@ fn zip_import_has_the_same_mixed_rules_and_rejects_escaping_paths() {
     );
 }
 #[test]
+fn xz_compressed_avro_imports_with_the_bundled_codec() {
+    use arrow_avro::{
+        compression::CompressionCodec,
+        writer::{WriterBuilder, format::AvroOcfFormat},
+    };
+    let (_temp, root) = directory();
+    let schema = Schema::new(vec![Field::new("document", DataType::Utf8, false)]);
+    let batch = RecordBatch::try_new(
+        Arc::new(schema.clone()),
+        vec![Arc::new(StringArray::from(vec!["cat", "日本語"]))],
+    )
+    .unwrap();
+    let path = root.join("compressed.avro");
+    let mut writer = WriterBuilder::new(schema)
+        .with_compression(Some(CompressionCodec::Xz))
+        .build::<_, AvroOcfFormat>(File::create(&path).unwrap())
+        .unwrap();
+    writer.write(&batch).unwrap();
+    writer.finish().unwrap();
+    drop(writer);
+    let mut project = Project::untitled().unwrap();
+    assert_eq!(
+        import(&mut project, &request(vec![path]))
+            .unwrap()
+            .table_names,
+        ["compressed"]
+    );
+    let values = project
+        .database
+        .conn
+        .prepare("SELECT document FROM compressed")
+        .unwrap()
+        .query_map([], |row| row.get::<_, String>(0))
+        .unwrap()
+        .collect::<std::result::Result<Vec<_>, _>>()
+        .unwrap();
+    assert_eq!(values, ["cat", "日本語"]);
+}
+
+#[test]
 fn every_table_reader_imports_and_a_bad_later_table_rolls_everything_back() {
     let (_temp, root) = directory();
     let mut project = Project::untitled().unwrap();

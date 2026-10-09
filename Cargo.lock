@@ -9833,6 +9833,7 @@ dependencies = [
  "keyring-core",
  "ldaca-rs",
  "libc",
+ "liblzma",
  "parquet",
  "quick-xml 0.42.0",
  "regex",

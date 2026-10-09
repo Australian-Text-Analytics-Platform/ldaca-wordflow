@@ -67,11 +67,16 @@ jobs:
             --wait --output-format json > "$report"
           jq -e '.status == "Accepted"' "$report" >/dev/null
           codesign -vvvv -R='notarized' --check-notarization "$package/wordflow-server"
+      - name: Record resolved production package identity
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          mkdir -p target/release-assets/server
+          find target/server-packages -maxdepth 1 -type f \( -name '*.tar.gz' -o -name '*.zip' -o -name '*.sha256' \) -exec cp {} target/release-assets/server/ \;
+          node scripts/release-artifacts.mjs record wordflow-server-${{ matrix.target }} target/release-assets/server release
       - uses: actions/upload-artifact@v7.0.1
         with:
           name: wordflow-server-${{ matrix.target }}
-          path: |
-            target/server-packages/*.tar.gz
-            target/server-packages/*.zip
-            target/server-packages/*.sha256
+          path: target/release-assets/server/*
           if-no-files-found: error
+          retention-days: 14

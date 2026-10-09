@@ -284,7 +284,7 @@ external desktop browser, and Windows updater window creation is asynchronous.
 
 Observed checks:
 
-- Backend: 219 library tests, 58 project integration tests and two CLI tests pass;
+- Backend: 220 library tests, 58 project integration tests and two CLI tests pass;
   14 optional library tests and one subprocess helper remain ignored. The final
   missing-registration/case-insensitive deletion regression also passes. Strict
   all-target/all-feature Clippy and formatting pass.
@@ -315,14 +315,18 @@ Observed checks:
   publication. The embedded driver's native-select event adapter is test-only;
   this is not a physical OS picker or menu check.
 - Native acceptance used the isolated Test identity, debug profile and
-  instrumentation, built 2026-10-09T19:45:44.143Z, executable SHA-256
-  `889737fcdcea59eb71b5f405cbbf4bf9756e515bf6b20f287608f4dd38b5d3b2`.
+  instrumentation, final build 2026-10-09T20:10:40.383Z, executable SHA-256
+  `974ffdd4290c5fb593154f1e9ca773765c0a08b96c32cb2dbf5f82907735b498`.
+  All 24 spec files pass again against this final build (five minutes), with
+  test-owned browser/cache storage removed after teardown.
   This evidence is not uninstrumented production packaging acceptance.
 
 - Uninstrumented macOS release bundle: normal production frontend guards and
   optimized native build pass. Deep/strict code-signature and Quick Look extension
   checks pass with ad-hoc signing, identity `au.edu.ldaca.wordflow`, version 8.0.0,
-  executable SHA-256 `76a2633aeacc9961f90bff6ab52de79445dd09e30ec51ad438b54d0a437df74b`.
+  final executable SHA-256 `c3ff7a709a8dd4a34c82cf2016b3ebf48c7d1a21264ef153f1cd6ae5a26fb1f9`.
+  The final main executable links only permitted macOS system libraries; its
+  bundled Quick Look extension also passes deep/strict signature verification.
   The production bundle was not launched. This verifies static packaging, not
   Developer ID/notarization or production-runtime acceptance in a dedicated VM.
 
@@ -331,3 +335,60 @@ by the application. Native UDPipe/linker warnings and expected jsdom canvas
 limitations remain; no Safari remount or geometry workaround was introduced.
 Windows native behavior, physical native pickers/Help menus and signed production
 packaging remain open.
+
+## Batch 8: original production artifact promotion
+
+The manual production build resolves the requested source ref once and passes
+that immutable commit to desktop/server builds. Package evidence records the
+actual checkout, version, production identity, profile, workflow/run/attempt and
+file digests. Promotion requires a previous successful production build run and
+an existing matching version tag. It validates all five platform artifact sets,
+expiry, identities, server checksums and updater signatures before any release
+mutation. Packages are copied without repacking; checksums and updater manifests
+are derived from those unchanged bytes. There is no rebuild fallback.
+
+Observed checks:
+
+- All six nonpublishing fixture tests pass. They cover a source commit different
+  from the workflow head, incorrect run/tag/version/identity, ordinary CI,
+  unsuccessful/expired/missing artifacts, debug/instrumented packages, changed
+  bytes, missing signatures, unexpected files/links, wrong signing keys and
+  modified trusted comments. Prepared packages are byte-for-byte equal.
+- A fresh fixture signed by the installed Tauri CLI 2.12.1 verifies with the
+  promotion validator; the temporary private key was removed. No release signing
+  key was changed or exposed.
+- Checksum-verified actionlint 1.7.12 validates every workflow. CI runs the new
+  fixtures; build workflows retain build-only ownership.
+- Canonical storage guidance documents hard-link requirements for upload,
+  new-project/Save As and ICU destinations. Unrestricted application upload
+  guidance and the existing manual cutover/rollback procedure remain canonical.
+- The package linkage audit caught Arrow Avro's XZ codec selecting Homebrew
+  liblzma. The backend now enables the codec's bundled static feature, preserving
+  the strict packaging audit. All 11 native import tests pass, including a new
+  compressed-Avro fixture that checks Unicode source values after import. The
+  final uninstrumented macOS bundle passes the native dependency audit without
+  that system-library dependency.
+- Locked tests for backend, Tauri, server and storage pass after the static-codec
+  change, followed by strict all-target/all-feature Clippy and workspace
+  formatting. Generated contracts and bundled-documentation drift checks pass.
+- The server browser acceptance uses the current Data Builder accessibility
+  label. An additional lint invocation on that test file reports two pre-existing
+  `no-invalid-fetch-options` warnings in its shared fetch helpers (lines 24 and
+  193), outside the required frontend lint scope; the required lint run passes.
+
+- The final optimized Apple Silicon server archive passes strict native linkage
+  and ad-hoc signature checks, then extraction and execution outside the checkout.
+  Its embedded production UI loads, startup downloads no optional resources,
+  ICU downloads on first use, New immediately creates a permanent project, and
+  Rename preserves the runtime ID and persisted file. Verification uses isolated
+  Test storage and removes its processes/cache after teardown. Archive SHA-256:
+  `ab337aec165bffc23938f9dfbcf79a2aacb4e00367236b00095bbd8c29762792`.
+- All six server Chromium cases pass again against the final optimized binary:
+  multiwindow project isolation, shared Rename, matching-name Builder draft
+  isolation, background tasks, tab-history cleanup, restart and file/project
+  workflow. Both spec files pass and their Test storage is cleaned afterward.
+
+No GitHub production build or promotion workflow was dispatched and no public
+release was mutated. Windows native behavior, physical OS pickers/menus and
+signed production-runtime acceptance in a dedicated OS account/VM remain open;
+the integration specification stays active until those gates pass.
