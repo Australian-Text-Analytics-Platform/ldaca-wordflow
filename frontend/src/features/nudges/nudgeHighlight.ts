@@ -80,15 +80,28 @@ function clearOutline(elements: HTMLElement[]) {
   for (const element of elements) element.removeAttribute(ACTIVE_ATTRIBUTE);
 }
 
+function fadeOutline(elements: HTMLElement[]) {
+  for (const element of elements) element.setAttribute(ACTIVE_ATTRIBUTE, 'fading');
+  setTimeout(() => {
+    // Only what is still fading: a newer outline may have taken an element.
+    clearOutline(elements.filter((element) => element.getAttribute(ACTIVE_ATTRIBUTE) === 'fading'));
+  }, NUDGE_FADE_MS);
+}
+
+/** Removes an outline: at once, or with `fade`, fading out. */
+export type ReleaseOutline = (options?: { fade?: boolean }) => void;
+
 /**
  * Outlines every element carrying one of the target names. With `scroll`,
- * brings the first one into view. Returns a function that removes this
- * outline at once (if still shown), or null when no target is on screen.
+ * brings the first one into view. On its own the outline fades after other
+ * actions or a timeout; `untilReleased` leaves that to the caller (a
+ * suggestion card's outline lasts as long as the card). Returns the release,
+ * or null when no target is on screen.
  */
 export function outlineNudgeTargets(
   names: readonly string[],
-  { scroll = false }: { scroll?: boolean } = {},
-): (() => void) | null {
+  { scroll = false, untilReleased = false }: { scroll?: boolean; untilReleased?: boolean } = {},
+): ReleaseOutline | null {
   if (current) {
     current.stop();
     clearOutline(current.elements);
@@ -102,29 +115,25 @@ export function outlineNudgeTargets(
   if (scroll) elements[0]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   const session = {
     elements,
-    stop: fadeAfterOtherActions({
-      isOwnAction: (target) =>
-        elements.some((element) => element.contains(target)) ||
-        target.closest(`[${NUDGE_CARD_ATTRIBUTE}]`) !== null,
-      actions: OUTLINE_FADE_AFTER_ACTIONS,
-      timeoutMs: OUTLINE_FADE_AFTER_MS,
-      onFade: () => {
-        for (const element of elements) element.setAttribute(ACTIVE_ATTRIBUTE, 'fading');
-        setTimeout(() => {
-          if (current === session) current = null;
-          clearOutline(
-            elements.filter((element) => element.getAttribute(ACTIVE_ATTRIBUTE) === 'fading'),
-          );
-        }, NUDGE_FADE_MS);
-      },
-    }),
+    stop: untilReleased
+      ? () => undefined
+      : fadeAfterOtherActions({
+          isOwnAction: (target) => elements.some((element) => element.contains(target)),
+          actions: OUTLINE_FADE_AFTER_ACTIONS,
+          timeoutMs: OUTLINE_FADE_AFTER_MS,
+          onFade: () => {
+            if (current === session) current = null;
+            fadeOutline(elements);
+          },
+        }),
   };
   current = session;
-  return () => {
+  return ({ fade = false } = {}) => {
     if (current !== session) return;
     session.stop();
-    clearOutline(elements);
     current = null;
+    if (fade) fadeOutline(elements);
+    else clearOutline(elements);
   };
 }
 

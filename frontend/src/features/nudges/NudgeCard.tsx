@@ -1,5 +1,5 @@
 import { Lightbulb } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useSettingsWalk } from '@/features/guidance/GuidanceContext';
@@ -30,7 +30,7 @@ interface NudgeCardProps {
 
 /**
  * A suggestion beside a result or run (issue 360). It outlines the settings
- * that may help, needs no closing, and fades once people carry on with other
+ * that may help for as long as it shows, needs no closing, and fades once people carry on with other
  * things. Hidden when Suggestions are turned off in Settings.
  */
 export function NudgeCard({ occurrence, ...props }: NudgeCardProps) {
@@ -54,22 +54,26 @@ function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'oc
   const nudge = NUDGES[id];
   const startSettingsWalk = useSettingsWalk();
   const [phase, setPhase] = useState<Phase>('shown');
-  const releaseOutline = useRef<(() => void) | null>(null);
+
+  // The card's outline lasts as long as the card and fades with it. It is
+  // put back after each render, so targets that appear later are outlined.
+  useEffect(() => {
+    if (phase !== 'shown') return;
+    const release = outlineNudgeTargets(nudge.targets, { untilReleased: true });
+    return () => {
+      release?.({ fade: true });
+    };
+  });
 
   useEffect(() => {
-    releaseOutline.current = outlineNudgeTargets(nudge.targets);
-    const stop = fadeAfterOtherActions({
+    return fadeAfterOtherActions({
       isOwnAction: (target) => target.closest(`[${NUDGE_CARD_ATTRIBUTE}]`) !== null,
       actions: CARD_FADE_AFTER_ACTIONS,
       onFade: () => {
         setPhase('fading');
       },
     });
-    return () => {
-      stop();
-      releaseOutline.current?.();
-    };
-  }, [nudge]);
+  }, []);
 
   useEffect(() => {
     if (phase !== 'fading') return;
@@ -101,17 +105,6 @@ function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'oc
           {nudge.message}
         </p>
         <div className="flex flex-wrap items-center gap-x-3">
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className="h-auto px-0"
-            onClick={() => {
-              releaseOutline.current = outlineNudgeTargets(nudge.targets, { scroll: true });
-            }}
-          >
-            Show me
-          </Button>
           {startSettingsWalk ? (
             <Button
               type="button"

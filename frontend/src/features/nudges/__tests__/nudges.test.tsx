@@ -142,9 +142,9 @@ describe('NudgeCard', () => {
     renderCard('run-1');
     expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
     expect(screen.getByLabelText('Max topic size')).toHaveAttribute('data-nudge-active', '');
-
-    await user.click(screen.getByRole('button', { name: 'Show me' }));
-    expect(screen.getByLabelText('Max topic size').scrollIntoView).toHaveBeenCalled();
+    // Clear loses results, so it is named in the message but never pulses.
+    expect(screen.getByText('Clear')).not.toHaveAttribute('data-nudge-active');
+    expect(screen.queryByRole('button', { name: 'Show me' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Turn off suggestions…' }));
     expect(startSettingsWalk).toHaveBeenCalledWith('suggestions');
   });
@@ -152,11 +152,15 @@ describe('NudgeCard', () => {
   it('fades after other actions and comes back when the situation happens again', async () => {
     const view = renderCard('run-1');
     await tick();
-    for (let i = 0; i < 6; i += 1) fireEvent.pointerDown(screen.getByText('Elsewhere'));
+    // The outline lasts as long as the card, then fades with it.
+    for (let i = 0; i < 5; i += 1) fireEvent.pointerDown(screen.getByText('Elsewhere'));
+    expect(screen.getByLabelText('Max topic size')).toHaveAttribute('data-nudge-active', '');
+    fireEvent.pointerDown(screen.getByText('Elsewhere'));
     await act(async () => {
       await new Promise((resolve) => setTimeout(resolve, 700));
     });
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Max topic size')).not.toHaveAttribute('data-nudge-active');
 
     view.rerender(
       <GuidanceContext.Provider

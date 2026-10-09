@@ -16,8 +16,6 @@ export const NUDGE_TARGETS = {
   topicMaxClusterSize: 'topic-max-cluster-size',
   topicDocumentSampling: 'topic-document-sampling',
   topicClusterSample: 'topic-cluster-sample',
-  topicClear: 'topic-modeling-clear',
-  topicStop: 'topic-modeling-stop',
   tokenizer: 'tokenizer-model',
 } as const;
 
@@ -39,7 +37,11 @@ export const SLOW_START_STEPS = 2;
 export interface NudgeDefinition {
   title: string;
   message: string;
-  /** Outlined when the suggestion appears and on Show me; the first is scrolled to. */
+  /**
+   * Outlined while the suggestion shows. Never a destructive control such as
+   * Clear or Stop: a pulse must not invite a click that loses work, so those
+   * are only named in the message (Chao, issue 360).
+   */
   targets: readonly string[];
 }
 
@@ -54,20 +56,19 @@ export const NUDGES = {
     title: 'One topic holds most segments',
     message:
       'A lower Max topic size splits it into smaller topics. Clear the results first to change it.',
-    targets: [NUDGE_TARGETS.topicMaxClusterSize, NUDGE_TARGETS.topicClear],
+    targets: [NUDGE_TARGETS.topicMaxClusterSize],
   },
   'topic-few-topics': {
     title: 'Only a few topics',
     message:
       'A slightly lower Min topic size finds more topics. Clear the results first to change it.',
-    targets: [NUDGE_TARGETS.topicMinClusterSize, NUDGE_TARGETS.topicClear],
+    targets: [NUDGE_TARGETS.topicMinClusterSize],
   },
   'topic-slow-start': {
     title: 'This run is taking a while',
     message:
       'For a faster run, Stop, then try Automatic segments with a larger token size, a smaller sample of documents, or Topic sampling.',
     targets: [
-      NUDGE_TARGETS.topicStop,
       NUDGE_TARGETS.topicSegmentation,
       NUDGE_TARGETS.topicMaxSegmentTokens,
       NUDGE_TARGETS.topicDocumentSampling,
