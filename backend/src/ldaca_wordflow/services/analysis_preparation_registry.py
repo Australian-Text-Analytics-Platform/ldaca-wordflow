@@ -8,6 +8,7 @@ import uuid
 
 import polars as pl
 
+from ..analysis.generated_columns import DOCUMENT_POSITION_COLUMNS
 from ..analysis.token_cache import tokens_cache_path
 from ..domain.workspace import (
     AnalysisRecord,
@@ -598,10 +599,21 @@ def _validate_data_block_creation_columns(
         *source.metadata_columns,
         *source.analysis_columns,
     }
-    if source.document_column not in selected_columns:
-        raise InvalidInputError("Data Block Creation requires the document column")
+    if not selected_columns:
+        raise InvalidInputError("Choose at least one column")
     if any(column not in allowed for column in selected_columns):
         raise InvalidInputError("Data Block Creation column is unavailable")
+    # The document column is optional (issue 355): a long document can break
+    # an Excel download. Its character positions go with it.
+    if source.document_column not in selected_columns:
+        positions = [
+            column for column in selected_columns if column in DOCUMENT_POSITION_COLUMNS
+        ]
+        if positions:
+            raise InvalidInputError(
+                ", ".join(positions)
+                + f" give positions in '{source.document_column}'; include that column to keep them"
+            )
 
 
 def _validate_document_data_block_creation_columns(

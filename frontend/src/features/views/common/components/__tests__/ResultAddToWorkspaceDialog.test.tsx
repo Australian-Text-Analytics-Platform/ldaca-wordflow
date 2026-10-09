@@ -33,6 +33,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Select none for First' }));
     fireEvent.click(screen.getByRole('button', { name: 'Select none for First' }));
     fireEvent.click(screen.getByRole('button', { name: 'Select all for Second' }));
+    // Select none keeps the recommended document column (issue 355).
     fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
 
     expect(onSubmit).toHaveBeenCalledWith([
@@ -83,7 +84,7 @@ describe('ResultAddToWorkspaceDialog', () => {
     expect(screen.getByRole('checkbox', { name: 'speaker' })).toBeChecked();
   });
 
-  it('requires the document column, defaults metadata off, and analysis columns on', () => {
+  it('makes the document optional, and its positions follow it (issue 355)', () => {
     const onSubmit = vi.fn();
     render(
       <ResultAddToWorkspaceDialog
@@ -97,7 +98,7 @@ describe('ResultAddToWorkspaceDialog', () => {
             node_name: 'Documents',
             document_column: 'text',
             metadata_columns: ['speaker'],
-            analysis_columns: ['CONC_matched_text', 'CONC_extraction'],
+            analysis_columns: ['CONC_matched_text', 'CONC_start_idx', 'CONC_end_idx'],
             internal_columns: ['__wordflow_source_row_id'],
             record_count: 3,
             table: {
@@ -113,24 +114,43 @@ describe('ResultAddToWorkspaceDialog', () => {
     );
 
     expect(screen.queryByRole('switch', { name: 'Sync columns' })).not.toBeInTheDocument();
-    const document = screen.getByRole('checkbox', { name: /text.*required/i });
+    const document = screen.getByRole('checkbox', { name: 'text (recommended)' });
     const metadata = screen.getByRole('checkbox', { name: 'speaker' });
     const analysis = screen.getByRole('checkbox', { name: 'CONC_matched_text' });
     expect(document).toBeChecked();
-    expect(document).toBeDisabled();
+    expect(document).toBeEnabled();
     expect(metadata).not.toBeChecked();
     expect(analysis).toBeChecked();
+    expect(screen.getByRole('checkbox', { name: /^CONC_start_idx/ })).toBeChecked();
     expect(screen.getByLabelText('New Data Block name')).toHaveValue('Documents_concordance');
 
-    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
+    // Select none leaves the document ticked: only unticking it removes it.
+    fireEvent.click(screen.getByRole('button', { name: 'Select none for Documents' }));
+    expect(document).toBeChecked();
+    fireEvent.click(analysis);
 
-    expect(onSubmit).toHaveBeenCalledWith([
+    fireEvent.click(document);
+    expect(screen.getByRole('note')).toHaveTextContent(
+      "Without text, you can't check these results against the original text later. The positions in it (CONC_start_idx, CONC_end_idx) are left out too.",
+    );
+    const start = screen.getByRole('checkbox', { name: /^CONC_start_idx/ });
+    expect(start).not.toBeChecked();
+    expect(start).toBeDisabled();
+    expect(screen.getAllByText('(needs text)')).toHaveLength(2);
+    fireEvent.click(screen.getByRole('button', { name: 'Add to Project' }));
+    expect(onSubmit).toHaveBeenLastCalledWith([
       {
         source_node_id: 'node-1',
-        selected_columns: ['text', 'CONC_matched_text', 'CONC_extraction'],
+        selected_columns: ['CONC_matched_text'],
         new_node_name: 'Documents_concordance',
       },
     ]);
+
+    // Ticking the document again makes its positions available, not ticked.
+    fireEvent.click(document);
+    expect(screen.getByRole('checkbox', { name: /^CONC_start_idx/ })).toBeEnabled();
+    expect(screen.queryByRole('note')).not.toBeInTheDocument();
   });
 
   it('creates only checked document sources and locks extraction on', () => {

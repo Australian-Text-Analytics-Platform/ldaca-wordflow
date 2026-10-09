@@ -22,6 +22,18 @@ export interface AddToWorkspaceColumn {
   includeInSubmission?: boolean;
   requiredDescription?: string;
   title?: string;
+  /**
+   * Another column this one is only meaningful with, such as character
+   * positions in the document column (issue 355). Without it, this column is
+   * unticked and disabled.
+   */
+  dependsOn?: string;
+  /** Shown after the name while ticked, e.g. "recommended" (issue 355). */
+  recommendedDescription?: string;
+  /** Select none leaves it ticked: only unticking it removes it (issue 355). */
+  keepOnSelectNone?: boolean;
+  /** Shown under the columns while this column is unticked (issue 355). */
+  uncheckedWarning?: string;
 }
 
 export interface AddToWorkspaceSource {
@@ -66,10 +78,20 @@ const normalizeSelectedColumns = (
   selected: readonly string[],
 ): string[] => {
   const selectedSet = new Set(selected);
-  return source.columns
-    .filter((column) => column.required === true || selectedSet.has(column.name))
+  const kept = source.columns.filter(
+    (column) => column.required === true || selectedSet.has(column.name),
+  );
+  const keptNames = new Set(kept.map((column) => column.name));
+  return kept
+    .filter((column) => column.dependsOn === undefined || keptNames.has(column.dependsOn))
     .map((column) => column.name);
 };
+
+/** Columns a bulk Select none or Select all keeps as they are (issue 355). */
+const keptByBulkActions = (source: AddToWorkspaceSource, selected: readonly string[]): string[] =>
+  source.columns
+    .filter((column) => column.keepOnSelectNone === true && selected.includes(column.name))
+    .map((column) => column.name);
 
 const sharedOptionalColumns = (sources: readonly AddToWorkspaceSource[]): string[] => {
   const [first, ...remaining] = sources;
@@ -161,9 +183,12 @@ export function AddToWorkspaceDialog({
       }
       return {
         ...current,
-        [source.id]: selected.includes(column)
-          ? selected.filter((value) => value !== column)
-          : normalizeSelectedColumns(source, [...selected, column]),
+        [source.id]: normalizeSelectedColumns(
+          source,
+          selected.includes(column)
+            ? selected.filter((value) => value !== column)
+            : [...selected, column],
+        ),
       };
     });
   };
@@ -173,23 +198,35 @@ export function AddToWorkspaceDialog({
       if (syncColumns) {
         const next = { ...current };
         for (const includedSource of includedSources) {
-          next[includedSource.id] = normalizeSelectedColumns(
+          const kept = keptByBulkActions(
             includedSource,
-            selectAll ? sharedOptional : [],
+            current[includedSource.id] ?? defaultColumns(includedSource),
           );
+          next[includedSource.id] = normalizeSelectedColumns(includedSource, [
+            ...kept,
+            ...(selectAll ? sharedOptional : []),
+          ]);
         }
         return next;
       }
+      const kept = keptByBulkActions(source, current[source.id] ?? defaultColumns(source));
       return {
         ...current,
-        [source.id]: normalizeSelectedColumns(source, selectAll ? optionalColumns(source) : []),
+        [source.id]: normalizeSelectedColumns(source, [
+          ...kept,
+          ...(selectAll ? optionalColumns(source) : []),
+        ]),
       };
     });
   };
 
   const canSubmit =
     includedSourceIds.size > 0 &&
-    includedSources.every((source) => namesBySource[source.id]?.trim());
+    includedSources.every(
+      (source) =>
+        namesBySource[source.id]?.trim() &&
+        (columnsBySource[source.id] ?? defaultColumns(source)).length > 0,
+    );
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -282,12 +319,16 @@ export function AddToWorkspaceDialog({
                       <div className="grid gap-2 sm:grid-cols-2">
                         {source.columns.map((column) => {
                           const required = column.required ?? false;
+                          const unavailable =
+                            column.dependsOn !== undefined && !selected.includes(column.dependsOn);
                           return (
                             <label key={column.name} className="flex items-center gap-2 text-body">
                               <Checkbox
                                 checked={required || selected.includes(column.name)}
                                 disabled={
-                                  required || (syncColumns && !sharedOptionalSet.has(column.name))
+                                  required ||
+                                  unavailable ||
+                                  (syncColumns && !sharedOptionalSet.has(column.name))
                                 }
                                 onCheckedChange={() => {
                                   toggleColumn(source, column.name);
@@ -295,6 +336,12 @@ export function AddToWorkspaceDialog({
                               />
                               <span className="truncate" title={column.title ?? column.name}>
                                 {column.name}{' '}
+                                {unavailable ? (
+                                  // Before the explanation, so a long one cannot hide it.
+                                  <span className="text-description">
+                                    (needs {column.dependsOn}){' '}
+                                  </span>
+                                ) : null}
                                 {GENERATED_COLUMN_EXPLANATIONS[column.name] ? (
                                   // A plain explanation beside the stored name (issue 205).
                                   <span aria-hidden="true" className="text-description">
@@ -306,11 +353,32 @@ export function AddToWorkspaceDialog({
                                     ({column.requiredDescription ?? 'required'})
                                   </span>
                                 ) : null}
+                                {column.recommendedDescription && !required ? (
+                                  <span className="text-description">
+                                    ({column.recommendedDescription})
+                                  </span>
+                                ) : null}
                               </span>
                             </label>
                           );
                         })}
                       </div>
+                      {source.columns
+                        .filter(
+                          (column) =>
+                            column.uncheckedWarning !== undefined &&
+                            !column.required &&
+                            !selected.includes(column.name),
+                        )
+                        .map((column) => (
+                          <p
+                            key={`warning-${column.name}`}
+                            role="note"
+                            className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-label-secondary text-warning"
+                          >
+                            {column.uncheckedWarning}
+                          </p>
+                        ))}
                     </div>
                   </>
                 ) : null}

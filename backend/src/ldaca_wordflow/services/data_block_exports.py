@@ -169,7 +169,9 @@ class DataBlockExportService:
                 suffix=".zip" if multiple else f".{spec.extension}",
                 max_output_bytes=self._max_export_bytes,
                 reservation_bytes=self._max_export_bytes,
-                producer=partial(_write_export, tuple(frames), request.format),
+                producer=partial(
+                    _write_export, tuple(frames), request.format, columns_chosen=True
+                ),
             )
             revision = lease.revision
         return (
@@ -219,6 +221,8 @@ def _write_export(
     export_format: DataBlockExportFormat,
     target: Path,
     max_output_bytes: int,
+    *,
+    columns_chosen: bool = False,
 ) -> None:
     spec = _FORMAT_SPECS[export_format]
     budget = _WriteBudget(max_output_bytes)
@@ -226,7 +230,9 @@ def _write_export(
         with target.open("xb") as raw_output:
             if len(frames) == 1:
                 writer = _BudgetedBinaryWriter(raw_output, budget)
-                _write_lazyframe(frames[0][2], export_format, writer)
+                _write_lazyframe(
+                    frames[0][2], export_format, writer, columns_chosen=columns_chosen
+                )
             else:
                 zip_output = cast(
                     BinaryIO,
@@ -252,7 +258,9 @@ def _write_export(
                     ):
                         with archive.open(archive_name, mode="w") as member:
                             writer = _BudgetedBinaryWriter(member, budget)
-                            _write_lazyframe(frame, export_format, writer)
+                            _write_lazyframe(
+                                frame, export_format, writer, columns_chosen=columns_chosen
+                            )
             raw_output.flush()
             os.fsync(raw_output.fileno())
     except BaseException:
@@ -264,6 +272,8 @@ def _write_lazyframe(
     frame: pl.LazyFrame,
     export_format: DataBlockExportFormat,
     writer: _BudgetedBinaryWriter,
+    *,
+    columns_chosen: bool = False,
 ) -> None:
     try:
         if export_format is DataBlockExportFormat.CSV:
@@ -273,7 +283,7 @@ def _write_lazyframe(
                 cast(BinaryIO, writer), include_bom=True
             )
         elif export_format is DataBlockExportFormat.XLSX:
-            writer.write(_excel_workbook_bytes(frame))
+            writer.write(_excel_workbook_bytes(frame, columns_chosen=columns_chosen))
         elif export_format is DataBlockExportFormat.JSON:
             content = frame.collect().write_json().encode()
             writer.write(content)
@@ -335,7 +345,7 @@ def _elapsed_as_text(frame: pl.LazyFrame) -> pl.LazyFrame:
 _EXCEL_ELAPSED_FORMAT = "[h]:mm:ss.000"
 
 
-def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
+def _excel_workbook_bytes(frame: pl.LazyFrame, *, columns_chosen: bool = False) -> bytes:
     """One worksheet named Data, within Excel's row and cell-length limits."""
 
     data = _flatten_nested_columns(frame).collect()
@@ -377,10 +387,18 @@ def _excel_workbook_bytes(frame: pl.LazyFrame) -> bytes:
             if (longest[name] or 0) > _EXCEL_MAX_CELL_CHARACTERS
         ]
         if too_long:
+            # A Result download chooses its columns, so the long one can be
+            # left out (issue 355).
+            remedy = (
+                " Untick it to download as Excel, or choose CSV to keep the full text."
+                if columns_chosen
+                else " Export it as CSV or Parquet to keep the full text."
+            )
             raise InvalidInputError(
                 "Excel cells hold at most 32,767 characters, and some text in "
                 + ", ".join(f"'{name}'" for name in too_long)
-                + " is longer. Export it as CSV or Parquet to keep the full text."
+                + " is longer."
+                + remedy
             )
     buffer = io.BytesIO()
     data.write_excel(

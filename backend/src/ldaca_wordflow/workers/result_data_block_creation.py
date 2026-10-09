@@ -194,8 +194,6 @@ def result_selection_frame(
             .alias(CONC_EXTRACTION_COLUMN)
         )
     else:
-        if document_column not in selection.selected_columns:
-            raise ValueError("Data Block Creation requires the document column")
         assert nested_column is not None
         frame = pl.scan_parquet(path).explode(nested_column)
         if kind == "quotation_result_data_block_creation":

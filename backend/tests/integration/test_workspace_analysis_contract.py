@@ -901,6 +901,46 @@ def test_concordance_run_all_group_stores_results_without_publishing_nodes(
             headers=unsafe,
         )
         assert refused.status_code == 400, refused.text
+        # The document column is optional (issue 355), so a long document
+        # need not break an Excel download; its positions go with it.
+        without_document = client.post(
+            download_url,
+            json={
+                "request": {
+                    **one_source,
+                    "sources": [
+                        {
+                            **one_source["sources"][0],
+                            "selected_columns": ["source", "CONC_matched_text"],
+                        }
+                    ],
+                },
+                "format": "csv",
+            },
+            headers=unsafe,
+        )
+        assert without_document.status_code == 200, without_document.text
+        assert (
+            without_document.content.decode("utf-8-sig").splitlines()[0]
+            == "source,CONC_matched_text"
+        )
+        positions_alone = client.post(
+            download_url,
+            json={
+                "request": {
+                    **one_source,
+                    "sources": [
+                        {
+                            **one_source["sources"][0],
+                            "selected_columns": ["CONC_matched_text", "CONC_start_idx"],
+                        }
+                    ],
+                }
+            },
+            headers=unsafe,
+        )
+        assert positions_alone.status_code == 400, positions_alone.text
+        assert "CONC_start_idx" in positions_alone.text
         assert {node["id"] for node in client.get(f"/api/workspaces/{workspace_id}/nodes").json()} == {
             first_node_id,
             second_node_id,

@@ -213,6 +213,21 @@ QUOTE_VERB_COLUMN = "QUOTE_verb"
 QUOTE_VERB_START_IDX_COLUMN = "QUOTE_verb_start_idx"
 QUOTE_VERB_END_IDX_COLUMN = "QUOTE_verb_end_idx"
 QUOTE_TYPE_COLUMN = "QUOTE_quote_type"
+
+# Character positions in the document column. Without that column they mean
+# nothing, so they are left out with it (issue 355).
+DOCUMENT_POSITION_COLUMNS = frozenset(
+    {
+        CONC_START_IDX_COLUMN,
+        CONC_END_IDX_COLUMN,
+        QUOTE_SPEAKER_START_IDX_COLUMN,
+        QUOTE_SPEAKER_END_IDX_COLUMN,
+        QUOTE_QUOTE_START_IDX_COLUMN,
+        QUOTE_QUOTE_END_IDX_COLUMN,
+        QUOTE_VERB_START_IDX_COLUMN,
+        QUOTE_VERB_END_IDX_COLUMN,
+    }
+)
 QUOTE_TOKEN_COUNT_COLUMN = "QUOTE_quote_token_count"
 QUOTE_IS_FLOATING_COLUMN = "QUOTE_is_floating_quote"
 QUOTE_ROW_IDX_COLUMN = "QUOTE_quote_row_idx"

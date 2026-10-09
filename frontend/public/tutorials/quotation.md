@@ -94,9 +94,20 @@ To save the Result table as a file instead, click the download icon beside
 **Add to Project**: choose the same columns, then CSV or Excel. Nothing is
 added to the Project.
 
+The document column is ticked and marked *recommended*: with it you can check
+each result against the original text later. **Select none** leaves it ticked;
+only unticking it yourself leaves it out. Excel cells hold at most 32,767
+characters, so a long document cannot go in an Excel file. Untick the document
+column to download the other columns as Excel;
+its character positions (`QUOTE_..._start_idx` and `QUOTE_..._end_idx`) are left out with it, since they only make
+sense with the document. Excel also breaks a CSV with such long text into extra
+rows when it opens the file, so the columns no longer line up; the CSV itself
+is correct and opens properly in other programs.
+
 Use **Add to Project** to publish selected Result columns as a new Data
-Block. The document column is required, metadata columns start unselected, and
-analysis columns start selected. You can run Quotation on that Data Block again:
+Block. The document column and the analysis columns start selected, and
+metadata columns start unselected; the document column is recommended, and
+unticking it also leaves out its character positions. You can run Quotation on that Data Block again:
 the new run replaces its Quotation columns (`QUOTE_extraction`, `QUOTE_speaker`,
 `QUOTE_quote`, `QUOTE_verb`, `QUOTE_quote_type` and the other `QUOTE_` fields)
 with its own, so it keeps one set; a column of yours with one of these names is

@@ -48,7 +48,27 @@ const addColumn = (columns: AddToWorkspaceColumn[], next: AddToWorkspaceColumn):
   if (next.required) existing.required = true;
   if (next.defaultSelected) existing.defaultSelected = true;
   existing.requiredDescription ??= next.requiredDescription;
+  existing.dependsOn ??= next.dependsOn;
+  existing.recommendedDescription ??= next.recommendedDescription;
+  existing.keepOnSelectNone ??= next.keepOnSelectNone;
+  existing.uncheckedWarning ??= next.uncheckedWarning;
 };
+
+/**
+ * Character positions in the document column: without it they mean nothing,
+ * so they follow it (issue 355). Mirrors DOCUMENT_POSITION_COLUMNS in the
+ * backend's generated_columns.py.
+ */
+const DOCUMENT_POSITION_COLUMNS = new Set([
+  'CONC_start_idx',
+  'CONC_end_idx',
+  'QUOTE_speaker_start_idx',
+  'QUOTE_speaker_end_idx',
+  'QUOTE_quote_start_idx',
+  'QUOTE_quote_end_idx',
+  'QUOTE_verb_start_idx',
+  'QUOTE_verb_end_idx',
+]);
 
 const createResultSource = (
   source: RunAllSourceTableResource,
@@ -56,11 +76,28 @@ const createResultSource = (
   nameSuffix: string,
 ): AddToWorkspaceSource => {
   const columns: AddToWorkspaceColumn[] = [];
-  addColumn(columns, {
-    name: source.document_column,
-    required: true,
-    requiredDescription: 'document, required',
-  });
+  // One row per match: the document is recommended but can be left out, since
+  // a long one can break an Excel download (issue 355). Leaving it out is the
+  // user's own choice: Select none keeps it. One row per document: it is the row.
+  const positions = source.analysis_columns.filter((column) =>
+    DOCUMENT_POSITION_COLUMNS.has(column),
+  );
+  addColumn(
+    columns,
+    mode === 'document'
+      ? { name: source.document_column, required: true, requiredDescription: 'document, required' }
+      : {
+          name: source.document_column,
+          defaultSelected: true,
+          recommendedDescription: 'recommended',
+          keepOnSelectNone: true,
+          uncheckedWarning:
+            `Without ${source.document_column}, you can't check these results against the original text later.` +
+            (positions.length > 0
+              ? ` The positions in it (${positions.join(', ')}) are left out too.`
+              : ''),
+        },
+  );
 
   if (mode === 'document') {
     addColumn(columns, {
@@ -74,7 +111,11 @@ const createResultSource = (
 
   if (mode === 'match') {
     for (const column of source.analysis_columns) {
-      addColumn(columns, { name: column, defaultSelected: true });
+      addColumn(columns, {
+        name: column,
+        defaultSelected: true,
+        ...(DOCUMENT_POSITION_COLUMNS.has(column) ? { dependsOn: source.document_column } : {}),
+      });
     }
   }
 
