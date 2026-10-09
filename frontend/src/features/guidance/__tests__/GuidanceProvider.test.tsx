@@ -17,6 +17,7 @@ import { GuidanceVisitBoundary } from '../GuidanceVisitBoundary';
 import { useModalLayerStore } from '../modalLayerStore';
 import type { ContextualHintDefinition, GuidedTourDefinition } from '../types';
 import { useProgressiveContextualHints } from '../useProgressiveContextualHints';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 
 const fixture = vi.hoisted(() => ({
   enabled: true,
@@ -166,6 +167,7 @@ function renderGuidance({
 
 describe('GuidanceProvider', () => {
   beforeEach(() => {
+    useSettingsDialogStore.setState({ open: false, guide: null });
     fixture.enabled = true;
     fixture.joyrideProps = null;
     fixture.updatePreferences.mockReset();
@@ -296,18 +298,38 @@ describe('GuidanceProvider', () => {
     expect(screen.getByTestId('joyride')).toBeInTheDocument();
   });
 
-  it('confirms disabling and resumes the same hint when cancellation is chosen', async () => {
+  it('walks to the Settings gear instead of turning hints off (issue 358)', async () => {
     const user = userEvent.setup();
     renderGuidance();
     await user.click(screen.getByRole('button', { name: 'Reach hint' }));
-    await user.click(screen.getByRole('button', { name: 'Disable Hints' }));
+    await user.click(screen.getByRole('button', { name: 'Turn off hints…' }));
 
-    expect(screen.getByRole('alertdialog')).toHaveTextContent(
-      'You can turn them back on or reset your hint history at any time in User Settings → Guidance.',
-    );
-    await user.click(screen.getByRole('button', { name: 'Keep hints on' }));
-    expect(await screen.findByTestId('joyride')).toBeInTheDocument();
+    // Nothing is turned off here: people untick the option in Settings.
     expect(fixture.updatePreferences).not.toHaveBeenCalled();
+    expect(useSettingsDialogStore.getState().guide).toBe('contextual-hints');
+    expect(fixture.joyrideProps?.steps[0]).toMatchObject({
+      target: '[data-guidance="settings-button"]',
+      blockTargetInteraction: false,
+      buttons: ['close'],
+    });
+
+    // Clicking the gear opens Settings, which takes over the walk; no hint
+    // shows over Settings.
+    act(() => {
+      useSettingsDialogStore.getState().openSettings();
+    });
+    await waitFor(() => {
+      expect(screen.queryByTestId('joyride')).not.toBeInTheDocument();
+    });
+    expect(useSettingsDialogStore.getState().guide).toBe('contextual-hints');
+    act(() => {
+      useSettingsDialogStore.getState().closeSettings();
+    });
+    expect(useSettingsDialogStore.getState().guide).toBeNull();
+    // Hints were left on, so the hint comes back.
+    await waitFor(() => {
+      expect(fixture.joyrideProps?.steps[0]?.target).toBe('#target');
+    });
   });
 
   it('keeps deliberate tours available when Contextual Hints are disabled', async () => {

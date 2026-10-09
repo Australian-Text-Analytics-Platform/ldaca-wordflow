@@ -17,5 +17,10 @@ export interface GuidedTourDefinition {
     target: StepTarget;
     title?: ReactNode;
     content: ReactNode;
+    placement?: Step['placement'];
+    /** Let people click the pointed-out element itself, such as a button to open. */
+    clickTarget?: boolean;
+    /** The step's buttons, when not Back, Skip and Next. */
+    buttons?: Step['buttons'];
   }[];
 }

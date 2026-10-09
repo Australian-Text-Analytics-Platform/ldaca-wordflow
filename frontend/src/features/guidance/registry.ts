@@ -399,3 +399,25 @@ export const contextualHintRegistry: readonly ContextualHintDefinition[] = [
 
 /** Guided Tours remain deliberate and replayable; this release defines none. */
 export const guidedTourRegistry: readonly GuidedTourDefinition[] = [];
+
+/**
+ * Started by a hint's Turn off hints (issue 358): points at the Settings gear
+ * and waits for people to click it themselves, so they learn where hints are
+ * turned off and back on. Settings then points out Guidance and the option.
+ */
+export const turnOffHintsTour: GuidedTourDefinition = {
+  id: 'turn-off-hints',
+  steps: [
+    {
+      id: 'turn-off-hints-settings',
+      target: '[data-guidance="settings-button"]',
+      title: 'Hints are turned off in Settings',
+      content:
+        'Click Settings, the gear here. Hints are turned off there, and turned back on there too.',
+      placement: 'bottom-end',
+      clickTarget: true,
+      // Joyride shows no Skip on a last step; Close leaves the walk.
+      buttons: ['close'],
+    },
+  ],
+};

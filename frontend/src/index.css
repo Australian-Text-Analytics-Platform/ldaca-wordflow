@@ -288,3 +288,9 @@
   background-color: transparent;
   color: color-mix(in srgb, var(--concordance-anchor-color) 55%, currentColor);
 }
+
+/* The guidance layer lets clicks through to a target a step allows (issue 358);
+   its hint card stays clickable. */
+[data-testid="guidance-portal"] .react-joyride__floater {
+  pointer-events: auto;
+}

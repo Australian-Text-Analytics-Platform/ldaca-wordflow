@@ -43,6 +43,7 @@ export function SettingsButton({
             data-tauri-drag-region="false"
             className={cn('h-7 w-7 text-description', className)}
             aria-label="Open settings"
+            data-guidance="settings-button"
             onClick={() => {
               openSettings();
             }}

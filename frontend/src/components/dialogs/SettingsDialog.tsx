@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Bot, Eye, FolderOpen, Hash, KeyRound, Moon, RotateCcw, Sparkles, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { DataFolderSettingsPanel } from '@/components/dialogs/DataFolderSettingsPanel';
@@ -15,7 +16,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import type { SettingsTab } from '@/stores/settingsDialogStore';
+import { type SettingsTab, useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { useGuidanceAcknowledgmentsStore } from '@/features/guidance/acknowledgmentsStore';
 import {
@@ -35,6 +36,7 @@ import { useVisibleViews } from '@/features/views/useVisibleViews';
 import { VIEW_DEFINITIONS } from '@/features/views/viewRegistry';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { isTauri } from '@/lib/isTauri';
+import { cn } from '@/lib/utils';
 
 interface SettingsDialogProps {
   open: boolean;
@@ -73,6 +75,11 @@ export function SettingsDialog({
     userId ? state.byUser[userId] : undefined,
   );
   const resetAcknowledgments = useGuidanceAcknowledgmentsStore((state) => state.reset);
+  // A hint's Turn off hints walks people here: point out the Guidance tab,
+  // then the option, which they untick themselves (issue 358).
+  const guidingHints = useSettingsDialogStore((state) => state.guide) === 'contextual-hints';
+  const endGuide = useSettingsDialogStore((state) => state.endGuide);
+  const [tab, setTab] = useState<SettingsTab>(initialTab);
   const {
     preferences,
     isError: preferencesError,
@@ -138,7 +145,10 @@ export function SettingsDialog({
             </div>
           </DialogHeader>
           <Tabs
-            defaultValue={initialTab}
+            value={tab}
+            onValueChange={(value) => {
+              setTab(value as SettingsTab);
+            }}
             orientation="vertical"
             className="flex min-h-0 flex-1 flex-row gap-0 overflow-hidden"
           >
@@ -147,7 +157,16 @@ export function SettingsDialog({
                 <TabsTrigger
                   key={value}
                   value={value}
-                  className="h-9 w-full justify-start gap-2 px-3 text-left flex-none"
+                  data-guide-target={
+                    guidingHints && value === 'guidance' && tab !== 'guidance' ? '' : undefined
+                  }
+                  className={cn(
+                    'h-9 w-full justify-start gap-2 px-3 text-left flex-none',
+                    guidingHints &&
+                      value === 'guidance' &&
+                      tab !== 'guidance' &&
+                      'ring-2 ring-focus',
+                  )}
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -155,6 +174,16 @@ export function SettingsDialog({
               ))}
             </TabsList>
             <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-6">
+              {guidingHints ? (
+                <p
+                  role="status"
+                  className="mb-4 rounded-md border border-focus bg-list-hover px-3 py-2 text-body text-foreground"
+                >
+                  {tab === 'guidance'
+                    ? 'Untick Show contextual hints to turn hints off. Come back here to turn them on again.'
+                    : 'To turn hints off, open Guidance on the left.'}
+                </p>
+              ) : null}
               <TabsContent value="general" className="mt-0 space-y-5">
                 <section className="space-y-3">
                   <div>
@@ -334,9 +363,17 @@ export function SettingsDialog({
 
               <TabsContent value="guidance" className="mt-0 space-y-4">
                 <section className="space-y-3">
+                  <p className="text-label-secondary text-description">
+                    Hints show tips while you learn Wordflow. Turn them off here, and back on here
+                    at any time.
+                  </p>
                   <Label
                     htmlFor="settings-hints-enabled"
-                    className="flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body"
+                    data-highlighted={guidingHints && tab === 'guidance' ? '' : undefined}
+                    className={cn(
+                      'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
+                      guidingHints && 'border-focus ring-2 ring-focus',
+                    )}
                   >
                     <Checkbox
                       id="settings-hints-enabled"
@@ -345,6 +382,7 @@ export function SettingsDialog({
                         updatePreferences.mutate({
                           contextual_hints_enabled: checked === true,
                         });
+                        endGuide();
                       }}
                     />
                     <span>Show contextual hints</span>

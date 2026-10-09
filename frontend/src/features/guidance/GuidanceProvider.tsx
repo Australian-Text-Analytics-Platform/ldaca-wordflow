@@ -11,21 +11,9 @@ import {
   type TooltipRenderProps,
 } from 'react-joyride';
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/features/auth/hooks/useAuth';
-import {
-  useUpdateUserPreferences,
-  useUserPreferences,
-} from '@/features/preferences/useUserPreferences';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
+import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import type { ViewType } from '@/features/views/viewIds';
 import { useGuidanceAcknowledgmentsStore } from './acknowledgmentsStore';
 import {
@@ -39,6 +27,7 @@ import {
   contextualHintRegistry,
   contextualHintSequences as productionContextualHintSequences,
   guidedTourRegistry,
+  turnOffHintsTour,
 } from './registry';
 import type { ContextualHintDefinition, GuidedTourDefinition } from './types';
 
@@ -51,7 +40,8 @@ type GuidanceSession =
     }
   | { kind: 'tour'; definition: GuidedTourDefinition; started: boolean };
 
-const DisableContextualHintsContext = createContext<(() => void) | null>(null);
+// Opens Settings → Guidance, where hints are turned off and back on (issue 358).
+const OpenHintSettingsContext = createContext<(() => void) | null>(null);
 
 const guidanceStyles = {
   floater: { filter: 'none' },
@@ -103,7 +93,7 @@ function ContextualHintTooltip({
   step,
   tooltipProps,
 }: TooltipRenderProps) {
-  const requestDisable = useContext(DisableContextualHintsContext);
+  const openHintSettings = useContext(OpenHintSettingsContext);
   const { content, styles, title } = step;
 
   return (
@@ -127,12 +117,14 @@ function ContextualHintTooltip({
       </div>
       <div style={styles.tooltipFooter} className="flex flex-wrap items-center gap-3">
         <div style={styles.tooltipFooterSpacer}>
+          {/* Hints are turned off in Settings, the same place they are turned back
+              on, so people see it (Chao, issue 358). */}
           <button
             type="button"
-            className="rounded-md bg-error px-3 py-2 text-label-secondary font-semibold text-button-foreground transition-colors hover:bg-error/90 focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
-            onClick={requestDisable ?? undefined}
+            className="rounded-md border border-surface-border px-3 py-2 text-label-secondary text-foreground transition-colors hover:bg-list-hover focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-focus"
+            onClick={openHintSettings ?? undefined}
           >
-            Disable Hints
+            Turn off hints…
           </button>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
@@ -195,7 +187,6 @@ export function GuidanceProvider({
 }: GuidanceProviderProps) {
   const userId = useAuth().user?.id ?? null;
   const { data: preferences } = useUserPreferences();
-  const updatePreferences = useUpdateUserPreferences();
   const modalCount = useModalLayerStore((state) => state.count);
   const acknowledge = useGuidanceAcknowledgmentsStore((state) => state.acknowledge);
   const acknowledgments = useGuidanceAcknowledgmentsStore((state) =>
@@ -209,7 +200,6 @@ export function GuidanceProvider({
     null,
   );
   const [portalElement, setPortalElement] = useState<HTMLDivElement | null>(null);
-  const [disableConfirmationOpen, setDisableConfirmationOpen] = useState(false);
   const reducedMotion = useReducedMotion();
   const contextualHintsEnabled = preferences?.contextual_hints_enabled === true;
 
@@ -221,9 +211,14 @@ export function GuidanceProvider({
         definition !== undefined && (acknowledgments?.[definition.id] ?? 0) < definition.version,
     );
 
+  // Settings is where hints are turned off and on; never show one over it
+  // (issue 358). It also loads a moment after the gear is clicked, before it
+  // registers as a dialog.
+  const settingsOpen = useSettingsDialogStore((state) => state.open);
   const hintSession: GuidanceSession | null =
     userId &&
     contextualHintsEnabled &&
+    !settingsOpen &&
     visitState.activeView &&
     !visitState.paused &&
     nextDefinition
@@ -286,6 +281,9 @@ export function GuidanceProvider({
           target: step.target,
           title: step.title,
           content: step.content,
+          ...(step.placement ? { placement: step.placement } : {}),
+          ...(step.clickTarget ? { blockTargetInteraction: false } : {}),
+          ...(step.buttons ? { buttons: step.buttons } : {}),
         })) ?? []);
 
   const handleEvent = (event: EventData) => {
@@ -320,24 +318,41 @@ export function GuidanceProvider({
       event.status === STATUS.SKIPPED ||
       event.action === ACTIONS.SKIP
     ) {
+      // Leaving the Turn off hints walk before opening Settings ends it.
+      if (
+        session?.kind === 'tour' &&
+        session.definition.id === turnOffHintsTour.id &&
+        !useSettingsDialogStore.getState().open
+      ) {
+        useSettingsDialogStore.getState().endGuide();
+      }
       setTourSession(null);
     }
   };
 
+  // Opening Settings completes the gear step; Settings takes over from there.
+  useEffect(
+    () =>
+      useSettingsDialogStore.subscribe((state, previous) => {
+        if (state.open && !previous.open) {
+          setTourSession((current) =>
+            current?.definition.id === turnOffHintsTour.id ? null : current,
+          );
+        }
+      }),
+    [],
+  );
+
   const modalOpen = modalCount > 0;
   const isHint = session?.kind === 'hint';
-  const requestDisableContextualHints = () => {
-    setDisableConfirmationOpen(true);
+  // Turn off hints walks people to the setting instead of turning hints off
+  // here (issue 358): first the Settings gear, then, inside Settings, the
+  // Guidance tab and the option, where they untick it themselves.
+  const openHintSettings = () => {
+    useSettingsDialogStore.getState().startGuide('contextual-hints');
+    setTourSession({ kind: 'tour', definition: turnOffHintsTour, started: true });
   };
-  const disableContextualHints = () => {
-    updatePreferences.mutate({ contextual_hints_enabled: false });
-    if (session?.kind === 'hint') {
-      pauseCurrentHint('hints-disabled');
-    }
-    setTourSession(null);
-    setDisableConfirmationOpen(false);
-  };
-  const guidanceInteractive = Boolean(session) && !modalOpen && !disableConfirmationOpen;
+  const guidanceInteractive = Boolean(session) && !modalOpen;
 
   useEffect(() => {
     if (!guidanceInteractive || session?.kind !== 'hint' || !userId) return;
@@ -366,74 +381,55 @@ export function GuidanceProvider({
 
   return (
     <GuidanceContext.Provider value={{ dispatchContextualHintVisit, startGuidedTour }}>
-      <DisableContextualHintsContext.Provider value={requestDisableContextualHints}>
+      <OpenHintSettingsContext.Provider value={openHintSettings}>
         {children}
         <div
           ref={setPortalElement}
           aria-hidden={modalOpen}
           inert={modalOpen}
-          className={session ? 'fixed inset-0 z-[100]' : 'relative z-[100]'}
+          // Click-through: Joyride's overlay blocks the page itself and leaves
+          // the target clickable when a step allows it; index.css keeps the
+          // hint card clickable (issue 358).
+          className={session ? 'pointer-events-none fixed inset-0 z-[100]' : 'relative z-[100]'}
           data-testid="guidance-portal"
         />
         {session && sessionKey && portalElement ? (
           <GuidancePresentationBoundary key={sessionKey}>
-            {disableConfirmationOpen ? null : (
-              <Joyride
-                run
-                continuous
-                steps={steps}
-                portalElement={portalElement}
-                onEvent={handleEvent}
-                locale={{ close: 'Not now', last: isHint ? 'Got it' : 'Done' }}
-                styles={guidanceStyles}
-                tooltipComponent={isHint ? ContextualHintTooltip : undefined}
-                options={{
-                  arrowBase: 22,
-                  arrowColor: 'var(--vscode-editorWidget-background)',
-                  arrowSize: 11,
-                  buttons: isHint ? ['primary'] : ['back', 'skip', 'primary'],
-                  blockTargetInteraction: true,
-                  disableFocusTrap: modalOpen,
-                  dismissKeyAction: isHint ? 'close' : false,
-                  offset: 14,
-                  overlayClickAction: false,
-                  overlayColor:
-                    'color-mix(in srgb, var(--vscode-editor-background) 45%, transparent)',
-                  primaryColor: 'var(--vscode-button-background)',
-                  scrollDuration: reducedMotion ? 0 : 300,
-                  skipBeacon: true,
-                  spotlightPadding: 6,
-                  spotlightRadius: 14,
-                  targetWaitTimeout: 3_000,
-                  textColor: 'var(--vscode-editorWidget-foreground)',
-                  width: 360,
-                  zIndex: 1,
-                }}
-              />
-            )}
+            <Joyride
+              run
+              continuous
+              steps={steps}
+              portalElement={portalElement}
+              onEvent={handleEvent}
+              locale={{ close: 'Not now', last: isHint ? 'Got it' : 'Done' }}
+              styles={guidanceStyles}
+              tooltipComponent={isHint ? ContextualHintTooltip : undefined}
+              options={{
+                arrowBase: 22,
+                arrowColor: 'var(--vscode-editorWidget-background)',
+                arrowSize: 11,
+                buttons: isHint ? ['primary'] : ['back', 'skip', 'primary'],
+                blockTargetInteraction: true,
+                disableFocusTrap: modalOpen,
+                dismissKeyAction: isHint ? 'close' : false,
+                offset: 14,
+                overlayClickAction: false,
+                overlayColor:
+                  'color-mix(in srgb, var(--vscode-editor-background) 45%, transparent)',
+                primaryColor: 'var(--vscode-button-background)',
+                scrollDuration: reducedMotion ? 0 : 300,
+                skipBeacon: true,
+                spotlightPadding: 6,
+                spotlightRadius: 14,
+                targetWaitTimeout: 3_000,
+                textColor: 'var(--vscode-editorWidget-foreground)',
+                width: 360,
+                zIndex: 1,
+              }}
+            />
           </GuidancePresentationBoundary>
         ) : null}
-        <AlertDialog open={disableConfirmationOpen} onOpenChange={setDisableConfirmationOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Disable contextual hints?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Contextual hints will stop appearing. You can turn them back on or reset your hint
-                history at any time in User Settings → Guidance.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Keep hints on</AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-error text-button-foreground hover:bg-error/90"
-                onClick={disableContextualHints}
-              >
-                Disable Hints
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </DisableContextualHintsContext.Provider>
+      </OpenHintSettingsContext.Provider>
     </GuidanceContext.Provider>
   );
 }

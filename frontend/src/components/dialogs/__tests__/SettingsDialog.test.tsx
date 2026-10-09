@@ -3,6 +3,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DataRootContext } from '@/features/bootstrap/DataRootContext';
+import { useSettingsDialogStore } from '@/stores/settingsDialogStore';
 import { SettingsDialog } from '../SettingsDialog';
 
 const mocks = vi.hoisted(() => ({
@@ -202,6 +203,28 @@ describe('SettingsDialog', () => {
 
     expect(screen.getByRole('tab', { name: 'Portal' })).toHaveAttribute('aria-selected', 'true');
     expect(await screen.findByLabelText('LDaCA access token')).toBeInTheDocument();
+  });
+
+  it('points out Guidance, then the hints option, after Turn off hints (issue 358)', async () => {
+    useSettingsDialogStore.setState({ guide: 'contextual-hints' });
+    const user = userEvent.setup();
+    renderSettingsDialog();
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'To turn hints off, open Guidance on the left.',
+    );
+    const guidance = screen.getByRole('tab', { name: 'Guidance' });
+    expect(guidance).toHaveAttribute('data-guide-target');
+
+    await user.click(guidance);
+    expect(guidance).not.toHaveAttribute('data-guide-target');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Untick Show contextual hints to turn hints off. Come back here to turn them on again.',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Show contextual hints' }));
+    expect(mocks.updatePreferences).toHaveBeenCalledWith({ contextual_hints_enabled: false });
+    expect(useSettingsDialogStore.getState().guide).toBeNull();
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('renders update preferences only in the desktop runtime', async () => {
