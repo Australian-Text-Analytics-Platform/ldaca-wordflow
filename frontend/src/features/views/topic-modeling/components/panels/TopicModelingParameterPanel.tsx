@@ -34,6 +34,9 @@ import {
   smallestFindableTopic,
 } from '../../topicSampling';
 import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFill';
+import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { TopicLargeInputNudge } from '../TopicModelingNudges';
 
 interface NumericInputDraft {
   source: number;
@@ -284,6 +287,12 @@ export function TopicModelingParameterPanel({
   };
 
   const sampleSize = clusterSampleSize ?? suggestedSampleSize;
+  // Documents a run would read, after Sampling: sets off the large-input suggestion (issue 360).
+  const sampledDocumentCount = nodeDocCounts.reduce(
+    (sum, nDocs, index) =>
+      sum + effectiveSampleDocumentCount(corpusSamples[index] ?? { percent: '100' }, nDocs),
+    0,
+  );
   // Embedding takes most of a first run and follows the token count; about
   // 36,000 tokens a second on a recent Mac, so the minutes are a floor.
   const firstRunNote =
@@ -379,6 +388,7 @@ export function TopicModelingParameterPanel({
         <div
           className="flex w-full items-center rounded-md border border-input-border bg-transparent focus-within:border-focus focus-within:ring-[3px] focus-within:ring-focus/50"
           data-testid="topic-sampling-control"
+          {...nudgeTargetProps(NUDGE_TARGETS.topicDocumentSampling)}
         >
           <Input
             id={inputId}
@@ -429,6 +439,7 @@ export function TopicModelingParameterPanel({
         runAllLabel: 'Run',
       }}
       actionsGuidanceTarget="topic-modeling-actions"
+      nudgeScope="topic-modeling"
       parametersLocked={parametersLocked}
     >
       <NodeInputsPanel
@@ -447,6 +458,14 @@ export function TopicModelingParameterPanel({
         columnAddonWidth="auto"
         renderColumnAddon={renderSamplingInput}
       />
+      {parametersLocked ? null : (
+        <TopicLargeInputNudge
+          documents={sampledDocumentCount}
+          segments={estimatedSegmentCount}
+          topicSampling={clusterSample}
+          occurrence={nodeInputs.inputs.map((input) => input.node_id).join('\0')}
+        />
+      )}
       {firstRunNote ? (
         <p id="topic-first-run-note" className="mt-2 px-3 text-label-secondary text-warning">
           {firstRunNote}
@@ -472,6 +491,7 @@ export function TopicModelingParameterPanel({
               }}
             >
               <SelectTrigger
+                {...nudgeTargetProps(NUDGE_TARGETS.topicSegmentation)}
                 id="topic-segmentation-method"
                 aria-label="Segmentation method"
                 className="h-8 w-32"
@@ -495,6 +515,7 @@ export function TopicModelingParameterPanel({
               Max tokens
             </ParameterLabel>
             <Input
+              {...nudgeTargetProps(NUDGE_TARGETS.topicMaxSegmentTokens)}
               id="topic-max-segment-tokens"
               aria-label="Maximum tokens per segment"
               type="number"
@@ -523,6 +544,7 @@ export function TopicModelingParameterPanel({
             </ParameterLabel>
             <div className="flex items-center gap-1.5">
               <Input
+                {...nudgeTargetProps(NUDGE_TARGETS.topicMinClusterSize)}
                 id="topic-min-cluster-size"
                 aria-label="Min topic size"
                 type="number"
@@ -542,6 +564,7 @@ export function TopicModelingParameterPanel({
                 to
               </span>
               <Input
+                {...nudgeTargetProps(NUDGE_TARGETS.topicMaxClusterSize)}
                 id="topic-max-cluster-size"
                 aria-label="Max topic size"
                 aria-invalid={maxTopicSizeInvalid || undefined}
@@ -609,7 +632,10 @@ export function TopicModelingParameterPanel({
         </div>
         <div className="mt-3 space-y-1">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <div className="flex items-center gap-2">
+            <div
+              {...nudgeTargetProps(NUDGE_TARGETS.topicClusterSample)}
+              className="flex items-center gap-2"
+            >
               <Checkbox
                 id="topic-cluster-sample"
                 checked={clusterSample}

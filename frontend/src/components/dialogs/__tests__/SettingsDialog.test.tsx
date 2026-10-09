@@ -44,6 +44,7 @@ vi.mock('@/features/preferences/useUserPreferences', () => ({
       favorite_workspaces: [],
       analysis_multi_tab_enabled: mocks.multiTabEnabled,
       contextual_hints_enabled: true,
+      nudges_enabled: true,
       color_theme: 'light-2026',
     },
     isError: false,
@@ -225,6 +226,23 @@ describe('SettingsDialog', () => {
     expect(mocks.updatePreferences).toHaveBeenCalledWith({ contextual_hints_enabled: false });
     expect(useSettingsDialogStore.getState().guide).toBeNull();
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('points out Guidance, then Show suggestions, after Turn off suggestions (issue 360)', async () => {
+    useSettingsDialogStore.setState({ guide: 'suggestions' });
+    const user = userEvent.setup();
+    renderSettingsDialog();
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'To turn suggestions off, open Guidance on the left.',
+    );
+    await user.click(screen.getByRole('tab', { name: 'Guidance' }));
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Untick Show suggestions to turn suggestions off. Come back here to turn them on again.',
+    );
+    await user.click(screen.getByRole('checkbox', { name: 'Show suggestions' }));
+    expect(mocks.updatePreferences).toHaveBeenCalledWith({ nudges_enabled: false });
+    expect(useSettingsDialogStore.getState().guide).toBeNull();
   });
 
   it('renders update preferences only in the desktop runtime', async () => {

@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 import { listTokenizerModels } from '@/api';
 import type { TokenizerModelInfo } from '@/api/frontendModels';
 import { queryKeys } from '@/lib/queryKeys';
@@ -189,7 +191,12 @@ function TokenizerModelSelector({
             }}
             disabled={isDisabled}
           >
-            <SelectTrigger className="w-full text-body" aria-label="Tokeniser model">
+            <SelectTrigger
+              className="w-full text-body"
+              aria-label="Tokeniser model"
+              // A disabled Run outlines an empty tokeniser (Suggestions, issue 360).
+              {...(value ? {} : nudgeTargetProps(NUDGE_TARGETS.tokenizer))}
+            >
               <SelectValue placeholder="None">{triggerText}</SelectValue>
             </SelectTrigger>
             <SelectContent>

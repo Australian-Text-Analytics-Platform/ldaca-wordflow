@@ -10,6 +10,8 @@ import { ANALYSIS_TAB_GROUPS } from '../../common/analysisIds';
 import { useWorkspaceTabs } from '../../common/tabs/useWorkspaceTabs';
 import type { ViewType } from '@/features/views/viewIds';
 import { toastError } from '@/lib/toastError';
+import { outlineMissingInputs } from '@/features/nudges/nudgeHighlight';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 
 interface AnalysisState {
   currentWorkspaceId: string | null;
@@ -91,6 +93,7 @@ export const useTokenFrequencyTaskFlow = ({
     });
     if (missingTokenizerModels.length > 0) {
       toast.error('Select a tokeniser model for each selected Data Block.');
+      outlineMissingInputs([NUDGE_TARGETS.tokenizer]);
       return;
     }
 

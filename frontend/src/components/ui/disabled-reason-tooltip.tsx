@@ -24,6 +24,12 @@ export interface DisabledReasonTooltipProps {
    * native `title` delay.
    */
   delayDuration?: number;
+  /**
+   * Called when people click (or press Enter or Space on) the disabled
+   * control, for example to outline what is missing (Suggestions, issue 360).
+   * The disabled child then lets clicks through to the wrapper.
+   */
+  onDisabledClick?: () => void;
   children: React.ReactNode;
 }
 
@@ -38,15 +44,37 @@ export function DisabledReasonTooltip({
   side = 'top',
   className,
   delayDuration = 0,
+  onDisabledClick,
   children,
 }: DisabledReasonTooltipProps) {
   if (!reason) return <>{children}</>;
-  const wrapperClass = ['inline-flex', className].filter(Boolean).join(' ');
+  // Disabled buttons swallow clicks in some browsers, so they pass them on.
+  const wrapperClass = [
+    'inline-flex',
+    onDisabledClick && '[&>:disabled]:pointer-events-none',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
   return (
     <TooltipProvider delayDuration={delayDuration} skipDelayDuration={0}>
       <Tooltip>
         <TooltipTrigger asChild>
-          <span className={wrapperClass} tabIndex={0}>
+          <span
+            className={wrapperClass}
+            tabIndex={0}
+            onClick={onDisabledClick}
+            onKeyDown={
+              onDisabledClick
+                ? (event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onDisabledClick();
+                    }
+                  }
+                : undefined
+            }
+          >
             {children}
           </span>
         </TooltipTrigger>

@@ -1,10 +1,13 @@
 import { createContext, useContext } from 'react';
 import type { ContextualHintVisitEvent } from './contextualHintVisitState';
 import type { ViewType } from '@/features/views/viewIds';
+import type { SettingsGuide } from '@/stores/settingsDialogStore';
 
 export interface GuidanceContextValue {
   dispatchContextualHintVisit: (event: ContextualHintVisitEvent) => void;
   startGuidedTour: (id: string) => void;
+  /** Walks people to one setting: the gear, then the tab and the option (issue 358). */
+  startSettingsWalk: (guide: SettingsGuide) => void;
 }
 
 export const GuidanceContext = createContext<GuidanceContextValue | null>(null);
@@ -33,4 +36,9 @@ export function useGuidanceInfrastructure() {
     throw new Error('Guidance infrastructure must be used within GuidanceProvider');
   }
   return context;
+}
+
+/** The settings walk, or null outside GuidanceProvider (Suggestions, issue 360). */
+export function useSettingsWalk() {
+  return useContext(GuidanceContext)?.startSettingsWalk ?? null;
 }

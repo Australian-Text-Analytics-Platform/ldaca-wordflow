@@ -294,3 +294,15 @@
 [data-testid="guidance-portal"] .react-joyride__floater {
   pointer-events: auto;
 }
+
+/* Suggestions (issue 360): an outline on the settings that may help. It never
+   blocks a click, and fades once people carry on with other things. */
+[data-nudge-active] {
+  outline: 2px solid var(--vscode-inputValidation-warningBorder);
+  outline-offset: 2px;
+  transition: outline-color 0.6s ease-out;
+}
+
+[data-nudge-active="fading"] {
+  outline-color: transparent;
+}

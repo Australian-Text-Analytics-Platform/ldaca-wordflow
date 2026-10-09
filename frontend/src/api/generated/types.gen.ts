@@ -6331,6 +6331,10 @@ export type UserPreferences = {
      * Hidden Views
      */
     hidden_views?: Array<string>;
+    /**
+     * Nudges Enabled
+     */
+    nudges_enabled?: boolean;
 };
 
 /**
@@ -6359,6 +6363,10 @@ export type UserPreferencesPatch = {
      * Hidden Views
      */
     hidden_views?: Array<string>;
+    /**
+     * Nudges Enabled
+     */
+    nudges_enabled?: boolean;
 };
 
 /**

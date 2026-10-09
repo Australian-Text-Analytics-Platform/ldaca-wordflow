@@ -31,6 +31,8 @@ import {
 import { buildConcordanceTableModel, type ConcordanceRow } from './concordanceTableModel';
 import { SortableHeader } from './SortableHeader';
 import { ConcordanceRowDetailController } from './ConcordanceRowDetailController';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { ConcordancePreviewNudge } from './ConcordancePreviewNudge';
 
 export interface ConcordanceTableNodeBlockProps {
   nodeKey: string;
@@ -177,6 +179,11 @@ function CombinedConcordanceTable({
       {reviewRowUnit === null ? (
         <div className="border-t border-surface-border bg-panel/40 px-4 pt-2 text-body text-description">
           {combinedPageSizeSummary}
+          <ConcordancePreviewNudge
+            groups={nodeData.data}
+            pagination={nodeData.pagination}
+            occurrence={`${searchWord}\0${String(caseSensitive)}\0${String(globalPageSize)}\0${String(nodeData.pagination.page)}`}
+          />
         </div>
       ) : null}
       <ServerPaginationFooter
@@ -191,6 +198,7 @@ function CombinedConcordanceTable({
               ? 'Matches per page'
               : 'Matches per page'
         }
+        pageSizeNudgeTarget={reviewRowUnit === null ? NUDGE_TARGETS.concordancePageSize : undefined}
         pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}
         loading={combinedLoading}
         showPageSize
@@ -365,6 +373,11 @@ function PerNodeConcordanceTable({
       {reviewRowUnit === null ? (
         <div className="border-t border-surface-border bg-panel/40 px-4 pt-2 text-body text-description">
           {pageSizeSummary}
+          <ConcordancePreviewNudge
+            groups={nodeData.data}
+            pagination={nodeData.pagination}
+            occurrence={`${searchWord}\0${String(caseSensitive)}\0${String(globalPageSize)}\0${String(nodeData.pagination.page)}`}
+          />
         </div>
       ) : null}
       <ServerPaginationFooter
@@ -379,6 +392,7 @@ function PerNodeConcordanceTable({
               ? 'Matches per page'
               : 'Matches per page'
         }
+        pageSizeNudgeTarget={reviewRowUnit === null ? NUDGE_TARGETS.concordancePageSize : undefined}
         pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}
         loading={nodeIsLoading}
         showPageSize

@@ -13,6 +13,8 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { NodeColumnSelection } from '../../common/nodeSelectionTypes';
 import type { RerunActionState } from '@/features/views/common/rerunActionState';
 import type { UseTabNodeInputsResult } from '@/features/views/common/nodeInputs';
+import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 
 export interface ConcordanceParameterPanelProps {
   // Selection (add-node-as-needed)
@@ -368,6 +370,7 @@ export function ConcordanceParameterPanel({
           <DisabledReasonTooltip reason={runAllDisabledReason}>
             <Button
               type="button"
+              {...nudgeTargetProps(NUDGE_TARGETS.concordanceRun)}
               disabled={runAllActionDisabled}
               onClick={() => {
                 void handleRunAll();

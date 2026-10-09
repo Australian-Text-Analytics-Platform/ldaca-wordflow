@@ -22,6 +22,8 @@ class UserPreferences(_StrictModel):
     # keep the value they hold.
     analysis_multi_tab_enabled: bool = True
     contextual_hints_enabled: bool = True
+    # Suggestions when a result or run looks off (issue 360).
+    nudges_enabled: bool = True
     color_theme: Literal["light-2026", "dark-2026"] = "light-2026"
 
     @field_validator("hidden_views", "favorite_workspaces")
@@ -41,6 +43,7 @@ class UserPreferencesPatch(_StrictModel):
     favorite_workspaces: list[str] = Field(default_factory=list)
     analysis_multi_tab_enabled: bool = False
     contextual_hints_enabled: bool = True
+    nudges_enabled: bool = True
     color_theme: Literal["light-2026", "dark-2026"] = "light-2026"
 
     @field_validator("hidden_views", "favorite_workspaces")

@@ -4,6 +4,7 @@ import InfoIcon from '@/components/help/InfoIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
+import { nudgeTargetProps, outlineMissingInputs } from '@/features/nudges/nudgeHighlight';
 import { cn } from '@/lib/utils';
 import { Loader2, Play, Square, Trash2 } from 'lucide-react';
 import type { DocLinkKind, DocumentKey } from '@/tutorials/documentationRegistry';
@@ -28,6 +29,8 @@ interface AnalysisCardLayoutProps {
     previewDisabledReason?: string;
     runAllDisabled?: boolean;
     runAllDisabledReason?: string;
+    /** Outlined when people click the disabled Run: what it is waiting for (issue 360). */
+    runAllDisabledTargets?: readonly string[];
     clearDisabled?: boolean;
     clearDisabledReason?: string;
     isPreviewing?: boolean;
@@ -44,6 +47,8 @@ interface AnalysisCardLayoutProps {
   titleGuidanceTarget?: string;
   actionsGuidanceTarget?: string;
   footerGuidanceTarget?: string;
+  /** Names Run, Clear and Stop for Suggestions, as `<scope>-run` and so on (issue 360). */
+  nudgeScope?: string;
   cardRef?: React.RefObject<HTMLDivElement | null>;
 }
 
@@ -64,8 +69,12 @@ export function AnalysisCardLayout({
   titleGuidanceTarget,
   actionsGuidanceTarget,
   footerGuidanceTarget,
+  nudgeScope,
   cardRef,
 }: AnalysisCardLayoutProps) {
+  const nudgeTarget = (action: string) =>
+    nudgeScope ? nudgeTargetProps(`${nudgeScope}-${action}`) : {};
+  const runAllDisabledTargets = actions?.runAllDisabledTargets;
   const cardToneClassName = cn('w-full min-w-0', tone === 'error' && 'border-error/50');
   const runAllLabel = actions?.runAllLabel ?? 'Run';
   const previewDisabledReason = actions?.previewDisabled
@@ -141,8 +150,18 @@ export function AnalysisCardLayout({
           ) : null}
 
           <div className="flex items-center gap-2">
-            <DisabledReasonTooltip reason={runAllDisabledReason}>
+            <DisabledReasonTooltip
+              reason={runAllDisabledReason}
+              onDisabledClick={
+                runAllDisabledTargets?.length
+                  ? () => {
+                      outlineMissingInputs(runAllDisabledTargets);
+                    }
+                  : undefined
+              }
+            >
               <Button
+                {...nudgeTarget('run')}
                 onClick={() => {
                   void actions.onRunAll();
                 }}
@@ -169,6 +188,7 @@ export function AnalysisCardLayout({
           <div className="flex items-center gap-2">
             <DisabledReasonTooltip reason={clearDisabledReason}>
               <Button
+                {...nudgeTarget('clear')}
                 onClick={() => {
                   void actions.onClear();
                 }}
@@ -197,6 +217,7 @@ export function AnalysisCardLayout({
             <div className="flex items-center gap-2">
               <DisabledReasonTooltip reason={stopDisabledReason}>
                 <Button
+                  {...nudgeTarget('stop')}
                   onClick={() => {
                     void actions.onStop?.();
                   }}

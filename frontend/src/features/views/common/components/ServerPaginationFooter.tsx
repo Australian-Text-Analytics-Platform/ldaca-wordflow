@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
 
 /** Default page-size options shared by every server-backed paginated table. */
 const DEFAULT_PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
@@ -54,6 +55,8 @@ export interface ServerPaginationFooterProps {
   showPageSize?: boolean;
   /** Context-specific label for the page-size selector. */
   pageSizeLabel?: React.ReactNode;
+  /** Names the page-size selector for Suggestions (issue 360). */
+  pageSizeNudgeTarget?: string;
   /** Optional summary rendered after the page-size selector. */
   pageSizeSummary?: React.ReactNode;
   /** Show an inline loading indicator next to the page controls. */
@@ -99,6 +102,7 @@ export function ServerPaginationFooter({
   pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   showPageSize = true,
   pageSizeLabel = 'Rows per page',
+  pageSizeNudgeTarget,
   pageSizeSummary,
   loading = false,
   children,
@@ -146,6 +150,7 @@ export function ServerPaginationFooter({
             <div className="flex items-center gap-2 text-label-secondary text-description">
               <span className="whitespace-nowrap">{pageSizeLabel}</span>
               <select
+                {...(pageSizeNudgeTarget ? nudgeTargetProps(pageSizeNudgeTarget) : {})}
                 value={pageSize}
                 onChange={(e) => {
                   table.setPageSize(Number(e.target.value));
@@ -245,7 +250,11 @@ export function ServerPaginationFooter({
                 table.setPageSize(Number(val));
               }}
             >
-              <SelectTrigger className="h-9 w-20" id="server-rows-per-page">
+              <SelectTrigger
+                className="h-9 w-20"
+                id="server-rows-per-page"
+                {...(pageSizeNudgeTarget ? nudgeTargetProps(pageSizeNudgeTarget) : {})}
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="start">

@@ -342,6 +342,29 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 - A replayable **Guided Tour** is shown in Help only when one is available. A
   tour is started deliberately and is unaffected by the Contextual Hint switch.
 
+<span id="help-ui-suggestions"></span>
+- **Suggestions** appear when a result or run looks off, with a lightbulb
+  beside it, and outline the settings that may help. They never stop you and
+  need no closing: they fade once you carry on with other things, and come
+  back when the same situation happens again. **Show me** outlines the
+  settings again. Suggestions appear when:
+  - a Concordance **Preview** finds no matches in the documents it checked,
+    while the Data Block has more: show more **Documents per page**, or
+    **Run** to search them all;
+  - Topic Modelling puts most segments in one topic (try a lower **Max topic
+    size**) or finds only a few topics (try a slightly lower **Min topic
+    size**); select **Clear** first to change them;
+  - a Topic Modelling run is still splitting or reading the text after five
+    minutes: **Stop**, then try **Automatic** segments with a larger **Max
+    tokens**, a smaller **Sampling** percentage, or **Topic sampling**;
+  - a Topic Modelling input is large (from about 15,700 documents or 66,000
+    segments): a sample of documents or segments gives a faster first run.
+- Clicking a disabled **Run** outlines what it is waiting for, such as an
+  empty **Tokeniser model** in Frequency.
+- Suggestions are turned off, and back on, under **Settings → Guidance**
+  (**Show suggestions**). A suggestion's **Turn off suggestions…** shows the
+  way there, as **Turn off hints…** does.
+
 <h2 id="help-ui-regular-expressions">Regular expressions</h2>
 
 A regular expression is a short pattern that describes the text you are looking for, rather than the exact text itself. For example, one pattern can find both *colour* and *color*, every year written as four digits, or every tweet that starts with a retweet marker. Wordflow uses them wherever you see **Use regular expression** (Concordance's Text mode, and Find & replace, Extract text, and Count in the Data Editor), in the Data Builder's Filter when **regular expression** is ticked on a *contains* condition, and in Segment's **A pattern** option. When the box is not ticked, the text is matched exactly as written.

@@ -66,6 +66,8 @@ interface TokenFrequencyParameterPanelProps {
     runDisabled: boolean;
     clearDisabled: boolean;
     runDisabledReason?: string;
+    /** Outlined when people click the disabled Run (issue 360). */
+    runDisabledTargets?: readonly string[];
     clearDisabledReason?: string;
   };
   isAnalyzing: boolean;
@@ -170,6 +172,7 @@ export const TokenFrequencyParameterPanel = ({
         runAllDisabledReason: hasIncompleteSelections
           ? 'Select a column for each Data Block'
           : actionState.runDisabledReason,
+        runAllDisabledTargets: hasIncompleteSelections ? undefined : actionState.runDisabledTargets,
         clearDisabled: actionState.clearDisabled,
         clearDisabledReason: actionState.clearDisabledReason,
         isRunningAll: isAnalyzing,

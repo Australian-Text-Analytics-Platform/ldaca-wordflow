@@ -16,6 +16,8 @@ const DEFAULT_PREFERENCES: Required<UserPreferences> = {
   // On by default from the next 0.7.x update (issue 359).
   analysis_multi_tab_enabled: true,
   contextual_hints_enabled: true,
+  // Suggestions when a result or run looks off (issue 360).
+  nudges_enabled: true,
   color_theme: 'light-2026',
 };
 

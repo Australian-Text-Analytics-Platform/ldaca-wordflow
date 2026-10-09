@@ -25,6 +25,7 @@ import type { TopicColorScheme } from '../results/topicModelingGraph';
 import { TopicModelingStopWordsControl } from '../TopicModelingStopWordsControl';
 import type { StopWordListSource } from '@/features/views/common/utils/stopWordListSources';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { TopicResultNudge, TopicSlowStartNudge } from '../TopicModelingNudges';
 
 interface Props {
   topicWaitingBanner: {
@@ -596,6 +597,13 @@ export function TopicModelingResultsPanel({
             taskId={runningTask?.task_id}
           />
         ) : null}
+        {isRunningState ? (
+          <TopicSlowStartNudge
+            taskId={runningTask?.task_id}
+            startedAt={runningTask?.started_at}
+            detail={runningTask?.progress_detail}
+          />
+        ) : null}
 
         {isErrorState ? <ErrorNotice error={error} /> : null}
 
@@ -612,6 +620,7 @@ export function TopicModelingResultsPanel({
               }
             >
               <div className="space-y-4">
+                <TopicResultNudge result={result} clustering={clustering} analysisId={analysisId} />
                 <TopicModelingBubbleChartSection
                   topics={topics}
                   exportTopics={exportTopics}

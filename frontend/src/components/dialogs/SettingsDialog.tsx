@@ -94,6 +94,7 @@ export function SettingsDialog({
   const favoriteWorkspaces = preferences.favorite_workspaces ?? [];
   const analysisMultiTabEnabled = preferences.analysis_multi_tab_enabled ?? true;
   const contextualHintsEnabled = preferences.contextual_hints_enabled ?? false;
+  const nudgesEnabled = preferences.nudges_enabled ?? true;
   /**
    * Called by: the shadcn Switch for the analysis multi-tab preference.
    * The preference controls chrome visibility only, so both directions write
@@ -399,6 +400,30 @@ export function SettingsDialog({
                     <RotateCcw className="h-4 w-4" />
                     Reset Contextual Hint history
                   </Button>
+                </section>
+                <section className="space-y-3">
+                  <p className="text-label-secondary text-description">
+                    Suggestions appear when a result or run looks off, and point to the settings
+                    that may help.
+                  </p>
+                  <Label
+                    htmlFor="settings-nudges-enabled"
+                    data-highlighted={guide === 'suggestions' && onWalkTab ? '' : undefined}
+                    className={cn(
+                      'flex items-center gap-3 rounded-md border border-surface-border/70 px-3 py-2 text-body',
+                      guide === 'suggestions' && 'border-focus ring-2 ring-focus',
+                    )}
+                  >
+                    <Checkbox
+                      id="settings-nudges-enabled"
+                      checked={nudgesEnabled}
+                      onCheckedChange={(checked) => {
+                        updatePreferences.mutate({ nudges_enabled: checked === true });
+                        if (guide === 'suggestions') endGuide();
+                      }}
+                    />
+                    <span>Show suggestions</span>
+                  </Label>
                 </section>
               </TabsContent>
             </div>

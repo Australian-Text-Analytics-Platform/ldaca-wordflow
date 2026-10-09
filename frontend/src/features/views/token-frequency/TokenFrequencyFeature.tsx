@@ -48,6 +48,7 @@ import {
   TOKEN_FREQUENCY_CARD_ORDER_SETTING,
 } from './tokenFrequencyUtils';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 
 const MAX_TOKEN_LIMIT_INPUT = 100;
 const EMPTY_STOP_SET = new Set<string>();
@@ -414,6 +415,7 @@ const TokenFrequencyFeature = ({ host }: AnalysisTabFeatureProps) => {
     runDisabledReason: !hasTokenizerModel
       ? 'Select a tokeniser model for each Data Block'
       : baseActionState.runDisabledReason,
+    runDisabledTargets: hasTokenizerModel ? undefined : [NUDGE_TARGETS.tokenizer],
   };
 
   const persistDocumentColumn = usePersistNodeDocumentColumn({

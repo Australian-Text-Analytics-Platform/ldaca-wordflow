@@ -12308,7 +12308,7 @@
         "description": "Non-secret preferences synchronized for one authenticated user.",
         "properties": {
           "analysis_multi_tab_enabled": {
-            "default": false,
+            "default": true,
             "title": "Analysis Multi Tab Enabled",
             "type": "boolean"
           },
@@ -12339,6 +12339,11 @@
             },
             "title": "Hidden Views",
             "type": "array"
+          },
+          "nudges_enabled": {
+            "default": true,
+            "title": "Nudges Enabled",
+            "type": "boolean"
           }
         },
         "title": "UserPreferences",
@@ -12380,6 +12385,11 @@
             },
             "title": "Hidden Views",
             "type": "array"
+          },
+          "nudges_enabled": {
+            "default": true,
+            "title": "Nudges Enabled",
+            "type": "boolean"
           }
         },
         "title": "UserPreferencesPatch",

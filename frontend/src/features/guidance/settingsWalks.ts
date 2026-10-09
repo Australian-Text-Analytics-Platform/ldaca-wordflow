@@ -41,6 +41,16 @@ export const SETTINGS_WALKS: Readonly<Record<SettingsGuide, SettingsWalk>> = {
     settingNote:
       'Turn off Enable multi-tab to keep one tab in each tool. Come back here to turn tabs on again.',
   },
+  suggestions: {
+    tab: 'guidance',
+    tabLabel: 'Guidance',
+    tourTitle: 'Suggestions are turned off in Settings',
+    tourContent:
+      'Click Settings, the gear here. Suggestions are turned off there, and turned back on there too.',
+    tabNote: 'To turn suggestions off, open Guidance on the left.',
+    settingNote:
+      'Untick Show suggestions to turn suggestions off. Come back here to turn them on again.',
+  },
 };
 
 const TOUR_PREFIX = 'settings-walk:';

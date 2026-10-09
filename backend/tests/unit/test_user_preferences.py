@@ -75,6 +75,7 @@ async def test_missing_preferences_return_schema_versioned_defaults(tmp_path: Pa
         "favorite_workspaces": [],
         "analysis_multi_tab_enabled": True,
         "contextual_hints_enabled": True,
+        "nudges_enabled": True,
         "color_theme": "light-2026",
     }
     stored = rtoml.loads(

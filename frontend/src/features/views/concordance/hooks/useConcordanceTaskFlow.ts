@@ -5,6 +5,8 @@ import { type ConcordanceAnalysisRequest, type Analysis } from '@/api';
 import type { RunAnalysis } from '../../common/hooks/useAnalysisFeature';
 import type { NodeColumnSelection } from '../../common/nodeSelectionTypes';
 import type { NodePaginationState } from '../../common/tasks/types';
+import { outlineMissingInputs } from '@/features/nudges/nudgeHighlight';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 
 export type PaginationState = Record<string, NodePaginationState>;
 
@@ -126,6 +128,7 @@ export function useConcordanceTaskFlow({
       Object.keys(nodeTokenizerModels).length !== requestNodeIds.length
     ) {
       toast.error('Select a tokeniser model for each selected Data Block.');
+      outlineMissingInputs([NUDGE_TARGETS.tokenizer]);
       return;
     }
 

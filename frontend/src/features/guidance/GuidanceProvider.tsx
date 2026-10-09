@@ -13,6 +13,7 @@ import {
 
 import { useAuth } from '@/features/auth/hooks/useAuth';
 import { type SettingsGuide, useSettingsDialogStore } from '@/stores/settingsDialogStore';
+import { useNudgeStore } from '@/features/nudges/nudgeStore';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import type { ViewType } from '@/features/views/viewIds';
 import { useGuidanceAcknowledgmentsStore } from './acknowledgmentsStore';
@@ -220,6 +221,11 @@ export function GuidanceProvider({
   const [portalElement, setPortalElement] = useState<HTMLDivElement | null>(null);
   const reducedMotion = useReducedMotion();
   const contextualHintsEnabled = preferences?.contextual_hints_enabled === true;
+  // Suggestions (issue 360) read this from a store; on until the account says otherwise.
+  const nudgesEnabled = preferences?.nudges_enabled !== false;
+  useEffect(() => {
+    useNudgeStore.getState().setEnabled(nudgesEnabled);
+  }, [nudgesEnabled]);
 
   const candidateIds = selectContextualHintCandidates(visitState, contextualHintSequences);
   const nextDefinition = candidateIds
@@ -402,7 +408,9 @@ export function GuidanceProvider({
   });
 
   return (
-    <GuidanceContext.Provider value={{ dispatchContextualHintVisit, startGuidedTour }}>
+    <GuidanceContext.Provider
+      value={{ dispatchContextualHintVisit, startGuidedTour, startSettingsWalk }}
+    >
       <SettingsWalkContext.Provider value={startSettingsWalk}>
         {children}
         <div
