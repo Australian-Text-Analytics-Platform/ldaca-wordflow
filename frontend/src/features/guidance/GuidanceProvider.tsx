@@ -43,6 +43,10 @@ type GuidanceSession =
 
 // Walks people to a setting: the Settings gear, then its tab and option
 // (issues 358, 359). Hints use it for Turn off hints and their own actions.
+/** Controls whose use inside a hint's area counts as Got it (issue 364). */
+const HINT_CONTROLS =
+  'button, a[href], input, select, textarea, [role="button"], [role="combobox"], [role="checkbox"], [role="radio"], [role="switch"], [role="tab"]';
+
 const SettingsWalkContext = createContext<((guide: SettingsGuide) => void) | null>(null);
 
 const guidanceStyles = {
@@ -345,11 +349,16 @@ export function GuidanceProvider({
     if (!(element instanceof HTMLElement)) return;
     const clickable = element.matches('button, a[href], [role="button"]');
     element.setAttribute('data-hint-target', clickable ? 'click' : 'look');
-    // Clicking the button a hint points at does its job and counts as Got it.
-    const acknowledgeByClick = () => {
-      acknowledgeCurrentHint();
+    // Using what a hint points at counts as Got it: the button itself, or a
+    // control inside the area it outlines, such as Preview in an actions row
+    // (Chao, issue 364).
+    const acknowledgeByClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (clickable || (target instanceof Element && target.closest(HINT_CONTROLS))) {
+        acknowledgeCurrentHint();
+      }
     };
-    if (clickable) element.addEventListener('click', acknowledgeByClick);
+    element.addEventListener('click', acknowledgeByClick);
     return () => {
       element.removeEventListener('click', acknowledgeByClick);
       clearMarks();

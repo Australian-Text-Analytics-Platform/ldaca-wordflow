@@ -268,6 +268,25 @@ describe('GuidanceProvider', () => {
     await waitFor(() => expect(fixture.joyrideProps?.steps[0]?.id).toBe('hint-two'));
   });
 
+  it('counts using a control inside the area a hint points at as Got it (issue 364)', async () => {
+    const area = document.createElement('div');
+    area.id = 'target-area';
+    area.innerHTML = '<p>Choose Preview or Run</p><button type="button">Preview</button>';
+    document.body.append(area);
+    const user = userEvent.setup();
+    renderGuidance({ hints: [{ ...hint(), target: '#target-area' }] });
+    await user.click(screen.getByRole('button', { name: 'Reach hint' }));
+    expect(area).toHaveAttribute('data-hint-target', 'look');
+
+    fireEvent.click(screen.getByText('Choose Preview or Run'));
+    expect(useGuidanceAcknowledgmentsStore.getState().byUser['user-1']).toBeUndefined();
+    fireEvent.click(screen.getByRole('button', { name: 'Preview' }));
+    expect(useGuidanceAcknowledgmentsStore.getState().byUser['user-1']).toEqual({
+      'hint-one': 1,
+    });
+    area.remove();
+  });
+
   it('counts a click on the button a hint points at as Got it (issue 364)', async () => {
     const button = document.createElement('button');
     button.id = 'target-button';
