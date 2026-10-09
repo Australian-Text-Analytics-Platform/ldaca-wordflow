@@ -11,7 +11,7 @@ interface Line {
 export function updatePlotMarkers(chart: EChartsType) {
   const series = chart.getOption().series as Line[];
   const updates = series.flatMap((line) => {
-    if (line.type !== 'line') return [];
+    if (line.type !== 'line' || line.id === 'volume-overview') return [];
     const pixels = line.data
       .filter((point) => point.value[1] !== null)
       .map((point) => chart.convertToPixel({ gridIndex: 0 }, [point.value[0], point.value[1] ?? 0]))
@@ -23,7 +23,7 @@ export function updatePlotMarkers(chart: EChartsType) {
   });
   if (updates.length) chart.setOption({ series: updates });
   series.forEach((line, seriesIndex) => {
-    if (line.type !== 'line') return;
+    if (line.type !== 'line' || line.id === 'volume-overview') return;
     line.data.forEach((point, dataIndex) => {
       if (point.selected)
         chart.dispatchAction({ type: 'highlight', seriesIndex, dataIndex, notBlur: true });

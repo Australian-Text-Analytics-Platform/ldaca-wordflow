@@ -1,8 +1,31 @@
-import { fireEvent, render, screen } from '@testing-library/react';
-import { expect, it } from 'vite-plus/test';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { expect, it, vi } from 'vite-plus/test';
 import type { Quote } from './quotationRows';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { QuotationText } from './QuotationText';
+import { QuotationText, QuotationCell } from './QuotationText';
+it('shows full highlighted hover content only when the quotation cell is clipped', async () => {
+  const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockReturnValue(20);
+  const scroll = vi.spyOn(HTMLElement.prototype, 'scrollHeight', 'get').mockReturnValue(100);
+  const user = userEvent.setup();
+  const { container, rerender } = render(
+    <TooltipProvider delayDuration={0}>
+      <QuotationCell text="The full quotation" quotes={[]} context={5} />
+    </TooltipProvider>,
+  );
+  await user.hover(container.querySelector('.line-clamp-3')!);
+  expect(await screen.findByRole('tooltip')).toHaveTextContent('The full quotation');
+  height.mockReturnValue(100);
+  rerender(
+    <TooltipProvider delayDuration={0}>
+      <QuotationCell text="Short quotation" quotes={[]} context={5} />
+    </TooltipProvider>,
+  );
+  await waitFor(() => expect(screen.queryByRole('tooltip')).not.toBeInTheDocument());
+  height.mockRestore();
+  scroll.mockRestore();
+});
+
 it('highlights native character offsets after emoji and clips context without changing the quotation', () => {
   const quote = {
     quote: 'Hello',
@@ -51,4 +74,38 @@ it('labels overlapping roles and quote types with a shared quotation identity', 
   const shared = screen.getByTitle('quote 1, speaker 1, speaker 2');
   fireEvent.focus(shared);
   expect(shared.style.backgroundColor).not.toBe('');
+});
+
+it('clamps quotation cells to three lines and anchors full text to the clicked quotation', () => {
+  const scroll = vi.fn();
+  const original = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollIntoView');
+  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+    configurable: true,
+    value: scroll,
+  });
+  const quote = {
+    quote: 'Second',
+    quote_start_idx: 12,
+    quote_end_idx: 18,
+    speaker: null,
+    speaker_start_idx: null,
+    speaker_end_idx: null,
+    verb: null,
+    verb_start_idx: null,
+    verb_end_idx: null,
+  } as Quote;
+  const { container, rerender } = render(
+    <TooltipProvider>
+      <QuotationCell text="First quote Second quote" quotes={[quote]} />
+    </TooltipProvider>,
+  );
+  expect(container.querySelector('.line-clamp-3')).toBeInTheDocument();
+  rerender(
+    <TooltipProvider>
+      <QuotationText text="First quote Second quote" quotes={[quote]} anchor={12} />
+    </TooltipProvider>,
+  );
+  expect(scroll).toHaveBeenCalledWith({ block: 'center' });
+  if (original) Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', original);
+  else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
 });

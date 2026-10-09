@@ -338,7 +338,7 @@ it('keeps Text options when changing modes and restores Preview fields and docum
   fireEvent.click(previewButton());
   await screen.findByText('1 matches in 1 of 20 inspected documents');
   const results = within(screen.getByRole('region', { name: 'Concordance results' }));
-  for (const name of ['L1', 'R1', 'Start', 'End'])
+  for (const name of ['L1', 'R1'])
     expect(results.getByRole('columnheader', { name, exact: true })).toBeInTheDocument();
   expect(results.queryByRole('columnheader', { name: 'L1 frequency' })).not.toBeInTheDocument();
 });

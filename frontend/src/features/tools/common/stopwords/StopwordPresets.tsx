@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import ReferenceIcon from '@/components/help/ReferenceIcon';
+import { TooltipProvider } from '@/components/ui/tooltip';
+import { OperationError } from '@/features/project/OperationError';
 import { useMutation } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -52,7 +55,12 @@ export function StopwordPresets({
       className="space-y-2 rounded-md border border-surface-border p-3"
     >
       <div>
-        <h4 className="font-semibold">Add language preset</h4>
+        <h4 className="flex items-center gap-2 font-semibold">
+          Add language preset{' '}
+          <TooltipProvider>
+            <ReferenceIcon targetKey="general.platform" label="Stopword sources and licences" />
+          </TooltipProvider>
+        </h4>
         <p className="text-description text-body-secondary">
           Choose one or more languages. Lists are added to the shared Table immediately. Language
           recommendations use a sample of the input text.
@@ -112,9 +120,7 @@ export function StopwordPresets({
             </label>
           ))}
       </fieldset>
-      {loading.isError && (
-        <p role="alert">The words were not added. Your selection is retained; try again.</p>
-      )}
+      {loading.isError && <OperationError title="The words were not added" error={loading.error} />}
       <div className="flex flex-wrap justify-end gap-2">
         <Button variant="outline" disabled={disabled || loading.isPending} onClick={onClose}>
           Cancel

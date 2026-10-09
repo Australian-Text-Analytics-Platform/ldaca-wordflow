@@ -48,11 +48,11 @@ export async function researchPlotScenario(
     if (mode === 'trends' && file.endsWith('.csv')) {
       await $(`[aria-label="Select ${source}"]`).click();
       const stamp = $('[aria-label="Change data type for column recorded_at"]');
-      await expect(stamp).toHaveText(expect.stringContaining('string'));
+      await expect(stamp).toHaveText(expect.stringContaining('text'));
       await stamp.click();
       if (!(await $('[role="menuitemradio"]').isExisting())) await browser.keys('ArrowDown');
-      await $('[role="menuitemradio"]=datetime').click();
-      await expect(stamp).toHaveText(expect.stringContaining('datetime with timezone'));
+      await $('[role="menuitemradio"]=date and time').click();
+      await expect(stamp).toHaveText(expect.stringContaining('date and time with timezone'));
       await expect($('[role="dialog"]')).not.toExist();
       await $('[aria-label="Close preview"]').click();
       const converted = await projectApi.querySql(base, [
@@ -196,7 +196,7 @@ export async function researchPlotScenario(
       if (mode === 'trends') expect(await connectingLines()).toBe(7);
       await results.$('button[aria-pressed="false"]').click();
       if (mode === 'trends') expect(await connectingLines()).toBe(8);
-      await results.$('label=Normalize to 100%').click();
+      await results.$('label=Normalise to 100%').click();
       await expect(results).toHaveText(expect.stringContaining('including hidden groups'));
     }
     if (mode !== 'sankey') {
@@ -292,14 +292,14 @@ export async function researchPlotScenario(
     }
     await results.$('button=Clear Selection').click();
     if (mode === 'trends') {
-      await chooseColumn('Plot presentation', 'area', results);
+      await chooseColumn('Plot presentation', 'Stacked areas', results);
       await researchScreenshot(`${prefix}-trends-area`, results);
-      await chooseColumn('Plot presentation', 'calendar', results);
+      await chooseColumn('Plot presentation', 'Calendar', results);
       await chooseColumn('Calendar year', '2026', results);
       await researchScreenshot(`${prefix}-trends-calendar`, results);
     }
     if (mode === 'heatmap') {
-      await expect(results.$('label=Normalize to 100%')).not.toExist();
+      await expect(results.$('label=Normalise to 100%')).not.toExist();
     }
     await setResearchTheme(true);
     await researchScreenshot(`${prefix}-${mode}-dark`, results);

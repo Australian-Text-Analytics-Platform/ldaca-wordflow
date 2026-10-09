@@ -44,3 +44,17 @@ describe('bundled stopwords', () => {
     ]);
   });
 });
+
+it('offers the approved LDaCA lists separately and excludes unproven classic lists', async () => {
+  const { listSupportedStopwordLanguages, loadMergedStopwords } = await import('../stopwords');
+  const choices = listSupportedStopwordLanguages();
+  expect(choices.find((item) => item.iso6391 === 'ldaca:en')?.name).toBe(
+    'English (LDaCA provided)',
+  );
+  expect(choices.some((item) => ['ldaca:de', 'ldaca:zh'].includes(item.iso6391))).toBe(false);
+  expect(choices.some((item) => item.iso6391 === 'de')).toBe(true);
+  expect(choices.some((item) => item.iso6391 === 'zh')).toBe(true);
+  const result = await loadMergedStopwords({ languages: ['ldaca:en', 'ldaca:en', 'ldaca:ja'] });
+  expect(result.byLanguage.map((group) => group.words.length)).toEqual([231, 310]);
+  expect(mocks.load).not.toHaveBeenCalled();
+});

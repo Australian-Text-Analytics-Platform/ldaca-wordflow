@@ -85,8 +85,12 @@ export function EditableTable({
   columns,
   columnHeaderExtra,
   renderValue,
+  rowDetailData,
+  documentColumn,
 }: {
   editor: ReturnType<typeof useTableEditing>;
+  rowDetailData?: Record<string, unknown>[];
+  documentColumn?: string;
   renderEditor?: (cell: EditableCell) => ReactNode;
   columns?: string[];
   columnHeaderExtra?: (column: string) => ReactNode;
@@ -96,6 +100,8 @@ export function EditableTable({
   return (
     <ProjectTable
       data={editor.data}
+      rowDetailData={rowDetailData}
+      documentColumn={documentColumn}
       rowIds={editor.rowIds}
       rowActions={
         editor.addRowAbove && editor.deleteRow

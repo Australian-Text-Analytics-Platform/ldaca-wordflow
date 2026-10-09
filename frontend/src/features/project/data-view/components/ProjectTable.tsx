@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/table';
 import { DatetimeFormatPanel } from '@/features/tools/common/components/DatetimeFormatPanel';
 import { RowDetailPanel } from '@/features/tools/common/components/RowDetailPanel';
+import { inspectAnalysisRow } from '@/features/tools/common/components/inspectAnalysisRow';
 import { TablePaginationFooter } from '@/features/tools/common/components/TablePaginationFooter';
 import { useRowDetailDialog } from '@/features/tools/common/components/useRowDetailDialog';
 import { type ArrowField } from '@/lib/arrow/decodeArrowTable';
@@ -68,6 +69,8 @@ export interface ProjectTableProps {
   onPreferencesChange?: (preferences: TablePreferences) => void;
   /** Optional host-owned cell editor. Returning undefined keeps the read-only renderer. */
   renderCell?: (rowIndex: number, column: string) => ReactNode;
+  /** Host-projected draft and mask values for read-only inspection alongside editors. */
+  rowDetailData?: DataRow[];
   columnHeaderExtra?: (column: string) => ReactNode;
   rowIds?: readonly string[];
   rowActions?: { header?: ReactNode; render: (rowIndex: number) => ReactNode };
@@ -118,6 +121,7 @@ export function ProjectTable({
   preferences,
   onPreferencesChange,
   renderCell,
+  rowDetailData,
   columnHeaderExtra,
   rowIds,
   rowActions,
@@ -522,7 +526,7 @@ export function ProjectTable({
   const { detailPayload, detailOpen, setDetailOpen, openDetailAt, navigation } = useRowDetailDialog(
     {
       sequenceKey: `${projectKey ?? ''}\0${nodeId ?? ''}\0${String(pageSize)}\0${JSON.stringify(sorting)}`,
-      items: sanitizedData,
+      items: rowDetailData ?? sanitizedData,
       page: pageIndex + 1,
       hasPreviousPage,
       hasNextPage,
@@ -638,8 +642,9 @@ export function ProjectTable({
                 <TableRow
                   key={row.id}
                   className="cursor-pointer transition-colors duration-150 hover:bg-panel/40 [&>td]:px-1 [&>td]:py-1"
-                  onClick={() => {
-                    if (!renderCell) openDetailAt(row.index);
+                  onClick={(event) => {
+                    if (!renderCell || rowDetailData)
+                      inspectAnalysisRow(event, () => openDetailAt(row.index));
                   }}
                 >
                   {rowActions && (

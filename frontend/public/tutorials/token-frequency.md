@@ -24,7 +24,7 @@ Input, column and tokenizer changes remain drafts until a successful run saves i
 
 <h3 id="help-token-frequency-reference">Step 2 — Reference and study corpora</h3>
 
-With two inputs, choose which is the **Reference** corpus and which is the **Study** corpus. The reference provides the baseline: its counts appear as **O1** and **%1**, and the study corpus appears as **O2** and **%2**. Swapping roles changes directional statistics such as LogRatio.
+With two inputs, the first selected input defaults to **Study**. Choose which is the **Reference** corpus and which is the **Study** corpus. Results follow the input-card order, including after reopening. The reference provides the baseline: its counts appear as **O1** and **%1**, and the study corpus appears as **O2** and **%2**. Swapping roles changes directional statistics such as LogRatio.
 
 <h3 id="help-token-frequency-stop-words">Step 3 — Stop words</h3>
 
@@ -45,7 +45,7 @@ and can be reused by other analysis tabs.
   first occurrence of each word. Click the input area, type a word and press
   **Enter** to add it immediately. Paste comma- or newline-separated words to add
   a batch; use a bubble's **×** to remove it immediately.
-  **Add language preset…** expands inline with sampled recommendations first. **Add to list**
+  **Add language preset…** includes separately labelled **LDaCA provided** lists and licensed library lists; bundled References records their sources and licences. It expands inline with sampled recommendations first. **Add to list**
   commits the selected presets together. **Sort** sorts the complete Table rows
   alphabetically by the selected word column; related column values stay together.
   **Clear words** asks for confirmation before removing the displayed words.
@@ -127,7 +127,7 @@ Choose **Word clouds** to see a cloud for each corpus, with word sizes reflectin
 The new Concordance tab starts a temporary Preview. Leaving it or reloading discards
 the Preview; only Run saves its submitted request.
 
-Clouds can be downloaded as PNG, JPEG or SVG. Bundled downloads can include stopword text. Native downloads use the file chooser; cancelling the chooser writes nothing. Once accepted, export cleanup and final file installation belong to the task.
+Clouds can be downloaded as PNG, JPEG or SVG, with source-name legends and colour-blend explanations included in images and ZIP copies. Bundled downloads can include stopword text. Native downloads use the file chooser; cancelling the chooser writes nothing. Once accepted, export cleanup and final file installation belong to the task.
 
 <h3 id="help-token-frequency-unified-word-cloud">Juxtorpus</h3>
 
@@ -153,16 +153,18 @@ The **Keyness statistics** table compares the reference and study corpora. Sort 
 | %1 / %2 | Share of the corpus's total tokens |
 | LL | Log-likelihood statistic |
 | Overuse | Corpus with the higher relative frequency, or Equal |
-| Signed LL | Positive for higher relative frequency in Reference, negative for Study, zero for equal proportions |
-| %DIFF | 100 × (Reference relative frequency − Study relative frequency) / Study relative frequency |
+| Signed LL | Positive for higher relative frequency in Study, negative for Reference, zero for equal proportions |
+| %DIFF | 100 × (Study relative frequency − Reference relative frequency) / Reference relative frequency |
 | Bayes | Bayes factor (BIC) |
 | ELL | Effect size for log-likelihood |
 | RRisk | Relative risk |
-| LogRatio | Base-2 log of relative frequencies; positive values favour the reference corpus |
+| LogRatio | Base-2 log of relative frequencies; positive values favour the Study corpus |
 | OddsRatio | Odds ratio between corpora |
 | Significance | Significance annotation from the native statistics calculation |
 
-When Study has zero occurrences, the published %DIFF method uses a denominator of `1e-18`. This can produce extremely large percentages. The table uses scientific notation for large values and explains the zero-count case on focus or hover; exports retain the full value. Overuse and Signed LL use relative frequencies, so differing corpus sizes do not reverse their meaning.
+New comparisons measure Study against Reference. Reference-zero %DIFF is **N/A**. Saved results from earlier versions retain their original direction and zero-count convention; opening them does not recalculate statistics. Overuse and Signed LL use relative frequencies rather than raw counts.
+
+Ranked lists show words per million using the complete saved corpus token total, even after stopwords or token filters. Hover a count for precise values. **Words per page** controls comparison pagination. The **Reset sort** icon restores original order and page one; it is disabled when unsorted.
 
 Undefined ratios and infinities can occur, especially when a token is absent from one corpus. They are retained rather than replaced with zero. If an input causes the native calculation to fail after Run has cleared its old output, the error is reported and the submitted request remains available to run again.
 

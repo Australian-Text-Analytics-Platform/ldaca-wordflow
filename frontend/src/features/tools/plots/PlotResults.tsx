@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
@@ -69,6 +70,8 @@ export function PlotResults({
     'measure' in request &&
     (request.measure === 'count' ||
       (request.measure === 'sum' && result.result.payload.nonnegative));
+  const groupCount = new Set(rows.map((row) => row.group_key)).size;
+  const normaliseEligible = eligible && groupCount >= 2;
   const calendar =
     'interval' in request &&
     request.interval.type === 'time' &&
@@ -78,11 +81,13 @@ export function PlotResults({
   const style: PlotDisplay['style'] =
     requestedStyle === 'calendar' && calendar
       ? 'calendar'
-      : requestedStyle === 'bar'
-        ? 'bar'
-        : requestedStyle === 'area' && eligible
-          ? 'area'
-          : 'line';
+      : requestedStyle === 'stacked_bar' && eligible
+        ? 'stacked_bar'
+        : requestedStyle === 'bar'
+          ? 'bar'
+          : requestedStyle === 'area' && eligible
+            ? 'area'
+            : 'line';
   const years = [
     ...new Set(
       rows
@@ -101,7 +106,8 @@ export function PlotResults({
         : undefined,
     style,
     smooth: settings.smooth !== false,
-    normalize: (mode === 'trends' || mode === 'compare') && eligible && settings.normalize === true,
+    normalize:
+      (mode === 'trends' || mode === 'compare') && normaliseEligible && settings.normalize === true,
     uncased,
     minimum_rows,
     order: settings.order === 'category' ? 'category' : 'total',
@@ -163,12 +169,7 @@ export function PlotResults({
       const clone = captureChart(host);
       const width = Number(clone.getAttribute('width')) || 800,
         height = Number(clone.getAttribute('height')) || 500;
-      const context = [
-        ...plotExportContext(mode, request, display),
-        `Publication: ${scope.summary}`,
-        ...(mode === 'scatter' ? [] : scope.details),
-        'Zoom restricts this image, not publication.',
-      ];
+      const context = [...plotExportContext(mode, request, display)];
       const legendLines = model.legend.flatMap((l) => {
         const label = `${selection.hidden.includes(l.key) ? 'Hidden · ' : ''}${l.label}: ${selectedKeys.length ? `${String(l.selected)}/` : ''}${String(l.count)} rows`;
         return wrapPlotLabel(label, (width - 24) * 0.9)
@@ -232,10 +233,22 @@ export function PlotResults({
               value={display.style}
               options={[
                 'line',
-                ...(eligible ? ['area'] : []),
+                ...(eligible ? ['area', 'stacked_bar'] : []),
                 'bar',
                 ...(calendar ? ['calendar'] : []),
-              ].map((value) => ({ value }))}
+              ].map((value) => ({
+                value,
+                label:
+                  (
+                    {
+                      line: 'Lines',
+                      area: 'Stacked areas',
+                      bar: 'Bars',
+                      stacked_bar: 'Stacked bars',
+                      calendar: 'Calendar',
+                    } as Record<string, string>
+                  )[value] ?? value,
+              }))}
               onChange={(style) => {
                 onSettings({ style });
               }}
@@ -279,7 +292,7 @@ export function PlotResults({
             </label>
           </>
         )}
-        {(mode === 'trends' || mode === 'compare') && eligible && (
+        {(mode === 'trends' || mode === 'compare') && normaliseEligible && (
           <label className="flex items-center gap-2">
             <Checkbox
               checked={display.normalize}
@@ -287,7 +300,7 @@ export function PlotResults({
                 onSettings({ normalize: value === true });
               }}
             />
-            Normalize to 100%
+            Normalise to 100%
           </label>
         )}
         {mode === 'compare' && (
@@ -368,6 +381,9 @@ export function PlotResults({
         <p role="status">Updating plot…</p>
       ) : null}
       <div className="flex max-h-48 flex-wrap gap-2 overflow-y-auto">
+        {model.legend.length > 0 && (
+          <HelpIcon targetKey="analysis.plots.parameters" label="Chart legend help" />
+        )}
         {model.legend.map((item) => (
           <Button
             key={item.key}

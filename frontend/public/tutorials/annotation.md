@@ -55,7 +55,7 @@ are different. Without a Codebook, nonblank labels are eligible. Comparison and
 metadata roles are disjoint, and document/annotation/correction columns retain
 their dedicated roles. Metadata stays beside the labels in a horizontally
 scrollable table. The table defaults to ten rows per page; drag its bottom-right
-resize handle to adjust its shared height, bounded by the window.
+resize handle to adjust its shared height, bounded by the window. Click row text or whitespace to open read-only Row Details. It includes all source fields, current unsaved label/correction drafts and comparison masks. Previous/Next follows the current filtered and sorted pages without saving edits.
 
 <h2 id="help-annotation-ai">AI workflow</h2>
 

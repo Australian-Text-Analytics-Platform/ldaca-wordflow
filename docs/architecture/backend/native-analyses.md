@@ -458,3 +458,10 @@ outstanding platform/visual checks.
 Concrete Frequency, Concordance, Quotation, Plot and import workflows live in `project/runtime/*_execution.rs` and `imports_execution.rs`, implementing the same `ProjectRuntime` as Topic and Annotation. Admission, independent connections, cancellation, leases and close completion remain together in `runtime.rs`. Publication still occurs through the existing database transaction; no service hierarchy or generic analysis pipeline is introduced.
 
 `analyses/restoration.rs` derives `request_status` beside original request JSON, and `setup_status` beside manual settings. Deserialization uses the execution DTOs and their defaults and unknown-field policy, without writes or live source/model resolution. An unsupported shape remains inspectable. This metadata does not certify execution availability or numeric parameter validity; ordinary execution validation remains authoritative.
+
+
+## Frequency direction and Concordance presentation metadata
+
+New Frequency comparison Views calculate Study against Reference while keeping wire corpus columns in Reference/Study order. `study_against_reference` records that meaning; absent flags decode as historical direction. Existing saved Views remain unchanged. Reference-zero percentage difference is NULL for new results. Corpus projections derive per-million values from the immutable full token denominator, before presentation filtering or limits.
+
+Saved Concordance match projections calculate contiguous `document_band` values after whole-result filtering and sorting and before pagination. The Arrow scalar stays outside the retained source STRUCT. Publication continues to use original document/match order and never publishes this presentation field.

@@ -51,7 +51,7 @@ export async function trendsRenderingScenario(base: string, prefix: string) {
     await checkLabels();
     await researchScreenshot(`${prefix}-dense-narrow`, results);
     await setAnalysisPaneSize('normal');
-    await chooseColumn('Plot presentation', 'calendar', results);
+    await chooseColumn('Plot presentation', 'Calendar', results);
     await chooseColumn('Calendar year', '2025', results);
     await expect(results.$('label=Smooth curves')).not.toExist();
     const monthLabels = () => chart.execute((element) => [...element.querySelectorAll('text')]

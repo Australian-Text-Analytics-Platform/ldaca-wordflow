@@ -32,6 +32,7 @@ export function savedAnalysisQuery<T>(
   // Analysis identity owns the data; the cache and tab are live ownership guards.
   return queryOptions({
     queryKey: outputKey(base, id),
+    meta: { reportError: false },
     staleTime: Infinity,
     queryFn: async ({ signal }) => {
       if (!id || !ownsOutput(cache, base, tab, id)) return null;

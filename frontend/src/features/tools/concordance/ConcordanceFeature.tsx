@@ -303,11 +303,11 @@ function ConcordanceTab({
                 .map((key) => (
                   <label key={key} className="flex items-center gap-2">
                     <Checkbox
-                      checked={draft.search[key]}
+                      checked={key === 'case_sensitive' ? !draft.search[key] : draft.search[key]}
                       disabled={key === 'whole_word' && draft.search.regex}
                       onCheckedChange={(value) => {
                         search({
-                          [key]: value === true,
+                          [key]: key === 'case_sensitive' ? value !== true : value === true,
                           ...(key === 'regex' && value ? { whole_word: false } : {}),
                         });
                       }}
@@ -316,7 +316,7 @@ function ConcordanceTab({
                       {
                         whole_word: 'Whole word',
                         regex: 'Regex',
-                        case_sensitive: 'Case sensitive',
+                        case_sensitive: 'Ignore case',
                         ignore_punctuation: 'Ignore punctuation',
                       }[key]
                     }
@@ -326,7 +326,7 @@ function ConcordanceTab({
             <div className="flex flex-wrap gap-3">
               {(['left_context', 'right_context'] as const).map((key) => (
                 <label key={key} className="space-y-1">
-                  <span>{key === 'left_context' ? 'Left context' : 'Right context'} (tokens)</span>
+                  <span>{key === 'left_context' ? 'Before match' : 'After match'} (words)</span>
                   <AnalysisNumberInput
                     aria-label={key === 'left_context' ? 'Left context' : 'Right context'}
                     className="w-24"

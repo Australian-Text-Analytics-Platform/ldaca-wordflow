@@ -13,14 +13,6 @@ use regex::{Regex, RegexBuilder};
 use std::collections::HashMap;
 
 pub(super) fn register(conn: &Connection) -> Result<()> {
-    let present: bool = conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM duckdb_functions() WHERE function_name='wordflow_replace')",
-        [],
-        |row| row.get(0),
-    )?;
-    if present {
-        return Ok(());
-    }
     conn.register_scalar_function::<Replace>("wordflow_replace")?;
     conn.register_scalar_function::<Matches>("wordflow_matches")?;
     conn.register_scalar_function::<Split>("wordflow_split")?;

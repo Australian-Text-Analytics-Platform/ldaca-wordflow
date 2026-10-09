@@ -12,6 +12,7 @@ import {
 } from './frequencyState';
 
 export interface FrequencySettings {
+  presentationOrder?: number[];
   stopwordsEnabled: boolean;
   stopwordSource: StopwordSource | null;
   colors: Record<string, string>;
@@ -25,6 +26,13 @@ export function frequencySettings(
   corpora: Corpus[] = [],
 ): FrequencySettings {
   return {
+    ...(Array.isArray(value.presentationOrder)
+      ? {
+          presentationOrder: value.presentationOrder.filter(
+            (index): index is number => index === 0 || index === 1,
+          ),
+        }
+      : {}),
     stopwordsEnabled: value.stopwordsEnabled === true,
     stopwordSource: stopwordSource(value.stopwordSource),
     colors: Object.fromEntries(
@@ -101,10 +109,16 @@ export function useFrequencySettings(
     settings: { ...(pending ?? frequencySettings(tab.settings, corpora)), ...display },
     persist,
     change: (patch: Partial<FrequencySettings & FrequencyDisplay>) => {
-      const { colors, stopwordSource, stopwordsEnabled, ...local } = patch;
+      const { colors, stopwordSource, stopwordsEnabled, presentationOrder, ...local } = patch;
       if (Object.keys(local).length) useFrequencyState.getState().setDisplay(base, tab.id, local);
-      if (colors !== undefined || stopwordSource !== undefined || stopwordsEnabled !== undefined)
+      if (
+        colors !== undefined ||
+        stopwordSource !== undefined ||
+        stopwordsEnabled !== undefined ||
+        presentationOrder !== undefined
+      )
         void persist({
+          ...(presentationOrder !== undefined ? { presentationOrder } : {}),
           ...(colors !== undefined ? { colors } : {}),
           ...(stopwordSource !== undefined ? { stopwordSource } : {}),
           ...(stopwordsEnabled !== undefined ? { stopwordsEnabled } : {}),

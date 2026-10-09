@@ -435,3 +435,28 @@ fn app_renames_rebase_requests_without_changing_saved_plot_bindings() {
         "new corpus"
     );
 }
+
+#[test]
+fn date_periods_and_duplicate_grouping_are_validated_before_run() {
+    let request = |unit| {
+        PlotRequest::decode(PlotMode::Trends, json!({"source":{"name":"corpus"},"axis":"date","groups":[],"measure":"count","value":null,"interval":{"type":"time","unit":unit,"step":1},"timezone":"UTC"})).unwrap()
+    };
+    let columns = vec![("date".into(), "DATE".into())];
+    assert!(
+        validate(&request("hour"), &columns)
+            .unwrap_err()
+            .to_string()
+            .contains("day or larger")
+    );
+    assert!(validate(&request("day"), &columns).is_ok());
+    let mut duplicate = request("day");
+    if let PlotRequest::Trends(ref mut trends) = duplicate {
+        trends.groups = vec!["date".into(), "date".into()];
+    }
+    assert!(
+        validate(&duplicate, &columns)
+            .unwrap_err()
+            .to_string()
+            .contains("only once")
+    );
+}

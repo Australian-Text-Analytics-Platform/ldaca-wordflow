@@ -79,7 +79,7 @@ export const getFrequencyDraft = (state: FrequencyState, base: string, id: strin
   state.drafts[draftKey(base, id)];
 export function orderedFrequencyRequest(draft: FrequencyDraft): FrequencyRequest {
   const inputs = [...draft.inputs];
-  const study = inputs.findIndex((input) => input.source.name === draft.study);
+  const study = draft.study ? inputs.findIndex((input) => input.source.name === draft.study) : 0;
   if (inputs.length === 2 && study === 0) inputs.reverse();
   return { inputs };
 }

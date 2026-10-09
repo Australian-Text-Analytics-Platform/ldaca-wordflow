@@ -61,7 +61,9 @@ inspect its full text, highlights and metadata, then use Previous/Next to move
 between rows. **Metadata and fields** opens a column-selection popover for original columns and generated
 quotation fields in separate groups, each with Select all/none. Tables have bounded scrolling and sticky headers; text selection does not open the inspector. Context, visible fields and source color are saved with the tab.
 
-Click **Document** or a source metadata header to sort. In Preview, sorting is
+Quotation cells show up to three lines. Clipped cells reveal their full highlighted content on hover or focus. Row Details uses a shorter scrollable document box and reveals the clicked quotation; extraction-pattern explanations appear beside their codes.
+
+Click **Document** or a source metadata header to sort. The Reset sort icon restores original order and page one. In Preview, sorting is
 applied before source pagination; only the resulting page is extracted. Generated
 quotation fields are sortable in the saved **Quotations** tab, where every quotation
 has already been calculated.
@@ -75,7 +77,7 @@ request but no completed result. You can
 edit the next request while a task runs; its captured input does not change.
 Finish any Table editing session before starting Run. Progress appears in the progress card and in Tasks.
 
-A successful Run replaces the Preview display automatically; there is no Preview/Saved results switch. The **Documents** tab is selected by default and groups quotations into their original rows. The **Quotations** tab shows one occurrence per row. Saved pages offer numbered navigation and page jumps; Preview uses document lookahead without counting the whole source. Saved results remain readable after source edits, deletion, Save As and
+A successful Run replaces the Preview display automatically; there is no Preview/Saved results switch. The **Quotations** tab is selected by default and shows one occurrence per row. **Documents** groups quotations into their original rows. Saved pages offer numbered navigation and page jumps; Preview uses document lookahead without counting the whole source. Saved results remain readable after source edits, deletion, Save As and
 project reopening. Rerunning requires a valid current input.
 
 **Add to Project → Quotations** creates one row per saved quotation. **Add to Project → Documents** creates one row per matching document with `QUOTE_extraction` joining
@@ -109,7 +111,7 @@ Blocks previously published from it. Failed runs can be tried again without Clea
 | Engine | Built-in English |
 | Context | 5 words per side |
 | Preview page | 50 source documents |
-| Saved presentation | Documents |
+| Saved presentation | Quotations |
 
 [← Back to tutorial index](./index.md)
 

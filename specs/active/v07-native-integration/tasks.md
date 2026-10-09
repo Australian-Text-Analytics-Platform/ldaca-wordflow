@@ -5,7 +5,7 @@
 - [x] 3. Permanent server projects, uploads and task lifecycle.
 - [x] 4. Data Editor and Data Builder.
 - [x] 5. Topic Modelling retained stages, adjustments and colouring.
-- [ ] 6. Frequency, Concordance, Quotation, Annotation and charts.
+- [x] 6. Frequency, Concordance, Quotation, Annotation and charts.
 - [ ] 7. Shell, navigation, bundled Help and desktop behavior.
 - [ ] 8. Production artifact promotion and operational guidance.
 - [ ] Required package checks and generated API/docs verification.

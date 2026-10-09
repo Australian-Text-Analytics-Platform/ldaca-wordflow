@@ -42,7 +42,7 @@ during either operation does not change the captured request or lose your edits.
 
 <h5 id="help-concordance-regex-toggle">Search options</h5>
 
-Text mode offers **Whole word**, **Regex** and **Case sensitive**. For example,
+Text mode offers **Whole word**, **Regex** and **Ignore case**. For example,
 regex `cat|dog` matches either term. Invalid patterns report an error; a Run that already cleared its prior output does not restore it. Native regex does not support lookaround or backreferences.
 Tokens mode uses exact alternatives rather than regular expressions.
 
@@ -86,11 +86,11 @@ or disappears. Rerunning requires valid current inputs.
 
 <h3 id="help-concordance-table-view">Table</h3>
 
-Each row is one match, with left context, matched text, right context, L1/R1 and character offsets. Saved
+Each row is one match, with left context, matched text, right context and L1/R1. Character offsets remain available in Row Details. Saved
 results additionally show L1/R1 frequencies. Frequencies
 describe the complete saved source result, not merely the displayed page.
 Saved match rows support sorting by their generated fields and selected metadata.
-Preview supports source-metadata sorting only.
+Preview supports source-metadata sorting only. Ignore case changes matching; counts and sorting retain exact case. The Reset sort icon restores original order and page one. Saved Separated tables alternate bands when the document changes after whole-result filtering and sorting; bands remain consistent across pages.
 
 <h3 id="help-concordance-tooltip">Inspect a document</h3>
 
@@ -115,7 +115,7 @@ pages count documents. Preview always pages source documents.
 Use the **Separated / Combined** tabs on the right of the Results header when
 both corpora are present. Separated keeps a source card and page controls for
 each corpus. Combined interleaves the source pages and disables sorting. Source
-colors remain distinct. Switching returns to the first page and combines loaded
+colors remain distinct. Combined density pools counts by term across both named Data Blocks. Switching returns to the first page and combines loaded
 results locally without rerunning the analysis. The layout choice is local to
 the open results panel.
 
@@ -147,8 +147,7 @@ Dispersion restores its selections. Filtering never reruns analysis.
 
 Choose smooth Density: line or Density: area, Density: bar, or the stepped
 Cumulative chart. Chart mode and bin count are shared across source cards.
-Use Zoom in, Zoom out, Reset zoom, the slider or the mouse wheel to inspect a
-range. Selecting bins preserves the zoom. Downloads include source labels,
+Use Zoom in, Zoom out, Reset zoom or the slider to inspect a range. Cmd/Ctrl-wheel zooms; plain wheel movement scrolls the pane. The slider overview shows total match counts per bin, independently of cumulative presentation. Selecting bins preserves the zoom. Downloads include source labels,
 query, scope, legend and filter context.
 
 <h4 id="help-concordance-bin-count">Bins and case</h4>
@@ -161,7 +160,7 @@ exclusions. Grouped labels retain the original spellings, such as `jobs/Jobs`.
 
 In saved Dispersion, click a point or its plot position to toggle a bin.
 Shift-click adds a range to your selection. **Select range** toggles drag mode:
-a drag replaces the selection; Shift-drag adds to it. Selected dots are filled.
+a drag replaces the selection; Shift-drag adds to it. Selected dots are larger and outlined; line/area charts also shade selected bins.
 
 Focus the chart to inspect points with arrows/Home/End and select with Enter or
 Space. Shift extends the selection. Escape exits range mode and hides the tooltip;

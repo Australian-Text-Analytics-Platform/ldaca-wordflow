@@ -62,6 +62,14 @@ const STOPWORD_LANGUAGE_METADATA = [
   { stopwordCode: 'zul', iso6391: 'zu', name: 'Zulu' },
 ] as const;
 
+// Restored from v0.7 3cd4deda4, archived backend 91278ed2. See bundled References for provenance.
+const LDACA_LANGUAGES = [
+  { iso6391: 'ldaca:en', name: 'English (LDaCA provided)' },
+  { iso6391: 'ldaca:fr', name: 'French (LDaCA provided)' },
+  { iso6391: 'ldaca:ja', name: 'Japanese (LDaCA provided)' },
+  { iso6391: 'ldaca:ko', name: 'Korean (LDaCA provided)' },
+  { iso6391: 'ldaca:es', name: 'Spanish (LDaCA provided)' },
+];
 interface MergedStopwordsResult {
   byLanguage: { language: string; words: string[] }[];
   merged: string[];
@@ -106,25 +114,42 @@ export async function loadMergedStopwords({
   const selected = new Map<string, (typeof STOPWORD_LANGUAGE_METADATA)[number]>();
   for (const language of languages) {
     const code = language?.trim().toLowerCase().split(/[-_]/, 1)[0];
+    if (LDACA_LANGUAGES.some((item) => item.iso6391 === code)) continue;
     const list = STOPWORD_LANGUAGE_METADATA.find(
       (item) => item.iso6391 === normaliseIso6391LanguageCode(code) || item.stopwordCode === code,
     );
     if (list) selected.set(list.iso6391, list);
   }
-  if (selected.size === 0) return { byLanguage: [], merged: [] };
-  const module = await loadStopwordModule();
-  const byLanguage = [...selected.values()].map(({ iso6391, stopwordCode }) => {
-    const words = module[stopwordCode];
-    return {
-      language: iso6391,
-      words: Array.isArray(words)
-        ? words
-            .filter((word): word is string => typeof word === 'string')
-            .map((word) => word.trim())
-            .filter(Boolean)
-        : [],
-    };
-  });
+  const classics = [
+    ...new Set(
+      languages.filter(
+        (language): language is string =>
+          typeof language === 'string' && LDACA_LANGUAGES.some((item) => item.iso6391 === language),
+      ),
+    ),
+  ];
+  if (selected.size === 0 && classics.length === 0) return { byLanguage: [], merged: [] };
+  const module = selected.size ? await loadStopwordModule() : {};
+  const classicWords = classics.length ? (await import('./ldacaStopwords.json')).default : {};
+
+  const byLanguage: MergedStopwordsResult['byLanguage'] = [...selected.values()].map(
+    ({ iso6391, stopwordCode }) => {
+      const words = module[stopwordCode];
+      return {
+        language: iso6391,
+        words: Array.isArray(words)
+          ? words
+              .filter((word): word is string => typeof word === 'string')
+              .map((word) => word.trim())
+              .filter(Boolean)
+          : [],
+      };
+    },
+  );
+  for (const language of classics) {
+    const words = classicWords[language.slice(6) as keyof typeof classicWords];
+    byLanguage.push({ language, words: Array.isArray(words) ? words : [] });
+  }
   return {
     byLanguage,
     merged: mergeStopwords(
@@ -135,7 +160,8 @@ export async function loadMergedStopwords({
 }
 
 export function listSupportedStopwordLanguages(): { iso6391: string; name: string }[] {
-  return STOPWORD_LANGUAGE_METADATA.map(({ iso6391, name }) => ({ iso6391, name })).sort((a, b) =>
-    a.name.localeCompare(b.name),
-  );
+  return [
+    ...STOPWORD_LANGUAGE_METADATA.map(({ iso6391, name }) => ({ iso6391, name })),
+    ...LDACA_LANGUAGES,
+  ].sort((a, b) => a.name.localeCompare(b.name));
 }

@@ -22,6 +22,7 @@ import {
 // ---- Public types ----
 
 interface RowDetailCustomization {
+  documentLines?: number;
   /** Label shown in the dialog title parentheses, e.g. "Concordance" */
   label?: string;
   /** Key-value pairs shown in the metadata grid below the title */
@@ -166,7 +167,14 @@ export function RowDetailPanel({
                 Document{textColumn ? `: ${textColumn}` : ''}
               </h4>
               <div className="bg-panel p-4 rounded-lg border">
-                <div className="font-mono text-body whitespace-pre-wrap max-h-96 overflow-y-auto">
+                <div
+                  className="font-mono text-body whitespace-pre-wrap max-h-96 overflow-y-auto"
+                  style={
+                    customization?.documentLines
+                      ? { maxHeight: `${String(customization.documentLines)}lh` }
+                      : undefined
+                  }
+                >
                   {documentContent}
                 </div>
               </div>

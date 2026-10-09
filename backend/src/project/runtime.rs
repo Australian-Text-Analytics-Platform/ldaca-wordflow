@@ -1689,13 +1689,19 @@ mod plots_icu_tests {
         runtime.set_icu_path(asset).unwrap();
         runtime.create(None).await.unwrap();
         runtime.with_writable_project(|p|{p.conn.execute_batch("SET autoinstall_known_extensions=false; SET autoload_known_extensions=false; CREATE TABLE data.corpus(t TIMESTAMPTZ); INSERT INTO data.corpus VALUES ('2026-03-07 12:00:00+00'),('2026-03-09 12:00:00+00'); INSERT INTO wordflow.nodes(table_name) VALUES ('corpus')")?; Ok(())}).await.unwrap();
-        assert!(
-            runtime
-                .plot_timezones()
-                .await
-                .unwrap()
-                .contains(&"America/New_York".into())
-        );
+        let mut reads = tokio::task::JoinSet::new();
+        for _ in 0..24 {
+            let runtime = runtime.clone();
+            reads.spawn(async move { runtime.plot_timezones().await });
+        }
+        while let Some(result) = reads.join_next().await {
+            assert!(
+                result
+                    .unwrap()
+                    .unwrap()
+                    .contains(&"America/New_York".into())
+            );
+        }
         let tab = runtime
             .create_analysis_tab(CreateTab {
                 kind: "trends".into(),

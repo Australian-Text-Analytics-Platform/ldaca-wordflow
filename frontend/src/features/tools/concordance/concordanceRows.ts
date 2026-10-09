@@ -17,6 +17,7 @@ export interface DocumentRow {
   source: Record<string, unknown>;
   matches: Match[];
   sourceIndex: number;
+  documentBand?: number;
 }
 export function decodeConcordanceRows(table: Table, sourceIndex: number): DocumentRow[] {
   return table.toArray().map((value) => {
@@ -33,6 +34,14 @@ export function decodeConcordanceRows(table: Table, sourceIndex: number): Docume
       documentId: String(row.document_id),
       source: source.toJSON?.() ?? source,
       sourceIndex,
+      documentBand:
+        typeof row.document_band === 'bigint'
+          ? Number(row.document_band % 2n)
+          : typeof row.document_band === 'number'
+            ? row.document_band % 2
+            : typeof row.document_band === 'string'
+              ? Number(BigInt(row.document_band) % 2n)
+              : undefined,
       matches: hits.map(
         (hit) =>
           ({

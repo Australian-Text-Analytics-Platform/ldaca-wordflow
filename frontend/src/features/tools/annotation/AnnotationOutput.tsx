@@ -417,9 +417,25 @@ export function AnnotationOutput({
             <ProjectTable
               base={base}
               data={editingPage ? (editor?.data ?? []) : decoded.rows}
+              rowDetailData={decoded.rows.map((row, index) =>
+                Object.fromEntries(
+                  Object.entries(row).map(([column, value]) => {
+                    const cell = editableCell(index, column);
+                    return [
+                      column,
+                      compare.includes(column) && !revealed.includes(column)
+                        ? 'Hidden'
+                        : cell
+                          ? cell.value
+                          : value,
+                    ];
+                  }),
+                ),
+              )}
               columns={visible}
               columnFields={Object.fromEntries(decoded.schema.map((c) => [c.name, c.field]))}
               fetching={editingPage ? editor?.rows.isFetching : rows.isFetching}
+              pageError={editingPage ? editor?.rows.error : rows.error}
               documentColumn={setup.document}
               nodeLabel={setup.source.name}
               pagination={{

@@ -360,6 +360,8 @@ async fn export(
 struct TokenizerInfo {
     model_id: &'static str,
     label: &'static str,
+    #[schema(required = false)]
+    about_url: Option<&'static str>,
     languages: &'static [&'static str],
 }
 #[utoipa::path(
@@ -374,6 +376,7 @@ async fn tokenizers() -> impl IntoResponse {
             .map(|model| TokenizerInfo {
                 model_id: model.model_id,
                 label: model.label,
+                about_url: Some(model.about_url),
                 languages: model.languages,
             })
             .collect::<Vec<_>>(),

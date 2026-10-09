@@ -3,7 +3,7 @@ import JSZip from 'jszip';
 import { Blob as NodeBlob } from 'node:buffer';
 import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { buildChartExport } from '../common/chartExport';
-import { buildFrequencyBundle } from './frequencyExport';
+import { buildFrequencyBundle, frequencyFigure } from './frequencyExport';
 
 const native = vi.hoisted(() => ({ active: false, invoke: vi.fn() }));
 vi.mock('@/lib/isTauri', () => ({ isTauri: () => native.active }));
@@ -120,4 +120,28 @@ it('retains native cancellation and task-owned error identities', async () => {
     code: 'export_failed',
     taskId: 'export-1',
   });
+});
+
+it('captures source names, colours, blend meaning and escaped long labels in image and ZIP bytes', async () => {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 320 180');
+  const figure = frequencyFigure(
+    svg,
+    'Frequency',
+    [
+      { label: 'Reference: <猫>'.repeat(20), color: 'red' },
+      { label: 'Study: report', color: 'blue' },
+    ],
+    true,
+  );
+  const blob = await buildChartExport(figure, 'svg');
+  const text = await blob.text();
+  expect(text).toContain('Reference: &lt;猫&gt;');
+  expect(text).toContain('Study: report');
+  expect(text).toContain('Colours blend');
+  expect(svg.children).toHaveLength(0);
+  const zip = await JSZip.loadAsync(
+    await (await buildFrequencyBundle(blob, 'chart.svg', [])).arrayBuffer(),
+  );
+  expect(await zip.file('chart.svg')?.async('string')).toBe(text);
 });

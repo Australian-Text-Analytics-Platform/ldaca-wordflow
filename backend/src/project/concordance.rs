@@ -619,6 +619,60 @@ mod tests {
         assert_eq!(row, ("😀 cat cat".into(), "cat".into()));
     }
     #[test]
+    fn document_bands_follow_whole_result_sorting_across_pages() {
+        let (mut project, tab, input, search) = setup();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let result = project
+            .database
+            .test_concordance(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        let mut bands = |page, sort| {
+            let output = project
+                .database
+                .concordance_page(
+                    result.id,
+                    ConcordanceQuery {
+                        source_index: 0,
+                        projection: Projection::Matches,
+                        filter: ConcordanceFilter::default(),
+                        page,
+                        page_size: 3,
+                        sort,
+                    },
+                )
+                .unwrap();
+            let mut reader =
+                arrow_ipc::reader::StreamReader::try_new(output.file.reopen().unwrap(), None)
+                    .unwrap();
+            let batch = reader.next().unwrap().unwrap();
+            let values = batch
+                .column_by_name("document_band")
+                .unwrap()
+                .as_any()
+                .downcast_ref::<duckdb::arrow::array::UInt64Array>()
+                .unwrap();
+            values.values().to_vec()
+        };
+        assert_eq!(bands(1, None), [1, 1, 2]);
+        assert_eq!(bands(2, None), [2]);
+        let sort = Some(SavedSort {
+            field: "l1".into(),
+            metadata: false,
+            descending: false,
+        });
+        assert_eq!(bands(1, sort.clone()), [1, 2, 3]);
+        assert_eq!(bands(2, sort), [4]);
+    }
+
+    #[test]
     fn empty_saved_results_keep_explicit_schemas() {
         let (mut project, tab, input, mut search) = setup();
         search.query = "absent".into();

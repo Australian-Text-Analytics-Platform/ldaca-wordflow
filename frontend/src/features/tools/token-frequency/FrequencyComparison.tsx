@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 
 interface FrequencyComparisonProps {
+  studyAgainstReference?: boolean;
   rows: Record<string, unknown>[];
   colors?: string[];
   label: string;
@@ -121,6 +122,7 @@ const columns: ComparisonColumn[] = [
 ];
 
 function displayValue(value: unknown, format?: ComparisonColumn['format']): string {
+  if (value === null) return format === 'percent' ? 'N/A' : '—';
   if (format === 'direction') return typeof value === 'string' ? value : '—';
   if (format === 'significance') return typeof value === 'string' ? value || 'n.s.' : '—';
   if (format === 'count') {
@@ -138,6 +140,7 @@ function displayValue(value: unknown, format?: ComparisonColumn['format']): stri
 
 /** Server ordering and projection remain authoritative; this table only presents rows. */
 export function FrequencyComparison({
+  studyAgainstReference = false,
   rows,
   colors = [],
   label,
@@ -147,18 +150,40 @@ export function FrequencyComparison({
   onTokenContextMenu,
   onTokenClick,
 }: FrequencyComparisonProps) {
+  const displayedColumns = studyAgainstReference
+    ? columns.map((column) => {
+        const explanations: Record<string, string> = {
+          signed_ll:
+            'Signed log likelihood: positive for higher relative frequency in Study, negative for Reference.',
+          percent_diff:
+            '100 × (Study relative frequency − Reference relative frequency) / Reference relative frequency. N/A when Reference count is zero.',
+          relative_risk:
+            'Study relative frequency divided by Reference relative frequency; 1 means equal frequency.',
+          log_ratio:
+            'Base-2 logarithm of the Study-to-Reference relative-frequency ratio, using 0.5 for a zero count. Positive means higher in Study.',
+          odds_ratio: 'Study token odds divided by Reference token odds; 1 means equal odds.',
+        };
+        return { ...column, explanation: explanations[column.key] ?? column.explanation };
+      })
+    : columns;
   return (
     <TooltipProvider>
       <div className="min-w-0 space-y-2">
         <p className="text-label-secondary text-description">
-          Ratios compare Reference to Study. Positive LogRatio means higher relative frequency in
-          Reference; negative means higher in Study. Difference % uses a tiny denominator when Study
-          count is zero; very large values use scientific notation.
+          {studyAgainstReference ? (
+            'Ratios compare Study to Reference. Positive LogRatio means higher relative frequency in Study; negative means higher in Reference. Difference % is N/A when Reference count is zero.'
+          ) : (
+            <>
+              Ratios compare Reference to Study. Positive LogRatio means higher relative frequency
+              in Reference; negative means higher in Study. Difference % uses a tiny denominator
+              when Study count is zero; very large values use scientific notation.
+            </>
+          )}
         </p>
         <Table aria-label={label} className="w-max min-w-full" containerClassName="max-w-full">
           <TableHeader>
             <TableRow>
-              {columns.map((column) => (
+              {displayedColumns.map((column) => (
                 <TableHead
                   key={column.key}
                   scope="col"
@@ -230,7 +255,7 @@ export function FrequencyComparison({
                   }}
                 >
                   <TableCell className="max-w-56 break-words font-medium">{token}</TableCell>
-                  {columns.slice(1).map((column) => (
+                  {displayedColumns.slice(1).map((column) => (
                     <TableCell
                       key={column.key}
                       className="whitespace-nowrap text-right tabular-nums"
@@ -248,7 +273,9 @@ export function FrequencyComparison({
                         >
                           {displayValue(row[column.key], column.format)}
                         </span>
-                      ) : column.key === 'percent_diff' && String(row.freq_corpus_1) === '0' ? (
+                      ) : !studyAgainstReference &&
+                        column.key === 'percent_diff' &&
+                        String(row.freq_corpus_1) === '0' ? (
                         <Tooltip>
                           <TooltipTrigger asChild>
                             <span

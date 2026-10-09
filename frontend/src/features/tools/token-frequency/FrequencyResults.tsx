@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,11 +23,17 @@ import { useStopwords } from '../common/stopwords/useStopwords';
 import { emptyConcordance, useConcordanceState } from '../concordance/concordanceState';
 import { FrequencyCorpusCloud, FrequencyJuxtorpusCloud } from './FrequencyCharts';
 import { FrequencyComparison } from './FrequencyComparison';
+import { ResetSortButton } from '../common/components/ResetSortButton';
 import { FrequencyCorpusLegend } from './FrequencyCorpusLegend';
 import { FrequencyDownload } from './FrequencyDownload';
-import { buildFrequencyBundle, type DownloadFormat } from './frequencyExport';
+import { buildFrequencyBundle, frequencyFigure, type DownloadFormat } from './frequencyExport';
 import { FREQUENCY_LIST_CHUNK_SIZE, FrequencyRankedList } from './FrequencyRankedList';
-import { corpusColor, exactCount, useFrequencySettings } from './frequencySettings';
+import {
+  corpusColor,
+  exactCount,
+  frequencySettings,
+  useFrequencySettings,
+} from './frequencySettings';
 
 const NO_STOPWORDS: string[] = [];
 type RecordRow = Record<string, unknown>;
@@ -81,11 +88,14 @@ export function FrequencyResults({
   const handoff = useMutation({
     mutationFn: async (token: string) => {
       const request = {
-        inputs: result.result.payload.corpora.map(({ source, column, tokenizer }) => ({
-          source,
-          column,
-          tokenizer,
-        })),
+        inputs: result.result.payload.corpora
+          .map((corpus, index) => ({ corpus, index }))
+          .sort(
+            (a, b) =>
+              (frequencySettings(tab.settings).presentationOrder ?? [0, 1]).indexOf(a.index) -
+              (frequencySettings(tab.settings).presentationOrder ?? [0, 1]).indexOf(b.index),
+          )
+          .map(({ corpus: { source, column, tokenizer } }) => ({ source, column, tokenizer })),
         search: { ...emptyConcordance.search, query: token },
       };
       const created = await analysesApi.createTab(base, 'concordance');
@@ -175,7 +185,7 @@ export function FrequencyResults({
   const comparisonQuery: frequencyApi.FrequencyQuery = {
     ...common,
     view: 'comparison',
-    sort: settings.comparisonSort,
+    sort: settings.comparisonSort || undefined,
     descending: settings.comparisonDescending,
     page,
     page_size: settings.comparisonRows,
@@ -239,7 +249,25 @@ export function FrequencyResults({
       query: structuredClone(query),
       analysisId: result.id,
       stopwords: [...stopwords],
-      ...(svg ? { svg: svg.cloneNode(true) as SVGSVGElement } : {}),
+      ...(svg
+        ? {
+            svg: frequencyFigure(
+              svg,
+              label,
+              result.result.payload.corpora.flatMap((corpus, index) =>
+                query.view === 'corpus' && index !== query.corpus_index
+                  ? []
+                  : [
+                      {
+                        label: `${result.result.payload.corpora.length === 2 ? (index === 0 ? 'Reference: ' : 'Study: ') : ''}${corpus.label}`,
+                        color: colors[index] ?? GREY,
+                      },
+                    ],
+              ),
+              query.view === 'juxtorpus',
+            ),
+          }
+        : {}),
     });
   };
   const exportCaptured = async (format: DownloadFormat, includeStopwords: boolean) => {
@@ -292,7 +320,9 @@ export function FrequencyResults({
   const juxtorpusRows = juxtaposed.data?.rows ?? NO_ROWS;
   const comparisonRows = compared.data?.rows ?? NO_ROWS;
   const querying = projections.some((projection) => projection.isFetching);
-  const queryError = projections.find((projection) => projection.isError);
+  const queryError = projections.find(
+    (projection) => projection.isError && projection.error?.name !== 'AbortError',
+  );
   const [displayedOutput, setDisplayedOutput] = useState(false);
   const initial = [
     ...corpusData,
@@ -422,123 +452,134 @@ export function FrequencyResults({
         </p>
       )}
       {queryError && (
-        <p role="alert" className="text-description">
-          The display could not be updated. Saved results are retained.{' '}
-          <Button
-            variant="link"
-            onClick={() => {
-              void queryError.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        </p>
+        <OperationError
+          title="Could not update Frequency display"
+          error={queryError.error}
+          onRetry={() => {
+            void queryError.refetch();
+          }}
+        />
       )}
       <div className="grid min-w-0 grid-cols-1 gap-4 @xl/frequency:grid-cols-2">
-        {result.result.payload.corpora.map((corpus, index) => {
-          const rows = corpusData[index]?.data?.rows ?? NO_ROWS;
-          const label = corpus.label;
-          return (
-            <section key={index} aria-label={`${label} frequencies`} className="min-w-0 space-y-2">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="break-words font-semibold">{label}</h3>
-                  {filterText && corpusData[index]?.data && (
-                    <p className="text-description text-label-secondary">
-                      {corpusData[index].data.totalRows.toLocaleString()} matching tokens
-                    </p>
-                  )}
-                  {result.result.payload.corpora.length === 2 && (
-                    <p className="text-description">
-                      {index === 0 ? 'Reference corpus' : 'Study corpus'}
-                    </p>
-                  )}
-                </div>
-                <DownloadButton
-                  label={`Export ${label} ${settings.display === 'cloud' ? 'cloud' : 'list'}`}
-                  disabled={
-                    stopwordsUnavailable ||
-                    !rows.length ||
-                    corpusData[index]?.isFetching === true ||
-                    corpusData[index]?.isPlaceholderData === true ||
-                    filterText !== filter
-                  }
-                  onClick={() => {
-                    capture(
-                      label,
-                      settings.display === 'cloud' ? 'chart' : 'table',
-                      { ...common, view: 'corpus', corpus_index: index },
-                      `corpus-${String(index)}`,
-                    );
-                  }}
-                />
-              </div>
-              <dl className="flex flex-wrap gap-x-4 gap-y-1 text-label-secondary text-description">
-                <div>
-                  <dt>Documents</dt>
-                  <dd className="tabular-nums">{exactCount(corpus.document_count)}</dd>
-                </div>
-                <div>
-                  <dt>Total tokens</dt>
-                  <dd className="tabular-nums">{exactCount(corpus.total_tokens)}</dd>
-                </div>
-                <div>
-                  <dt>Vocabulary</dt>
-                  <dd className="tabular-nums">{exactCount(corpus.vocabulary_size)}</dd>
-                </div>
-              </dl>
-              {!rows.length && !corpusData[index]?.isPending ? (
-                <p className="py-4 text-description">No matching tokens.</p>
-              ) : settings.display === 'cloud' ? (
-                <FrequencyCorpusCloud
-                  label={`${label} word cloud`}
-                  rows={rows}
-                  color={colors[index]}
-                  onTokenContextMenu={addStopword}
-                  onTokenClick={openToken}
-                  svgRef={(element) => {
-                    bindSvg(`corpus-${String(index)}`, element);
-                  }}
-                />
-              ) : (
-                <FrequencyRankedList
-                  key={JSON.stringify([corpusQueries[index], liveWords.dataUpdatedAt])}
-                  base={base}
-                  analysisId={result.id}
-                  query={corpusQueries[index] ?? { ...common, view: 'corpus', corpus_index: index }}
-                  firstPage={corpusData[index]?.data}
-                  active={active && !stopwordsUnavailable && !corpusData[index]?.isPlaceholderData}
-                  label={`${label} ranked frequencies`}
-                  color={colors[index] ?? GREY}
-                  onTokenContextMenu={addStopword}
-                  onTokenClick={openToken}
-                  registerScrollElement={(element) => {
-                    if (element) scrolls.current.set(index, element);
-                    else scrolls.current.delete(index);
-                  }}
-                  onScroll={(event) => {
-                    const source = event.currentTarget;
-                    const expected = synchronized.current.get(source);
-                    synchronized.current.delete(source);
-                    if (expected !== undefined && Math.abs(expected - source.scrollTop) <= 1)
-                      return;
-                    for (const [other, element] of scrolls.current) {
-                      if (other === index) continue;
-                      const position = Math.min(
-                        source.scrollTop,
-                        Math.max(0, element.scrollHeight - element.clientHeight),
-                      );
-                      if (Math.abs(element.scrollTop - position) > 1) {
-                        synchronized.current.set(element, position);
-                        element.scrollTop = position;
-                      }
+        {result.result.payload.corpora
+          .map((corpus, index) => ({ corpus, index }))
+          .sort(
+            (a, b) =>
+              (settings.presentationOrder ?? [0, 1]).indexOf(a.index) -
+              (settings.presentationOrder ?? [0, 1]).indexOf(b.index),
+          )
+          .map(({ corpus, index }) => {
+            const rows = corpusData[index]?.data?.rows ?? NO_ROWS;
+            const label = corpus.label;
+            return (
+              <section
+                key={index}
+                aria-label={`${label} frequencies`}
+                className="min-w-0 space-y-2"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="break-words font-semibold">{label}</h3>
+                    {filterText && corpusData[index]?.data && (
+                      <p className="text-description text-label-secondary">
+                        {corpusData[index].data.totalRows.toLocaleString()} matching tokens
+                      </p>
+                    )}
+                    {result.result.payload.corpora.length === 2 && (
+                      <p className="text-description">
+                        {index === 0 ? 'Reference corpus' : 'Study corpus'}
+                      </p>
+                    )}
+                  </div>
+                  <DownloadButton
+                    label={`Export ${label} ${settings.display === 'cloud' ? 'cloud' : 'list'}`}
+                    disabled={
+                      stopwordsUnavailable ||
+                      !rows.length ||
+                      corpusData[index]?.isFetching === true ||
+                      corpusData[index]?.isPlaceholderData === true ||
+                      filterText !== filter
                     }
-                  }}
-                />
-              )}
-            </section>
-          );
-        })}
+                    onClick={() => {
+                      capture(
+                        label,
+                        settings.display === 'cloud' ? 'chart' : 'table',
+                        { ...common, view: 'corpus', corpus_index: index },
+                        `corpus-${String(index)}`,
+                      );
+                    }}
+                  />
+                </div>
+                <dl className="flex flex-wrap gap-x-4 gap-y-1 text-label-secondary text-description">
+                  <div>
+                    <dt>Documents</dt>
+                    <dd className="tabular-nums">{exactCount(corpus.document_count)}</dd>
+                  </div>
+                  <div>
+                    <dt>Total tokens</dt>
+                    <dd className="tabular-nums">{exactCount(corpus.total_tokens)}</dd>
+                  </div>
+                  <div>
+                    <dt>Vocabulary</dt>
+                    <dd className="tabular-nums">{exactCount(corpus.vocabulary_size)}</dd>
+                  </div>
+                </dl>
+                {!rows.length && !corpusData[index]?.isPending ? (
+                  <p className="py-4 text-description">No matching tokens.</p>
+                ) : settings.display === 'cloud' ? (
+                  <FrequencyCorpusCloud
+                    label={`${label} word cloud`}
+                    rows={rows}
+                    color={colors[index]}
+                    onTokenContextMenu={addStopword}
+                    onTokenClick={openToken}
+                    svgRef={(element) => {
+                      bindSvg(`corpus-${String(index)}`, element);
+                    }}
+                  />
+                ) : (
+                  <FrequencyRankedList
+                    key={JSON.stringify([corpusQueries[index], liveWords.dataUpdatedAt])}
+                    base={base}
+                    analysisId={result.id}
+                    query={
+                      corpusQueries[index] ?? { ...common, view: 'corpus', corpus_index: index }
+                    }
+                    firstPage={corpusData[index]?.data}
+                    active={
+                      active && !stopwordsUnavailable && !corpusData[index]?.isPlaceholderData
+                    }
+                    label={`${label} ranked frequencies`}
+                    color={colors[index] ?? GREY}
+                    onTokenContextMenu={addStopword}
+                    onTokenClick={openToken}
+                    registerScrollElement={(element) => {
+                      if (element) scrolls.current.set(index, element);
+                      else scrolls.current.delete(index);
+                    }}
+                    onScroll={(event) => {
+                      const source = event.currentTarget;
+                      const expected = synchronized.current.get(source);
+                      synchronized.current.delete(source);
+                      if (expected !== undefined && Math.abs(expected - source.scrollTop) <= 1)
+                        return;
+                      for (const [other, element] of scrolls.current) {
+                        if (other === index) continue;
+                        const position = Math.min(
+                          source.scrollTop,
+                          Math.max(0, element.scrollHeight - element.clientHeight),
+                        );
+                        if (Math.abs(element.scrollTop - position) > 1) {
+                          synchronized.current.set(element, position);
+                          element.scrollTop = position;
+                        }
+                      }
+                    }}
+                  />
+                )}
+              </section>
+            );
+          })}
       </div>
       {result.result.payload.comparison_artifact_id &&
         (settings.display === 'cloud' ? (
@@ -594,6 +635,13 @@ export function FrequencyResults({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <h3 className="font-semibold">Keyness statistics</h3>
+                <ResetSortButton
+                  sorted={Boolean(settings.comparisonSort)}
+                  onReset={() => {
+                    change({ comparisonSort: '', comparisonDescending: true });
+                    setPagination({ key: '', page: 1 });
+                  }}
+                />
                 {filterText && compared.data && (
                   <span className="text-description text-label-secondary">
                     {compared.data.totalRows.toLocaleString()} matching tokens
@@ -627,6 +675,7 @@ export function FrequencyResults({
             </p>
             <FrequencyCorpusLegend corpora={result.result.payload.corpora} colors={colors} />
             <FrequencyComparison
+              studyAgainstReference={result.result.payload.study_against_reference}
               colors={colors}
               rows={comparisonRows}
               label="Frequency comparison"
@@ -643,6 +692,7 @@ export function FrequencyResults({
               onTokenClick={openToken}
             />
             <TablePaginationFooter
+              pageSizeLabel="Words per page"
               pageIndex={page - 1}
               pageSize={settings.comparisonRows}
               rowCount={compared.data?.totalRows ?? 0}

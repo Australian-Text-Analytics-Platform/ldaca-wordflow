@@ -3,7 +3,7 @@ import { expect, it } from 'vite-plus/test';
 import { TopicSizeComposition, topicShare } from './TopicSizeComposition';
 import { topicGroupStyle } from './topicModelingGraph';
 import { matchTopicWords } from './topicSearch';
-import { wrapFigureText } from './topicExport';
+import { wrapFigureText } from '../common/figureText';
 
 it('shows own-population shares in single-input, grouped and unknown-denominator contexts', () => {
   expect(topicShare(1, 10000)).toBe('<0.1%');

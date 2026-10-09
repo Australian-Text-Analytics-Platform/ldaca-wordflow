@@ -1,3 +1,4 @@
+import { escapeChartText as escape } from '../common/chartText';
 import type { PlotMode, PlotRequest, PlotSelection } from '@/features/tools/plots/api';
 import { format, type EChartsCoreOption } from 'echarts/core';
 import { showValue } from '../common/analysisValue';
@@ -5,7 +6,7 @@ import { VIZ_PALETTE } from '../common/vizPalette';
 export type PlotRow = Record<string, unknown>;
 export interface PlotDisplay {
   timezone?: string;
-  style: 'line' | 'area' | 'bar' | 'calendar';
+  style: 'line' | 'area' | 'bar' | 'stacked_bar' | 'calendar';
   smooth: boolean;
   normalize: boolean;
   uncased: boolean;
@@ -49,11 +50,6 @@ export const categoryLabel = (key: string): string => {
 const text = (r: PlotRow, key: string) => showValue(r[key]);
 const number = (r: PlotRow, key: string) =>
   r[key] === null || r[key] === undefined ? null : Number(r[key]);
-const escape = (s: string) =>
-  s.replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c] ?? c,
-  );
 export function plotMeasure(request: PlotRequest): string {
   if (!('measure' in request)) return 'Individual rows';
   return request.measure === 'count'
@@ -87,7 +83,7 @@ export function wrapPlotLabel(label: string, width = 150): string {
 const insideZoom = {
   type: 'inside',
   filterMode: 'none',
-  zoomOnMouseWheel: 'ctrl',
+  zoomOnMouseWheel: false,
   moveOnMouseWheel: false,
 };
 /** DuckDB prints short UTC offsets; normalize them for both Chromium and WebKit. */
@@ -164,7 +160,8 @@ export function buildPlot(
     tooltip: {
       trigger: 'item',
       confine: true,
-      formatter: (p: { data?: { summary?: string } }) => escape(p.data?.summary ?? ''),
+      formatter: (p: { data?: { summary?: string }; marker?: string }) =>
+        `${p.marker ?? ''}${escape(p.data?.summary ?? '')}`,
     },
     grid: {
       left: 72,
@@ -183,7 +180,7 @@ export function buildPlot(
   };
   const legend = keys.map((key) => ({
     key,
-    label: categoryLabel(key),
+    label: key === '[]' ? request.source.name : categoryLabel(key),
     count: (grouped.get(key) ?? []).reduce(
       (total, r) => total + (mode === 'scatter' ? 1 : Number(r.row_count ?? 0)),
       0,
@@ -338,19 +335,47 @@ export function buildPlot(
     }
     const stack =
       (request.measure === 'count' || (request.measure === 'sum' && display.nonnegative)) &&
-      display.style !== 'line';
-    const series = keys
+      (display.style === 'area' || display.style === 'stacked_bar');
+    const intervals = [...new Set(rows.map(x))].sort((a, b) => a - b);
+    const selectedBands = intervals.flatMap((coordinate, index) =>
+      rows.some((row) => x(row) === coordinate && selected(text(row, 'interval_key')))
+        ? [
+            [
+              {
+                xAxis: index ? (coordinate + (intervals[index - 1] ?? coordinate)) / 2 : coordinate,
+              },
+              { xAxis: (coordinate + (intervals[index + 1] ?? coordinate)) / 2 },
+            ],
+          ]
+        : [],
+    );
+    const stripes = intervals.flatMap((coordinate, index) =>
+      index % 2 === 0 && intervals[index + 1] !== undefined
+        ? [[{ xAxis: coordinate }, { xAxis: intervals[index + 1] }]]
+        : [],
+    );
+    const series = (stack ? [...keys].reverse() : keys)
       .filter((k) => !selection.hidden.includes(k))
-      .map((key) => ({
+      .map((key, index) => ({
         id: key,
-        name: categoryLabel(key),
-        type: display.style === 'bar' ? 'bar' : 'line',
+        markArea:
+          index === 0
+            ? {
+                silent: true,
+                label: { show: false },
+                itemStyle: { opacity: 0.04 },
+                data: ['bar', 'stacked_bar'].includes(display.style) ? stripes : selectedBands,
+              }
+            : undefined,
+        name: key === '[]' ? request.source.name : categoryLabel(key),
+        type: display.style === 'bar' || display.style === 'stacked_bar' ? 'bar' : 'line',
         stack: stack ? 'total' : undefined,
         smooth: display.smooth,
         areaStyle: display.style === 'area' ? {} : undefined,
         connectNulls: false,
         symbol: 'circle',
-        symbolSize: 7,
+        symbolSize: (_value: unknown, params: { data: { selected?: boolean } }) =>
+          params.data.selected ? 11 : 7,
         itemStyle: { color: color(key) },
         emphasis: { focus: 'series' },
         data: (grouped.get(key) ?? []).map((r) => {
@@ -365,7 +390,10 @@ export function buildPlot(
             ),
             value: [x(r), v],
             itemStyle: {
-              color: display.style === 'bar' || selected(k) ? color(key) : 'transparent',
+              color:
+                display.style === 'bar' || display.style === 'stacked_bar' || selected(k)
+                  ? color(key)
+                  : 'transparent',
               borderColor: color(key),
               borderWidth: 2,
               opacity: selectedKeys.size && !selected(k) ? 0.35 : 1,
@@ -373,53 +401,89 @@ export function buildPlot(
           };
         }),
       }));
+    const volume = new Map<number, number>();
+    rows.forEach((row) =>
+      volume.set(x(row), (volume.get(x(row)) ?? 0) + Number(row.row_count ?? 0)),
+    );
     return {
       legend,
       points,
       option: {
         ...base,
         useUTC: true,
-        xAxis: {
-          type: isTime ? 'time' : 'value',
-          name:
-            request.axis +
-            (isTime ? (display.timezone ? ` (${display.timezone})` : '') : axis.suffix),
-          nameLocation: 'middle',
-          nameGap: 36,
-          axisLabel: {
-            hideOverlap: true,
-            ...(isTime && display.timezone
-              ? {
-                  formatter: (value: number) =>
-                    new Intl.DateTimeFormat(undefined, {
-                      timeZone: display.timezone,
-                      year: 'numeric',
-                      month: 'short',
-                      day: 'numeric',
-                      ...('interval' in request &&
-                      request.interval.type === 'time' &&
-                      ['second', 'minute', 'hour'].includes(request.interval.unit)
-                        ? {
-                            hour: '2-digit' as const,
-                            minute: '2-digit' as const,
-                            ...(request.interval.unit === 'second'
-                              ? { second: '2-digit' as const }
-                              : {}),
-                          }
-                        : {}),
-                    }).format(value),
-                }
-              : {}),
+        xAxis: [
+          {
+            type: isTime ? 'time' : 'value',
+            name:
+              request.axis +
+              (isTime ? (display.timezone ? ` (${display.timezone})` : '') : axis.suffix),
+            nameLocation: 'middle',
+            nameGap: 36,
+            axisLabel: {
+              hideOverlap: true,
+              ...(isTime
+                ? {
+                    formatter: (value: number) =>
+                      new Intl.DateTimeFormat(undefined, {
+                        timeZone: display.timezone || 'UTC',
+                        year: 'numeric',
+                        month:
+                          request.interval.type === 'time' && request.interval.unit === 'year'
+                            ? undefined
+                            : 'short',
+                        day:
+                          request.interval.type === 'time' &&
+                          ['year', 'quarter', 'month'].includes(request.interval.unit)
+                            ? undefined
+                            : 'numeric',
+                        ...('interval' in request &&
+                        request.interval.type === 'time' &&
+                        ['second', 'minute', 'hour'].includes(request.interval.unit)
+                          ? {
+                              hour: '2-digit' as const,
+                              minute: '2-digit' as const,
+                              ...(request.interval.unit === 'second'
+                                ? { second: '2-digit' as const }
+                                : {}),
+                            }
+                          : {}),
+                      }).format(value),
+                  }
+                : {}),
+            },
+            scale: true,
           },
-          scale: true,
-        },
-        yAxis: {
-          type: 'value',
-          name: display.normalize ? '%' : request.measure,
-          axisLabel: { hideOverlap: true },
-          ...(!display.normalize && request.measure === 'count' ? { minInterval: 1 } : {}),
-        },
-        series,
+          { type: isTime ? 'time' : 'value', show: false, scale: true },
+        ],
+        yAxis: [
+          {
+            type: 'value',
+            name: display.normalize ? '%' : request.measure,
+            axisLabel: { hideOverlap: true },
+            ...(!display.normalize && request.measure === 'count' ? { minInterval: 1 } : {}),
+          },
+          { type: 'value', show: false, min: 0 },
+        ],
+        dataZoom: [
+          { ...insideZoom, xAxisIndex: [0, 1] },
+          { type: 'slider', xAxisIndex: [1, 0], filterMode: 'none', bottom: 12 },
+        ],
+        series: [
+          ...series,
+          {
+            id: 'volume-overview',
+            type: 'line',
+            xAxisIndex: 1,
+            yAxisIndex: 1,
+            silent: true,
+            showSymbol: false,
+            lineStyle: { opacity: 0 },
+            tooltip: { show: false },
+            data: [...volume]
+              .sort((a, b) => a[0] - b[0])
+              .map(([coordinate, count]) => ({ value: [coordinate, count] })),
+          },
+        ],
       },
     };
   }
@@ -486,7 +550,7 @@ export function buildPlot(
         ],
         xAxis: horizontal ? valueAxis : categoryAxis,
         yAxis: horizontal ? categoryAxis : valueAxis,
-        series: keys
+        series: [...keys]
           .filter((k) => !selection.hidden.includes(k))
           .map((key) => ({
             id: key,
@@ -517,7 +581,8 @@ export function buildPlot(
                 value: horizontal ? [displayValue, i] : [i, displayValue],
               };
             }),
-          })),
+          }))
+          .reverse(),
       },
     };
   }

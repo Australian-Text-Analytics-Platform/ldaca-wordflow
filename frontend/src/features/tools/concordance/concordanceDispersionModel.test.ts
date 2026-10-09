@@ -57,27 +57,28 @@ it('restores smooth lines, filled selected points, stacks and cumulative middle 
   const series = dispersionSeries([{ term: 'cat', bin: 0, count: 2 }], ['cat'], 20, false);
   const line = dispersionOption(series, 'line', [0], 20, 'fg', 'grid');
   expect(line).toMatchObject({
-    yAxis: { minInterval: 1 },
-    xAxis: { min: 0, max: 100 },
+    yAxis: [{ minInterval: 1 }, { show: false }],
+    xAxis: [{ min: 0, max: 100 }, { show: false }],
     series: [
       {
         smooth: true,
-        symbolSize: 6,
+        symbolSize: expect.any(Function),
         emphasis: { scale: false },
         data: [
           { symbol: 'circle' },
           ...Array.from({ length: 19 }, () => ({ symbol: 'emptyCircle' })),
         ],
       },
+      { id: 'volume-overview', yAxisIndex: 1 },
     ],
   });
   expect(dispersionOption(series, 'area', [], 20, 'fg', 'grid')).toMatchObject({
-    series: [{ smooth: true, stack: 'matches' }],
+    series: [{ smooth: true, stack: 'matches' }, { id: 'volume-overview' }],
   });
   expect(dispersionOption(series, 'bar', [], 20, 'fg', 'grid')).toMatchObject({
-    series: [{ stack: 'matches' }],
+    series: [{ stack: 'matches' }, { id: 'volume-overview' }],
   });
   expect(dispersionOption(series, 'cumulative', [], 20, 'fg', 'grid')).toMatchObject({
-    series: [{ step: 'middle', smooth: false }],
+    series: [{ step: 'middle', smooth: false }, { id: 'volume-overview' }],
   });
 });

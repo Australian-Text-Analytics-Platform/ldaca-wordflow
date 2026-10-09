@@ -29,7 +29,7 @@ use crate::file_lock::with_file_lock;
 const LINDERA_VERSION: &str = "6.2.0";
 const LINDERA_RELEASE_BASE_URL: &str = "https://github.com/lindera/lindera/releases/download";
 const LINDERA_DICT_PATH_ENV: &str = "LINDERA_DICT_PATH";
-const MAX_ARCHIVE_BYTES: u64 = 128 * 1024 * 1024;
+const MAX_ARCHIVE_BYTES: u64 = 160 * 1024 * 1024;
 
 /// Which prebuilt dict to fetch. Mirrors the model-id constants in
 /// `tokenizer.rs` (`LINDERA_JA_IPADIC_MODEL_ID` etc).
@@ -199,6 +199,36 @@ pub(crate) fn ensure_lindera_tokenizer_in(
 #[cfg(test)]
 mod tests {
     use super::LinderaDict;
+
+    #[cfg(feature = "cache")]
+    #[test]
+    #[ignore = "Downloads the pinned Neologd dictionary into a fresh test cache"]
+    fn fresh_neologd_download_and_load() {
+        let root = tempfile::tempdir().unwrap();
+        let tokenizer =
+            super::ensure_lindera_tokenizer_in(LinderaDict::JaIpadicNeologd, root.path()).unwrap();
+        let words = tokenizer
+            .segment(std::borrow::Cow::Borrowed("東京都の新しい研究です"))
+            .unwrap();
+        assert!(!words.is_empty());
+        let reused =
+            super::ensure_lindera_tokenizer_in(LinderaDict::JaIpadicNeologd, root.path()).unwrap();
+        assert_eq!(
+            words.len(),
+            reused
+                .segment(std::borrow::Cow::Borrowed("東京都の新しい研究です"))
+                .unwrap()
+                .len()
+        );
+        assert_eq!(
+            std::fs::read_dir(root.path())
+                .unwrap()
+                .filter_map(Result::ok)
+                .filter(|entry| entry.file_type().unwrap().is_dir())
+                .count(),
+            1
+        );
+    }
 
     #[test]
     fn archive_and_subdir_names_are_distinct_per_kind() {

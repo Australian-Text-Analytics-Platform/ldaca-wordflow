@@ -93,6 +93,7 @@ export function FrequencyRankedList({
             const token = data?.table.getChild('token')?.get(row) as string | undefined;
             const frequency = data?.table.getChild('frequency')?.get(row) as bigint | undefined;
             const rank = data?.table.getChild('rank')?.get(row) as bigint | undefined;
+            const perMillion = data?.table.getChild('per_million')?.get(row) as number | undefined;
             return (
               <div
                 key={item.key}
@@ -149,8 +150,21 @@ export function FrequencyRankedList({
                     {token ?? (failure ? 'Unavailable' : 'Loading…')}
                   </span>
                 </span>
-                <span className="text-label-secondary tabular-nums text-description">
+                <span
+                  className="text-right text-label-secondary tabular-nums text-description"
+                  title={
+                    perMillion == null
+                      ? undefined
+                      : `${String(frequency)} occurrences · ${String(perMillion)} per million tokens in the full corpus`
+                  }
+                >
                   {frequency === undefined ? '' : String(frequency)}
+                  {perMillion != null && (
+                    <span className="block">
+                      {perMillion.toLocaleString(undefined, { maximumFractionDigits: 2 })} per
+                      million
+                    </span>
+                  )}
                 </span>
               </div>
             );

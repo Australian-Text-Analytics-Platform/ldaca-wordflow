@@ -178,7 +178,9 @@ impl Database {
                 document_page_sql(&sql)
             )
         } else {
-            format!("SELECT * FROM ({sql}) ORDER BY {order} document_id,match_order")
+            format!(
+                "WITH ordered AS (SELECT *,row_number() OVER (ORDER BY {order} document_id,match_order) AS __order FROM ({sql})), boundaries AS (SELECT *,CASE WHEN lag(document_id) OVER (ORDER BY __order) IS DISTINCT FROM document_id THEN 1 ELSE 0 END AS __boundary FROM ordered) SELECT * EXCLUDE (__order,__boundary),sum(__boundary) OVER (ORDER BY __order ROWS UNBOUNDED PRECEDING)::UBIGINT AS document_band FROM boundaries ORDER BY __order"
+            )
         };
         let file = arrow_page(
             &self.conn,

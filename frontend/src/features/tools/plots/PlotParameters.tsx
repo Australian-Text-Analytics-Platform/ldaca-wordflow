@@ -173,16 +173,15 @@ export function PlotParameters({
                 <SearchableSelect
                   ariaLabel="Time interval"
                   value={r.interval.unit}
-                  options={[
-                    'second',
-                    'minute',
-                    'hour',
-                    'day',
-                    'week',
-                    'month',
-                    'quarter',
-                    'year',
-                  ].map((value) => ({ value }))}
+                  options={['second', 'minute', 'hour', 'day', 'week', 'month', 'quarter', 'year']
+                    .filter(
+                      (unit) =>
+                        !fields.some(
+                          (field) =>
+                            'axis' in r && field.name === r.axis && DataType.isDate(field.type),
+                        ) || !['second', 'minute', 'hour'].includes(unit),
+                    )
+                    .map((value) => ({ value }))}
                   onChange={(value) => {
                     onChange({
                       ...r,

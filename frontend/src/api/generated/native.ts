@@ -2649,6 +2649,8 @@ export interface components {
       /** Format: uuid */
       comparison_artifact_id?: string | null;
       corpora: components['schemas']['FrequencyCorpus'][];
+      /** @description Absent in historical results, whose stored View keeps its original mathematics. */
+      study_against_reference?: boolean;
     };
     /** @enum {string} */
     FrequencyView: 'corpus' | 'comparison' | 'juxtorpus';
@@ -3322,6 +3324,7 @@ export interface components {
     /** @enum {string} */
     TimeUnit: 'second' | 'minute' | 'hour' | 'day' | 'week' | 'month' | 'quarter' | 'year';
     TokenizerInfo: {
+      about_url?: string | null;
       label: string;
       languages: string[];
       model_id: string;

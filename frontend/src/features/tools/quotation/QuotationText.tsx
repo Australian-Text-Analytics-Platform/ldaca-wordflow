@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Info } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { quoteColors, type Quote } from './quotationRows';
@@ -8,11 +8,17 @@ export function QuotationText({
   text,
   quotes,
   context,
+  anchor,
 }: {
   text: string;
   quotes: Quote[];
   context?: number;
+  anchor?: number;
 }) {
+  const anchored = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    anchored.current?.scrollIntoView({ block: 'center' });
+  }, [anchor, text]);
   const [emphasis, setEmphasis] = useState<number | null>(null);
   const chars = Array.from(text);
   const spans = quotes.flatMap((quote, quoteIndex) =>
@@ -64,6 +70,7 @@ export function QuotationText({
         return (
           <span
             key={start}
+            ref={start === anchor ? anchored : undefined}
             title={
               covering.map((s) => `${s.kind} ${String(s.quoteIndex + 1)}`).join(', ') || undefined
             }
@@ -137,7 +144,37 @@ export function QuotationText({
   );
 }
 
-function quotationPatternDescription(pattern: string): string {
+export function QuotationCell(props: { text: string; quotes: Quote[]; context: number }) {
+  const content = useRef<HTMLSpanElement>(null);
+  const [clipped, setClipped] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const element = content.current;
+    if (!element) return;
+    const measure = () =>
+      setClipped(
+        element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth,
+      );
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [props.text, props.quotes, props.context]);
+  return (
+    <Tooltip open={clipped && open} onOpenChange={setOpen}>
+      <TooltipTrigger asChild>
+        <span ref={content} className="line-clamp-3 whitespace-pre-wrap break-words">
+          <QuotationText {...props} />
+        </span>
+      </TooltipTrigger>
+      <TooltipContent className="max-h-80 max-w-[min(40rem,90vw)] overflow-auto whitespace-pre-wrap break-words">
+        <QuotationText {...props} />
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+export function quotationPatternDescription(pattern: string): string {
   if (/^[SVCQ]+$/.test(pattern))
     return `Order of extracted parts: ${Array.from(pattern, (code) => ({ S: 'speaker', V: 'reporting verb', C: 'quotation content', Q: 'quotation mark' })[code]).join(' → ')}.`;
   if (pattern === 'AccordingTo') return 'Attribution introduced by “according to”.';

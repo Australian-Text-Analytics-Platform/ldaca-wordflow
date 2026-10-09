@@ -40,9 +40,9 @@ running unchanged parameters against changed source data.
 
 ## Presentation and selection
 
-Trends offers Line, Area and Bar, plus Calendar after a daily date/time Run.
-Smooth curves changes interpolation only and is available for Line and Area. Eligible Area/Bar charts stack counts
-or nonnegative sums; Mean, Median and signed sums use lines or grouped bars.
+Trends offers Lines, Stacked areas, Bars and Stacked bars, plus Calendar after a daily date/time Run.
+Smooth curves changes interpolation only and is available for Line and Area. Stacked areas and Stacked bars are available for counts
+or nonnegative sums; plain Bars remain grouped and use alternating period stripes. Mean, Median and signed sums use lines or grouped bars.
 Calendar uses one calendar per visible group with a shared color scale. All groups
 show the same complete months covering the results within the selected year.
 Padding outside the results stays blank; hiding a group does not change the date
@@ -69,8 +69,8 @@ Scatter uses translucent bubbles to reduce overlap. Its size key names the size
 column and largest bubble value; hiding a group does not rescale the remaining
 bubbles.
 
-**Normalize to 100%** is a Results option for eligible Trends/Compare charts. The
-denominator includes every group passing the minimum, even hidden groups. Hiding
+**Normalise to 100%** is a Results option for eligible Trends/Compare charts. The
+Trends chart shows this toggle only when at least two eligible groups remain. It starts off. The denominator includes every group passing the minimum, even hidden groups. Hiding
 one group leaves its share undisplayed. A zero total has no percentage.
 
 Click plotted observations to toggle selection. Shift adds; Trends Shift-click
@@ -79,7 +79,7 @@ selection and Shift-drag adds. Arrow keys inspect points, Enter/Space selects,
 Shift extends, and Escape leaves range mode. Active drag modes are highlighted.
 Scatter and Heatmap also offer **Zoom area**: drag a rectangle to focus that region
 without changing the selection. Zoom in/out, Reset zoom and sliders remain available.
-Hold Ctrl while using the wheel to zoom; ordinary scrolling moves the page.
+Hold Cmd/Ctrl while using the wheel to zoom; ordinary scrolling moves the page.
 An empty viewport offers **Show full plot**. If all legend groups are hidden,
 **Show all groups** restores them.
 
@@ -118,3 +118,6 @@ but never removes a Data Block previously added to the project.
 Saved data remains complete. Charts support up to 100,000 plotted values and 500 series, or 5,000 Sankey links. If a projection exceeds that budget, use wider intervals, fewer groups, case merging or a higher minimum group size where available. Otherwise refine the input in Preprocessing and Run again. Wordflow does not silently sample or truncate your chart. Very large charts may take several seconds to render or zoom.
 
 Calendar groups form a responsive grid with the same date range and scale. Hover a date to inspect it in every group, or focus the chart and use left/right for days, up/down for weeks and Home/End for the range. Inspection does not select rows. Dense Trends markers hide automatically; lines and all observations remain. Wide Heatmaps and Sankey diagrams scroll inside the chart area. Downloads retain the viewport and selection but omit interactive controls.
+
+
+DATE inputs offer day or larger periods. Axis labels use readable period-aware dates. Trends' range slider shows original row-count volume on a separate hidden scale, independently of normalised values, sums, means or medians. The first legend group appears at the top of stacked charts. Selected line/area intervals have shaded bands and larger outlined markers. Figure captions describe the chart and legend without publication instructions or overall row/point totals.

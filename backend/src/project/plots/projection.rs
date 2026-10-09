@@ -83,6 +83,14 @@ pub(super) fn validate(request: &PlotRequest, columns: &[(String, String)]) -> R
             if r.groups.len() > 3 {
                 return Err(Error::invalid("Choose at most three grouping columns"));
             }
+            if r.groups
+                .iter()
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                != r.groups.len()
+            {
+                return Err(Error::invalid("Choose each grouping column only once"));
+            }
             let kind = column_type(columns, &r.axis)?;
             match &r.interval {
                 Interval::Numeric { width, origin } => {
@@ -98,6 +106,12 @@ pub(super) fn validate(request: &PlotRequest, columns: &[(String, String)]) -> R
                     }
                 }
                 Interval::Time { unit, step } => {
+                    if kind.eq_ignore_ascii_case("DATE")
+                        && matches!(unit, TimeUnit::Second | TimeUnit::Minute | TimeUnit::Hour)
+                    {
+                        return Err(Error::invalid("Date axes require day or larger intervals"));
+                    }
+
                     if !(kind == "DATE" || kind.starts_with("TIMESTAMP")) {
                         return Err(Error::invalid(
                             "Time intervals require a date or timestamp axis",

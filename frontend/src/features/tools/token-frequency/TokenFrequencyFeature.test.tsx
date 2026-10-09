@@ -123,6 +123,11 @@ function mount(
 beforeEach(() => {
   vi.clearAllMocks();
   useFrequencyState.setState({ active: {}, drafts: {} });
+  vi.mocked(analysesApi.updateTab).mockImplementation(async (_base, _id, patch) => ({
+    ...tab,
+    ...patch,
+    settings: patch.settings ?? tab.settings,
+  }));
   vi.mocked(analysesApi.listTabs).mockResolvedValue([tab]);
   vi.mocked(analysesApi.createTab).mockResolvedValue(tab);
   vi.mocked(frequencyApi.getTokenizers).mockResolvedValue([
@@ -259,7 +264,9 @@ it('captures a run without overwriting a newer local draft when it completes', a
   await act(async () => operation.resolve(saved));
   expect(getFrequencyDraft(useFrequencyState.getState(), base, tab.id)?.inputs).toEqual([]);
   expect(client.getQueryData(['native', base, 'analyses', saved.id])).toBeUndefined();
-  expect(analysesApi.updateTab).not.toHaveBeenCalled();
+  expect(analysesApi.updateTab).toHaveBeenCalledWith(base, tab.id, {
+    settings: expect.objectContaining({ presentationOrder: [0] }),
+  });
 });
 it('keeps the result on admission failure with changed parameters', async () => {
   const changed = request.inputs.map((input) => ({ ...input, tokenizer: 'other' }));
@@ -682,4 +689,41 @@ it('requires explicit defaults for unsupported requests and retains original JSO
   ).not.toBeInTheDocument();
   expect(analysesApi.updateTab).not.toHaveBeenCalled();
   expect(original.future_option.value).toBe('future');
+});
+
+it('restores input-card order separately from Reference and Study roles', async () => {
+  const pair = ['Corpus', 'Second'].map((name) => ({
+    source: { schema: 'data', name },
+    column: 'text',
+    tokenizer: 'plain_words',
+  }));
+  const pairedRequest = { inputs: pair };
+  vi.mocked(analysesApi.listTabs).mockResolvedValue([
+    {
+      ...tab,
+      settings: { presentationOrder: [1, 0] },
+      analysis: {
+        id: saved.id,
+        request: pairedRequest,
+        request_status: {
+          status: 'supported',
+          request: { kind: 'frequency', request: pairedRequest },
+        },
+        has_result: true,
+      },
+    },
+  ]);
+  vi.mocked(frequencyApi.getFrequencyResult).mockResolvedValue({
+    ...saved,
+    request: pairedRequest,
+    request_status: { status: 'supported', request: { kind: 'frequency', request: pairedRequest } },
+  });
+  mount([], [...nodes, { ...nodes[0], table_name: 'Second' } as ProjectNode]);
+  const roles = await screen.findAllByRole('combobox', { name: /corpus role/ });
+  expect(roles.map((element) => element.getAttribute('aria-label'))).toEqual([
+    'Second corpus role',
+    'Corpus corpus role',
+  ]);
+  expect(roles[0]).toHaveTextContent('Study corpus');
+  expect(roles[1]).toHaveTextContent('Reference corpus');
 });

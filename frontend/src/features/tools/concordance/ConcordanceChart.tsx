@@ -8,6 +8,7 @@ import {
   GridComponent,
   ToolboxComponent,
   TooltipComponent,
+  VisualMapComponent,
 } from 'echarts/components';
 import {
   init,
@@ -18,6 +19,7 @@ import {
 import { SVGRenderer } from 'echarts/renderers';
 
 import { Button } from '@/components/ui/button';
+import { chartWheelZoom } from '../common/chartWheelZoom';
 
 registerEChartsModules([
   LineChart,
@@ -28,6 +30,7 @@ registerEChartsModules([
   GridComponent,
   ToolboxComponent,
   TooltipComponent,
+  VisualMapComponent,
   SVGRenderer,
 ]);
 
@@ -152,6 +155,7 @@ function EChartsInstance({
 
     const chart = init(element, undefined, { renderer: 'svg' });
     chartRef.current = chart;
+    const removeWheel = chartWheelZoom(element, chart);
 
     const handleShowTip = (event: EChartsShowTipEvent) => {
       if (typeof event.dataIndex === 'number') nearestPointIndexRef.current = event.dataIndex;
@@ -213,6 +217,7 @@ function EChartsInstance({
     resizeObserver.observe(element);
 
     return () => {
+      removeWheel();
       resizeObserver.disconnect();
       chart.off('showtip', handleShowTip);
       chart.off('brushEnd', handleBrushEnd);
@@ -240,18 +245,18 @@ function EChartsInstance({
           {
             id: 'wordflow-inside-zoom',
             type: 'inside',
-            xAxisIndex: 0,
+            xAxisIndex: Array.isArray(option.xAxis) ? [0, 1] : 0,
             start: currentZoom.start,
             end: currentZoom.end,
             filterMode: 'none',
-            zoomOnMouseWheel: true,
+            zoomOnMouseWheel: false,
             moveOnMouseMove: false,
             moveOnMouseWheel: false,
           },
           {
             id: 'wordflow-slider-zoom',
             type: 'slider',
-            xAxisIndex: 0,
+            xAxisIndex: Array.isArray(option.xAxis) ? [1, 0] : 0,
             start: currentZoom.start,
             end: currentZoom.end,
             filterMode: 'none',
@@ -259,6 +264,13 @@ function EChartsInstance({
             height: 18,
             showDetail: false,
             brushSelect: false,
+            textStyle: option.textStyle,
+            borderColor: option.textStyle?.color,
+            handleStyle: { color: option.textStyle?.color },
+            dataBackground: {
+              lineStyle: { color: option.textStyle?.color, opacity: 0.6 },
+              areaStyle: { color: option.textStyle?.color, opacity: 0.16 },
+            },
           },
         ],
         toolbox: { show: false },

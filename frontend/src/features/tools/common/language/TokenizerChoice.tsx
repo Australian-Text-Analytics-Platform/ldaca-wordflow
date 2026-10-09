@@ -50,6 +50,16 @@ export function TokenizerChoice({
     attempted.current = key;
     if (!value) onChange(first);
   }, [active, first, column, key, value, onChange]);
+  const selectedModel = models.find((model) => model.model_id === value);
+  const languageNames = new Intl.DisplayNames(['en-AU'], { type: 'language' });
+  const modelLabel = (model: frequencyApi.TokenizerInfo) => (
+    <>
+      {model.label}
+      <span className="ml-2 text-label-secondary">
+        {model.languages.map((code) => languageNames.of(code) ?? code).join(', ')}
+      </span>
+    </>
+  );
   return (
     <>
       <NodeInputField
@@ -74,7 +84,7 @@ export function TokenizerChoice({
           }}
         >
           <SelectTrigger aria-label={`${source.name} tokenizer`}>
-            <SelectValue placeholder="Select a tokenizer" />
+            <SelectValue placeholder="Select a tokenizer">{selectedModel?.label}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__none">Select a tokenizer</SelectItem>
@@ -82,20 +92,40 @@ export function TokenizerChoice({
               <SelectGroup>
                 <div className="px-2 py-1 text-description">Recommended</div>
                 {recommended.map((model) => (
-                  <SelectItem key={model.model_id} value={model.model_id}>
-                    {model.label}
+                  <SelectItem
+                    key={model.model_id}
+                    value={model.model_id}
+                    aria-label={model.label}
+                    textValue={model.label}
+                  >
+                    {modelLabel(model)}
                   </SelectItem>
                 ))}
               </SelectGroup>
             )}
             {other.map((model) => (
-              <SelectItem key={model.model_id} value={model.model_id}>
-                {model.label}
+              <SelectItem
+                key={model.model_id}
+                value={model.model_id}
+                aria-label={model.label}
+                textValue={model.label}
+              >
+                {modelLabel(model)}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </NodeInputField>
+      {selectedModel?.about_url && (
+        <a
+          className="text-description underline"
+          href={selectedModel.about_url}
+          target="_blank"
+          rel="noreferrer"
+        >
+          About {selectedModel.label}
+        </a>
+      )}
       {language.isFetching && (
         <p className="order-last basis-full text-label-secondary text-description">
           Detecting language…

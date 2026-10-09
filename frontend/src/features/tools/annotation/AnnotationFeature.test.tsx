@@ -223,3 +223,25 @@ it('blocks unknown manual setup until explicit local reset without saving a pref
   expect(annotationApi.beginAnnotationEdit).not.toHaveBeenCalled();
   expect(original.future).toBe('retained');
 });
+
+it('opens a read-only full row with unsaved labels and supports Previous/Next without saving', async () => {
+  const user = mount();
+  await user.click(await screen.findByRole('button', { name: 'Start', exact: true }));
+  const input = (await screen.findAllByRole('textbox', { name: 'Edit label' }))[0]!;
+  await user.clear(input);
+  await user.type(input, 'Draft label');
+  await user.click(screen.getByRole('button', { name: 'Compare To (0)' }));
+  await user.click(screen.getByRole('checkbox', { name: 'reference' }));
+  await user.keyboard('{Escape}');
+  await user.click(screen.getByText('First document'));
+  const dialog = await screen.findByRole('dialog', { name: /Row Details/ });
+  expect(within(dialog).getByText('Draft label')).toBeVisible();
+  expect(within(dialog).getByText('Hidden')).toBeVisible();
+  expect(within(dialog).queryByRole('textbox')).not.toBeInTheDocument();
+  expect(within(dialog).getByRole('button', { name: 'Previous row' })).toBeDisabled();
+  await user.click(within(dialog).getByRole('button', { name: 'Next row' }));
+  expect(within(dialog).getByText('Second document')).toBeVisible();
+  await user.click(within(dialog).getByRole('button', { name: 'Previous row' }));
+  expect(within(dialog).getByText('Draft label')).toBeVisible();
+  expect(editingApi.saveCellEdit).not.toHaveBeenCalled();
+});

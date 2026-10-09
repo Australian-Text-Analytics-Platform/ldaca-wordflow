@@ -1,3 +1,4 @@
+import { wrapFigureText } from '../common/figureText';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -99,7 +100,15 @@ export function ConcordanceDispersion({
   const series = ready ? dispersionSeries(density, allTerms, binCount, uncased) : [];
   const colorsByTerm = new Map(series.map((term) => [term.key, term.color]));
   const visible = series.filter((term) => !excluded.includes(term.key));
-  const option = dispersionOption(visible, chartMode, bins, binCount, foreground, gridColor);
+  const option = dispersionOption(
+    visible,
+    chartMode,
+    bins,
+    binCount,
+    foreground,
+    gridColor,
+    series,
+  );
   const chartHost = useRef<HTMLDivElement>(null);
   const anchor = useRef<{ key: string; bin: number } | null>(null);
   const selectedCount = (counts: number[]) =>
@@ -121,16 +130,16 @@ export function ConcordanceDispersion({
       while (clone.firstChild) group.append(clone.firstChild);
       const lines: { text: string; color: string; hidden?: boolean }[] = [];
       const appendLabel = (label: string, fill = foreground, hidden = false) => {
-        const chars = Array.from(label);
-        const maxChars = Math.max(12, Math.floor((width - 24) / 8));
-        for (let start = 0; start < chars.length; start += maxChars)
-          lines.push({ text: chars.slice(start, start + maxChars).join(''), color: fill, hidden });
+        for (const text of wrapFigureText(label, Math.max(12, Math.floor((width - 24) / 8))))
+          lines.push({ text, color: fill, hidden });
       };
       appendLabel(`Concordance: ${search.query} · ${chartMode} · ${String(binCount)} bins`);
       appendLabel(
         sourceIndices.map((index) => inputs[index]?.source.name ?? 'Unavailable').join(' / '),
       );
       appendLabel(scope);
+      if (sourceIndices.length > 1)
+        appendLabel('Counts are pooled by term across both Data Blocks.');
       const headerHeight = lines.length * 22 + 16;
       group.setAttribute('transform', `translate(0,${String(headerHeight)})`);
       clone.append(group);
@@ -340,7 +349,10 @@ export function ConcordanceDispersion({
       </div>
       {!proportional && ready && (
         <div ref={chartHost}>
-          <p className="text-description">{scope}</p>
+          <p className="text-description">
+            {scope}
+            {sourceIndices.length > 1 ? ' Counts are pooled by term across both Data Blocks.' : ''}
+          </p>
           <ConcordanceChart
             option={option}
             height={240}

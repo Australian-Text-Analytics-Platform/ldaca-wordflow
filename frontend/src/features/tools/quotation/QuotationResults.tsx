@@ -37,7 +37,8 @@ import {
   quoteColors,
   type QuotationRow,
 } from './quotationRows';
-import { QuotationText } from './QuotationText';
+import { QuotationCell, QuotationText, quotationPatternDescription } from './QuotationText';
+import { ResetSortButton } from '../common/components/ResetSortButton';
 type Page = Awaited<ReturnType<typeof quotationApi.previewQuotation>> & {
   input: quotationApi.QuotationRequest['input'];
 };
@@ -79,7 +80,11 @@ export function QuotationResults({
   const [page, setPage] = useState(1);
   const [pageSizes, setPageSizes] = useState({ preview: 50, saved: 20 });
   const pageSize = pageSizes[view];
-  const [unit, setUnit] = useState<'documents' | 'matches'>('documents');
+  const [units, setUnits] = useState<{
+    preview: 'documents' | 'matches';
+    saved: 'documents' | 'matches';
+  }>({ preview: 'documents', saved: 'matches' });
+  const unit = units[view];
   const [sort, setSort] = useState<quotationApi.QuotationQuery['sort']>(null);
   const [detail, setDetail] = useState<number | null>(null);
   const [publish, setPublish] = useState<'documents' | 'matches' | null>(null);
@@ -171,7 +176,7 @@ export function QuotationResults({
       aria-label="Quotation results"
       value={unit}
       onValueChange={(value) => {
-        setUnit(value as typeof unit);
+        setUnits((old) => ({ ...old, [view]: value as typeof unit }));
         if (saved) {
           setSort(null);
           setPage(1);
@@ -204,20 +209,26 @@ export function QuotationResults({
             </p>
           )}
           {data.isError && (
-            <div role="alert">
-              Could not load results.{' '}
-              <Button
-                variant="outline"
-                disabled={!saved && stopped}
-                onClick={() => {
-                  void data.refetch();
-                }}
-              >
-                Retry
-              </Button>
-            </div>
+            <OperationError
+              title="Could not load Quotation results"
+              error={data.error}
+              onRetry={
+                !saved && stopped
+                  ? undefined
+                  : () => {
+                      void data.refetch();
+                    }
+              }
+            />
           )}
           <div className="flex flex-wrap items-end gap-3">
+            <ResetSortButton
+              sorted={Boolean(sort)}
+              onReset={() => {
+                setSort(null);
+                setPage(1);
+              }}
+            />
             <label className="space-y-1">
               <span>Context (words per side)</span>
               <AnalysisNumberInput
@@ -405,7 +416,7 @@ export function QuotationResults({
                             if (!window.getSelection()?.toString()) setDetail(index);
                           }}
                         >
-                          <QuotationText
+                          <QuotationCell
                             text={showValue(row.source[displayInput.column] ?? '')}
                             quotes={row.quotes}
                             context={context}
@@ -566,7 +577,27 @@ function QuotationDetail({
       payload={controller.detailPayload}
       customization={{
         label: 'Quotation',
-        renderDocumentText: (text) => <QuotationText text={text} quotes={quotes ?? []} />,
+        documentLines: 7,
+        summaryFields: selected?.quotes
+          .filter((quote) => quote.quote_type)
+          .map((quote, index) => ({
+            label: `Quotation ${String(index + 1)} type`,
+            value: (
+              <span>
+                {String(quote.quote_type)}
+                <small className="block text-label-secondary">
+                  {quotationPatternDescription(String(quote.quote_type))}
+                </small>
+              </span>
+            ),
+          })),
+        renderDocumentText: (text) => (
+          <QuotationText
+            text={text}
+            quotes={quotes ?? []}
+            anchor={selected?.quotes[0]?.quote_start_idx ?? undefined}
+          />
+        ),
       }}
       navigation={controller.navigation}
     />

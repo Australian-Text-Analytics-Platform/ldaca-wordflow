@@ -521,10 +521,11 @@ function TopicModelingFlowChartInner({
         onNodeMouseLeave={() => {
           setHovered(null);
         }}
-        zoomOnScroll
+        zoomOnScroll={false}
+        zoomActivationKeyCode={['Meta', 'Control']}
         zoomOnPinch
         zoomOnDoubleClick
-        preventScrolling
+        preventScrolling={false}
         onMoveStart={(event) => {
           if (event) fittedViewportRef.current = false;
         }}

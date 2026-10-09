@@ -1,3 +1,4 @@
+import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -17,6 +18,7 @@ import * as analysesApi from '@/features/tools/common/analysisApi';
 import * as concordanceApi from '@/features/tools/concordance/api';
 import { toNodeSurfaceColor } from '@/lib/nodeColor';
 import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
+import { ResetSortButton } from '../common/components/ResetSortButton';
 import { ArrowDown, ArrowUp, ArrowUpDown, ChevronDown } from 'lucide-react';
 import { useEffect, useId, useRef, useState } from 'react';
 import { toast } from 'sonner';
@@ -416,6 +418,19 @@ export function ConcordanceResults({
       </div>
       <TabsContent id={panelId} value={presentation} className="min-w-0 flex flex-col gap-3">
         <>
+          {[...queries, ...displayedDensity]
+            .filter((query) => query.isError)
+            .slice(0, 1)
+            .map((query) => (
+              <OperationError
+                key="projection-error"
+                title="Could not update Concordance results"
+                error={query.error}
+                onRetry={() => {
+                  void query.refetch();
+                }}
+              />
+            ))}
           {outdated && (
             <p role="status" className="text-description">
               Displayed results use the previously submitted search. Preview or Run to apply your
@@ -557,6 +572,15 @@ export function ConcordanceResults({
                       ),
                   )}
                 </div>
+                {!combined && presentation !== 'dispersion' && (
+                  <ResetSortButton
+                    sorted={Boolean(sorts[index])}
+                    onReset={() => {
+                      setSorts((old) => old.map((sort, i) => (i === index ? null : sort)));
+                      changePage(index, 0);
+                    }}
+                  />
+                )}
                 {(combined ? queries : [queries[index]]).some(
                   (query) =>
                     query && (query.isError || query.isPlaceholderData || query.isFetching),
@@ -646,9 +670,17 @@ export function ConcordanceResults({
                     <TableHeader className="sticky top-0 z-10 bg-panel">
                       <TableRow>
                         {combined && <TableHead>Source</TableHead>}
-                        <TableHead>Left context</TableHead>
+                        <TableHead>
+                          {highlightContext
+                            ? sortButton(index, 'l1', 'Left context')
+                            : 'Left context'}
+                        </TableHead>
                         <TableHead>{sortButton(index, 'matched_text', 'Match')}</TableHead>
-                        <TableHead>Right context</TableHead>
+                        <TableHead>
+                          {highlightContext
+                            ? sortButton(index, 'r1', 'Right context')
+                            : 'Right context'}
+                        </TableHead>
                         <TableHead>{sortButton(index, 'l1', 'L1')}</TableHead>
                         {saved && (
                           <TableHead>{sortButton(index, 'l1_frequency', 'L1 frequency')}</TableHead>
@@ -657,8 +689,6 @@ export function ConcordanceResults({
                         {saved && (
                           <TableHead>{sortButton(index, 'r1_frequency', 'R1 frequency')}</TableHead>
                         )}
-                        <TableHead>{sortButton(index, 'start_idx', 'Start')}</TableHead>
-                        <TableHead>{sortButton(index, 'end_idx', 'End')}</TableHead>
                         {blockMetadata.map((column) => (
                           <TableHead key={column}>
                             {sortButton(index, column, column, true)}
@@ -675,7 +705,9 @@ export function ConcordanceResults({
                             style={
                               combined
                                 ? { background: toNodeSurfaceColor(color(row.sourceIndex)) }
-                                : undefined
+                                : row.documentBand === 1
+                                  ? { background: 'var(--vscode-list-hoverBackground)' }
+                                  : undefined
                             }
                             onClick={(event) => {
                               inspectAnalysisRow(event, () => {
@@ -717,8 +749,6 @@ export function ConcordanceResults({
                             {saved && <TableCell>{showValue(match.l1_frequency)}</TableCell>}
                             <TableCell>{match.r1}</TableCell>
                             {saved && <TableCell>{showValue(match.r1_frequency)}</TableCell>}
-                            <TableCell>{showValue(match.start_idx)}</TableCell>
-                            <TableCell>{showValue(match.end_idx)}</TableCell>
                             {blockMetadata.map((column) => (
                               <TableCell key={column}>{showValue(row.source[column])}</TableCell>
                             ))}
@@ -815,7 +845,7 @@ function Context({ text, word, last = false }: { text: string; word: string; las
   ) : (
     <>
       {text.slice(0, at)}
-      <span className="rounded bg-list-hover px-0.5">{text.slice(at, at + word.length)}</span>
+      <span className="font-medium text-link">{text.slice(at, at + word.length)}</span>
       {text.slice(at + word.length)}
     </>
   );

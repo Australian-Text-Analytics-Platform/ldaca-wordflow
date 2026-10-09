@@ -39,6 +39,9 @@ pub(crate) struct FrequencyCorpus {
 pub(crate) struct FrequencyResultV1 {
     pub corpora: Vec<FrequencyCorpus>,
     pub comparison_artifact_id: Option<Uuid>,
+    /// Absent in historical results, whose stored View keeps its original mathematics.
+    #[serde(default)]
+    pub study_against_reference: bool,
 }
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, utoipa::ToSchema)]
 #[serde(rename_all = "snake_case")]
@@ -229,6 +232,7 @@ impl Database {
                 let result = FrequencyResultV1 {
                     corpora,
                     comparison_artifact_id,
+                    study_against_reference: true,
                 };
                 progress("Committing Frequency result");
                 Ok(serde_json::to_value(result)?)
@@ -389,7 +393,12 @@ fn store_comparison(
     study: &FrequencyCorpus,
 ) -> Result<Uuid> {
     let id = Uuid::new_v4();
-    let sql = comparison_sql(reference, study)?;
+    // Keep the original columns in Reference/Study order while calculating new
+    // keyness measures with Study as the numerator. Existing Views are immutable.
+    let sql = format!(
+        include_str!("frequency_study_statistics.sql"),
+        comparison_sql(study, reference)?
+    );
     conn.execute_batch(&format!(
         "CREATE VIEW wordflow.{} AS {sql}",
         query::quote(&artifact_table(id))
@@ -456,8 +465,9 @@ fn frequency_query(conn: &Connection, id: Uuid, request: &FrequencyQuery) -> Res
         );
     }
     if request.view == FrequencyView::Corpus {
+        let total = result.corpora[request.corpus_index.unwrap_or(0)].total_tokens;
         sql = format!(
-            "SELECT *, row_number() OVER (ORDER BY frequency DESC, token) AS rank FROM ({sql})"
+            "SELECT *, frequency::DOUBLE / nullif({total}::UBIGINT,0) * 1000000.0 AS per_million, row_number() OVER (ORDER BY frequency DESC, token) AS rank FROM ({sql})"
         );
     }
     if let Some(filter) = request
@@ -961,8 +971,8 @@ mod tests {
             )
             .unwrap();
         assert_eq!(overuse, "Study"); // Ten raw occurrences versus five, but 1% versus 5%.
-        assert!(signed < 0.0);
-        assert!((difference + 80.0).abs() < 1e-10);
+        assert!(signed > 0.0);
+        assert!((difference - 400.0).abs() < 1e-10);
         for format in [FrequencyExportFormat::Csv, FrequencyExportFormat::Markdown] {
             let file = tempfile::NamedTempFile::new().unwrap();
             project
@@ -987,6 +997,67 @@ mod tests {
             assert!(text.contains("overuse"));
             assert!(text.contains("word") && text.contains("filler") && text.contains("unique"));
         }
+    }
+
+    #[test]
+    fn new_keyness_zero_reference_and_historical_direction_remain_distinct() {
+        let (mut project, tab) = setup();
+        project.database.conn.execute_batch("DELETE FROM docs; DELETE FROM other; INSERT INTO docs VALUES ('shared shared filler filler'); INSERT INTO other VALUES ('shared studyonly')").unwrap();
+        let run = run(&mut project, tab, &["docs", "other"]);
+        assert!(run.result.study_against_reference);
+        let difference = |conn: &Connection, token: &str| {
+            let query = frequency_query(
+                conn,
+                run.id,
+                &FrequencyQuery {
+                    view: FrequencyView::Comparison,
+                    filter: Some(token.into()),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+            conn.query_row(
+                &format!("SELECT percent_diff FROM ({})", query.sql),
+                params_from_iter(query.parameters.iter()),
+                |row| row.get::<_, Option<f64>>(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(difference(&project.database.conn, "studyonly"), None);
+        let manifest = read_frequency_result(&project.database.conn, run.id).unwrap();
+        let view = artifact_table(manifest.comparison_artifact_id.unwrap());
+        let sql = comparison_sql(&manifest.corpora[0], &manifest.corpora[1]).unwrap();
+        project
+            .database
+            .conn
+            .execute_batch(&format!(
+                "CREATE OR REPLACE VIEW wordflow.{} AS {sql}",
+                query::quote(&view)
+            ))
+            .unwrap();
+        let mut payload = serde_json::to_value(manifest).unwrap();
+        payload
+            .as_object_mut()
+            .unwrap()
+            .remove("study_against_reference");
+        project
+            .database
+            .conn
+            .execute(
+                "UPDATE wordflow.analyses SET result=? WHERE id=?",
+                params![payload.to_string(), run.id.to_string()],
+            )
+            .unwrap();
+        assert!(
+            !read_frequency_result(&project.database.conn, run.id)
+                .unwrap()
+                .study_against_reference
+        );
+        assert_eq!(
+            difference(&project.database.conn, "studyonly"),
+            Some(-100.0)
+        );
+        assert_eq!(difference(&project.database.conn, "shared"), Some(0.0));
     }
 
     #[test]
@@ -1019,9 +1090,9 @@ mod tests {
                 .collect::<duckdb::Result<Vec<_>>>()
                 .unwrap()
         };
-        assert_eq!(tokens(1, None), ["alpha", "beta"]);
-        assert_eq!(tokens(2, None), ["alpha", "equal", "beta"]);
-        assert_eq!(tokens(1, Some(vec!["alpha".into()])), ["equal", "beta"]);
+        assert_eq!(tokens(1, None), ["beta", "alpha"]);
+        assert_eq!(tokens(2, None), ["beta", "equal", "alpha"]);
+        assert_eq!(tokens(1, Some(vec!["alpha".into()])), ["beta", "equal"]);
         let query = frequency_query(
             &project.database.conn,
             result.id,
@@ -1066,7 +1137,7 @@ mod tests {
             conn.query_row(
                 &query.sql,
                 params_from_iter(query.parameters.iter()),
-                |row| row.get::<_, i64>(2),
+                |row| row.get::<_, i64>("rank"),
             )
             .unwrap()
         };
@@ -1161,7 +1232,7 @@ mod tests {
             .unwrap();
         assert_eq!(
             std::fs::read_to_string(file.path()).unwrap(),
-            "| token | frequency |\n| --- | --- |\n| dog | 2 |\n"
+            "| token | frequency | per_million |\n| --- | --- | --- |\n| dog | 2 | 400000 |\n"
         );
     }
 

@@ -1,3 +1,4 @@
+import { escapeChartText } from '../common/chartText';
 import type { ConcordanceInput } from '@/features/tools/concordance/api';
 import type { EChartsCoreOption } from 'echarts/core';
 import { GREY, VIZ_PALETTE } from '../common/vizPalette';
@@ -107,6 +108,7 @@ export function dispersionOption(
   binCount: number,
   foreground: string,
   gridColor: string,
+  overview: TermSeries[] = series,
 ): EChartsCoreOption {
   return {
     animation: false,
@@ -115,56 +117,111 @@ export function dispersionOption(
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'line', snap: true },
-      valueFormatter: (value: unknown) => String(value),
+      formatter: (params: { seriesName: string; value: [number, number]; marker?: string }[]) =>
+        params
+          .filter((item) => item.seriesName !== 'volume-overview')
+          .sort(
+            (a, b) =>
+              series.findIndex((term) => term.label === a.seriesName) -
+              series.findIndex((term) => term.label === b.seriesName),
+          )
+          .map(
+            (item) =>
+              `${item.marker ?? ''}${escapeChartText(item.seriesName)}: ${String(item.value[1])}`,
+          )
+          .join('<br>'),
     },
-    xAxis: {
-      type: 'value',
-      min: 0,
-      max: 100,
-      interval: 20,
-      axisLabel: { color: foreground, formatter: '{value}%' },
-      axisPointer: {
-        label: {
-          formatter: (params: { value: number }) =>
-            binLabel(Math.min(binCount - 1, Math.floor((params.value * binCount) / 100)), binCount),
+    xAxis: [
+      {
+        type: 'value',
+        min: 0,
+        max: 100,
+        interval: 20,
+        axisLabel: { color: foreground, formatter: '{value}%' },
+        axisPointer: {
+          label: {
+            formatter: (params: { value: number }) =>
+              binLabel(
+                Math.min(binCount - 1, Math.floor((params.value * binCount) / 100)),
+                binCount,
+              ),
+          },
         },
+        splitLine: { show: false },
+        axisTick: { show: false },
       },
-      splitLine: { show: false },
-      axisTick: { show: false },
-    },
-    yAxis: {
-      type: 'value',
-      min: 0,
-      minInterval: 1,
-      axisLabel: { color: foreground },
-      splitLine: { lineStyle: { color: gridColor } },
-      axisLine: { show: false },
-      axisTick: { show: false },
-    },
-    series: series.map((term) => {
-      let cumulative = 0;
-      return {
-        name: term.label,
-        type: type === 'bar' ? 'bar' : 'line',
-        smooth: type === 'line' || type === 'area',
-        step: type === 'cumulative' ? 'middle' : undefined,
-        stack: type === 'area' || (type === 'bar' && binCount > 10) ? 'matches' : undefined,
-        areaStyle: type === 'area' ? { opacity: bins.length ? 0.2 : 0.35 } : undefined,
-        showSymbol: type !== 'cumulative' || bins.length > 0,
-        symbolSize: 6,
-        itemStyle: { color: term.color },
-        lineStyle: { color: term.color },
-        emphasis: { focus: 'series', scale: false },
-        blur: { lineStyle: { opacity: 0.45 }, itemStyle: { opacity: 0.45 } },
-        data: term.counts.map((count, bin) => {
-          cumulative += count;
-          return {
-            value: [((bin + 0.5) * 100) / binCount, type === 'cumulative' ? cumulative : count],
-            symbol: bins.includes(bin) ? 'circle' : 'emptyCircle',
-            itemStyle: { opacity: type === 'bar' && bins.length && !bins.includes(bin) ? 0.35 : 1 },
-          };
-        }),
-      };
-    }),
+      { type: 'value', min: 0, max: 100, show: false },
+    ],
+    yAxis: [
+      {
+        type: 'value',
+        min: 0,
+        minInterval: 1,
+        axisLabel: { color: foreground },
+        splitLine: { lineStyle: { color: gridColor } },
+        axisLine: { show: false },
+        axisTick: { show: false },
+      },
+      { type: 'value', min: 0, show: false },
+    ],
+    series: [
+      ...(type === 'area' || (type === 'bar' && binCount > 10)
+        ? [...series].reverse()
+        : series
+      ).map((term, index) => {
+        let cumulative = 0;
+        return {
+          name: term.label,
+          type: type === 'bar' ? 'bar' : 'line',
+          smooth: type === 'line' || type === 'area',
+          step: type === 'cumulative' ? 'middle' : undefined,
+          stack: type === 'area' || (type === 'bar' && binCount > 10) ? 'matches' : undefined,
+          areaStyle: type === 'area' ? { opacity: bins.length ? 0.2 : 0.35 } : undefined,
+          showSymbol: type !== 'cumulative' || bins.length > 0,
+          symbolSize: (_value: unknown, params: { dataIndex: number }) =>
+            bins.includes(params.dataIndex) ? 11 : 6,
+          markArea:
+            index === 0 && type !== 'bar'
+              ? {
+                  silent: true,
+                  label: { show: false },
+                  itemStyle: { color: foreground, opacity: 0.08 },
+                  data: bins.map((bin) => [
+                    { xAxis: (bin * 100) / binCount },
+                    { xAxis: ((bin + 1) * 100) / binCount },
+                  ]),
+                }
+              : undefined,
+          itemStyle: { color: term.color },
+          lineStyle: { color: term.color },
+          emphasis: { focus: 'series', scale: false },
+          blur: { lineStyle: { opacity: 0.45 }, itemStyle: { opacity: 0.45 } },
+          data: term.counts.map((count, bin) => {
+            cumulative += count;
+            return {
+              value: [((bin + 0.5) * 100) / binCount, type === 'cumulative' ? cumulative : count],
+              symbol: bins.includes(bin) ? 'circle' : 'emptyCircle',
+              itemStyle: {
+                opacity: type === 'bar' && bins.length && !bins.includes(bin) ? 0.35 : 1,
+              },
+            };
+          }),
+        };
+      }),
+      {
+        id: 'volume-overview',
+        type: 'line',
+        xAxisIndex: 1,
+        yAxisIndex: 1,
+        silent: true,
+        showSymbol: false,
+        lineStyle: { opacity: 0 },
+        tooltip: { show: false },
+        data: Array.from({ length: binCount }, (_, bin) => [
+          ((bin + 0.5) * 100) / binCount,
+          overview.reduce((sum, term) => sum + (term.counts[bin] ?? 0), 0),
+        ]),
+      },
+    ],
   };
 }

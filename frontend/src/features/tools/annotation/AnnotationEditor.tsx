@@ -342,6 +342,23 @@ export function AnnotationEditor({
       <ReviewViewport>
         <EditableTable
           editor={editor}
+          documentColumn={setup?.document}
+          rowDetailData={
+            setup
+              ? editor.data.map((row, index) =>
+                  Object.fromEntries(
+                    Object.entries(row).map(([column, value]) => [
+                      column,
+                      compare.includes(column) && !revealed.includes(column)
+                        ? 'Hidden'
+                        : editor.cell(index, column)
+                          ? editor.cell(index, column)?.value
+                          : value,
+                    ]),
+                  ),
+                )
+              : undefined
+          }
           columns={visible}
           columnHeaderExtra={(column) => {
             const value = summary?.comparisons.find((c) => c.column === column);

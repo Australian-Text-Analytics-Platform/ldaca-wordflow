@@ -2683,6 +2683,10 @@
               "$ref": "#/components/schemas/FrequencyCorpus"
             },
             "type": "array"
+          },
+          "study_against_reference": {
+            "description": "Absent in historical results, whose stored View keeps its original mathematics.",
+            "type": "boolean"
           }
         },
         "required": [
@@ -5481,6 +5485,12 @@
       },
       "TokenizerInfo": {
         "properties": {
+          "about_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "label": {
             "type": "string"
           },

@@ -56,3 +56,15 @@ These contributions have been essential in ensuring that LDaCA Wordflow meets th
 © Language Data Commons of Australia (LDaCA)
 
 Version {{VERSION}} - released on {{BUILD_DATE}}.
+
+
+## Stopword list sources and licences
+
+LDaCA-provided presets retain the classic Wordflow lists from archived backend revision `91278ed2` (v0.7 reference `3cd4deda4`). They are additions to the licensed lists supplied by the [stopword library](https://github.com/fergiemcdowall/stopword), whose per-language source and licence notices remain in that package.
+
+- **English (231 words):** Wordflow's manually maintained list, revised by Monika Bednarek in backend revision `d3784a49`.
+- **French (146) and Spanish (151):** subsets of the [Snowball lists](https://snowballstem.org/), via NLTK. Snowball uses the [BSD 3-clause licence](https://github.com/snowballstem/snowball/blob/main/COPYING).
+- **Japanese (310):** SlothLib, Kyoto University, Modified BSD, as attributed in the archived list. The original distribution was at [SlothLib](https://sourceforge.net/projects/slothlib/).
+- **Korean (679):** [stopwords-iso/stopwords-ko](https://github.com/stopwords-iso/stopwords-ko), [MIT licence](https://github.com/stopwords-iso/stopwords-ko/blob/master/LICENSE), copyright 2016 Gene Diaz.
+
+The classic Chinese list and the classic German list are excluded because their complete licensing provenance is unproven. Licensed library alternatives remain available.

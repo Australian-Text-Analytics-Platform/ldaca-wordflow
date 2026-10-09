@@ -170,7 +170,7 @@ async function addInput(base: string, name: string, chooseTokenizer = true) {
       await tokenizer.click();
       // Keyboard opening also works in the embedded driver.
       await browser.keys('ArrowDown');
-      await $(`[role="option"]=${label}`).click();
+      await (label === plain.label ? $(`[role="option"][aria-label=${JSON.stringify(label)}]`) : $(`[role="option"]=${label}`)).click();
       await expect(tokenizer).toHaveText(label);
     }
     // Explicit choices are durable before Run, including across tool changes.
@@ -409,6 +409,7 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
       parameters: [saved.id],
     }], { all: true });
     expectAppError(/Frequency result version is not supported/);
+    expectAppError(/This analysis result version is not supported/);
     await openFrequency();
     await expect(workspace().$('button=Rerun')).toHaveAttribute('aria-disabled', 'false');
     // Restoring readability and retrying must neither clear output nor submit a task.
@@ -425,12 +426,14 @@ export async function frequencyRecoveryScenario(base: string, prefix: string) {
     await workspace().waitForDisplayed({ reverse: true });
     const artifact = saved.result.payload.corpora[0]?.artifact_id;
     if (!artifact) throw new Error('Missing Frequency artifact');
+    expectAppError(/Catalog Error: Table with name result_.* does not exist/);
     await projectApi.executeSql(base, [{
       sql: `DROP TABLE ${ objectsApi.objectSql({ schema: 'wordflow', name: `result_${artifact.replaceAll('-', '')}` })}`,
     }], { all: true });
     await openFrequency();
     await expect(workspace().$('button=Rerun')).toHaveAttribute('aria-disabled', 'false');
-    await expect(results()).toHaveText(expect.stringContaining('The display could not be updated.'));
+    await expect(results()).toHaveText(expect.stringContaining('Could not update Frequency display'));
+    await expect(results()).toHaveText(expect.stringContaining('Catalog Error: Table with name result_'));
     await browser.saveScreenshot(`.tmp/wdio/${prefix}-rerun.png`);
     const rebuilt = await run(base, tab, 'Rerun');
     expect(rebuilt.id).not.toBe(saved.id);
@@ -498,10 +501,10 @@ export async function frequencyPersistenceScenario(base: string, prefix: string)
       await frequencyApi.downloadFrequency(base, result.id, { view: 'corpus', limit: 1 }, 'csv')
     ).text();
     expect(exported.trim().split(/\r?\n/)).toEqual([
-      '"token","frequency"',
-      '"apple","2"',
-      '"banana","2"',
-      '"carrot","1"',
+      '"token","frequency","per_million"',
+      '"apple","2","400000"',
+      '"banana","2","400000"',
+      '"carrot","1","200000"',
     ]);
 
     await filter.setValue('a*');
@@ -568,9 +571,11 @@ export async function frequencyComparisonScenario(base: string, prefix: string) 
     const first = await createTab(base, `${prefix} comparison`);
     await addInput(base, names.reference);
     await addInput(base, names.study);
-    await expect($(`[aria-label=${JSON.stringify(`${names.reference} corpus role`)}]`)).toHaveText(
-      'Reference corpus',
-    );
+    const firstRole = $(`[aria-label=${JSON.stringify(`${names.reference} corpus role`)}]`);
+    await expect(firstRole).toHaveText('Study corpus');
+    await firstRole.click();
+    await $('[role="option"]=Reference corpus').click();
+    await expect(firstRole).toHaveText('Reference corpus');
     await expect($(`[aria-label=${JSON.stringify(`${names.study} corpus role`)}]`)).toHaveText(
       'Study corpus',
     );
@@ -847,7 +852,10 @@ export async function frequencyContinuousListScenario(base: string, prefix: stri
       expect.stringContaining('wordaa'),
     );
     const csv = await (
-      await frequencyApi.downloadFrequency(base, saved.id, { view: 'corpus', corpus_index: 0 }, 'csv')
+      await frequencyApi.downloadFrequency(base, saved.id, {
+        view: 'corpus',
+        corpus_index: saved.result.payload.corpora.findIndex((corpus) => corpus.source.name === names.reference),
+      }, 'csv')
     ).text();
     expect(csv.trim().split(/\r?\n/)).toHaveLength(601);
     expect(
@@ -1284,6 +1292,7 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
     await results().$('button=Ranked lists').click();
     await expect(control().$('[aria-label="Stopword column"]')).toHaveText('stop word');
     await expect(control()).toHaveText(expect.stringContaining('1 word'));
+    expectAppError(/Database object is unavailable/);
     await projectApi.runSqlScript(
       base,
       `DROP TABLE ${ objectsApi.objectSql(`${prefix}_renamed`)}`,

@@ -14,6 +14,7 @@ import {
 import { useActiveTheme } from '@/features/theme/themeRuntime';
 import { SVGRenderer } from 'echarts/renderers';
 import { Button } from '@/components/ui/button';
+import { chartWheelZoom } from '../common/chartWheelZoom';
 import { updatePlotMarkers } from './plotRendering';
 import type { PlotPoint } from './plotModel';
 register([
@@ -88,6 +89,7 @@ export function PlotChart({
     if (!element) return;
     const instance = init(element, undefined, { renderer: 'svg' });
     chart.current = instance;
+    const removeWheel = chartWheelZoom(element, instance);
     instance.on('click', (event) => {
       const data = event.data as { selectionKey?: string } | null;
       if (data?.selectionKey && !interactionRef.current)
@@ -275,6 +277,7 @@ export function PlotChart({
     });
     resize.observe(element);
     return () => {
+      removeWheel();
       resize.disconnect();
       cancelAnimationFrame(resizeFrame);
       instance.dispose();
@@ -290,10 +293,22 @@ export function PlotChart({
     const background = getComputedStyle(document.documentElement)
       .getPropertyValue('--vscode-surface-background')
       .trim();
-    const signature = JSON.stringify([
-      (option.xAxis as { type?: string } | undefined)?.type,
-      (option.yAxis as { type?: string } | undefined)?.type,
-    ]);
+    const colourAxes = (axis: unknown): unknown => {
+      if (Array.isArray(axis)) return axis.map(colourAxes);
+      if (!axis || typeof axis !== 'object') return axis;
+      const value = axis as { axisLabel?: object };
+      return {
+        ...value,
+        axisLabel: { ...value.axisLabel, color: foreground },
+        nameTextStyle: { color: foreground },
+        splitLine: { lineStyle: { color: foreground, opacity: 0.12 } },
+      };
+    };
+    const axisTypes = (axis: unknown) =>
+      (Array.isArray(axis) ? axis : [axis]).map(
+        (value: { type?: string } | undefined) => value?.type,
+      );
+    const signature = JSON.stringify([axisTypes(option.xAxis), axisTypes(option.yAxis)]);
     if (axes.current !== signature) {
       zoom.current = [];
       axes.current = signature;
@@ -306,6 +321,13 @@ export function PlotChart({
         textStyle: { color: foreground },
         dataZoom: (option.dataZoom as Record<string, unknown>[] | undefined)?.map((control) => ({
           ...control,
+          textStyle: { color: foreground },
+          borderColor: foreground,
+          handleStyle: { color: foreground },
+          dataBackground: {
+            lineStyle: { color: foreground, opacity: 0.5 },
+            areaStyle: { color: foreground, opacity: 0.15 },
+          },
           ...(control.type === 'inside' ? { moveOnMouseMove: !interaction } : {}),
         })),
         graphic: (
@@ -320,6 +342,14 @@ export function PlotChart({
         })),
         series: (option.series as Record<string, unknown>[] | undefined)?.map((series) => ({
           ...series,
+          ...(series.markArea
+            ? {
+                markArea: {
+                  ...(series.markArea as object),
+                  itemStyle: { color: foreground, opacity: 0.04 },
+                },
+              }
+            : {}),
           ...(series.type === 'sankey'
             ? { label: { ...(series.label as object), color: foreground, textBorderWidth: 0 } }
             : {}),
@@ -355,28 +385,8 @@ export function PlotChart({
           backgroundColor: background,
           textStyle: { color: foreground },
         },
-        xAxis: option.xAxis
-          ? {
-              ...option.xAxis,
-              axisLabel: {
-                ...(option.xAxis as { axisLabel?: object }).axisLabel,
-                color: foreground,
-              },
-              nameTextStyle: { color: foreground },
-              splitLine: { lineStyle: { color: foreground, opacity: 0.12 } },
-            }
-          : undefined,
-        yAxis: option.yAxis
-          ? {
-              ...option.yAxis,
-              axisLabel: {
-                ...(option.yAxis as { axisLabel?: object }).axisLabel,
-                color: foreground,
-              },
-              nameTextStyle: { color: foreground },
-              splitLine: { lineStyle: { color: foreground, opacity: 0.12 } },
-            }
-          : undefined,
+        xAxis: colourAxes(option.xAxis),
+        yAxis: colourAxes(option.yAxis),
       },
       { notMerge: true },
     );
@@ -454,7 +464,7 @@ export function PlotChart({
             ? 'Drag to replace selection; Shift-drag adds. Escape exits selection.'
             : interaction === 'zoom'
               ? 'Drag a rectangle to zoom. Escape cancels. Zoom does not change selection.'
-              : 'Click to select. Ctrl + wheel zooms; ordinary scrolling moves the page.'}
+              : 'Click to select. Cmd/Ctrl + wheel zooms; ordinary scrolling moves the pane.'}
         </p>
       )}
       {cartesian && emptyViewport && points.length > 0 && (

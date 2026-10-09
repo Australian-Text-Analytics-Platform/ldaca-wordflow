@@ -155,6 +155,19 @@ beforeEach(() => {
   vi.mocked(frequencyApi.exportFrequency).mockResolvedValue('Corpus.csv');
 });
 afterEach(() => vi.restoreAllMocks());
+it('keeps the last valid rows without reporting a disposed read as a failed result', async () => {
+  const { client } = mount();
+  await screen.findByText('alpha');
+  vi.mocked(frequencyApi.queryFrequency).mockRejectedValue(
+    new DOMException('Navigation', 'AbortError'),
+  );
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ['native', base, 'analyses', result.id] });
+  });
+  expect(screen.getByText('alpha')).toBeInTheDocument();
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+});
+
 it('retains decoded projection rows through unrelated renders and unchanged refreshes', async () => {
   useFrequencyState.getState().setDisplay(base, tab.id, { display: 'cloud' });
   const { client, rerender } = mount();

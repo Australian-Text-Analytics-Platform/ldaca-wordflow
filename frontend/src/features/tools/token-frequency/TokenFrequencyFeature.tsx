@@ -29,7 +29,7 @@ import { TokenizerChoice } from '../common/language/TokenizerChoice';
 import { useAnalysisRecovery } from '../common/useAnalysisRecovery';
 import { useNodePreferences } from '../common/useNodePreferences';
 import { FrequencyResults } from './FrequencyResults';
-import { corpusColor, useFrequencySettings } from './frequencySettings';
+import { corpusColor, frequencySettings, useFrequencySettings } from './frequencySettings';
 import {
   getFrequencyDraft,
   orderedFrequencyRequest,
@@ -117,8 +117,12 @@ function FrequencyTab({
   const stored = useFrequencyState((state) => getFrequencyDraft(state, base, tab.id));
   const restored = useRequestRestoration('frequency', tab.analysis, [base, tab.id]);
   const savedInputs = restored.request.inputs;
+  const presentationOrder = frequencySettings(tab.settings).presentationOrder ?? [0, 1];
   const draft: FrequencyDraft = stored ?? {
-    inputs: savedInputs,
+    inputs: savedInputs
+      .map((input, index) => ({ input, index }))
+      .sort((a, b) => presentationOrder.indexOf(a.index) - presentationOrder.indexOf(b.index))
+      .map(({ input }) => input),
     study: savedInputs.length === 2 ? (savedInputs[1]?.source.name ?? null) : null,
   };
   const update = (next: FrequencyDraft) => {
@@ -176,7 +180,12 @@ function FrequencyTab({
   const run = useMutation({
     mutationFn: async (request: frequencyApi.FrequencyRequest) => {
       // Resolve saved positional colours before a new run can change the corpus order.
-      if (Array.isArray(tab.settings.colors)) await persistSettings({ colors: settings.colors });
+      await persistSettings({
+        ...(Array.isArray(tab.settings.colors) ? { colors: settings.colors } : {}),
+        presentationOrder: draft.inputs.map((input) =>
+          request.inputs.findIndex((selected) => selected.source.name === input.source.name),
+        ),
+      });
       return frequencyApi.runFrequency(base, tab.id, request);
     },
     onSettled: () => cache.invalidateQueries({ queryKey: ['native', base, 'tabs', 'frequency'] }),
@@ -302,14 +311,14 @@ function FrequencyTab({
                     <NodeInputField
                       label="Role"
                       value={
-                        (draft.study ?? draft.inputs[1]?.source.name) === nodeId
+                        (draft.study ?? draft.inputs[0]?.source.name) === nodeId
                           ? 'Study corpus'
                           : 'Reference corpus'
                       }
                     >
                       <Select
                         value={
-                          (draft.study ?? draft.inputs[1]?.source.name) === nodeId
+                          (draft.study ?? draft.inputs[0]?.source.name) === nodeId
                             ? 'study'
                             : 'reference'
                         }
@@ -354,7 +363,12 @@ function FrequencyTab({
               issues={restored.issues}
               onReset={() =>
                 restored.reset((value) =>
-                  update({ inputs: value.inputs, study: value.inputs[1]?.source.name ?? null }),
+                  update({
+                    inputs: value.inputs,
+                    study: value.inputs.some((input) => input.source.name === draft.study)
+                      ? draft.study
+                      : (value.inputs[0]?.source.name ?? null),
+                  }),
                 )
               }
               resetDone={!restored.blocked}

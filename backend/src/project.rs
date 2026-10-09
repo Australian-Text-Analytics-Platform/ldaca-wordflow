@@ -151,10 +151,15 @@ impl Database {
         })
     }
     fn connection(&self, cancellation: CancellationToken) -> Result<Self> {
-        let mut database = Self::new(self.conn.try_clone()?, cancellation)?;
-        database.changes = self.changes.clone();
-        database.model_assets = self.model_assets.clone();
-        Ok(database)
+        let conn = self.conn.try_clone()?;
+        conn.execute_batch("SET SESSION schema='data'")?;
+        // Scalar functions belong to the database and are shared by its connections.
+        Ok(Self {
+            conn,
+            cancellation,
+            changes: self.changes.clone(),
+            model_assets: self.model_assets.clone(),
+        })
     }
     fn import_tables(&mut self, sources: Vec<(String, SqlStatement)>) -> Result<Vec<String>> {
         self.import_sources(

@@ -42,6 +42,7 @@ export function FrequencyCorpusLegend({
                     style={{ backgroundColor: colors[index] }}
                   />
                   {index === 0 ? 'Reference' : 'Study'}
+                  {`: ${corpus.label}`}
                 </span>
               </TooltipTrigger>
               <TooltipContent className="max-w-80 break-words">{corpus.label}</TooltipContent>

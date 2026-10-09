@@ -50,6 +50,12 @@ describe('Plots semantic projections', () => {
     });
     expect(model.points).toHaveLength(1);
     expect(model.points[0]?.y).toBe(75);
+    const all = buildPlot('compare', request, rows, display, selection);
+    expect(all.points.map((point) => point.key)).toEqual(rows.map((row) => row.cell_key));
+    expect((all.option.series as { id: string }[]).map((series) => series.id)).toEqual([
+      rows[1]?.group_key,
+      rows[0]?.group_key,
+    ]);
   });
   it('never stacks signed sums, means or medians', () => {
     const request = decodeAnalysisRequest('trends', undefined).request;
@@ -169,7 +175,7 @@ describe('Trends calendar and axis rendering', () => {
       { ...display, style: 'line', timezone: 'UTC' },
       selection,
     );
-    const axis = model.option.xAxis as {
+    const axis = (model.option.xAxis as unknown[])[0] as {
       type: string;
       axisLabel: { hideOverlap: boolean; formatter: (n: number) => string };
     };
@@ -178,7 +184,9 @@ describe('Trends calendar and axis rendering', () => {
     expect(axis.axisLabel.formatter(Date.UTC(2026, 0, 8))).toContain('2026');
     expect(axis.axisLabel.formatter(Date.UTC(2026, 0, 8))).not.toContain(':');
     const series = model.option.series as { id: string }[];
-    expect(series.map((s) => s.id)).toEqual(rows.slice(0, 2).map((r) => r.group_key));
+    expect(series.filter((s) => s.id !== 'volume-overview').map((s) => s.id)).toEqual(
+      rows.slice(0, 2).map((r) => r.group_key),
+    );
   });
 });
 
@@ -290,4 +298,44 @@ it('names Sankey stages and colors equal categories consistently across stages',
     { text: 'after' },
     { text: 'followup' },
   ]);
+});
+
+it('uses raw count volume for the zoom overview while normalising and stacking only selected chart styles', () => {
+  const request = {
+    ...decodeAnalysisRequest('trends', undefined).request,
+    axis: 'x',
+    interval: { type: 'numeric' as const, width: '1', origin: null },
+  };
+  const rows = [0, 1].flatMap((x) =>
+    ['a', 'b'].map((group, i) => ({
+      interval_key: String(x),
+      axis_value: String(x),
+      group_key: JSON.stringify([group]),
+      value: i + 1,
+      row_count: 10 + i,
+    })),
+  );
+  const stacked = buildPlot(
+    'trends',
+    request,
+    rows,
+    { ...display, style: 'stacked_bar' },
+    selection,
+  );
+  const series = stacked.option.series as {
+    id: string;
+    stack?: string;
+    markArea?: object;
+    data: { value: number[] }[];
+  }[];
+  expect(series[0]?.stack).toBe('total');
+  expect(series[0]?.markArea).toBeDefined();
+  expect(series.find((item) => item.id === '["a"]')?.data[0]?.value[1]).toBeCloseTo(100 / 3);
+  expect(series.at(-1)?.data.map((point) => point.value)).toEqual([
+    [0, 21],
+    [1, 21],
+  ]);
+  expect(stacked.option.dataZoom).toMatchObject([{ xAxisIndex: [0, 1] }, { xAxisIndex: [1, 0] }]);
+  const bars = buildPlot('trends', request, rows, { ...display, style: 'bar' }, selection);
+  expect((bars.option.series as { stack?: string }[])[0]?.stack).toBeUndefined();
 });

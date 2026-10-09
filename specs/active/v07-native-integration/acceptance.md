@@ -209,3 +209,49 @@ Observed checks:
 Windows and native WebKit acceptance remain open. Explicit full-stage Run entry
 is source-verified and exercised with real models; this record does not claim
 per-stage profiling counters. Existing vendor/linker warnings remain unchanged.
+
+## Batch 6: research results and charts
+
+Frequency preserves explicit corpus roles and presentation order, while new
+keyness results measure Study against Reference without changing saved historical
+mathematics. Full-token per-million values and exact file exports share native
+statistics. The multilingual picker labels licensed LDaCA presets and library
+alternatives, with readable tokenizer names and About links.
+
+Concordance stores contiguous document bands outside captured source metadata,
+after whole-result sorting/filtering and before pagination. Quotation uses
+three-line cells, clipped-only full highlighted hover and anchored details;
+Annotation's full-row viewer includes unsaved drafts and comparison masks.
+Result sort reset, chart wheel policy, raw-count overviews, selected bands/markers,
+explicit Trends presentations and descriptive figure captions use shared helpers.
+
+Observed checks:
+
+- Backend: 218 library tests, 57 project integration tests and two CLI tests pass;
+  14 optional library tests and one subprocess helper remain ignored. Native
+  regressions cover historical keyness, exact denominators, cross-page bands,
+  DATE periods and duplicate grouping. Strict all-target/all-feature Clippy and
+  formatting pass.
+- Text/data library: 110 library and 23 integration tests pass; three optional
+  model/download tests remain ignored. A separate fresh-cache Neologd test passed
+  download, load and reuse in 24.86 seconds with the 160 MiB budget. Strict Clippy
+  and formatting pass.
+- Frontend: all 752 unit tests and 17 script tests pass. Production build, lint,
+  Knip, generated API checks, bundled-doc drift, Markdown links and diff checks
+  pass. The later Compare regression verifies that reversing visual stacks does
+  not reverse keyboard point order.
+- Chromium: normal Frequency journeys, Concordance (two), Quotation (one),
+  Annotation (two) and all seven representative/dense plot journeys pass across
+  the full run and focused reruns. The focused rerun passes damaged-result
+  Retry/Rerun and the three previously failing plot cases. Original engine errors
+  remain beside the results, and stale tests now use the agreed labels.
+- Concurrent timezone discovery reproduced a DuckDB ICU catalogue invalidation.
+  Cloned project connections now reuse the primary connection's registered
+  native functions. The matched DuckDB 1.5.6 ICU fixture passes 24 concurrent
+  timezone requests and DST/date assertions after the fix.
+
+Japanese classic-list attribution is available in the reviewed archived source;
+its original primary website was unavailable for fresh verification. Native
+macOS/WebKit and Windows acceptance remain open globally. Batch 7 completes
+form-owned Run errors and shell wording. No publication or production storage
+mutation was performed.
