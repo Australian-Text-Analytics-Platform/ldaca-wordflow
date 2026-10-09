@@ -131,8 +131,8 @@ export function ChangeProjectMenu() {
         targetKey="ui.change-project"
         label="About switching Projects"
         tooltip="Close this Project and open another one without going to the Data Loader."
-        // Opening above, it covered the Settings gear just above it (Chao).
-        tooltipSide="left"
+        // Above, it covered the Settings gear; on the left, Switch Project.
+        tooltipSide="bottom"
         className="h-5 w-5 shrink-0 text-description"
       />
 

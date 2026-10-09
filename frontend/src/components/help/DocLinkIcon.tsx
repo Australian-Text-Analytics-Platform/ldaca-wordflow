@@ -87,7 +87,9 @@ export function DocLinkIcon<Kind extends DocLinkKind>({
   // and answers Space as well as Enter.
   const anchor = getDocumentTarget(kind, targetKey)?.anchor;
   return (
-    <Tooltip>
+    // Closes as soon as the pointer leaves the icon, so the tooltip never
+    // sits over a neighbouring control such as the Settings gear (Chao).
+    <Tooltip disableHoverableContent>
       <TooltipTrigger asChild>
         <Button
           asChild
