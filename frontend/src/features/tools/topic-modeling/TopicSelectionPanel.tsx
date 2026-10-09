@@ -1,7 +1,7 @@
 import type { TopicModelingTopic } from './topicPresentation';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
-import { matchChecklistOption } from './topicSearch';
+import { matchTopicWords } from './topicSearch';
 import { topicRepresentativeText } from './topicPresentation';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 
@@ -49,7 +49,10 @@ export function TopicSelectionPanel({
   const filteredTopics = sortedTopics.filter((topic) => {
     if (hasLassoFilter && !lassoTopicIds.has(topic.id)) return false;
     if (topicSearchQuery.trim()) {
-      return matchChecklistOption(topicRepresentativeText(topic), topicSearchQuery);
+      return matchTopicWords(
+        topic.representative_words.map((word) => word.word),
+        topicSearchQuery,
+      );
     }
     return true;
   });
@@ -97,6 +100,10 @@ export function TopicSelectionPanel({
                 >
                   <div className="min-w-0 flex-1">
                     <span className="text-body font-medium text-foreground">Topic {topic.id}</span>
+                    <TopicSizeComposition
+                      sizes={topic.colourCounts ?? topic.dominantCounts ?? topic.size}
+                      {...corpusPresentation}
+                    />
                     <div
                       className="truncate text-label-secondary text-description"
                       title={topicRepresentativeText(topic)}
@@ -179,8 +186,7 @@ export function TopicSelectionPanel({
                   <div className="flex items-center justify-between">
                     <span className="text-body font-medium text-foreground">Topic {topic.id}</span>
                     <TopicSizeComposition
-                      sizes={topic.size}
-                      total={topic.total_size}
+                      sizes={topic.colourCounts ?? topic.dominantCounts ?? topic.size}
                       {...corpusPresentation}
                     />
                   </div>

@@ -82,7 +82,8 @@ export async function topicModelingScenario(
       );
       await expect($('[role="dialog"] table')).toBeDisplayed();
       await $('[role="dialog"]').$('button=Close').click();
-      await expect(panel.$('button=Preview')).toHaveAttribute('aria-disabled', 'true');
+      await expect(panel.$('button=Preview')).toHaveAttribute('aria-disabled', 'false');
+      await expect(panel.$('button=Run')).toHaveAttribute('aria-disabled', 'false');
       await results.$('[aria-label="Topic graph controls"]').scrollIntoView();
       await expect(results.$('[data-testid^="topic-flow-node-"]')).toBeDisplayed();
       await researchScreenshot(`${prefix}-topic-full-light`, results);
@@ -91,7 +92,10 @@ export async function topicModelingScenario(
       await researchScreenshot(`${prefix}-topic-narrow-dark`, results);
       await setAnalysisPaneSize('normal');
       await setResearchTheme(false);
-      const bubble = results.$('[data-testid="topic-flow-node-1"]');
+      // Smaller bubbles render last and remain clickable above overlaps.
+      const visibleBubbles = results.$$('[data-testid^="topic-flow-node-"]');
+      const bubble = visibleBubbles[(await visibleBubbles.length) - 1];
+      if (!bubble) throw new Error('Expected a visible Topic bubble');
       await bubble.click();
       await expect(bubble).toHaveAttribute('aria-pressed', 'true');
       await expect(results.$('button=Clear all')).toBeEnabled();
@@ -114,10 +118,10 @@ export async function topicModelingScenario(
         { sql: `DESCRIBE data.${ objectsApi.identifier(publishedName(first))}` },
       ]);
       expect(shape.toArray().map((r: Record<string, unknown>) => r.column_name)).toContain(
-        'TOPIC_top1_2',
+        'TOPIC_top1',
       );
-      // Both annotated outputs retain every original value, including nested metadata,
-      // duplicate text, blanks and the pre-existing generated-name collision.
+      // Retain original text and allowed metadata. Conflicting optional metadata
+      // is disabled, leaving the generated topic field under its usual name.
       const verifyPublished = async () => {
         for (const [source, file] of [
           [first, 'reference'],
@@ -126,17 +130,20 @@ export async function topicModelingScenario(
           const original = await readResearchData(`topic-consultation-${file}.json`);
           const rows = await projectApi.querySql(base, [
             {
-              sql: `SELECT to_json(original) AS document FROM (SELECT document_id,text,source,participant,tags,TOPIC_top1 FROM data.${ objectsApi.identifier(publishedName(source))} ORDER BY document_id) original`,
+              sql: `SELECT to_json(original) AS document FROM (SELECT document_id,text,source,participant,tags FROM data.${ objectsApi.identifier(publishedName(source))} ORDER BY document_id) original`,
             },
           ]);
           expect(
             rows
               .toArray()
               .map((r: Record<string, unknown>) => JSON.parse(String(r.document)) as unknown),
-          ).toEqual(original);
+          ).toEqual(original.map((item) => {
+            const { TOPIC_top1: _topic, ...row } = item as Record<string, unknown>;
+            return row;
+          }));
           const assignments = await projectApi.querySql(base, [
             {
-              sql: `SELECT DISTINCT TOPIC_top1_2 AS topic FROM data.${ objectsApi.identifier(publishedName(source))}`,
+              sql: `SELECT DISTINCT TOPIC_top1 AS topic FROM data.${ objectsApi.identifier(publishedName(source))}`,
             },
           ]);
           for (const row of assignments.toArray() as Record<string, unknown>[]) {

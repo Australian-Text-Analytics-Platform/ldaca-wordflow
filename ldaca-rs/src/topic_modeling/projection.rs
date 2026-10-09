@@ -503,6 +503,7 @@ pub fn project(
         n_segments: context.n_segments,
         max_topic_size: None,
         projection_context: None,
+        retained_stages: None,
     })
 }
 

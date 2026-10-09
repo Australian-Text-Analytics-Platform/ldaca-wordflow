@@ -36,6 +36,7 @@ struct Shared {
     embedding_cache: Mutex<Option<PathBuf>>,
     topic_previews: Mutex<HashMap<Uuid, std::sync::Weak<topic_preview::Preview>>>,
     topic_preview_admission: AsyncMutex<()>,
+    topic_adjustments: Mutex<HashMap<Uuid, (Uuid, CancellationToken)>>,
     tasks: crate::tasks::Tasks,
     changes: changes::Notifications,
 }
@@ -145,6 +146,7 @@ impl ProjectRuntime {
                 embedding_cache: Mutex::new(None),
                 topic_previews: Mutex::new(HashMap::new()),
                 topic_preview_admission: AsyncMutex::new(()),
+                topic_adjustments: Mutex::new(HashMap::new()),
                 tasks: crate::tasks::Tasks::new(),
                 changes: changes::Notifications::default(),
             }),

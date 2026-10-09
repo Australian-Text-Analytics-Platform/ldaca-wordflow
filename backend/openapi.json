@@ -688,6 +688,44 @@
         ],
         "type": "object"
       },
+      "ColourFieldSummary": {
+        "properties": {
+          "column": {
+            "type": "string"
+          },
+          "groups": {
+            "items": {
+              "$ref": "#/components/schemas/ColourGroup"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "column",
+          "groups"
+        ],
+        "type": "object"
+      },
+      "ColourGroup": {
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "label": {
+            "type": "string"
+          },
+          "missing": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "label",
+          "count",
+          "missing"
+        ],
+        "type": "object"
+      },
       "ColumnChange": {
         "oneOf": [
           {
@@ -3717,9 +3755,23 @@
       },
       "PreviewSummary": {
         "properties": {
+          "natural_projection": {
+            "format": "uuid",
+            "type": "string"
+          },
           "natural_topic_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "parameters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TopicAdjustmentSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "resolved_model": {
             "type": "string"
@@ -3739,7 +3791,8 @@
           "sources",
           "natural_topic_count",
           "segment_count",
-          "resolved_model"
+          "resolved_model",
+          "natural_projection"
         ],
         "type": "object"
       },
@@ -5448,6 +5501,47 @@
         ],
         "type": "object"
       },
+      "TopicAdjustment": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_projection": {
+            "format": "uuid",
+            "type": "string"
+          },
+          "settings": {
+            "$ref": "#/components/schemas/TopicAdjustmentSettings"
+          }
+        },
+        "required": [
+          "expected_projection",
+          "settings"
+        ],
+        "type": "object"
+      },
+      "TopicAdjustmentSettings": {
+        "additionalProperties": false,
+        "properties": {
+          "maximum_topic_size": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "minimum_topic_size": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "tokenizer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "minimum_topic_size",
+          "tokenizer"
+        ],
+        "type": "object"
+      },
       "TopicDocumentQuery": {
         "additionalProperties": false,
         "properties": {
@@ -5633,6 +5727,49 @@
               },
               {
                 "properties": {
+                  "colour_counts": {
+                    "items": {
+                      "items": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
+                  },
+                  "colour_fields": {
+                    "items": {
+                      "$ref": "#/components/schemas/ColourFieldSummary"
+                    },
+                    "type": "array"
+                  },
+                  "dominant_counts": {
+                    "items": {
+                      "items": {
+                        "minimum": 0,
+                        "type": "integer"
+                      },
+                      "type": "array"
+                    },
+                    "type": "array"
+                  },
+                  "natural_projection": {
+                    "format": "uuid",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "natural_projection",
+                  "dominant_counts",
+                  "colour_fields"
+                ],
+                "type": "object"
+              },
+              {
+                "properties": {
                   "projection": {
                     "enum": [
                       "map"
@@ -5649,6 +5786,10 @@
           },
           {
             "properties": {
+              "natural_projection": {
+                "format": "uuid",
+                "type": "string"
+              },
               "projection": {
                 "enum": [
                   "words"
@@ -5667,6 +5808,7 @@
             },
             "required": [
               "words",
+              "natural_projection",
               "projection"
             ],
             "type": "object"
@@ -5722,6 +5864,13 @@
         "properties": {
           "dictionary_name": {
             "type": "string"
+          },
+          "expected_projection": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "selected_topics": {
             "items": {
@@ -5818,6 +5967,12 @@
           },
           {
             "properties": {
+              "colour_by": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
               "projection": {
                 "enum": [
                   "map"
@@ -5882,6 +6037,13 @@
             "minimum": 0,
             "type": "integer"
           },
+          "maximum_topic_size": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "minimum_topic_size": {
             "minimum": 0,
             "type": "integer"
@@ -5911,6 +6073,13 @@
       },
       "TopicResultV1": {
         "properties": {
+          "metadata": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "natural_projection": {
             "format": "uuid",
             "type": "string"
@@ -5918,6 +6087,16 @@
           "natural_topic_count": {
             "minimum": 0,
             "type": "integer"
+          },
+          "parameters": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/TopicAdjustmentSettings"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "projection_context": {
             "format": "uuid",
@@ -5928,6 +6107,13 @@
           },
           "resolved_model": {
             "type": "string"
+          },
+          "retained_stages": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "segment_count": {
             "minimum": 0,
@@ -7976,6 +8162,66 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/analyses/{id}/topic-modeling/adjust": {
+      "post": {
+        "operationId": "analysis_api_adjust_topic_model",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicAdjustment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Analysis"
+                }
+              }
+            },
+            "description": "Atomically adjusted result"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing intermediates or invalid settings"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Superseded adjustment"
           }
         },
         "tags": [
@@ -17442,6 +17688,74 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/tabs/{tab}/topic-modeling/preview/{id}/adjust": {
+      "post": {
+        "operationId": "analysis_api_adjust_topic_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tab",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicAdjustment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PreviewSummary"
+                }
+              }
+            },
+            "description": "Atomically adjusted result"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Missing intermediates or invalid settings"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Superseded adjustment"
           }
         },
         "tags": [

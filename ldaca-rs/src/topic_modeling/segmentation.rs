@@ -19,7 +19,7 @@ use unicode_segmentation::UnicodeSegmentation;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SegmentationMethod {
-    /// Hierarchically split and pack text up to the configured token budget.
+    /// Keep paragraphs separate and split oversized paragraphs to the token budget.
     #[default]
     Automatic,
     /// Treat every non-empty newline-delimited line as one segment.
@@ -29,7 +29,7 @@ pub enum SegmentationMethod {
 }
 
 /// One non-overlapping source span embedded and clustered as a Topic Segment.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TopicSegment {
     pub doc_index: usize,
     pub start_byte: usize,
@@ -233,6 +233,35 @@ fn token_spans(text: &str, tokenizer: &Tokenizer) -> Result<(Vec<TokenSpan>, usi
 }
 
 fn segment_document_automatic(
+    doc_index: usize,
+    doc: &str,
+    tokens: &[TokenSpan],
+    max_tokens: usize,
+) -> Result<Vec<TopicSegment>> {
+    let mut segments = Vec::new();
+    let mut start = 0;
+    for end in paragraph_end_offsets(doc) {
+        let paragraph = doc.get(start..end).context("invalid paragraph range")?;
+        let paragraph_tokens = tokens_in_range(tokens, start, end)
+            .iter()
+            .map(|token| TokenSpan {
+                start: token.start - start,
+                end: token.end - start,
+            })
+            .collect::<Vec<_>>();
+        for mut segment in
+            segment_oversized_paragraph(doc_index, paragraph, &paragraph_tokens, max_tokens)?
+        {
+            segment.start_byte += start;
+            segment.end_byte += start;
+            segments.push(segment);
+        }
+        start = end;
+    }
+    Ok(segments)
+}
+
+fn segment_oversized_paragraph(
     doc_index: usize,
     doc: &str,
     tokens: &[TokenSpan],
@@ -571,6 +600,18 @@ mod tests {
         };
         let segments = word_segments("alpha beta.\n\ngamma delta.", cfg);
         assert_eq!(segments, vec!["alpha beta.", "gamma delta."]);
+    }
+
+    #[test]
+    fn automatic_keeps_short_paragraphs_separate_even_when_the_document_fits() {
+        let cfg = SegmentationConfig {
+            method: SegmentationMethod::Automatic,
+            max_tokens: 64,
+        };
+        assert_eq!(
+            word_segments("a\n\n猫\n\n   \nlast paragraph", cfg),
+            vec!["a", "猫", "last paragraph"]
+        );
     }
 
     #[test]

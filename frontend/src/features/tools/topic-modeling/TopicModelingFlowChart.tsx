@@ -112,13 +112,13 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             cy={outerRadius}
             r={bubble.radius}
             fill={bubble.fill}
-            fillOpacity={bubble.hovered ? 0.88 : bubble.selected ? 0.78 : 0.6}
+            fillOpacity={bubble.hovered ? 0.92 : bubble.fillOpacity}
             stroke={bubble.selected ? VIZ_PALETTE[2] : bubble.hovered ? VIZ_PALETTE[0] : GREY}
             strokeWidth={bubble.selected || bubble.hovered ? 2 : 1}
             className={cn(
               'transition-[fill-opacity,stroke,stroke-width] duration-100',
               !bubble.filteredOut &&
-                'group-hover:fill-opacity-[0.88] group-hover:stroke-focus group-hover:[stroke-width:2]',
+                'group-hover:fill-opacity-[0.92] group-hover:stroke-focus group-hover:[stroke-width:2]',
             )}
           />
           {data.labelOffset !== undefined && (
@@ -169,8 +169,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
         </span>
         <div className="mt-2">
           <TopicSizeComposition
-            sizes={bubble.topic.size}
-            total={bubble.topic.total_size}
+            sizes={bubble.topic.colourCounts ?? bubble.topic.dominantCounts ?? bubble.topic.size}
             {...corpusPresentation}
           />
         </div>
@@ -362,7 +361,7 @@ function TopicExportSvg({
             <circle
               r={bubble.radius}
               fill={bubble.fill}
-              fillOpacity={bubble.selected ? 0.78 : 0.6}
+              fillOpacity={bubble.fillOpacity}
               stroke={bubble.selected ? VIZ_PALETTE[2] : GREY}
               strokeWidth={bubble.selected ? 2 : 1}
             />
@@ -409,7 +408,7 @@ function TopicModelingFlowChartInner({
     viewport.zoom,
   );
   const viewReady = useEffectEvent(onViewReady);
-  const nodes: TopicFlowNode[] = bubbles.map((bubble) => {
+  const nodes: TopicFlowNode[] = bubbles.map((bubble, index) => {
     const diameter = Math.max(18, bubble.radius + 7) * 2;
     return {
       id: `topic-${String(bubble.id)}`,
@@ -426,7 +425,7 @@ function TopicModelingFlowChartInner({
       draggable: false,
       selectable: false,
       focusable: false,
-      zIndex: bubble.selected ? 3 : bubble.lassoed ? 2 : 1,
+      zIndex: index + 1,
       // Geometry is known. Do not discard it on controlled node updates and
       // restart React Flow's measure/initialize cycle after every interaction.
       width: diameter,

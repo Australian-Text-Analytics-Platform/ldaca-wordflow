@@ -421,3 +421,22 @@ Preview and Apply use the same resolved name. An explicitly entered existing
 column still invokes intentional replacement. Find/Join column behavior, semantic
 `CONC_*`, `QUOTE_*`, `TOPIC_*` fields, private artifacts, SQL aliases and download
 filename rules are unchanged.
+
+## Retained Topic adjustments
+
+A Topic Run captures source rows and metadata independently of later edits.
+Explicit Run repeats every analysis stage against current inputs. A downstream
+adjustment changes derived clustering or representative words on the captured
+population; it preserves original Run provenance and publishes replacement
+outputs together. Failure retains the previous successful result. Clear removes
+all owned intermediates and source artifacts, while published Data Blocks remain
+independent. Older results are readable but require Rerun for adjustments when
+intermediates are absent.
+
+Dominant-document counts use one assignment per captured document. Displayed
+shares divide by each Data Block's or metadata group's own document population;
+Preview uses the sampled population. Top-N bubble memberships remain a distinct
+measure and can include cutoff ties and multiple Topics per document. Missing
+metadata has a grey group; fields qualify for colouring only with 2–8 distinct
+nonmissing groups. Neither colouring nor stopword presentation changes coordinates
+or source text.

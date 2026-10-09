@@ -9,10 +9,40 @@ import {
 } from '@/features/tools/common/analysisApi';
 
 export type TopicRequest = components['schemas']['TopicRequest'];
+export type TopicAdjustmentSettings = components['schemas']['TopicAdjustmentSettings'];
 
 export type TopicSampling = components['schemas']['Sampling'];
 
 export type TopicSummary = components['schemas']['PreviewSummary'];
+
+export async function adjustTopicModel(
+  base: string,
+  owner: { analysis: string } | { tab: string; preview: string },
+  input: components['schemas']['TopicAdjustment'],
+  signal: AbortSignal,
+): Promise<{ summary: TopicSummary; analysis?: TopicAnalysisResult }> {
+  if ('analysis' in owner) {
+    const analysis = completedAnalysis(
+      await (
+        await request(base, '/api/project/analyses/{id}/topic-modeling/adjust', 'post', {
+          path: { id: owner.analysis },
+          body: input,
+          signal,
+        })
+      ).json(),
+      'topic-modeling',
+    ) as TopicAnalysisResult;
+    return { summary: analysis.result.payload, analysis };
+  }
+  const summary = await (
+    await request(base, '/api/project/tabs/{tab}/topic-modeling/preview/{id}/adjust', 'post', {
+      path: { tab: owner.tab, id: owner.preview },
+      body: input,
+      signal,
+    })
+  ).json();
+  return { summary };
+}
 
 export type TopicAnalysisResult = AnalysisResult<components['schemas']['TopicResultV1']>;
 
@@ -100,8 +130,9 @@ export async function queryTopicModel(
   owner: { analysis: string } | { tab: string; preview: string },
   input: TopicQuery,
   signal?: AbortSignal,
+  expectedProjection?: string,
 ): Promise<TopicBasis | TopicWords> {
-  return (
+  const result = await (
     await ('analysis' in owner
       ? request(base, '/api/project/analyses/{id}/topic-modeling/query', 'post', {
           path: { id: owner.analysis },
@@ -114,6 +145,9 @@ export async function queryTopicModel(
           signal,
         }))
   ).json();
+  if (expectedProjection && result.natural_projection !== expectedProjection)
+    throw new ProjectError('Topic results changed. Refresh to load the current result.', '');
+  return result;
 }
 
 export async function publishTopicModel(

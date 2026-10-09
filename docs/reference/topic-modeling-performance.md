@@ -108,3 +108,12 @@ These figures isolate retained rows and page projection; they exclude fitting,
 model/context memory and allocator overhead. Source width and text length directly
 affect memory. No sample or metadata truncation is applied. Run with
 `cargo test -p wordflow-backend --locked benchmark_preview_documents -- --ignored --nocapture`.
+
+## Integration acceptance update, 10 October 2026
+
+The older unchanged-request blocking described above was superseded by the
+v0.7 integration: explicit Run and Preview remain available after success.
+The real-model Chromium journeys now exercise full Run, sampled Preview,
+retained-stage adjustment, captured metadata, publication and four figure
+download choices. These are behavioral checks, not new performance measurements.
+See the [integration acceptance record](../../specs/active/v07-native-integration/acceptance.md).

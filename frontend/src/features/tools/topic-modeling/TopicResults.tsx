@@ -1,4 +1,13 @@
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { OperationError } from '@/features/project/OperationError';
+import { TopicAdjustments } from './TopicAdjustments';
 import { Checkbox } from '@/components/ui/checkbox';
 import * as projectApi from '@/features/project/api';
 import { suggestDataBlockName, suggestDataBlockNames } from '@/features/project/automaticNames';
@@ -20,7 +29,7 @@ import {
   stopwordSource as decodeStopwordSource,
 } from '../common/stopwords/stopwordData';
 import { useStopwords } from '../common/stopwords/useStopwords';
-import { GREY, VIZ_PALETTE } from '../common/vizPalette';
+import { GREY, VIZ_PALETTE, interpolateVizColor } from '../common/vizPalette';
 import { TopicDocuments } from './TopicDocuments';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { TopicPublishDialog } from './TopicPublishDialog';
@@ -34,6 +43,7 @@ export function TopicResults({
   tab,
   owner,
   summary,
+  onAdjusted,
   request,
   settings,
   onSettings,
@@ -46,6 +56,10 @@ export function TopicResults({
   tab: analysesApi.Tab;
   owner: { analysis: string } | { tab: string; preview: string };
   summary: topicApi.TopicSummary;
+  onAdjusted: (next: {
+    summary: topicApi.TopicSummary;
+    analysis?: topicApi.TopicAnalysisResult;
+  }) => void;
   request: topicApi.TopicRequest;
   settings: Record<string, unknown>;
   onSettings: (patch: Record<string, unknown>) => void;
@@ -94,19 +108,30 @@ export function TopicResults({
     active,
     onSelect: selectStopwords,
   });
+  const [colourBy, setColourBy] = useState<string | null>(
+    typeof settings.topic_colour_by === 'string' ? settings.topic_colour_by : null,
+  );
+  const [revision, setRevision] = useState(summary.natural_projection);
   const root = isSaved
     ? ['native', base, 'analyses', modelId, 'topic-modeling']
     : ['native', base, 'analysis-preview', tab.id, modelId];
   const map = useQuery({
-    queryKey: [...root, 'map', base, owner, count],
+    queryKey: [...root, 'map', base, owner, summary.natural_projection, count, colourBy],
     queryFn: ({ signal }) =>
-      topicApi.queryTopicModel(base, owner, { projection: 'map', topic_count: count }, signal),
+      topicApi.queryTopicModel(
+        base,
+        owner,
+        { projection: 'map', topic_count: count, colour_by: colourBy },
+        signal,
+        summary.natural_projection,
+      ),
     enabled: active,
+    meta: { report: false },
     staleTime: Infinity,
     placeholderData: keepPreviousData,
   });
   const words = useQuery({
-    queryKey: [...root, 'words', base, owner, count, appliedStopwords],
+    queryKey: [...root, 'words', base, owner, summary.natural_projection, count, appliedStopwords],
     queryFn: ({ signal }) =>
       topicApi.queryTopicModel(
         base,
@@ -117,11 +142,15 @@ export function TopicResults({
           stopword_source: appliedStopwords,
         },
         signal,
+        summary.natural_projection,
       ),
     enabled: active,
     staleTime: Infinity,
     placeholderData: keepPreviousData,
-    meta: objectDependencies(...(appliedStopwords ? [appliedStopwords.source] : [])),
+    meta: {
+      ...objectDependencies(...(appliedStopwords ? [appliedStopwords.source] : [])),
+      report: false,
+    },
   });
   const [applied, setApplied] = useState<{
     count: number;
@@ -135,6 +164,8 @@ export function TopicResults({
     !words.isPlaceholderData &&
     !map.isFetching &&
     !words.isFetching &&
+    map.data.natural_projection === summary.natural_projection &&
+    words.data.natural_projection === summary.natural_projection &&
     (applied?.basis !== map.data || applied.words !== words.data)
   )
     setApplied({ count, basis: map.data, words: words.data });
@@ -148,6 +179,14 @@ export function TopicResults({
   const [csv, setCsv] = useState(true);
   const [publication, setPublication] = useState<topicApi.TopicPublish | null>(null);
   const frame = useRef<HTMLDivElement>(null);
+  if (revision !== summary.natural_projection) {
+    setRevision(summary.natural_projection);
+    setInspectedTopic(null);
+    setSelection(new Set());
+    setLasso(new Set());
+    setCount(summary.natural_topic_count);
+    setTopN((old) => Math.min(summary.natural_topic_count, old));
+  }
   const colors = (settings.colors ?? {}) as Record<string, string>;
   const sourceIds = summary.sources.map((s) => objectsApi.targetKey(s.input.source));
   const nodeColors = Object.fromEntries(
@@ -159,8 +198,20 @@ export function TopicResults({
         GREY,
     ]),
   );
+  const colourField = applied?.basis.colour_fields.find((field) => field.column === colourBy);
+  const colourGroups = colourField?.groups.map((group, index) => ({
+    ...group,
+    color: group.missing ? GREY : (VIZ_PALETTE[index % VIZ_PALETTE.length] ?? GREY),
+  }));
   const corpusPresentation = {
-    corpusCount: summary.sources.length,
+    corpusCount: colourGroups?.length ?? summary.sources.length,
+    denominators:
+      colourGroups?.map((group) => group.count) ??
+      summary.sources.map((source) => source.document_count),
+    labels:
+      colourGroups?.map((group) => group.label) ??
+      summary.sources.map((source) => source.input.source.name),
+    groupColors: colourGroups?.map((group) => group.color),
     panelNodeIds: sourceIds,
     nodeColors,
     defaultPalette: VIZ_PALETTE,
@@ -178,6 +229,8 @@ export function TopicResults({
       ...topic,
       representative_words: applied?.words.words[topic.id] ?? [],
       size,
+      dominantCounts: applied?.basis.dominant_counts[topic.id],
+      colourCounts: colourGroups ? applied?.basis.colour_counts?.[topic.id] : undefined,
       total_size: size.reduce((a, b) => a + b, 0),
     };
   });
@@ -193,6 +246,10 @@ export function TopicResults({
     lassoTopicIds: lasso,
     hoveredTopicId: hover,
     topicSearchQuery: search,
+    colorScheme:
+      colourGroups && applied?.basis.colour_counts
+        ? { groups: colourGroups, topicCounts: applied.basis.colour_counts }
+        : null,
   });
   const failed = map.isError || words.isError;
   const unresolved =
@@ -234,6 +291,7 @@ export function TopicResults({
         search,
         lasso: [...lasso],
         documentCounts: summary.sources.map((s) => s.document_count),
+        colourGroups,
         topics: allTopics,
         selected: selection,
         colors: summary.sources.map(
@@ -272,6 +330,17 @@ export function TopicResults({
         topic_projection: { analysis: modelId, topic_count: next, top_n: Math.min(next, topN) },
       });
   };
+  if (!applied && failed)
+    return (
+      <OperationError
+        title="Couldn't load Topic results"
+        error={map.error ?? words.error}
+        onRetry={() => {
+          void map.refetch();
+          void words.refetch();
+        }}
+      />
+    );
   if (!applied)
     return (
       <AnalysisProgress
@@ -313,6 +382,7 @@ export function TopicResults({
                   existingNames,
                 );
                 setPublication({
+                  expected_projection: summary.natural_projection,
                   topic_count: applied.count,
                   top_n: topN,
                   selected_topics: [...selection],
@@ -361,6 +431,74 @@ export function TopicResults({
           </span>
         ))}
       </div>
+      {summary.sources.length === 2 && (
+        <p className="flex flex-wrap items-center gap-2 text-description">
+          <span
+            className="size-3 rounded-full"
+            style={{
+              background: interpolateVizColor(
+                nodeColors[sourceIds[0] ?? ''] ?? GREY,
+                nodeColors[sourceIds[1] ?? ''] ?? GREY,
+                0.5,
+              ),
+            }}
+          />
+          In between: shared by both, by share of each Data Block.
+        </p>
+      )}
+      <TopicAdjustments
+        base={base}
+        owner={owner}
+        summary={summary}
+        request={request}
+        disabled={editing || outdated || !active}
+        onAdjusted={onAdjusted}
+      />
+      {summary.sources.length === 1 && (
+        <label className="block max-w-sm space-y-1">
+          <span>Colour by</span>
+          <Select
+            value={colourBy ?? '__source'}
+            onValueChange={(value) => {
+              const next = value === '__source' ? null : value;
+              setColourBy(next);
+              onSettings({ topic_colour_by: next });
+            }}
+          >
+            <SelectTrigger aria-label="Colour by">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__source">Data Block</SelectItem>
+              {applied.basis.colour_fields.map((field) => (
+                <SelectItem key={field.column} value={field.column}>
+                  {field.column}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {applied.basis.colour_fields.length === 0 && (
+            <p className="text-description text-label-secondary">
+              No retained field has 2–8 nonmissing groups.
+            </p>
+          )}
+        </label>
+      )}
+      {colourGroups && (
+        <div aria-label="Metadata colour legend" className="flex flex-wrap gap-3">
+          {colourGroups.map((group, index) => (
+            <span key={index} className="inline-flex items-center gap-1 text-description">
+              <span className="size-3 rounded-full" style={{ background: group.color }} />
+              {group.label} · {group.count.toLocaleString()} documents
+            </span>
+          ))}
+        </div>
+      )}
+      <p className="text-description text-label-secondary">
+        Counts show each topic’s dominant documents and their share of each Data Block or metadata
+        group. Bubble area uses the selected Top topics per document; blended colours use each
+        group’s own population.
+      </p>
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-3">
         <div className="space-y-2">
           <label className="flex items-center justify-between gap-2">
@@ -438,6 +576,16 @@ export function TopicResults({
           onSettings({ stopwords_enabled: enabled });
         }}
       />
+      {failed && (
+        <OperationError
+          title="Couldn’t refresh Topic results"
+          error={map.error ?? words.error}
+          onRetry={() => {
+            void map.refetch();
+            void words.refetch();
+          }}
+        />
+      )}
       {unresolved && (
         <div role="status" className="flex flex-wrap items-center gap-2 text-description">
           <span>
@@ -518,6 +666,11 @@ export function TopicResults({
           topic={inspectedTopic}
           count={applied.count}
           topN={topN}
+          topicCounts={
+            allTopics.find((item) => item.id === inspectedTopic)?.colourCounts ??
+            allTopics.find((item) => item.id === inspectedTopic)?.dominantCounts
+          }
+          corpusPresentation={corpusPresentation}
           onClose={() => {
             setInspectedTopic(null);
           }}

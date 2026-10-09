@@ -835,14 +835,28 @@ never installs or downloads ICU.
 - `DELETE /api/project/tabs/{id}/topic-modeling/preview/{preview_id}`: cancel and await cleanup.
 - `POST /api/project/analyses/{id}/topic-modeling/query`: saved projection.
 - `POST /api/project/analyses/{id}/topic-modeling/publish`: atomic publication task.
+- `POST /api/project/analyses/{id}/topic-modeling/adjust`: atomically replace derived outputs.
+- `POST /api/project/tabs/{tab}/topic-modeling/preview/{id}/adjust`: replace the retained Preview model after success.
+
+Adjustment accepts `expected_projection` and `settings` (`minimum_topic_size`,
+optional `maximum_topic_size`, `tokenizer`). The expected UUID prevents stale
+publication; a conflict returns `topic_adjustment_stale`. Successful responses
+return the saved Analysis or Preview summary, with the new `natural_projection`
+and effective `parameters`. Original Run provenance and captured rows remain
+unchanged. Missing older intermediates require explicit Rerun. Adjustments create
+no task rows. Map and word responses carry the same `natural_projection` revision;
+clients reject mixed revisions. Publication accepts `expected_projection` and
+rejects stale displayed candidates before creating any output.
 
 Execution request: ordered `inputs` (`source`, `column`), `embedding_model`, shared
 `tokenizer`, `segmentation` (`automatic`, `line`, `sentence`), `max_segment_tokens`,
-`minimum_topic_size`, `seed`. Sampling is absent. Preview wraps this as `request`
+`minimum_topic_size`, optional `maximum_topic_size`, `seed`. An absent/null
+maximum is unlimited; a fixed maximum must exceed the minimum. Sampling is absent. Preview wraps this as `request`
 and `sampling`: one ordered `{mode:"count",count}` or
 `{mode:"percentage",percentage}` per input. Positive percentages are at most 100.
 
-Saved and Preview queries share a tagged `projection`: `map` with `topic_count`,
+Saved and Preview queries share a tagged `projection`: `map` with `topic_count`
+and optional `colour_by`,
 or `words` with `topic_count` and optional `stopword_source`.
 The `documents` projection accepts `source` (zero-based source index), `topic`,
 `topic_count`, `top_n`, one-based `page`, `page_size` and original `metadata`
@@ -852,7 +866,9 @@ document field is always included. Positive Top-N memberships include cutoff
 ties; ordering is coverage descending then result-local identity. Saved reads
 use owned artifacts; Preview reads sampled typed Arrow rows retained by its
 connection owner. Neither reads the live source or refits the model. Compact JSON carries
-coordinates/membership activations or representative words, not source documents
+coordinates/membership activations, `dominant_counts` by source, eligible
+`colour_fields` with group populations, optional `colour_counts` by group, or
+representative words, not source documents
 or the native projection context. Expired handles return `preview_expired` and
 never trigger another fit. Run/publication retain standard task headers, Origin
 protection, editor protection and structured errors.

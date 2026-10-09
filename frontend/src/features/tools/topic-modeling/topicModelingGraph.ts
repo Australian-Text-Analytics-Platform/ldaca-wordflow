@@ -1,5 +1,5 @@
 import type { TopicModelingTopic } from './topicPresentation';
-import { matchChecklistOption } from './topicSearch';
+import { matchTopicWords } from './topicSearch';
 import { GREY, VIZ_PALETTE, interpolateVizColor } from '../common/vizPalette';
 
 export const TOPIC_GRAPH_WIDTH = 1000;
@@ -20,6 +20,7 @@ export interface TopicBubbleModel {
   position: TopicGraphPoint;
   radius: number;
   fill: string;
+  fillOpacity: number;
   selected: boolean;
   lassoed: boolean;
   hovered: boolean;
@@ -36,6 +37,42 @@ interface BuildTopicBubbleModelsOptions {
   lassoTopicIds: Set<number>;
   hoveredTopicId: number | null;
   topicSearchQuery: string;
+  colorScheme?: TopicColorScheme | null;
+}
+
+export interface TopicColorScheme {
+  groups: { color: string; count: number }[];
+  topicCounts: number[][];
+}
+
+/** Group-size adjusted top-two blending and Pielou concentration opacity. */
+export function topicGroupStyle(scheme: TopicColorScheme, topic: number, fallback: string) {
+  const weights = scheme.groups.map((group, index) => ({
+    color: group.color,
+    weight: group.count > 0 ? (scheme.topicCounts[topic]?.[index] ?? 0) / group.count : 0,
+  }));
+  const ranked = weights
+    .filter((group) => group.weight > 0)
+    .toSorted((a, b) => b.weight - a.weight);
+  const [first, second] = ranked;
+  const fill = first
+    ? second
+      ? interpolateVizColor(
+          first.color,
+          second.color,
+          second.weight / (first.weight + second.weight),
+        )
+      : first.color
+    : fallback;
+  const total = weights.reduce((sum, group) => sum + group.weight, 0);
+  if (total === 0) return { fill, fillOpacity: 0.6 };
+  const entropy = weights.reduce((sum, group) => {
+    const share = group.weight / total;
+    return share > 0 ? sum - share * Math.log(share) : sum;
+  }, 0);
+  const concentration =
+    weights.length < 2 ? 1 : Math.min(1, Math.max(0, 1 - entropy / Math.log(weights.length)));
+  return { fill, fillOpacity: 0.25 + 0.55 * Math.sqrt(concentration) };
 }
 
 /** Resolves one corpus colour from persisted node metadata, then palette fallback. */
@@ -91,6 +128,7 @@ export function buildTopicBubbleModels({
   lassoTopicIds,
   hoveredTopicId,
   topicSearchQuery,
+  colorScheme,
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
@@ -114,33 +152,40 @@ export function buildTopicBubbleModels({
   );
   const hasSearchFilter = topicSearchQuery.trim().length > 0;
 
-  return visibleTopics.map((topic) => {
-    const corpusSizeA = corpusSizes[0] ?? 0;
-    const corpusSizeB = corpusSizes[1] ?? 0;
-    const shareA = corpusSizeA > 0 ? (topic.size[0] ?? 0) / corpusSizeA : 0;
-    const shareB = corpusSizeB > 0 ? (topic.size[1] ?? 0) / corpusSizeB : 0;
-    const combinedShare = shareA + shareB;
-    const proportion = corpusCount === 2 && combinedShare > 0 ? shareB / combinedShare : 0.5;
-    return {
-      id: topic.id,
-      topic,
-      position: positions.get(topic.id) ?? {
-        x: TOPIC_GRAPH_WIDTH / 2,
-        y: TOPIC_GRAPH_HEIGHT / 2,
-      },
-      radius: 50 * Math.sqrt(topic.total_size / maxSize),
-      fill: corpusCount <= 1 ? colorA : interpolateVizColor(colorA, colorB, proportion),
-      selected: selectedTopicIds.has(topic.id),
-      lassoed: lassoTopicIds.has(topic.id),
-      hovered: hoveredTopicId === topic.id,
-      filteredOut:
-        hasSearchFilter &&
-        !matchChecklistOption(
-          topic.representative_words.map((term) => term.word).join(', '),
-          topicSearchQuery,
-        ),
-    };
-  });
+  return visibleTopics
+    .toSorted((a, b) => b.total_size - a.total_size || a.id - b.id)
+    .map((topic) => {
+      const corpusSizeA = corpusSizes[0] ?? 0;
+      const corpusSizeB = corpusSizes[1] ?? 0;
+      const shareA = corpusSizeA > 0 ? (topic.size[0] ?? 0) / corpusSizeA : 0;
+      const shareB = corpusSizeB > 0 ? (topic.size[1] ?? 0) / corpusSizeB : 0;
+      const combinedShare = shareA + shareB;
+      const proportion = corpusCount === 2 && combinedShare > 0 ? shareB / combinedShare : 0.5;
+      return {
+        id: topic.id,
+        topic,
+        position: positions.get(topic.id) ?? {
+          x: TOPIC_GRAPH_WIDTH / 2,
+          y: TOPIC_GRAPH_HEIGHT / 2,
+        },
+        radius: 50 * Math.sqrt(topic.total_size / maxSize),
+        ...(corpusCount <= 1 && colorScheme
+          ? topicGroupStyle(colorScheme, topic.id, colorA)
+          : {
+              fill: corpusCount <= 1 ? colorA : interpolateVizColor(colorA, colorB, proportion),
+              fillOpacity: 0.6,
+            }),
+        selected: selectedTopicIds.has(topic.id),
+        lassoed: lassoTopicIds.has(topic.id),
+        hovered: hoveredTopicId === topic.id,
+        filteredOut:
+          hasSearchFilter &&
+          !matchTopicWords(
+            topic.representative_words.map((term) => term.word),
+            topicSearchQuery,
+          ),
+      };
+    });
 }
 
 /** Returns whether a screen-space point lies inside a closed freehand polygon. */

@@ -1,10 +1,10 @@
 # Implementation tasks
 
-- [ ] 1. Shared behavior and native contracts; focused checks and local commit.
-- [ ] 2. Native formats, mixed folders, server selection and LDaCA imports.
-- [ ] 3. Permanent server projects, uploads and task lifecycle.
-- [ ] 4. Data Editor and Data Builder.
-- [ ] 5. Topic Modelling retained stages, adjustments and colouring.
+- [x] 1. Shared behavior and native contracts; focused checks and local commit.
+- [x] 2. Native formats, mixed folders, server selection and LDaCA imports.
+- [x] 3. Permanent server projects, uploads and task lifecycle.
+- [x] 4. Data Editor and Data Builder.
+- [x] 5. Topic Modelling retained stages, adjustments and colouring.
 - [ ] 6. Frequency, Concordance, Quotation, Annotation and charts.
 - [ ] 7. Shell, navigation, bundled Help and desktop behavior.
 - [ ] 8. Production artifact promotion and operational guidance.

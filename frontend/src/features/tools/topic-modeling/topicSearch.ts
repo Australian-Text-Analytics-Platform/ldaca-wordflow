@@ -112,7 +112,7 @@ const decodeEscapedWildcards = (query: string): string => {
  * Used by: FilterValueChecklist and Topic Modelling graph/list search so
  * cross-feature search semantics stay aligned.
  */
-export const matchChecklistOption = (optionLabel: string, query: string): boolean => {
+const matchChecklistOption = (optionLabel: string, query: string): boolean => {
   const normalizedQuery = query.trim();
   if (!normalizedQuery) {
     return true;
@@ -124,3 +124,8 @@ export const matchChecklistOption = (optionLabel: string, query: string): boolea
 
   return optionLabel.toLowerCase().includes(decodeEscapedWildcards(normalizedQuery).toLowerCase());
 };
+
+/** Keep escaped glob semantics for joined labels and each individual word. */
+export const matchTopicWords = (words: string[], query: string) =>
+  matchChecklistOption(words.join(', '), query) ||
+  words.some((word) => matchChecklistOption(word, query));

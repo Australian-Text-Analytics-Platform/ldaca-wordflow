@@ -7,9 +7,13 @@ mod transport;
 use ldaca_rs::topic_modeling::{self as engine, DocumentResult, TopicModelingResult, projection};
 use std::collections::HashSet;
 use transport::{RepresentativeWord, SegmentationMethod, TopicProjectionBasis};
+mod adjustments;
 mod documents;
+pub(crate) use adjustments::{TopicAdjustment, TopicAdjustmentSettings};
+mod metadata;
 use documents::PreviewDocuments;
 pub(crate) use documents::TopicDocumentQuery;
+use metadata::{ColourField, ColourFieldSummary};
 
 pub(crate) const KIND: &str = "topic-modeling";
 #[derive(Clone, Debug, Serialize, utoipa::ToSchema)]
@@ -39,6 +43,8 @@ pub(crate) struct TopicRequest {
     pub segmentation: SegmentationMethod,
     pub max_segment_tokens: usize,
     pub minimum_topic_size: usize,
+    #[serde(default)]
+    pub maximum_topic_size: Option<usize>,
     pub seed: u64,
 }
 impl TopicRequest {
@@ -59,6 +65,14 @@ impl TopicRequest {
         if self.minimum_topic_size < 2 || self.tokenizer.trim().is_empty() {
             return Err(Error::invalid(
                 "Choose a tokenizer and a minimum topic size of at least 2",
+            ));
+        }
+        if self
+            .maximum_topic_size
+            .is_some_and(|maximum| maximum <= self.minimum_topic_size)
+        {
+            return Err(Error::invalid(
+                "Maximum topic size must exceed the minimum topic size",
             ));
         }
         Ok(())
@@ -92,7 +106,10 @@ impl TopicRequest {
             },
             seed: self.seed,
             min_cluster_size: self.minimum_topic_size,
-            topic_size_limit: engine::TopicSizeLimit::Uncapped,
+            topic_size_limit: self.maximum_topic_size.map_or(
+                engine::TopicSizeLimit::Uncapped,
+                engine::TopicSizeLimit::Fixed,
+            ),
             vectorizer_model_id: Some(self.tokenizer.clone()),
             lowercase: true,
         }
@@ -145,6 +162,12 @@ pub(crate) struct TopicResultV1 {
     pub resolved_model: String,
     pub natural_projection: Uuid,
     pub projection_context: Option<Uuid>,
+    #[serde(default)]
+    pub retained_stages: Option<Uuid>,
+    #[serde(default)]
+    pub metadata: Option<Uuid>,
+    #[serde(default)]
+    pub parameters: Option<TopicAdjustmentSettings>,
 }
 #[derive(Clone, Debug, Serialize, utoipa::ToSchema)]
 pub(crate) struct PreviewSummary {
@@ -152,9 +175,15 @@ pub(crate) struct PreviewSummary {
     pub natural_topic_count: usize,
     pub segment_count: usize,
     pub resolved_model: String,
+    pub natural_projection: Uuid,
+    pub parameters: Option<TopicAdjustmentSettings>,
 }
+#[derive(Clone)]
 pub(super) struct TopicModel {
-    preview_documents: Vec<PreviewDocuments>,
+    pub(in crate::project) preview_documents: Vec<PreviewDocuments>,
+    pub(in crate::project) revision: Uuid,
+    metadata: Vec<ColourField>,
+    parameters: Option<TopicAdjustmentSettings>,
     pub sources: Vec<TopicSource>,
     pub natural: TopicModelingResult,
     pub context: Option<projection::TopicProjectionContext>,
@@ -166,6 +195,8 @@ pub(crate) enum TopicQuery {
     Documents(TopicDocumentQuery),
     Map {
         topic_count: usize,
+        #[serde(default)]
+        colour_by: Option<String>,
     },
     Words {
         topic_count: usize,
@@ -190,9 +221,14 @@ pub(crate) enum TopicProjection {
     Map {
         #[serde(flatten)]
         basis: TopicProjectionBasis,
+        natural_projection: Uuid,
+        dominant_counts: Vec<Vec<usize>>,
+        colour_fields: Vec<ColourFieldSummary>,
+        colour_counts: Option<Vec<Vec<usize>>>,
     },
     Words {
         words: Vec<Vec<RepresentativeWord>>,
+        natural_projection: Uuid,
     },
 }
 #[derive(Clone, Debug, Deserialize, utoipa::ToSchema)]
@@ -206,6 +242,8 @@ pub(crate) struct TopicPublishSource {
 #[derive(Clone, Debug, Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct TopicPublish {
+    #[serde(default)]
+    pub expected_projection: Option<Uuid>,
     pub topic_count: usize,
     pub top_n: usize,
     pub selected_topics: Vec<usize>,
@@ -224,6 +262,8 @@ impl TopicModel {
             natural_topic_count: self.natural.topics.len(),
             segment_count: self.natural.n_segments,
             resolved_model: self.resolved_model.clone(),
+            natural_projection: self.revision,
+            parameters: self.parameters.clone(),
         }
     }
     fn validate_count(&self, count: usize) -> Result<()> {
@@ -242,7 +282,10 @@ impl TopicModel {
             TopicQuery::Documents(_) => {
                 Err(Error::invalid("Document inspection requires retained rows"))
             }
-            TopicQuery::Map { topic_count } => {
+            TopicQuery::Map {
+                topic_count,
+                colour_by,
+            } => {
                 self.validate_count(topic_count)?;
                 let sizes = self
                     .sources
@@ -261,11 +304,24 @@ impl TopicModel {
                     )
                 }
                 .map_err(model_error)?;
+                let documents = self.documents(topic_count)?;
+                let (dominant_counts, colour_counts) = metadata::counts(
+                    &documents,
+                    &sizes,
+                    &self.metadata,
+                    colour_by.as_deref(),
+                    topic_count,
+                )?;
                 Ok(TopicProjection::Map {
                     basis: basis.into(),
+                    natural_projection: self.revision,
+                    dominant_counts,
+                    colour_counts,
+                    colour_fields: self.metadata.iter().map(ColourField::summary).collect(),
                 })
             }
             TopicQuery::Words { topic_count, .. } => Ok(TopicProjection::Words {
+                natural_projection: self.revision,
                 words: self
                     .words(topic_count, &excluded)?
                     .into_iter()
@@ -382,6 +438,9 @@ fn fit(
         .map_err(model_error)?;
     Ok(TopicModel {
         preview_documents: Vec::new(),
+        revision: Uuid::new_v4(),
+        metadata: Vec::new(),
+        parameters: Some(TopicAdjustmentSettings::from(request)),
         sources,
         natural,
         context,
@@ -404,7 +463,21 @@ fn manifest(conn: &Connection, id: Uuid) -> Result<TopicResultV1> {
 }
 fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
     let output = manifest(conn, id)?;
-    let natural = serde_json::from_slice(&artifact_blob(conn, id, output.natural_projection)?)?;
+    let mut natural: TopicModelingResult =
+        serde_json::from_slice(&artifact_blob(conn, id, output.natural_projection)?)?;
+    natural.retained_stages = output
+        .retained_stages
+        .map(|artifact| {
+            Ok::<_, Error>(serde_json::from_slice(&artifact_blob(conn, id, artifact)?)?)
+        })
+        .transpose()?;
+    let metadata = output
+        .metadata
+        .map(|artifact| {
+            Ok::<_, Error>(serde_json::from_slice(&artifact_blob(conn, id, artifact)?)?)
+        })
+        .transpose()?
+        .unwrap_or_default();
     let context = output
         .projection_context
         .map(|artifact| {
@@ -414,6 +487,9 @@ fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
         .transpose()?;
     Ok(TopicModel {
         preview_documents: Vec::new(),
+        revision: output.natural_projection,
+        metadata,
+        parameters: output.parameters,
         natural,
         context,
         sources: output.sources,
@@ -445,7 +521,8 @@ impl Database {
         progress("Capturing source documents", None);
         let (retained, sources, texts) = capture(&self.conn, &request, None, &self.cancellation)?;
         self.conn.execute_batch("COMMIT")?;
-        let model = fit(
+        let metadata = metadata::capture(&self.conn, &retained)?;
+        let mut model = fit(
             &request,
             sources,
             &texts,
@@ -454,6 +531,7 @@ impl Database {
             &self.cancellation,
             &mut progress,
         )?;
+        model.metadata = metadata;
         drop(texts);
         progress("Saving model", None);
         self.publish_analysis(
@@ -463,32 +541,17 @@ impl Database {
                 kind: KIND,
             },
             move |conn| {
-                let natural_projection = Uuid::new_v4();
+                let (natural_projection, projection_context, retained_stages) =
+                    adjustments::store_outputs(conn, id, &model)?;
+                let metadata = Uuid::new_v4();
                 register_blob(
                     conn,
                     id,
-                    natural_projection,
-                    "natural_projection",
+                    metadata,
+                    "metadata",
                     "application/json",
-                    &serde_json::to_vec(&model.natural)?,
+                    &serde_json::to_vec(&model.metadata)?,
                 )?;
-                let projection_context = model
-                    .natural
-                    .projection_context
-                    .as_ref()
-                    .map(|bytes| {
-                        let artifact = Uuid::new_v4();
-                        register_blob(
-                            conn,
-                            id,
-                            artifact,
-                            "projection_context",
-                            "application/octet-stream",
-                            bytes,
-                        )?;
-                        Ok::<_, Error>(artifact)
-                    })
-                    .transpose()?;
                 let mut sources = model.sources;
                 for (index, (source, captured)) in sources.iter_mut().zip(retained).enumerate() {
                     let artifact = Uuid::new_v4();
@@ -512,6 +575,9 @@ impl Database {
                     resolved_model: model.resolved_model,
                     natural_projection,
                     projection_context,
+                    retained_stages,
+                    metadata: Some(metadata),
+                    parameters: model.parameters,
                 })?)
             },
         )
@@ -532,6 +598,7 @@ impl Database {
             Some(&input.sampling),
             &self.cancellation,
         )?;
+        let metadata = metadata::capture(&self.conn, &retained)?;
         let mut preview_documents = Vec::new();
         for docs in retained {
             preview_documents.push(PreviewDocuments::capture(
@@ -553,6 +620,7 @@ impl Database {
             &mut progress,
         )?;
         model.preview_documents = preview_documents;
+        model.metadata = metadata;
         Ok(model)
     }
     pub(super) fn topic_exclusions(
@@ -588,6 +656,15 @@ impl Database {
     ) -> Result<Vec<ObjectTarget>> {
         let tx = self.conn.transaction()?;
         let model = load_model(&tx, id)?;
+        if request
+            .expected_projection
+            .is_some_and(|expected| expected != model.revision)
+        {
+            return Err(Error::new(
+                "topic_adjustment_stale",
+                "Topic results changed. Refresh the results before publishing.",
+            ));
+        }
         let documents = model.documents(request.topic_count)?;
         if (request.topic_count == 0 && request.top_n != 0)
             || (request.topic_count > 0 && !(1..=request.topic_count).contains(&request.top_n))
@@ -932,7 +1009,13 @@ mod tests {
         let start = Instant::now();
         let map = p
             .database
-            .query_topic_model(id, TopicQuery::Map { topic_count: count })
+            .query_topic_model(
+                id,
+                TopicQuery::Map {
+                    topic_count: count,
+                    colour_by: None,
+                },
+            )
             .unwrap();
         eprintln!(
             "TOPIC BENCH map {:?} bytes={}",
@@ -940,7 +1023,7 @@ mod tests {
             serde_json::to_vec(&map).unwrap().len()
         );
         let start = Instant::now();
-        let TopicProjection::Words { words } = p
+        let TopicProjection::Words { words, .. } = p
             .database
             .query_topic_model(
                 id,
@@ -959,6 +1042,7 @@ mod tests {
             .publish_topic_model(
                 id,
                 TopicPublish {
+                    expected_projection: None,
                     topic_count: count,
                     top_n: count.min(2),
                     selected_topics: vec![],
@@ -1015,6 +1099,7 @@ mod tests {
             segmentation: SegmentationMethod::Automatic,
             max_segment_tokens: 256,
             minimum_topic_size: 10,
+            maximum_topic_size: None,
             seed: 7,
         }
     }
@@ -1121,11 +1206,12 @@ mod tests {
         p.database.publish_analysis(AcceptedAnalysis { id,tab_id:tab,kind:KIND },|conn| {
             conn.execute_batch(&format!("CREATE TABLE wordflow.{} AS SELECT row_number() OVER ()::UBIGINT document_id,t AS source FROM data.texts t",artifact_table(docs)))?;
             register_table(conn,id,docs,"documents_0")?;
-            let result=TopicModelingResult { topics:vec![],documents:(0..25).map(|doc_index|DocumentResult {doc_index,dominant_topic:-1,topic_coverage:if doc_index==1 || doc_index==2 {vec![]} else {vec![(-1,1.0)]}}).collect(),n_segments:23,max_topic_size:None,projection_context:None };
+            let result=TopicModelingResult { topics:vec![],documents:(0..25).map(|doc_index|DocumentResult {doc_index,dominant_topic:-1,topic_coverage:if doc_index==1 || doc_index==2 {vec![]} else {vec![(-1,1.0)]}}).collect(),n_segments:23,max_topic_size:None,projection_context:None,retained_stages:None };
             register_blob(conn,id,natural,"natural_projection","application/json",&serde_json::to_vec(&result)?)?;
-            Ok(serde_json::to_value(TopicResultV1 { sources:vec![TopicSource { input:request().inputs.remove(0),columns:vec![("id".into(),"BIGINT".into()),("text".into(),"VARCHAR".into())],document_count:25,total_count:25,documents:Some(docs) }],natural_topic_count:0,segment_count:23,resolved_model:MODELS[0].id.into(),natural_projection:natural,projection_context:None })?)
+            Ok(serde_json::to_value(TopicResultV1 { sources:vec![TopicSource { input:request().inputs.remove(0),columns:vec![("id".into(),"BIGINT".into()),("text".into(),"VARCHAR".into())],document_count:25,total_count:25,documents:Some(docs) }],natural_topic_count:0,segment_count:23,resolved_model:MODELS[0].id.into(),natural_projection:natural,projection_context:None,retained_stages:None,metadata:None,parameters:None })?)
         }).unwrap();
         let publish = |dictionary_name: &str| TopicPublish {
+            expected_projection: None,
             topic_count: 0,
             top_n: 0,
             selected_topics: vec![],

@@ -14,6 +14,7 @@ import { decodeArrowData } from '@/lib/arrow/decodeArrowTable';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { showValue } from '../common/analysisValue';
+import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 import { TablePaginationFooter } from '../common/components/TablePaginationFooter';
 
 export function TopicDocuments({
@@ -23,6 +24,8 @@ export function TopicDocuments({
   topic,
   count,
   topN,
+  topicCounts,
+  corpusPresentation,
   onClose,
 }: {
   base: string;
@@ -31,6 +34,8 @@ export function TopicDocuments({
   topic: number;
   count: number;
   topN: number;
+  topicCounts?: number[];
+  corpusPresentation?: TopicCorpusPresentation;
   onClose: () => void;
 }) {
   const [source, setSource] = useState(0);
@@ -54,7 +59,7 @@ export function TopicDocuments({
   };
   const client = useQueryClient();
   const rows = useQuery({
-    queryKey: [...root, base, owner, input],
+    queryKey: [...root, base, owner, summary.natural_projection, input],
     queryFn: ({ signal }) => topicApi.queryTopicDocuments(base, owner, input, signal),
     staleTime: Infinity,
   });
@@ -89,6 +94,9 @@ export function TopicDocuments({
             {'analysis' in owner ? 'Saved source snapshot' : 'Preview sample'} · Top {topN}{' '}
             memberships, including ties. Ordered by topic coverage. Read only.
           </DialogDescription>
+          {corpusPresentation && (
+            <TopicSizeComposition sizes={topicCounts} {...corpusPresentation} />
+          )}
         </DialogHeader>
         <Tabs
           value={String(source)}

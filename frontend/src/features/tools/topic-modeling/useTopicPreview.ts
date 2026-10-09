@@ -120,5 +120,10 @@ export function useTopicPreview(base: string, tab: string, active: boolean) {
       if (connection.current === current) clear();
     }
   };
-  return { state, submit, clear, cancel };
+  const adjust = (summary: topicApi.TopicSummary) => {
+    setState((old) =>
+      old?.update?.state === 'ready' ? { ...old, update: { ...old.update, summary } } : old,
+    );
+  };
+  return { state, submit, clear, cancel, adjust };
 }

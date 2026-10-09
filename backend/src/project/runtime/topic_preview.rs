@@ -43,6 +43,100 @@ pub(crate) enum Update {
     },
 }
 impl ProjectRuntime {
+    fn topic_adjustment_operation(&self, key: Uuid) -> Result<(Operation, Uuid)> {
+        let operation = self.operation()?;
+        let revision = Uuid::new_v4();
+        if let Some((_, previous)) = locked(&self.shared.topic_adjustments)?
+            .insert(key, (revision, operation.cancellation.clone()))
+        {
+            previous.cancel();
+        }
+        Ok((operation, revision))
+    }
+    fn finish_topic_adjustment(&self, key: Uuid, revision: Uuid) -> Result<()> {
+        let mut operations = locked(&self.shared.topic_adjustments)?;
+        if operations
+            .get(&key)
+            .is_some_and(|(current, _)| *current == revision)
+        {
+            operations.remove(&key);
+        }
+        Ok(())
+    }
+    pub(crate) async fn adjust_topic_model(
+        &self,
+        id: Uuid,
+        input: TopicAdjustment,
+    ) -> Result<Analysis> {
+        self.ensure_writable().await?;
+        let tab = self
+            .with_project(move |db| Ok(db.analysis(id)?.tab_id))
+            .await?;
+        if self.shared.tasks.analysis_active(tab) {
+            return Err(Error::new(
+                "analysis_busy",
+                "Wait for the active Run to finish",
+            ));
+        }
+        let cache = locked(&self.shared.embedding_cache)?.clone();
+        let (operation, revision) = self.topic_adjustment_operation(id)?;
+        let _cancel_on_drop = operation.cancellation.clone().drop_guard();
+        let result = self
+            .run_operation(operation, Access::Write, move |db, _| {
+                db.adjust_topic_model(id, input, cache)
+            })
+            .await;
+        self.finish_topic_adjustment(id, revision)?;
+        result
+    }
+    pub(crate) async fn adjust_topic_preview(
+        &self,
+        tab: Uuid,
+        id: Uuid,
+        input: TopicAdjustment,
+    ) -> Result<PreviewSummary> {
+        let preview = self.topic_preview(tab, id)?;
+        let model = locked(&preview.model)?
+            .clone()
+            .ok_or_else(|| Error::new("preview_not_ready", "Preview is still calculating"))?;
+        let cache = locked(&self.shared.embedding_cache)?.clone();
+        let (operation, revision) = self.topic_adjustment_operation(id)?;
+        let _cancel_on_drop = operation.cancellation.clone().drop_guard();
+        let owner = preview.clone();
+        let result = self
+            .run_operation(operation, Access::Read, move |db, _| {
+                check_cancellation(&owner.cancellation)?;
+                let mut texts = Vec::new();
+                for (source, rows) in model.sources.iter().zip(&model.preview_documents) {
+                    texts.extend(rows.texts(&source.input.column)?);
+                }
+                let adjusted = model.adjusted(
+                    &texts,
+                    &input,
+                    cache.as_deref(),
+                    db.model_assets.as_ref(),
+                    &db.cancellation,
+                )?;
+                check_cancellation(&owner.cancellation)?;
+                check_cancellation(&db.cancellation)?;
+                let mut slot = locked(&owner.model)?;
+                if slot
+                    .as_ref()
+                    .is_none_or(|current| current.revision != input.expected_projection)
+                {
+                    return Err(Error::new(
+                        "topic_adjustment_stale",
+                        "The Topic Preview changed. Refresh and retry this adjustment.",
+                    ));
+                }
+                let summary = adjusted.summary();
+                *slot = Some(Arc::new(adjusted));
+                Ok(summary)
+            })
+            .await;
+        self.finish_topic_adjustment(id, revision)?;
+        result
+    }
     /// The host chooses an application cache outside every project database.
     pub fn set_embedding_cache_path(&self, path: PathBuf) -> Result<()> {
         *locked(&self.shared.embedding_cache)? = Some(path);
@@ -66,6 +160,10 @@ impl ProjectRuntime {
             .collect::<Vec<_>>();
         for preview in previews {
             preview.cancellation.cancel();
+            if let Some((_, adjustment)) = locked(&self.shared.topic_adjustments)?.get(&preview.id)
+            {
+                adjustment.cancel();
+            }
             preview.finished.cancelled().await;
             *locked(&preview.model)? = None;
         }

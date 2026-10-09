@@ -123,7 +123,7 @@ export async function runResearchAnalysis(
     { timeout: 60000, timeoutMsg: `${kind} did not save its UI-submitted request` },
   );
   if (!id) throw new Error('Missing analysis ID');
-  await expect(scope.$('button=Run')).toHaveAttribute('aria-disabled', 'true');
+  await expect(scope.$('button=Run')).toHaveAttribute('aria-disabled', kind === 'topic-modeling' ? 'false' : 'true');
   return id;
 }
 export async function researchScreenshot(name: string, scope: ChainablePromiseElement) {

@@ -45,7 +45,7 @@ used for every selected Data Block.
 
 | Method | Boundary behavior | Oversized text |
 | --- | --- | --- |
-| **Automatic** | Prefers blank-line blocks, Unicode sentences, words, then token boundaries | Split without overlap or lost tail text |
+| **Automatic** | Keeps nonempty paragraphs separate, including short text; never packs across paragraphs | Split without overlap or lost tail text |
 | **Line** | Starts from each trimmed, non-empty newline-delimited line | Recursively split within the token cap |
 | **Sentence** | Starts from each Unicode UAX #29 sentence | Split at token boundaries within the cap |
 
@@ -70,7 +70,9 @@ discards the tail of an oversized semantic unit.
 Sets the smallest number of Topic Segments that can form a natural HDBSCAN
 Topic. The default is 10 and the minimum is 2. Smaller values can produce more,
 finer natural Topics but may be noisier; larger values require more supporting
-segments per natural Topic. Changing this value requires a new run.
+segments per natural Topic. The request controls apply on the next Run.
+In Results, **Adjust retained stages** changes clustering on the captured data.
+An optional maximum topic size must exceed the minimum; it defaults to unlimited.
 
 <h4 id="help-topic-modeling-random-seed">Random seed</h4>
 
@@ -93,9 +95,8 @@ Outlier coverage remains part of normalized Topic Coverage and can be dominant.
 
 Run saves the submitted request and clears previous owned output before fitting.
 Failure or cancellation retains that request without a completed result. Newer
-form edits remain local. A matching successful result disables Run and Preview;
-change execution settings or Clear results to enable them. Presentation settings
-and sampling choices do not unlock them. Broken saved output offers Retry and
+form edits remain local. Run and Preview remain available after success. Run explicitly processes current
+Data Blocks through every stage; exact text/embedding caches can still be reused. Broken saved output offers Retry and
 **Rerun**. Unrecognized saved settings appear above the actions without stopping
 valid settings from loading.
 
@@ -136,13 +137,30 @@ an update is pending.
 positive real-topic shares contribute to bubble counts. The default is 2. Topic
 −1 and zero shares never count. If several Topics tie at the cutoff, all tied
 Topics count, so one row may contribute to more than this number and to several
-bubbles. The source counts and total show these memberships.
+bubbles. Bubble area shows these memberships. Count chips instead show
+**dominant documents** and each Data Block’s or metadata group’s own share.
 
 Enter a value and press Enter or leave the input to request one update. Partial
 input and the already-applied value make no request. Changing only this value
-updates bubble sizes, corpus composition, Topic lists, tooltip counts, CSV, and
-publication membership without moving the Topic layout or clearing selection,
+updates bubble sizes and publication membership without moving the Topic layout or clearing selection,
 search, lasso filters, pan, zoom, or an open Add to Project dialog.
+
+### Adjust retained stages and Colour by
+
+The Results controls for minimum/maximum topic size and representative-word
+tokenizer reuse saved intermediates after a short delay. Clustering reuses reduced
+vectors; tokenizer changes reuse assignments. Successful adjustments replace the
+result atomically. Failure keeps the last valid chart with the original diagnostic
+and Retry. Older results without required intermediates ask for Rerun; Wordflow
+does not silently rebuild them.
+
+For one Data Block, **Colour by** offers retained fields with 2–8 nonmissing
+groups. Missing values are grey. Legend counts and all count chips use the captured
+run or sampled Preview population, even after source edits. Shares use each group’s
+own denominator: whole percentages from 10%, one decimal below, and `<0.1%` for tiny
+positive shares. Tooltips give exact counts and populations. Colours blend the two
+strongest population-adjusted groups; opacity ranges from 0.25 to 0.8 with
+concentration. Source colours, legends, counts and captions carry into figures.
 
 <h3 id="help-topic-modeling-words-per-topic">Words per topic and stop words</h3>
 
@@ -224,6 +242,7 @@ available for the next run.
 | Segmentation method | Automatic |
 | Maximum tokens per segment | 256 |
 | Min topic size | 10 |
+| Max topic size | Unlimited |
 | Random seed | 0 |
 | Top topics per document | 2, or the available Topic count when smaller |
 | Words per topic | 15 |

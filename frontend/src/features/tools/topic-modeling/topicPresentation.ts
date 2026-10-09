@@ -4,6 +4,8 @@ export interface TopicModelingTopic {
   x: number;
   y: number;
   size: number[];
+  dominantCounts?: number[];
+  colourCounts?: number[];
   total_size: number;
   representative_words: TopicWord[];
 }

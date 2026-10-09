@@ -168,3 +168,44 @@ Observed checks:
 The bundled tutorial and canonical native contracts/domain/ownership pages are
 updated. Shell labels, compact headers and content-based panel sizing continue in
 batch 7. WebKit and native macOS/Windows acceptance remain open globally.
+
+## Batch 5: retained Topic stages and captured metadata
+
+Explicit Run always enters the full segmentation, embedding-cache, reduction,
+clustering and representative-word path. Automatic segmentation keeps paragraphs
+separate and retains short text. The native maximum-size setting is fixed or
+unlimited; independent library Auto behavior remains intact. Concrete reduced
+vectors, labels and projection context belong to the analysis, while full segment
+embeddings remain in the existing exact cache. Adjustments start at clustering or
+representative words, preserve the last valid model on failure and replace derived
+artifacts atomically. Missing older intermediates require explicit Rerun.
+
+One-input metadata groups and assignments are captured with source documents.
+Dominant-document counts and each group's own share appear throughout the UI and
+figures, independently of the retained Top-N bubble-area measure. Larger bubbles
+draw first with unchanged coordinates. Search supports escaped glob matching over
+joined and individual representative words.
+
+Observed checks:
+
+- Backend: 215 library tests, 57 project integration tests and two CLI tests pass;
+  14 optional library tests and one subprocess helper remain explicitly ignored.
+  Atomic/stale/cancelled replacement, old-intermediate errors, Clear cleanup,
+  captured metadata, Unicode whitespace and stale publication regressions pass.
+- Text engine: 110 all-feature library tests and 23 data integration tests pass;
+  two optional model tests remain ignored. Focused retained-stage tests verify
+  reduction/cache reuse, no inference/backfill, tokenizer-only clustering reuse
+  and independent Auto policy. Topic-only and data-only feature checks pass.
+- Frontend: 743 unit and 17 script tests pass. Nineteen focused Topic/API tests
+  pass after revision guarding; production build, lint, Knip, generated API,
+  docs drift, Markdown links, Rust formatting and strict Clippy pass.
+- Chromium: both real-model journeys pass. The 60/40 sampled Preview and 96/64
+  full Run retain typed source data; publication follows original row order and
+  disables colliding optional metadata. Figure PNG/SVG/JPEG/ZIP downloads pass.
+  Captured one-input metadata survives later source edits; downstream adjustment
+  preserves original Run provenance and one task row, rejects stale revisions,
+  and retains the visible chart after a missing-intermediate failure.
+
+Windows and native WebKit acceptance remain open. Explicit full-stage Run entry
+is source-verified and exercised with real models; this record does not claim
+per-stage profiling counters. Existing vendor/linker warnings remain unchanged.

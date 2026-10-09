@@ -21,8 +21,12 @@ use crate::embedding;
 pub mod projection;
 #[cfg(feature = "topic-modeling")]
 mod reduce;
+mod retained;
 #[cfg(feature = "topic-modeling")]
 mod rollup;
+#[cfg(feature = "cache")]
+pub use retained::adjust_with_progress_in;
+pub use retained::{Adjustment, RetainedStages};
 #[cfg(feature = "topic-modeling")]
 pub mod segmentation;
 
@@ -97,6 +101,9 @@ pub struct TopicModelingResult {
     pub max_topic_size: Option<usize>,
     #[serde(skip)]
     pub projection_context: Option<Vec<u8>>,
+    /// Host-owned non-embedding stage outputs for downstream adjustments.
+    #[serde(skip)]
+    pub retained_stages: Option<RetainedStages>,
 }
 
 #[cfg(feature = "topic-modeling")]
@@ -171,35 +178,19 @@ pub fn run_with_progress_in(
             )
         },
     )?;
-    let segment_doc_indices = segments
-        .iter()
-        .map(|segment| segment.doc_index)
-        .collect::<Vec<_>>();
-    let segment_weights = segments
-        .iter()
-        .map(|segment| segment.owned_character_count)
-        .collect::<Vec<_>>();
-    let segment_character_spans = segments
-        .iter()
-        .map(|segment| {
-            let document = documents[segment.doc_index];
-            let start = document
-                .get(..segment.start_byte)
-                .context("Topic Segment start is not a character boundary")?
-                .chars()
-                .count();
-            Ok((start, start + segment.owned_character_count))
-        })
-        .collect::<Result<Vec<_>>>()?;
-
-    // PaCMAP needs at least three points and HDBSCAN needs at least one full
-    // minimum cluster. Anything smaller has no defensible density-based Topic.
-    let minimum_evidence = cfg.min_cluster_size.max(3);
-    if segments.len() < minimum_evidence {
+    // Reduction requires three points. Keep short nonempty segments and retain
+    // this explicit no-topic result when there is insufficient density evidence.
+    if segments.len() < 3 {
         return Ok(no_topic_result(
             documents.len(),
-            &segment_doc_indices,
-            &segment_weights,
+            &segments
+                .iter()
+                .map(|segment| segment.doc_index)
+                .collect::<Vec<_>>(),
+            &segments
+                .iter()
+                .map(|segment| segment.owned_character_count)
+                .collect::<Vec<_>>(),
         ));
     }
 
@@ -253,54 +244,15 @@ pub fn run_with_progress_in(
     }
     progress("Reducing embeddings", None)?;
     let reduced = reduce::reduce(&embeddings, reduce_dims, cfg.seed)?;
-    progress("Clustering segments", None)?;
-    let clustered = cluster::cluster(&reduced, cfg.min_cluster_size, cfg.topic_size_limit)?;
-    progress("Counting representative words", None)?;
-    if clustered.n_topics == 0 {
-        return Ok(no_topic_result(
-            documents.len(),
-            &segment_doc_indices,
-            &segment_weights,
-        ));
-    }
-
-    let vectorizer = cfg
-        .vectorizer_model_id
-        .as_deref()
-        .unwrap_or(PLAIN_WORDS_EN_MODEL_ID);
-    let term_counts = ctfidf::count_topic_terms_with_assets(
-        clustered.n_topics,
-        clustered
-            .labels
-            .iter()
-            .copied()
-            .zip(texts.iter().map(String::as_str)),
-        vectorizer,
-        cfg.lowercase,
-        assets,
-        &mut || progress("Counting representative words", None),
-    )?;
-    let embedding_points = embeddings
-        .iter()
-        .map(|embedding| embedding.as_slice())
-        .collect::<Vec<_>>();
-    progress("Preparing topic hierarchy", None)?;
-    let context = projection::prepare_context(projection::ProjectionInput {
-        document_count: documents.len(),
-        labels: &clustered.labels,
-        embedding_points: &embedding_points,
-        document_indices: &segment_doc_indices,
-        owned_character_weights: &segment_weights,
-        character_spans: &segment_character_spans,
-        per_leaf_term_counts: &term_counts,
-        seed: cfg.seed,
-    })?;
-    progress("Projecting topics", None)?;
-    let mut result = projection::project(&context, clustered.n_topics)?;
-    result.max_topic_size = clustered.max_cluster_size;
-    result.projection_context = Some(projection::serialize_context(&context)?);
-    progress("Model complete", Some(1.0))?;
-    Ok(result)
+    let stages = RetainedStages::new(
+        segments,
+        reduced,
+        cfg,
+        embedder.model_id(),
+        embedder.cache_fingerprint(),
+        embedder.provider_id(),
+    );
+    retained::finish(documents, stages, &embeddings, true, assets, progress)
 }
 
 #[cfg(feature = "topic-modeling")]
@@ -334,6 +286,7 @@ fn no_topic_result(
         n_segments: segment_doc_indices.len(),
         max_topic_size: None,
         projection_context: None,
+        retained_stages: None,
     }
 }
 

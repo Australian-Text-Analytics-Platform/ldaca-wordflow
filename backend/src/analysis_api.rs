@@ -35,6 +35,8 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(delete_topic_preview))
         .routes(utoipa_axum::routes!(query_topic_preview))
         .routes(utoipa_axum::routes!(query_topic_model))
+        .routes(utoipa_axum::routes!(adjust_topic_model))
+        .routes(utoipa_axum::routes!(adjust_topic_preview))
         .routes(utoipa_axum::routes!(publish_topic_model))
         .routes(utoipa_axum::routes!(run_concordance))
         .routes(utoipa_axum::routes!(preview_concordance))
@@ -135,6 +137,34 @@ async fn query_topic_model(
     InputJson(input): InputJson<TopicQuery>,
 ) -> Result<impl IntoResponse> {
     topic_response(project.query_topic_model(id, input).await?)
+}
+#[utoipa::path(
+    post, path = "/api/project/analyses/{id}/topic-modeling/adjust", operation_id = "analysis_api_adjust_topic_model",
+    tag = "analysis_api",
+    params(("id" = String, Path)),
+    request_body = TopicAdjustment,
+    responses((status = 200, description = "Atomically adjusted result", body = Analysis), (status = 400, description = "Missing intermediates or invalid settings", body = crate::error::ErrorEnvelope), (status = 409, description = "Superseded adjustment", body = crate::error::ErrorEnvelope))
+)]
+async fn adjust_topic_model(
+    State(project): State<ProjectRuntime>,
+    Path(id): Path<Uuid>,
+    InputJson(input): InputJson<TopicAdjustment>,
+) -> Result<Json<Analysis>> {
+    Ok(Json(project.adjust_topic_model(id, input).await?))
+}
+#[utoipa::path(
+    post, path = "/api/project/tabs/{tab}/topic-modeling/preview/{id}/adjust", operation_id = "analysis_api_adjust_topic_preview",
+    tag = "analysis_api",
+    params(("tab" = String, Path), ("id" = String, Path)),
+    request_body = TopicAdjustment,
+    responses((status = 200, description = "Atomically adjusted result", body = PreviewSummary), (status = 400, description = "Missing intermediates or invalid settings", body = crate::error::ErrorEnvelope), (status = 409, description = "Superseded adjustment", body = crate::error::ErrorEnvelope))
+)]
+async fn adjust_topic_preview(
+    State(project): State<ProjectRuntime>,
+    Path((tab, id)): Path<(Uuid, Uuid)>,
+    InputJson(input): InputJson<TopicAdjustment>,
+) -> Result<Json<PreviewSummary>> {
+    Ok(Json(project.adjust_topic_preview(tab, id, input).await?))
 }
 fn topic_response(output: TopicProjection) -> Result<axum::response::Response> {
     match output {

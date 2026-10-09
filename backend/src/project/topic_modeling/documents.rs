@@ -19,12 +19,35 @@ pub(crate) struct TopicDocumentQuery {
     pub metadata: Vec<String>,
 }
 
-pub(super) struct PreviewDocuments {
+#[derive(Clone)]
+pub(in crate::project) struct PreviewDocuments {
     schema: SchemaRef,
     batches: Vec<RecordBatch>,
     temporary: PathBuf,
 }
 impl PreviewDocuments {
+    pub(in crate::project) fn texts(&self, column: &str) -> Result<Vec<String>> {
+        let mut texts = Vec::new();
+        for batch in &self.batches {
+            let source = batch
+                .column(0)
+                .as_any()
+                .downcast_ref::<StructArray>()
+                .ok_or_else(|| model_error("Retained source is not a struct"))?;
+            let values = source
+                .column_by_name(column)
+                .ok_or_else(|| model_error("Retained document column is unavailable"))?;
+            for index in 0..values.len() {
+                texts.push(if values.is_null(index) {
+                    String::new()
+                } else {
+                    duckdb::arrow::util::display::array_value_to_string(values, index)
+                        .map_err(arrow_error)?
+                });
+            }
+        }
+        Ok(texts)
+    }
     pub(super) fn capture(
         conn: &Connection,
         docs: &CapturedDocuments,
@@ -253,6 +276,9 @@ mod tests {
         let preview =
             PreviewDocuments::capture(&p.database.conn, &docs, &p.database.cancellation).unwrap();
         let model = TopicModel {
+            revision: Uuid::new_v4(),
+            metadata: Vec::new(),
+            parameters: None,
             preview_documents: vec![preview],
             sources: vec![TopicSource {
                 input: docs.input.clone(),
@@ -287,6 +313,7 @@ mod tests {
                 n_segments: 8,
                 max_topic_size: None,
                 projection_context: None,
+                retained_stages: None,
             },
             context: None,
             resolved_model: "test".into(),
@@ -448,6 +475,9 @@ mod tests {
                         resolved_model: "test".into(),
                         natural_projection: natural,
                         projection_context: None,
+                        retained_stages: None,
+                        metadata: None,
+                        parameters: None,
                     })?)
                 },
             )

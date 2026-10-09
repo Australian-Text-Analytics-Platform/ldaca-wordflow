@@ -42,8 +42,9 @@ describe('Topic Modelling presentation contracts', () => {
     ).toBe(2);
     const bubbles = buildTopicBubbleModels({ ...options, topics });
     expect(bubbles).toHaveLength(2);
-    expect(bubbles[1]!.radius ** 2 / bubbles[0]!.radius ** 2).toBe(4);
-    expect(bubbles[1]!.position).toEqual(positions.get(1));
+    expect(bubbles.map((bubble) => bubble.id)).toEqual([1, 0]);
+    expect(bubbles[0]!.radius ** 2 / bubbles[1]!.radius ** 2).toBe(4);
+    expect(bubbles[0]!.position).toEqual(positions.get(1));
     topics[0]!.total_size = 0;
     expect(buildTopicBubbleModels({ ...options, topics })[0]!.position).toEqual(positions.get(1));
   });

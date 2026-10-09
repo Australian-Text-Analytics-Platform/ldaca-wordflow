@@ -38,6 +38,7 @@ import { useNodePreferences } from '../common/useNodePreferences';
 import { useTabSettings } from '../common/useTabSettings';
 import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { TopicResults } from './TopicResults';
+import { MaximumTopicSize } from './TopicAdjustments';
 import { TopicSamplingDialog } from './TopicSamplingDialog';
 import { topicKey, useTopicSampling, useTopicState } from './topicState';
 import { useTopicPreview } from './useTopicPreview';
@@ -183,15 +184,6 @@ function TopicTab({
     captured.inputs.every(
       (input) => input.column && nodes.some((node) => node.table_name === input.source.name),
     );
-  const unchanged =
-    Boolean(analysisId) &&
-    !recovery.failed &&
-    restored.issues.length === 0 &&
-    matchesAnalysisRequest(
-      'topic-modeling',
-      captured,
-      result.data?.request_status ?? tab.analysis?.request_status,
-    );
   const reason = restored.blocked
     ? 'Start with current defaults before running this analysis.'
     : editing
@@ -200,9 +192,7 @@ function TopicTab({
         ? 'This analysis is already running.'
         : !ready
           ? 'Choose document inputs and a tokenizer first.'
-          : unchanged
-            ? 'These settings already have saved results. Change the parameters or clear results to run again.'
-            : undefined;
+          : undefined;
   const live = preview.state;
   const temporary = live?.update?.state === 'ready' ? live.update : null;
   const owner = temporary
@@ -370,10 +360,22 @@ function TopicTab({
               max={Number.MAX_SAFE_INTEGER}
               value={draft.minimum_topic_size}
               onCommit={(minimum_topic_size) => {
-                update({ ...captured, minimum_topic_size });
+                update({
+                  ...captured,
+                  minimum_topic_size,
+                  maximum_topic_size:
+                    captured.maximum_topic_size == null
+                      ? null
+                      : Math.max(captured.maximum_topic_size, minimum_topic_size + 1),
+                });
               }}
             />
           </label>
+          <MaximumTopicSize
+            value={draft.maximum_topic_size}
+            minimum={draft.minimum_topic_size}
+            onChange={(maximum_topic_size) => update({ ...captured, maximum_topic_size })}
+          />
           <label className="space-y-1">
             <span>Random seed</span>
             <AnalysisNumberInput
@@ -509,6 +511,11 @@ function TopicTab({
             tab={tab}
             owner={owner}
             summary={summary}
+            onAdjusted={(next) => {
+              if (next.analysis && 'analysis' in owner)
+                cache.setQueryData(['native', base, 'analyses', owner.analysis], next.analysis);
+              else preview.adjust(next.summary);
+            }}
             request={
               temporary && live
                 ? live.request

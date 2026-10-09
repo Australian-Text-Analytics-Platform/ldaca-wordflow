@@ -331,11 +331,19 @@ Plots display budgets and measured browser/native evidence are documented in
 One or two typed source snapshots feed one joint fit. The Run request has no
 sampling fields and belongs only to its accepted Analysis. The version-1 output
 contains source descriptors/counts and owned artifact references: retained source
-Tables, a natural projection BLOB and an immutable projection-context BLOB.
+Tables, a natural projection BLOB, a projection-context BLOB, reduced segment
+vectors and assignment/settings facts. Full segment embeddings remain in the
+existing content-addressed application cache. Captured metadata contributes
+bounded group summaries and compact membership indices, independently owned
+with the result.
 Original rows carry result-local identities and independent Arrow annotations.
 Publication claims the exact accepted Analysis in a fresh transaction.
 
-Map queries return topic coordinates and compact Top-N activation counts. Word
+Map queries return topic coordinates, compact Top-N activation counts, dominant
+document counts and retained metadata group summaries. One-input Colour by
+offers fields with 2–8 distinct nonmissing scalar groups. Missing values form a
+separate grey group. Counts and populations come from the captured run or sample;
+no query joins current source rows by position. Word
 queries independently apply a stopword Table/View to complete c-TF-IDF rankings
 before taking 100 candidates. They do not run PaCMAP. Top-N membership changes
 are local; publication uses the same positive-share/cutoff-tie rule. Saved queries
@@ -352,6 +360,26 @@ model. Native computation remains tracked until cleanup, while a ready idle
 model is not running work. Run waits for prior Preview cleanup before fitting.
 Queries use existing runtime operations and expire with their owner. There is
 no automatic reconnect, retraining, polling or persistent Preview cache.
+
+`topic_modeling/adjustments.rs` replaces derived BLOBs in one transaction while
+retaining captured rows, metadata and the original Run request. Clustering changes
+reuse reduced vectors; representative-word changes reuse assignments. Exact
+embedding-cache keys include the resolved model fingerprint and provider. Missing
+intermediates or cached embeddings produce an ordinary Rerun error without
+inference/backfill. Each replacement checks the previous natural-projection UUID
+and claims the owning tab. Cancellation, failure, Clear, deletion and superseded
+adjustments cannot recreate a result or overwrite a newer replacement. Runtime
+operations cancel superseded work without adding task-history rows. Preview uses
+the same stages in its existing connection owner and replaces its model only
+after success. The client waits briefly after setting changes and keeps the last
+valid chart while waiting or after failure.
+
+Explicit Run remains repeatable and always captures current sources, segments,
+reduces, clusters and summarises anew. Only exact token/embedding caches are
+reused. Automatic segmentation keeps every nonempty paragraph separate and
+applies the existing sentence/word/token fallback inside oversized paragraphs.
+Fixed maximum Topic size is optional and defaults to unlimited; no automatic
+clustering retry policy is exposed.
 
 Hosts provide the external embedding-cache path. Model preparation occurs outside
 DB connections. Progress/cancellation callbacks occur between documents, batches

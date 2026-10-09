@@ -304,6 +304,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/analyses/{id}/topic-modeling/adjust': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_adjust_topic_model'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/analyses/{id}/topic-modeling/publish': {
     parameters: {
       query?: never;
@@ -1505,6 +1521,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/tabs/{tab}/topic-modeling/preview/{id}/adjust': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_adjust_topic_preview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/tabs/{tab}/topic-modeling/preview/{id}/query': {
     parameters: {
       query?: never;
@@ -2121,6 +2153,15 @@ export interface components {
     };
     CodebookName: {
       name: string;
+    };
+    ColourFieldSummary: {
+      column: string;
+      groups: components['schemas']['ColourGroup'][];
+    };
+    ColourGroup: {
+      count: number;
+      label: string;
+      missing: boolean;
     };
     ColumnChange:
       | {
@@ -2867,7 +2908,10 @@ export interface components {
       selected?: components['schemas']['StopwordSource'] | null;
     };
     PreviewSummary: {
+      /** Format: uuid */
+      natural_projection: string;
       natural_topic_count: number;
+      parameters?: components['schemas']['TopicAdjustmentSettings'] | null;
       resolved_model: string;
       segment_count: number;
       sources: components['schemas']['TopicSource'][];
@@ -3282,6 +3326,16 @@ export interface components {
       languages: string[];
       model_id: string;
     };
+    TopicAdjustment: {
+      /** Format: uuid */
+      expected_projection: string;
+      settings: components['schemas']['TopicAdjustmentSettings'];
+    };
+    TopicAdjustmentSettings: {
+      maximum_topic_size?: number | null;
+      minimum_topic_size: number;
+      tokenizer: string;
+    };
     TopicDocumentQuery: {
       metadata: string[];
       /** Format: int64 */
@@ -3332,10 +3386,18 @@ export interface components {
         };
     TopicProjection:
       | (components['schemas']['TopicProjectionBasis'] & {
+          colour_counts?: number[][] | null;
+          colour_fields: components['schemas']['ColourFieldSummary'][];
+          dominant_counts: number[][];
+          /** Format: uuid */
+          natural_projection: string;
+        } & {
           /** @enum {string} */
           projection: 'map';
         })
       | {
+          /** Format: uuid */
+          natural_projection: string;
           /** @enum {string} */
           projection: 'words';
           words: components['schemas']['RepresentativeWord'][][];
@@ -3347,6 +3409,8 @@ export interface components {
     };
     TopicPublish: {
       dictionary_name: string;
+      /** Format: uuid */
+      expected_projection?: string | null;
       selected_topics: number[];
       sources: components['schemas']['TopicPublishSource'][];
       top_n: number;
@@ -3366,6 +3430,7 @@ export interface components {
           projection: 'documents';
         })
       | {
+          colour_by?: string | null;
           /** @enum {string} */
           projection: 'map';
           topic_count: number;
@@ -3380,6 +3445,7 @@ export interface components {
       embedding_model: string;
       inputs: components['schemas']['DocumentInput'][];
       max_segment_tokens: number;
+      maximum_topic_size?: number | null;
       minimum_topic_size: number;
       /** Format: int64 */
       seed: number;
@@ -3388,11 +3454,16 @@ export interface components {
     };
     TopicResultV1: {
       /** Format: uuid */
+      metadata?: string | null;
+      /** Format: uuid */
       natural_projection: string;
       natural_topic_count: number;
+      parameters?: components['schemas']['TopicAdjustmentSettings'] | null;
       /** Format: uuid */
       projection_context?: string | null;
       resolved_model: string;
+      /** Format: uuid */
+      retained_stages?: string | null;
       segment_count: number;
       sources: components['schemas']['TopicSource'][];
     };
@@ -4848,6 +4919,50 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_adjust_topic_model: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TopicAdjustment'];
+      };
+    };
+    responses: {
+      /** @description Atomically adjusted result */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['Analysis'];
+        };
+      };
+      /** @description Missing intermediates or invalid settings */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Superseded adjustment */
+      409: {
         headers: {
           [name: string]: unknown;
         };
@@ -11393,6 +11508,51 @@ export interface operations {
       };
       /** @description Backend stopping */
       503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_adjust_topic_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tab: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TopicAdjustment'];
+      };
+    };
+    responses: {
+      /** @description Atomically adjusted result */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PreviewSummary'];
+        };
+      };
+      /** @description Missing intermediates or invalid settings */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Superseded adjustment */
+      409: {
         headers: {
           [name: string]: unknown;
         };
