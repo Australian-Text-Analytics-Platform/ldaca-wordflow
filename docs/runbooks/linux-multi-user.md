@@ -80,6 +80,11 @@ the trailing slash. Cookies are Secure, HttpOnly for sessions, and SameSite=Lax.
 Mutations require the exact public Origin and the session-bound CSRF header.
 Do not expose worker sockets or ports through the proxy.
 
+Wordflow imposes no application upload size limit. Configure the proxy's request
+body limit and request/idle timeouts for the deployment's intended files; avoid
+buffering the complete request before streaming it to Wordflow. A proxy rejection
+is surfaced with its original response and can be retried after operator correction.
+
 ## Network policy and service lifecycle
 
 Install `deploy/linux/wordflow-egress.service` and `wordflow.service` in

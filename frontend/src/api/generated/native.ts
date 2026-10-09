@@ -609,6 +609,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/import/files': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['api_import_files'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/import/inspect': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['api_inspect_file_import'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/ldaca/import': {
     parameters: {
       query?: never;
@@ -1617,6 +1649,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/server/files/delete-batch': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_delete_files'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/files/download': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_download_files'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/files/folder': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_create_folder'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/files/move': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_move_files'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/server/files/{library}': {
     parameters: {
       query?: never;
@@ -1659,6 +1755,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['server_import'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/import/inspect': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_inspect_import'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2347,13 +2459,44 @@ export interface components {
           /** @enum {string} */
           kind: 'sql';
         };
+    FileImportPlan: {
+      collection: boolean;
+      files: components['schemas']['ImportFile'][];
+      skipped: components['schemas']['SkippedImportFile'][];
+      text_name: string;
+    };
+    FileImportRequest: {
+      paths: string[];
+      /** @description Relative paths in the inspection are anchored here for a server library. */
+      root?: string | null;
+      selected?: components['schemas']['FileImportSelection'][] | null;
+    };
+    FileImportResult: {
+      skipped: components['schemas']['SkippedImportFile'][];
+      table_names: string[];
+    };
+    FileImportSelection: {
+      path: string;
+      sheet?: string | null;
+    };
     FileMetadata: {
       path: string;
       /** Format: int64 */
       size_bytes: number | null;
     };
+    FileMove: {
+      destination: string;
+      names: string[];
+    };
     FilePaths: {
       paths: string[];
+    };
+    FileSelection: {
+      library: components['schemas']['Library'];
+      names: string[];
+    };
+    FolderRequest: {
+      name: string;
     };
     FrequencyCorpus: {
       /** Format: uuid */
@@ -2419,6 +2562,11 @@ export interface components {
       row: string;
       source: components['schemas']['ObjectTarget'];
       value?: string | null;
+    };
+    ImportFile: {
+      format: string;
+      path: string;
+      sheets: string[];
     };
     ImportTables: {
       sources: components['schemas']['TableImport'][];
@@ -2488,6 +2636,7 @@ export interface components {
     /** @enum {string} */
     Library: 'data' | 'projects';
     LibraryFile: {
+      is_directory: boolean;
       /** Format: int64 */
       modified?: number | null;
       name: string;
@@ -2917,9 +3066,10 @@ export interface components {
       project_id: string;
     };
     ServerImport: {
-      name: string;
+      names: string[];
       /** Format: uuid */
       project_id: string;
+      selected?: components['schemas']['FileImportSelection'][] | null;
     };
     ServerProject: {
       project?: components['schemas']['ProjectInfo'] | null;
@@ -2958,6 +3108,10 @@ export interface components {
           /** @enum {string} */
           status: 'unsupported';
         };
+    SkippedImportFile: {
+      path: string;
+      reason: string;
+    };
     SqlBatch: {
       changes?: components['schemas']['ChangeScope'] | null;
       max_rows?: number | null;
@@ -6185,6 +6339,176 @@ export interface operations {
         headers: {
           /** @description Accepted task identity, including task failures */
           'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  api_import_files: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FileImportRequest'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          /** @description Accepted task identity */
+          'x-wordflow-task-id'?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FileImportResult'];
+        };
+      };
+      /** @description Invalid request or operation failed */
+      400: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Origin not allowed */
+      403: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Resource unavailable */
+      404: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Operation conflict */
+      409: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Internal operation error */
+      500: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Backend stopping */
+      503: {
+        headers: {
+          /** @description Accepted task identity, including task failures */
+          'x-wordflow-task-id'?: string | null;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  api_inspect_file_import: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FileImportRequest'];
+      };
+    };
+    responses: {
+      /** @description Success */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FileImportPlan'];
+        };
+      };
+      /** @description Invalid request or operation failed */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Origin not allowed */
+      403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Resource unavailable */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Operation conflict */
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Internal operation error */
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      /** @description Backend stopping */
+      503: {
+        headers: {
           [name: string]: unknown;
         };
         content: {
@@ -11628,6 +11952,136 @@ export interface operations {
       };
     };
   };
+  server_delete_files: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FileSelection'];
+      };
+    };
+    responses: {
+      /** @description Deleted */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_download_files: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FileSelection'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/zip': components['schemas']['Binary'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_create_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FolderRequest'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryFile'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_move_files: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FileMove'];
+      };
+    };
+    responses: {
+      /** @description Moved */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
   server_files: {
     parameters: {
       query?: never;
@@ -11768,7 +12222,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          'application/json': components['schemas']['TableNames'];
+          'application/json': components['schemas']['FileImportResult'];
         };
       };
       400: {
@@ -11780,6 +12234,37 @@ export interface operations {
         };
       };
       409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_inspect_import: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ServerImport'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['FileImportPlan'];
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };

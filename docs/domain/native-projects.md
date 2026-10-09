@@ -36,7 +36,8 @@ Its unique `table_name` identifies its table or view in `data`; there is
 no separate node UUID or display name. The graph label is the SQL table/view name. Visibility, color,
 and Document Column Preference belong to the registration.
 Imports use the selected name or source filename stem, adding `_2`, `_3`, etc.
-for repeated sample/LDaCA imports. Local imports use the name entered in the dialog. Unregistered
+for repeated imports. Workbook outputs propose `file_sheet`; combined texts use
+their selection's name. Unregistered
 SQL objects remain queryable and appear in dependency mode, but not in the logical graph.
 
 Tokenizer preferences live in `wordflow.tokenizer_models`, keyed by the pair

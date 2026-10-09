@@ -11,23 +11,9 @@ import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/
 import { open } from '@tauri-apps/plugin-dialog';
 import { File, FolderOpen, X } from 'lucide-react';
 import { useEffect, useEffectEvent, useState } from 'react';
-import { reportProjectError } from './projectErrors';
+import { OperationError } from './OperationError';
+import { FileImportSelection, SkippedImportFiles } from './FileImportSelection';
 
-function reader(path: string) {
-  switch (path.split('.').at(-1)?.toLowerCase()) {
-    case 'parquet':
-      return 'read_parquet';
-    case 'json':
-    case 'jsonl':
-    case 'ndjson':
-      return 'read_json';
-    case 'csv':
-    case 'tsv':
-      return 'read_csv';
-    default:
-      throw new Error('Choose a CSV, TSV, Parquet, JSON, JSONL or NDJSON data file.');
-  }
-}
 const filename = (path: string) => path.split(/[\\/]/).at(-1) ?? path;
 const icons: Record<string, string> = {
   csv: 'table',
@@ -52,6 +38,10 @@ export function LocalFileImport({
   onDropHandled: () => void;
 }) {
   const [path, setPath] = useState('');
+  const [chooserError, setChooserError] = useState<unknown>(null);
+  const [plans, setPlans] = useState<
+    Array<{ id: string; paths: string[]; plan: filesApi.FileImportPlan }>
+  >([]);
   const recent = usePreferences().recentDataFiles;
   const cache = useQueryClient();
   const metadataKey = [base, 'local-file-metadata'];
@@ -64,25 +54,29 @@ export function LocalFileImport({
   const pending = useIsMutating({ mutationKey });
   const imported = useMutation({
     mutationKey,
-    mutationFn: (paths: string[]) =>
-      filesApi.importTables(
-        base,
-        paths.map((file) => ({
-          table_name: filename(file).replace(/\.[^.]+$/, ''),
-          sql: `SELECT * FROM ${reader(file)}(?)`,
-          parameters: [file],
-        })),
-      ),
-    onSuccess: (_result, paths) => {
+    meta: { reportError: false },
+    mutationFn: (input: filesApi.FileImportRequest) => filesApi.importFiles(base, input),
+    onSuccess: (_result, { paths }) => {
       const next = [...new Set([...paths, ...getPreferences().recentDataFiles])].slice(0, 10);
       void patchPreferences({ recentDataFiles: next }).catch(() => undefined);
       setPath((current) => (paths.includes(current.trim()) ? '' : current));
       void cache.invalidateQueries({ queryKey: metadataKey });
     },
   });
+  const inspected = useMutation({
+    meta: { reportError: false },
+    mutationFn: async (paths: string[]) => filesApi.inspectFileImport(base, { paths }),
+    onSuccess: (plan, paths) => {
+      if (filesApi.needsFileImportSelection(plan)) {
+        setPlans((previous) => [...previous, { id: crypto.randomUUID(), paths, plan }]);
+      } else {
+        imported.mutate({ paths });
+      }
+    },
+  });
   function importPaths(paths: string[]) {
     const unique = [...new Set(paths.filter((file) => file.trim()))];
-    if (unique.length) imported.mutate(unique);
+    if (unique.length) inspected.mutate(unique);
   }
   const receiveDrop = useEffectEvent((paths: string[]) => {
     importPaths(paths);
@@ -91,21 +85,47 @@ export function LocalFileImport({
   useEffect(() => {
     if (dropped.length) receiveDrop(dropped);
   }, [dropped]);
-  async function choose() {
+  async function choose(directory = false) {
     if (!isTauri()) {
       importPaths([path.trim()]);
       return;
     }
     try {
       const selected = await open({
+        directory,
         multiple: true,
         filters: [
-          { name: 'Data', extensions: ['csv', 'tsv', 'parquet', 'json', 'jsonl', 'ndjson'] },
+          {
+            name: 'Data',
+            extensions: [
+              'csv',
+              'tsv',
+              'parquet',
+              'json',
+              'jsonl',
+              'ndjson',
+              'avro',
+              'arrow',
+              'ipc',
+              'feather',
+              'xlsx',
+              'xls',
+              'xlsm',
+              'xlsb',
+              'ods',
+              'txt',
+              'text',
+              'md',
+              'rst',
+              'log',
+              'zip',
+            ],
+          },
         ],
       });
       if (selected) importPaths(typeof selected === 'string' ? [selected] : selected);
     } catch (error) {
-      reportProjectError(error, 'Could not choose files');
+      setChooserError(error);
     }
   }
   return (
@@ -115,7 +135,7 @@ export function LocalFileImport({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex items-center gap-2 text-body font-semibold">
               <FolderOpen className="size-5 shrink-0 text-description" />
-              Drop data files here
+              Drop data files or folders here
             </h2>
             <Button
               onClick={() => {
@@ -126,6 +146,17 @@ export function LocalFileImport({
               <FolderOpen /> Choose files…
             </Button>
           </div>
+          {isTauri() && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                void choose(true);
+              }}
+            >
+              <FolderOpen />
+              Choose folders…
+            </Button>
+          )}
           {!isTauri() && (
             <Input
               aria-label="Data file path"
@@ -140,11 +171,42 @@ export function LocalFileImport({
             />
           )}
           <p className="text-body-secondary text-description">
-            CSV, TSV, Parquet, JSON, JSONL and NDJSON. Files import immediately, with all columns
-            copied into the project.
+            Tables, spreadsheets, Arrow and Avro files, text folders and ZIPs. Text files combine
+            into one Data Block; tables and workbook sheets import separately.
           </p>
         </section>
-        {pending > 0 && (
+        {plans[0] && (
+          <FileImportSelection
+            key={plans[0].id}
+            plan={plans[0].plan}
+            onCancel={() => setPlans((previous) => previous.slice(1))}
+            onImport={(selected) => {
+              const current = plans[0];
+              if (!current) return;
+              imported.mutate({ paths: current.paths, selected });
+              setPlans((previous) => previous.slice(1));
+            }}
+          />
+        )}
+        {chooserError != null && (
+          <OperationError title="Could not choose files" error={chooserError} />
+        )}
+        {inspected.error && (
+          <OperationError
+            title="Could not inspect files"
+            error={inspected.error}
+            onRetry={() => inspected.mutate(inspected.variables)}
+          />
+        )}
+        {imported.error && (
+          <OperationError
+            title="Could not import files"
+            error={imported.error}
+            onRetry={() => imported.mutate(imported.variables)}
+          />
+        )}
+        {imported.data && <SkippedImportFiles files={imported.data.skipped} />}
+        {(pending > 0 || inspected.isPending) && (
           <p role="status" className="text-body-secondary text-description">
             Importing files… Follow progress or cancel in Tasks.
           </p>

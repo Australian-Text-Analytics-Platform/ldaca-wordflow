@@ -156,13 +156,30 @@ impl Database {
         Ok(database)
     }
     fn import_tables(&mut self, sources: Vec<(String, SqlStatement)>) -> Result<Vec<String>> {
-        for (_, statement) in &sources {
-            query::parse(&self.conn, &statement.sql)?;
+        self.import_sources(
+            sources
+                .into_iter()
+                .map(|(name, statement)| imports::PreparedSource {
+                    name,
+                    statement,
+                    arrow_schema: None,
+                })
+                .collect(),
+        )
+    }
+    fn import_sources(&mut self, sources: Vec<imports::PreparedSource>) -> Result<Vec<String>> {
+        for source in &sources {
+            query::parse(&self.conn, &source.statement.sql)?;
         }
         let tx = self.conn.transaction()?;
         let mut names = Vec::new();
         let mut scope = ChangeScope::resource(Resource::Graph);
-        for (name, input) in sources {
+        for imports::PreparedSource {
+            name,
+            statement: input,
+            arrow_schema,
+        } in sources
+        {
             if name.trim().is_empty() {
                 return Err(Error::invalid("Table name cannot be empty"));
             }
@@ -196,6 +213,32 @@ impl Database {
                 "INSERT INTO wordflow.nodes(table_name,visible) VALUES (?,false),(?,true)",
                 params![raw, name],
             )?;
+            let annotations = if let Some(original) = arrow_schema {
+                let annotations = arrow_metadata::Annotations::from_schema(&original);
+                if annotations.0.is_empty() {
+                    annotations
+                } else {
+                    let native = tx
+                        .prepare(&format!(
+                            "SELECT * FROM data.{} LIMIT 0",
+                            query::quote(&raw)
+                        ))?
+                        .query_arrow([])?
+                        .get_schema();
+                    annotations.rebased(&original, &native)?
+                }
+            } else {
+                Default::default()
+            };
+            for relation_name in [&raw, &name] {
+                annotations.store(
+                    &tx,
+                    &Relation {
+                        schema: "data".into(),
+                        name: relation_name.clone(),
+                    },
+                )?;
+            }
             scope
                 .objects
                 .extend([raw, name.clone()].map(|name| Relation {
@@ -980,6 +1023,7 @@ mod data_export;
 mod document_matches;
 pub mod exports;
 pub mod frequency;
+pub(crate) mod imports;
 pub(crate) mod plots;
 pub(crate) mod quotation;
 pub(crate) mod topic_modeling;

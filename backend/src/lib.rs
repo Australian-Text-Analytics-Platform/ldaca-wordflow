@@ -473,3 +473,7 @@ mod task_api_tests {
         }
     }
 }
+
+pub use project::imports::{
+    FileImportPlan, FileImportRequest, FileImportResult, FileImportSelection,
+};

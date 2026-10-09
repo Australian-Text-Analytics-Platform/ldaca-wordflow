@@ -136,17 +136,19 @@ The header and source tabs remain visible; each source owns one scrolling body
 and, for batch imports, a fixed footer. `ThreeColumnLayout` disables its outer
 main-pane scrolling for this surface to avoid nested page scrolling.
 
-Local file selection imports immediately through the existing task-owned import
-endpoint, using all columns and the filename as the proposed Data Block name.
-There is no staging form or schema preflight. The native chooser supports multiple
-files; Rust browser preview retains host-path entry. Successful imports update
+Local selection inspects formats through the native planner, then submits one
+task-owned atomic import. Ordinary files and text-only folders import immediately.
+Mixed folders/ZIPs and multi-sheet workbooks show a selection form, initially
+including all files and sheets. Texts combine into one Data Block while table files
+and workbook sheets remain separate. Native file and folder pickers both support
+multiple selections; Rust browser preview retains host-path entry. Successful imports update
 device-local recent paths. Recent rows obtain filesystem sizes through the shared
 metadata endpoint and use bundled Material Icon Theme icons. Size inspection reads
 no file contents and does not acquire database ownership or create a task.
 
 `useProjectFileDrop`, mounted once by the workspace, routes native paths and
 recent-file drags to Data Loader or the exposed graph. Both activate Local files
-and import immediately. Native hit testing converts the pinned Wry
+and use the same inspection/selection path. Native hit testing converts the pinned Wry
 implementation's macOS screen points (physical pixels on Windows) into CSS
 coordinates using current webview size and display scale, including page zoom.
 Overlays intercept drops. A leave notification cannot discard an accepted drop

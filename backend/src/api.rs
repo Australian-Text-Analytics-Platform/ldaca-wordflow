@@ -156,6 +156,8 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(sql))
         .routes(utoipa_axum::routes!(parse_expression))
         .routes(utoipa_axum::routes!(import_tables))
+        .routes(utoipa_axum::routes!(inspect_file_import))
+        .routes(utoipa_axum::routes!(import_files))
         .routes(utoipa_axum::routes!(file_metadata))
         .routes(utoipa_axum::routes!(graph))
         .routes(utoipa_axum::routes!(node_schema_registered))
@@ -861,6 +863,36 @@ struct TableImport {
 struct ImportTables {
     sources: Vec<TableImport>,
 }
+#[utoipa::path(
+    post, path = "/api/project/import/inspect", operation_id = "api_inspect_file_import",
+    tag = "api",
+    request_body = crate::project::imports::FileImportRequest,
+    responses((status = 200, description = "Success", body = crate::project::imports::FileImportPlan), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
+)]
+async fn inspect_file_import(
+    State(project): State<ProjectRuntime>,
+    InputJson(input): InputJson<crate::project::imports::FileImportRequest>,
+) -> Result<impl IntoResponse> {
+    Ok(Json(project.inspect_files(input).await?))
+}
+#[utoipa::path(
+    post, path = "/api/project/import/files", operation_id = "api_import_files",
+    tag = "api",
+    request_body = crate::project::imports::FileImportRequest,
+    responses((status = 200, description = "Success", body = crate::project::imports::FileImportResult, headers(("x-wordflow-task-id" = String, description = "Accepted task identity"))), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope, headers(("x-wordflow-task-id" = Option<String>, description = "Accepted task identity, including task failures"))))
+)]
+async fn import_files(
+    State(project): State<ProjectRuntime>,
+    InputJson(input): InputJson<crate::project::imports::FileImportRequest>,
+) -> Result<impl IntoResponse> {
+    let runtime = project.clone();
+    let task = project.submit_task("Import local data", move |context| async move {
+        context.progress("Reading selected files", None);
+        Ok(Json(runtime.import_files(input).await?))
+    })?;
+    task_response(task).await
+}
+
 #[utoipa::path(
     post, path = "/api/project/import", operation_id = "api_import_tables",
     tag = "api",

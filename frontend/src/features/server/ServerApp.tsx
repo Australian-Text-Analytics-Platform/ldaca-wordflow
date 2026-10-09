@@ -7,6 +7,7 @@ import ProjectApp from '@/features/project/ProjectApp';
 import { createProjectQueryClient, reportProjectError } from '@/features/project/projectErrors';
 import { QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { UploadCards } from './uploads';
 import { ServerContext } from './context';
 import { subscribeServerEvents } from './events';
 import { captureProjectWindowState, restoreProjectWindowState } from './projectWindowState';
@@ -16,6 +17,7 @@ export default function ServerApp({ base }: { base: string }) {
   return (
     <QueryClientProvider client={client}>
       <ServerProjects base={base} />
+      <UploadCards />
     </QueryClientProvider>
   );
 }

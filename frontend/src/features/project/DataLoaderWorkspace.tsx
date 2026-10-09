@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useServer } from '@/features/server/context';
 import { FileLibrary } from '@/features/server/FileLibrary';
-import { uploadFile, importFile } from '@/features/server/api';
+import { importFiles, inspectImport } from '@/features/server/api';
+import { startUpload } from '@/features/server/uploads';
+import { needsFileImportSelection, type FileImportPlan } from './filesApi';
+import { OperationError } from './OperationError';
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -21,18 +24,33 @@ export function DataLoaderWorkspace({
 }) {
   const server = useServer();
   const cache = useQueryClient();
+  const [incoming, setIncoming] = useState<{
+    names: string[];
+    projectId: string;
+    plan: FileImportPlan;
+  } | null>(null);
   const uploaded = useMutation({
+    meta: { reportError: false },
     mutationFn: async (files: File[]) => {
       if (!server) return;
       const {
         base: host,
         status: { project_id: session },
       } = server;
-      for (const file of files) {
-        const stored = await uploadFile(host, 'data', file);
-        await cache.invalidateQueries({ queryKey: ['server-files', host, 'data'] });
-        await importFile(host, session, stored.name);
-      }
+      const stored = await Promise.all(files.map((file) => startUpload(host, 'data', file)));
+      await cache.invalidateQueries({ queryKey: ['server-files', host, 'data'] });
+      if (stored.some((file) => !file))
+        throw new Error(
+          'An upload did not finish. Review its card before importing the selection.',
+        );
+      const names = stored.filter((file) => file != null).map((file) => file.name);
+      const plan = await inspectImport(host, session, names);
+      if (needsFileImportSelection(plan)) return { names, projectId: session, plan };
+      await importFiles(host, session, names);
+      return null;
+    },
+    onSuccess: (plan) => {
+      if (plan) setIncoming(plan);
     },
   });
   const [source, setSource] = useState('local');
@@ -79,7 +97,15 @@ export function DataLoaderWorkspace({
                 Drop files here or onto the graph to upload and import them.
               </p>
               {uploaded.isPending && <p role="status">Uploading and importing…</p>}
-              <FileLibrary library="data" />
+              {uploaded.error && (
+                <OperationError title="Could not import dropped files" error={uploaded.error} />
+              )}
+              <FileLibrary
+                library="data"
+                visible={active && source === 'local'}
+                incoming={incoming}
+                onIncomingHandled={() => setIncoming(null)}
+              />
             </>
           ) : (
             <LocalFileImport

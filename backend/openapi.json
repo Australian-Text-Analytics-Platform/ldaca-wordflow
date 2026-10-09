@@ -2197,6 +2197,105 @@
           }
         ]
       },
+      "FileImportPlan": {
+        "properties": {
+          "collection": {
+            "type": "boolean"
+          },
+          "files": {
+            "items": {
+              "$ref": "#/components/schemas/ImportFile"
+            },
+            "type": "array"
+          },
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedImportFile"
+            },
+            "type": "array"
+          },
+          "text_name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "files",
+          "text_name",
+          "collection",
+          "skipped"
+        ],
+        "type": "object"
+      },
+      "FileImportRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "root": {
+            "description": "Relative paths in the inspection are anchored here for a server library.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "selected": {
+            "items": {
+              "$ref": "#/components/schemas/FileImportSelection"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "paths"
+        ],
+        "type": "object"
+      },
+      "FileImportResult": {
+        "properties": {
+          "skipped": {
+            "items": {
+              "$ref": "#/components/schemas/SkippedImportFile"
+            },
+            "type": "array"
+          },
+          "table_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "table_names",
+          "skipped"
+        ],
+        "type": "object"
+      },
+      "FileImportSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "sheet": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "path"
+        ],
+        "type": "object"
+      },
       "FileMetadata": {
         "properties": {
           "path": {
@@ -2217,6 +2316,25 @@
         ],
         "type": "object"
       },
+      "FileMove": {
+        "additionalProperties": false,
+        "properties": {
+          "destination": {
+            "type": "string"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "names",
+          "destination"
+        ],
+        "type": "object"
+      },
       "FilePaths": {
         "additionalProperties": false,
         "properties": {
@@ -2229,6 +2347,37 @@
         },
         "required": [
           "paths"
+        ],
+        "type": "object"
+      },
+      "FileSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "library": {
+            "$ref": "#/components/schemas/Library"
+          },
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "library",
+          "names"
+        ],
+        "type": "object"
+      },
+      "FolderRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
         ],
         "type": "object"
       },
@@ -2518,6 +2667,28 @@
         ],
         "type": "object"
       },
+      "ImportFile": {
+        "properties": {
+          "format": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "sheets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "path",
+          "format",
+          "sheets"
+        ],
+        "type": "object"
+      },
       "ImportTables": {
         "additionalProperties": false,
         "properties": {
@@ -2771,6 +2942,9 @@
       },
       "LibraryFile": {
         "properties": {
+          "is_directory": {
+            "type": "boolean"
+          },
           "modified": {
             "format": "int64",
             "minimum": 0,
@@ -2790,7 +2964,8 @@
         },
         "required": [
           "name",
-          "size"
+          "size",
+          "is_directory"
         ],
         "type": "object"
       },
@@ -4540,17 +4715,29 @@
       "ServerImport": {
         "additionalProperties": false,
         "properties": {
-          "name": {
-            "type": "string"
+          "names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
           },
           "project_id": {
             "format": "uuid",
             "type": "string"
+          },
+          "selected": {
+            "items": {
+              "$ref": "#/components/schemas/FileImportSelection"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
           }
         },
         "required": [
           "project_id",
-          "name"
+          "names"
         ],
         "type": "object"
       },
@@ -4700,6 +4887,21 @@
             "type": "object"
           }
         ]
+      },
+      "SkippedImportFile": {
+        "properties": {
+          "path": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "path",
+          "reason"
+        ],
+        "type": "object"
       },
       "SqlBatch": {
         "additionalProperties": false,
@@ -9839,6 +10041,260 @@
                 }
               }
             }
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/api/project/import/files": {
+      "post": {
+        "operationId": "api_import_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileImportResult"
+                }
+              }
+            },
+            "description": "Success",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request or operation failed",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Origin not allowed",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource unavailable",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Operation conflict",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal operation error",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Backend stopping",
+            "headers": {
+              "x-wordflow-task-id": {
+                "description": "Accepted task identity, including task failures",
+                "schema": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "api"
+        ]
+      }
+    },
+    "/api/project/import/inspect": {
+      "post": {
+        "operationId": "api_inspect_file_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileImportRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileImportPlan"
+                }
+              }
+            },
+            "description": "Success"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Invalid request or operation failed"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Origin not allowed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Resource unavailable"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Operation conflict"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Internal operation error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            },
+            "description": "Backend stopping"
           }
         },
         "tags": [
@@ -17637,6 +18093,143 @@
         }
       }
     },
+    "/api/server/files/delete-batch": {
+      "post": {
+        "operationId": "server_delete_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/server/files/download": {
+      "post": {
+        "operationId": "server_download_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/zip": {
+                "schema": {
+                  "$ref": "#/components/schemas/Binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/server/files/folder": {
+      "post": {
+        "operationId": "server_create_folder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryFile"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/server/files/move": {
+      "post": {
+        "operationId": "server_move_files",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FileMove"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Moved"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/server/files/{library}": {
       "get": {
         "operationId": "server_files",
@@ -17822,7 +18415,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TableNames"
+                  "$ref": "#/components/schemas/FileImportResult"
                 }
               }
             }
@@ -17837,6 +18430,41 @@
             }
           },
           "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/server/import/inspect": {
+      "post": {
+        "operationId": "server_inspect_import",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerImport"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FileImportPlan"
+                }
+              }
+            }
+          },
+          "400": {
             "content": {
               "application/json": {
                 "schema": {

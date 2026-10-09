@@ -439,10 +439,33 @@ is deleted on success, cancellation or failure.
 Imports belong to their runtime throughout and cancel network work on interruption.
 Tokens are never written to project metadata.
 
-Local imports use `POST /api/project/import` with `sources`: objects containing
-`table_name`, a SELECT `sql`, and optional `parameters`. The runtime allocates
-unique names and atomically creates tables and registrations, returning `table_names`.
-The Local files UI submits immediately without a schema preflight or staging step. `POST /api/project/nodes/{table_name}/delete` removes the registered
+Local file selection uses `POST /api/project/import/inspect` and then
+`POST /api/project/import/files`. Both accept `paths`, optional `root` and optional
+`selected` entries (`path` and nullable `sheet`). Inspection returns `files`
+with relative paths, formats and workbook sheets, `text_name`, `collection` and
+`skipped` path/reason entries. Execution revalidates selections and returns
+`table_names` and `skipped`. Inspection creates no task. Execution owns one task
+and one atomic database transaction for the complete selection.
+
+Supported table formats are CSV/TSV, JSON/JSONL/NDJSON, Parquet, Avro,
+Arrow/IPC/Feather, XLSX/XLS/XLSM/XLSB/ODS. Workbook outputs use `file_sheet` names;
+all sheets are selected by default. Text extensions are `txt`, `text`, `md`,
+`rst` and `log`. Text files combine into one Data Block with `file_path`,
+`base_name`, `extension` and `document`, in relative-path order. One whole file
+forms one row. Mixed folders and ZIPs also import each table separately.
+Hidden paths, `__MACOSX` and links are ignored. Nested ZIPs and unsupported files
+are reported as skipped; invalid UTF-8 text is skipped and reported. Traversal
+is bounded to 100,000 files, with no application byte/storage cap. Empty supported
+selections and malformed table files fail without committing any outputs.
+Overlapping paths are deduplicated. Native one-folder/ZIP text outputs use its
+name; server folders use `folder_selection` and file selections `selected_files`.
+Temporary preparation is removed after success, failure or cancellation. Arrow
+extension annotations are mapped to DuckDB's resulting nested field names.
+
+The existing `POST /api/project/import` SQL interface remains available with
+`sources`: objects containing `table_name`, a SELECT `sql`, and optional
+`parameters`. It also allocates unique names and publishes atomically.
+`POST /api/project/nodes/{table_name}/delete` removes the registered
 object and its associated edges/column metadata/tokenizer preferences atomically; the desktop
 exposes this operation through node menus and batch deletion.
 

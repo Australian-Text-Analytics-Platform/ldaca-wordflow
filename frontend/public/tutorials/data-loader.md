@@ -18,9 +18,11 @@ for saving and closing.
 <h3 id="help-data-loader-upload-button">Choose or drop files</h3>
 
 Local files opens by default. Choose **Choose files…** or drop files onto Data
-Loader or the exposed graph. Supported formats are CSV, TSV, Parquet, JSON,
-JSONL and NDJSON. Choosing or dropping files starts importing immediately, with
-all columns included. The Rust browser preview accepts absolute paths on its host.
+Loader or the exposed graph. Desktop also provides **Choose folders…**. Supported
+table formats are CSV/TSV, JSON/JSONL/NDJSON, Parquet, Avro, Arrow/IPC/Feather and
+XLSX/XLS/XLSM/XLSB/ODS. Text extensions are TXT, TEXT, MD, RST and LOG. ZIPs and
+folders can contain both texts and tables. The Rust browser preview accepts
+absolute paths on its host.
 
 **Recent files** shows filenames, parent folders, file-type icons and current file
 sizes. Click one to import it again, or drag it onto Data Loader or the graph.
@@ -29,14 +31,32 @@ unavailable**. Recent files update after a successful import.
 
 <h3 id="help-data-loader-add-button">Import into the project</h3>
 
-Each file creates a Data Block named after the file. If that name already exists,
+Each table file creates a Data Block named after the file. If that name already exists,
 a numeric suffix is added. Rename the Data Block or remove unwanted columns
-after import using its menu and Data Viewer. There is no staging or confirmation
-step for these formats. Excel workbooks are not currently supported.
+after import using its menu and Data Viewer. Ordinary files and text-only folders
+import immediately. Mixed folders/ZIPs and multi-sheet workbooks show content
+choices, with all files and sheets initially selected. Workbook outputs use
+`file_sheet` names; sheet choices appear only when a workbook has multiple sheets.
+
+Texts combine into one Data Block, with one whole file per row and columns
+`file_path`, `base_name`, `extension` and `document`. Rows follow relative-path
+order. Hidden paths, `__MACOSX` and links are ignored. Nested ZIPs and unsupported
+files are skipped and reported. Invalid UTF-8 text is also skipped and reported.
+Overlapping selections import each file once. A malformed table aborts the complete
+selection without adding any Data Blocks.
 
 Follow progress or cancel in **Tasks**. You can import more files or switch sources
 while an import runs. Failed imports leave the project unchanged; select the file
-again to retry.
+again or use **Retry** beside the original error.
+
+On the server, browse folders and select files/folders together. Texts use the
+name `folder_selection` or `selected_files`. Folder creation, Move, Delete and
+ZIP download operate on the selected entries; ZIP downloads preserve folders.
+Upload cards show byte progress, then **Finishing…** until the server acknowledges.
+They remain visible when you leave the file list. A late cancellation may leave
+the uploaded file on the server: use **Refresh destination** to check, or
+**Dismiss** to remove its explanatory card. Receiving folders and their ancestors
+cannot be moved or deleted until upload cleanup finishes.
 
 Local data is stored inside the project. Imports preserve an internal raw Table
 and show a View over it. You can move or remove the original file afterward.

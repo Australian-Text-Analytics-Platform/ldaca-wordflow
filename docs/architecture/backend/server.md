@@ -40,6 +40,30 @@ has it open. Checkpointed downloads preserve project structure and differ from
 portable Export. [Storage reference](../../reference/application-storage.md)
 owns exact directory, preference and credential contracts.
 
+## Data library and imports
+
+The data library exposes relative folder paths, folder creation, multiselection,
+batch moves/deletion and ZIP download preserving selected paths. Resolution
+rejects links and escapes. Overlapping folder/file selections resolve once.
+Server inspection and import delegate to the backend's shared native file planner;
+the browser never publishes a multi-file import through separate requests.
+The [native API reference](../../reference/native-project-api.md#desktop-imports)
+owns format, sheet and text-row contracts.
+
+One file-mutation gate preflights a complete requested batch before changes begin.
+An upload registers its destination folder before reading the body, then streams
+without holding that gate. Moves and deletion reject the receiving folder and
+its ancestors while unrelated paths remain usable. Completion, failure and
+request cleanup release protection. Publication retains no-overwrite hard links.
+
+Browser upload cards own transfer progress and cancellation independently of the
+current project view; TanStack Query still owns the file inventory. At full byte
+progress a card says **Finishing…** until acknowledgement. Failures retain the
+original diagnostic and Retry. Cancellation refreshes the destination and keeps
+a persistent **Refresh destination** / **Dismiss** card when completion is
+uncertain; it does not promise rollback. There is no application upload quota or
+size reminder.
+
 ## Multi-user boundary
 
 Google and CILogon Authorization Code flows use PKCE, state, nonce and validated

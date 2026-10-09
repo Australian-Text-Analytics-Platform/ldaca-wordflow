@@ -157,15 +157,36 @@ export async function exportNode(base: string, name: DataTarget, format: DataBlo
   return exportProject(base, { kind: 'files', objects: [objectRef(name)], format });
 }
 
-export async function importTables(
-  base: string,
-  sources: components['schemas']['ImportTables']['sources'],
-): Promise<components['schemas']['TableNames']> {
-  return (await request(base, '/api/project/import', 'post', { body: { sources } })).json();
-}
-
 export async function localFileMetadata(base: string, paths: string[], signal?: AbortSignal) {
   return (
     await request(base, '/api/project/files/metadata', 'post', { body: { paths }, signal })
   ).json();
+}
+
+export type FileImportRequest = components['schemas']['FileImportRequest'];
+export type FileImportPlan = components['schemas']['FileImportPlan'];
+export type FileImportResult = components['schemas']['FileImportResult'];
+export type SkippedImportFile = components['schemas']['SkippedImportFile'];
+export async function inspectFileImport(
+  base: string,
+  input: FileImportRequest,
+  signal?: AbortSignal,
+): Promise<FileImportPlan> {
+  return (
+    await request(base, '/api/project/import/inspect', 'post', { body: input, signal })
+  ).json();
+}
+export async function importFiles(
+  base: string,
+  input: FileImportRequest,
+): Promise<FileImportResult> {
+  return (await request(base, '/api/project/import/files', 'post', { body: input })).json();
+}
+
+export function needsFileImportSelection(plan: FileImportPlan): boolean {
+  const texts = new Set(['txt', 'text', 'md', 'rst', 'log']);
+  return (
+    plan.files.some((file) => file.sheets.length > 1) ||
+    (plan.collection && plan.files.some((file) => !texts.has(file.format)))
+  );
 }

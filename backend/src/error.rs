@@ -59,7 +59,9 @@ impl IntoResponse for Error {
         let status = match self.code.as_str() {
             "project_closed" | "project_busy" | "editing_active" | "editing_closed"
             | "editing_stale" | "nothing_to_undo" | "task_active" | "analysis_busy"
-            | "session_changed" | "file_exists" | "save_required" => StatusCode::CONFLICT,
+            | "session_changed" | "file_exists" | "save_required" | "upload_active" => {
+                StatusCode::CONFLICT
+            }
             "project_not_found"
             | "provider_not_found"
             | "node_not_found"

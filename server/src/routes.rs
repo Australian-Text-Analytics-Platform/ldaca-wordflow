@@ -11,7 +11,9 @@ use serde::Deserialize;
 use tokio::io::AsyncWriteExt;
 use tower::ServiceExt;
 use utoipa_axum::{router::OpenApiRouter, routes};
-use wordflow_backend::{ErrorEnvelope, InputJson, TableNames};
+use wordflow_backend::{
+    ErrorEnvelope, FileImportPlan, FileImportResult, FileImportSelection, InputJson,
+};
 
 pub fn router() -> OpenApiRouter<Host> {
     #[derive(utoipa::OpenApi)]
@@ -30,6 +32,11 @@ pub fn router() -> OpenApiRouter<Host> {
         .layer(DefaultBodyLimit::disable())
         .routes(routes!(download, delete))
         .routes(routes!(import))
+        .routes(routes!(inspect_import))
+        .routes(routes!(create_folder))
+        .routes(routes!(move_files))
+        .routes(routes!(delete_files))
+        .routes(routes!(download_files))
 }
 #[utoipa::path(get, path="/api/server", operation_id="server_status", responses((status=200, body=ServerStatus), (status=500, body=ErrorEnvelope)))]
 async fn status(State(host): State<Host>) -> Result<Json<ServerStatus>> {
@@ -219,7 +226,30 @@ async fn upload(
     Path((library, name)): Path<(Library, String)>,
     body: Body,
 ) -> Result<Json<LibraryFile>> {
-    host.0.files.path(library, &name)?;
+    if name.is_empty() || host.0.files.path(library, &name)?.is_dir() {
+        return Err(Error::invalid("Choose a filename"));
+    }
+    let protection = if matches!(library, Library::Data) {
+        let mut mutations = host.0.data_files.lock().await;
+        host.0.files.path(library, &name)?;
+        let id = Uuid::new_v4();
+        mutations.uploads.insert(
+            id,
+            std::fs::canonicalize(
+                host.0
+                    .files
+                    .path(library, &name)?
+                    .parent()
+                    .ok_or_else(|| Error::invalid("Choose an upload folder"))?,
+            )?,
+        );
+        Some(UploadProtection {
+            host: host.clone(),
+            id,
+        })
+    } else {
+        None
+    };
     let files = host.0.files.clone();
     let staged = tokio::task::spawn_blocking(move || {
         tempfile::NamedTempFile::new_in(files.directory(library))
@@ -242,10 +272,17 @@ async fn upload(
     if matches!(library, Library::Projects) {
         ProjectRuntime::validate_file(staged.path().to_path_buf()).await?;
     }
-    let _mutation = match library {
-        Library::Data => host.0.data_files.lock().await,
-        Library::Projects => host.0.mutation.lock().await,
+    let _data = if matches!(library, Library::Data) {
+        Some(host.0.data_files.lock().await)
+    } else {
+        None
     };
+    let _projects = if matches!(library, Library::Projects) {
+        Some(host.0.mutation.lock().await)
+    } else {
+        None
+    };
+    let _protection = protection;
     let files = host.0.files.clone();
     tokio::task::spawn_blocking(move || files.publish(library, &name, staged))
         .await?
@@ -256,9 +293,15 @@ async fn download(
     State(host): State<Host>,
     Path((library, name)): Path<(Library, String)>,
 ) -> Result<Response> {
-    let _mutation = match library {
-        Library::Data => host.0.data_files.lock().await,
-        Library::Projects => host.0.mutation.lock().await,
+    let _data = if matches!(library, Library::Data) {
+        Some(host.0.data_files.lock().await)
+    } else {
+        None
+    };
+    let _projects = if matches!(library, Library::Projects) {
+        Some(host.0.mutation.lock().await)
+    } else {
+        None
     };
     let path = host.0.files.path(library, &name)?;
     if matches!(library, Library::Projects) {
@@ -282,73 +325,161 @@ async fn delete(
     State(host): State<Host>,
     Path((library, name)): Path<(Library, String)>,
 ) -> Result<StatusCode> {
-    let _mutation = match library {
-        Library::Data => host.0.data_files.lock().await,
-        Library::Projects => host.0.mutation.lock().await,
-    };
-    let path = host.0.files.path(library, &name)?;
-    if matches!(library, Library::Projects) {
-        if host.open_file(&path).await?.is_some() {
-            return Err(Error::new(
-                "project_busy",
-                "Close the project before deleting it.",
-            ));
-        }
-
-        tokio::task::spawn_blocking(move || {
-            let _lock = wordflow_backend::lock_destination(&path)?;
-            std::fs::remove_file(path).map_err(Error::from)
-        })
-        .await??;
-    } else {
-        tokio::fs::remove_file(path).await?;
-    }
+    delete_batch(&host, library, vec![name]).await?;
     Ok(StatusCode::NO_CONTENT)
 }
+
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct ServerImport {
     pub project_id: Uuid,
-    pub name: String,
+    pub names: Vec<String>,
+    pub selected: Option<Vec<FileImportSelection>>,
 }
-#[utoipa::path(post,path="/api/server/import",operation_id="server_import",request_body=ServerImport,responses((status=200,body=TableNames),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
+#[utoipa::path(post,path="/api/server/import",operation_id="server_import",request_body=ServerImport,responses((status=200,body=FileImportResult),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
 async fn import(
     State(host): State<Host>,
     InputJson(input): InputJson<ServerImport>,
 ) -> Result<Response> {
-    tokio::spawn(async move { import_owned(host, input).await }).await?
+    tokio::spawn(async move { import_owned(host, input, false).await }).await?
 }
-async fn import_owned(host: Host, input: ServerImport) -> Result<Response> {
+#[utoipa::path(post,path="/api/server/import/inspect",operation_id="server_inspect_import",request_body=ServerImport,responses((status=200,body=FileImportPlan),(status=400,body=ErrorEnvelope)))]
+async fn inspect_import(
+    State(host): State<Host>,
+    InputJson(input): InputJson<ServerImport>,
+) -> Result<Response> {
+    import_owned(host, input, true).await
+}
+async fn import_owned(host: Host, input: ServerImport, inspect: bool) -> Result<Response> {
     let _file = host.0.data_files.lock().await;
     let active = host.session(input.project_id).await?;
-    let path = host.0.files.path(Library::Data, &input.name)?;
-    let extension = std::path::Path::new(&input.name)
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    let reader = match extension.as_str() {
-        "csv" | "tsv" => "read_csv",
-        "json" | "jsonl" | "ndjson" => "read_json",
-        "parquet" => "read_parquet",
-        _ => {
-            return Err(Error::invalid(
-                "Choose a CSV, TSV, Parquet, JSON, JSONL or NDJSON file.",
-            ));
-        }
+    let selected = host.0.files.selections(Library::Data, &input.names)?;
+    let payload = wordflow_backend::FileImportRequest {
+        paths: selected.into_iter().map(|(_, p)| p).collect(),
+        root: Some(host.0.files.directory(Library::Data)),
+        selected: input.selected,
     };
-    let name = std::path::Path::new(&input.name)
-        .file_stem()
-        .and_then(|v| v.to_str())
-        .unwrap_or("data");
-    let payload = serde_json::json!({"sources":[{"table_name":name,"sql":format!("SELECT * FROM {reader}(?)"),"parameters":[path]}]});
     let request = Request::builder()
         .method("POST")
-        .uri("/api/project/import")
+        .uri(if inspect {
+            "/api/project/import/inspect"
+        } else {
+            "/api/project/import/files"
+        })
         .header(header::CONTENT_TYPE, "application/json")
         .body(Body::from(serde_json::to_vec(&payload)?))
         .map_err(|e| Error::invalid(e.to_string()))?;
     dispatch(&host, active, request).await
+}
+struct UploadProtection {
+    host: Host,
+    id: Uuid,
+}
+impl Drop for UploadProtection {
+    fn drop(&mut self) {
+        let host = self.host.clone();
+        let id = self.id;
+        tokio::spawn(async move {
+            host.0.data_files.lock().await.uploads.remove(&id);
+        });
+    }
+}
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+struct FolderRequest {
+    name: String,
+}
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+struct FileSelection {
+    library: Library,
+    names: Vec<String>,
+}
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+struct FileMove {
+    names: Vec<String>,
+    destination: String,
+}
+#[utoipa::path(post,path="/api/server/files/folder",operation_id="server_create_folder",request_body=FolderRequest,responses((status=200,body=LibraryFile),(status=400,body=ErrorEnvelope)))]
+async fn create_folder(
+    State(host): State<Host>,
+    InputJson(input): InputJson<FolderRequest>,
+) -> Result<Json<LibraryFile>> {
+    let _gate = host.0.data_files.lock().await;
+    let files = host.0.files.clone();
+    Ok(Json(
+        tokio::task::spawn_blocking(move || files.folder(input.name.trim())).await??,
+    ))
+}
+#[utoipa::path(post,path="/api/server/files/move",operation_id="server_move_files",request_body=FileMove,responses((status=204,description="Moved"),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
+async fn move_files(
+    State(host): State<Host>,
+    InputJson(input): InputJson<FileMove>,
+) -> Result<StatusCode> {
+    let gate = host.0.data_files.lock().await;
+    gate.preflight(&host.0.files, &input.names)?;
+    let files = host.0.files.clone();
+    tokio::task::spawn_blocking(move || files.move_files(&input.names, &input.destination))
+        .await??;
+    Ok(StatusCode::NO_CONTENT)
+}
+async fn delete_batch(host: &Host, library: Library, names: Vec<String>) -> Result<()> {
+    let data = if matches!(library, Library::Data) {
+        Some(host.0.data_files.lock().await)
+    } else {
+        None
+    };
+    let _projects = if matches!(library, Library::Projects) {
+        Some(host.0.mutation.lock().await)
+    } else {
+        None
+    };
+    if let Some(gate) = data.as_ref() {
+        gate.preflight(&host.0.files, &names)?;
+    }
+    let selected = host.0.files.selections(library, &names)?;
+    let mut locks = Vec::new();
+    if matches!(library, Library::Projects) {
+        for (_, path) in &selected {
+            if host.open_file(path).await?.is_some() {
+                return Err(Error::new(
+                    "project_busy",
+                    "Close the project before deleting it.",
+                ));
+            }
+            locks.push(wordflow_backend::lock_destination(path)?);
+        }
+    }
+    let files = host.0.files.clone();
+    tokio::task::spawn_blocking(move || {
+        let _locks = locks;
+        files.delete_files(library, &names)
+    })
+    .await?
+}
+#[utoipa::path(post,path="/api/server/files/delete-batch",operation_id="server_delete_files",request_body=FileSelection,responses((status=204,description="Deleted"),(status=409,body=ErrorEnvelope)))]
+async fn delete_files(
+    State(host): State<Host>,
+    InputJson(input): InputJson<FileSelection>,
+) -> Result<StatusCode> {
+    delete_batch(&host, input.library, input.names).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+#[utoipa::path(post,path="/api/server/files/download",operation_id="server_download_files",request_body=FileSelection,responses((status=200,content_type="application/zip",body=wordflow_backend::openapi::Binary),(status=400,body=ErrorEnvelope)))]
+async fn download_files(
+    State(host): State<Host>,
+    InputJson(input): InputJson<FileSelection>,
+) -> Result<Response> {
+    if !matches!(input.library, Library::Data) {
+        return Err(Error::invalid(
+            "Download projects individually to include their current state",
+        ));
+    }
+    let _gate = host.0.data_files.lock().await;
+    let files = host.0.files.clone();
+    let output = tokio::task::spawn_blocking(move || files.zip(&input.names)).await??;
+    staged_download(output, "selected_files.zip").await
 }
 pub async fn project_request(
     State(host): State<Host>,

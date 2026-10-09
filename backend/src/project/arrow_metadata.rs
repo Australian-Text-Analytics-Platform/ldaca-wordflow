@@ -24,6 +24,73 @@ pub(super) fn field_path(path: &[String]) -> Result<String> {
     Ok(serde_json::to_string(path)?)
 }
 impl Annotations {
+    /// DuckDB gives list/map children native names. Preserve annotations by field
+    /// position while keeping source STRUCT keys and all top-level names exact.
+    pub(super) fn rebased(&self, original: &Schema, native: &Schema) -> Result<Self> {
+        fn children(field: &Field) -> Vec<&Field> {
+            match field.data_type() {
+                DataType::Struct(fields) => fields.iter().map(AsRef::as_ref).collect(),
+                DataType::List(f)
+                | DataType::LargeList(f)
+                | DataType::FixedSizeList(f, _)
+                | DataType::Map(f, _) => vec![f.as_ref()],
+                _ => Vec::new(),
+            }
+        }
+        let mut annotations = Vec::new();
+        for annotation in &self.0 {
+            let mut before: Vec<&Field> = original.fields().iter().map(AsRef::as_ref).collect();
+            let mut after: Vec<&Field> = native.fields().iter().map(AsRef::as_ref).collect();
+            let mut path = Vec::new();
+            for component in &annotation.path {
+                let index = before
+                    .iter()
+                    .position(|f| f.name() == component)
+                    .ok_or_else(|| {
+                        Error::invalid("The imported Arrow annotation has an unknown field path")
+                    })?;
+                let target = after.get(index).ok_or_else(|| {
+                    Error::invalid("The native import cannot preserve this Arrow field annotation")
+                })?;
+                path.push(target.name().clone());
+                before = children(before[index]);
+                after = children(target);
+            }
+            annotations.push(Annotation {
+                path,
+                ..annotation.clone()
+            });
+        }
+        Ok(Self(annotations))
+    }
+    pub(super) fn from_schema(schema: &Schema) -> Self {
+        fn visit(field: &Field, parent: &[String], annotations: &mut Vec<Annotation>) {
+            let mut path = parent.to_vec();
+            path.push(field.name().clone());
+            if let Some(extension) = field.metadata().get("ARROW:extension:name") {
+                annotations.push(Annotation {
+                    path: path.clone(),
+                    extension: extension.clone(),
+                    payload: field.metadata().get("ARROW:extension:metadata").cloned(),
+                });
+            }
+            match field.data_type() {
+                DataType::Struct(fields) => {
+                    fields.iter().for_each(|f| visit(f, &path, annotations))
+                }
+                DataType::List(f)
+                | DataType::LargeList(f)
+                | DataType::FixedSizeList(f, _)
+                | DataType::Map(f, _) => visit(f, &path, annotations),
+                _ => {}
+            }
+        }
+        let mut annotations = Vec::new();
+        for field in schema.fields() {
+            visit(field, &[], &mut annotations);
+        }
+        Self(annotations)
+    }
     pub(super) fn load(conn: &Connection, relation: &Relation) -> Result<Self> {
         let rows = conn.prepare("SELECT field_path,extension_name,extension_metadata FROM wordflow.arrow_metadata WHERE schema_name=? AND relation_name=? ORDER BY field_path")?
             .query_map(params![relation.schema,relation.name],|r| Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,Option<String>>(2)?)))?.collect::<duckdb::Result<Vec<_>>>()?;

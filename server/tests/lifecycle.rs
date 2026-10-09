@@ -218,7 +218,7 @@ async fn uploads_are_independent_and_failed_import_retains_file() {
         &host,
         "POST",
         "/api/server/import",
-        json!({"project_id":id,"name":"bad.parquet"}),
+        json!({"project_id":id,"names":["bad.parquet"]}),
     )
     .await;
     assert!(!status.is_success());
@@ -358,4 +358,180 @@ async fn preferences_survive_restart_and_users_have_distinct_roots_and_project_i
     );
     reopened.close().await.unwrap();
     other.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn folders_selections_zip_and_mixed_import_share_atomic_native_planning() {
+    let (dir, host) = host().await;
+    let root = dir.path().join("admin/data");
+    std::fs::create_dir_all(root.join("corpus/nested")).unwrap();
+    std::fs::create_dir_all(root.join("other")).unwrap();
+    std::fs::write(root.join("corpus/nested/a.txt"), "猫\nwhole file").unwrap();
+    std::fs::write(root.join("corpus/b.txt"), "second").unwrap();
+    std::fs::write(root.join("corpus/table.csv"), "id,text\n1,cat").unwrap();
+    std::fs::write(root.join("corpus/readme.pdf"), "skip").unwrap();
+    let id = create(&host).await;
+    let names = json!(["corpus", "corpus/nested", "corpus/b.txt"]);
+    let (status, plan) = call(
+        &host,
+        "POST",
+        "/api/server/import/inspect",
+        json!({"project_id":id,"names":names}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{plan}");
+    assert_eq!(plan["text_name"], "folder_selection");
+    assert_eq!(plan["files"].as_array().unwrap().len(), 3);
+    let (status, result) = call(
+        &host,
+        "POST",
+        "/api/server/import",
+        json!({"project_id":id,"names":names}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{result}");
+    assert_eq!(result["table_names"], json!(["table", "folder_selection"]));
+    assert_eq!(result["skipped"].as_array().unwrap().len(), 1);
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/files/move",
+        json!({"names":["corpus/nested","corpus/b.txt"],"destination":"other"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let response = host
+        .router()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/server/files/download")
+                .header("content-type", "application/json")
+                .body(Body::from(
+                    json!({"library":"data","names":["other","other/nested"]}).to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+    assert_eq!(
+        archive.file_names().collect::<Vec<_>>(),
+        [
+            "other/",
+            "other/b.txt",
+            "other/nested/",
+            "other/nested/a.txt"
+        ]
+    );
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/files/delete-batch",
+        json!({"library":"data","names":["corpus/table.csv","does-not-exist.csv"]}),
+    )
+    .await;
+    assert!(!status.is_success());
+    assert!(root.join("corpus/table.csv").exists());
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/files/delete-batch",
+        json!({"library":"data","names":["other","other/nested"]}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    assert!(!root.join("other").exists());
+    host.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn upload_protects_destination_ancestors_before_preflighting_entire_batches() {
+    use axum::body::Bytes;
+    let (dir, host) = host().await;
+    let root = dir.path().join("admin/data");
+    std::fs::create_dir_all(root.join("protected/nested")).unwrap();
+    std::fs::create_dir_all(root.join("unrelated")).unwrap();
+    std::fs::create_dir_all(root.join("destination")).unwrap();
+    std::fs::write(root.join("unrelated/movable.txt"), "keep").unwrap();
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let (send, receive) =
+        tokio::sync::mpsc::channel::<std::result::Result<Bytes, std::io::Error>>(1);
+    let stream = futures_util::stream::unfold(
+        (Some(started), receive),
+        |(mut started, mut receive)| async move {
+            if let Some(started) = started.take() {
+                let _ = started.send(());
+            }
+            receive
+                .recv()
+                .await
+                .map(|chunk| (chunk, (started, receive)))
+        },
+    );
+    let uploading = tokio::spawn(
+        host.router().oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/api/server/files/data/protected%2Fnested%2Finput.csv")
+                .body(Body::from_stream(stream))
+                .unwrap(),
+        ),
+    );
+    ready.await.unwrap();
+    let (status, error) = call(
+        &host,
+        "POST",
+        "/api/server/files/move",
+        json!({"names":["unrelated/movable.txt","protected"],"destination":"destination"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{error}");
+    assert_eq!(error["error"]["code"], "upload_active");
+    assert!(root.join("unrelated/movable.txt").exists());
+    assert!(!root.join("destination/movable.txt").exists());
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/files/delete-batch",
+        json!({"library":"data","names":["unrelated/movable.txt","protected/nested"]}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(root.join("unrelated/movable.txt").exists());
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/files/move",
+        json!({"names":["unrelated/movable.txt"],"destination":"destination"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    send.send(Ok(Bytes::from_static(b"id,text\n1,cat")))
+        .await
+        .unwrap();
+    drop(send);
+    assert_eq!(uploading.await.unwrap().unwrap().status(), StatusCode::OK);
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let (status, _) = call(
+                &host,
+                "POST",
+                "/api/server/files/move",
+                json!({"names":["protected"],"destination":"destination"}),
+            )
+            .await;
+            if status == StatusCode::NO_CONTENT {
+                break;
+            }
+            assert_eq!(status, StatusCode::CONFLICT);
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert!(root.join("destination/protected/nested/input.csv").exists());
+    host.close().await.unwrap();
 }

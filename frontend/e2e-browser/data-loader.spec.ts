@@ -1,9 +1,72 @@
 import { setTestPreferences } from './fixtures';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
-import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { role, label, testId, checked, screenshot, stubResponse, rect, press } from './fixtures';
+import JSZip from 'jszip';
+import * as projectApi from '@/features/project/api';
+import { baseUrl, role, label, testId, checked, screenshot, stubResponse, rect, press } from './fixtures';
+
+async function workbook() {
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/></Types>');
+  zip.file('_rels/.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>');
+  zip.file('xl/workbook.xml', '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="First" sheetId="1" r:id="rId1"/><sheet name="Second" sheetId="2" r:id="rId2"/></sheets></workbook>');
+  zip.file('xl/_rels/workbook.xml.rels', '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/></Relationships>');
+  for (const [index, value] of ['first', 'second'].entries()) {
+    zip.file(`xl/worksheets/sheet${index + 1}.xml`, `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="A1" t="inlineStr"><is><t>document</t></is></c></row><row r="2"><c r="A2" t="inlineStr"><is><t>${value}</t></is></c></row></sheetData></worksheet>`);
+  }
+  return zip.generateAsync({ type: 'nodebuffer' });
+}
+
+it('imports mixed ZIP contents atomically with selected workbook sheets and reports skipped text', async () => {
+  const temp = process.env.WORDFLOW_E2E_TEMP_DIR;
+  if (!temp) throw new Error('Missing runner-owned temporary directory');
+  const dir = await mkdtemp(join(temp, 'mixed-import-'));
+  const archive = join(dir, 'corpus.zip');
+  const zip = new JSZip();
+  zip.file('z.txt', 'whole\nfile');
+  zip.file('nested/a.md', '猫😀');
+  zip.file('invalid.txt', Buffer.from([0xff]));
+  zip.file('.hidden/secret.txt', 'hidden');
+  zip.file('__MACOSX/hidden.txt', 'hidden');
+  zip.file('nested.zip', 'not expanded');
+  zip.file('records.csv', 'id,text\n1,table row\n');
+  zip.file('book.xlsx', await workbook());
+  await writeFile(archive, await zip.generateAsync({ type: 'nodebuffer' }));
+  try {
+    await browser.url('/');
+    await label('Data file path').setValue(archive);
+    await role('button', { name: 'Choose files…' }).click();
+    await expect(role('region', { name: 'Choose import contents' })).toBeDisplayed();
+    await expect(role('checkbox', { name: 'First', exact: true })).toHaveAttribute('aria-checked', 'true');
+    await expect(role('checkbox', { name: 'Second', exact: true })).toHaveAttribute('aria-checked', 'true');
+    await role('checkbox', { name: 'First', exact: true }).click();
+    await role('button', { name: 'Import selected', exact: true }).click();
+    for (const name of ['corpus', 'records', 'book_Second']) {
+      await expect(role('button', { name: `Select ${name}`, exact: true })).toBeDisplayed();
+    }
+    await expect(role('button', { name: 'Select book_First', exact: true })).not.toExist();
+    await expect(browser.$('[data-testid="local-file-content"]')).toHaveText(expect.stringContaining('Invalid UTF-8 text'));
+    const rows = await projectApi.querySql(baseUrl, [{ sql: 'SELECT file_path, document FROM data.corpus' }]);
+    expect(rows.toArray().map((row) => ({ ...row }))).toEqual([
+      { file_path: 'nested/a.md', document: '猫😀' },
+      { file_path: 'z.txt', document: 'whole\nfile' },
+    ]);
+    const sheet = await projectApi.querySql(baseUrl, [{ sql: 'SELECT document FROM data.book_Second' }]);
+    expect(sheet.getChild('document')?.get(0)).toBe('second');
+    await screenshot('loader-mixed-zip.png');
+    const folder = join(dir, 'texts');
+    await mkdir(folder);
+    await writeFile(join(folder, 'note.txt'), 'one whole document');
+    await label('Data file path').setValue(folder);
+    await role('button', { name: 'Choose files…' }).click();
+    await expect(role('button', { name: 'Select texts', exact: true })).toBeDisplayed();
+    await expect(role('region', { name: 'Choose import contents' })).not.toExist();
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
 
 for (const theme of ['light-2026', 'dark-2026']) {
   it(`Data Loader imports immediately and keeps source navigation and recent files readable in ${theme}`, async () => {

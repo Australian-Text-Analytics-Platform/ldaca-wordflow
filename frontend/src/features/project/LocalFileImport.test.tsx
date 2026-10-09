@@ -20,7 +20,8 @@ vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 vi.mock('@/features/project/filesApi', async (load) => ({
   ...(await load<object>()),
   localFileMetadata: vi.fn(),
-  importTables: vi.fn(),
+  importFiles: vi.fn(),
+  inspectFileImport: vi.fn(),
   sampleCatalogue: vi.fn(),
 }));
 vi.mock('@/features/project/api', async (load) => ({
@@ -35,7 +36,20 @@ beforeEach(() => {
   vi.mocked(filesApi.localFileMetadata).mockImplementation(async (_base, paths) =>
     paths.map((path) => ({ path, size_bytes: 2048 })),
   );
-  vi.mocked(filesApi.importTables).mockResolvedValue({ table_names: ['first', 'second'] });
+  vi.mocked(filesApi.inspectFileImport).mockImplementation(async (_base, input) => ({
+    collection: false,
+    text_name: 'selected_files',
+    skipped: [],
+    files: input.paths.map((path) => ({
+      path: path.split('/').at(-1) ?? path,
+      format: path.split('.').at(-1) ?? 'csv',
+      sheets: [],
+    })),
+  }));
+  vi.mocked(filesApi.importFiles).mockResolvedValue({
+    table_names: ['first', 'second'],
+    skipped: [],
+  });
 });
 function setup() {
   const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -73,13 +87,9 @@ it('imports all columns immediately from a path and recent click, without schema
   setup();
   await add(user, '/tmp/first.csv');
   await waitFor(() =>
-    expect(filesApi.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
-      {
-        table_name: 'first',
-        sql: 'SELECT * FROM read_csv(?)',
-        parameters: ['/tmp/first.csv'],
-      },
-    ]),
+    expect(filesApi.importFiles).toHaveBeenCalledExactlyOnceWith('http://project', {
+      paths: ['/tmp/first.csv'],
+    }),
   );
   expect(projectApi.querySql).not.toHaveBeenCalled();
   expect(screen.queryByRole('button', { name: 'Import files' })).not.toBeInTheDocument();
@@ -88,7 +98,7 @@ it('imports all columns immediately from a path and recent click, without schema
   expect(within(recent).getByAltText('')).toHaveAttribute('src', '/icons/material/table.svg');
   expect(recent).toHaveAttribute('title', '/tmp/first.csv');
   await user.click(recent);
-  await waitFor(() => expect(filesApi.importTables).toHaveBeenCalledTimes(2));
+  await waitFor(() => expect(filesApi.importFiles).toHaveBeenCalledTimes(2));
   expect(getPreferences().recentDataFiles).toEqual(['/tmp/first.csv']);
 });
 it('native chooser and drops import once immediately; cancellation does nothing and a drop opens Local files', async () => {
@@ -99,17 +109,12 @@ it('native chooser and drops import once immediately; cancellation does nothing 
     .mockResolvedValueOnce(null)
     .mockResolvedValueOnce(['/tmp/first.csv', '/tmp/second.parquet', '/tmp/first.csv']);
   await user.click(screen.getByRole('button', { name: 'Choose files…' }));
-  expect(filesApi.importTables).not.toHaveBeenCalled();
+  expect(filesApi.importFiles).not.toHaveBeenCalled();
   await user.click(screen.getByRole('button', { name: 'Choose files…' }));
   await waitFor(() =>
-    expect(filesApi.importTables).toHaveBeenCalledExactlyOnceWith('http://project', [
-      { table_name: 'first', sql: 'SELECT * FROM read_csv(?)', parameters: ['/tmp/first.csv'] },
-      {
-        table_name: 'second',
-        sql: 'SELECT * FROM read_parquet(?)',
-        parameters: ['/tmp/second.parquet'],
-      },
-    ]),
+    expect(filesApi.importFiles).toHaveBeenCalledExactlyOnceWith('http://project', {
+      paths: ['/tmp/first.csv', '/tmp/second.parquet'],
+    }),
   );
   expect(open).toHaveBeenCalledWith(expect.objectContaining({ multiple: true }));
   await user.click(screen.getByRole('tab', { name: 'LDaCA' }));
@@ -117,20 +122,16 @@ it('native chooser and drops import once immediately; cancellation does nothing 
     vi.mocked(useProjectFileDrop).mock.calls.at(-1)?.[0](['/tmp/third.JSONL']);
   });
   await waitFor(() =>
-    expect(filesApi.importTables).toHaveBeenLastCalledWith('http://project', [
-      {
-        table_name: 'third',
-        sql: 'SELECT * FROM read_json(?)',
-        parameters: ['/tmp/third.JSONL'],
-      },
-    ]),
+    expect(filesApi.importFiles).toHaveBeenLastCalledWith('http://project', {
+      paths: ['/tmp/third.JSONL'],
+    }),
   );
   expect(screen.getByRole('tab', { name: 'Local files' })).toHaveAttribute('aria-selected', 'true');
   expect(view.props.onActivate).toHaveBeenCalledOnce();
-  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importFiles).toHaveBeenCalledTimes(2);
 });
 it('keeps failed paths for explicit retry and only adds successful imports to recents', async () => {
-  vi.mocked(filesApi.importTables).mockRejectedValueOnce(new Error('missing file'));
+  vi.mocked(filesApi.importFiles).mockRejectedValueOnce(new Error('missing file'));
   const user = userEvent.setup();
   setup();
   await add(user, '/tmp/first.csv');
@@ -139,12 +140,12 @@ it('keeps failed paths for explicit retry and only adds successful imports to re
   expect(screen.queryByRole('region', { name: 'Recent files' })).not.toBeInTheDocument();
   await user.type(screen.getByRole('textbox', { name: /Data file path/ }), '{Enter}');
   await screen.findByRole('button', { name: 'Import first.csv' });
-  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importFiles).toHaveBeenCalledTimes(2);
 });
 it('keeps import actions available during overlapping work and retains progress until all requests finish', async () => {
-  let finishFirst!: (value: { table_names: string[] }) => void;
-  let finishSecond!: (value: { table_names: string[] }) => void;
-  vi.mocked(filesApi.importTables)
+  let finishFirst!: (value: filesApi.FileImportResult) => void;
+  let finishSecond!: (value: filesApi.FileImportResult) => void;
+  vi.mocked(filesApi.importFiles)
     .mockImplementationOnce(
       () =>
         new Promise((resolve) => {
@@ -161,15 +162,15 @@ it('keeps import actions available during overlapping work and retains progress 
   setup();
   await add(user, '/tmp/first.csv');
   await add(user, '/tmp/second.csv');
-  expect(filesApi.importTables).toHaveBeenCalledTimes(2);
+  expect(filesApi.importFiles).toHaveBeenCalledTimes(2);
   await act(async () => {
-    finishSecond({ table_names: ['second'] });
+    finishSecond({ table_names: ['second'], skipped: [] });
   });
   expect(await screen.findByRole('button', { name: 'Import second.csv' })).toBeEnabled();
   expect(screen.getByRole('status')).toHaveTextContent('Importing files');
   await user.click(screen.getByRole('tab', { name: 'LDaCA' }));
   await act(async () => {
-    finishFirst({ table_names: ['first'] });
+    finishFirst({ table_names: ['first'], skipped: [] });
   });
   await user.click(screen.getByRole('tab', { name: 'Local files' }));
   await screen.findByRole('button', { name: 'Import first.csv' });
@@ -198,7 +199,7 @@ it('shows filesystem sizes and file type icons, with unavailable sizes distinct 
   expect(
     within(screen.getByRole('button', { name: 'Import data.json' })).getByAltText(''),
   ).toHaveAttribute('src', '/icons/material/json.svg');
-  expect(filesApi.importTables).not.toHaveBeenCalled();
+  expect(filesApi.importFiles).not.toHaveBeenCalled();
 });
 
 vi.mock('@/features/preferences/preferences', async (load) => {
@@ -215,4 +216,49 @@ vi.mock('@/features/preferences/preferences', async (load) => {
       });
     }),
   };
+});
+
+it('defaults to all workbook sheets and imports the chosen contents in one request', async () => {
+  vi.mocked(filesApi.inspectFileImport).mockResolvedValue({
+    collection: true,
+    text_name: 'corpus',
+    skipped: [],
+    files: [
+      { path: 'a.txt', format: 'txt', sheets: [] },
+      { path: 'book.xlsx', format: 'xlsx', sheets: ['First', 'Second'] },
+      { path: 'single.ods', format: 'ods', sheets: ['Only'] },
+    ],
+  });
+  const user = userEvent.setup();
+  setup();
+  await add(user, '/tmp/corpus');
+  const choices = await screen.findByRole('region', { name: 'Choose import contents' });
+  expect(filesApi.importFiles).not.toHaveBeenCalled();
+  const checks = within(choices).getAllByRole('checkbox');
+  for (const check of checks) expect(check).toBeChecked();
+  expect(within(choices).queryByText('Only')).not.toBeInTheDocument();
+  await user.click(within(choices).getByLabelText('First'));
+  await user.click(within(choices).getByRole('button', { name: 'Import selected' }));
+  await waitFor(() =>
+    expect(filesApi.importFiles).toHaveBeenCalledExactlyOnceWith('http://project', {
+      paths: ['/tmp/corpus'],
+      selected: [
+        { path: 'a.txt', sheet: null },
+        { path: 'book.xlsx', sheet: 'Second' },
+        { path: 'single.ods', sheet: 'Only' },
+      ],
+    }),
+  );
+});
+it('uses the native folder picker and keeps inspection failures beside the import controls', async () => {
+  vi.mocked(isTauri).mockReturnValue(true);
+  vi.mocked(open).mockResolvedValueOnce(['/tmp/corpus']);
+  vi.mocked(filesApi.inspectFileImport).mockRejectedValueOnce(new Error('No supported input'));
+  const user = userEvent.setup();
+  setup();
+  await user.click(screen.getByRole('button', { name: 'Choose folders…' }));
+  expect(open).toHaveBeenCalledWith(expect.objectContaining({ directory: true, multiple: true }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('No supported input');
+  await user.click(screen.getByRole('button', { name: 'Retry' }));
+  await waitFor(() => expect(filesApi.importFiles).toHaveBeenCalledOnce());
 });
