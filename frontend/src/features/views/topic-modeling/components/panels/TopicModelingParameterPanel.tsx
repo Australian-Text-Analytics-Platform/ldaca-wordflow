@@ -37,6 +37,8 @@ import { acceptPlaceholderOnTab } from '@/features/views/common/placeholderTabFi
 import { nudgeTargetProps } from '@/features/nudges/nudgeHighlight';
 import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 import { TopicLargeInputNudge } from '../TopicModelingNudges';
+import { isLargeTopicInput } from '@/features/nudges/nudges';
+import { useNudgeStore } from '@/features/nudges/nudgeStore';
 
 interface NumericInputDraft {
   source: number;
@@ -293,11 +295,31 @@ export function TopicModelingParameterPanel({
       sum + effectiveSampleDocumentCount(corpusSamples[index] ?? { percent: '100' }, nDocs),
     0,
   );
-  // Embedding takes most of a first run and follows the token count; about
-  // 36,000 tokens a second on a recent Mac, so the minutes are a floor.
+  // One place for advice, one for facts (Chao, issue 360): when the
+  // large-input suggestion applies, it gives the advice and outlines the
+  // settings, and these notes keep to grey facts. With Suggestions off they
+  // keep their advice and warning colour.
+  const nudgesEnabled = useNudgeStore((state) => state.enabled);
+  const adviceInSuggestion =
+    nudgesEnabled &&
+    !parametersLocked &&
+    isLargeTopicInput({
+      documents: sampledDocumentCount,
+      segments: estimatedSegmentCount,
+      topicSampling: clusterSample,
+    });
+  // Embedding takes most of a first run and follows the token count: about
+  // 36,000 tokens a second on an M5 Pro. Speed varies a lot between
+  // computers, so the minutes are given for a fast one, not promised.
   const firstRunNote =
     estimatedTokenCount !== null && estimatedTokenCount > TOPIC_FIRST_RUN_NOTE_TOKENS
-      ? `About ${Math.round(estimatedTokenCount / 1_000_000).toLocaleString()} million tokens to read. A first run may take ${Math.max(1, Math.round(estimatedTokenCount / 36_000 / 60)).toLocaleString()} minutes or more, longer on older computers; later runs on the same text reuse this work. Lower the sampling percentage for a quicker first look.`
+      ? [
+          `About ${Math.round(estimatedTokenCount / 1_000_000).toLocaleString()} million tokens to read.`,
+          `A first run reads them all: about ${Math.max(1, Math.round(estimatedTokenCount / 36_000 / 60)).toLocaleString()} minutes on a fast recent computer, and often several times longer on older or slower ones. Later runs on the same text reuse this work.`,
+          ...(adviceInSuggestion
+            ? []
+            : ['Lower the sampling percentage for a quicker first look.']),
+        ].join(' ')
       : null;
   // Called by: the topic sampling note so the reason and the help section sit together.
   const openTopicSamplingHelp = () => {
@@ -313,6 +335,14 @@ export function TopicModelingParameterPanel({
           warning: false,
           lines: [
             `About ${total.toLocaleString()} segments (estimated); every segment is clustered.`,
+          ],
+        };
+      }
+      if (adviceInSuggestion) {
+        return {
+          warning: false,
+          lines: [
+            `About ${total.toLocaleString()} segments; clustering time grows with the square of this number.`,
           ],
         };
       }
@@ -469,7 +499,10 @@ export function TopicModelingParameterPanel({
         />
       )}
       {firstRunNote ? (
-        <p id="topic-first-run-note" className="mt-2 px-3 text-label-secondary text-warning">
+        <p
+          id="topic-first-run-note"
+          className={`mt-2 px-3 text-label-secondary ${adviceInSuggestion ? 'text-description' : 'text-warning'}`}
+        >
           {firstRunNote}
         </p>
       ) : null}

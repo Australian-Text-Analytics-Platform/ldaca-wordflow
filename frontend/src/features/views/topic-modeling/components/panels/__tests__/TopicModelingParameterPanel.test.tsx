@@ -7,6 +7,7 @@ import { TopicModelingParameterPanel } from '../TopicModelingParameterPanel';
 import type { WorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useUIStore } from '@/stores/uiStore';
+import { useNudgeStore } from '@/features/nudges/nudgeStore';
 
 const render = (ui: React.ReactElement) => renderUi(ui, { wrapper: TooltipProvider });
 
@@ -495,11 +496,32 @@ describe('TopicModelingParameterPanel', () => {
   });
 
   it('suggests topic sampling, unticked, when a corpus has very many segments', () => {
+    // With Suggestions off, the note carries the advice (issue 360).
+    useNudgeStore.setState({ enabled: false });
     render(<TopicModelingParameterPanel {...baseProps} estimatedSegmentCount={400_000} />);
 
     expect(screen.getByRole('checkbox', { name: 'Topic sampling' })).not.toBeChecked();
     expect(screen.queryByLabelText('Segments to sample')).not.toBeInTheDocument();
     expect(screen.getByText(/this run may take a long time/)).toHaveClass('text-warning');
+    useNudgeStore.setState({ enabled: true });
+  });
+
+  it('leaves the advice to the suggestion and keeps grey facts (issue 360)', () => {
+    render(
+      <TopicModelingParameterPanel
+        {...baseProps}
+        estimatedSegmentCount={400_000}
+        estimatedTokenCount={25_000_000}
+      />,
+    );
+
+    expect(screen.getByRole('status')).toHaveTextContent('A large input');
+    expect(
+      screen.getByText(/About 400,000 segments; clustering time grows with the square/),
+    ).toHaveClass('text-description');
+    const firstRun = screen.getByText(/About 25 million tokens to read/);
+    expect(firstRun).toHaveClass('text-description');
+    expect(firstRun).not.toHaveTextContent('Lower the sampling percentage');
   });
 
   it('says every segment is clustered when sampling is on but the corpus is small', () => {
@@ -524,8 +546,9 @@ describe('TopicModelingParameterPanel', () => {
     const { rerender } = render(
       <TopicModelingParameterPanel {...baseProps} estimatedTokenCount={25_000_000} />,
     );
+    // Minutes are for a fast computer, not a promise (Chao, issue 360).
     expect(screen.getByText(/About 25 million tokens to read/)).toHaveTextContent(
-      'A first run may take 12 minutes or more',
+      'about 12 minutes on a fast recent computer, and often several times longer on older or slower ones',
     );
 
     rerender(<TopicModelingParameterPanel {...baseProps} estimatedTokenCount={4_000_000} />);

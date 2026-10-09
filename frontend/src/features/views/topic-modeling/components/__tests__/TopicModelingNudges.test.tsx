@@ -83,9 +83,9 @@ describe('Topic Modelling suggestions (issue 360)', () => {
         occurrence="n"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'About 26,163 documents and 109,800 segments.',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent('A large input');
+    // The notes give the numbers; the card keeps to its advice.
+    expect(screen.getByRole('status')).not.toHaveTextContent('26,163');
   });
 });
 

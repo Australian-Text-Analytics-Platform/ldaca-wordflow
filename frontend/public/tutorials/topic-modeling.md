@@ -25,8 +25,11 @@ Lower sampling makes exploratory runs faster but can hide rare themes or make
 small topics less stable. For a very large corpus, [Topic sampling](#help-topic-modeling-topic-sampling)
 shortens clustering and keeps every document in the result. When the selected
 text is long (over about 5 million tokens), a note under the Data Blocks gives
-a rough first-run time: reading the text into the model takes most of a first
-run, and later runs on the same text reuse that work. The label reports the effective document count, for
+the number of tokens and a first-run time for a fast recent computer. Treat it
+as a best case: older or slower computers often take several times longer.
+Reading the text into the model takes most of a first run, and later runs on
+the same text reuse that work. With **Suggestions** on, a large input also
+shows a suggestion that outlines **Sampling** and **Topic sampling**. The label reports the effective document count, for
 example **Sampling (1,380 documents)**. The sample uses the **Seed** setting, so
 the same Seed and percentage always pick the same documents, whichever order the
 Data Blocks are in. The **Colour** square sets the Data

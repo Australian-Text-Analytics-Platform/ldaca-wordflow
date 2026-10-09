@@ -77,16 +77,6 @@ export function TopicLargeInputNudge({
   occurrence: string;
 }) {
   if (!isLargeTopicInput({ documents, segments, topicSampling })) return null;
-  const detail =
-    segments === null
-      ? `About ${documents.toLocaleString()} documents.`
-      : `About ${documents.toLocaleString()} documents and ${segments.toLocaleString()} segments.`;
-  return (
-    <NudgeCard
-      id="topic-large-input"
-      occurrence={occurrence}
-      detail={detail}
-      className="mx-3 mt-2"
-    />
-  );
+  // The notes below give the numbers; the card keeps to its advice.
+  return <NudgeCard id="topic-large-input" occurrence={occurrence} className="mx-3 mt-2" />;
 }
