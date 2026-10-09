@@ -15,6 +15,7 @@ export interface TaskRow {
   startedAt?: number | null;
   finishedAt?: number | null;
   action?: { label: string; disabled?: boolean; run: () => void };
+  openTab?: () => void;
 }
 const states = {
   queued: { icon: Clock, label: 'Queued', color: 'text-description' },
@@ -130,18 +131,31 @@ export function TaskRows({ tasks }: { tasks: TaskRow[] }) {
                   <dt>Finished</dt>
                   <dd>{timestamp(task.finishedAt)}</dd>
                 </dl>
-                {task.action && (
-                  <div className="flex justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 px-2 text-[11px]"
-                      disabled={task.action.disabled}
-                      onClick={task.action.run}
-                    >
-                      {task.action.label}
-                    </Button>
+                {(task.action || task.openTab) && (
+                  <div className="flex flex-wrap justify-end gap-2">
+                    {task.openTab && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        onClick={task.openTab}
+                      >
+                        Open tab
+                      </Button>
+                    )}
+                    {task.action && (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 text-[11px]"
+                        disabled={task.action.disabled}
+                        onClick={task.action.run}
+                      >
+                        {task.action.label}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>

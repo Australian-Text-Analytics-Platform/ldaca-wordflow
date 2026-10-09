@@ -1825,7 +1825,7 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  '/api/server/project/save': {
+  '/api/server/project/duplicate': {
     parameters: {
       query?: never;
       header?: never;
@@ -1834,7 +1834,23 @@ export interface paths {
     };
     get?: never;
     put?: never;
-    post: operations['server_save'];
+    post: operations['server_duplicate'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/server/project/rename': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['server_rename'];
     delete?: never;
     options?: never;
     head?: never;
@@ -3084,8 +3100,11 @@ export interface components {
     /** @enum {string} */
     SegmentationMethod: 'automatic' | 'line' | 'sentence';
     ServerClose: {
-      discard_untitled?: boolean;
       interrupt?: boolean;
+      /** Format: uuid */
+      project_id: string;
+    };
+    ServerDuplicate: {
       /** Format: uuid */
       project_id: string;
     };
@@ -3100,8 +3119,8 @@ export interface components {
       /** Format: uuid */
       project_id: string;
     };
-    ServerSave: {
-      name?: string | null;
+    ServerRename: {
+      name: string;
       /** Format: uuid */
       project_id: string;
     };
@@ -11991,14 +12010,17 @@ export interface operations {
   };
   server_events: {
     parameters: {
-      query?: never;
+      query?: {
+        /** @description Include this session's native project events on the same stream */
+        project_id?: string;
+      };
       header?: never;
       path?: never;
       cookie?: never;
     };
     requestBody?: never;
     responses: {
-      /** @description User project registry and application preference invalidations */
+      /** @description User registry, preferences and optionally native project events */
       200: {
         headers: {
           [name: string]: unknown;
@@ -12400,7 +12422,7 @@ export interface operations {
       };
     };
   };
-  server_save: {
+  server_duplicate: {
     parameters: {
       query?: never;
       header?: never;
@@ -12409,7 +12431,38 @@ export interface operations {
     };
     requestBody: {
       content: {
-        'application/json': components['schemas']['ServerSave'];
+        'application/json': components['schemas']['ServerDuplicate'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['LibraryFile'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  server_rename: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ServerRename'];
       };
     };
     responses: {

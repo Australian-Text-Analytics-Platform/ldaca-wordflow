@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { reportProjectError } from '@/features/project/projectErrors';
+import { OperationError } from '@/features/project/OperationError';
 import { useEditingNavigation } from '@/features/table-editing/useEditingNavigation';
 import { saveGeneratedExport } from '@/lib/download';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -27,26 +27,26 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
   const navigate = useEditingNavigation();
   const [library, setLibrary] = useState<'data' | 'projects' | null>(null);
   const [destination, setDestination] = useState<Destination | null>(null);
-  const [prompt, setPrompt] = useState<'untitled' | 'interrupt' | 'save' | 'close' | null>(null);
+  const [prompt, setPrompt] = useState<'rename' | 'interrupt' | 'close' | null>(null);
+  const [duplicated, setDuplicated] = useState<string | null>(null);
   const [filename, setFilename] = useState('');
   const operation = useMutation({
     mutationFn: async (action: () => Promise<void>) => action(),
     meta: { reportError: false },
     onError: (error) => {
-      if (error instanceof ProjectError && error.code === 'save_required') setPrompt('untitled');
-      else if (error instanceof ProjectError && error.code === 'task_active')
+      if (prompt === 'close' && error instanceof ProjectError && error.code === 'task_active')
         setPrompt('interrupt');
-      else reportProjectError(error);
     },
   });
   if (!server) return null;
   const run = (action: () => Promise<void>) => {
+    setDuplicated(null);
     operation.mutate(action);
   };
-  const change = async (target: Destination, discard = false, interrupt = false) => {
+  const change = async (target: Destination, interrupt = false) => {
     if (target.close) {
       await request(server.base, '/api/server/project/close', 'post', {
-        body: { project_id: server.status.project_id, discard_untitled: discard, interrupt },
+        body: { project_id: server.status.project_id, interrupt },
       });
       server.select(null);
     } else {
@@ -67,24 +67,42 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
       run(() => change(target));
     });
   };
-  const save = async (name: string | null) => {
-    await request(server.base, '/api/server/project/save', 'post', {
-      body: { project_id: server.status.project_id, name },
+  const rename = async () => {
+    const name = filename.trim();
+    await request(server.base, '/api/server/project/rename', 'post', {
+      body: {
+        project_id: server.status.project_id,
+        name: name.toLowerCase().endsWith('.wfpj') ? name : `${name}.wfpj`,
+      },
     });
     await server.refresh();
     await cache.invalidateQueries({ queryKey: ['native', projectBase, 'project'] });
     setPrompt(null);
-    if (destination) await change(destination);
   };
-  const requestSave = (as: boolean) => {
-    navigate(() => {
-      setDestination(null);
-      if (as || !server.status.project?.path) {
-        setFilename('');
-        setPrompt('save');
-      } else run(() => save(null));
-    });
+  const duplicate = async () => {
+    const file = await (
+      await request(server.base, '/api/server/project/duplicate', 'post', {
+        body: { project_id: server.status.project_id },
+      })
+    ).json();
+    await server.refresh();
+    setDuplicated(file.name);
   };
+  const resetPrompt = () => {
+    operation.reset();
+    setDestination(null);
+    setPrompt(null);
+  };
+  const error = operation.isError && (
+    <OperationError
+      error={operation.error}
+      title={prompt === 'rename' ? 'Could not rename project' : 'Project action failed'}
+      onRetry={() => {
+        if (prompt === 'rename') run(rename);
+        else if (operation.variables) run(operation.variables);
+      }}
+    />
+  );
   return (
     <>
       <AccountControls base={server.base} />
@@ -111,17 +129,20 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
-              requestSave(false);
+              operation.reset();
+              setDestination(null);
+              setFilename(server.status.project?.title ?? '');
+              setPrompt('rename');
             }}
           >
-            Save
+            Rename…
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
-              requestSave(true);
+              run(duplicate);
             }}
           >
-            Save As…
+            Duplicate project
           </DropdownMenuItem>
           <DropdownMenuItem
             onSelect={() => {
@@ -158,6 +179,7 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
           <DropdownMenuItem
             onSelect={() => {
               navigate(() => {
+                operation.reset();
                 setDestination({ name: null, close: true });
                 setPrompt('close');
               });
@@ -188,58 +210,62 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
           {library && <FileLibrary library={library} onOpenProject={open} />}
         </DialogContent>
       </Dialog>
+      {duplicated && (
+        <p role="status" className="text-body">
+          Created {duplicated}
+        </p>
+      )}
+      {!prompt && error}
       <Dialog
         open={prompt !== null}
         onOpenChange={(value) => {
-          if (!value && !operation.isPending) {
-            setPrompt(null);
-            setDestination(null);
-          }
+          if (!value && !operation.isPending) resetPrompt();
         }}
       >
         <DialogContent>
           <DialogTitle>
-            {prompt === 'close'
-              ? 'Close shared project?'
-              : prompt === 'save'
-                ? 'Save project'
-                : prompt === 'interrupt'
-                  ? 'Cancel active work?'
-                  : 'Save Untitled project?'}
+            {prompt === 'rename'
+              ? 'Rename project'
+              : prompt === 'interrupt'
+                ? 'Cancel active work?'
+                : 'Close shared project?'}
           </DialogTitle>
           <DialogDescription>
-            {prompt === 'close'
-              ? 'This closes the project in every window that has it open.'
-              : prompt === 'save'
-                ? 'Choose an unused filename. The project will be saved in the server’s projects directory.'
-                : prompt === 'interrupt'
-                  ? 'Closing this project cancels active work and waits for cleanup. The current project stays open if cancellation fails.'
-                  : 'Save this project before continuing, or discard its contents.'}
+            {prompt === 'rename'
+              ? 'Choose an unused project name. Rename is available only while the project is idle and no Table edits are open.'
+              : prompt === 'interrupt'
+                ? 'Closing this project cancels active work and waits for cleanup. The current project stays open if cancellation fails.'
+                : 'This closes the project in every window that has it open. Its file remains in the project library.'}
           </DialogDescription>
-          {prompt === 'save' && (
+          {prompt === 'rename' && (
             <label className="flex flex-col gap-2">
-              Filename
+              Project name
               <Input
                 autoFocus
                 value={filename}
-                onChange={(event) => {
-                  setFilename(event.target.value);
+                onChange={(event) => setFilename(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' && filename.trim() && !operation.isPending) {
+                    event.preventDefault();
+                    run(rename);
+                  }
                 }}
-                placeholder="My research.wfpj"
               />
             </label>
           )}
+          {error}
           <div className="flex flex-wrap justify-end gap-2">
-            <Button
-              variant="ghost"
-              disabled={operation.isPending}
-              onClick={() => {
-                setPrompt(null);
-                setDestination(null);
-              }}
-            >
-              Stay
+            <Button variant="ghost" disabled={operation.isPending} onClick={resetPrompt}>
+              {prompt === 'rename' ? 'Cancel' : 'Stay'}
             </Button>
+            {prompt === 'rename' && (
+              <Button
+                disabled={operation.isPending || !filename.trim()}
+                onClick={() => run(rename)}
+              >
+                {operation.isPending ? 'Renaming…' : 'Rename'}
+              </Button>
+            )}
             {prompt === 'close' && (
               <Button
                 disabled={operation.isPending}
@@ -250,52 +276,14 @@ export function ServerControls({ projectBase }: { projectBase: string }) {
                 Close project
               </Button>
             )}
-            {prompt === 'untitled' && (
-              <>
-                <Button
-                  variant="ghost"
-                  disabled={operation.isPending}
-                  onClick={() => {
-                    if (destination) run(() => change(destination, true));
-                  }}
-                >
-                  Discard
-                </Button>
-                <Button
-                  disabled={operation.isPending}
-                  onClick={() => {
-                    setFilename('');
-                    setPrompt('save');
-                  }}
-                >
-                  Save…
-                </Button>
-              </>
-            )}
-            {prompt === 'save' && (
-              <Button
-                disabled={operation.isPending || !filename.trim()}
-                onClick={() => {
-                  run(() =>
-                    save(
-                      filename.trim().endsWith('.wfpj')
-                        ? filename.trim()
-                        : `${filename.trim()}.wfpj`,
-                    ),
-                  );
-                }}
-              >
-                Save
-              </Button>
-            )}
             {prompt === 'interrupt' && (
               <Button
                 disabled={operation.isPending}
                 onClick={() => {
-                  if (destination) run(() => change(destination, true, true));
+                  if (destination) run(() => change(destination, true));
                 }}
               >
-                Cancel work and continue
+                Cancel work and close
               </Button>
             )}
           </div>

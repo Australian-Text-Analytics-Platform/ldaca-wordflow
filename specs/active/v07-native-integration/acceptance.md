@@ -81,3 +81,40 @@ Observed checks:
   picker acceptance remain outside this local fixture evidence.
 
 Batch 2 behavior is implemented; global native/platform acceptance remains open.
+
+## Batch 3: permanent server projects and task lifecycle
+
+New creates an immediately permanent `Untitled-X.wfpj`. Server Rename preserves
+the runtime identity, data, subscriptions and task history, rejects active work
+and Table editing, and updates attached windows. Duplicate creates a library
+file without opening or selecting it. Close retains the project file. Switching
+keeps independent inputs and background work. Tasks use current tab names and
+Open tab; deleting a tab purges associated history while retaining import tasks.
+
+Registry, preferences and native events share one SSE connection per server
+window, including root-path deployments. This fixes observed HTTP/1 connection
+starvation with three attached windows. File-operation workers retain their
+mutation gate and upload protection through completion even if HTTP disconnects.
+
+Observed checks:
+
+- Backend full suite: 206 library tests and 57 integration tests passed, with
+  14 optional library tests and one subprocess helper ignored; two CLI tests
+  passed. The subsequent case-only rename regression also passes. Five focused
+  rename library tests and three integration tests pass, including idle/editor
+  guards, collision rollback, case-only names and reopen with subsequent writes.
+- Server: nine library and nine lifecycle tests passed. The latter includes
+  disconnected-upload cleanup and combined native/registry event delivery.
+- Frontend: 735 unit and 17 script tests passed; the later root-path regression
+  passes within 11 focused task/event tests. Production build, lint, Knip,
+  generated API, documentation and link checks pass. Strict Rust Clippy and
+  formatting pass. Isolated server documentation tests pass after avoiding a
+  concurrent generated-API cargo build that replaced compiler artifacts.
+- Chromium: all five server isolation tests and the file/project workflow pass.
+  They cover three-window rename/preference broadcasting, shared close,
+  independent inputs, switching during a running SQL task, current tab names,
+  Open tab, deletion/history cleanup, permanent library reopening and restart
+  persistence. The workflow also exercises a narrow pane and project download.
+
+No public release or production storage was modified. WebKit, native macOS and
+Windows acceptance remain in the global platform lane.

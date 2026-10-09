@@ -4732,12 +4732,22 @@
       "ServerClose": {
         "additionalProperties": false,
         "properties": {
-          "discard_untitled": {
-            "type": "boolean"
-          },
           "interrupt": {
             "type": "boolean"
           },
+          "project_id": {
+            "format": "uuid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "project_id"
+        ],
+        "type": "object"
+      },
+      "ServerDuplicate": {
+        "additionalProperties": false,
+        "properties": {
           "project_id": {
             "format": "uuid",
             "type": "string"
@@ -4799,14 +4809,11 @@
         ],
         "type": "object"
       },
-      "ServerSave": {
+      "ServerRename": {
         "additionalProperties": false,
         "properties": {
           "name": {
-            "type": [
-              "string",
-              "null"
-            ]
+            "type": "string"
           },
           "project_id": {
             "format": "uuid",
@@ -4814,7 +4821,8 @@
           }
         },
         "required": [
-          "project_id"
+          "project_id",
+          "name"
         ],
         "type": "object"
       },
@@ -18155,6 +18163,18 @@
     "/api/server/events": {
       "get": {
         "operationId": "server_events",
+        "parameters": [
+          {
+            "description": "Include this session's native project events on the same stream",
+            "in": "query",
+            "name": "project_id",
+            "required": false,
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "content": {
@@ -18164,7 +18184,7 @@
                 }
               }
             },
-            "description": "User project registry and application preference invalidations"
+            "description": "User registry, preferences and optionally native project events"
           }
         }
       }
@@ -18625,14 +18645,49 @@
         }
       }
     },
-    "/api/server/project/save": {
+    "/api/server/project/duplicate": {
       "post": {
-        "operationId": "server_save",
+        "operationId": "server_duplicate",
         "requestBody": {
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/ServerSave"
+                "$ref": "#/components/schemas/ServerDuplicate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LibraryFile"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/server/project/rename": {
+      "post": {
+        "operationId": "server_rename",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ServerRename"
               }
             }
           },

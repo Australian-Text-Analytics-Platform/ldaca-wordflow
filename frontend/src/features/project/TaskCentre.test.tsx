@@ -6,6 +6,8 @@ import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test';
 import { reportProjectError } from './projectErrors';
 import { TaskCentre } from './TaskCentre';
 import { useNativeTasks } from './useNativeTasks';
+import type { Tab } from '@/features/tools/common/analysisApi';
+import { ServerContext } from '@/features/server/context';
 vi.mock('@/features/project/tasksApi', () => ({
   getTasks: vi.fn(),
   cancelTask: vi.fn(),
@@ -17,7 +19,7 @@ class Stream extends EventTarget {
   static current: Stream;
   onerror: (() => void) | null = null;
   close = vi.fn();
-  constructor() {
+  constructor(public url: string) {
     super();
     Stream.current = this;
   }
@@ -58,6 +60,55 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllGlobals();
+});
+
+it('uses the shared event stream for a server hosted at the root path', () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const view = render(
+    <QueryClientProvider client={client}>
+      <ServerContext
+        value={{
+          base: '',
+          status: { project_id: 'root-project', project: null },
+          projects: [],
+          select: vi.fn(),
+          refresh: vi.fn(),
+        }}
+      >
+        <ObservedTasks />
+      </ServerContext>
+    </QueryClientProvider>,
+  );
+  expect(Stream.current.url).toBe('/api/server/events?project_id=root-project');
+  view.unmount();
+});
+
+it('uses current tab names and navigates only to existing associated tabs', async () => {
+  const user = userEvent.setup();
+  const openTab = vi.fn();
+  const tab: Tab = {
+    id: 'tab',
+    kind: 'frequency',
+    name: 'Renamed study',
+    position: 0,
+    settings: {},
+    analysis: null,
+  };
+  const props = {
+    tasks: [{ ...task('succeeded'), tab_id: 'tab', notice: 'Imported two blocks' }],
+    tabs: [tab],
+    openTab,
+    reconnecting: false,
+    cancel: vi.fn(),
+    dismiss: vi.fn(),
+  };
+  const view = render(<TaskCentre {...props} />);
+  await user.click(screen.getByRole('button', { name: /Task: Renamed study/ }));
+  expect(screen.getByText('Imported two blocks')).toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Open tab' }));
+  expect(openTab).toHaveBeenCalledWith(tab);
+  view.rerender(<TaskCentre {...props} tabs={[]} />);
+  expect(screen.queryByRole('button', { name: 'Open tab' })).not.toBeInTheDocument();
 });
 
 it('keeps a newer stream snapshot when the initial HTTP request finishes late', async () => {

@@ -27,6 +27,29 @@ publishes at that destination, honoring native Replace approval, and retains
 the same runtime and backend URL. Another window or external DuckDB owner must
 close the destination first; replacement failure leaves the source usable. Older formats are rejected without migration.
 
+## Server project lifecycle
+
+The standalone host captures requests under `/project/{project_id}` and blocks
+shared native create/open/save/close routes there. Its registry owns:
+
+| Method and path | Request | Result |
+| --- | --- | --- |
+| `POST /api/server/project` | `name` or null | Open/reuse a library file or immediately create permanent `Untitled-X.wfpj` |
+| `POST /api/server/project/rename` | `project_id`, `name` including `.wfpj` | Rename an idle project, preserving its session ID |
+| `POST /api/server/project/duplicate` | `project_id` | A permanent uniquely named `_copy.wfpj` file, without switching sessions |
+| `POST /api/server/project/close` | `project_id`, optional `interrupt` | Close the shared runtime and retain its permanent file |
+| `GET /api/server/project/{id}/download` | None | Checkpointed project snapshot |
+
+`GET /api/server/events?project_id={id}` combines registry/preference events with
+the selected session's unchanged named native events. Omitting the optional ID
+streams only registry/preferences. The browser keeps one shared connection for
+these subscribers; HTTP and Query still own state.
+
+New names trim outer whitespace and reject case-insensitive library collisions.
+Rename rejects active work and Table-edit sessions; failures keep the original
+name and usable database. The server Save route and temporary-project discard
+prompt are removed. Desktop lifecycle behavior remains host-owned.
+
 ## Expression parsing
 
 `POST /api/project/expressions/parse` accepts `{"expression":"lower(\"text\")"}`.

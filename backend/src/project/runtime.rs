@@ -778,6 +778,26 @@ impl ProjectRuntime {
         .await
     }
     pub async fn save(&self, path: Option<PathBuf>) -> Result<ProjectInfo> {
+        self.save_project(path, false).await
+    }
+    /// Rename a permanent project without replacing its runtime or task history.
+    pub async fn rename(&self, path: PathBuf) -> Result<ProjectInfo> {
+        let runtime = self.clone();
+        tokio::spawn(async move {
+            let pause = runtime.begin_close()?;
+            if pause.has_work() {
+                return Err(Error::new(
+                    "task_active",
+                    "Wait for active work before renaming this project.",
+                ));
+            }
+            let result = runtime.save_project(Some(path), true).await;
+            drop(pause);
+            result
+        })
+        .await?
+    }
+    async fn save_project(&self, path: Option<PathBuf>, rename: bool) -> Result<ProjectInfo> {
         let shared = self.shared.clone();
         // Host saving is allowed while Close has paused ordinary admission.
         tokio::spawn(async move {
@@ -801,7 +821,11 @@ impl ProjectRuntime {
                     .as_mut()
                     .ok_or_else(|| Error::new("project_closed", "Open a project first"))?;
                 if let Some(path) = path {
-                    project.save_as(&path)
+                    if rename {
+                        project.rename_to(&path)
+                    } else {
+                        project.save_as(&path)
+                    }
                 } else {
                     if project.temporary.is_some() {
                         return Err(Error::invalid(
@@ -1145,6 +1169,84 @@ mod tests {
             )
             .unwrap();
         directory
+    }
+    #[tokio::test]
+    async fn permanent_rename_is_idle_only_and_preserves_identity_data_and_tasks() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = std::fs::canonicalize(directory.path()).unwrap();
+        let original = root.join("original.wfpj");
+        let renamed = root.join("研究.wfpj");
+        let collision = root.join("existing.wfpj");
+        let project = runtime();
+        project.create(Some(original.clone())).await.unwrap();
+        project
+            .sql(batch("CREATE TABLE data.docs AS SELECT 42 AS id"))
+            .await
+            .unwrap();
+        project
+            .sql(batch(
+                "INSERT INTO wordflow.nodes(table_name) VALUES ('docs')",
+            ))
+            .await
+            .unwrap();
+        project
+            .submit_task("Earlier run", |_| async { Ok(()) })
+            .unwrap()
+            .wait()
+            .await
+            .unwrap();
+        let task_id = project.tasks().tasks[0].id;
+        let work = project.operation().unwrap();
+        assert_eq!(
+            project.rename(renamed.clone()).await.unwrap_err().code,
+            "task_active"
+        );
+        assert!(original.exists());
+        assert!(!work.cancellation.is_cancelled());
+        drop(work);
+        let editor = project.begin_cell_edit("docs").await.unwrap();
+        assert_eq!(
+            project.rename(renamed.clone()).await.unwrap_err().code,
+            "editing_active"
+        );
+        project.cancel_cell_edit(editor.session_id).await.unwrap();
+        std::fs::write(&collision, "untouched").unwrap();
+        assert_eq!(
+            project.rename(collision.clone()).await.unwrap_err().code,
+            "file_exists"
+        );
+        assert_eq!(std::fs::read_to_string(collision).unwrap(), "untouched");
+        assert_eq!(
+            project.status().await.unwrap().unwrap().path,
+            Some(original.clone())
+        );
+        let mut changes = project.changes();
+        let info = project.rename(renamed.clone()).await.unwrap();
+        assert_eq!(info.title, "研究");
+        assert_eq!(project.tasks().tasks[0].id, task_id);
+        assert!(!original.exists());
+        project
+            .sql(batch("INSERT INTO data.docs VALUES (99)"))
+            .await
+            .unwrap();
+        assert!(
+            changes.try_recv().is_ok(),
+            "Rename must preserve event subscriptions"
+        );
+        project.close().await.unwrap();
+        let reopened = runtime();
+        reopened.open(renamed).await.unwrap();
+        let count = reopened
+            .with_project(|p| {
+                Ok(p.conn
+                    .query_row("SELECT count(*) FROM data.docs", [], |row| {
+                        row.get::<_, i64>(0)
+                    })?)
+            })
+            .await
+            .unwrap();
+        assert_eq!(count, 2);
+        reopened.close().await.unwrap();
     }
     #[tokio::test]
     async fn sample_imports_create_views_or_offline_tables_atomically() {

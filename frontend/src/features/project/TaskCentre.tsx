@@ -1,5 +1,6 @@
 import { TaskRows } from '@/components/layout/sidebar/TaskRows';
 import type { NativeTask } from '@/features/project/tasksApi';
+import type { Tab } from '@/features/tools/common/analysisApi';
 
 export function TaskCentre({
   tasks,
@@ -8,6 +9,8 @@ export function TaskCentre({
   dismiss,
   cancellingId,
   dismissingId,
+  tabs = [],
+  openTab,
 }: {
   tasks: NativeTask[];
   reconnecting: boolean;
@@ -15,6 +18,8 @@ export function TaskCentre({
   dismiss: (id: string) => void;
   cancellingId?: string;
   dismissingId?: string;
+  tabs?: Tab[];
+  openTab?: (tab: Tab) => void;
 }) {
   return (
     <div className="space-y-2">
@@ -26,10 +31,17 @@ export function TaskCentre({
       <TaskRows
         tasks={tasks.map((task) => ({
           id: task.id,
-          label: task.label,
+          label: tabs.find((tab) => tab.id === task.tab_id)?.name ?? task.label,
           state: task.state,
           progress: task.progress?.fraction,
-          message: task.finished_at === null ? task.progress?.message : undefined,
+          message: task.finished_at === null ? task.progress?.message : (task.notice ?? undefined),
+          openTab:
+            openTab && tabs.some((tab) => tab.id === task.tab_id)
+              ? () => {
+                  const tab = tabs.find((tab) => tab.id === task.tab_id);
+                  if (tab) openTab(tab);
+                }
+              : undefined,
           detail: task.error?.message,
           createdAt: task.created_at,
           startedAt: task.started_at,

@@ -13,14 +13,14 @@ it('manages real research files and projects through the native server', async (
   await expect($('span=community-survey')).not.toExist();
   await $('button=Import').click();
   await expect($('[data-id="community-survey"]')).toExist();
-  await $('button=Project').click(); await $('[role="menuitem"]=Save').click();
-  await $('input[placeholder="My research.wfpj"]').setValue('Research 文本');
-  await $('button=Save').click();
+  await $('button=Project').click(); await $('[role="menuitem"]=Rename…').click();
+  await $('[role="dialog"] input').setValue('Research 文本');
+  await $('button=Rename').click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Research 文本'));
   await $('button=Project').click(); await $('[role="menuitem"]=New project').click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Untitled'));
   await $('button=Project').click(); await $('[role="menuitem"]=Open / manage projects…').click();
-  await $('button=Open').click();
+  await $('[aria-label="Select Research 文本.wfpj"]').$('..').$('button=Open').click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining('Research 文本'));
   await expect($('[data-id="community-survey"]')).toExist();
   await browser.refresh();

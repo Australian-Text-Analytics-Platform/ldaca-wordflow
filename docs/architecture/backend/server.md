@@ -22,17 +22,29 @@ the same canonical file reuses its runtime. Project requests are captured under
 Disconnecting a browser does not close projects or cancel accepted tasks.
 
 Explicit Close Project closes the shared runtime in every attached window.
-Editing protection, Untitled Save/Discard/Stay, cancellation confirmation and
-cleanup barriers apply to Close. Failed close retains the runtime. User-scoped SSE
+Editing protection, cancellation confirmation and cleanup barriers apply to Close. Failed close retains the runtime. User-scoped SSE
 announces changes and each window checks its captured ID; it does not select
 another window's project. Stale IDs after worker restart require explicit reopen.
-Saved projects survive restart; Untitled storage remains temporary. There is no
-crash recovery or change to the `.wfpj` schema.
+New immediately creates an unused `Untitled-X.wfpj` in the permanent project
+library. Operations commit directly, so the server has no Save workflow. Files
+survive restart; session UUIDs do not. There is no change to the `.wfpj` schema.
+
+Rename pauses admission and rejects retained work or a Table-edit session. It
+reuses checkpointed project publication and retains the runtime, event channels,
+task history and attached windows. A case-insensitive filename collision fails
+without replacing the confirmed project; case-only renames are supported.
+Duplicate downloads a checkpointed snapshot through the same native owner and
+publishes a unique permanent copy. It opens no new runtime and leaves the
+requesting window on the original project. Switching a window changes only its
+selection; other sessions and accepted background tasks remain alive.
 
 `/api/server/events` combines project-registry and application-preference
-invalidations. Preference and registry subscribers share one connection in each
-browser window, keeping refresh requests available when multiple windows are open.
-Project runtime events remain scoped to the captured project.
+invalidations. Its optional `project_id` multiplexes that session's native Task,
+change and reset events onto the same stream. Preference, registry and selected
+project subscribers share one connection in each browser window, keeping HTTP
+refresh capacity available when several windows are open. Switching reconnects
+this stream to the new captured project without cancelling the previous session's
+work. Closed/missing sessions still receive registry/preference invalidations.
 
 Uploads and projects retain copy-on-import, no-overwrite publication, validated
 filenames and symlink rejection. A file cannot be deleted while a registry runtime
@@ -54,7 +66,9 @@ One file-mutation gate preflights a complete requested batch before changes begi
 An upload registers its destination folder before reading the body, then streams
 without holding that gate. Moves and deletion reject the receiving folder and
 its ancestors while unrelated paths remain usable. Completion, failure and
-request cleanup release protection. Publication retains no-overwrite hard links.
+request cleanup release protection. Accepted blocking publication and file mutations
+retain their gates through worker completion even when the HTTP receiver drops.
+Publication retains no-overwrite hard links.
 
 Browser upload cards own transfer progress and cancellation independently of the
 current project view; TanStack Query still owns the file inventory. At full byte

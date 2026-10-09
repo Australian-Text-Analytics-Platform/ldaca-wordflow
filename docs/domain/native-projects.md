@@ -29,6 +29,12 @@ operation. Quit closes windows sequentially; cancellation stops the remainder.
 There is no production shutdown deadline or application-managed force quit.
 Closing the last macOS window leaves the application running.
 
+The standalone server instead creates `Untitled-X.wfpj` directly in its permanent
+library and has no Save or discard workflow. Rename requires an idle session and
+retains shared runtime identity; Duplicate keeps the requesting window on the
+original. [Server ownership](../architecture/backend/server.md) describes the
+registry and file mutation boundary.
+
 ## Data Blocks and Relationships
 
 A registered Data Block is represented internally by a node in `wordflow.nodes`.

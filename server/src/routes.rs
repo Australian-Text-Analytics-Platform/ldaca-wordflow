@@ -2,7 +2,7 @@ use crate::*;
 use axum::{
     Json,
     body::Body,
-    extract::{DefaultBodyLimit, Path, Request, State},
+    extract::{DefaultBodyLimit, Path, Query, Request, State},
     http::{StatusCode, header},
     response::{IntoResponse, Response, Sse, sse::Event},
 };
@@ -25,7 +25,8 @@ pub fn router() -> OpenApiRouter<Host> {
         .routes(routes!(project_status))
         .routes(routes!(switch_project))
         .routes(routes!(close_project))
-        .routes(routes!(save))
+        .routes(routes!(rename_project))
+        .routes(routes!(duplicate_project))
         .routes(routes!(snapshot))
         .routes(routes!(list))
         .routes(routes!(upload))
@@ -42,8 +43,24 @@ pub fn router() -> OpenApiRouter<Host> {
 async fn status(State(host): State<Host>) -> Result<Json<ServerStatus>> {
     Ok(Json(host.status().await?))
 }
-#[utoipa::path(get, path="/api/server/events", operation_id="server_events", responses((status=200, description="User project registry and application preference invalidations", content_type="text/event-stream", body=String)))]
-async fn events(State(host): State<Host>) -> impl IntoResponse {
+#[derive(Deserialize)]
+struct EventSelection {
+    project_id: Option<Uuid>,
+}
+#[utoipa::path(get, path="/api/server/events", operation_id="server_events", params(("project_id"=Option<Uuid>,Query,description="Include this session's native project events on the same stream")), responses((status=200, description="User registry, preferences and optionally native project events", content_type="text/event-stream", body=String)))]
+async fn events(State(host): State<Host>, Query(input): Query<EventSelection>) -> Response {
+    let project = if let Some(id) = input.project_id {
+        host.0.projects.read().await.get(&id).cloned()
+    } else {
+        None
+    };
+    let project_router = project.map(|active| {
+        wordflow_backend::router(
+            host.0.origins.clone(),
+            host.0.shutdown.clone(),
+            active.runtime,
+        )
+    });
     let receiver = host.0.changed.subscribe();
     let preferences = host.0.preferences.changes();
     let shutdown = host.0.shutdown.clone();
@@ -66,7 +83,28 @@ async fn events(State(host): State<Host>) -> impl IntoResponse {
             ))
         },
     );
-    Sse::new(initial.chain(updates)).keep_alive(axum::response::sse::KeepAlive::default())
+    let response = Sse::new(initial.chain(updates))
+        .keep_alive(axum::response::sse::KeepAlive::default())
+        .into_response();
+    if let Some(router) = project_router {
+        let mut request = Request::new(Body::empty());
+        *request.uri_mut() = axum::http::Uri::from_static("/api/project/events");
+        let project = router
+            .oneshot(request)
+            .await
+            .unwrap_or_else(|never| match never {});
+        if project.status().is_success() {
+            let (parts, body) = response.into_parts();
+            return Response::from_parts(
+                parts,
+                Body::from_stream(futures_util::stream::select(
+                    body.into_data_stream(),
+                    project.into_body().into_data_stream(),
+                )),
+            );
+        }
+    }
+    response
 }
 #[utoipa::path(get,path="/api/server/project/{id}",operation_id="server_project",params(("id"=Uuid,Path)),responses((status=200,body=ServerProject),(status=409,body=ErrorEnvelope)))]
 async fn project_status(
@@ -103,7 +141,20 @@ async fn switch_project(
                 runtime.open(path).await?;
             }
             None => {
-                runtime.create(None).await?;
+                let names = host.0.files.list(Library::Projects)?;
+                let mut number = 1_u64;
+                let path = loop {
+                    let name = format!("Untitled-{number}.wfpj");
+                    let path = host.0.files.path(Library::Projects, &name)?;
+                    if !names
+                        .iter()
+                        .any(|file| file.name.eq_ignore_ascii_case(&name))
+                    {
+                        break path;
+                    }
+                    number += 1;
+                };
+                runtime.create(Some(path)).await?;
             }
         }
         let id = Uuid::new_v4();
@@ -122,8 +173,6 @@ async fn switch_project(
 pub struct ServerClose {
     pub project_id: Uuid,
     #[serde(default)]
-    pub discard_untitled: bool,
-    #[serde(default)]
     pub interrupt: bool,
 }
 #[utoipa::path(post,path="/api/server/project/close",operation_id="server_close",request_body=ServerClose,responses((status=204,description="Shared project closed"),(status=409,body=ErrorEnvelope)))]
@@ -138,18 +187,6 @@ async fn close_project(
             return Err(Error::new(
                 "editing_active",
                 "Save or cancel table edits before closing this project.",
-            ));
-        }
-        if active
-            .runtime
-            .status()
-            .await?
-            .is_some_and(|p| p.path.is_none())
-            && !input.discard_untitled
-        {
-            return Err(Error::new(
-                "save_required",
-                "Save this Untitled project or choose Discard before closing it.",
             ));
         }
         let attempt = active.runtime.begin_close()?;
@@ -169,35 +206,65 @@ async fn close_project(
 }
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
-pub struct ServerSave {
+pub struct ServerRename {
     pub project_id: Uuid,
-    pub name: Option<String>,
+    pub name: String,
 }
-#[utoipa::path(post, path="/api/server/project/save", operation_id="server_save", request_body=ServerSave, responses((status=200, body=ServerProject), (status=400, body=ErrorEnvelope), (status=409, body=ErrorEnvelope)))]
-async fn save(
+#[utoipa::path(post, path="/api/server/project/rename", operation_id="server_rename", request_body=ServerRename, responses((status=200, body=ServerProject), (status=400, body=ErrorEnvelope), (status=409, body=ErrorEnvelope)))]
+async fn rename_project(
     State(host): State<Host>,
-    InputJson(input): InputJson<ServerSave>,
+    InputJson(input): InputJson<ServerRename>,
 ) -> Result<Json<ServerProject>> {
-    tokio::spawn(async move { save_owned(host, input).await }).await?
+    tokio::spawn(async move {
+        let _mutation = host.0.mutation.lock().await;
+        let active = host.session(input.project_id).await?;
+        let name = input.name.trim();
+        let path = host.0.files.path(Library::Projects, name)?;
+        let original = active.runtime.status().await?.and_then(|p| p.path);
+        if host.0.files.list(Library::Projects)?.iter().any(|file| {
+            file.name.to_lowercase() == name.to_lowercase()
+                && Some(host.0.files.directory(Library::Projects).join(&file.name)) != original
+        }) {
+            return Err(Error::new(
+                "file_exists",
+                "Choose an unused project filename.",
+            ));
+        }
+        active.runtime.rename(path).await?;
+        host.changed();
+        Ok(Json(host.project_status(active.id).await?))
+    })
+    .await?
 }
-async fn save_owned(host: Host, input: ServerSave) -> Result<Json<ServerProject>> {
-    let _mutation = host.0.mutation.lock().await;
-    let active = host.session(input.project_id).await?;
-    let path = input
-        .name
-        .map(|name| host.0.files.path(Library::Projects, &name))
-        .transpose()?;
-    if let Some(path) = &path
-        && path.exists()
-    {
-        return Err(Error::new(
-            "file_exists",
-            "Choose an unused project filename.",
-        ));
-    }
-    active.runtime.save(path).await?;
-    host.changed();
-    Ok(Json(host.project_status(active.id).await?))
+#[derive(Deserialize, utoipa::ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct ServerDuplicate {
+    pub project_id: Uuid,
+}
+#[utoipa::path(post, path="/api/server/project/duplicate", operation_id="server_duplicate", request_body=ServerDuplicate, responses((status=200, body=LibraryFile), (status=409, body=ErrorEnvelope)))]
+async fn duplicate_project(
+    State(host): State<Host>,
+    InputJson(input): InputJson<ServerDuplicate>,
+) -> Result<Json<LibraryFile>> {
+    tokio::spawn(async move {
+        let _mutation = host.0.mutation.lock().await;
+        let active = host.session(input.project_id).await?;
+        let title = active
+            .runtime
+            .status()
+            .await?
+            .ok_or_else(|| Error::new("project_closed", "Project is closed"))?
+            .title;
+        let snapshot = active.runtime.snapshot().await?;
+        let files = host.0.files.clone();
+        let file = tokio::task::spawn_blocking(move || {
+            files.publish(Library::Projects, &format!("{title}_copy.wfpj"), snapshot)
+        })
+        .await??;
+        host.changed();
+        Ok(Json(file))
+    })
+    .await?
 }
 #[utoipa::path(get, path="/api/server/project/{id}/download", operation_id="server_snapshot", params(("id"=Uuid,Path)), responses((status=200, content_type="application/octet-stream", body=wordflow_backend::openapi::Binary), (status=409,body=ErrorEnvelope)))]
 async fn snapshot(State(host): State<Host>, Path(id): Path<Uuid>) -> Result<Response> {
@@ -273,52 +340,60 @@ async fn upload(
         ProjectRuntime::validate_file(staged.path().to_path_buf()).await?;
     }
     let _data = if matches!(library, Library::Data) {
-        Some(host.0.data_files.lock().await)
+        Some(host.0.data_files.clone().lock_owned().await)
     } else {
         None
     };
     let _projects = if matches!(library, Library::Projects) {
-        Some(host.0.mutation.lock().await)
+        Some(host.0.mutation.clone().lock_owned().await)
     } else {
         None
     };
-    let _protection = protection;
     let files = host.0.files.clone();
-    tokio::task::spawn_blocking(move || files.publish(library, &name, staged))
-        .await?
-        .map(Json)
+    tokio::task::spawn_blocking(move || {
+        // Accepted publication keeps the gate and receiving-folder protection
+        // until the blocking worker finishes, even if its HTTP receiver disappears.
+        let (_data, _projects, _protection) = (_data, _projects, protection);
+        files.publish(library, &name, staged)
+    })
+    .await?
+    .map(Json)
 }
 #[utoipa::path(get, path="/api/server/files/{library}/{name}", operation_id="server_download", params(("library"=Library,Path),("name"=String,Path)), responses((status=200,content_type="application/octet-stream",body=wordflow_backend::openapi::Binary),(status=400,body=ErrorEnvelope)))]
 async fn download(
     State(host): State<Host>,
     Path((library, name)): Path<(Library, String)>,
 ) -> Result<Response> {
-    let _data = if matches!(library, Library::Data) {
-        Some(host.0.data_files.lock().await)
-    } else {
-        None
-    };
-    let _projects = if matches!(library, Library::Projects) {
-        Some(host.0.mutation.lock().await)
-    } else {
-        None
-    };
-    let path = host.0.files.path(library, &name)?;
-    if matches!(library, Library::Projects) {
-        if let Some(active) = host.open_file(&path).await? {
-            return staged_download(active.runtime.snapshot().await?, &name).await;
+    // Snapshot work owns its file gate through completion, independently of HTTP.
+    tokio::spawn(async move {
+        let _data = if matches!(library, Library::Data) {
+            Some(host.0.data_files.lock().await)
+        } else {
+            None
+        };
+        let _projects = if matches!(library, Library::Projects) {
+            Some(host.0.mutation.lock().await)
+        } else {
+            None
+        };
+        let path = host.0.files.path(library, &name)?;
+        if matches!(library, Library::Projects) {
+            if let Some(active) = host.open_file(&path).await? {
+                return staged_download(active.runtime.snapshot().await?, &name).await;
+            }
+            let runtime = host.new_runtime()?;
+            runtime.open(path).await?;
+            let result = runtime.snapshot().await;
+            runtime.close().await?;
+            return staged_download(result?, &name).await;
         }
-        let runtime = host.new_runtime()?;
-        runtime.open(path).await?;
-        let result = runtime.snapshot().await;
-        runtime.close().await?;
-        return staged_download(result?, &name).await;
-    }
-    let file = tokio::fs::File::open(path).await?;
-    Ok(download_response(
-        Body::from_stream(tokio_util::io::ReaderStream::new(file)),
-        &name,
-    ))
+        let file = tokio::fs::File::open(path).await?;
+        Ok(download_response(
+            Body::from_stream(tokio_util::io::ReaderStream::new(file)),
+            &name,
+        ))
+    })
+    .await?
 }
 #[utoipa::path(delete, path="/api/server/files/{library}/{name}", operation_id="server_delete", params(("library"=Library,Path),("name"=String,Path)), responses((status=204,description="Deleted"),(status=409,body=ErrorEnvelope)))]
 async fn delete(
@@ -406,10 +481,14 @@ async fn create_folder(
     State(host): State<Host>,
     InputJson(input): InputJson<FolderRequest>,
 ) -> Result<Json<LibraryFile>> {
-    let _gate = host.0.data_files.lock().await;
+    let gate = host.0.data_files.clone().lock_owned().await;
     let files = host.0.files.clone();
     Ok(Json(
-        tokio::task::spawn_blocking(move || files.folder(input.name.trim())).await??,
+        tokio::task::spawn_blocking(move || {
+            let _gate = gate;
+            files.folder(input.name.trim())
+        })
+        .await??,
     ))
 }
 #[utoipa::path(post,path="/api/server/files/move",operation_id="server_move_files",request_body=FileMove,responses((status=204,description="Moved"),(status=400,body=ErrorEnvelope),(status=409,body=ErrorEnvelope)))]
@@ -417,21 +496,24 @@ async fn move_files(
     State(host): State<Host>,
     InputJson(input): InputJson<FileMove>,
 ) -> Result<StatusCode> {
-    let gate = host.0.data_files.lock().await;
+    let gate = host.0.data_files.clone().lock_owned().await;
     gate.preflight(&host.0.files, &input.names)?;
     let files = host.0.files.clone();
-    tokio::task::spawn_blocking(move || files.move_files(&input.names, &input.destination))
-        .await??;
+    tokio::task::spawn_blocking(move || {
+        let _gate = gate;
+        files.move_files(&input.names, &input.destination)
+    })
+    .await??;
     Ok(StatusCode::NO_CONTENT)
 }
 async fn delete_batch(host: &Host, library: Library, names: Vec<String>) -> Result<()> {
     let data = if matches!(library, Library::Data) {
-        Some(host.0.data_files.lock().await)
+        Some(host.0.data_files.clone().lock_owned().await)
     } else {
         None
     };
     let _projects = if matches!(library, Library::Projects) {
-        Some(host.0.mutation.lock().await)
+        Some(host.0.mutation.clone().lock_owned().await)
     } else {
         None
     };
@@ -453,7 +535,7 @@ async fn delete_batch(host: &Host, library: Library, names: Vec<String>) -> Resu
     }
     let files = host.0.files.clone();
     tokio::task::spawn_blocking(move || {
-        let _locks = locks;
+        let (_locks, _data, _projects) = (locks, data, _projects);
         files.delete_files(library, &names)
     })
     .await?
@@ -476,9 +558,13 @@ async fn download_files(
             "Download projects individually to include their current state",
         ));
     }
-    let _gate = host.0.data_files.lock().await;
+    let gate = host.0.data_files.clone().lock_owned().await;
     let files = host.0.files.clone();
-    let output = tokio::task::spawn_blocking(move || files.zip(&input.names)).await??;
+    let output = tokio::task::spawn_blocking(move || {
+        let _gate = gate;
+        files.zip(&input.names)
+    })
+    .await??;
     staged_download(output, "selected_files.zip").await
 }
 pub async fn project_request(

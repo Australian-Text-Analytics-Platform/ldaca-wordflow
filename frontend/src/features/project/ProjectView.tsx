@@ -34,6 +34,8 @@ import { useNativeTasks } from './useNativeTasks';
 import { ViewSqlDialog } from './ViewSqlDialog';
 
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
+import { listTabs } from '@/features/tools/common/analysisApi';
+import { openAnalysisTab } from './openAnalysisTab';
 
 export type ProjectTool = ToolId;
 const isProjectTool = (id: string): id is ProjectTool =>
@@ -65,6 +67,11 @@ function ProjectViewContent({
   };
 
   const taskCentre = useNativeTasks(base);
+  const taskTabs = useQuery({
+    queryKey: ['native', base, 'tabs'],
+    queryFn: ({ signal }) => listTabs(base, signal),
+    enabled: taskCentre.tasks.some((task) => Boolean(task.tab_id)),
+  });
   const preprocessingTool = usePreprocessingInputs((state) => state.activeTool);
   const [hidden, setHidden] = useState<ToolId[]>([]);
   const [editingSql, setEditingSql] = useState<objectsApi.DataTarget | null>(null);
@@ -302,7 +309,15 @@ function ProjectViewContent({
               )}
             />
           }
-          tasksContent={<TaskCentre {...taskCentre} />}
+          tasksContent={
+            <TaskCentre
+              {...taskCentre}
+              tabs={taskTabs.data}
+              openTab={(tab) => {
+                navigate(() => changeTool(openAnalysisTab(base, tab)));
+              }}
+            />
+          }
         />
       }
       rightPanel={(collapsed, toggle) => (

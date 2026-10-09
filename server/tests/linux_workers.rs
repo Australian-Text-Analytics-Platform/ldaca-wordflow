@@ -222,7 +222,7 @@ async fn real_workers_isolate_storage_projects_credentials_sockets_and_limits() 
     json_request(
         &first,
         reqwest::Method::POST,
-        "/api/server/project/save",
+        "/api/server/project/rename",
         json!({"project_id":id,"name":"acceptance.wfpj"}),
     )
     .await;

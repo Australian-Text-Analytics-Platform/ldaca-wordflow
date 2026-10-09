@@ -41,6 +41,7 @@ function ServerProjects({ base }: { base: string }) {
   useEffect(() => {
     return subscribeServerEvents(base, () => {
       void cache.invalidateQueries({ queryKey: ['server', base] });
+      void cache.invalidateQueries({ queryKey: ['server-files', base] });
     });
   }, [base, cache]);
   const project = status.data?.projects.find((project) => project.project_id === selected);
@@ -74,6 +75,12 @@ function ServerProjects({ base }: { base: string }) {
         const opened = new Set(registry.projects.map((project) => project.project_id));
         const next = new Map(clients);
         for (const [id, client] of clients) {
+          const entry = registry.projects.find((project) => project.project_id === id);
+          if (entry) {
+            void client.cancelQueries({ queryKey: ['native', `${base}/project/${id}`, 'project'] });
+            client.setQueryData(['native', `${base}/project/${id}`, 'project'], entry.project);
+            void client.invalidateQueries({ queryKey: ['server-files', base] });
+          }
           if (observedProjects.current.has(id) && !opened.has(id)) {
             void client.cancelQueries();
             client.clear();
@@ -169,7 +176,7 @@ function ProjectLibrary({
   refresh: () => Promise<unknown>;
 }) {
   const files = useQuery({
-    queryKey: ['server', base, 'projects'],
+    queryKey: ['server-files', base, 'projects'],
     queryFn: async () =>
       (
         await request(base, '/api/server/files/{library}', 'get', { path: { library: 'projects' } })

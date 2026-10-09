@@ -22,8 +22,8 @@ pub struct Host(Arc<Inner>);
 struct Inner {
     files: files::Files,
     projects: RwLock<BTreeMap<Uuid, Active>>,
-    mutation: Mutex<()>,
-    data_files: Mutex<files::Mutations>,
+    mutation: Arc<Mutex<()>>,
+    data_files: Arc<Mutex<files::Mutations>>,
     changed: watch::Sender<u64>,
     shutdown: CancellationToken,
     ai: AiConfiguration,
@@ -85,8 +85,8 @@ impl Host {
         Ok(Self(Arc::new(Inner {
             files,
             projects: RwLock::new(BTreeMap::new()),
-            mutation: Mutex::new(()),
-            data_files: Mutex::new(files::Mutations::default()),
+            mutation: Arc::new(Mutex::new(())),
+            data_files: Arc::new(Mutex::new(files::Mutations::default())),
             changed: watch::channel(0).0,
             shutdown,
             ai,

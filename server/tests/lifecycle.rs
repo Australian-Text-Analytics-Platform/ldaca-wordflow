@@ -95,10 +95,77 @@ async fn user_event_stream_notifies_preference_changes_and_project_registry_chan
     host.close().await.unwrap();
 }
 #[tokio::test]
+async fn one_server_stream_carries_native_tasks_and_registry_invalidations() {
+    let (_directory, host) = host().await;
+    let id = create(&host).await;
+    let response = host
+        .router()
+        .oneshot(
+            Request::builder()
+                .uri(format!("/api/server/events?project_id={id}"))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    let mut events = response.into_body().into_data_stream();
+    let mut initial = String::new();
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        while !initial.contains("event: tasks") {
+            initial.push_str(&String::from_utf8_lossy(
+                &events.next().await.unwrap().unwrap(),
+            ));
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            &format!("/project/{id}/api/project/import"),
+            json!({"sources":[{"table_name":"docs","sql":"SELECT 'cat' AS text"}]})
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        call(
+            &host,
+            "PATCH",
+            "/api/preferences",
+            json!({"theme":"dark-2026"})
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    let mut updates = String::new();
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        while !(updates.contains("event: tasks")
+            && updates.contains("succeeded")
+            && updates.contains("data: changed"))
+        {
+            updates.push_str(&String::from_utf8_lossy(
+                &events.next().await.unwrap().unwrap(),
+            ));
+        }
+    })
+    .await
+    .unwrap();
+    assert!(updates.contains("event: change"));
+    drop(events);
+    host.close().await.unwrap();
+}
+#[tokio::test]
 async fn independent_projects_same_file_reuse_and_shared_close() {
     let (dir, host) = host().await;
     let id = create(&host).await;
     let new_id = create(&host).await;
+    assert!(dir.path().join("admin/projects/Untitled-1.wfpj").exists());
+    assert!(dir.path().join("admin/projects/Untitled-2.wfpj").exists());
     assert_ne!(id, new_id);
     assert_eq!(host.status().await.unwrap().projects.len(), 2);
     assert_eq!(
@@ -115,18 +182,20 @@ async fn independent_projects_same_file_reuse_and_shared_close() {
     let (status, saved) = call(
         &host,
         "POST",
-        "/api/server/project/save",
+        "/api/server/project/rename",
         json!({"project_id":id,"name":"研究.wfpj"}),
     )
     .await;
     assert_eq!(status, StatusCode::OK, "{saved}");
+    assert_eq!(saved["project_id"], id);
     assert!(dir.path().join("admin/projects/研究.wfpj").exists());
+    assert!(!dir.path().join("admin/projects/Untitled-1.wfpj").exists());
     assert_eq!(
         call(
             &host,
             "POST",
-            "/api/server/project/save",
-            json!({"project_id":id,"name":"研究.wfpj"})
+            "/api/server/project/rename",
+            json!({"project_id":id,"name":"Untitled-2.wfpj"})
         )
         .await
         .0,
@@ -141,6 +210,29 @@ async fn independent_projects_same_file_reuse_and_shared_close() {
     .await;
     assert_eq!(status, StatusCode::OK);
     assert_eq!(reopened["project_id"], id);
+    let (status, duplicate) = call(
+        &host,
+        "POST",
+        "/api/server/project/duplicate",
+        json!({"project_id":id}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{duplicate}");
+    assert_eq!(duplicate["name"], "研究_copy.wfpj");
+    assert_eq!(
+        host.status().await.unwrap().projects.len(),
+        2,
+        "Duplicate must not open or select a new session"
+    );
+    let (status, copied) = call(
+        &host,
+        "POST",
+        "/api/server/project",
+        json!({"name":"研究_copy.wfpj"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{copied}");
+    assert_ne!(copied["project_id"], id);
     assert_eq!(
         call(
             &host,
@@ -161,19 +253,9 @@ async fn independent_projects_same_file_reuse_and_shared_close() {
         )
         .await
         .0,
-        StatusCode::CONFLICT
-    );
-    assert_eq!(
-        call(
-            &host,
-            "POST",
-            "/api/server/project/close",
-            json!({"project_id":new_id,"discard_untitled":true})
-        )
-        .await
-        .0,
         StatusCode::NO_CONTENT
     );
+    assert!(dir.path().join("admin/projects/Untitled-2.wfpj").exists());
     assert_eq!(
         call(
             &host,
@@ -240,7 +322,7 @@ async fn uploads_are_independent_and_failed_import_retains_file() {
         std::fs::read_dir(dir.path().join("admin/projects"))
             .unwrap()
             .count(),
-        0
+        1
     );
     host.close().await.unwrap();
 }
@@ -533,5 +615,60 @@ async fn upload_protects_destination_ancestors_before_preflighting_entire_batche
     .await
     .unwrap();
     assert!(root.join("destination/protected/nested/input.csv").exists());
+    host.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn disconnected_upload_releases_folder_protection_and_staged_bytes() {
+    let (dir, host) = host().await;
+    let root = dir.path().join("admin/data");
+    std::fs::create_dir(root.join("receiving")).unwrap();
+    let (started, ready) = tokio::sync::oneshot::channel();
+    let stream = futures_util::stream::once(async move {
+        started.send(()).unwrap();
+        std::future::pending::<Result<axum::body::Bytes, std::io::Error>>().await
+    });
+    let uploading = tokio::spawn(
+        host.router().oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri("/api/server/files/data/receiving%2Finput.csv")
+                .body(Body::from_stream(stream))
+                .unwrap(),
+        ),
+    );
+    ready.await.unwrap();
+    assert_eq!(
+        call(
+            &host,
+            "POST",
+            "/api/server/files/delete-batch",
+            json!({"library":"data","names":["receiving"]})
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    uploading.abort();
+    assert!(uploading.await.unwrap_err().is_cancelled());
+    tokio::time::timeout(std::time::Duration::from_secs(3), async {
+        loop {
+            let (status, _) = call(
+                &host,
+                "POST",
+                "/api/server/files/delete-batch",
+                json!({"library":"data","names":["receiving"]}),
+            )
+            .await;
+            if status == StatusCode::NO_CONTENT {
+                break;
+            }
+            assert_eq!(status, StatusCode::CONFLICT);
+            tokio::task::yield_now().await;
+        }
+    })
+    .await
+    .unwrap();
+    assert_eq!(std::fs::read_dir(root).unwrap().count(), 0);
     host.close().await.unwrap();
 }

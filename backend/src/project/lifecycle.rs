@@ -1,4 +1,4 @@
-//! File creation, format validation, and checkpointed Save As.
+//! File creation, format validation, checkpointed Save As and idle Rename.
 use super::*;
 impl Project {
     pub(super) fn create(path: &Path) -> Result<Self> {
@@ -56,17 +56,34 @@ impl Project {
         Ok(project)
     }
     pub(super) fn save_as(&mut self, path: &Path) -> Result<ProjectInfo> {
-        if path.exists() && std::fs::canonicalize(path)? == std::fs::canonicalize(&self.path)? {
+        self.save_to(path, false)
+    }
+    pub(super) fn rename_to(&mut self, path: &Path) -> Result<ProjectInfo> {
+        self.save_to(path, true)
+    }
+    fn save_to(&mut self, path: &Path, rename: bool) -> Result<ProjectInfo> {
+        let same_file = path.exists() && std::fs::canonicalize(path)? == self.path;
+        if same_file && (!rename || path.file_name() == self.path.file_name()) {
             self.database.conn.execute_batch("CHECKPOINT")?;
             return Ok(self.info());
         }
-        let destination = if path.exists() {
+        if rename && path.exists() && !same_file {
+            return Err(Error::new(
+                "file_exists",
+                "Choose an unused project filename.",
+            ));
+        }
+        let destination = if path.exists() && !rename {
             std::fs::canonicalize(path)?
         } else {
             path.to_path_buf()
         };
         let path = destination.as_path();
-        let destination_lock = lock_destination(path)?;
+        let destination_lock = if rename {
+            None
+        } else {
+            lock_destination(path)?
+        };
         self.database.conn.execute_batch("CHECKPOINT")?;
         let parent = path
             .parent()
@@ -84,32 +101,74 @@ impl Project {
             .write(true)
             .open(&staged)?
             .sync_all()?;
-        if destination_lock.is_some() {
-            tempfile::TempPath::try_from_path(&staged)?
-                .persist(path)
-                .map_err(|error| error.error)?;
-        } else {
-            // An unapproved file created since the chooser must not be replaced.
-            std::fs::hard_link(&staged, path)?;
+        // The runtime excludes all work during Rename. Keep the original connection
+        // and file available for rollback until its replacement is fully opened.
+        let original = staging.path().join("original.wfpj");
+        if rename && same_file {
+            std::fs::rename(&self.path, &original)?;
         }
-        let mut saved = Self::open(path)?;
-        saved.database.model_assets = self.database.model_assets.clone();
-        let temporary = temporary_directory(&self.database.conn)?;
-        saved.database.conn.execute(
-            "SET GLOBAL temp_directory = ?",
-            params![temporary.to_string_lossy()],
-        )?;
-        let extensions: String = self.database.conn.query_row(
-            "SELECT current_setting('extension_directory')",
-            [],
-            |row| row.get(0),
-        )?;
-        saved
-            .database
-            .conn
-            .execute("SET GLOBAL extension_directory = ?", params![extensions])?;
-        // Save As replaces the database, not the runtime's change subscriptions.
-        saved.database.changes = self.database.changes.clone();
+        let mut installed = false;
+        let install = (|| -> Result<Self> {
+            if destination_lock.is_some() {
+                tempfile::TempPath::try_from_path(&staged)?
+                    .persist(path)
+                    .map_err(|error| error.error)?;
+            } else {
+                // An unapproved file created since the chooser must not be replaced.
+                std::fs::hard_link(&staged, path)?;
+            }
+            installed = true;
+            let mut saved = Self::open(path)?;
+            saved.database.model_assets = self.database.model_assets.clone();
+            let temporary = temporary_directory(&self.database.conn)?;
+            saved.database.conn.execute(
+                "SET GLOBAL temp_directory = ?",
+                params![temporary.to_string_lossy()],
+            )?;
+            let extensions: String = self.database.conn.query_row(
+                "SELECT current_setting('extension_directory')",
+                [],
+                |row| row.get(0),
+            )?;
+            saved
+                .database
+                .conn
+                .execute("SET GLOBAL extension_directory = ?", params![extensions])?;
+            // Save As replaces the database, not the runtime's change subscriptions.
+            saved.database.changes = self.database.changes.clone();
+            Ok(saved)
+        })();
+        let saved = match install {
+            Ok(saved) => saved,
+            Err(error) => {
+                if rename {
+                    // Do not remove an unapproved destination that won publication.
+                    if installed {
+                        let _ = std::fs::remove_file(path);
+                    }
+                    if same_file && let Err(restore) = std::fs::hard_link(&original, &self.path) {
+                        // A rollback failure must never let TempDir delete the original.
+                        let backup = staging.keep().join("original.wfpj");
+                        return Err(Error::new(
+                            "rename_failed",
+                            format!(
+                                "{error}. Could not restore the original filename: {restore}. The original project is retained at {}",
+                                backup.display()
+                            ),
+                        ));
+                    }
+                }
+                return Err(error);
+            }
+        };
+        if rename
+            && !same_file
+            && let Err(error) = std::fs::rename(&self.path, &original)
+        {
+            drop(saved);
+            let _ = std::fs::remove_file(path);
+            return Err(error.into());
+        }
         *self = saved;
         Ok(self.info())
     }
@@ -190,6 +249,43 @@ mod tests {
         process::{Command, Stdio},
         time::{Duration, Instant},
     };
+    #[test]
+    fn rename_preserves_case_only_filename_changes_and_reopens() {
+        let directory = tempfile::tempdir().unwrap();
+        let original = directory.path().join("Study.wfpj");
+        let renamed = directory.path().join("study.wfpj");
+        let mut project = Project::create(&original).unwrap();
+        project
+            .database
+            .conn
+            .execute_batch("CREATE TABLE data.docs AS SELECT 42 AS id")
+            .unwrap();
+        assert_eq!(project.rename_to(&renamed).unwrap().title, "study");
+        drop(project);
+        assert_eq!(
+            std::fs::read_dir(directory.path())
+                .unwrap()
+                .filter_map(|entry| {
+                    let entry = entry.unwrap();
+                    entry
+                        .file_type()
+                        .unwrap()
+                        .is_file()
+                        .then(|| entry.file_name())
+                })
+                .collect::<Vec<_>>(),
+            [std::ffi::OsString::from("study.wfpj")]
+        );
+        let reopened = Project::open(&renamed).unwrap();
+        assert_eq!(
+            reopened
+                .database
+                .conn
+                .query_row("SELECT id FROM data.docs", [], |row| row.get::<_, i64>(0))
+                .unwrap(),
+            42
+        );
+    }
 
     #[test]
     fn destination_owner_child() {

@@ -5,12 +5,17 @@ import { toast } from 'sonner';
 import { refreshProjectQueries, type ChangeScope } from './projectChanges';
 import { reportProjectError } from './projectErrors';
 import { reconcileProjectRenames } from './reconcileRenames';
+import { useServer } from '@/features/server/context';
+import { subscribeProjectEvents, type ProjectEventHandlers } from '@/features/server/events';
 
 function latestTasks(previous: tasksApi.TaskSnapshot | undefined, next: tasksApi.TaskSnapshot) {
   return previous && previous.revision > next.revision ? previous : next;
 }
 export function useNativeTasks(base: string) {
   const cache = useQueryClient();
+  const server = useServer();
+  const serverBase = server?.base;
+  const serverProjectId = server?.status.project_id;
   const [reconnecting, setReconnecting] = useState(false);
   const key = ['native', base, 'tasks'];
   const tasks = useQuery({
@@ -81,27 +86,37 @@ export function useNativeTasks(base: string) {
         if (snapshot) observe(snapshot);
       }
     });
-    const events = new EventSource(`${base}/api/project/events`);
-    events.addEventListener('tasks', (event: MessageEvent<string>) => {
-      const next = JSON.parse(event.data) as tasksApi.TaskSnapshot;
-      cache.setQueryData<tasksApi.TaskSnapshot>(queryKey, (old) => latestTasks(old, next));
-      setReconnecting(false);
-    });
-    events.addEventListener('change', (event: MessageEvent<string>) => {
-      refresh(JSON.parse(event.data) as ChangeScope);
-    });
-    events.addEventListener('reset', () => {
-      refresh({ all: true });
-    });
-    events.onerror = () => {
-      setReconnecting(true);
+    const handlers: ProjectEventHandlers = {
+      tasks: (data) => {
+        const next = JSON.parse(data) as tasksApi.TaskSnapshot;
+        cache.setQueryData<tasksApi.TaskSnapshot>(queryKey, (old) => latestTasks(old, next));
+        setReconnecting(false);
+      },
+      change: (data) => refresh(JSON.parse(data) as ChangeScope),
+      reset: () => refresh({ all: true }),
+      error: () => setReconnecting(true),
     };
+    const stop =
+      serverBase !== undefined && serverProjectId
+        ? subscribeProjectEvents(serverBase, serverProjectId, handlers)
+        : (() => {
+            const events = new EventSource(`${base}/api/project/events`);
+            events.addEventListener('tasks', (event: MessageEvent<string>) =>
+              handlers.tasks(event.data),
+            );
+            events.addEventListener('change', (event: MessageEvent<string>) =>
+              handlers.change(event.data),
+            );
+            events.addEventListener('reset', handlers.reset);
+            events.onerror = handlers.error;
+            return () => events.close();
+          })();
     return () => {
       disposed = true;
       unsubscribe();
-      events.close();
+      stop();
     };
-  }, [base, cache]);
+  }, [base, cache, serverBase, serverProjectId]);
   const cancel = useMutation({
     mutationFn: (id: string) => tasksApi.cancelTask(base, id),
     onSuccess: (next) => {
