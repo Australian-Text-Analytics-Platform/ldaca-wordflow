@@ -1,5 +1,7 @@
 import { getReadableTextColor } from '../../topicModelingAdapters';
 import { resolveTopicCorpusColor, type TopicColorScheme } from './topicModelingGraph';
+import { GREY } from '@/features/views/common/vizPalette';
+import { isUngrouped } from '../../ungrouped';
 
 export interface TopicCorpusPresentation {
   corpusCount: number;
@@ -85,7 +87,9 @@ export function topicSizeChips({
   showLabels = false,
 }: TopicSizeChipsInput): TopicSizeChipModel | null {
   if (corpusCount === 0 || !sizes) return null;
-  if (colorScheme && corpusCount === 1 && topicId !== undefined) {
+  // Ungrouped stays grey everywhere, as its bubble (issue 362).
+  const ungrouped = topicId !== undefined && isUngrouped(topicId);
+  if (colorScheme && corpusCount === 1 && topicId !== undefined && !ungrouped) {
     const counts = colorScheme.topicCounts[topicId] ?? [];
     return {
       kind: 'groups',
@@ -122,7 +126,7 @@ export function topicSizeChips({
     kind: 'corpora',
     total,
     chips: sizes.slice(0, 2).map((size, index) => {
-      const color = colors[index] ?? colors[0] ?? '#2563eb';
+      const color = ungrouped ? GREY : (colors[index] ?? colors[0] ?? '#2563eb');
       const { text, detail } = countWithShare(size, corpusSizes?.[index]);
       return { text, color, textColor: getReadableTextColor(color), title: detail };
     }),
