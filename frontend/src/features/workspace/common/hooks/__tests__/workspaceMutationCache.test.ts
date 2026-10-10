@@ -84,4 +84,37 @@ describe('workspaceMutationCache', () => {
     expect(queryClient.getQueryState(nodeTwoUnique)?.isInvalidated).toBe(false);
     expect(queryClient.getQueryState(nodeTwoPreview)?.isInvalidated).toBe(false);
   });
+
+  it('refreshes Colour by groups and listed column values after a Data Block edit (issues 368, 369)', () => {
+    const queryClient = createClient();
+    const colorGroups = queryKeys.topicColorGroups('workspace-1', 'analysis-1', {
+      cluster_count: 5,
+      top_n_topics: 1,
+      column: 'Qualification',
+    });
+    const otherProject = queryKeys.topicColorGroups('workspace-2', 'analysis-2', {
+      cluster_count: 5,
+      top_n_topics: 1,
+      column: 'Qualification',
+    });
+    const valueCounts = ['workspaces', 'workspace-1', 'nodes', 'node-1', 'value-counts', 'party'];
+    const otherNodeCounts = [
+      'workspaces',
+      'workspace-1',
+      'nodes',
+      'node-2',
+      'value-counts',
+      'party',
+    ];
+    for (const key of [colorGroups, otherProject, valueCounts, otherNodeCounts]) {
+      queryClient.setQueryData(key, {});
+    }
+
+    invalidateNodeWorkspaceQueries(queryClient, 'workspace-1', 'node-1', { includeData: true });
+
+    expect(queryClient.getQueryState(colorGroups)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(valueCounts)?.isInvalidated).toBe(true);
+    expect(queryClient.getQueryState(otherProject)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(otherNodeCounts)?.isInvalidated).toBe(false);
+  });
 });

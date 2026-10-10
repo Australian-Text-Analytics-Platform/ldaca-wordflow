@@ -92,5 +92,23 @@ export const invalidateNodeWorkspaceQueries = (
     void queryClient.invalidateQueries({
       predicate: (query) => queryKeyDependsOnNode(query.queryKey, workspaceId, nodeId),
     });
+    // A column's listed values: Map values (issue 368) and category order.
+    void queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        queryKey[0] === 'workspaces' &&
+        queryKey[1] === workspaceId &&
+        queryKey[2] === 'nodes' &&
+        queryKey[3] === nodeId &&
+        (queryKey[4] === 'value-counts' || queryKey[4] === 'category-values'),
+    });
+    // Topic Modelling's Colour by reads its source Data Block live, so its
+    // groups and column list follow any edit, such as a new category order
+    // (issue 369). Which Analysis uses which Data Block is not known here.
+    void queryClient.invalidateQueries({
+      predicate: ({ queryKey }) =>
+        queryKey[0] === 'workspaces' &&
+        queryKey[1] === workspaceId &&
+        queryKey.includes('topic-color-groups'),
+    });
   }
 };
