@@ -501,11 +501,12 @@ describe('TopicModelingResultsPanel', () => {
     );
   });
 
-  it('offers Colour by only when eligible columns exist and reports the choice', async () => {
+  it('says why Colour by is unavailable, and reports the choice when it is (issue 365)', async () => {
     const user = userEvent.setup();
     const onColumnChange = vi.fn();
     const colorBy = {
       columns: ['party', 'year'],
+      loaded: true,
       valueCounts: { party: 3, year: 8 },
       column: null,
       scheme: null,
@@ -513,12 +514,44 @@ describe('TopicModelingResultsPanel', () => {
       error: null,
       onColumnChange,
     };
+    // Still checking the columns: nothing to explain yet.
     const { rerender } = render(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          colorBy={{ ...colorBy, columns: [], loaded: false }}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.queryByRole('combobox', { name: 'Colour by' })).not.toBeInTheDocument();
+
+    // No column qualifies: disabled, with the reason, instead of gone.
+    rerender(
       <TooltipProvider>
         <TopicModelingResultsPanel {...baseProps} colorBy={{ ...colorBy, columns: [] }} />
       </TooltipProvider>,
     );
-    expect(screen.queryByRole('combobox', { name: 'Colour by' })).not.toBeInTheDocument();
+    const unavailable = screen.getByRole('combobox', { name: 'Colour by' });
+    expect(unavailable).toBeDisabled();
+    expect(unavailable).toHaveTextContent('Data Block colour');
+    expect(unavailable).toHaveAccessibleDescription(/No column here has 2 to 8 different values/);
+
+    // Two Data Blocks: disabled with its own reason.
+    rerender(
+      <TooltipProvider>
+        <TopicModelingResultsPanel
+          {...baseProps}
+          colorBy={{
+            ...colorBy,
+            columns: [],
+            unavailableReason: 'With two Data Blocks, bubble colours show the Data Block.',
+          }}
+        />
+      </TooltipProvider>,
+    );
+    expect(screen.getByRole('combobox', { name: 'Colour by' })).toHaveAccessibleDescription(
+      'With two Data Blocks, bubble colours show the Data Block.',
+    );
 
     rerender(
       <TooltipProvider>

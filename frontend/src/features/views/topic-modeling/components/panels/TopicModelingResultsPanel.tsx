@@ -88,13 +88,17 @@ interface Props {
   onStopWordsChange: (words: string[]) => Promise<void>;
   /** Other tabs' saved stop-word lists offered for copying. */
   stopWordListSources?: StopWordListSource[];
-  /** Single-corpus "Colour by" metadata colouring; omitted for two corpora. */
+  /** "Colour by" metadata colouring; disabled with a reason for two corpora. */
   colorBy?: TopicColorByState;
 }
 
 interface TopicColorByState {
   /** Columns with 2 to 8 distinct values in this result's documents. */
-  columns: string[];
+  columns: readonly string[];
+  /** The columns have been checked; until then the control stays out of view. */
+  loaded: boolean;
+  /** Why Colour by cannot be used here, when it is not for lack of columns. */
+  unavailableReason?: string;
   /** Each column's number of distinct values, shown after its name. */
   valueCounts?: Record<string, number>;
   column: string | null;
@@ -139,7 +143,14 @@ function FindTopicsInput({
   );
 }
 
+/** Shown when no column qualifies, so Colour by never just disappears (issue 365). */
+const NO_COLOR_COLUMN_REASON =
+  'No column here has 2 to 8 different values, so bubbles keep the Data Block colour.';
+
 function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
+  const unavailable =
+    colorBy.unavailableReason ??
+    (colorBy.columns.length === 0 && !colorBy.error ? NO_COLOR_COLUMN_REASON : undefined);
   return (
     <div className="grid gap-1 text-label-secondary text-description">
       <div className="flex items-center gap-1.5">
@@ -155,13 +166,20 @@ function ColorByControl({ colorBy }: { colorBy: TopicColorByState }) {
       </div>
       <Select
         value={colorBy.column ?? COLOR_BY_DATA_BLOCK}
+        disabled={colorBy.columns.length === 0}
         onValueChange={(value) => {
           colorBy.onColumnChange(value === COLOR_BY_DATA_BLOCK ? null : value);
         }}
       >
-        <SelectTrigger aria-labelledby="topic-color-by-label" className="h-8 w-44 text-body">
-          <SelectValue />
-        </SelectTrigger>
+        <DisabledReasonTooltip reason={unavailable}>
+          <SelectTrigger
+            aria-labelledby="topic-color-by-label"
+            aria-description={unavailable}
+            className="h-8 w-44 text-body"
+          >
+            <SelectValue />
+          </SelectTrigger>
+        </DisabledReasonTooltip>
         <SelectContent>
           <SelectItem value={COLOR_BY_DATA_BLOCK}>Data Block colour</SelectItem>
           {colorBy.columns.map((column) => (
@@ -728,9 +746,7 @@ export function TopicModelingResultsPanel({
                           value={wordsPerTopic}
                           onCommit={onWordsPerTopicChange}
                         />
-                        {colorBy && colorBy.columns.length > 0 ? (
-                          <ColorByControl colorBy={colorBy} />
-                        ) : null}
+                        {colorBy?.loaded ? <ColorByControl colorBy={colorBy} /> : null}
                         <TopicModelingStopWordsControl
                           enabled={stopWordsEnabled}
                           onEnabledChange={onStopWordsEnabledChange}

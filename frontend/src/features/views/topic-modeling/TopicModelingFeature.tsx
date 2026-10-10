@@ -647,6 +647,7 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
             resultSources.length === 1
               ? {
                   columns: colorBy.columns,
+                  loaded: colorBy.columnsLoaded,
                   valueCounts: colorBy.columnValueCounts,
                   column: colorBy.activeColumn,
                   scheme: colorBy.scheme,
@@ -656,7 +657,12 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
                     setColorBySelection({ analysisId: tabTaskId, column });
                   },
                 }
-              : undefined
+              : // Shown disabled with its reason, not hidden (issue 365).
+                {
+                  ...NO_COLOR_BY,
+                  unavailableReason:
+                    'With two Data Blocks, bubble colours show which Data Block each Topic comes from.',
+                }
           }
         />
       )}
@@ -675,5 +681,17 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
     </AnalysisSplitLayout>
   );
 }
+
+/** Colour by for a result it cannot colour: no columns, nothing chosen. */
+const NO_COLOR_BY = {
+  columns: [],
+  loaded: true,
+  column: null,
+  scheme: null,
+  pending: false,
+  error: null,
+  // Nothing to choose: the control is disabled.
+  onColumnChange: () => undefined,
+} as const;
 
 export default TopicModelingFeature;

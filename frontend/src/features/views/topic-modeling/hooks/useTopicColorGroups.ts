@@ -84,6 +84,8 @@ export function useTopicColorGroups({
   }
   return {
     columns,
+    // The listing has answered, so an empty one means no column qualifies (issue 365).
+    columnsLoaded: ready && (columnsQuery.isSuccess || columnsQuery.isError),
     columnValueCounts,
     activeColumn,
     scheme,

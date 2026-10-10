@@ -206,9 +206,8 @@ selected. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clea
 ![Topic Modelling results: the bubble chart, Result settings, and the topic list beside the examples of Topic 12](tutorials/assets/topic_modelling/results.png)
 
 The **Result settings** row below the bubble chart holds **Topics**, **Per
-document**, **Words**, the stop word controls, **Colour by** for a
-single-corpus result, and **Find topics**, with **Add to Project** at its
-right. Question-mark icons beside some of these controls give a short
+document**, **Words**, the stop word controls, **Colour by**, and **Find
+topics**, with **Add to Project** at its right. Question-mark icons beside some of these controls give a short
 explanation. Below it, the topic list takes the left third and the
 [examples of one topic](#help-topic-modeling-examples) the rest; drag the
 divider between them to widen the list (double-click it to go back to a
@@ -339,6 +338,11 @@ values, for example *Country (3)*. A column with a single value is not listed,
 because every bubble would get the same colour. Values are read from the Data Block
 when you choose them, so columns added after the run, such as annotation
 columns, are included. Empty values form a grey **(missing)** group.
+
+When no column has 2 to 8 values, **Colour by** stays on **Data Block colour**
+and cannot be changed; hover over it to see why. It is also unavailable for a
+result from two Data Blocks, where the bubble colours already show which Data
+Block each topic comes from.
 
 Each value counts the documents whose Top topics per document include the
 topic, the same rule as bubble size. To stop common values dominating, each
