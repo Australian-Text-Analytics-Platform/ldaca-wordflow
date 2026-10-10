@@ -1,4 +1,5 @@
 import { Loader2 } from 'lucide-react';
+import { orderColumns } from '@/features/views/common/columnOrder';
 
 import HelpIcon from '@/components/help/HelpIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +30,9 @@ interface QuotationResultsPanelProps {
   reviewRowUnit: QuotationReviewRowUnit | null;
   selectedMetadataColumns: string[];
   onSelectedMetadataColumnsChange: (columns: string[]) => void;
+  /** Column order from dragged headers, and how to save a new one (issue 373). */
+  columnOrder?: readonly string[];
+  onReorderColumns?: (order: string[]) => void;
   contextLength: number;
   contextLengthInput: string;
   contextLengthError: string | null;
@@ -65,6 +69,8 @@ export function QuotationResultsPanel({
   resultsByNode,
   reviewRowUnit,
   selectedMetadataColumns,
+  columnOrder = [],
+  onReorderColumns,
   onSelectedMetadataColumnsChange,
   contextLength,
   contextLengthInput,
@@ -172,7 +178,10 @@ export function QuotationResultsPanel({
           const resultState = resultsByNode[nodeId];
           const rowsWithQuotes = filterQuotationRowsWithQuotes(resultState?.rows);
           const visibleMetadataColumns = showMetadata ? resolvedMetadataColumns : [];
-          const cols = buildQuotationDisplayColumns(visibleMetadataColumns);
+          const cols = orderColumns(
+            buildQuotationDisplayColumns(visibleMetadataColumns),
+            columnOrder,
+          );
           return (
             <QuotationNodeBlock
               key={nodeId}
@@ -191,6 +200,7 @@ export function QuotationResultsPanel({
               onPageChange={onPageChange}
               onPageSizeChange={onPageSizeChange}
               onRowClick={onRowClick}
+              onReorderColumns={onReorderColumns}
               pageSizeOptions={[...PAGE_SIZE_OPTIONS_DEFAULT]}
               pageSizeSummary={
                 <GroupedResultsPageSizeSummary

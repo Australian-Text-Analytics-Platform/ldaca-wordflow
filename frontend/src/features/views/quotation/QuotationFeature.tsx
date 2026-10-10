@@ -1,5 +1,9 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
-import { sourceTextColumnName } from '@/features/views/common/generatedColumns';
+import { orderColumns, tabColumnLayout } from '@/features/views/common/columnOrder';
+import {
+  QUOTATION_DOCUMENT_COLUMN,
+  sourceTextColumnName,
+} from '@/features/views/common/generatedColumns';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -57,7 +61,10 @@ import { useQuotationPage } from './hooks/useQuotationPage';
 import { createNodeDataRequest, queryKeys } from '@/lib/queryKeys';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import type { QuotationReviewRowUnit } from './quotationArrowPage';
-import { filterQuotationRowsWithQuotes } from './quotationResultsModel';
+import {
+  buildQuotationDisplayColumns,
+  filterQuotationRowsWithQuotes,
+} from './quotationResultsModel';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
 import { downloadResultSelection } from '../common/resultDownload';
 import { Download } from 'lucide-react';
@@ -130,7 +137,15 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     hydrateEngineConfig,
     buildEngineRequest,
   } = useQuotationEngineSettings();
-  const [selectedMetadataColumns, setSelectedMetadataColumns] = useState<string[]>([]);
+  // Shown metadata and column order are saved with the tab (issue 373).
+  const columnLayout = tabColumnLayout(host.settings, host.setSetting, QUOTATION_COLUMNS_SETTING);
+  const selectedMetadataColumns = columnLayout.shown;
+  const setSelectedMetadataColumns = columnLayout.setShown;
+  // The table's order for exports; its text column is the source text column there.
+  const exportColumnOrder = (documentColumn: string) =>
+    orderColumns(buildQuotationDisplayColumns(columnLayout.shown), columnLayout.order).map(
+      (name) => (name === QUOTATION_DOCUMENT_COLUMN ? documentColumn : name),
+    );
   const [previewPageRequest, setPreviewPageRequest] = useState(() =>
     createNodeDataRequest({ page: 1, page_size: 50 }),
   );
@@ -217,7 +232,6 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       // With the engine choice hidden, a tab saved with Remote reopens on the
       // built-in engine (Remote needs an operator-configured service).
       hydrateEngineConfig(SHOW_QUOTATION_ENGINE_CHOICE ? request.engine : { type: 'local' });
-      setSelectedMetadataColumns([]);
     },
     // Clears quotation-specific state after the shared lifecycle deletes the task result.
     onCleared: () => {
@@ -762,6 +776,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             reviewRowUnit={runAllSource ? runAllReviewRowUnit : null}
             selectedMetadataColumns={selectedMetadataColumns}
             onSelectedMetadataColumnsChange={setSelectedMetadataColumns}
+            columnOrder={columnLayout.order}
+            onReorderColumns={columnLayout.setOrder}
             contextLength={contextLength}
             contextLengthInput={contextLengthInput}
             contextLengthError={contextLengthError}
@@ -788,6 +804,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           nameSuffix="quotation"
           sources={[runAllSource]}
           isSubmitting={isDownloading}
+          columnOrder={exportColumnOrder(runAllSource.document_column)}
           purpose="download"
           onSubmit={(sources, format = 'csv') => {
             void handleDownload(sources, format);
@@ -802,6 +819,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           nameSuffix="quotation"
           sources={[runAllSource]}
           isSubmitting={isAddingToWorkspace}
+          columnOrder={exportColumnOrder(runAllSource.document_column)}
           onSubmit={(sources) => {
             void handleAddToWorkspace(sources);
           }}
@@ -838,5 +856,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     </>
   );
 }
+
+/** The tab setting holding shown metadata and column order (issue 373). */
+const QUOTATION_COLUMNS_SETTING = 'quotation.columns';
 
 export default QuotationFeature;

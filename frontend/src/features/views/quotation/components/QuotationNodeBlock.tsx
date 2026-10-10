@@ -1,15 +1,12 @@
 import { useEffect, useRef } from 'react';
+import {
+  ColumnReorderProvider,
+  DraggableTableHead,
+} from '@/features/views/common/components/ColumnDragHandle';
 import { ArrowUpDown, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { SourceRowPagination } from '@/api';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import { AnalysisTableFrame } from '@/features/views/common/components/AnalysisTableScrollArea';
@@ -54,6 +51,8 @@ export interface QuotationNodeBlockProps {
   onPageSizeChange: (pageSize: number) => void;
   /** Opens the row detail panel for a clicked row. */
   onRowClick: (rowIndex: number) => void;
+  /** Saves a new column order when a header is dragged (issue 373). */
+  onReorderColumns?: (order: string[]) => void;
   /** Page-size options for the footer selector. */
   pageSizeOptions: number[];
   /** Summary rendered beside the page-size selector. */
@@ -108,6 +107,7 @@ function QuotationNodeBlockContent({
   onPageChange,
   onPageSizeChange,
   onRowClick,
+  onReorderColumns,
   pageSizeOptions,
   pageSizeSummary,
   loading,
@@ -246,20 +246,36 @@ function QuotationNodeBlockContent({
         <div ref={stableTableRef}>
           <Table className="min-w-full text-body" disableContainer>
             <TableHeader className="bg-panel sticky top-0 z-10">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id} className="border-b border-surface-border/60">
-                  {headerGroup.headers.map((header) => (
-                    <TableHead
-                      key={header.id}
-                      className="h-10 px-4 py-2 text-label-secondary font-semibold uppercase tracking-wide text-description/90 select-none whitespace-nowrap cursor-pointer"
-                    >
-                      {header.isPlaceholder
-                        ? null
-                        : renderColumnPart(header.column.columnDef.header, header.getContext())}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
+              {table.getHeaderGroups().map((headerGroup) => {
+                const row = (
+                  <TableRow key={headerGroup.id} className="border-b border-surface-border/60">
+                    {headerGroup.headers.map((header) => (
+                      <DraggableTableHead
+                        key={header.id}
+                        id={header.column.id}
+                        label={header.column.id}
+                        className="h-10 px-4 py-2 text-label-secondary font-semibold uppercase tracking-wide text-description/90 select-none whitespace-nowrap cursor-pointer"
+                      >
+                        {header.isPlaceholder
+                          ? null
+                          : renderColumnPart(header.column.columnDef.header, header.getContext())}
+                      </DraggableTableHead>
+                    ))}
+                  </TableRow>
+                );
+                // Columns move by their header's grip (issue 373).
+                return onReorderColumns ? (
+                  <ColumnReorderProvider
+                    key={headerGroup.id}
+                    ids={headerGroup.headers.map((header) => header.column.id)}
+                    onReorder={onReorderColumns}
+                  >
+                    {row}
+                  </ColumnReorderProvider>
+                ) : (
+                  row
+                );
+              })}
             </TableHeader>
             <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
               {loading && rows.length === 0 ? (
