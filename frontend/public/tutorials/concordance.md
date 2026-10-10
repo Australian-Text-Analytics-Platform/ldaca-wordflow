@@ -245,7 +245,15 @@ indication, and active bin and term-filter summary.
 <h3 id="help-concordance-metadata">Show metadata</h3>
 
 Open **Show metadata** and tick the source columns to display beside matches; the
-number in brackets shows how many are shown.
+number in brackets shows how many are shown. The analysed text column is in the
+list too, unticked at first. With a long list, type in the box at the top to
+find a column by name.
+
+To move a column, drag the grip at the left of its header (or focus the grip,
+press Space, move with the arrow keys and press Space again). Clicking the rest
+of a header still sorts. A column can go anywhere, for example before the left
+context or between L1 and R1. The tab remembers the shown columns and their
+order, and **Add to Project** and downloads of the matches keep the same order.
 With two Data Blocks, common columns and source-specific columns are grouped
 and colour-coded. Generated Concordance columns are already part of the Result
 and do not become source-metadata sort keys.

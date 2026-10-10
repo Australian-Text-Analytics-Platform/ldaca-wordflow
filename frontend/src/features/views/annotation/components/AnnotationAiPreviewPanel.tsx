@@ -3,7 +3,12 @@ import { ArrowRight, Loader2, RefreshCw } from 'lucide-react';
 import { AnnotationRowViewButton } from '@/features/views/common/components/AnnotationRowViewer';
 import { buildAnnotationRowDetailPayload } from '@/features/views/common/components/annotationRowDetail';
 import { useAnnotationRowViewer } from '@/features/views/common/hooks/useAnnotationRowViewer';
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
+import {
+  ColumnReorderProvider,
+  DraggableTableHead,
+} from '@/features/views/common/components/ColumnDragHandle';
+import { orderColumns } from '@/features/views/common/columnOrder';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -77,6 +82,9 @@ interface AnnotationAiPreviewPanelProps {
     onUseAsExample: () => void;
     disabled?: boolean;
   };
+  /** Column order from dragged headers, and how to save a new one (issue 373). */
+  columnOrder?: readonly string[];
+  onReorderColumns?: (order: string[]) => void;
 }
 
 /**
@@ -98,6 +106,8 @@ export function AnnotationAiPreviewPanel({
   comparison,
   metadata,
   correction,
+  columnOrder = [],
+  onReorderColumns,
 }: AnnotationAiPreviewPanelProps) {
   const { page, predictions, columns } = preview;
   const classOptions = normalizeAnnotationClassOptions(correction.classOptions);
@@ -133,6 +143,14 @@ export function AnnotationAiPreviewPanel({
     revealedComparisonColumns.has(column),
   );
   const supplementalColumns = [...activeComparisonColumns, ...activeMetadataColumns];
+  // Columns go in the order dragged by their headers (issue 373); a correction
+  // and its arrow stay with the annotation column, the row viewer first.
+  const orderedColumnIds = orderColumns(
+    [columns.text, columns.annotation, ...supplementalColumns],
+    columnOrder,
+  );
+  const renderInOrder = (cells: Record<string, ReactNode>) =>
+    orderedColumnIds.map((id) => <Fragment key={id}>{cells[id]}</Fragment>);
   const previewColumn = `${columns.annotation} (preview)`;
   const comparisonRows = new Map<string, ConfusionCount[]>();
   activeComparisonColumns.forEach((targetColumn) => {
@@ -352,56 +370,80 @@ export function AnnotationAiPreviewPanel({
       >
         <Table className="w-full table-auto" disableContainer>
           <TableHeader className="sticky top-0 z-10 bg-surface">
-            <TableRow className="[&>th]:align-bottom">
-              <TableHead className="w-8 px-1">
-                <span className="sr-only">View row</span>
-                <HelpIcon
-                  targetKey="analysis.annotation.row-viewer"
-                  label="About the row viewer"
-                  tooltip="Use the button at the start of a row to read the whole row."
-                  className="h-5 w-5 text-description"
-                />
-              </TableHead>
-              <TableHead>{columns.text}</TableHead>
-              <TableHead className="w-px whitespace-nowrap">
-                {columns.annotation} (preview)
-              </TableHead>
-              {showCorrectionColumn ? (
-                <>
-                  <TableHead className="w-8 px-1 text-center" aria-label="changes to">
-                    <ArrowRight aria-hidden="true" className="mx-auto size-4" />
-                  </TableHead>
-                  <TableHead className="w-px whitespace-nowrap">
-                    <>Correction: {correction.column}</>
-                  </TableHead>
-                </>
-              ) : null}
-              {supplementalColumns.map((column) => (
-                <TableHead key={column} className="w-px whitespace-nowrap">
-                  {activeComparisonColumns.includes(column) ? (
-                    <ColumnComparisonHeader
-                      metric={comparison.metric}
-                      referenceColumn={previewColumn}
-                      comparisonColumn={column}
-                      rows={comparisonRows.get(column)}
-                      isLoading={comparisonLoading}
-                      isError={comparisonError}
-                      revealed={revealedComparisonColumns.has(column)}
-                      onRevealedChange={(revealed) => {
-                        setRevealedComparisonColumns((current) => {
-                          const next = new Set(current);
-                          if (revealed) next.add(column);
-                          else next.delete(column);
-                          return next;
-                        });
-                      }}
-                    />
-                  ) : (
-                    column
-                  )}
+            <ColumnReorderProvider ids={orderedColumnIds} onReorder={onReorderColumns}>
+              <TableRow className="[&>th]:align-bottom">
+                <TableHead className="w-8 px-1">
+                  <span className="sr-only">View row</span>
+                  <HelpIcon
+                    targetKey="analysis.annotation.row-viewer"
+                    label="About the row viewer"
+                    tooltip="Use the button at the start of a row to read the whole row."
+                    className="h-5 w-5 text-description"
+                  />
                 </TableHead>
-              ))}
-            </TableRow>
+                {renderInOrder({
+                  [columns.text]: (
+                    <DraggableTableHead id={columns.text} label={columns.text}>
+                      {columns.text}
+                    </DraggableTableHead>
+                  ),
+                  [columns.annotation]: (
+                    <>
+                      <DraggableTableHead
+                        id={columns.annotation}
+                        label={columns.annotation}
+                        className="w-px whitespace-nowrap"
+                      >
+                        {columns.annotation} (preview)
+                      </DraggableTableHead>
+                      {showCorrectionColumn ? (
+                        <>
+                          <TableHead className="w-8 px-1 text-center" aria-label="changes to">
+                            <ArrowRight aria-hidden="true" className="mx-auto size-4" />
+                          </TableHead>
+                          <TableHead className="w-px whitespace-nowrap">
+                            <>Correction: {correction.column}</>
+                          </TableHead>
+                        </>
+                      ) : null}
+                    </>
+                  ),
+                  ...Object.fromEntries(
+                    supplementalColumns.map((column) => [
+                      column,
+                      <DraggableTableHead
+                        key={column}
+                        id={column}
+                        label={column}
+                        className="w-px whitespace-nowrap"
+                      >
+                        {activeComparisonColumns.includes(column) ? (
+                          <ColumnComparisonHeader
+                            metric={comparison.metric}
+                            referenceColumn={previewColumn}
+                            comparisonColumn={column}
+                            rows={comparisonRows.get(column)}
+                            isLoading={comparisonLoading}
+                            isError={comparisonError}
+                            revealed={revealedComparisonColumns.has(column)}
+                            onRevealedChange={(revealed) => {
+                              setRevealedComparisonColumns((current) => {
+                                const next = new Set(current);
+                                if (revealed) next.add(column);
+                                else next.delete(column);
+                                return next;
+                              });
+                            }}
+                          />
+                        ) : (
+                          column
+                        )}
+                      </DraggableTableHead>,
+                    ]),
+                  ),
+                })}
+              </TableRow>
+            </ColumnReorderProvider>
           </TableHeader>
           <TableBody>
             {page.query.isLoading ? (
@@ -452,120 +494,141 @@ export function AnnotationAiPreviewPanel({
                         }}
                       />
                     </TableCell>
-                    <TableCell className="break-words whitespace-pre-wrap">
-                      {cellText(row[columns.text])}
-                    </TableCell>
-                    <TableCell
-                      className="w-px whitespace-nowrap"
-                      style={predictionDiffers ? { backgroundColor: differenceColor } : undefined}
-                    >
-                      {predictions.query.isFetching ? (
-                        <span role="status" aria-label="Predicting annotation">
-                          <Loader2
-                            aria-hidden="true"
-                            className="size-4 animate-spin text-description"
-                          />
-                        </span>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          {existing ? (
-                            <>
-                              <span className="shrink-0 text-body text-description">
-                                {existing}
+                    {renderInOrder({
+                      [columns.text]: (
+                        <TableCell className="break-words whitespace-pre-wrap">
+                          {cellText(row[columns.text])}
+                        </TableCell>
+                      ),
+                      [columns.annotation]: (
+                        <>
+                          <TableCell
+                            className="w-px whitespace-nowrap"
+                            style={
+                              predictionDiffers ? { backgroundColor: differenceColor } : undefined
+                            }
+                          >
+                            {predictions.query.isFetching ? (
+                              <span role="status" aria-label="Predicting annotation">
+                                <Loader2
+                                  aria-hidden="true"
+                                  className="size-4 animate-spin text-description"
+                                />
                               </span>
-                              <ArrowRight
-                                role="img"
-                                aria-label="changes to"
-                                className="size-4 shrink-0 text-description"
-                              />
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                {existing ? (
+                                  <>
+                                    <span className="shrink-0 text-body text-description">
+                                      {existing}
+                                    </span>
+                                    <ArrowRight
+                                      role="img"
+                                      aria-label="changes to"
+                                      className="size-4 shrink-0 text-description"
+                                    />
+                                  </>
+                                ) : null}
+                                <span className="text-body">{value || '—'}</span>
+                              </div>
+                            )}
+                          </TableCell>
+                          {showCorrectionColumn ? (
+                            <>
+                              <TableCell className="w-8 px-1 text-center">
+                                <ArrowRight
+                                  role="img"
+                                  aria-label="corrected to"
+                                  className="mx-auto size-4 text-description"
+                                />
+                              </TableCell>
+                              <TableCell className="w-px">
+                                <Select
+                                  value={correctionValue || NO_CORRECTION_VALUE}
+                                  disabled={savingRows.has(selectionKey)}
+                                  onValueChange={(next) => {
+                                    saveCorrection({
+                                      rowPosition,
+                                      previous: correctionValue,
+                                      next,
+                                    });
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    aria-label={`Correct prediction for row ${String(rowPosition + 1)}`}
+                                    className={`h-8 min-w-28 text-body ${
+                                      isInvalidAnnotationLabel(correctionValue, classOptions)
+                                        ? 'italic text-description'
+                                        : ''
+                                    }`}
+                                  >
+                                    <SelectValue placeholder="None" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem
+                                      value={NO_CORRECTION_VALUE}
+                                      className="text-description"
+                                    >
+                                      None
+                                    </SelectItem>
+                                    <CurrentAnnotationValueItem
+                                      value={correctionValue || null}
+                                      classOptions={classOptions}
+                                    />
+                                    {classOptions.map((name) => (
+                                      <SelectItem key={name} value={name}>
+                                        {name}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
                             </>
                           ) : null}
-                          <span className="text-body">{value || '—'}</span>
-                        </div>
-                      )}
-                    </TableCell>
-                    {showCorrectionColumn ? (
-                      <>
-                        <TableCell className="w-8 px-1 text-center">
-                          <ArrowRight
-                            role="img"
-                            aria-label="corrected to"
-                            className="mx-auto size-4 text-description"
-                          />
-                        </TableCell>
-                        <TableCell className="w-px">
-                          <Select
-                            value={correctionValue || NO_CORRECTION_VALUE}
-                            disabled={savingRows.has(selectionKey)}
-                            onValueChange={(next) => {
-                              saveCorrection({ rowPosition, previous: correctionValue, next });
-                            }}
-                          >
-                            <SelectTrigger
-                              aria-label={`Correct prediction for row ${String(rowPosition + 1)}`}
-                              className={`h-8 min-w-28 text-body ${
-                                isInvalidAnnotationLabel(correctionValue, classOptions)
-                                  ? 'italic text-description'
-                                  : ''
-                              }`}
-                            >
-                              <SelectValue placeholder="None" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value={NO_CORRECTION_VALUE} className="text-description">
-                                None
-                              </SelectItem>
-                              <CurrentAnnotationValueItem
-                                value={correctionValue || null}
-                                classOptions={classOptions}
-                              />
-                              {classOptions.map((name) => (
-                                <SelectItem key={name} value={name}>
-                                  {name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </TableCell>
-                      </>
-                    ) : null}
-                    {supplementalColumns.map((column) => {
-                      const isComparison = activeComparisonColumns.includes(column);
-                      const comparisonRevealed =
-                        isComparison && revealedComparisonColumns.has(column);
-                      const comparisonDiffers =
-                        comparisonRevealed &&
-                        annotationValuesDiffer(value, row[column], classOptions);
-                      const invalid =
-                        comparisonRevealed && isInvalidAnnotationLabel(row[column], classOptions);
-                      return (
-                        <TableCell
-                          key={column}
-                          className={isComparison ? 'w-px whitespace-nowrap' : 'w-px'}
-                          style={
-                            comparisonDiffers ? { backgroundColor: differenceColor } : undefined
-                          }
-                        >
-                          {isComparison && !comparisonRevealed ? (
-                            <span aria-label="Comparison value hidden">•••</span>
-                          ) : isComparison ? (
-                            <span
-                              className={invalid ? 'italic text-description' : undefined}
-                              title={
-                                invalid
-                                  ? 'Not a code in the Codebook, so treated as empty'
-                                  : undefined
+                        </>
+                      ),
+                      ...Object.fromEntries(
+                        supplementalColumns.map((column) => {
+                          const isComparison = activeComparisonColumns.includes(column);
+                          const comparisonRevealed =
+                            isComparison && revealedComparisonColumns.has(column);
+                          const comparisonDiffers =
+                            comparisonRevealed &&
+                            annotationValuesDiffer(value, row[column], classOptions);
+                          const invalid =
+                            comparisonRevealed &&
+                            isInvalidAnnotationLabel(row[column], classOptions);
+                          return [
+                            column,
+                            <TableCell
+                              key={column}
+                              className={isComparison ? 'w-px whitespace-nowrap' : 'w-px'}
+                              style={
+                                comparisonDiffers ? { backgroundColor: differenceColor } : undefined
                               }
                             >
-                              {cellText(row[column]) || '—'}
-                            </span>
-                          ) : (
-                            <div className="w-max max-w-64 break-words whitespace-pre-wrap">
-                              {cellText(row[column]) || '—'}
-                            </div>
-                          )}
-                        </TableCell>
-                      );
+                              {isComparison && !comparisonRevealed ? (
+                                <span aria-label="Comparison value hidden">•••</span>
+                              ) : isComparison ? (
+                                <span
+                                  className={invalid ? 'italic text-description' : undefined}
+                                  title={
+                                    invalid
+                                      ? 'Not a code in the Codebook, so treated as empty'
+                                      : undefined
+                                  }
+                                >
+                                  {cellText(row[column]) || '—'}
+                                </span>
+                              ) : (
+                                <div className="w-max max-w-64 break-words whitespace-pre-wrap">
+                                  {cellText(row[column]) || '—'}
+                                </div>
+                              )}
+                            </TableCell>,
+                          ];
+                        }),
+                      ),
                     })}
                   </TableRow>
                 );

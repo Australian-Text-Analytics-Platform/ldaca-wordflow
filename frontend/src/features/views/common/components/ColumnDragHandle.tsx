@@ -35,7 +35,8 @@ export function ColumnReorderProvider({
   children,
 }: {
   ids: readonly string[];
-  onReorder: (order: string[]) => void;
+  /** Without it the table has plain headers. */
+  onReorder?: (order: string[]) => void;
   children: ReactNode;
 }) {
   const sensors = useSensors(
@@ -43,9 +44,10 @@ export function ColumnReorderProvider({
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
   const handleDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!over || active.id === over.id) return;
+    if (!onReorder || !over || active.id === over.id) return;
     onReorder(moveColumn(ids, String(active.id), String(over.id)));
   };
+  if (!onReorder) return children;
   return (
     <ReorderEnabled.Provider value>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>

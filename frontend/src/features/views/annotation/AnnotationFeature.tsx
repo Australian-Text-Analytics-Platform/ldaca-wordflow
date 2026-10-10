@@ -1,4 +1,5 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
+import { tabColumnLayout } from '@/features/views/common/columnOrder';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
@@ -281,6 +282,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     {},
   );
   const { currentWorkspaceId, nodes } = useWorkspaceData();
+  // Column order dragged by table headers, shared by the tab's tables (issue 373).
+  const annotationColumnLayout = tabColumnLayout(
+    host.settings,
+    host.setSetting,
+    'annotation.columns',
+  );
   const {
     polarsExpressionApply,
     createSqlDataBlock,
@@ -1331,6 +1338,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             onMetadataColumnsChange={(columns) => {
               setAnnotationMetadataColumns(manualReviewSnapshot.nodeId, columns);
             }}
+            columnOrder={annotationColumnLayout.order}
+            onReorderColumns={annotationColumnLayout.setOrder}
             correction={{
               column: manualReviewSnapshot.correctionColumn,
               onColumnChange: (column) => {
@@ -1372,6 +1381,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
               </div>
             ) : null}
             <RunAllReviewTable
+              columnOrder={annotationColumnLayout.order}
+              onReorderColumns={annotationColumnLayout.setOrder}
               workspaceId={currentWorkspaceId}
               nodeId={annotationRunAllSource.node_id}
               nodeName={reviewSourceNode.name}
@@ -1447,6 +1458,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                 setAnnotationMetadataColumns(serverAiRequest.node_id, columns);
               },
             }}
+            columnOrder={annotationColumnLayout.order}
+            onReorderColumns={annotationColumnLayout.setOrder}
             correction={{
               nodeId: serverAiRequest.node_id,
               column: previewCorrectionColumn,

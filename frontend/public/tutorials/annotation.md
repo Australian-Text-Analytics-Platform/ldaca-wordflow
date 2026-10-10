@@ -78,6 +78,9 @@ height, drag its bottom-right corner; double-click the corner to let it fill the
 space again. The height is shared by Manual, Preview, and Review, and the table
 scrolls inside its frame when a page does not fit.
 
+Drag a column header's grip to move the column; a correction column and its
+arrow stay beside the annotation column. The tab remembers the order.
+
 **Compare to** and **Show metadata** are exclusive roles: a selected column is
 disabled in the other menu, and **Select all** skips disabled columns. The
 active correction column appears in neither menu. Add a correction column when

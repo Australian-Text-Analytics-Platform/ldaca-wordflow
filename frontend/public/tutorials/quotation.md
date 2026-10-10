@@ -65,7 +65,9 @@ To see more rows at once, drag the table's bottom-right corner down
 
 Click a row to inspect the full source document in Row Details, which opens
 scrolled to the highlighted quote. The metadata selector (**Show metadata**)
-can add source columns and generated quotation columns to the table. Date and
+can add source columns and generated quotation columns to the table; drag a
+header's grip to move its column, and the tab, **Add to Project** and downloads
+keep that order. Date and
 date-time columns are shown as dates. The
 `QUOTE_extraction` document header sorts by the selected text column. Other
 metadata headers can be sorted too. Generated quotation headers cannot be
