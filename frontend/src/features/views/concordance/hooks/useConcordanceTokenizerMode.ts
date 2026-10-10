@@ -51,6 +51,17 @@ export function useConcordanceTokenizerMode({
 
   const setSearchModeFromUser = (mode: ConcordanceSearchMode) => {
     setSearchMode(mode);
+    // Text mode uses no tokeniser: the selection goes back to None for this
+    // tab, as a Text run would leave it (issue 372). The Data Block's saved
+    // tokeniser, used by other tools, is unchanged.
+    if (mode === 'regex') {
+      setTokenizerModelsByNode((prev) => ({
+        ...prev,
+        ...Object.fromEntries(
+          effectiveNodeColumnSelections.map((selection) => [selection.nodeId, '']),
+        ),
+      }));
+    }
   };
 
   const recordTokenizerModel = (nodeId: string, model: string) => {

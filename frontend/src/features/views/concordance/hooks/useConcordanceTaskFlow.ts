@@ -117,12 +117,16 @@ export function useConcordanceTaskFlow({
     effectiveSelections.forEach((sel) => {
       nodeColumns[sel.nodeId] = sel.column;
     });
-    const nodeTokenizerModels = Object.fromEntries(
-      requestNodeIds.flatMap((nodeId) => {
-        const model = (tokenizerModelsByNode[nodeId] ?? '').trim();
-        return model ? [[nodeId, model]] : [];
-      }),
-    );
+    // Text mode searches the text itself: no tokeniser goes with it (issue 372).
+    const nodeTokenizerModels =
+      searchMode === 'tokens'
+        ? Object.fromEntries(
+            requestNodeIds.flatMap((nodeId) => {
+              const model = (tokenizerModelsByNode[nodeId] ?? '').trim();
+              return model ? [[nodeId, model]] : [];
+            }),
+          )
+        : {};
     if (
       searchMode === 'tokens' &&
       Object.keys(nodeTokenizerModels).length !== requestNodeIds.length

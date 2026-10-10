@@ -160,4 +160,25 @@ describe('useConcordanceTokenizerMode', () => {
     expect(result.current.tokensModeAvailable).toBe(true);
     expect(result.current.searchMode).toBe('tokens');
   });
+
+  it('goes back to no tokeniser when the user returns to Text mode (issue 372)', () => {
+    const { result } = renderHook(() =>
+      useConcordanceTokenizerMode({
+        effectiveNodeColumnSelections: [{ nodeId: 'node-a', column: 'text' }],
+        nodeInfoById: {
+          'node-a': { id: 'node-a', name: 'Node A', tokenizer_model: 'native:plain_words_en' },
+        },
+      }),
+    );
+
+    act(() => {
+      result.current.setSearchModeFromUser('tokens');
+    });
+    expect(result.current.effectiveTokenizerModelsByNode['node-a']).toBe('native:plain_words_en');
+    act(() => {
+      result.current.setSearchModeFromUser('regex');
+    });
+    expect(result.current.searchMode).toBe('regex');
+    expect(result.current.effectiveTokenizerModelsByNode['node-a'] ?? '').toBe('');
+  });
 });

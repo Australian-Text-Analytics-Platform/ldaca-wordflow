@@ -545,12 +545,15 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         .map((selection) => [selection.nodeId, selection.column]),
     ),
     search_mode: searchMode,
-    node_tokenizer_models: Object.fromEntries(
-      activeNodeIds.flatMap((nodeId) => {
-        const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
-        return model ? [[nodeId, model]] : [];
-      }),
-    ),
+    node_tokenizer_models:
+      searchMode === 'tokens'
+        ? Object.fromEntries(
+            activeNodeIds.flatMap((nodeId) => {
+              const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
+              return model ? [[nodeId, model]] : [];
+            }),
+          )
+        : {},
   };
   const serverRequestParams = (request: Record<string, unknown>) => ({
     ...readConcordanceServerParams(request),
@@ -558,8 +561,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     node_columns:
       request.node_columns && typeof request.node_columns === 'object' ? request.node_columns : {},
     search_mode: request.search_mode === 'tokens' ? 'tokens' : 'regex',
+    // Runs saved before issue 372 carried a tokeniser in Text mode too.
     node_tokenizer_models:
-      request.node_tokenizer_models && typeof request.node_tokenizer_models === 'object'
+      request.search_mode === 'tokens' &&
+      request.node_tokenizer_models &&
+      typeof request.node_tokenizer_models === 'object'
         ? request.node_tokenizer_models
         : {},
   });
@@ -656,12 +662,16 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         .filter((selection) => requestNodeIds.includes(selection.nodeId) && selection.column)
         .map((selection) => [selection.nodeId, selection.column]),
     );
-    const nodeTokenizerModels = Object.fromEntries(
-      requestNodeIds.flatMap((nodeId) => {
-        const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
-        return model ? [[nodeId, model]] : [];
-      }),
-    );
+    // Text mode searches the text itself: no tokeniser goes with it (issue 372).
+    const nodeTokenizerModels =
+      searchMode === 'tokens'
+        ? Object.fromEntries(
+            requestNodeIds.flatMap((nodeId) => {
+              const model = (effectiveTokenizerModelsByNode[nodeId] ?? '').trim();
+              return model ? [[nodeId, model]] : [];
+            }),
+          )
+        : {};
     if (
       !currentWorkspaceId ||
       requestNodeIds.length === 0 ||
@@ -826,7 +836,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
               workspaceId={currentWorkspaceId}
               nodeId={nodeId}
               column={column}
-              value={effectiveTokenizerModelsByNode[nodeId] ?? ''}
+              // Text mode uses no tokeniser, so it shows None (issue 372).
+              value={searchMode === 'tokens' ? (effectiveTokenizerModelsByNode[nodeId] ?? '') : ''}
               disabled={searchMode !== 'tokens'}
               disabledReason="Tokeniser models apply only in Tokens mode."
               onChange={(model, detectedLanguage) => {
