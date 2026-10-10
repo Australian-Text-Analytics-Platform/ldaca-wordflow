@@ -85,6 +85,17 @@ describe('TopicSelectionPanel', () => {
     expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
   });
 
+  it('lists the latest selected topic first', () => {
+    render(<TopicSelectionPanel {...panelProps({ selectedTopicIds: new Set([0, 2, 1]) })} />);
+
+    const selected = screen.getByRole('list', { name: 'Selected topics' });
+    expect(
+      within(selected)
+        .getAllByRole('listitem')
+        .map((item) => item.getAttribute('data-topic-id')),
+    ).toEqual(['1', '2', '0']);
+  });
+
   it('counts every topic when nothing filters them', () => {
     const onHoveredTopicChange = vi.fn();
     const onToggleTopicSelection = vi.fn();

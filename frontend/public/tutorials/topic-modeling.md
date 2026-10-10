@@ -465,8 +465,9 @@ The list heading counts the topics, for example **Topics 249**. While Find
 topics or the lasso is filtering, it shows how many match out of all of them,
 for example **Topics 15 / 249**. Click a topic in the chart or in the list to
 select it; click it again to deselect it, or use **Clear** to deselect them all.
-Selected topics move to the **Selected** group at the top of the list, which
-scrolls on its own, so the **Others** below always stay in reach. Selected
+Selected topics move to the **Selected** group at the top of the list, the
+latest selected first. The group scrolls on its own, so the **Others** below
+always stay in reach. Selected
 topics stay in their group even when the search or lasso leaves them out; they
 are then shown faded. Hover over a topic's words to see all of them.
 

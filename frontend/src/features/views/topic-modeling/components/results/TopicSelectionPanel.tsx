@@ -1,4 +1,4 @@
-import { type CSSProperties, useRef, useState } from 'react';
+import { type CSSProperties, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ResizeHandle } from '@/components/layout/ResizeHandle';
 import { ResultFrame } from '@/features/views/common/components/ResultFrame';
@@ -240,7 +240,19 @@ export function TopicSelectionPanel({
   };
   const matchingIds = new Set(sortedTopics.filter(matches).map((topic) => topic.id));
   const filtered = hasLassoFilter || hasSearch;
-  const selectedTopics = sortedTopics.filter((topic) => selectedTopicIds.has(topic.id));
+  // The latest selected Topic is listed first: the set keeps click order.
+  const topicsById = new Map(topics.map((topic) => [topic.id, topic]));
+  const selectedTopics = [...selectedTopicIds]
+    .toReversed()
+    .flatMap((id) => topicsById.get(id) ?? []);
+  const latestSelectedId = selectedTopics[0]?.id ?? null;
+  const selectedListRef = useRef<HTMLUListElement | null>(null);
+  // A newly selected Topic is at the top, so bring the top into view.
+  useEffect(() => {
+    if (latestSelectedId !== null && selectedListRef.current) {
+      selectedListRef.current.scrollTop = 0;
+    }
+  }, [latestSelectedId]);
   const otherTopics = sortedTopics.filter(
     (topic) => !selectedTopicIds.has(topic.id) && matchingIds.has(topic.id),
   );
@@ -326,7 +338,11 @@ export function TopicSelectionPanel({
                       Clear
                     </button>
                   </div>
-                  <ul aria-label="Selected topics" className="min-h-0 space-y-1 overflow-y-auto">
+                  <ul
+                    ref={selectedListRef}
+                    aria-label="Selected topics"
+                    className="min-h-0 space-y-1 overflow-y-auto"
+                  >
                     {selectedTopics.map(card)}
                   </ul>
                 </div>
