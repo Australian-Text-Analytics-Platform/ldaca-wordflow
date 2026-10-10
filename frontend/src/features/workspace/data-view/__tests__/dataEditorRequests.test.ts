@@ -202,6 +202,13 @@ describe('buildMapValues (issue 368)', () => {
     });
   });
 
+  it('waits until something is typed, so Apply is held back after a reset', () => {
+    expect(buildMapValues({ ...form, inputs: {} }, columns)).toBeNull();
+    expect(buildMapValues({ ...form, inputs: { Labor: '  ' } }, columns)).toBeNull();
+    expect(buildMapValues({ ...form, inputs: {}, emptyTo: 'none' }, columns)).not.toBeNull();
+    expect(buildMapValues({ ...form, inputs: {}, keepUnlisted: true }, columns)).not.toBeNull();
+  });
+
   it('waits for the values and refuses a taken name', () => {
     expect(buildMapValues({ ...form, values: null }, columns)).toBeNull();
     expect(buildMapValues({ ...form, outputName: 'id' }, columns)).toBeNull();

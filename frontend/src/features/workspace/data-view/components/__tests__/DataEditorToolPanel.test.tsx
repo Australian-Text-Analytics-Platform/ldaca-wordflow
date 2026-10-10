@@ -438,7 +438,9 @@ describe('DataEditorToolPanel (issue 143)', () => {
       expect(
         screen.getByText(/70 values: only the 500 most common are listed\. 10 more \(12 rows\)/),
       ).toBeInTheDocument();
-      expect(mapping()?.unlisted).toBe('empty');
+      // Nothing typed yet: no edit to preview or apply.
+      expect(mapping()).toBeNull();
+      expect(screen.getByRole('button', { name: 'Apply' })).toBeDisabled();
       await user.click(screen.getByRole('checkbox', { name: /Values not listed keep/ }));
       expect(mapping()?.unlisted).toBe('keep');
 

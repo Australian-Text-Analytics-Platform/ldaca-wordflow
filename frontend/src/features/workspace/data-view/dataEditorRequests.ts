@@ -331,6 +331,13 @@ export function buildMapValues(
   columns: readonly string[],
 ): DataEditorDraft | null {
   if (!columns.includes(form.column) || form.values === null) return null;
+  // Nothing typed yet would make a column of empty cells: incomplete, as in the
+  // other tools, so Apply waits after a reset too (Chao, 2026-10-10).
+  const typed =
+    form.keepUnlisted ||
+    form.emptyTo.trim() !== '' ||
+    form.values.some((value) => (form.inputs[value] ?? '').trim() !== '');
+  if (!typed) return null;
   const output = newName(form.outputName || defaultMappedName(form.column), columns);
   if (!output) return null;
   return {
