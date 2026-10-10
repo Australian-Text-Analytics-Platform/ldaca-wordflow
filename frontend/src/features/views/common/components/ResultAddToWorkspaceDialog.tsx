@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { orderColumns } from '../columnOrder';
 import type {
   DataBlockExportFormat,
   SortedDataBlockCreationSource,
@@ -31,6 +32,8 @@ interface Props {
   allowSourceSelection?: boolean;
   /** Download the same table as a CSV or Excel file instead (issue 352). */
   purpose?: 'add' | 'download';
+  /** The results table's column order, kept in the new Data Block or file (issue 373). */
+  columnOrder?: readonly string[];
 }
 
 /** Spreadsheet formats offered by a Result download (issue 352). */
@@ -74,6 +77,7 @@ const createResultSource = (
   source: RunAllSourceTableResource,
   mode: 'match' | 'document',
   nameSuffix: string,
+  columnOrder: readonly string[],
 ): AddToWorkspaceSource => {
   const columns: AddToWorkspaceColumn[] = [];
   // One row per match: the document is recommended but can be left out, since
@@ -119,11 +123,22 @@ const createResultSource = (
     }
   }
 
+  // One row per match: the columns go in the table's order, so the Data Block
+  // or file matches what was on screen (issue 373). One row per document keeps
+  // its fixed layout.
+  const ordered =
+    mode === 'match' && columnOrder.length > 0
+      ? orderColumns(
+          columns.map((column) => column.name),
+          columnOrder,
+        ).flatMap((name) => columns.filter((column) => column.name === name))
+      : columns;
+
   return {
     id: source.node_id,
     name: source.node_name,
     defaultName: `${source.node_name}_${nameSuffix}`,
-    columns,
+    columns: ordered,
   };
 };
 
@@ -139,6 +154,7 @@ export function ResultAddToWorkspaceDialog({
   mode = 'match',
   allowSourceSelection = false,
   purpose = 'add',
+  columnOrder = [],
 }: Props) {
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
   return (
@@ -151,7 +167,7 @@ export function ResultAddToWorkspaceDialog({
           ? 'Choose which Result columns go in the file. It holds the same table Add to Project would create.'
           : 'Choose which immutable Result columns create new Project Data Blocks.'
       }
-      sources={sources.map((source) => createResultSource(source, mode, nameSuffix))}
+      sources={sources.map((source) => createResultSource(source, mode, nameSuffix, columnOrder))}
       isSubmitting={isSubmitting}
       allowSourceSelection={allowSourceSelection}
       purpose={purpose}

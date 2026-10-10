@@ -62,6 +62,9 @@ interface ConcordanceResultsMetadata {
   disabledReason: string | undefined;
   selectedColumns: string[];
   setSelectedColumns: Dispatch<SetStateAction<string[]>>;
+  /** Column order from dragged headers, saved with the tab (issue 373). */
+  columnOrder: readonly string[];
+  setColumnOrder: (order: string[]) => void;
 }
 
 interface ConcordanceResultsSources {
@@ -224,6 +227,8 @@ export function ConcordanceResultsPanel({
     disabledReason: metadataDisabledReason,
     selectedColumns: selectedMetadataColumns,
     setSelectedColumns: setSelectedMetadataColumns,
+    columnOrder,
+    setColumnOrder,
   },
   sources: {
     searchWord,
@@ -431,6 +436,8 @@ export function ConcordanceResultsPanel({
                     caseSensitive,
                     showMetadata,
                     selectedMetadataColumns,
+                    columnOrder,
+                    onReorderColumns: setColumnOrder,
                     panelSelectedNodes,
                     effectiveNodeColumnSelections,
                     sourceColorMap,

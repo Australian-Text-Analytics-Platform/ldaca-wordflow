@@ -1,5 +1,5 @@
 import { DisabledReasonTooltip } from '@/components/ui/disabled-reason-tooltip';
-import { TableHead } from '@/components/ui/table';
+import { DraggableTableHead } from '@/features/views/common/components/ColumnDragHandle';
 import type { PaginationState } from '../hooks/useConcordanceTaskFlow';
 import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
 import { alignmentClassForColumn } from './concordanceTableModel';
@@ -35,9 +35,11 @@ export function SortableHeader({
   // (sorted with Highlight L1/R1 for sorting off, then switched on).
   const isSorted = nodeState.sortBy === sortKey || nodeState.sortBy === columnKey;
   const sortIcon = isSorted ? (nodeState.descending ? '▼' : '▲') : '▲▼';
-
+  // The grip moves the column; the rest of the header sorts (issue 373).
   return (
-    <TableHead
+    <DraggableTableHead
+      id={columnKey}
+      label={label}
       className={`px-3 py-2 ${alignmentClassForColumn(columnKey) || 'text-left'} text-label-secondary font-medium uppercase tracking-wider cursor-pointer hover:bg-panel ${isSorted ? 'text-link' : 'text-description'}`}
       onClick={() => {
         onSort(sortKey, paginationKey, requestNodeId);
@@ -51,6 +53,6 @@ export function SortableHeader({
           </span>
         </div>
       </DisabledReasonTooltip>
-    </TableHead>
+    </DraggableTableHead>
   );
 }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { ChevronDown } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChevronDown, Search } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -63,6 +63,10 @@ interface MetadataColumnSelectorProps {
  * Used by: Annotation Manual, Preview, and Review tables plus
  * Concordance/Quotation result tables.
  */
+
+/** A menu row's height when none can be measured yet (a compact row is about 28px). */
+const MENU_ROW_FALLBACK_PX = 28;
+
 export function MetadataColumnSelector({
   availableColumns,
   selectedColumns,
@@ -80,6 +84,25 @@ export function MetadataColumnSelector({
 
   // Columns that the user is allowed to toggle from this dropdown. Items in
   // sections marked `disabled` are excluded — they're shown but inert.
+  // A name filter for wide tables (issue 373); Select all covers what matches.
+  const [filter, setFilter] = useState('');
+  // The filter shows only for lists of at least twice what the menu can show
+  // at once, where scrolling gets hard (Chao, 2026-10-11).
+  const [visibleRows, setVisibleRows] = useState<number | null>(null);
+  const measureMenu = (node: HTMLDivElement | null) => {
+    if (!node) return;
+    const available = Number.parseFloat(
+      getComputedStyle(node).getPropertyValue('--radix-dropdown-menu-content-available-height'),
+    );
+    const row = node.querySelector<HTMLElement>('[role="menuitemcheckbox"]')?.offsetHeight ?? 0;
+    const height = Number.isFinite(available) && available > 0 ? available : window.innerHeight;
+    const rows = Math.max(1, Math.floor(height / (row > 0 ? row : MENU_ROW_FALLBACK_PX)));
+    setVisibleRows((previous) => (previous === rows ? previous : rows));
+  };
+  const query = filter.trim().toLocaleLowerCase();
+  const showFilter = visibleRows !== null && normalizedAvailableColumns.length >= 2 * visibleRows;
+  const matches = (column: string) =>
+    !showFilter || !query || column.toLocaleLowerCase().includes(query);
   const selectableColumns = useSections
     ? Array.from(
         new Set(
@@ -90,10 +113,11 @@ export function MetadataColumnSelector({
         ),
       )
     : normalizedAvailableColumns.filter((column) => !disabledColumnSet.has(column));
+  const matchingSelectable = selectableColumns.filter(matches);
 
   const allSelectableSelected =
-    selectableColumns.length > 0 &&
-    selectableColumns.every((c) => normalizedSelectedColumns.includes(c));
+    matchingSelectable.length > 0 &&
+    matchingSelectable.every((c) => normalizedSelectedColumns.includes(c));
 
   /** Called by: MetadataColumnSelector checkbox items. */
   const toggleColumn = (column: string, checked: boolean) => {
@@ -111,7 +135,11 @@ export function MetadataColumnSelector({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <DropdownMenu>
+      <DropdownMenu
+        onOpenChange={(open) => {
+          if (!open) setFilter('');
+        }}
+      >
         <DisabledReasonTooltip reason={triggerDisabled ? disabledReason : undefined}>
           <DropdownMenuTrigger asChild>
             <Button
@@ -126,7 +154,29 @@ export function MetadataColumnSelector({
             </Button>
           </DropdownMenuTrigger>
         </DisabledReasonTooltip>
-        <DropdownMenuContent align="start" className={MENU_CLASS}>
+        <DropdownMenuContent ref={measureMenu} align="start" className={MENU_CLASS}>
+          {showFilter ? (
+            <div className="relative px-1 pb-1">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2 left-3 size-3.5 text-description"
+              />
+              <input
+                type="search"
+                aria-label="Filter columns by name"
+                placeholder="Filter columns…"
+                value={filter}
+                onChange={(event) => {
+                  setFilter(event.target.value);
+                }}
+                // Keep typing in the box: the menu would jump to items by letter.
+                onKeyDown={(event) => {
+                  if (event.key !== 'Escape' && event.key !== 'ArrowDown') event.stopPropagation();
+                }}
+                className="h-7 w-full rounded-sm border border-input-border bg-editor pr-2 pl-7 text-body placeholder:text-description focus:border-focus focus:outline-hidden"
+              />
+            </div>
+          ) : null}
           <DropdownMenuCheckboxItem
             className={ITEM_CLASS}
             checked={allSelectableSelected}
@@ -135,26 +185,26 @@ export function MetadataColumnSelector({
             onCheckedChange={(checked) => {
               if (checked) {
                 onSelectedColumnsChange(
-                  normalizeMetadataColumns([...normalizedSelectedColumns, ...selectableColumns]),
+                  normalizeMetadataColumns([...normalizedSelectedColumns, ...matchingSelectable]),
                 );
               } else {
                 onSelectedColumnsChange(
-                  normalizedSelectedColumns.filter((c) => !selectableColumns.includes(c)),
+                  normalizedSelectedColumns.filter((c) => !matchingSelectable.includes(c)),
                 );
               }
             }}
             onSelect={(event) => {
               event.preventDefault();
             }}
-            disabled={selectableColumns.length === 0}
+            disabled={matchingSelectable.length === 0}
           >
-            Select all
+            {showFilter && query ? 'Select all matching' : 'Select all'}
           </DropdownMenuCheckboxItem>
           <DropdownMenuSeparator />
           {useSections
             ? sections.flatMap((section, sectionIdx) => {
-                const items = normalizeMetadataColumns(section.columns).filter((column) =>
-                  normalizedAvailableColumns.includes(column),
+                const items = normalizeMetadataColumns(section.columns).filter(
+                  (column) => normalizedAvailableColumns.includes(column) && matches(column),
                 );
                 if (items.length === 0) return [];
                 const out: React.ReactNode[] = [];
@@ -182,7 +232,7 @@ export function MetadataColumnSelector({
                 });
                 return out;
               })
-            : normalizedAvailableColumns.map((column) => (
+            : normalizedAvailableColumns.filter(matches).map((column) => (
                 <DropdownMenuCheckboxItem
                   key={column}
                   className={ITEM_CLASS}

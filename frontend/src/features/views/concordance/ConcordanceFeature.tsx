@@ -1,5 +1,9 @@
 import { AnalysisSplitLayout } from '@/features/views/common/components/AnalysisSplitLayout';
-import { sourceTextColumnName } from '@/features/views/common/generatedColumns';
+import { orderColumns, tabColumnLayout } from '@/features/views/common/columnOrder';
+import {
+  CONCORDANCE_CORE_COLUMNS,
+  sourceTextColumnName,
+} from '@/features/views/common/generatedColumns';
 import { useState, useEffect, useRef } from 'react';
 import { useQueries } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -239,7 +243,15 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     setIgnorePunctuation,
     currentParams: currentConcordanceParams,
   } = concordanceParameters;
-  const [selectedMetadataColumns, setSelectedMetadataColumns] = useState<string[]>([]);
+  // Shown metadata and column order are saved with the tab (issue 373).
+  const columnLayout = tabColumnLayout(host.settings, host.setSetting, CONCORDANCE_COLUMNS_SETTING);
+  const selectedMetadataColumns = columnLayout.shown;
+  // The match table's order on screen, which exports keep (issue 373).
+  const tableColumnOrder = orderColumns(
+    [...CONCORDANCE_CORE_COLUMNS, ...columnLayout.shown],
+    columnLayout.order,
+  );
+  const setSelectedMetadataColumns = columnLayout.setShown;
   // Table-only presentation state: remounting the Concordance feature restores
   // the default L1/R1 tint without changing the immutable Analysis request.
   const [highlightL1R1, setHighlightL1R1] = useState(true);
@@ -485,6 +497,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   // that are no longer in the available set (e.g. after a re-run that drops
   // a column from the source data).
   useEffect(() => {
+    // Saved choices wait for the columns to load: an empty list would wipe them (issue 373).
+    if (availableMetadataColumns.length === 0) return;
     void Promise.resolve().then(() => {
       setSelectedMetadataColumns((prev) => {
         const filtered = prev.filter((column) => availableMetadataColumns.includes(column));
@@ -492,6 +506,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
         return filtered;
       });
     });
+    // The setter is rebuilt each render from the tab setting; the columns decide when to prune.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableMetadataColumns, availableMetadataColumnsKey]);
 
   const { handleSearch, handleSort, handleResetSort, handlePageChange, persistResultPreferences } =
@@ -986,6 +1002,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
             disabledReason: metadataDisabledReason,
             selectedColumns: selectedMetadataColumns,
             setSelectedColumns: setSelectedMetadataColumns,
+            columnOrder: columnLayout.order,
+            setColumnOrder: columnLayout.setOrder,
           }}
           sources={{
             searchWord: resultSearchWord,
@@ -1041,6 +1059,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           isSubmitting={isDownloading}
           mode={concordanceView === 'dispersion' ? 'document' : 'match'}
           allowSourceSelection
+          columnOrder={tableColumnOrder}
           purpose="download"
           onSubmit={(sources, format = 'csv') => {
             void handleDownload(sources, format);
@@ -1058,6 +1077,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
           isSubmitting={isAddingToWorkspace}
           mode={concordanceView === 'dispersion' ? 'document' : 'match'}
           allowSourceSelection
+          columnOrder={tableColumnOrder}
           onSubmit={(sources) => {
             void handleAddToWorkspace(sources);
           }}
@@ -1074,6 +1094,9 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     </AnalysisSplitLayout>
   );
 }
+
+/** The tab setting holding shown metadata and column order (issue 373). */
+const CONCORDANCE_COLUMNS_SETTING = 'concordance.columns';
 
 export { ConcordanceFeature };
 export default ConcordanceFeature;

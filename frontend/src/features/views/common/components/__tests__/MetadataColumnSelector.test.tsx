@@ -89,4 +89,50 @@ describe('MetadataColumnSelector', () => {
       'unchecked',
     );
   });
+
+  it('offers a name filter only for lists twice as long as the menu shows (issue 373)', async () => {
+    const Many = ({ count }: { count: number }) => {
+      const [selected, setSelected] = useState<string[]>([]);
+      return (
+        <MetadataColumnSelector
+          availableColumns={Array.from({ length: count }, (_v, i) => `col_${String(i)}`)}
+          selectedColumns={selected}
+          onSelectedColumnsChange={setSelected}
+        />
+      );
+    };
+    const open = () => {
+      const trigger = screen.getByRole('button', { name: /show metadata/i });
+      fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
+    };
+    // jsdom: a 768px window with 28px rows shows 27 items, so 54 or more get the filter.
+    const { unmount } = render(<Many count={20} />);
+    open();
+    expect(await screen.findByRole('menuitemcheckbox', { name: 'col_0' })).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox', { name: 'Filter columns by name' })).toBeNull();
+    unmount();
+
+    render(<Many count={60} />);
+    open();
+    const filter = await screen.findByRole('searchbox', { name: 'Filter columns by name' });
+    fireEvent.change(filter, { target: { value: 'col_5' } });
+    expect(screen.getAllByRole('menuitemcheckbox').map((item) => item.textContent)).toEqual([
+      'Select all matching',
+      'col_5',
+      'col_50',
+      'col_51',
+      'col_52',
+      'col_53',
+      'col_54',
+      'col_55',
+      'col_56',
+      'col_57',
+      'col_58',
+      'col_59',
+    ]);
+    fireEvent.click(screen.getByRole('menuitemcheckbox', { name: 'Select all matching' }));
+    expect(screen.getByRole('button', { name: /show metadata/i, hidden: true })).toHaveTextContent(
+      '(11)',
+    );
+  });
 });

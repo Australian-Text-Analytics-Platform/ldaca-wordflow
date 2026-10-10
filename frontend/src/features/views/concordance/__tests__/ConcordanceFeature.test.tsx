@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
@@ -456,7 +457,7 @@ const renderConcordanceFeature = (taskId: string | null = null) => {
     runAllRoot?.state === 'queued' || runAllRoot?.state === 'running' ? runAllRoot : null;
   return {
     ...renderWithClient(
-      <ConcordanceFeature
+      <ConcordanceWithSettings
         host={{
           tabId: 'tab-1',
           analyses,
@@ -464,10 +465,8 @@ const renderConcordanceFeature = (taskId: string | null = null) => {
           latestRunAll: runAllRoot,
           activeAnalysis,
           inputSets: {},
-          settings: {},
           correctionColumns: {},
           setInputSet,
-          setSetting: vi.fn(),
           setCorrectionColumn: vi.fn(),
           clearCorrectionColumns: vi.fn(),
           refreshAnalyses: vi.fn(),
@@ -477,6 +476,24 @@ const renderConcordanceFeature = (taskId: string | null = null) => {
     setInputSet,
   };
 };
+
+type FeatureHost = Parameters<typeof ConcordanceFeature>[0]['host'];
+
+/** The tab keeps its settings, as the real tab host does (issue 373). */
+function ConcordanceWithSettings({ host }: { host: Omit<FeatureHost, 'settings' | 'setSetting'> }) {
+  const [settings, setSettings] = useState<Record<string, string>>({});
+  return (
+    <ConcordanceFeature
+      host={{
+        ...host,
+        settings,
+        setSetting: (key, value) => {
+          setSettings((previous) => ({ ...previous, [key]: value }));
+        },
+      }}
+    />
+  );
+}
 
 describe('ConcordanceFeature', () => {
   beforeEach(() => {

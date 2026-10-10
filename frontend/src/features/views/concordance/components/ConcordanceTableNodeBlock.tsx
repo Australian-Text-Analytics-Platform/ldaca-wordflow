@@ -51,6 +51,9 @@ export interface ConcordanceTableNodeBlockProps {
   caseSensitive: boolean;
   showMetadata: boolean;
   selectedMetadataColumns: string[];
+  /** Column order from dragged headers, and how to save a new one (issue 373). */
+  columnOrder?: readonly string[];
+  onReorderColumns?: (order: string[]) => void;
   reviewRowUnit: 'documents' | 'matches' | null;
   highlightL1R1: boolean;
   resultSummary?: ReactNode;
@@ -110,6 +113,8 @@ function CombinedConcordanceTable({
   caseSensitive,
   showMetadata,
   selectedMetadataColumns,
+  columnOrder,
+  onReorderColumns,
   effectiveNodeColumnSelections,
   panelSelectedNodes,
   sourceColorMap,
@@ -131,6 +136,7 @@ function CombinedConcordanceTable({
     nodeData,
     showMetadata,
     selectedMetadataColumns,
+    columnOrder,
   });
   const table = useServerTable<ConcordanceRow>({
     data: rows,
@@ -238,6 +244,7 @@ function CombinedConcordanceTable({
                 table={table}
                 rows={rows}
                 tableColumns={tableColumns}
+                onReorderColumns={onReorderColumns}
                 searchWord={searchWord}
                 loading={combinedLoading}
                 highlightL1R1={highlightL1R1}
@@ -291,6 +298,8 @@ function PerNodeConcordanceTable({
   caseSensitive,
   showMetadata,
   selectedMetadataColumns,
+  columnOrder,
+  onReorderColumns,
   panelSelectedNodes,
   nodePagination,
   globalPageSize,
@@ -313,6 +322,7 @@ function PerNodeConcordanceTable({
     nodeData,
     showMetadata,
     selectedMetadataColumns,
+    columnOrder,
   });
 
   const currentNodePagination = nodePagination[paginationKey];
@@ -449,6 +459,7 @@ function PerNodeConcordanceTable({
                 table={table}
                 rows={rows}
                 tableColumns={tableColumns}
+                onReorderColumns={onReorderColumns}
                 searchWord={searchWord}
                 loading={nodeIsLoading}
                 highlightL1R1={highlightL1R1}

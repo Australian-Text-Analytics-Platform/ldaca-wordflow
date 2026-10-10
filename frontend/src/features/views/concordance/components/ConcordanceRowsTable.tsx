@@ -1,14 +1,7 @@
 import { renderColumnPart } from '@/lib/table/renderColumnPart';
 import { useStableTableHeight } from '@/lib/table/useStableTableHeight';
 import type { CSSProperties, ReactNode } from 'react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Table, TableBody, TableCell, TableHeader, TableRow } from '@/components/ui/table';
 import { PaginatedTableProcessingRow } from '@/features/views/common/components/PaginatedTableProcessingRow';
 import { busyTableBodyProps } from '@/features/views/common/components/paginatedTableBusy';
 import { GREY, toBgColor } from '@/features/views/common/vizPalette';
@@ -22,6 +15,10 @@ import type {
   ServerTableInstance,
 } from '@/features/views/common/hooks/useServerTable';
 import { GeneratedColumnLabel } from '@/features/views/common/components/GeneratedColumnLabel';
+import {
+  ColumnReorderProvider,
+  DraggableTableHead,
+} from '@/features/views/common/components/ColumnDragHandle';
 
 interface Props {
   table: ServerTableInstance<ConcordanceRow>;
@@ -35,6 +32,8 @@ interface Props {
   getSourceColor?: (row: ConcordanceRow) => string | undefined;
   highlightL1R1: boolean;
   onRowClick: (row: ConcordanceRow, index: number) => void;
+  /** Saves a new column order when a header is dragged (issue 373). */
+  onReorderColumns?: (order: string[]) => void;
 }
 
 /**
@@ -135,6 +134,7 @@ export function ConcordanceRowsTable({
   getSourceColor,
   highlightL1R1,
   onRowClick,
+  onReorderColumns,
 }: Props) {
   // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
   const stableTableRef = useStableTableHeight<HTMLDivElement>();
@@ -142,11 +142,24 @@ export function ConcordanceRowsTable({
     <div ref={stableTableRef}>
       <Table className="min-w-180" disableContainer>
         <TableHeader className="bg-panel sticky top-0 z-10">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => renderHeader(header))}
-            </TableRow>
-          ))}
+          {table.getHeaderGroups().map((headerGroup) => {
+            const row = (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => renderHeader(header))}
+              </TableRow>
+            );
+            return onReorderColumns ? (
+              <ColumnReorderProvider
+                key={headerGroup.id}
+                ids={headerGroup.headers.map((header) => header.column.id)}
+                onReorder={onReorderColumns}
+              >
+                {row}
+              </ColumnReorderProvider>
+            ) : (
+              row
+            );
+          })}
         </TableHeader>
         <TableBody {...busyTableBodyProps(loading && rows.length > 0)}>
           {loading && rows.length === 0 ? (
@@ -219,13 +232,15 @@ export function ConcordancePlainHeader({
   hint?: string;
 }) {
   return (
-    <TableHead
+    <DraggableTableHead
       key={header.id}
+      id={header.column.id}
+      label={header.column.id}
       className={`px-3 py-2 text-label-secondary font-medium uppercase tracking-wider text-description ${alignmentClassForColumn(header.column.id) || 'text-left'}`}
     >
       <DisabledReasonTooltip reason={hint} side="bottom">
         <GeneratedColumnLabel name={header.column.id} />
       </DisabledReasonTooltip>
-    </TableHead>
+    </DraggableTableHead>
   );
 }

@@ -52,7 +52,9 @@ export function projectConcordanceRunAllReviewPage(
     ...source.source.metadata_columns,
     ...REVIEW_CONCORDANCE_COLUMNS,
   ];
-  const metadataColumns = source.source.metadata_columns;
+  // The analysed text can be shown like metadata, hidden until chosen (issue 373),
+  // as a Preview already offers it.
+  const metadataColumns = [source.source.document_column, ...source.source.metadata_columns];
   const totalRows =
     page.totalRows ??
     (rowUnit === 'documents' ? source.source.document_count : source.source.match_count);

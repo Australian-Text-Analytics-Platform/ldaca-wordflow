@@ -1,4 +1,5 @@
 import type { ServerColumnDef } from '@/features/views/common/hooks/useServerTable';
+import { orderColumns } from '@/features/views/common/columnOrder';
 import type { ConcordanceNodeResult } from '@/api';
 import {
   CONCORDANCE_COLUMN_KEYS,
@@ -49,6 +50,8 @@ interface Params {
   nodeData: ConcordanceNodeResult;
   showMetadata: boolean;
   selectedMetadataColumns: string[];
+  /** Column order from dragged headers (issue 373). */
+  columnOrder?: readonly string[];
 }
 
 export interface ConcordanceTableModel {
@@ -68,6 +71,7 @@ export function buildConcordanceTableModel({
   nodeData,
   showMetadata,
   selectedMetadataColumns,
+  columnOrder = [],
 }: Params): ConcordanceTableModel {
   const rows = flattenConcordanceGroups(nodeData.data);
   const allColumns = nodeData.columns;
@@ -88,7 +92,7 @@ export function buildConcordanceTableModel({
         ...visibleMetadataColumns.filter((columnName) => allColumns.includes(columnName)),
       ]
     : concordanceColumns.filter((columnName) => allColumns.includes(columnName));
-  const displayColumns = Array.from(new Set(rawDisplayColumns));
+  const displayColumns = orderColumns(Array.from(new Set(rawDisplayColumns)), columnOrder);
   const tableColumns = displayColumns;
 
   return {
