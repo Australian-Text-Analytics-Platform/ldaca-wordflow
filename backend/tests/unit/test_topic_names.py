@@ -44,3 +44,36 @@ def test_topic_names_are_trimmed_and_keyed_by_sorted_natural_topics() -> None:
         TopicModelingTopicNames(analysis_id=uuid.uuid4(), names={"a": "Sleep"})
     with pytest.raises(ValidationError):
         TopicModelingTopicNames(analysis_id=uuid.uuid4(), names={"1": "x" * 121})
+
+
+def test_empty_topic_name_fields_are_left_out_of_saved_records() -> None:
+    """0.7.11 refuses keys it does not know, so empty name fields are not written (issue 366)."""
+    from ldaca_wordflow.domain.workspace.analysis import TopicNameOverride
+    from ldaca_wordflow.domain.workspace.tab import TopicModelingTabSettings
+
+    settings = TopicModelingTabSettings.model_validate(
+        {
+            "kind": "topic_modeling",
+            "stop_words": {"words": []},
+            "words_per_topic": 15,
+            "projection_selection": None,
+        }
+    )
+    assert "topic_names" not in settings.model_dump(mode="json")
+
+    from ldaca_wordflow.domain.workspace.analysis import (
+        TopicModelingDataBlockCreationAnalysisRequest,
+    )
+
+    node = "00000000-0000-0000-0000-000000000001"
+    request = TopicModelingDataBlockCreationAnalysisRequest.model_validate(
+        {
+            "node_ids": [node],
+            "selected_columns": {node: ["text"]},
+            "new_node_names": {node: "Topics"},
+            "cluster_count": 3,
+            "top_n_topics": 1,
+        }
+    )
+    assert "topic_names_override" not in request.model_dump(mode="json")
+    assert TopicNameOverride(topic_id=0, name=" Sleep ").name == "Sleep"

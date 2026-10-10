@@ -538,7 +538,10 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
     cluster_count: int = Field(ge=0)
     top_n_topics: int = Field(ge=0)
     topic_meanings_override: list[TopicMeaningOverride] = Field(default_factory=list)
-    topic_names_override: list[TopicNameOverride] = Field(default_factory=list)
+    # Left out when empty, so 0.7.11 can still read the record (issue 366).
+    topic_names_override: list[TopicNameOverride] = Field(
+        default_factory=list, exclude_if=lambda value: not value
+    )
     # "documents": one row per source document with its Topic Coverage.
     # "topics": one row per (document, Topic) holding only that Topic's segments.
     row_unit: Literal["documents", "topics"] = "documents"

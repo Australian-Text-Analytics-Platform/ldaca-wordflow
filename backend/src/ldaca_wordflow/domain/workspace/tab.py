@@ -144,7 +144,11 @@ class TopicModelingTabSettings(_TabSettings):
     stop_words: StopWordSettings
     words_per_topic: int = Field(ge=3, le=100)
     projection_selection: TopicModelingProjectionSelection | None
-    topic_names: TopicModelingTopicNames | None = None
+    # Left out when empty, so Projects without names stay readable by 0.7.11,
+    # which refuses keys it does not know (issue 366).
+    topic_names: TopicModelingTopicNames | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 type TabSettings = Annotated[

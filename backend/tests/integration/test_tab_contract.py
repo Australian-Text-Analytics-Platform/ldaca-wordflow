@@ -196,8 +196,9 @@ def test_tab_presentation_settings_are_normalized_and_kind_scoped(tmp_path: Path
             "stop_words": {"words": []},
             "words_per_topic": 15,
             "projection_selection": None,
-            "topic_names": None,
         }
+        # Left out when empty, so 0.7.11 can still read the Tab (issue 366).
+        assert "topic_names" not in topic["settings"]
 
         updated = client.patch(
             f"{collection}/{topic['id']}",
