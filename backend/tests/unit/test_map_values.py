@@ -38,5 +38,5 @@ def test_mapping_matches_dates_as_listed_and_maps_empty_cells() -> None:
         empty_to="unknown",
         unlisted="keep",
     )
-    result = frame.select(_map_values_expression(request, pl.Date).alias("period"))
+    result = frame.select(_map_values_expression(request, pl.Date()).alias("period"))
     assert result["period"].to_list() == ["early", "unknown", "2021-05-06"]
