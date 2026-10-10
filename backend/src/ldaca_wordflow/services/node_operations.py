@@ -48,7 +48,11 @@ from ..shared.errors import InvalidInputError, NodeNotFoundError
 from ..shared.json_data import JsonData
 from .node_casting import cast_lazyframe_column
 from .conversion import ConversionOptions
-from .category_order import is_category_dtype, stacked_category_order
+from .category_order import (
+    category_label_expression,
+    is_category_dtype,
+    stacked_category_order,
+)
 from ..models.node_resources import (
     AnnotationClassesNodeEditRequest,
     CastNodeEditRequest,
@@ -63,6 +67,7 @@ from ..models.node_resources import (
     GroupSummaryNodeCreateRequest,
     DeduplicateNodeCreateRequest,
     CountNodeEditRequest,
+    MapValuesNodeEditRequest,
     CombineColumnPart,
     CombineColumnsNodeEditRequest,
     ExpressionNodeEditRequest,
@@ -384,6 +389,21 @@ def build_edited_lazyframe(
             request,
         )
         edited = node.data.with_columns(expression.alias(output))
+        return _place_right_of(edited, request.column, [output]), None
+
+    if isinstance(request, MapValuesNodeEditRequest):
+        schema = node.data.collect_schema()
+        if request.column not in schema:
+            raise InvalidInputError("Map values column is not present on the Data Block")
+        require_supported_columns(schema, [request.column], use="as a category")
+        output = request.output_column.strip()
+        if not output:
+            raise InvalidInputError("New column name cannot be blank")
+        if output in schema:
+            raise InvalidInputError("New column name already exists on the Data Block")
+        edited = node.data.with_columns(
+            _map_values_expression(request, schema[request.column]).alias(output)
+        )
         return _place_right_of(edited, request.column, [output]), None
 
     if isinstance(request, CombineColumnsNodeEditRequest):
@@ -990,6 +1010,36 @@ def _split_parts(
         for offset in range(parts - 1)
     ]
     return [remainder, *trailing_parts]
+
+
+def _typed_value(text: str) -> str | None:
+    """A typed new value: blank gives an empty cell."""
+
+    trimmed = text.strip()
+    return trimmed or None
+
+
+def _map_values_expression(request: MapValuesNodeEditRequest, dtype: pl.DataType) -> pl.Expr:
+    """Each value's typed new value, matched on its category label (issue 368).
+
+    Labels are how the category tools show values, so numbers and dates match
+    as the tool listed them. Listed values with a blank input become empty;
+    values not listed become empty or keep their label (``unlisted``).
+    """
+
+    label = category_label_expression(request.column, dtype)
+    mapping = {entry.value: _typed_value(entry.to) for entry in request.mapping}
+    unlisted = label if request.unlisted == "keep" else pl.lit(None, dtype=pl.String)
+    mapped = (
+        label.replace_strict(mapping, default=unlisted, return_dtype=pl.String)
+        if mapping
+        else unlisted
+    )
+    return (
+        pl.when(label.is_null())
+        .then(pl.lit(_typed_value(request.empty_to), dtype=pl.String))
+        .otherwise(mapped)
+    )
 
 
 def _count_expression(column: pl.Expr, request: CountNodeEditRequest) -> pl.Expr:

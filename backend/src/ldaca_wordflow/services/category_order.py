@@ -111,6 +111,55 @@ def natural_key(label: str) -> tuple:
     return key, label
 
 
+@dataclass(frozen=True)
+class ValueCounts:
+    """A column's most common labels, and what falls beyond the limit."""
+
+    labels: list[str]
+    counts: list[int]
+    empty_count: int
+    distinct_count: int
+    unlisted_values: int
+    unlisted_rows: int
+
+
+def value_counts(lazyframe: pl.LazyFrame, column: str, *, limit: int) -> ValueCounts:
+    """The ``limit`` most common labels with counts, ties A to Z (Map values, issue 368).
+
+    Labels are the category labels, so a mapping made from them matches
+    numbers and dates as shown. Unlike ``category_values`` there is no
+    ceiling: free text simply lists its most common values.
+    """
+
+    schema = lazyframe.collect_schema()
+    if column not in schema:
+        raise InvalidInputError(f'Column "{column}" was not found.')
+    label = category_label_expression(column, schema[column])
+    counted = (
+        lazyframe.select(label.alias("label"))
+        .group_by("label")
+        .agg(pl.len().alias("count"))
+        .collect()
+    )
+    empty = counted.filter(pl.col("label").is_null())
+    empty_count = int(empty["count"].sum()) if empty.height else 0
+    rows = [
+        (str(value), int(count))
+        for value, count in counted.filter(pl.col("label").is_not_null()).iter_rows()
+    ]
+    rows.sort(key=lambda row: (-row[1], natural_key(row[0])))
+    listed = rows[:limit]
+    rest = rows[limit:]
+    return ValueCounts(
+        labels=[value for value, _ in listed],
+        counts=[count for _, count in listed],
+        empty_count=empty_count,
+        distinct_count=len(rows),
+        unlisted_values=len(rest),
+        unlisted_rows=sum(count for _, count in rest),
+    )
+
+
 def category_values(
     lazyframe: pl.LazyFrame,
     column: str,

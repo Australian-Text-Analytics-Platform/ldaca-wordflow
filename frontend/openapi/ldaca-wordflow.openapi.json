@@ -3041,6 +3041,62 @@
         "title": "ColumnSummary",
         "type": "object"
       },
+      "ColumnValueCountsResource": {
+        "additionalProperties": false,
+        "description": "A column's most common values with their row counts, for Map values (issue 368).\n\n``labels`` are the values as the category tools show them, most common\nfirst (ties A to Z). Empty cells are counted in ``empty_count``, never\nlisted. ``unlisted_values`` and ``unlisted_rows`` are what falls beyond\n``limit``.",
+        "properties": {
+          "column": {
+            "title": "Column",
+            "type": "string"
+          },
+          "counts": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Counts",
+            "type": "array"
+          },
+          "distinct_count": {
+            "title": "Distinct Count",
+            "type": "integer"
+          },
+          "empty_count": {
+            "title": "Empty Count",
+            "type": "integer"
+          },
+          "labels": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Labels",
+            "type": "array"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "unlisted_rows": {
+            "title": "Unlisted Rows",
+            "type": "integer"
+          },
+          "unlisted_values": {
+            "title": "Unlisted Values",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "column",
+          "labels",
+          "counts",
+          "empty_count",
+          "distinct_count",
+          "unlisted_values",
+          "unlisted_rows",
+          "limit"
+        ],
+        "title": "ColumnValueCountsResource",
+        "type": "object"
+      },
       "CombineColumnPart": {
         "additionalProperties": false,
         "description": "A column reference inside a Combine columns template.",
@@ -6987,6 +7043,82 @@
           "type"
         ],
         "title": "LocalQuotationEngineSelection",
+        "type": "object"
+      },
+      "MapValueEntry": {
+        "additionalProperties": false,
+        "description": "One listed value and its new value; an empty ``to`` gives an empty cell.",
+        "properties": {
+          "to": {
+            "maxLength": 1000,
+            "title": "To",
+            "type": "string"
+          },
+          "value": {
+            "maxLength": 10000,
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value",
+          "to"
+        ],
+        "title": "MapValueEntry",
+        "type": "object"
+      },
+      "MapValuesNodeEditRequest": {
+        "additionalProperties": false,
+        "description": "Map each value of a column to a typed value in a new column (issue 368).\n\n``value`` is the value as the category tools show it (numbers and dates as\ntext). Every listed value is sent, so a blank input means an empty cell.\n``empty_to`` is the new value for empty cells of the source. Values not\nlisted become empty, or keep their value with ``unlisted=\"keep\"``.",
+        "properties": {
+          "column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "empty_to": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Empty To",
+            "type": "string"
+          },
+          "kind": {
+            "const": "map_values",
+            "default": "map_values",
+            "title": "Kind",
+            "type": "string"
+          },
+          "mapping": {
+            "items": {
+              "$ref": "#/components/schemas/MapValueEntry"
+            },
+            "maxItems": 500,
+            "title": "Mapping",
+            "type": "array"
+          },
+          "output_column": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Output Column",
+            "type": "string"
+          },
+          "unlisted": {
+            "default": "empty",
+            "enum": [
+              "empty",
+              "keep"
+            ],
+            "title": "Unlisted",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "output_column",
+          "mapping"
+        ],
+        "title": "MapValuesNodeEditRequest",
         "type": "object"
       },
       "MoveFileRequest": {
@@ -21692,6 +21824,7 @@
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
                     "expression": "#/components/schemas/ExpressionNodeEditRequest",
+                    "map_values": "#/components/schemas/MapValuesNodeEditRequest",
                     "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
                     "replace": "#/components/schemas/ReplaceNodeEditRequest",
                     "set_cell": "#/components/schemas/SetCellNodeEditRequest",
@@ -21723,6 +21856,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/CountNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MapValuesNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"
@@ -21903,6 +22039,7 @@
                     "delete_columns": "#/components/schemas/DeleteColumnsNodeEditRequest",
                     "duplicate_column": "#/components/schemas/DuplicateColumnNodeEditRequest",
                     "expression": "#/components/schemas/ExpressionNodeEditRequest",
+                    "map_values": "#/components/schemas/MapValuesNodeEditRequest",
                     "rename_column": "#/components/schemas/RenameColumnNodeEditRequest",
                     "replace": "#/components/schemas/ReplaceNodeEditRequest",
                     "set_cell": "#/components/schemas/SetCellNodeEditRequest",
@@ -21934,6 +22071,9 @@
                   },
                   {
                     "$ref": "#/components/schemas/CountNodeEditRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/MapValuesNodeEditRequest"
                   },
                   {
                     "$ref": "#/components/schemas/CombineColumnsNodeEditRequest"
@@ -22334,6 +22474,105 @@
           }
         ],
         "summary": "Undo Node",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/value-counts": {
+      "get": {
+        "description": "List a column's most common values with counts for Map values (issue 368).",
+        "operationId": "get_column_value_counts",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "column",
+            "required": true,
+            "schema": {
+              "minLength": 1,
+              "title": "Column",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ColumnValueCountsResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get Column Value Counts",
         "tags": [
           "nodes"
         ]

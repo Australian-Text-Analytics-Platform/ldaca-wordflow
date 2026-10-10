@@ -52,11 +52,14 @@ from .category_order import (
     MAX_CATEGORY_VALUES,
     WARN_CATEGORY_VALUES,
     category_values,
+    value_counts,
     unreadable_order_notes,
 )
 from ..models.node_resources import (
     CategoryValuesResource,
     ColumnExamplesResource,
+    ColumnValueCountsResource,
+    MAP_VALUES_LIMIT,
     CorpusOverviewResource,
     ConversionCheckResource,
     DatetimeFormatCandidate,
@@ -639,6 +642,36 @@ class NodeService:
                 node.data.collect_schema(),
             )
             return content, lease.revision
+
+    async def value_counts(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+        column: str,
+    ) -> ColumnValueCountsResource:
+        """A column's most common values with counts, for Map values (issue 368)."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            node = lease.workspace.nodes.get(node_id)
+            if node is None:
+                raise NodeNotFoundError("Data Block not found")
+            require_supported_columns(
+                node.data.collect_schema(), [column], use="as a category"
+            )
+            counts = await self._run_io(
+                lambda: value_counts(node.data, column, limit=MAP_VALUES_LIMIT)
+            )
+        return ColumnValueCountsResource(
+            column=column,
+            labels=counts.labels,
+            counts=counts.counts,
+            empty_count=counts.empty_count,
+            distinct_count=counts.distinct_count,
+            unlisted_values=counts.unlisted_values,
+            unlisted_rows=counts.unlisted_rows,
+            limit=MAP_VALUES_LIMIT,
+        )
 
     async def category_values(
         self,

@@ -74,6 +74,18 @@ EDITS: list[dict[str, Any]] = [
         }
         for measure in ("words", "characters", "characters_no_spaces", "matches")
     ],
+    *[
+        {
+            "kind": "map_values",
+            "column": column,
+            "output_column": "group",
+            "mapping": [{"value": value, "to": "A"}],
+            "empty_to": "none",
+            "unlisted": unlisted,
+        }
+        for column, value in (("text", "it's a, b"), ("id", "1"))
+        for unlisted in ("empty", "keep")
+    ],
     {"kind": "replace", "source_column": "text", "pattern": ".", "literal": True},
     {
         "kind": "replace",

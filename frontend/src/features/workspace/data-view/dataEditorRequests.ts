@@ -308,3 +308,55 @@ export function buildCount(
     scrollAnchor: form.column,
   };
 }
+
+/** The mapped column's name when the user leaves it blank: "party mapped" (issue 368). */
+export function defaultMappedName(column: string): string {
+  return `${column || 'text'} mapped`;
+}
+
+/**
+ * Map values (issue 368): every listed value is sent with its typed new value,
+ * so a blank input means an empty cell; values beyond the list follow
+ * `keepUnlisted`. `values` is null until the list has loaded.
+ */
+export function buildMapValues(
+  form: {
+    column: string;
+    outputName: string;
+    values: readonly string[] | null;
+    inputs: Readonly<Record<string, string>>;
+    emptyTo: string;
+    keepUnlisted: boolean;
+  },
+  columns: readonly string[],
+): DataEditorDraft | null {
+  if (!columns.includes(form.column) || form.values === null) return null;
+  const output = newName(form.outputName || defaultMappedName(form.column), columns);
+  if (!output) return null;
+  return {
+    request: {
+      kind: 'map_values',
+      column: form.column,
+      output_column: output,
+      mapping: form.values.map((value) => ({ value, to: form.inputs[value] ?? '' })),
+      empty_to: form.emptyTo,
+      unlisted: form.keepUnlisted ? 'keep' : 'empty',
+    },
+    highlightColumns: [output],
+    scrollAnchor: form.column,
+  };
+}
+
+/** Values with a value in the source that become empty cells in the new column, and their rows. */
+export function mapValuesEmptied(
+  listed: readonly { value: string; count: number }[],
+  inputs: Readonly<Record<string, string>>,
+  unlisted: { values: number; rows: number; keep: boolean },
+): { values: number; rows: number } {
+  const blank = listed.filter(({ value }) => !(inputs[value] ?? '').trim());
+  const rest = unlisted.keep ? { values: 0, rows: 0 } : unlisted;
+  return {
+    values: blank.length + rest.values,
+    rows: blank.reduce((sum, { count }) => sum + count, 0) + rest.rows,
+  };
+}

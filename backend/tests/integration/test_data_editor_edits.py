@@ -339,3 +339,76 @@ def test_extract_output_never_replaces_another_column(tmp_path: Path) -> None:
     finally:
         client.__exit__(None, None, None)
 
+
+
+def test_map_values_lists_common_values_and_maps_them(tmp_path: Path) -> None:
+    """Map values (issue 368): most common first, typed values, blanks and unlisted."""
+    client, unsafe, workspace_id, node_id = _setup(tmp_path)
+    try:
+        base = f"/api/workspaces/{workspace_id}/nodes/{node_id}"
+        counts = client.get(f"{base}/value-counts", params={"column": "party"})
+        assert counts.status_code == 200, counts.text
+        assert counts.json() == {
+            "column": "party",
+            "labels": ["Labor", "Greens"],
+            "counts": [2, 1],
+            "empty_count": 0,
+            "distinct_count": 2,
+            "unlisted_values": 0,
+            "unlisted_rows": 0,
+            "limit": 500,
+        }
+        # Numbers are listed as the category tools show them, and map on that text.
+        ids = client.get(f"{base}/value-counts", params={"column": "id"}).json()
+        assert ids["labels"] == ["1", "2", "3"]
+
+        def preview(body: dict[str, object]) -> pl.DataFrame:
+            response = client.post(f"{base}/edits/preview", json=body, headers=unsafe)
+            assert response.status_code == 200, response.text
+            return pl.read_ipc_stream(BytesIO(response.content))
+
+        mapped = preview(
+            {
+                "kind": "map_values",
+                "column": "party",
+                "output_column": "side",
+                "mapping": [{"value": "Labor", "to": " Government "}, {"value": "Greens", "to": ""}],
+            }
+        )
+        assert mapped.columns == ["id", "text", "party", "side"]
+        # Typed values are trimmed; a blank input gives an empty cell.
+        assert mapped["side"].to_list() == ["Government", None, "Government"]
+
+        def by_id(mapping: list[dict[str, str]], unlisted: str) -> list[object]:
+            return preview(
+                {
+                    "kind": "map_values",
+                    "column": "id",
+                    "output_column": "group",
+                    "mapping": mapping,
+                    "unlisted": unlisted,
+                }
+            )["group"].to_list()
+
+        assert by_id([{"value": "1", "to": "first"}], "empty") == ["first", None, None]
+        assert by_id([{"value": "1", "to": "first"}], "keep") == ["first", "2", "3"]
+
+        duplicate = client.post(
+            f"{base}/edits/preview",
+            json={
+                "kind": "map_values",
+                "column": "party",
+                "output_column": "side",
+                "mapping": [{"value": "Labor", "to": "a"}, {"value": "Labor", "to": "b"}],
+            },
+            headers=unsafe,
+        )
+        assert duplicate.status_code == 422
+        taken = client.post(
+            f"{base}/edits/preview",
+            json={"kind": "map_values", "column": "party", "output_column": "text", "mapping": []},
+            headers=unsafe,
+        )
+        assert taken.status_code == 400
+    finally:
+        client.__exit__(None, None, None)

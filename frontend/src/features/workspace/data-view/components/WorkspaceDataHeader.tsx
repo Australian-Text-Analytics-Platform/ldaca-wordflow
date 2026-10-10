@@ -107,6 +107,13 @@ export const WorkspaceDataHeader = ({
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     onSelect={() => {
+                      onOpenTool('map_values');
+                    }}
+                  >
+                    Map values…
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={() => {
                       onOpenTool('split');
                     }}
                   >

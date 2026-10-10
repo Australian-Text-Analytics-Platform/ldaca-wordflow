@@ -220,6 +220,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "GET",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/value-counts",
+        "get_column_value_counts",
+    ),
+    (
+        "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/column-examples",
         "get_column_examples",
     ),

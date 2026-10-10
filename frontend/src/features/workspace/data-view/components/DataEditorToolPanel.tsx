@@ -23,7 +23,9 @@ import {
   buildDuplicate,
   buildExtract,
   buildFindReplace,
+  buildMapValues,
   buildSplit,
+  defaultMappedName,
   CLEAN_TEXT_OPERATIONS,
   defaultNewColumnName,
   COUNT_MEASURES,
@@ -39,6 +41,8 @@ import {
 } from '../dataEditorRequests';
 import { CombineTemplateField } from './CombineTemplateField';
 import { DelimiterChips } from './DelimiterChips';
+import { MapValuesFields } from './MapValuesFields';
+import { useColumnValueCounts } from '../hooks/useColumnValueCounts';
 import { DATA_EDITOR_TOOL_LABELS, useDataEditorToolStore } from '../dataEditorToolStore';
 import { focusDataEditorTool } from '../focusDataEditorTool';
 import { toastError } from '@/lib/toastError';
@@ -244,7 +248,13 @@ export function DataEditorToolPanel() {
   const [direction, setDirection] = useState<SplitDirection>('left');
   const [measure, setMeasure] = useState<CountMeasure>('words');
   const [parts, setParts] = useState('2');
+  // Map values (issue 368): typed new values per listed value, for empty cells,
+  // and whether values beyond the list keep their value.
+  const [mapInputs, setMapInputs] = useState<Record<string, string>>({});
+  const [mapEmptyTo, setMapEmptyTo] = useState('');
+  const [keepUnlisted, setKeepUnlisted] = useState(false);
   const [touched, setTouched] = useState(false);
+  const valueCounts = useColumnValueCounts(nodeId, column, tool === 'map_values');
   // Start in the tool's first field (issue 154 follow-up).
   useEffect(() => {
     focusDataEditorTool();
@@ -303,6 +313,18 @@ export function DataEditorToolPanel() {
     draft = buildSplit({ column, delimiters, direction, parts: Number(parts) }, columns);
   } else if (tool === 'count') {
     draft = buildCount({ column, measure, pattern, regex, outputName }, columns);
+  } else if (tool === 'map_values') {
+    draft = buildMapValues(
+      {
+        column,
+        outputName,
+        values: valueCounts.counts?.labels ?? null,
+        inputs: mapInputs,
+        emptyTo: mapEmptyTo,
+        keepUnlisted,
+      },
+      columns,
+    );
   }
   const draftKey = draft ? JSON.stringify(draft) : '';
 
@@ -461,7 +483,13 @@ export function DataEditorToolPanel() {
                 label="Column"
                 value={column}
                 columns={columns}
-                onChange={touch(setColumn)}
+                onChange={(value) => {
+                  touch(setColumn)(value);
+                  // Another column has other values to map.
+                  setMapInputs({});
+                  setMapEmptyTo('');
+                  setKeepUnlisted(false);
+                }}
               />
             </div>
             {tool === 'split' ? (
@@ -635,6 +663,44 @@ export function DataEditorToolPanel() {
               placeholder={defaultCountName(column, measure)}
               acceptPlaceholder
               onChange={touch(setOutputName)}
+            />
+          </>
+        ) : null}
+
+        {tool === 'map_values' ? (
+          <>
+            <TextField
+              id="map-values-name"
+              label="New column name"
+              value={outputName}
+              placeholder={defaultMappedName(column)}
+              acceptPlaceholder
+              onChange={touch(setOutputName)}
+            />
+            <MapValuesFields
+              key={column}
+              counts={valueCounts.counts}
+              loading={valueCounts.loading}
+              error={valueCounts.error}
+              inputs={mapInputs}
+              onInput={(value, text) => {
+                touch(setMapInputs)({ ...mapInputs, [value]: text });
+              }}
+              emptyTo={mapEmptyTo}
+              onEmptyTo={touch(setMapEmptyTo)}
+              keepUnlisted={keepUnlisted}
+              onKeepUnlisted={touch(setKeepUnlisted)}
+              onFillRest={() => {
+                touch(setMapInputs)(
+                  Object.fromEntries(
+                    (valueCounts.counts?.labels ?? []).map((value) => [
+                      value,
+                      (mapInputs[value] ?? '').trim() ? (mapInputs[value] ?? '') : value,
+                    ]),
+                  ),
+                );
+                setKeepUnlisted(true);
+              }}
             />
           </>
         ) : null}

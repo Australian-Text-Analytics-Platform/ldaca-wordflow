@@ -19,6 +19,7 @@ from ...models.node_resources import (
     CastNodeEditRequest,
     CategoryValuesResource,
     ColumnExamplesResource,
+    ColumnValueCountsResource,
     ConversionCheckResource,
     CorpusOverviewResource,
     DatetimeFormatsResource,
@@ -432,6 +433,28 @@ async def get_category_values(
         node_id,
         column,
         read_all,
+    )
+
+
+@router.get(
+    "/{node_id}/value-counts",
+    response_model=ColumnValueCountsResource,
+    responses=api_errors(400, 404, 422),
+)
+async def get_column_value_counts(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+    column: str = Query(min_length=1),
+) -> ColumnValueCountsResource:
+    """List a column's most common values with counts for Map values (issue 368)."""
+
+    return await runtime.node_service.value_counts(
+        principal.user.id,
+        workspace_id,
+        node_id,
+        column,
     )
 
 

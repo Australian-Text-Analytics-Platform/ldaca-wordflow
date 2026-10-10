@@ -305,6 +305,41 @@ class CountNodeEditRequest(_StrictRequest):
         return self
 
 
+# Map values lists at most this many values: the most common (issue 368).
+MAP_VALUES_LIMIT = 500
+
+
+class MapValueEntry(_StrictRequest):
+    """One listed value and its new value; an empty ``to`` gives an empty cell."""
+
+    value: str = Field(max_length=10_000)
+    to: str = Field(max_length=1_000)
+
+
+class MapValuesNodeEditRequest(_StrictRequest):
+    """Map each value of a column to a typed value in a new column (issue 368).
+
+    ``value`` is the value as the category tools show it (numbers and dates as
+    text). Every listed value is sent, so a blank input means an empty cell.
+    ``empty_to`` is the new value for empty cells of the source. Values not
+    listed become empty, or keep their value with ``unlisted="keep"``.
+    """
+
+    kind: Literal["map_values"] = "map_values"
+    column: str = Field(min_length=1, max_length=200)
+    output_column: str = Field(min_length=1, max_length=200)
+    mapping: list[MapValueEntry] = Field(max_length=MAP_VALUES_LIMIT)
+    empty_to: str = Field(default="", max_length=1_000)
+    unlisted: Literal["empty", "keep"] = "empty"
+
+    @model_validator(mode="after")
+    def validate_unique_values(self) -> MapValuesNodeEditRequest:
+        values = [entry.value for entry in self.mapping]
+        if len(values) != len(set(values)):
+            raise ValueError("Each value can be mapped only once")
+        return self
+
+
 class CombineTextPart(_StrictRequest):
     """Literal text inside a Combine columns template."""
 
@@ -409,6 +444,7 @@ NodeEditRequest = Annotated[
     | CleanTextNodeEditRequest
     | SplitColumnNodeEditRequest
     | CountNodeEditRequest
+    | MapValuesNodeEditRequest
     | CombineColumnsNodeEditRequest
     | ReplaceNodeEditRequest
     | ExpressionNodeEditRequest
@@ -485,6 +521,27 @@ class CategoryValuesResource(BaseModel):
     sample_rows: int
     sample_distinct: int
     is_document: bool
+
+
+class ColumnValueCountsResource(BaseModel):
+    """A column's most common values with their row counts, for Map values (issue 368).
+
+    ``labels`` are the values as the category tools show them, most common
+    first (ties A to Z). Empty cells are counted in ``empty_count``, never
+    listed. ``unlisted_values`` and ``unlisted_rows`` are what falls beyond
+    ``limit``.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    column: str
+    labels: list[str]
+    counts: list[int]
+    empty_count: int
+    distinct_count: int
+    unlisted_values: int
+    unlisted_rows: int
+    limit: int
 
 
 class ColumnExamplesResource(BaseModel):

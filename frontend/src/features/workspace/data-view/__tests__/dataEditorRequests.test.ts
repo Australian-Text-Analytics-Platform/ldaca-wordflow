@@ -7,6 +7,8 @@ import {
   buildDuplicate,
   buildExtract,
   buildFindReplace,
+  buildMapValues,
+  mapValuesEmptied,
   buildSplit,
   duplicateColumnName,
 } from '../dataEditorRequests';
@@ -168,5 +170,55 @@ describe('Data Editor request builders (issue 143)', () => {
       output_column: 'dots',
     });
     expect(count({ outputName: 'party' })).toBeNull();
+  });
+});
+
+describe('buildMapValues (issue 368)', () => {
+  const columns = ['id', 'party'];
+  const form = {
+    column: 'party',
+    outputName: '',
+    values: ['Labor', 'Greens'] as string[] | null,
+    inputs: { Labor: 'Government' },
+    emptyTo: '',
+    keepUnlisted: false,
+  };
+
+  it('sends every listed value, blank ones as empty, under a default name', () => {
+    expect(buildMapValues(form, columns)).toEqual({
+      request: {
+        kind: 'map_values',
+        column: 'party',
+        output_column: 'party mapped',
+        mapping: [
+          { value: 'Labor', to: 'Government' },
+          { value: 'Greens', to: '' },
+        ],
+        empty_to: '',
+        unlisted: 'empty',
+      },
+      highlightColumns: ['party mapped'],
+      scrollAnchor: 'party',
+    });
+  });
+
+  it('waits for the values and refuses a taken name', () => {
+    expect(buildMapValues({ ...form, values: null }, columns)).toBeNull();
+    expect(buildMapValues({ ...form, outputName: 'id' }, columns)).toBeNull();
+    expect(buildMapValues({ ...form, column: 'missing' }, columns)).toBeNull();
+  });
+
+  it('counts values and rows that become empty', () => {
+    const listed = [
+      { value: 'Labor', count: 5 },
+      { value: 'Greens', count: 3 },
+    ];
+    expect(mapValuesEmptied(listed, { Labor: 'x' }, { values: 4, rows: 7, keep: false })).toEqual({
+      values: 5,
+      rows: 10,
+    });
+    expect(
+      mapValuesEmptied(listed, { Labor: 'x', Greens: ' ' }, { values: 4, rows: 7, keep: true }),
+    ).toEqual({ values: 1, rows: 3 });
   });
 });

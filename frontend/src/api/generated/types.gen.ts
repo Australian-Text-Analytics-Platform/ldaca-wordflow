@@ -1428,6 +1428,51 @@ export type ColumnSummary = {
 };
 
 /**
+ * ColumnValueCountsResource
+ *
+ * A column's most common values with their row counts, for Map values (issue 368).
+ *
+ * ``labels`` are the values as the category tools show them, most common
+ * first (ties A to Z). Empty cells are counted in ``empty_count``, never
+ * listed. ``unlisted_values`` and ``unlisted_rows`` are what falls beyond
+ * ``limit``.
+ */
+export type ColumnValueCountsResource = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Counts
+     */
+    counts: Array<number>;
+    /**
+     * Distinct Count
+     */
+    distinct_count: number;
+    /**
+     * Empty Count
+     */
+    empty_count: number;
+    /**
+     * Labels
+     */
+    labels: Array<string>;
+    /**
+     * Limit
+     */
+    limit: number;
+    /**
+     * Unlisted Rows
+     */
+    unlisted_rows: number;
+    /**
+     * Unlisted Values
+     */
+    unlisted_values: number;
+};
+
+/**
  * CombineColumnPart
  *
  * A column reference inside a Combine columns template.
@@ -3544,6 +3589,59 @@ export type LocalQuotationEngineSelection = {
      * Type
      */
     type: 'local';
+};
+
+/**
+ * MapValueEntry
+ *
+ * One listed value and its new value; an empty ``to`` gives an empty cell.
+ */
+export type MapValueEntry = {
+    /**
+     * To
+     */
+    to: string;
+    /**
+     * Value
+     */
+    value: string;
+};
+
+/**
+ * MapValuesNodeEditRequest
+ *
+ * Map each value of a column to a typed value in a new column (issue 368).
+ *
+ * ``value`` is the value as the category tools show it (numbers and dates as
+ * text). Every listed value is sent, so a blank input means an empty cell.
+ * ``empty_to`` is the new value for empty cells of the source. Values not
+ * listed become empty, or keep their value with ``unlisted="keep"``.
+ */
+export type MapValuesNodeEditRequest = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Empty To
+     */
+    empty_to?: string;
+    /**
+     * Kind
+     */
+    kind?: 'map_values';
+    /**
+     * Mapping
+     */
+    mapping: Array<MapValueEntry>;
+    /**
+     * Output Column
+     */
+    output_column: string;
+    /**
+     * Unlisted
+     */
+    unlisted?: 'empty' | 'keep';
 };
 
 /**
@@ -11301,6 +11399,8 @@ export type EditNodeData = {
     } & SplitColumnNodeEditRequest) | ({
         kind: 'count';
     } & CountNodeEditRequest) | ({
+        kind: 'map_values';
+    } & MapValuesNodeEditRequest) | ({
         kind: 'combine_columns';
     } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';
@@ -11388,6 +11488,8 @@ export type PreviewNodeEditData = {
     } & SplitColumnNodeEditRequest) | ({
         kind: 'count';
     } & CountNodeEditRequest) | ({
+        kind: 'map_values';
+    } & MapValuesNodeEditRequest) | ({
         kind: 'combine_columns';
     } & CombineColumnsNodeEditRequest) | ({
         kind: 'replace';
@@ -11608,6 +11710,57 @@ export type UndoNodeResponses = {
 };
 
 export type UndoNodeResponse = UndoNodeResponses[keyof UndoNodeResponses];
+
+export type GetColumnValueCountsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query: {
+        /**
+         * Column
+         */
+        column: string;
+    };
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/value-counts';
+};
+
+export type GetColumnValueCountsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type GetColumnValueCountsError = GetColumnValueCountsErrors[keyof GetColumnValueCountsErrors];
+
+export type GetColumnValueCountsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ColumnValueCountsResource;
+};
+
+export type GetColumnValueCountsResponse = GetColumnValueCountsResponses[keyof GetColumnValueCountsResponses];
 
 export type CloseWorkspaceByIdData = {
     body?: never;

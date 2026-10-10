@@ -92,6 +92,7 @@ const COLUMN_TOOLS: { tool: DataEditorTool; label: string }[] = [
   { tool: 'extract', label: 'Extract text…' },
   { tool: 'split', label: 'Split…' },
   { tool: 'count', label: 'Count…' },
+  { tool: 'map_values', label: 'Map values…' },
   { tool: 'duplicate', label: 'Copy column…' },
 ];
 
