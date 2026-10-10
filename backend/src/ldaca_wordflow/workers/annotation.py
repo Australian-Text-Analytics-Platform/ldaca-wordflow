@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +26,7 @@ from ..infrastructure.storage.durable_fs import atomic_output_path
 from ..infrastructure.storage.input_snapshots import load_snapshot_node
 from ..domain.annotation import provider_failure_message
 from ..shared.errors import format_exception_diagnostic
+from ..shared.annotation_labels import append_labels
 from .progress import ProgressCallback, Step, StepReporter, keep_alive
 from .utils import process_entrypoint
 
@@ -33,6 +35,23 @@ logger = logging.getLogger(__name__)
 
 # The share of the run spent classifying rows; reading and publishing take the rest.
 CLASSIFY_PROGRESS_BAND = (0.1, 0.8)
+
+
+def _classifying_label(rows: int, texts: int) -> str:
+    """The step's label: how many rows, and how few texts are sent for them."""
+
+    if texts == rows:
+        return "Classifying rows"
+    return f"Classifying {rows:,} rows as {texts:,} distinct texts"
+
+
+def _keep_labels(path: Path, texts: list[str], labels: list[str | None]) -> None:
+    """Save a batch's labels; failing to save must never fail the run itself."""
+
+    try:
+        append_labels(path, texts, labels)
+    except OSError:
+        logger.exception("Could not keep annotation labels path=%s", path)
 
 
 def _no_progress(_fraction: float, _message: str, _detail: dict[str, Any] | None = None, /) -> None:
@@ -47,8 +66,13 @@ def run_annotation_analysis(
     request_payload: dict[str, Any],
     api_key: str | None,
     progress_callback: ProgressCallback | None = None,
+    labels_path: str | None = None,
 ) -> dict[str, Any]:
-    """Classify one immutable Data Block snapshot and publish one private output."""
+    """Classify one immutable Data Block snapshot and publish one private output.
+
+    Each distinct text is sent once and its label goes to every row with that
+    text (issue 371). Labels are appended to ``labels_path`` as batches return.
+    """
 
     try:
         request = AnnotationRunAllAnalysisRequest.model_validate(request_payload)
@@ -73,20 +97,25 @@ def run_annotation_analysis(
             if request.processing_mode == "fill_missing"
             else list(range(frame.height))
         )
-        texts = [
+        row_texts = [
             str(text_values[index]) if text_values[index] is not None else ""
             for index in target_indices
         ]
+        # Repeated texts ("not really", retweets) are sent once (issue 371).
+        texts = list(dict.fromkeys(row_texts))
+        text_position = {text: position for position, text in enumerate(texts)}
 
         # Rows classified, the time left and liveness, as Topic Modelling
         # shows them (issue 350); the run waits on the AI provider (issue 370).
         reporter = StepReporter(
             progress_callback or _no_progress,
             band=CLASSIFY_PROGRESS_BAND,
-            steps=(Step("classifying", "Classifying rows"),),
+            steps=(Step("classifying", _classifying_label(len(row_texts), len(texts))),),
             waiting_for="ai_provider",
         )
-        reporter.update("classifying", done=0, total=len(texts), unit="rows")
+        # Counted in texts only when repeats make them fewer than rows.
+        unit = "rows" if len(texts) == len(row_texts) else "texts"
+        reporter.update("classifying", done=0, total=len(texts), unit=unit)
 
         def report_batch_progress(
             completed_rows: int,
@@ -97,7 +126,7 @@ def run_annotation_analysis(
                 "classifying",
                 done=completed_rows,
                 total=total_rows,
-                unit="rows",
+                unit=unit,
                 note=(
                     f"{failed_batches} failed batch{'es' if failed_batches != 1 else ''}"
                     if failed_batches
@@ -116,6 +145,11 @@ def run_annotation_analysis(
                         texts,
                         examples=_load_examples(source_request, input_snapshot_dir),
                         progress_callback=report_batch_progress,
+                        labels_callback=(
+                            None
+                            if labels_path is None
+                            else partial(_keep_labels, Path(labels_path))
+                        ),
                     )
                 )
         except AnnotationAiError as error:
@@ -139,19 +173,16 @@ def run_annotation_analysis(
                     "diagnostic": format_exception_diagnostic(error),
                 },
             }
-        if len(outcome.labels) != len(target_indices) or len(
-            outcome.failed_rows
-        ) != len(target_indices):
+        if len(outcome.labels) != len(texts) or len(outcome.failed_rows) != len(texts):
             raise ValueError("Annotation provider returned a misaligned result")
         labels = list(existing_labels)
-        for index, label, failed in zip(
-            target_indices,
-            outcome.labels,
-            outcome.failed_rows,
-            strict=True,
-        ):
-            if not failed:
-                labels[index] = label
+        failed_row_count = 0
+        for index, text in zip(target_indices, row_texts, strict=True):
+            position = text_position[text]
+            if outcome.failed_rows[position]:
+                failed_row_count += 1
+            else:
+                labels[index] = outcome.labels[position]
         annotation_dtype = frame.schema[source_request.annotation_column]
         annotation_values = pl.Series(
             name=source_request.annotation_column,
@@ -174,7 +205,8 @@ def run_annotation_analysis(
                 "record_count": result.height,
                 "attempted_count": len(target_indices),
                 "failed_batch_count": outcome.failed_batch_count,
-                "failed_row_count": outcome.failed_row_count,
+                # Rows, not distinct texts: a failed text leaves all its rows.
+                "failed_row_count": failed_row_count,
             },
             "message": (
                 "Annotation completed successfully"
@@ -182,7 +214,7 @@ def run_annotation_analysis(
                 else (
                     "Annotation completed with "
                     f"{outcome.failed_batch_count} failed batches and "
-                    f"{outcome.failed_row_count} unannotated rows"
+                    f"{failed_row_count} unannotated rows"
                 )
             ),
         }

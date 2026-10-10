@@ -39,6 +39,7 @@ from ..models.analysis_results import (
     TopicModelingStoredResult,
 )
 from ..settings import Settings
+from ..shared.annotation_labels import annotation_labels_path
 from ..shared.errors import InvalidInputError
 from ..shared.unsupported_columns import require_supported_columns
 from .category_order import is_category_dtype
@@ -561,6 +562,7 @@ def _prepare_annotation_run_all(
         output_dir=str(context.artifact_dir),
         request_payload=request.model_dump(mode="json"),
         api_key=context.credential,
+        labels_path=str(annotation_labels_path(context.scratch_dir)),
     )
 
 

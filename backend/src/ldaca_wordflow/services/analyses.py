@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 import math
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
@@ -48,7 +49,9 @@ from ..domain.workspace import (
 )
 from ..models.analyses import AnalysisCreate, AnalysisPage
 from ..models.analysis_results import ConcordanceRunAllStoredResult
+from .annotation_progress import save_annotation_progress
 from .failures import failure_from_exception
+from ..shared.annotation_labels import annotation_labels_path, read_labels
 from ..shared.errors import (
     AppError,
     AnalysisCorruptError,
@@ -1320,6 +1323,43 @@ class AnalysisService:
                 self._detached_root_id(lease, failed),
             )
 
+    async def save_annotation_progress(
+        self,
+        key: AnalysisExecutionKey,
+        labels_path: Path,
+    ) -> None:
+        """Keep an AI annotation run's returned labels in the Project (issue 371).
+
+        Called every ~30 s while the run goes and once when it stops or fails,
+        before its private folder is removed. A run that succeeded has written
+        its labels into the column already, so nothing is kept for it.
+        """
+
+        labels = await run_sync_in_worker_thread(read_labels, labels_path)
+        if not labels:
+            return
+        try:
+            async with self._workspaces.mutation_context(
+                key.user_id,
+                key.workspace_id,
+                internal=True,
+            ) as lease:
+                record = lease.workspace.analyses.get(key.analysis_id)
+                if record is None or record.state is AnalysisState.SUCCEEDED:
+                    return
+                path = save_annotation_progress(
+                    lease.workspace, lease.path, record, labels
+                )
+                if path is not None:
+                    lease.rollback_paths.append(path)
+                    lease.commit_requested = True
+        except Exception:
+            # Losing one refresh must never fail the run itself.
+            logger.exception(
+                "Could not keep annotation labels analysis_id=%s",
+                key.analysis_id,
+            )
+
     async def finalize_interrupted_analyses(
         self,
         user_id: str,
@@ -1340,6 +1380,16 @@ class AnalysisService:
                     AnalysisState.RUNNING,
                 }:
                     continue
+                # Labels returned before a crash are kept, read before this
+                # commit collects the run's private folder (issue 371).
+                labels_path = annotation_labels_path(
+                    lease.path / "analyses" / str(record.id) / ".execution" / "scratch"
+                )
+                saved_path = save_annotation_progress(
+                    lease.workspace, lease.path, record, read_labels(labels_path)
+                )
+                if saved_path is not None:
+                    lease.rollback_paths.append(saved_path)
                 lease.workspace.replace_analysis(
                     record.fail(
                         timestamp,

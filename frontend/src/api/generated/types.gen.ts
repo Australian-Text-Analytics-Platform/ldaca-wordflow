@@ -482,6 +482,26 @@ export type AnnotationDerivation = {
 };
 
 /**
+ * AnnotationLabelsAppliedResource
+ *
+ * Saved annotation labels written into their Data Block's column (issue 371).
+ */
+export type AnnotationLabelsAppliedResource = {
+    /**
+     * Annotation Column
+     */
+    annotation_column: string;
+    /**
+     * Node Id
+     */
+    node_id: string;
+    /**
+     * Written Rows
+     */
+    written_rows: number;
+};
+
+/**
  * AnnotationModelsRequest
  *
  * Optional request-only credential for provider model discovery.
@@ -11132,6 +11152,56 @@ export type UpdateNodeResponses = {
 };
 
 export type UpdateNodeResponse = UpdateNodeResponses[keyof UpdateNodeResponses];
+
+export type ApplyAnnotationLabelsData = {
+    body?: never;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Node Id
+         */
+        node_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/nodes/{node_id}/annotation-labels/apply';
+};
+
+export type ApplyAnnotationLabelsErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+};
+
+export type ApplyAnnotationLabelsError = ApplyAnnotationLabelsErrors[keyof ApplyAnnotationLabelsErrors];
+
+export type ApplyAnnotationLabelsResponses = {
+    /**
+     * Successful Response
+     */
+    200: AnnotationLabelsAppliedResource;
+};
+
+export type ApplyAnnotationLabelsResponse = ApplyAnnotationLabelsResponses[keyof ApplyAnnotationLabelsResponses];
 
 export type GetCategoryValuesData = {
     body?: never;

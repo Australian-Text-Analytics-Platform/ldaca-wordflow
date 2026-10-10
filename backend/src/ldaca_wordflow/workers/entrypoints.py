@@ -152,6 +152,7 @@ def analysis_process(
             request_payload=invocation.request_payload,
             api_key=invocation.api_key,
             progress_callback=progress,
+            labels_path=invocation.labels_path,
         )
     assert_never(invocation)
 

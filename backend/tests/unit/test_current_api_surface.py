@@ -219,6 +219,11 @@ EXPECTED_OPERATIONS = {
         "get_category_values",
     ),
     (
+        "POST",
+        "/api/workspaces/{workspace_id}/nodes/{node_id}/annotation-labels/apply",
+        "apply_annotation_labels",
+    ),
+    (
         "GET",
         "/api/workspaces/{workspace_id}/nodes/{node_id}/value-counts",
         "get_column_value_counts",

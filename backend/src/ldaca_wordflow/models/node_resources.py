@@ -523,6 +523,16 @@ class CategoryValuesResource(BaseModel):
     is_document: bool
 
 
+class AnnotationLabelsAppliedResource(BaseModel):
+    """Saved annotation labels written into their Data Block's column (issue 371)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    node_id: uuid.UUID
+    annotation_column: str
+    written_rows: int
+
+
 class ColumnValueCountsResource(BaseModel):
     """A column's most common values with their row counts, for Map values (issue 368).
 

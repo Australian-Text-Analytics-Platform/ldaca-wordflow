@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 import shutil
+import time
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from functools import partial
+from pathlib import Path
 from typing import cast
 
 import anyio
@@ -34,8 +35,12 @@ from .supervised_process import (
 )
 from .workspace import WorkspaceService
 from ..workers.entrypoints import analysis_process
+from ..workers.invocations import AnnotationInput
 
 logger = logging.getLogger(__name__)
+
+# How often a running AI annotation's returned labels are kept in the Project.
+ANNOTATION_SAVE_SECONDS = 30.0
 
 
 class AnalysisExecutionRuntime(AnalysisExecutionControl):
@@ -229,16 +234,49 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
         if invocation is None:
             return
 
+        # AI annotation keeps the labels returned so far in the Project, about
+        # every 30 s and once more however the run ends (issue 371).
+        labels_path = (
+            Path(invocation.input.labels_path)
+            if isinstance(invocation.input, AnnotationInput)
+            and invocation.input.labels_path is not None
+            else None
+        )
+        last_saved = time.monotonic()
+
+        async def report_progress(payload: object) -> None:
+            nonlocal last_saved
+            await service.report_progress(item.key, payload)
+            if (
+                labels_path is not None
+                and time.monotonic() - last_saved >= ANNOTATION_SAVE_SECONDS
+            ):
+                last_saved = time.monotonic()
+                await service.save_annotation_progress(item.key, labels_path)
+
+        async def keep_labels() -> None:
+            # Before Stop, a failure or a shutdown is recorded: that commit
+            # collects the run's private folder, labels file included.
+            if labels_path is not None:
+                with anyio.CancelScope(shield=True):
+                    await service.save_annotation_progress(item.key, labels_path)
+
         try:
-            result = await self._processes.execute_reserved(
-                item.key,
-                analysis_process,
-                {"invocation": invocation.input},
-                partial(service.report_progress, item.key),
-                storage_roots=invocation.storage_roots,
-                max_storage_bytes=invocation.max_storage_bytes,
-                max_storage_files=invocation.max_storage_files,
-            )
+            try:
+                result = await self._processes.execute_reserved(
+                    item.key,
+                    analysis_process,
+                    {"invocation": invocation.input},
+                    report_progress,
+                    storage_roots=invocation.storage_roots,
+                    max_storage_bytes=invocation.max_storage_bytes,
+                    max_storage_files=invocation.max_storage_files,
+                )
+            except BaseException:
+                await keep_labels()
+                raise
+            if not (isinstance(result, dict) and result.get("state") == "successful"):
+                await keep_labels()
         except SupervisedProcessCancelled:
             await service.confirm_cancellation(item.key)
         except SupervisedProcessStartError as exc:

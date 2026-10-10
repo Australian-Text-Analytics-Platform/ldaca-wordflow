@@ -174,3 +174,55 @@ def test_progress_reports_rows_failed_batches_and_waiting_for_the_provider(
     assert detail["waiting_for"] == "ai_provider"
     fractions = [fraction for fraction, _message, _detail in reports]
     assert fractions == sorted(fractions)
+
+
+def test_repeated_texts_are_sent_once_and_labels_saved_as_batches_return(
+    tmp_path,
+    worker_snapshot,
+    monkeypatch,
+) -> None:
+    """Issue 371: one call per distinct text; every row gets its text's label."""
+    from ldaca_wordflow.shared.annotation_labels import read_labels
+
+    node_id = uuid.uuid4()
+    snapshot = worker_snapshot(
+        node_id=str(node_id),
+        columns={
+            "text": ["not really", "RT @a hi", "not really", "yes", "RT @a hi"],
+            "annotation": ["x", "x", "x", "x", "x"],
+        },
+    )
+    output = tmp_path / "output"
+    output.mkdir()
+    labels_path = tmp_path / "labels.jsonl"
+    sent: list[list[str]] = []
+
+    async def fake_annotate_all(_request, _key, texts, *, labels_callback=None, **_kwargs):
+        sent.append(list(texts))
+        assert labels_callback is not None
+        labels_callback(texts[:2], ["negative", "retweet"])
+        return AnnotationAllResult(
+            labels=["negative", "retweet", None],
+            failed_rows=[False, False, True],
+            failed_batch_count=1,
+            failed_row_count=1,
+        )
+
+    monkeypatch.setattr("ldaca_wordflow.workers.annotation.annotate_all", fake_annotate_all)
+    reports: list[str] = []
+    result = run_annotation_analysis(
+        input_snapshot_dir=str(snapshot),
+        output_dir=str(output),
+        request_payload=_request(node_id),
+        api_key="captured-key",
+        progress_callback=lambda _fraction, message, _detail=None: reports.append(message),
+        labels_path=str(labels_path),
+    )
+
+    assert sent == [["not really", "RT @a hi", "yes"]]
+    frame = pl.read_parquet(output / "annotation-run-all.parquet")
+    # The failed text keeps its existing value.
+    assert frame["annotation"].to_list() == ["negative", "retweet", "negative", "x", "retweet"]
+    assert result["result"]["failed_row_count"] == 1
+    assert read_labels(labels_path) == {"not really": "negative", "RT @a hi": "retweet"}
+    assert any(message.startswith("Classifying 5 rows as 3 distinct texts: 0 of 3 texts") for message in reports)

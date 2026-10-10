@@ -19,6 +19,7 @@ from ...models.node_resources import (
     CastNodeEditRequest,
     CategoryValuesResource,
     ColumnExamplesResource,
+    AnnotationLabelsAppliedResource,
     ColumnValueCountsResource,
     ConversionCheckResource,
     CorpusOverviewResource,
@@ -433,6 +434,26 @@ async def get_category_values(
         node_id,
         column,
         read_all,
+    )
+
+
+@router.post(
+    "/{node_id}/annotation-labels/apply",
+    response_model=AnnotationLabelsAppliedResource,
+    responses=api_errors(400, 404, 409, 422),
+)
+async def apply_annotation_labels(
+    workspace_id: uuid.UUID,
+    node_id: uuid.UUID,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> AnnotationLabelsAppliedResource:
+    """Write a label Data Block's saved annotation labels into its column (issue 371)."""
+
+    return await runtime.node_service.apply_annotation_labels(
+        principal.user.id,
+        workspace_id,
+        node_id,
     )
 
 

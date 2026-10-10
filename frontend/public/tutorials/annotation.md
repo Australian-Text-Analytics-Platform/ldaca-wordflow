@@ -143,10 +143,23 @@ controls. A reviewed
 correction column can also be selected as the Example annotation column for a
 later run.
 
-While Run works, **Tasks** shows how many rows are classified so far, about how
-long is left, any failed batches, and that the run is waiting for the AI provider
-between answers. A slow provider can take minutes per batch; the run is still
-alive while Tasks keeps updating.
+Run sends each distinct text once: rows with the same text, such as repeated
+replies or retweets, share one answer, so the provider is asked (and paid) only
+once for them. While Run works, **Tasks** shows how many texts are classified so
+far, about how long is left, any failed batches, and that the run is waiting for
+the AI provider between answers. A slow provider can take minutes per batch; the
+run is still alive while Tasks keeps updating.
+
+The labels that have come back are kept as the run goes, in a temporary Data
+Block named after yours with *annotation in progress* (the text column and the
+annotation column, one row per distinct text). When the run finishes, its labels
+go into the annotation column and the temporary Data Block is removed. If the run
+stops before that (you click **Stop**, close the tab, Wordflow or the computer
+restarts), the temporary Data Block stays, so the labels already paid for are not
+lost. The Annotation tab then offers **Write them into the column**, which fills
+the rows with those texts and keeps every other value, and **Remove**. To finish
+the rest, Run again with **Only rows without an annotation**. You can also join
+the temporary Data Block to your Data Block on the text column yourself.
 
 A provider-wide failure is shown in Annotation and Tasks and writes no labels.
 When only individual rows cannot fit the provider context or produce a valid

@@ -48,6 +48,7 @@ from .node_casting import check_cast
 from .node_operations import conversion_options
 from .column_examples import column_examples
 from .corpus_overview import corpus_overview
+from .annotation_progress import apply_annotation_progress, is_annotation_progress_node
 from .category_order import (
     MAX_CATEGORY_VALUES,
     WARN_CATEGORY_VALUES,
@@ -58,6 +59,7 @@ from .category_order import (
 from ..models.node_resources import (
     CategoryValuesResource,
     ColumnExamplesResource,
+    AnnotationLabelsAppliedResource,
     ColumnValueCountsResource,
     MAP_VALUES_LIMIT,
     CorpusOverviewResource,
@@ -642,6 +644,35 @@ class NodeService:
                 node.data.collect_schema(),
             )
             return content, lease.revision
+
+    async def apply_annotation_labels(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        node_id: uuid.UUID,
+    ) -> AnnotationLabelsAppliedResource:
+        """Write a label Data Block's saved labels into its source column (issue 371).
+
+        The label Data Block stays, so the user removes it once satisfied.
+        """
+
+        async with self._workspaces.mutation_context(user_id, workspace_id) as lease:
+            progress = lease.workspace.nodes.get(node_id)
+            if progress is None:
+                raise NodeNotFoundError("Data Block not found")
+            if not is_annotation_progress_node(progress):
+                raise InvalidInputError("This Data Block holds no saved annotation labels.")
+            if {parent.id for parent in progress.parents} & lease.workspace.reserved_node_ids():
+                raise DataBlockInUseError(
+                    "The annotated Data Block is in use by a running Analysis."
+                )
+            source, column, written, path = await self._run_io(
+                lambda: apply_annotation_progress(lease.workspace, lease.path, node_id)
+            )
+            lease.rollback_paths.append(path)
+        return AnnotationLabelsAppliedResource(
+            node_id=source.id, annotation_column=column, written_rows=written
+        )
 
     async def value_counts(
         self,

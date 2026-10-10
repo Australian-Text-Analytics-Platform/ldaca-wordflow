@@ -229,8 +229,13 @@ async def annotate_all(
     texts: list[str],
     examples: list[AnnotationExample] | None = None,
     progress_callback: Callable[[int, int, int], None] | None = None,
+    labels_callback: Callable[[list[str], list[str | None]], None] | None = None,
 ) -> AnnotationAllResult:
-    """Classify a Run All input with bounded concurrency and row order preserved."""
+    """Classify a Run All input with bounded concurrency and row order preserved.
+
+    ``labels_callback`` receives each successful batch's texts and labels as
+    soon as they return, so they can be kept if the run stops (issue 371).
+    """
 
     if not texts:
         return AnnotationAllResult([], [], 0, 0)
@@ -277,6 +282,8 @@ async def annotate_all(
                 run(chunk[midpoint:]),
             )
             return [*left[0], *right[0]], [*left[1], *right[1]]
+        if labels_callback is not None:
+            labels_callback(chunk, labels)
         record_terminal_batch(len(chunk), failed=False)
         return labels, [False] * len(labels)
 

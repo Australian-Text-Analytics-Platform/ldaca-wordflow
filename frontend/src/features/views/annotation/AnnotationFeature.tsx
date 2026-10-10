@@ -46,6 +46,7 @@ import {
 import { getAnalysisOutputResource } from '../common/analysisApi';
 import { ANALYSIS_TASK_TYPES } from '../common/analysisIds';
 import AnalysisTaskBanner from '../common/components/AnalysisTaskBanner';
+import { AnnotationSavedLabelsNotice } from './components/AnnotationSavedLabelsNotice';
 import { type AnalysisRequestOfKind, useAnalysisFeature } from '../common/hooks/useAnalysisFeature';
 import { useNodeColorControls } from '../common/hooks/useNodeColorControls';
 import { usePersistNodeDocumentColumn } from '../common/hooks/usePersistNodeDocumentColumn';
@@ -1283,6 +1284,15 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             message={annotationRunAll.progress.message ?? undefined}
             // The step line, with live counts and time left in Tasks (issue 370).
             detail={annotationRunAll.progress.detail}
+          />
+        ) : null}
+        {annotationMode === 'ai' && sourceNode ? (
+          // Labels kept from a run that didn't finish (issue 371).
+          <AnnotationSavedLabelsNotice
+            workspaceId={currentWorkspaceId}
+            nodes={nodes}
+            sourceNodeId={sourceNode.id}
+            running={annotationRunAll?.state === 'queued' || annotationRunAll?.state === 'running'}
           />
         ) : null}
         {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (

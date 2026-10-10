@@ -125,6 +125,9 @@ class AnnotationInput:
     output_dir: str
     request_payload: dict[str, Any]
     api_key: str | None
+    # Labels appended per batch as they return, outside output_dir, so the
+    # backend can keep them when the run stops (issue 371).
+    labels_path: str | None = None
     kind: Literal["annotation"] = field(default="annotation", init=False)
 
 

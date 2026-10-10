@@ -68,6 +68,7 @@ from ..shared.errors import ArtifactGoneError
 from ..shared.json_data import JsonData
 from .analyses import PublishedAnalysisResult
 from .artifact_contracts import ANALYSIS_ARTIFACT_PROJECTORS, ArtifactProjection
+from .annotation_progress import discard_annotation_progress
 from .node_projection import canonical_node_info
 from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from .workspace import WorkspaceLease
@@ -338,6 +339,8 @@ def _publish_annotation_run_all(
     if source_request.annotation_column not in columns:
         raise ValueError("Annotation Run All output column is unavailable")
     node.data = lazyframe
+    # The labels are in the column now: the run's label Data Block goes (issue 371).
+    discard_annotation_progress(workspace, record.id)
     annotated_count = int(
         lazyframe.select(pl.col(source_request.annotation_column).is_not_null().sum())
         .collect()

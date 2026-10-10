@@ -980,6 +980,32 @@
         "title": "AnnotationDerivation",
         "type": "object"
       },
+      "AnnotationLabelsAppliedResource": {
+        "additionalProperties": false,
+        "description": "Saved annotation labels written into their Data Block's column (issue 371).",
+        "properties": {
+          "annotation_column": {
+            "title": "Annotation Column",
+            "type": "string"
+          },
+          "node_id": {
+            "format": "uuid",
+            "title": "Node Id",
+            "type": "string"
+          },
+          "written_rows": {
+            "title": "Written Rows",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "node_id",
+          "annotation_column",
+          "written_rows"
+        ],
+        "title": "AnnotationLabelsAppliedResource",
+        "type": "object"
+      },
       "AnnotationModelsRequest": {
         "additionalProperties": false,
         "description": "Optional request-only credential for provider model discovery.",
@@ -21295,6 +21321,105 @@
           }
         ],
         "summary": "Update Node",
+        "tags": [
+          "nodes"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/nodes/{node_id}/annotation-labels/apply": {
+      "post": {
+        "description": "Write a label Data Block's saved annotation labels into its column (issue 371).",
+        "operationId": "apply_annotation_labels",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "node_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Node Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnotationLabelsAppliedResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Apply Annotation Labels",
         "tags": [
           "nodes"
         ]
