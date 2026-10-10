@@ -27,6 +27,8 @@ interface Props {
   sources: TopicModelingAddToWorkspaceSource[];
   /** Selected topic ids, or null when every topic is included. */
   selectedTopicIds: readonly number[] | null;
+  /** Names given to Topics at this Topic count, by Topic id. */
+  topicNames?: Readonly<Record<number, string>>;
   isSubmitting: boolean;
   onSubmit: (
     sources: TopicModelingAddToWorkspaceSelection[],
@@ -43,6 +45,8 @@ const PREVIOUS_TOPIC_COLUMNS: ReadonlySet<string> = new Set([
   'TOPIC_coverage',
   'TOPIC_topic_meaning',
   'TOPIC_topic_coverage',
+  'TOPIC_top1_name',
+  'TOPIC_topic_name',
 ]);
 const sourceColumns = (source: TopicModelingAddToWorkspaceSource): string[] =>
   source.columns.filter((column) => !PREVIOUS_TOPIC_COLUMNS.has(column));
@@ -54,9 +58,19 @@ const MAX_TOPICS_IN_NAME = 3;
  * "topic 5", "topics 3, 5", or "8 topics" for a selection; "topics" for all
  * topics (issue 170).
  */
-const topicNamePart = (selectedTopicIds: readonly number[] | null): string => {
+const topicNamePart = (
+  selectedTopicIds: readonly number[] | null,
+  topicNames: Readonly<Record<number, string>> = {},
+): string => {
   if (!selectedTopicIds || selectedTopicIds.length === 0) return 'topics';
   const ids = [...selectedTopicIds].sort((a, b) => a - b);
+  // Named Topics go by their names ("Sleep, Diet"); others by number.
+  if (ids.some((id) => topicNames[id])) {
+    if (ids.length > MAX_TOPICS_IN_NAME) return `${String(ids.length)} topics`;
+    return ids
+      .map((id) => topicNames[id] ?? (isUngrouped(id) ? 'ungrouped' : `topic ${String(id)}`))
+      .join(', ');
+  }
   // Ungrouped (-1) is named, not numbered (issue 362).
   const named = ids.map((id) => (isUngrouped(id) ? 'ungrouped' : String(id)));
   if (ids.length === 1) return isUngrouped(ids[0] ?? 0) ? 'ungrouped' : `topic ${named[0] ?? ''}`;
@@ -64,12 +78,26 @@ const topicNamePart = (selectedTopicIds: readonly number[] | null): string => {
   return `${String(ids.length)} topics`;
 };
 
+/** The name column, listed when some chosen Topic has a name. */
+const nameColumn = (name: string, topicNames: Readonly<Record<number, string>>) =>
+  Object.keys(topicNames).length > 0
+    ? [
+        {
+          name,
+          required: true,
+          includeInSubmission: false,
+          title: 'The names you gave topics; empty for topics without one.',
+        },
+      ]
+    : [];
+
 const createDialogSource = (
   source: TopicModelingAddToWorkspaceSource,
   rowUnit: TopicModelingDetachRowUnit,
   selectedTopicIds: readonly number[] | null,
+  topicNames: Readonly<Record<number, string>> = {},
 ): AddToWorkspaceSource => {
-  const topics = topicNamePart(selectedTopicIds);
+  const topics = topicNamePart(selectedTopicIds, topicNames);
   if (rowUnit === 'topics') {
     return {
       id: source.id,
@@ -83,6 +111,7 @@ const createDialogSource = (
           includeInSubmission: false,
           title: 'The topic, its share of the document and its segment count are always included.',
         })),
+        ...nameColumn('TOPIC_topic_name', topicNames),
         ...sourceColumns(source).map((column) =>
           column === source.documentColumn
             ? {
@@ -106,6 +135,7 @@ const createDialogSource = (
         includeInSubmission: false,
         title: 'The dominant topic assignment is always included.',
       },
+      ...nameColumn('TOPIC_top1_name', topicNames),
       ...sourceColumns(source).map((column) => ({
         name: column,
         defaultSelected: column === source.documentColumn,
@@ -120,6 +150,7 @@ export function TopicModelingAddToWorkspaceDialog({
   onOpenChange,
   sources,
   selectedTopicIds,
+  topicNames = {},
   isSubmitting,
   onSubmit,
 }: Props) {
@@ -162,7 +193,9 @@ export function TopicModelingAddToWorkspaceDialog({
           </Tabs>
         </div>
       }
-      sources={sources.map((source) => createDialogSource(source, rowUnit, selectedTopicIds))}
+      sources={sources.map((source) =>
+        createDialogSource(source, rowUnit, selectedTopicIds, topicNames),
+      )}
       isSubmitting={isSubmitting}
       allowSourceSelection
       columnsLabel="Source columns"

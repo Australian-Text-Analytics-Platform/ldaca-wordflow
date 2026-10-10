@@ -57,6 +57,8 @@ import {
 } from './topicModelingAdapters';
 import { toastError } from '@/lib/toastError';
 import { isUngrouped, ungroupedTopic } from './ungrouped';
+import { TopicNamesContext } from './components/results/topicNamesContext';
+import { topicGroupKey, withTopicName } from './topicNames';
 
 /**
  * Renders the native topic-modelling workflow and Result exploration.
@@ -361,6 +363,26 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       null)
     : null;
   const representativeWordsCount = host.topicModelingWordsPerTopic ?? 15;
+  // Names given to Topics of this run, per group of
+  // natural Topics, saved with the tab.
+  const savedTopicNames = host.topicModelingTopicNames;
+  const topicNames =
+    tabTaskId && savedTopicNames?.analysis_id === tabTaskId ? (savedTopicNames.names ?? {}) : {};
+  const topicNamesById = (shown: TopicModelingTopic[]) =>
+    shown.flatMap((topic) => {
+      const key = topicGroupKey(topic);
+      const name = key === null ? undefined : topicNames[key];
+      return name ? [{ topic_id: topic.id, name }] : [];
+    });
+  const topicNamesValue = {
+    names: topicNames,
+    rename: tabTaskId
+      ? (key: string, name: string) =>
+          host.setPresentationSettings({
+            topicNames: { analysis_id: tabTaskId, names: withTopicName(topicNames, key, name) },
+          })
+      : null,
+  };
   // Ungrouped joins the Topics as a grey bubble and a list entry (issue 362).
   const ungrouped = ungroupedTopic(result?.data);
   const rawTopics: TopicModelingTopic[] = [
@@ -403,6 +425,8 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
         cluster_count: result?.clustering.cluster_count ?? 0,
         top_n_topics: result?.topic_inclusion.top_n_topics ?? 0,
         row_unit: rowUnit,
+        // Names given to the Topics shown, by their number at this count.
+        topic_names_override: topicNamesById(exportTopics),
         topic_meanings_override: exportTopics
           .filter((topic) => !isUngrouped(topic.id))
           .map((topic) => ({
@@ -577,94 +601,96 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
       }
     >
       {shouldShowResultsPanel && (
-        <TopicModelingResultsPanel
-          topicWaitingBanner={topicWaitingBanner}
-          runningTask={topicRunningTask}
-          error={error ?? analysisFailure}
-          result={result}
-          analysisId={tabTaskId}
-          topics={topics}
-          exportTopics={exportTopics}
-          sampleFractions={serverRequest?.sample_fractions ?? null}
-          containerRef={containerRef}
-          selectedTopicIds={selectedTopicIds}
-          onToggleTopicSelection={handleToggleTopicSelection}
-          onClearSelection={handleClearTopicSelection}
-          topicSearchQuery={topicSearchQuery}
-          onTopicSearchQueryChange={setTopicSearchQuery}
-          panelNodeIds={colorNodeIds}
-          nodeColors={nodeColors}
-          defaultPalette={defaultPalette}
-          graphProjectionKey={graphProjectionKey}
-          onGraphViewReady={setReadyGraphProjectionKey}
-          nodeNames={resultNodeNames}
-          randomSeed={resultRandomSeed}
-          onAddToWorkspace={openAddToWorkspaceDialog}
-          isAddingToWorkspace={isAddingToWorkspace}
-          projectionPending={projectionPending}
-          projectionError={projectionError}
-          clustering={result?.clustering ?? null}
-          topicInclusion={result?.topic_inclusion ?? null}
-          onClusterCountCommit={(value) => {
-            const appliedTopN = result?.topic_inclusion.top_n_topics ?? 0;
-            startProjection(value, Math.min(value, appliedTopN));
-          }}
-          onTopNTopicsCommit={(value) => {
-            const appliedClusterCount = result?.clustering.cluster_count ?? 0;
-            startProjection(appliedClusterCount, value);
-          }}
-          onProjectionRetry={
-            projectionError && currentProjectionRequest
-              ? () => {
-                  startProjection(
-                    currentProjectionRequest.clusterCount,
-                    currentProjectionRequest.topNTopics,
-                  );
-                }
-              : undefined
-          }
-          projectionControlResetKey={controlResetKey}
-          wordsPerTopic={representativeWordsCount}
-          onWordsPerTopicChange={(value) => {
-            void host.setPresentationSettings({ wordsPerTopic: value });
-          }}
-          stopWordsEnabled={stopWordsEnabled}
-          onStopWordsEnabledChange={(enabled) => {
-            if (!resultKey) return;
-            host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, String(enabled));
-          }}
-          stopWords={host.stopWords}
-          stopWordsDetectionTarget={{
-            workspaceId: currentWorkspaceId,
-            nodeId: firstResultNodeId,
-            column: firstResultColumn,
-          }}
-          stopWordListSources={stopWordListSources}
-          onStopWordsChange={(words) => {
-            return host.setPresentationSettings({ stopWords: words });
-          }}
-          colorBy={
-            resultSources.length === 1
-              ? {
-                  columns: colorBy.columns,
-                  loaded: colorBy.columnsLoaded,
-                  valueCounts: colorBy.columnValueCounts,
-                  column: colorBy.activeColumn,
-                  scheme: colorBy.scheme,
-                  pending: colorBy.pending,
-                  error: colorBy.error,
-                  onColumnChange: (column) => {
-                    setColorBySelection({ analysisId: tabTaskId, column });
-                  },
-                }
-              : // Shown disabled with its reason, not hidden (issue 365).
-                {
-                  ...NO_COLOR_BY,
-                  unavailableReason:
-                    'With two Data Blocks, bubble colours show which Data Block each Topic comes from.',
-                }
-          }
-        />
+        <TopicNamesContext.Provider value={topicNamesValue}>
+          <TopicModelingResultsPanel
+            topicWaitingBanner={topicWaitingBanner}
+            runningTask={topicRunningTask}
+            error={error ?? analysisFailure}
+            result={result}
+            analysisId={tabTaskId}
+            topics={topics}
+            exportTopics={exportTopics}
+            sampleFractions={serverRequest?.sample_fractions ?? null}
+            containerRef={containerRef}
+            selectedTopicIds={selectedTopicIds}
+            onToggleTopicSelection={handleToggleTopicSelection}
+            onClearSelection={handleClearTopicSelection}
+            topicSearchQuery={topicSearchQuery}
+            onTopicSearchQueryChange={setTopicSearchQuery}
+            panelNodeIds={colorNodeIds}
+            nodeColors={nodeColors}
+            defaultPalette={defaultPalette}
+            graphProjectionKey={graphProjectionKey}
+            onGraphViewReady={setReadyGraphProjectionKey}
+            nodeNames={resultNodeNames}
+            randomSeed={resultRandomSeed}
+            onAddToWorkspace={openAddToWorkspaceDialog}
+            isAddingToWorkspace={isAddingToWorkspace}
+            projectionPending={projectionPending}
+            projectionError={projectionError}
+            clustering={result?.clustering ?? null}
+            topicInclusion={result?.topic_inclusion ?? null}
+            onClusterCountCommit={(value) => {
+              const appliedTopN = result?.topic_inclusion.top_n_topics ?? 0;
+              startProjection(value, Math.min(value, appliedTopN));
+            }}
+            onTopNTopicsCommit={(value) => {
+              const appliedClusterCount = result?.clustering.cluster_count ?? 0;
+              startProjection(appliedClusterCount, value);
+            }}
+            onProjectionRetry={
+              projectionError && currentProjectionRequest
+                ? () => {
+                    startProjection(
+                      currentProjectionRequest.clusterCount,
+                      currentProjectionRequest.topNTopics,
+                    );
+                  }
+                : undefined
+            }
+            projectionControlResetKey={controlResetKey}
+            wordsPerTopic={representativeWordsCount}
+            onWordsPerTopicChange={(value) => {
+              void host.setPresentationSettings({ wordsPerTopic: value });
+            }}
+            stopWordsEnabled={stopWordsEnabled}
+            onStopWordsEnabledChange={(enabled) => {
+              if (!resultKey) return;
+              host.setSetting(STOP_WORDS_ENABLED_SETTINGS.topicModeling, String(enabled));
+            }}
+            stopWords={host.stopWords}
+            stopWordsDetectionTarget={{
+              workspaceId: currentWorkspaceId,
+              nodeId: firstResultNodeId,
+              column: firstResultColumn,
+            }}
+            stopWordListSources={stopWordListSources}
+            onStopWordsChange={(words) => {
+              return host.setPresentationSettings({ stopWords: words });
+            }}
+            colorBy={
+              resultSources.length === 1
+                ? {
+                    columns: colorBy.columns,
+                    loaded: colorBy.columnsLoaded,
+                    valueCounts: colorBy.columnValueCounts,
+                    column: colorBy.activeColumn,
+                    scheme: colorBy.scheme,
+                    pending: colorBy.pending,
+                    error: colorBy.error,
+                    onColumnChange: (column) => {
+                      setColorBySelection({ analysisId: tabTaskId, column });
+                    },
+                  }
+                : // Shown disabled with its reason, not hidden (issue 365).
+                  {
+                    ...NO_COLOR_BY,
+                    unavailableReason:
+                      'With two Data Blocks, bubble colours show which Data Block each Topic comes from.',
+                  }
+            }
+          />
+        </TopicNamesContext.Provider>
       )}
       {addToWorkspaceDialogOpen ? (
         <TopicModelingAddToWorkspaceDialog
@@ -672,6 +698,9 @@ function TopicModelingFeature({ host }: AnalysisTabFeatureProps) {
           onOpenChange={setAddToWorkspaceDialogOpen}
           sources={addToWorkspaceSources}
           selectedTopicIds={selectedTopicIds.size > 0 ? [...selectedTopicIds] : null}
+          topicNames={Object.fromEntries(
+            topicNamesById(exportTopics).map((item) => [item.topic_id, item.name]),
+          )}
           isSubmitting={isAddingToWorkspace}
           onSubmit={(selections, rowUnit) => {
             void handleAddToWorkspace(selections, rowUnit);

@@ -39,6 +39,7 @@ from .tab import (
     TokenFrequencyTabSettings,
     TopicModelingProjectionSelection,
     TopicModelingTabSettings,
+    TopicModelingTopicNames,
     UnavailableTab,
 )
 from .analysis import (
@@ -155,6 +156,7 @@ __all__ = [
     "TabResource",
     "TabSettings",
     "TopicModelingProjectionSelection",
+    "TopicModelingTopicNames",
     "TokenFrequencyAnalysisRequest",
     "TokenFrequencyTabSettings",
     "TopicModelingAnalysisRequest",

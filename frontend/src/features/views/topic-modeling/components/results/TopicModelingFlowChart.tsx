@@ -31,6 +31,8 @@ import {
   type TopicGraphPoint,
 } from './topicModelingGraph';
 import { topicLabel, topicShortLabel } from '../../ungrouped';
+import { topicNameDisplay } from '../../topicNames';
+import { useTopicNames } from './topicNamesContext';
 
 interface TopicBubbleNodeData extends Record<string, unknown> {
   bubble: TopicBubbleModel;
@@ -139,6 +141,10 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
   const diameter = outerRadius * 2;
   const tooltipPosition = bubble.position.x <= plane.width / 2 ? Position.Right : Position.Left;
   const matchColor = bubble.matchedWords.length > 0 ? topicMatchColor() : undefined;
+  // A named Topic keeps its short label on the bubble, bold and
+  // underlined so it reads as named; the tooltip shows the name.
+  const { names } = useTopicNames();
+  const display = topicNameDisplay(bubble.topic, names);
   return (
     <NodeTooltip className="size-full">
       <NodeTooltipTrigger
@@ -205,6 +211,8 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             textAnchor="middle"
             fontSize={12}
             fill="#1e293b"
+            fontWeight={display.name ? 700 : undefined}
+            textDecoration={display.name ? 'underline' : undefined}
             className="pointer-events-none select-none"
           >
             {topicShortLabel(bubble.id)}
@@ -247,7 +255,18 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
         data-testid={`topic-flow-tooltip-${String(bubble.id)}`}
         className="pointer-events-none w-[min(18rem,calc(100%-1rem))] rounded-md border border-surface-border bg-surface p-3 text-label-secondary text-surface-foreground"
       >
-        <div className="text-body font-semibold">{topicLabel(bubble.topic.id)}</div>
+        <div className="text-body font-semibold">
+          {display.name ?? topicLabel(bubble.topic.id)}
+          {display.name ? ' ' : null}
+          {display.name ? (
+            <span className="ml-1.5 text-label-secondary font-normal text-description">
+              {topicShortLabel(bubble.topic.id)}
+            </span>
+          ) : null}
+        </div>
+        {display.hint ? (
+          <div className="text-label-secondary italic text-description">{display.hint}</div>
+        ) : null}
         <div className="mt-1 max-h-36 overflow-hidden text-description">
           <ResponsiveWordCloud
             words={bubble.topic.representative_words.map((term) => ({
@@ -423,6 +442,8 @@ function TopicExportSvg({
   width: number;
   height: number;
 }) {
+  // Image and HTML downloads mark named Topics as the bubbles do.
+  const { names } = useTopicNames();
   return (
     <svg
       data-topic-modeling-export="true"
@@ -470,7 +491,15 @@ function TopicExportSvg({
               stroke={bubble.selected ? '#16a34a' : '#94a3b8'}
               strokeWidth={bubble.selected ? 2 : 1}
             />
-            <text textAnchor="middle" dy={4} fontSize={12} fill="#1e293b">
+            <text
+              textAnchor="middle"
+              dy={4}
+              fontSize={12}
+              fill="#1e293b"
+              {...(topicNameDisplay(bubble.topic, names).name
+                ? { fontWeight: 700, textDecoration: 'underline' }
+                : {})}
+            >
               {topicShortLabel(bubble.id)}
             </text>
           </g>

@@ -1257,6 +1257,20 @@ def _query_topics(
             raise
         except Exception as exc:
             raise AnalysisCorruptError("Topic projection context is corrupt") from exc
+    # Which natural Topics each shown Topic holds, so a name given to a Topic
+    # stays with that group when the Topics slider renumbers Topics (issue 366).
+    # None when they cannot be read: then Topics cannot be named at this count.
+    leaves = _topic_leaves(context_path, applied_count, natural_count)
+    effective = effective.model_copy(
+        update={
+            "topics": [
+                topic.model_copy(
+                    update={"leaves": None if leaves is None else leaves.get(topic.id)}
+                )
+                for topic in effective.topics
+            ]
+        }
+    )
     payload = cast(
         dict[str, JsonData],
         effective.model_dump(mode="json", exclude={"projection_context"}),
@@ -1350,6 +1364,33 @@ def _topic_sources(
             )
         )
     return sources
+
+
+def _topic_leaves(
+    context_path: Path | None, cluster_count: int, natural_count: int
+) -> dict[int, list[int]] | None:
+    """Each shown Topic's natural Topics, from the run's segment table (issue 366).
+
+    At the natural count every Topic is itself. Otherwise each segment's natural
+    Topic is paired with its Topic at this count: both tables list the run's
+    segments in the same order.
+    """
+
+    if cluster_count == natural_count:
+        return {topic: [topic] for topic in range(natural_count)}
+    if context_path is None or not context_path.is_file():
+        return None
+    try:
+        identity = _context_identity(context_path)
+        natural = _cached_segment_topics(identity, natural_count)
+        projected = _cached_segment_topics(identity, cluster_count)
+    except (OSError, ValueError):
+        return None
+    groups: dict[int, set[int]] = {}
+    for (_, _, _, leaf), (_, _, _, topic) in zip(natural, projected, strict=True):
+        if leaf >= 0 and topic >= 0:
+            groups.setdefault(topic, set()).add(leaf)
+    return {topic: sorted(group) for topic, group in groups.items()}
 
 
 def _context_identity(path: Path) -> tuple[str, int, int]:

@@ -23,6 +23,7 @@ import {
 import { TopicSelectionPanel } from './TopicSelectionPanel';
 import { toastError } from '@/lib/toastError';
 import { downloadTopicBubbleHtml } from './topicBubbleHtmlExport';
+import { useTopicNames } from './topicNamesContext';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -194,6 +195,7 @@ export function TopicModelingBubbleChartSection({
           colorScheme: activeColorScheme,
         }
       : undefined;
+  const { names: topicNames } = useTopicNames();
   const corpusLegend = topicCorpusLegend(corpusPresentation, nodeNames ?? []);
   const exportLegend = activeColorScheme
     ? activeColorScheme.groups.map((group) => ({ label: group.label, color: group.color }))
@@ -233,6 +235,7 @@ export function TopicModelingBubbleChartSection({
         presentation: corpusPresentation,
         nodeNames: nodeNames ?? [],
         query: topicSearchQuery,
+        names: topicNames,
       });
     } catch (error) {
       toastError(error, 'Try again.', { title: "Couldn't export chart." });

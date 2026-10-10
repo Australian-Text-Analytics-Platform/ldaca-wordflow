@@ -591,6 +591,21 @@ class WorkspaceService:
                     if settings.projection_selection != selection:
                         settings.projection_selection = selection
                         changed = True
+                if "topic_names" in request.model_fields_set:
+                    names = request.topic_names
+                    if names is not None:
+                        record = lease.workspace.analyses.get(names.analysis_id)
+                        if (
+                            record is None
+                            or record.tab_id != tab.id
+                            or record.request.kind != "topic_modeling"
+                        ):
+                            raise InvalidInputError(
+                                "Topic names belong to an unavailable Analysis"
+                            )
+                    if settings.topic_names != names:
+                        settings.topic_names = names
+                        changed = True
             if changed:
                 tab.modified_at = datetime.now(UTC)
                 tab.revision += 1

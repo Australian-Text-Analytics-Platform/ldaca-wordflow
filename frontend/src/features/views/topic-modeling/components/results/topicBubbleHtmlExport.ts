@@ -9,6 +9,7 @@ import {
 } from '@/lib/chartExport';
 import { saveBlob } from '@/lib/download';
 import { matchTopicWords } from '../../topicModelingAdapters';
+import { topicNameDisplay, type TopicNames } from '../../topicNames';
 import { runTopicBubbleHtml, type TopicBubbleHtmlPayload } from './topicBubbleHtmlRuntime';
 import { topicSizeChips, type TopicCorpusPresentation } from './topicSizeChips';
 
@@ -28,6 +29,7 @@ export function buildTopicBubblePayload(
   query: string,
   width: number,
   height: number,
+  names: TopicNames = {},
 ): TopicBubbleHtmlPayload {
   return {
     topics: topics.map((topic) => {
@@ -40,6 +42,7 @@ export function buildTopicBubblePayload(
       });
       return {
         id: topic.id,
+        ...topicNameDisplay(topic, names),
         words: topic.representative_words.map((term) => ({
           word: term.word,
           count: term.occurrence_count,
@@ -123,6 +126,8 @@ footer a{color:inherit}
 #chart svg{display:block;max-width:100%;height:auto;cursor:grab;user-select:none}
 #card{position:fixed;z-index:10;max-width:18rem;padding:10px 12px;border-radius:6px;background:#fff;color:#1e293b;box-shadow:0 4px 16px rgba(0,0,0,.18);pointer-events:none}
 .card-title{font-weight:600;margin-bottom:4px}
+.card-short{font-weight:400;font-size:12px;opacity:.7}
+.card-hint{font-size:12px;font-style:italic;opacity:.7;margin:-2px 0 4px}
 .card-words{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;line-height:1.2}
 .card-sizes{display:flex;flex-wrap:wrap;align-items:center;gap:4px;margin-top:8px;font-size:12px}
 .card-chip{border-radius:3px;padding:1px 6px;font-weight:500;font-variant-numeric:tabular-nums}
@@ -158,6 +163,7 @@ interface DownloadTopicBubbleHtmlOptions {
   presentation: TopicCorpusPresentation;
   nodeNames: readonly string[];
   query: string;
+  names?: TopicNames;
 }
 
 /**
@@ -177,6 +183,7 @@ export async function downloadTopicBubbleHtml(
     options.query,
     width,
     height,
+    options.names,
   );
   const html = buildTopicBubbleHtmlDocument(svg, payload, {
     title: options.title,

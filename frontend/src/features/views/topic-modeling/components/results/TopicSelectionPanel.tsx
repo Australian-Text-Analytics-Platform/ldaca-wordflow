@@ -9,7 +9,11 @@ import { matchedTopicWords, matchTopicWords } from '../../topicModelingAdapters'
 import { TopicWordsLine } from './TopicWords';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 import { TopicExamplesPane, type TopicExamplesContext } from './TopicExamplesPane';
-import { topicLabel } from '../../ungrouped';
+import { topicNameDisplay, topicGroupKey } from '../../topicNames';
+import { topicLabel, topicShortLabel } from '../../ungrouped';
+import { TopicNameInput, TopicRenameButton } from './TopicNameControls';
+import { useTopicNames } from './topicNamesContext';
+import { FadingText } from './FadingText';
 
 interface Props {
   topics: TopicModelingTopic[];
@@ -88,12 +92,18 @@ function TopicCard({
   onHoverChange,
 }: TopicCardProps) {
   const words = topic.representative_words.map((term) => term.word);
-  const label = topicLabel(topic.id);
+  // A name given to this group shows instead of "Topic N"; double-click to rename.
+  const { names, rename } = useTopicNames();
+  const groupKey = topicGroupKey(topic);
+  const display = topicNameDisplay(topic, names);
+  const [renaming, setRenaming] = useState(false);
+  const label = display.name ?? topicLabel(topic.id);
+  const canRename = groupKey !== null && rename !== null;
   return (
     <li
       data-topic-id={topic.id}
       className={cn(
-        'flex overflow-hidden rounded-lg border transition-colors',
+        'group/topic-card flex overflow-hidden rounded-lg border transition-colors',
         selected
           ? 'border-l-[3px] border-[var(--vscode-charts-green)] border-l-green-500 bg-[color-mix(in_srgb,var(--vscode-charts-green)_12%,transparent)]'
           : 'border-surface-border/60 bg-surface',
@@ -112,7 +122,7 @@ function TopicCard({
         tabIndex={0}
         aria-pressed={selected}
         aria-label={selected ? `Deselect ${label}` : `Select ${label}`}
-        className="min-w-0 flex-1 cursor-pointer p-2 focus-visible:outline-1 focus-visible:outline-focus"
+        className="min-w-0 flex-1 cursor-pointer py-2 pr-1.5 pl-2 focus-visible:outline-1 focus-visible:outline-focus"
         onClick={onToggleSelection}
         onKeyDown={(event) => {
           if (event.key === 'Enter' || event.key === ' ') {
@@ -122,13 +132,48 @@ function TopicCard({
         }}
       >
         <div className="flex items-center gap-2">
-          <span className="shrink-0 text-body font-medium text-foreground">{label}</span>
-          <TopicSizeComposition
-            sizes={topic.size}
-            total={topic.total_size}
-            topicId={topic.id}
-            {...corpusPresentation}
-          />
+          {renaming && groupKey ? (
+            <TopicNameInput
+              groupKey={groupKey}
+              current={display.name ?? ''}
+              label={topicLabel(topic.id)}
+              onClose={() => {
+                setRenaming(false);
+              }}
+            />
+          ) : (
+            <FadingText text={label} className="text-body font-medium text-foreground" />
+          )}
+          {display.name ? (
+            <span className="shrink-0 text-label-secondary text-description">
+              {topicShortLabel(topic.id)}
+            </span>
+          ) : null}
+          {canRename && !renaming ? (
+            // Rename here with the pencil; a click on the card still selects
+            // it at once (Chao: no double-click in the list or on bubbles).
+            <TopicRenameButton
+              label={label}
+              onRename={() => {
+                setRenaming(true);
+              }}
+            />
+          ) : null}
+          {display.hint ? (
+            <FadingText
+              text={display.hint}
+              className="text-label-secondary italic text-description"
+            />
+          ) : null}
+          {/* The size sits at the right, against the eye, leaving the room to the name. */}
+          <div className="ml-auto shrink-0">
+            <TopicSizeComposition
+              sizes={topic.size}
+              total={topic.total_size}
+              topicId={topic.id}
+              {...corpusPresentation}
+            />
+          </div>
         </div>
         <div className="mt-0.5">
           <TopicWordsLine

@@ -1,6 +1,9 @@
 /** One topic as the Topic Modelling interactive HTML download shows it (issue 279). */
 interface TopicBubbleHtmlTopic {
   id: number;
+  /** The name given to this Topic, or a hint ("includes Sleep"). */
+  name: string | null;
+  hint: string | null;
   /** Representative words in the app's order, with their counts. */
   words: { word: string; count: number }[];
   /** The size chips the app's hover card shows (issue 280). */
@@ -74,7 +77,18 @@ export function runTopicBubbleHtml(
     card.replaceChildren();
     const title = document.createElement('div');
     title.className = 'card-title';
-    title.textContent = topic.id < 0 ? 'Ungrouped' : `Topic ${String(topic.id)}`;
+    const label = topic.id < 0 ? 'Ungrouped' : `Topic ${String(topic.id)}`;
+    // A named Topic reads "Sleep T5", as in the app's card.
+    title.textContent = topic.name ?? label;
+    if (topic.name) {
+      const short = document.createElement('span');
+      short.className = 'card-short';
+      short.textContent = `T${String(topic.id)}`;
+      title.append(' ', short);
+    }
+    const hint = document.createElement('div');
+    hint.className = 'card-hint';
+    hint.textContent = topic.hint ?? '';
     const words = document.createElement('div');
     words.className = 'card-words';
     topic.words.forEach((entry, index) => {
@@ -110,7 +124,7 @@ export function runTopicBubbleHtml(
       sum.textContent = `= ${String(topic.sizes.total ?? '')}`;
       sizes.append(sum);
     }
-    card.append(title, words, sizes);
+    card.append(title, ...(topic.hint ? [hint] : []), words, sizes);
     card.hidden = false;
     const margin = 14;
     const left = Math.min(event.clientX + margin, window.innerWidth - card.offsetWidth - margin);

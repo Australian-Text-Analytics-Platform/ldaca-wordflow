@@ -182,6 +182,10 @@ TOPIC_COVERAGE_COLUMN = "TOPIC_topic_coverage"
 # User-facing output column names: the dominant ("top 1") topic id and
 # full Topic Coverage (rendered as a source-coverage bar).
 TOPIC_TOP1_COLUMN = "TOPIC_top1"
+# Names people gave Topics, beside the Topic numbers; only
+# added when some chosen Topic has a name.
+TOPIC_TOP1_NAME_COLUMN = "TOPIC_top1_name"
+TOPIC_NAME_COLUMN = "TOPIC_topic_name"
 TOPIC_COVERAGE_OUTPUT_COLUMN = "TOPIC_coverage"
 # Per-topic Data Block Creation output: one row per (document, Topic) whose text
 # is that Topic's segments. The share is the Topic's portion of the document's
@@ -196,6 +200,8 @@ TOPIC_MODELING_GENERATED_COLUMNS = frozenset(
         TOPIC_MEANING_COLUMN,
         TOPIC_COVERAGE_COLUMN,
         TOPIC_TOP1_COLUMN,
+        TOPIC_TOP1_NAME_COLUMN,
+        TOPIC_NAME_COLUMN,
         TOPIC_COVERAGE_OUTPUT_COLUMN,
         TOPIC_SHARE_COLUMN,
         TOPIC_SEGMENT_COUNT_COLUMN,

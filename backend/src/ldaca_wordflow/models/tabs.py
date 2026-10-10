@@ -12,6 +12,7 @@ from ..domain.workspace import (
     StopWordSettings,
     TabName,
     TopicModelingProjectionSelection,
+    TopicModelingTopicNames,
 )
 
 
@@ -61,6 +62,7 @@ class TopicModelingTabUpdate(_TabUpdate):
     stop_words: StopWordSettings | None = None
     words_per_topic: int | None = Field(default=None, ge=3, le=100)
     projection_selection: TopicModelingProjectionSelection | None = None
+    topic_names: TopicModelingTopicNames | None = None
 
 
 type TabUpdate = Annotated[

@@ -314,6 +314,9 @@ class TopicItem(_StrictModel):
     total_size: int = Field(ge=0)
     x: float
     y: float
+    # The run's natural Topics this Topic holds, sorted (issue 366: Topic names are
+    # kept per group, since the Topics slider renumbers Topics).
+    leaves: list[int] | None = None
 
 
 class TopicSource(_StrictModel):

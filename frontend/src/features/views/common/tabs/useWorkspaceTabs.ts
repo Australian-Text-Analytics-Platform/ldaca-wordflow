@@ -12,6 +12,7 @@ import type {
   Tab,
   TabResource,
   TopicModelingProjectionSelection,
+  TopicModelingTopicNames,
   UpdateTabData,
 } from '@/api';
 import { queryKeys } from '@/lib/queryKeys';
@@ -56,6 +57,7 @@ interface TabPresentationPatch {
   stopWords?: string[];
   wordsPerTopic?: number;
   projectionSelection?: TopicModelingProjectionSelection | null;
+  topicNames?: TopicModelingTopicNames | null;
 }
 
 interface LocalTabState {
@@ -101,6 +103,7 @@ function presentationUpdate(
       ...(patch.projectionSelection === undefined
         ? {}
         : { projection_selection: patch.projectionSelection }),
+      ...(patch.topicNames === undefined ? {} : { topic_names: patch.topicNames }),
     };
   }
   throw new Error(`Tab kind ${kind} has no presentation settings`);
@@ -123,6 +126,7 @@ function withPresentationPatch(tab: Tab, patch: TabPresentationPatch): Tab {
         ...(patch.projectionSelection === undefined
           ? {}
           : { projection_selection: patch.projectionSelection }),
+        ...(patch.topicNames === undefined ? {} : { topic_names: patch.topicNames }),
       },
     };
   }

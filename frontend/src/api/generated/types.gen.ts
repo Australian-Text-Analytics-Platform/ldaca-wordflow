@@ -5494,6 +5494,10 @@ export type TopicItem = {
      */
     id: number;
     /**
+     * Leaves
+     */
+    leaves?: Array<number> | null;
+    /**
      * Representative Words
      */
     representative_words: Array<RepresentativeWord>;
@@ -5618,6 +5622,10 @@ export type TopicModelingDataBlockCreationAnalysisRequest = {
      * Topic Meanings Override
      */
     topic_meanings_override?: Array<TopicMeaningOverride>;
+    /**
+     * Topic Names Override
+     */
+    topic_names_override?: Array<TopicNameOverride>;
 };
 
 /**
@@ -5785,6 +5793,7 @@ export type TopicModelingTabSettings = {
     kind: 'topic_modeling';
     projection_selection: TopicModelingProjectionSelection | null;
     stop_words: StopWordSettings;
+    topic_names?: TopicModelingTopicNames | null;
     /**
      * Words Per Topic
      */
@@ -5805,10 +5814,50 @@ export type TopicModelingTabUpdate = {
     name?: string | null;
     projection_selection?: TopicModelingProjectionSelection | null;
     stop_words?: StopWordSettings | null;
+    topic_names?: TopicModelingTopicNames | null;
     /**
      * Words Per Topic
      */
     words_per_topic?: number | null;
+};
+
+/**
+ * TopicModelingTopicNames
+ *
+ * Names people gave Topics of one run (issue 366).
+ *
+ * Keyed by the run's natural Topics a Topic holds, sorted and joined by
+ * commas ("3,7,12"): the Topics slider renumbers Topics at every count, so a
+ * name kept by number would move to another Topic. A merged or split Topic
+ * is a different group and has no name until it is given one.
+ */
+export type TopicModelingTopicNames = {
+    /**
+     * Analysis Id
+     */
+    analysis_id: string;
+    /**
+     * Names
+     */
+    names?: {
+        [key: string]: string;
+    };
+};
+
+/**
+ * TopicNameOverride
+ *
+ * A name given to a Topic at this Topic count (issue 366).
+ */
+export type TopicNameOverride = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Topic Id
+     */
+    topic_id: number;
 };
 
 /**

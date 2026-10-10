@@ -10629,6 +10629,20 @@
             "title": "Id",
             "type": "integer"
           },
+          "leaves": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Leaves"
+          },
           "representative_words": {
             "items": {
               "$ref": "#/components/schemas/RepresentativeWord"
@@ -10878,6 +10892,13 @@
               "$ref": "#/components/schemas/TopicMeaningOverride"
             },
             "title": "Topic Meanings Override",
+            "type": "array"
+          },
+          "topic_names_override": {
+            "items": {
+              "$ref": "#/components/schemas/TopicNameOverride"
+            },
+            "title": "Topic Names Override",
             "type": "array"
           }
         },
@@ -11203,6 +11224,16 @@
           "stop_words": {
             "$ref": "#/components/schemas/StopWordSettings"
           },
+          "topic_names": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicModelingTopicNames"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "words_per_topic": {
             "maximum": 100.0,
             "minimum": 3.0,
@@ -11260,6 +11291,16 @@
               }
             ]
           },
+          "topic_names": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TopicModelingTopicNames"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "words_per_topic": {
             "anyOf": [
               {
@@ -11278,6 +11319,52 @@
           "kind"
         ],
         "title": "TopicModelingTabUpdate",
+        "type": "object"
+      },
+      "TopicModelingTopicNames": {
+        "additionalProperties": false,
+        "description": "Names people gave Topics of one run (issue 366).\n\nKeyed by the run's natural Topics a Topic holds, sorted and joined by\ncommas (\"3,7,12\"): the Topics slider renumbers Topics at every count, so a\nname kept by number would move to another Topic. A merged or split Topic\nis a different group and has no name until it is given one.",
+        "properties": {
+          "analysis_id": {
+            "format": "uuid",
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "names": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Names",
+            "type": "object"
+          }
+        },
+        "required": [
+          "analysis_id"
+        ],
+        "title": "TopicModelingTopicNames",
+        "type": "object"
+      },
+      "TopicNameOverride": {
+        "additionalProperties": false,
+        "description": "A name given to a Topic at this Topic count (issue 366).",
+        "properties": {
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "topic_id": {
+            "minimum": 0.0,
+            "title": "Topic Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "topic_id",
+          "name"
+        ],
+        "title": "TopicNameOverride",
         "type": "object"
       },
       "TopicSegmentItem": {

@@ -23,7 +23,11 @@ import {
   type TypicalityBand,
 } from './topicExamplesModel';
 import type { TopicColorScheme } from './topicModelingGraph';
-import { isUngrouped, topicLabel } from '../../ungrouped';
+import { topicGroupKey, topicNameDisplay } from '../../topicNames';
+import { isUngrouped, topicLabel, topicShortLabel } from '../../ungrouped';
+import { TopicNameInput, TopicRenameButton } from './TopicNameControls';
+import { useTopicNames } from './topicNamesContext';
+import { FadingText } from './FadingText';
 
 export interface TopicExamplesContext {
   workspaceId: string;
@@ -149,6 +153,14 @@ export function TopicExamplesPane({
   onClearFilters,
 }: TopicExamplesPaneProps) {
   const [order, setOrder] = useState<'typical' | 'random'>('typical');
+  // The title is the pane's name; double-click it to rename the Topic,
+  // as for tab and Data Block names (no selection here to clash with).
+  const { names, rename } = useTopicNames();
+  const display = topic ? topicNameDisplay(topic, names) : { name: null, hint: null };
+  const groupKey = topic ? topicGroupKey(topic) : null;
+  const canRename = groupKey !== null && rename !== null;
+  const [renamingTopicId, setRenamingTopicId] = useState<number | null>(null);
+  const renaming = topic !== null && renamingTopicId === topic.id;
   const [onePerDocument, setOnePerDocument] = useState(true);
   const [group, setGroup] = useState<string>(ALL);
   const [corpus, setCorpus] = useState<string>(ALL);
@@ -254,7 +266,53 @@ export function TopicExamplesPane({
       className="flex h-full min-h-[28rem] flex-col gap-2 rounded-lg border border-surface-border bg-panel/40 p-3 @min-[700px]:min-h-0"
     >
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <h4 className="text-body font-medium text-foreground">{topicLabel(topic.id)} examples</h4>
+        <h4 className="flex min-w-0 items-center gap-1.5 text-body font-medium text-foreground">
+          {renaming && groupKey ? (
+            <TopicNameInput
+              groupKey={groupKey}
+              current={display.name ?? ''}
+              label={topicLabel(topic.id)}
+              onClose={() => {
+                setRenamingTopicId(null);
+              }}
+            />
+          ) : (
+            <span
+              className="flex min-w-0"
+              title={canRename ? 'Double-click to rename' : undefined}
+              onDoubleClick={
+                canRename
+                  ? () => {
+                      setRenamingTopicId(topic.id);
+                    }
+                  : undefined
+              }
+            >
+              <FadingText text={display.name ?? topicLabel(topic.id)} />
+            </span>
+          )}
+          {canRename && !renaming ? (
+            // Also a pencil here, beside the double-click on the title (Chao).
+            <TopicRenameButton
+              alwaysVisible
+              label={display.name ?? topicLabel(topic.id)}
+              onRename={() => {
+                setRenamingTopicId(topic.id);
+              }}
+            />
+          ) : null}
+          {display.name ? ' ' : null}
+          {display.name ? (
+            <span className="text-label-secondary font-normal text-description">
+              {topicShortLabel(topic.id)}
+            </span>
+          ) : null}
+          {/* Spaces keep the heading's text readable ("Sleep T4 examples"). */}{' '}
+          <span>examples</span>
+        </h4>
+        {display.hint ? (
+          <span className="text-label-secondary italic text-description">{display.hint}</span>
+        ) : null}
         {data ? (
           <span className="text-label-secondary text-description">
             {data.segment_count.toLocaleString()} segments in {data.document_count.toLocaleString()}{' '}

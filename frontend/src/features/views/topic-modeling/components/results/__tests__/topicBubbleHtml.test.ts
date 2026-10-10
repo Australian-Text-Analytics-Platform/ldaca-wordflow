@@ -186,4 +186,34 @@ describe('topic bubble interactive HTML (issue 279)', () => {
     document.querySelector<HTMLButtonElement>('#reset')?.click();
     expect(svg?.getAttribute('viewBox')).toBe('0 0 400 300');
   });
+
+  it('shows a named Topic by its name, and a hint for a group holding one (#366)', () => {
+    document.body.innerHTML =
+      '<input id="filter"><span id="filter-status"></span><button id="reset"></button><div id="chart"></div><div id="card" hidden></div>';
+    document.querySelector('#chart')?.append(exportSvg());
+    const named = [
+      { ...topics[0], leaves: [0] },
+      { ...topics[1], leaves: [1, 2] },
+    ] as TopicModelingTopic[];
+    const run = standalone<typeof runTopicBubbleHtml>(runTopicBubbleHtml);
+    run(
+      buildTopicBubblePayload(named, presentation, ['Senate', 'House'], '', 400, 300, {
+        '0': 'Climate',
+        '2': 'Rent',
+      }),
+      () => true,
+    );
+    const card = document.querySelector<HTMLElement>('#card');
+    const hover = (id: number) =>
+      document
+        .querySelector(`[data-topic-id="${String(id)}"]`)
+        ?.dispatchEvent(new MouseEvent('mousemove', { clientX: 10, clientY: 10 }));
+
+    hover(0);
+    expect(card?.querySelector('.card-title')?.textContent).toBe('Climate T0');
+    expect(card?.querySelector('.card-hint')).toBeNull();
+    hover(1);
+    expect(card?.querySelector('.card-title')?.textContent).toBe('Topic 1');
+    expect(card?.querySelector('.card-hint')?.textContent).toBe('includes Rent');
+  });
 });

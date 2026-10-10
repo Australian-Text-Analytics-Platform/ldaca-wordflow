@@ -146,7 +146,7 @@ describe('TopicExamplesPane (#353)', () => {
     renderPane({
       topic: { id: -1, representative_words: [], size: [12], total_size: 12, x: 0, y: 0 },
     });
-    expect(await screen.findByText('Ungrouped examples')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Ungrouped examples' })).toBeInTheDocument();
     expect(api.queryTopicSegments).toHaveBeenCalledWith(
       expect.objectContaining({ body: expect.objectContaining({ topic_id: -1, order: 'random' }) }),
     );

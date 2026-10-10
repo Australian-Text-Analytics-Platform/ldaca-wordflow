@@ -79,7 +79,9 @@ def run_topic_modeling_data_block_creation(
         TOPIC_COVERAGE_OUTPUT_COLUMN,
         TOPIC_MEANING_COLUMN,
         TOPIC_MODELING_GENERATED_COLUMNS,
+        TOPIC_NAME_COLUMN,
         TOPIC_TOP1_COLUMN,
+        TOPIC_TOP1_NAME_COLUMN,
     )
     from ..analysis.topic_inclusion import top_topic_ids
     from ..domain.workspace import TopicModelingDataBlockCreationAnalysisRequest
@@ -121,6 +123,9 @@ def run_topic_modeling_data_block_creation(
     meaning_values.update(
         {item.topic_id: list(item.words) for item in request.topic_meanings_override}
     )
+    # Names people gave Topics at this count; the name
+    # columns are added only when some Topic has one.
+    topic_name_values = {item.topic_id: item.name for item in request.topic_names_override}
 
     outputs: list[dict[str, Any]] = []
     total = len(request.node_ids)
@@ -178,6 +183,10 @@ def run_topic_modeling_data_block_creation(
                 selected_topic_ids=selected_topic_ids,
             )
             document_column = text_column
+            if topic_name_values:
+                joined = joined.with_columns(
+                    _topic_name_expression(topic_name_values).alias(TOPIC_NAME_COLUMN)
+                )
         else:
             included_rows: list[int] = []
             included_top_topics: set[int] = set()
@@ -237,6 +246,15 @@ def run_topic_modeling_data_block_creation(
                 .select(
                     *[pl.col(column) for column in selected_columns],
                     pl.col(TOPIC_COLUMN).alias(TOPIC_TOP1_COLUMN),
+                    *(
+                        [
+                            _topic_name_expression(topic_name_values).alias(
+                                TOPIC_TOP1_NAME_COLUMN
+                            )
+                        ]
+                        if topic_name_values
+                        else []
+                    ),
                     pl.col(TOPIC_COVERAGE_COLUMN).alias(
                         TOPIC_COVERAGE_OUTPUT_COLUMN
                     ),
@@ -263,6 +281,17 @@ def run_topic_modeling_data_block_creation(
                 TOPIC_MEANING_COLUMN: pl.List(pl.String),
             },
         )
+        if topic_name_values:
+            topic_meanings_frame = topic_meanings_frame.with_columns(
+                pl.Series(
+                    TOPIC_NAME_COLUMN,
+                    [
+                        _topic_name(topic_id, topic_name_values)
+                        for topic_id in present_topic_ids
+                    ],
+                    dtype=pl.String,
+                )
+            )
         topic_meanings_output_path = destination / f"{topic_meanings_id}.parquet"
         topic_meanings_frame.lazy().sink_parquet(topic_meanings_output_path)
 
@@ -323,7 +352,7 @@ def run_topic_modeling_data_block_creation(
                         "color": None,
                     },
                     "parquet_path": str(topic_meanings_output_path),
-                    "output_columns": [TOPIC_COLUMN, TOPIC_MEANING_COLUMN],
+                    "output_columns": topic_meanings_frame.columns,
                     "record_count": len(present_topic_ids),
                 },
             }
@@ -338,6 +367,38 @@ def run_topic_modeling_data_block_creation(
         "outputs": outputs,
         "message": "Topic Modelling results added to the Project",
     }
+
+
+def _topic_name(topic_id: int, names: dict[int, str]) -> str:
+    """A Topic's name, or "Topic 5" / "Ungrouped" as the app shows it."""
+
+    from ..shared.topic_types import UNGROUPED_TOPIC_ID
+
+    if topic_id == UNGROUPED_TOPIC_ID:
+        return "Ungrouped"
+    return names.get(topic_id) or f"Topic {topic_id}"
+
+
+def _topic_name_expression(names: dict[int, str]) -> Any:
+    """:func:`_topic_name` over the Topic column, so no name cell is empty."""
+
+    import polars as pl
+
+    from ..analysis.generated_columns import TOPIC_COLUMN
+    from ..shared.topic_types import UNGROUPED_TOPIC_ID
+
+    topic = pl.col(TOPIC_COLUMN)
+    return (
+        pl.when(topic == UNGROUPED_TOPIC_ID)
+        .then(pl.lit("Ungrouped"))
+        .otherwise(
+            topic.replace_strict(
+                names,
+                default=pl.format("Topic {}", topic),
+                return_dtype=pl.String,
+            )
+        )
+    )
 
 
 # Joins a Topic's segments within one document, in source order.

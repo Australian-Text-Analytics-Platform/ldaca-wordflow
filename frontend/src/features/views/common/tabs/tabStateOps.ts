@@ -6,7 +6,12 @@
  * remains the source of truth for tab identity and analysis ownership.
  */
 import { displayTabTitle } from '@/features/views/common/analysisNavigation';
-import type { AnalysisKind, Tab, TopicModelingProjectionSelection } from '@/api';
+import type {
+  AnalysisKind,
+  Tab,
+  TopicModelingProjectionSelection,
+  TopicModelingTopicNames,
+} from '@/api';
 import type { NodeInput } from '../nodeInputs/nodeInputsCore';
 
 export type AnalysisTabInput = NodeInput;
@@ -22,6 +27,8 @@ export interface AnalysisTab {
   stopWords: string[];
   wordsPerTopic: number | null;
   projectionSelection: TopicModelingProjectionSelection | null;
+  /** Names given to Topics, per group of natural Topics (trial). */
+  topicNames: TopicModelingTopicNames | null;
   created_at?: string;
   modified_at?: string;
   revision?: number;
@@ -35,6 +42,7 @@ export function tabFromResource(tab: Tab, local?: Partial<AnalysisTab>): Analysi
     stopWords: [] as string[],
     wordsPerTopic: null as number | null,
     projectionSelection: null as TopicModelingProjectionSelection | null,
+    topicNames: null as TopicModelingTopicNames | null,
   };
   switch (tab.settings.kind) {
     case 'annotation':
@@ -47,6 +55,7 @@ export function tabFromResource(tab: Tab, local?: Partial<AnalysisTab>): Analysi
       presentation.stopWords = tab.settings.stop_words.words;
       presentation.wordsPerTopic = tab.settings.words_per_topic;
       presentation.projectionSelection = tab.settings.projection_selection;
+      presentation.topicNames = tab.settings.topic_names ?? null;
       break;
     default:
       break;

@@ -196,6 +196,7 @@ def test_tab_presentation_settings_are_normalized_and_kind_scoped(tmp_path: Path
             "stop_words": {"words": []},
             "words_per_topic": 15,
             "projection_selection": None,
+            "topic_names": None,
         }
 
         updated = client.patch(

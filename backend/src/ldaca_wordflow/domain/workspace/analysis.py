@@ -520,6 +520,13 @@ class TopicMeaningOverride(_StrictModel):
     words: list[NonEmptyText]
 
 
+class TopicNameOverride(_StrictModel):
+    """A name given to a Topic at this Topic count (issue 366)."""
+
+    topic_id: int = Field(ge=0)
+    name: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+
+
 class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
     kind: Literal["topic_modeling_data_block_creation"] = (
         "topic_modeling_data_block_creation"
@@ -531,6 +538,7 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
     cluster_count: int = Field(ge=0)
     top_n_topics: int = Field(ge=0)
     topic_meanings_override: list[TopicMeaningOverride] = Field(default_factory=list)
+    topic_names_override: list[TopicNameOverride] = Field(default_factory=list)
     # "documents": one row per source document with its Topic Coverage.
     # "topics": one row per (document, Topic) holding only that Topic's segments.
     row_unit: Literal["documents", "topics"] = "documents"
@@ -577,6 +585,11 @@ class TopicModelingDataBlockCreationAnalysisRequest(_StrictModel):
             raise ValueError(
                 "Topic meaning overrides must fit the selected cluster count"
             )
+        name_ids = [item.topic_id for item in self.topic_names_override]
+        if len(name_ids) != len(set(name_ids)) or any(
+            topic_id >= self.cluster_count for topic_id in name_ids
+        ):
+            raise ValueError("Topic names must be unique and fit the selected cluster count")
         return self
 
 

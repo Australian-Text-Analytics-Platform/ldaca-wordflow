@@ -16,6 +16,7 @@ from pydantic import (
     ConfigDict,
     Field,
     StringConstraints,
+    field_validator,
     model_validator,
 )
 
@@ -51,6 +52,42 @@ class TopicModelingProjectionSelection(BaseModel):
     analysis_id: uuid.UUID
     cluster_count: int = Field(ge=0)
     top_n_topics: int = Field(ge=0)
+
+
+TOPIC_NAME_MAX_LENGTH = 120
+
+
+class TopicModelingTopicNames(BaseModel):
+    """Names people gave Topics of one run (issue 366).
+
+    Keyed by the run's natural Topics a Topic holds, sorted and joined by
+    commas ("3,7,12"): the Topics slider renumbers Topics at every count, so a
+    name kept by number would move to another Topic. A merged or split Topic
+    is a different group and has no name until it is given one.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    analysis_id: uuid.UUID
+    names: dict[str, str] = Field(default_factory=dict)
+
+    @field_validator("names")
+    @classmethod
+    def _valid_names(cls, value: dict[str, str]) -> dict[str, str]:
+        cleaned: dict[str, str] = {}
+        for key, name in value.items():
+            leaves = key.split(",")
+            if not leaves or any(not leaf.isdigit() for leaf in leaves):
+                raise ValueError("Topic name keys must list natural Topic ids")
+            if [int(leaf) for leaf in leaves] != sorted({int(leaf) for leaf in leaves}):
+                raise ValueError("Topic name keys must be sorted and unique")
+            name = name.strip()
+            if not name:
+                continue
+            if len(name) > TOPIC_NAME_MAX_LENGTH:
+                raise ValueError("Topic names are too long")
+            cleaned[key] = name
+        return cleaned
 
 
 def _normalize_stop_words(value: object) -> object:
@@ -107,6 +144,7 @@ class TopicModelingTabSettings(_TabSettings):
     stop_words: StopWordSettings
     words_per_topic: int = Field(ge=3, le=100)
     projection_selection: TopicModelingProjectionSelection | None
+    topic_names: TopicModelingTopicNames | None = None
 
 
 type TabSettings = Annotated[
@@ -257,6 +295,7 @@ __all__ = [
     "TabSettings",
     "TokenFrequencyTabSettings",
     "TopicModelingProjectionSelection",
+    "TopicModelingTopicNames",
     "TopicModelingTabSettings",
     "UnavailableTab",
 ]

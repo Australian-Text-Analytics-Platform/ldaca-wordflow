@@ -269,6 +269,9 @@ class Workspace:
             selection = settings.projection_selection
             if selection is not None and selection.analysis_id == analysis_id:
                 settings.projection_selection = None
+            names = settings.topic_names
+            if names is not None and names.analysis_id == analysis_id:
+                settings.topic_names = None
 
     def replace_analysis(self, analysis: AnalysisRecord) -> AnalysisRecord:
         """Replace one valid lifecycle record without changing its identity."""

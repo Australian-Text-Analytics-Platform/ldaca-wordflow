@@ -11,8 +11,10 @@ from ldaca_wordflow.analysis.generated_columns import (
     TOPIC_COVERAGE_OUTPUT_COLUMN,
     TOPIC_MEANING_COLUMN,
     TOPIC_SEGMENT_COUNT_COLUMN,
+    TOPIC_NAME_COLUMN,
     TOPIC_SHARE_COLUMN,
     TOPIC_TOP1_COLUMN,
+    TOPIC_TOP1_NAME_COLUMN,
 )
 from ldaca_wordflow.domain.workspace import Node, SourceProvenance, Workspace
 from ldaca_wordflow.infrastructure.storage.input_snapshots import (
@@ -519,3 +521,91 @@ def test_ungrouped_document_counts_per_source() -> None:
     documents = [document(0, 0.0), document(1, 0.3), document(2, 0.0), document(3, 0.0)]
     # Two sources of two documents: a partly grouped document is not Ungrouped.
     assert ungrouped_document_counts(documents, [2, 2]) == [1, 2]
+
+
+def test_topic_names_are_written_beside_the_topic_numbers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Names given to Topics reach the new Data Blocks."""
+    node_id, snapshot_dir, context_path = _topic_segments_fixture(
+        tmp_path,
+        monkeypatch,
+        [(0, 0, 13, 0), (0, 14, 26, 0), (0, 27, 38, 1), (1, 0, 10, -1)],
+        documents=[
+            {
+                "doc_index": 0,
+                "dominant_topic": 0,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 0.0},
+                    {"topic_id": 0, "coverage": 0.7},
+                    {"topic_id": 1, "coverage": 0.3},
+                ],
+            },
+            {
+                "doc_index": 1,
+                "dominant_topic": 1,
+                "topic_coverage": [
+                    {"topic_id": -1, "coverage": 0.0},
+                    {"topic_id": 0, "coverage": 0.0},
+                    {"topic_id": 1, "coverage": 1.0},
+                ],
+            },
+        ],
+    )
+    request = _topic_request(node_id)
+    request["topic_names_override"] = [{"topic_id": 0, "name": "Coffee"}]
+    projection = {node_id: {"row_indices": [0, 1], "offset": 0, "size": 2, "text_column": "text"}}
+
+    per_topic = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "topics"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection=projection,
+    )
+    data = pl.read_parquet(per_topic["outputs"][0]["topic_data"]["parquet_path"])
+    assert data[TOPIC_NAME_COLUMN].to_list() == ["Coffee", "Topic 1"]
+    meanings = pl.read_parquet(per_topic["outputs"][0]["topic_meanings"]["parquet_path"])
+    assert meanings[TOPIC_NAME_COLUMN].to_list() == ["Coffee", "Topic 1"]
+
+    request["row_unit"] = "documents"
+    per_document = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "documents"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection=projection,
+    )
+    data = pl.read_parquet(per_document["outputs"][0]["topic_data"]["parquet_path"])
+    assert data[TOPIC_TOP1_COLUMN].to_list() == [0, 1]
+    assert data[TOPIC_TOP1_NAME_COLUMN].to_list() == ["Coffee", "Topic 1"]
+
+    # No names, no name columns.
+    request["topic_names_override"] = []
+    unnamed = run_topic_modeling_data_block_creation(
+        input_snapshot_dir=str(snapshot_dir),
+        output_dir=str(tmp_path / "unnamed"),
+        request_payload=request,
+        projection_context_path=str(context_path),
+        source_projection=projection,
+    )
+    data = pl.read_parquet(unnamed["outputs"][0]["topic_data"]["parquet_path"])
+    assert TOPIC_TOP1_NAME_COLUMN not in data.columns
+
+
+def test_unnamed_topics_read_as_the_app_labels_them() -> None:
+    """No empty name cells; "Topic 5" and "Ungrouped" as shown in the app."""
+    from ldaca_wordflow.workers.topic_modeling import _topic_name, _topic_name_expression
+
+    frame = pl.DataFrame({TOPIC_COLUMN: [0, 1, -1]})
+    names = {0: "Coffee"}
+    assert frame.select(_topic_name_expression(names).alias("name"))["name"].to_list() == [
+        "Coffee",
+        "Topic 1",
+        "Ungrouped",
+    ]
+    assert [_topic_name(topic_id, names) for topic_id in (0, 1, -1)] == [
+        "Coffee",
+        "Topic 1",
+        "Ungrouped",
+    ]

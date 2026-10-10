@@ -20,7 +20,7 @@
  * ownership or persisted state.
  */
 import { useEffect, useRef, type ComponentType } from 'react';
-import type { Analysis, TopicModelingProjectionSelection } from '@/api';
+import type { Analysis, TopicModelingProjectionSelection, TopicModelingTopicNames } from '@/api';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useUserPreferences } from '@/features/preferences/useUserPreferences';
 import { useTabAnalysisForest } from '../hooks/useTabAnalysisForest';
@@ -47,6 +47,7 @@ interface AnalysisFeatureHost {
   stopWords: string[];
   topicModelingWordsPerTopic: number | null;
   topicModelingProjectionSelection: TopicModelingProjectionSelection | null;
+  topicModelingTopicNames: TopicModelingTopicNames | null;
   setInputSet: (selectorId: string, inputs: AnalysisTabInput[]) => void;
   setSetting: (key: string, value: string) => void;
   setCorrectionColumn: (nodeId: string, column: string | null) => Promise<void>;
@@ -55,6 +56,7 @@ interface AnalysisFeatureHost {
     stopWords?: string[];
     wordsPerTopic?: number;
     projectionSelection?: TopicModelingProjectionSelection | null;
+    topicNames?: TopicModelingTopicNames | null;
   }) => Promise<void>;
   refreshAnalyses: () => void;
 }
@@ -177,6 +179,7 @@ export function AnalysisTabsHost({
             stopWords: activeTab.stopWords,
             topicModelingWordsPerTopic: activeTab.wordsPerTopic,
             topicModelingProjectionSelection: activeTab.projectionSelection,
+            topicModelingTopicNames: activeTab.topicNames,
             setInputSet: (selectorId, inputs) => {
               setTabInputSet(activeTab.tab_id, selectorId, inputs);
             },
