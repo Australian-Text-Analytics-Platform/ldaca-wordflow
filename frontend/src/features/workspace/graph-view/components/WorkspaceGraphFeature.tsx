@@ -526,6 +526,10 @@ export function WorkspaceGraphFeature({ fallback }: WorkspaceGraphFeatureProps) 
         // away shrank the whole graph on Fit view and was hard to bring back,
         // and its edges grew long (Monika, via Chao, 2026-10-09).
         nodesDraggable={false}
+        // React Flow keeps its double-click zoom off draggable nodes only, so
+        // with fixed Data Blocks a double-click to add one also zoomed in
+        // (Chao, 2026-10-10). Zoom stays on the buttons, pinch and Ctrl/Cmd + scroll.
+        zoomOnDoubleClick={false}
         nodesConnectable={false}
         elementsSelectable
         onConnect={graph.handleConnect}
