@@ -73,6 +73,34 @@ export function fadeAfterOtherActions({
 
 const targetSelector = (name: string) => `[${NUDGE_TARGET_ATTRIBUTE}~="${CSS.escape(name)}"]`;
 
+/** Elements whose tops are this close (px) share a row. */
+const ROW_TOLERANCE_PX = 12;
+
+/**
+ * Scrolls the outlined settings into view, as little as needed. When they
+ * sit on several rows and the pane is short, it shows the row with the most
+ * of them, or the topmost of equal rows (Chao, issue 360).
+ */
+function revealRow(elements: HTMLElement[]) {
+  const rows: { top: number; elements: HTMLElement[] }[] = [];
+  for (const element of elements) {
+    const top = element.getBoundingClientRect().top;
+    const row = rows.find((candidate) => Math.abs(candidate.top - top) <= ROW_TOLERANCE_PX);
+    if (row) row.elements.push(element);
+    else rows.push({ top, elements: [element] });
+  }
+  const best = rows.reduce<(typeof rows)[number] | undefined>(
+    (chosen, row) =>
+      !chosen ||
+      row.elements.length > chosen.elements.length ||
+      (row.elements.length === chosen.elements.length && row.top < chosen.top)
+        ? row
+        : chosen,
+    undefined,
+  );
+  best?.elements[0]?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+}
+
 /** Elements outlined now; a new outline replaces the previous one. */
 let current: { elements: HTMLElement[]; stop: () => void } | null = null;
 
@@ -93,7 +121,7 @@ export type ReleaseOutline = (options?: { fade?: boolean }) => void;
 
 /**
  * Outlines every element carrying one of the target names. With `scroll`,
- * brings the first one into view. On its own the outline fades after other
+ * brings them into view (the row with the most of them). On its own the outline fades after other
  * actions or a timeout; `untilReleased` leaves that to the caller (a
  * suggestion card's outline lasts as long as the card). Returns the release,
  * or null when no target is on screen.
@@ -112,7 +140,7 @@ export function outlineNudgeTargets(
   );
   if (elements.length === 0) return null;
   for (const element of elements) element.setAttribute(ACTIVE_ATTRIBUTE, '');
-  if (scroll) elements[0]?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  if (scroll) revealRow(elements);
   const session = {
     elements,
     stop: untilReleased

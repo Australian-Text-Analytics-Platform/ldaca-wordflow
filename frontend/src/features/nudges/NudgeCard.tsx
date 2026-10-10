@@ -1,5 +1,5 @@
 import { Lightbulb } from 'lucide-react';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { useSettingsWalk } from '@/features/guidance/GuidanceContext';
@@ -67,9 +67,15 @@ function NudgeCardOccurrence({ id, detail, title, className }: Omit<NudgeCardPro
 
   // The card's outline lasts as long as the card and fades with it. It is
   // put back after each render, so targets that appear later are outlined.
+  const revealed = useRef(false);
   useEffect(() => {
     if (phase !== 'shown') return;
-    const release = outlineNudgeTargets(nudge.targets, { untilReleased: true });
+    // Brought into view once, when the suggestion appears (Chao, issue 360).
+    const release = outlineNudgeTargets(nudge.targets, {
+      untilReleased: true,
+      scroll: !revealed.current,
+    });
+    if (release) revealed.current = true;
     return () => {
       release?.({ fade: true });
     };

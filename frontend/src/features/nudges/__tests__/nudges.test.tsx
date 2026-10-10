@@ -105,6 +105,25 @@ describe('the Suggestions outline', () => {
     expect(input.scrollIntoView).toHaveBeenCalled();
   });
 
+  it('brings the row with the most outlined settings into view (Chao)', () => {
+    render(
+      <>
+        <input aria-label="Top" data-nudge-target="a" />
+        <input aria-label="Low one" data-nudge-target="b" />
+        <input aria-label="Low two" data-nudge-target="c" />
+      </>,
+    );
+    const top = { Top: 0, 'Low one': 300, 'Low two': 302 } as Record<string, number>;
+    for (const input of screen.getAllByRole('textbox')) {
+      const label = input.getAttribute('aria-label') ?? '';
+      input.getBoundingClientRect = () => ({ top: top[label] ?? 0 }) as DOMRect;
+    }
+    outlineMissingInputs(['a', 'b', 'c']);
+    // One shared mock: check which element it scrolled.
+    const scrolled = vi.mocked(Element.prototype.scrollIntoView).mock.contexts;
+    expect(scrolled).toEqual([screen.getByLabelText('Low one')]);
+  });
+
   it('reports a click or key press on a disabled control through its reason wrapper', async () => {
     const onDisabledClick = vi.fn();
     const user = userEvent.setup();
