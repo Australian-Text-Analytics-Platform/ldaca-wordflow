@@ -3780,6 +3780,10 @@ export type ProgressDetail = {
      * Unit
      */
     unit?: string | null;
+    /**
+     * Waiting For
+     */
+    waiting_for?: 'ai_provider' | null;
 };
 
 /**

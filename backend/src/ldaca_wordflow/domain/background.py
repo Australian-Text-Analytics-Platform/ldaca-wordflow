@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import unicodedata
 from enum import StrEnum
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import (
     AfterValidator,
@@ -61,6 +61,12 @@ class ProgressDetail(BaseModel):
     processors_busy: float | None = Field(default=None, ge=0.0, allow_inf_nan=False)
     processors: int | None = Field(default=None, ge=1)
     stalled_seconds: int | None = Field(default=None, ge=0)
+    # What an idle run is waiting for, when it is not this computer's work:
+    # an AI provider answering Annotation batches (issue 370). Left out when
+    # unset, like older records.
+    waiting_for: Literal["ai_provider"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class Progress(BaseModel):

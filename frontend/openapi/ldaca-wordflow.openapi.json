@@ -7386,6 +7386,18 @@
               }
             ],
             "title": "Unit"
+          },
+          "waiting_for": {
+            "anyOf": [
+              {
+                "const": "ai_provider",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting For"
           }
         },
         "required": [

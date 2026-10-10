@@ -166,3 +166,22 @@ def test_polars_text_progress_polls_the_file(tmp_path: Path) -> None:
     # The tokeniser leaves the total to the caller.
     assert reports[0] == "Tokenising the text: 4 of 8 documents"
     assert not Path(path).exists()
+
+
+def test_waiting_for_is_reported_and_left_out_of_records_when_unset() -> None:
+    """An idle run waiting on an AI provider says so (issue 370)."""
+    from ldaca_wordflow.domain.background import ProgressDetail
+
+    reports: list[dict[str, Any] | None] = []
+    reporter = StepReporter(
+        lambda _fraction, _message, detail=None: reports.append(detail),
+        band=(0.0, 1.0),
+        steps=(Step("classifying", "Classifying rows"),),
+        waiting_for="ai_provider",
+        processors=2,
+    )
+    reporter.update("classifying", done=0, total=5, unit="rows")
+    assert reports[-1] is not None
+    assert ProgressDetail.model_validate(reports[-1]).waiting_for == "ai_provider"
+    plain = ProgressDetail(step=1, steps=1, step_label="Reading")
+    assert "waiting_for" not in plain.model_dump(mode="json")

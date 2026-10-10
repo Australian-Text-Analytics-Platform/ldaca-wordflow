@@ -143,6 +143,11 @@ controls. A reviewed
 correction column can also be selected as the Example annotation column for a
 later run.
 
+While Run works, **Tasks** shows how many rows are classified so far, about how
+long is left, any failed batches, and that the run is waiting for the AI provider
+between answers. A slow provider can take minutes per batch; the run is still
+alive while Tasks keeps updating.
+
 A provider-wide failure is shown in Annotation and Tasks and writes no labels.
 When only individual rows cannot fit the provider context or produce a valid
 response, successful rows are published and a warning reports failed rows and

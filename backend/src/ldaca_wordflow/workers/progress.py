@@ -21,7 +21,7 @@ from collections.abc import Callable, Iterator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from .cpu import available_cpus
 
@@ -87,6 +87,7 @@ class StepReporter:
         clock: Callable[[], float] = time.monotonic,
         cpu_clock: Callable[[], float] = time.process_time,
         processors: int | None = None,
+        waiting_for: Literal["ai_provider"] | None = None,
     ) -> None:
         if not steps:
             raise ValueError("A StepReporter needs at least one step")
@@ -116,6 +117,10 @@ class StepReporter:
         self._last_fraction = band[0]
         self._cpu_sample = (clock(), cpu_clock())
         self._busy: float | None = None
+        # The run mostly waits on a remote service, so idle processors are
+        # expected (issue 370).
+        self._waiting_for = waiting_for
+        self._note: str | None = None
 
     def update(
         self,
@@ -123,8 +128,12 @@ class StepReporter:
         done: int | None = None,
         total: int | None = None,
         unit: str | None = None,
+        note: str | None = None,
     ) -> None:
-        """Record step ``key`` at ``done`` of ``total`` and report if due."""
+        """Record step ``key`` at ``done`` of ``total`` and report if due.
+
+        ``note`` is added after the counts, such as "1 failed batch".
+        """
 
         with self._lock:
             now = self._clock()
@@ -144,7 +153,10 @@ class StepReporter:
             self._done = done
             self._total = total
             self._unit = unit
-            if new_step or now - self._last_report >= MIN_REPORT_SECONDS:
+            # A new note (a failed batch) is worth reporting at once.
+            note_changed = note != self._note
+            self._note = note
+            if new_step or note_changed or now - self._last_report >= MIN_REPORT_SECONDS:
                 self._report(now)
 
     def has_step(self, key: str) -> bool:
@@ -206,6 +218,8 @@ class StepReporter:
             message = f"{position}: {counts}"
             if eta is not None:
                 message += f", about {format_duration(eta)} left"
+            if self._note:
+                message += f"; {self._note}"
         elif step.counted:
             message = f"{position}…"
         else:
@@ -225,6 +239,8 @@ class StepReporter:
             "processors": self._processors,
             "stalled_seconds": int(now - self._last_change),
         }
+        if self._waiting_for is not None:
+            detail["waiting_for"] = self._waiting_for
         self._last_report = now
         self._callback(self._fraction(), message, detail)
 

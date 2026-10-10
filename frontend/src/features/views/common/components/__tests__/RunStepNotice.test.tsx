@@ -61,6 +61,19 @@ describe('slow-run progress (issue 350)', () => {
     ).toBeInTheDocument();
   });
 
+  it('says an AI annotation run is waiting for its provider (issue 370)', () => {
+    const { rerender } = render(
+      <TaskLiveness detail={detail({ processors_busy: 0, waiting_for: 'ai_provider' })} />,
+    );
+    expect(screen.getByText('Waiting for the AI provider.')).toBeInTheDocument();
+    rerender(
+      <TaskLiveness
+        detail={detail({ processors_busy: 0, stalled_seconds: 900, waiting_for: 'ai_provider' })}
+      />,
+    );
+    expect(screen.getByText(/No answer from the AI provider for 15 min\./)).toBeInTheDocument();
+  });
+
   it('does not alarm while a long step keeps the processors busy', () => {
     render(<TaskLiveness detail={detail({ processors_busy: 2, stalled_seconds: 3600 })} />);
     expect(screen.queryByText(/may be stuck/)).not.toBeInTheDocument();

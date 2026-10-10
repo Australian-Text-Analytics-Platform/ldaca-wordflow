@@ -36,6 +36,8 @@ export function TaskLiveness({ detail }: { detail: ProgressDetail }) {
   }, []);
 
   const busy = detail.processors_busy;
+  // AI annotation spends most of its time waiting for the provider (issue 370).
+  const provider = detail.waiting_for === 'ai_provider';
   const stalled =
     (detail.stalled_seconds ?? 0) >= STALLED_AFTER_SECONDS &&
     busy !== null &&
@@ -47,7 +49,9 @@ export function TaskLiveness({ detail }: { detail: ProgressDetail }) {
       {busy !== null && busy !== undefined ? (
         <p>
           {busy < IDLE_PROCESSORS
-            ? 'Waiting: the processors are idle.'
+            ? provider
+              ? 'Waiting for the AI provider.'
+              : 'Waiting: the processors are idle.'
             : `Working: using ${busy.toLocaleString(undefined, { maximumFractionDigits: 1 })}${
                 detail.processors ? ` of ${String(detail.processors)}` : ''
               } processors.`}
@@ -60,7 +64,9 @@ export function TaskLiveness({ detail }: { detail: ProgressDetail }) {
         </p>
       ) : stalled ? (
         <p className="text-warning">
-          No progress for {formatMinutes(detail.stalled_seconds ?? 0)} and the processors are idle.
+          {provider
+            ? `No answer from the AI provider for ${formatMinutes(detail.stalled_seconds ?? 0)}.`
+            : `No progress for ${formatMinutes(detail.stalled_seconds ?? 0)} and the processors are idle.`}{' '}
           The run may be stuck; you can stop it from its tab.
         </p>
       ) : null}

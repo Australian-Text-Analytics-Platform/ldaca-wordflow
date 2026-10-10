@@ -1281,6 +1281,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             status={annotationRunAll.state}
             taskId={annotationRunAll.id}
             message={annotationRunAll.progress.message ?? undefined}
+            // The step line, with live counts and time left in Tasks (issue 370).
+            detail={annotationRunAll.progress.detail}
           />
         ) : null}
         {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (

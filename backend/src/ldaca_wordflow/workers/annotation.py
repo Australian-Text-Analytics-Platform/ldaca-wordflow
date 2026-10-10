@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -26,9 +25,18 @@ from ..infrastructure.storage.durable_fs import atomic_output_path
 from ..infrastructure.storage.input_snapshots import load_snapshot_node
 from ..domain.annotation import provider_failure_message
 from ..shared.errors import format_exception_diagnostic
+from .progress import ProgressCallback, Step, StepReporter, keep_alive
 from .utils import process_entrypoint
 
 logger = logging.getLogger(__name__)
+
+
+# The share of the run spent classifying rows; reading and publishing take the rest.
+CLASSIFY_PROGRESS_BAND = (0.1, 0.8)
+
+
+def _no_progress(_fraction: float, _message: str, _detail: dict[str, Any] | None = None, /) -> None:
+    """Progress sink when the caller wants none."""
 
 
 @process_entrypoint
@@ -38,7 +46,7 @@ def run_annotation_analysis(
     output_dir: str,
     request_payload: dict[str, Any],
     api_key: str | None,
-    progress_callback: Callable[[float, str], None] | None = None,
+    progress_callback: ProgressCallback | None = None,
 ) -> dict[str, Any]:
     """Classify one immutable Data Block snapshot and publish one private output."""
 
@@ -70,39 +78,46 @@ def run_annotation_analysis(
             for index in target_indices
         ]
 
-        if progress_callback:
-            progress_callback(0.1, "Classifying rows")
+        # Rows classified, the time left and liveness, as Topic Modelling
+        # shows them (issue 350); the run waits on the AI provider (issue 370).
+        reporter = StepReporter(
+            progress_callback or _no_progress,
+            band=CLASSIFY_PROGRESS_BAND,
+            steps=(Step("classifying", "Classifying rows"),),
+            waiting_for="ai_provider",
+        )
+        reporter.update("classifying", done=0, total=len(texts), unit="rows")
 
         def report_batch_progress(
             completed_rows: int,
             total_rows: int,
             failed_batches: int,
         ) -> None:
-            if progress_callback is None:
-                return
-            fraction = (
-                0.8 if total_rows == 0 else 0.1 + (0.7 * completed_rows / total_rows)
-            )
-            suffix = (
-                f"; {failed_batches} failed batch{'es' if failed_batches != 1 else ''}"
-                if failed_batches
-                else ""
-            )
-            progress_callback(
-                fraction,
-                f"Processed {completed_rows}/{total_rows} rows{suffix}",
+            reporter.update(
+                "classifying",
+                done=completed_rows,
+                total=total_rows,
+                unit="rows",
+                note=(
+                    f"{failed_batches} failed batch{'es' if failed_batches != 1 else ''}"
+                    if failed_batches
+                    else None
+                ),
             )
 
         try:
-            outcome = asyncio.run(
-                annotate_all(
-                    request,
-                    api_key,
-                    texts,
-                    examples=_load_examples(source_request, input_snapshot_dir),
-                    progress_callback=report_batch_progress,
+            # Batches can take minutes (a slow provider, rate-limit retries):
+            # heartbeats show the run is alive meanwhile.
+            with keep_alive(reporter):
+                outcome = asyncio.run(
+                    annotate_all(
+                        request,
+                        api_key,
+                        texts,
+                        examples=_load_examples(source_request, input_snapshot_dir),
+                        progress_callback=report_batch_progress,
+                    )
                 )
-            )
         except AnnotationAiError as error:
             logger.warning(
                 "Annotation provider failed configuration_id=%s provider=%s model=%s code=%s",
