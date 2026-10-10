@@ -76,8 +76,9 @@ export const NUDGES = {
   },
   'topic-many-ungrouped': {
     title: 'Many documents are Ungrouped',
+    // What to do, plainly; why it helps only a little is in Learn more (Chao, 2026-10-10).
     message:
-      'That mostly comes from the text itself, which settings do not change, so expect only a small difference: a slightly smaller Min topic size may group a few more into smaller topics, and a higher Max topic size may group a few more into broader topics.',
+      'To place more documents in topics, lower Min topic size or raise Max topic size, then Run again. The change is usually small.',
     help: 'analysis.topic-modeling.ungrouped',
     targets: [NUDGE_TARGETS.topicMinClusterSize, NUDGE_TARGETS.topicMaxClusterSize],
   },
