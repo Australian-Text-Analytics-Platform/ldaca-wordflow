@@ -35,7 +35,19 @@ export function TopicResultNudge({
     ungroupedShare: ungroupedDocumentShare(result.data),
   });
   if (!id) return null;
-  return <NudgeCard id={id} occurrence={`${analysisId ?? ''}\0${id}`} />;
+  const ungroupedShare = ungroupedDocumentShare(result.data);
+  return (
+    <NudgeCard
+      id={id}
+      occurrence={`${analysisId ?? ''}\0${id}`}
+      // The share is the point of this one (Chao): "Many (37%) documents are Ungrouped".
+      title={
+        id === 'topic-many-ungrouped' && ungroupedShare !== null
+          ? `Many (${String(Math.round(ungroupedShare * 100))}%) documents are Ungrouped`
+          : undefined
+      }
+    />
+  );
 }
 
 /** Share of the run's documents with no real Topic (issue 362), or null. */

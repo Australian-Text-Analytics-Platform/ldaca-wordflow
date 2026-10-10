@@ -92,7 +92,7 @@ describe('Topic Modelling suggestions (issue 360)', () => {
         analysisId="a"
       />,
     );
-    expect(screen.getByRole('status')).toHaveTextContent('Many documents are Ungrouped');
+    expect(screen.getByRole('status')).toHaveTextContent('Many (37%) documents are Ungrouped');
     view.rerender(
       <TopicResultNudge
         result={withUngrouped(20)}

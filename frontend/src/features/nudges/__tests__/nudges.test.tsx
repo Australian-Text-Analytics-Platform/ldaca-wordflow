@@ -186,6 +186,18 @@ describe('NudgeCard', () => {
     expect(screen.getByRole('status')).toHaveTextContent('One topic holds most segments');
   });
 
+  it('closes on Dismiss, with its outline (Chao)', async () => {
+    const user = userEvent.setup();
+    renderCard('run-1');
+    expect(screen.getByLabelText('Max topic size')).toHaveAttribute('data-nudge-active', '');
+    await user.click(screen.getByRole('button', { name: 'Dismiss' }));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 700));
+    });
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Max topic size')).not.toHaveAttribute('data-nudge-active');
+  });
+
   it('shows nothing when Suggestions are off', () => {
     useNudgeStore.setState({ enabled: false });
     renderCard('run-1');

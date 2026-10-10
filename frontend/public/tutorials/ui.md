@@ -349,8 +349,9 @@ The **Help** and **Feedback** buttons at the very bottom of the left sidebar pro
 - **Suggestions** appear when a result or run looks off, with a lightbulb
   beside it, and a pulsing border marks the settings that may help while the
   suggestion shows. They never stop you and need no closing: they fade once
-  you carry on with other things (typing in a field does not count), and come
-  back when the same situation happens again. Buttons that lose work, such as
+  you carry on with other things (typing in a field does not count), or choose
+  **Dismiss** to close one at once. Either way it comes back when the same
+  situation happens again. Buttons that lose work, such as
   **Clear** and **Stop**, are named but never marked. Suggestions appear when:
   - a Concordance **Preview** finds no matches in the documents it checked,
     while the Data Block has more: show more **Documents per page**, or

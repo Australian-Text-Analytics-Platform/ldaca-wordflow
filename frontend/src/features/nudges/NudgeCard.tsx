@@ -27,6 +27,8 @@ interface NudgeCardProps {
   occurrence: string | number;
   /** An extra sentence before the message, such as the numbers that set it off. */
   detail?: string;
+  /** Replaces the title, for one with numbers in it ("Many (37%) documents are Ungrouped"). */
+  title?: string;
   className?: string;
 }
 
@@ -58,7 +60,7 @@ function openHelp(key: DocumentKey<'tutorial'> | undefined) {
   if (target) useUIStore.getState().openDocument(target);
 }
 
-function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'occurrence'>) {
+function NudgeCardOccurrence({ id, detail, title, className }: Omit<NudgeCardProps, 'occurrence'>) {
   const nudge: NudgeDefinition = NUDGES[id];
   const startSettingsWalk = useSettingsWalk();
   const [phase, setPhase] = useState<Phase>('shown');
@@ -108,11 +110,23 @@ function NudgeCardOccurrence({ id, detail, className }: Omit<NudgeCardProps, 'oc
       <Lightbulb aria-hidden className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
       <div className="min-w-0 space-y-1">
         <p>
-          <span className="font-medium">{nudge.title}. </span>
+          <span className="font-medium">{title ?? nudge.title}. </span>
           {detail ? `${detail} ` : null}
           {nudge.message}
         </p>
         <div className="flex flex-wrap items-center gap-x-3">
+          {/* Closes this one now; it comes back when the situation happens again (Chao). */}
+          <Button
+            type="button"
+            variant="link"
+            size="sm"
+            className="h-auto px-0 text-description"
+            onClick={() => {
+              setPhase('fading');
+            }}
+          >
+            Dismiss
+          </Button>
           {nudge.help ? (
             <Button
               type="button"
