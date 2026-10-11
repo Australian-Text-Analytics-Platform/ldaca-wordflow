@@ -9,7 +9,6 @@ Block, and the next Run with the same settings starts from there.
 
 from __future__ import annotations
 
-import os
 import uuid
 from collections.abc import Sequence
 from pathlib import Path
@@ -17,6 +16,7 @@ from typing import Any
 
 import polars as pl
 
+from ..infrastructure.storage.durable_fs import fsync_file
 from .quotation_core import QUOTATION_GROUP_COLUMN, QUOTATION_GROUP_DTYPE
 
 QUOTATION_PARTS_DIR = "quotation-parts"
@@ -61,8 +61,9 @@ def write_part(
     path = parts_dir / f"part-{uuid.uuid4().hex}.parquet"
     temporary = parts_dir / f".{path.name}.tmp"
     frame.write_parquet(temporary)
-    with open(temporary, "rb") as handle:
-        os.fsync(handle.fileno())
+    # The shared helper opens the file for writing: Windows refuses to flush
+    # a read-only handle.
+    fsync_file(temporary)
     temporary.replace(path)
     return path
 
