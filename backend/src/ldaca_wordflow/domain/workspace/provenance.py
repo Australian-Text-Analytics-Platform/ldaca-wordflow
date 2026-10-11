@@ -385,6 +385,18 @@ class QuotationResultDataBlockCreationDerivation(_StrictModel):
     kind: Literal["quotation_result_data_block_creation"] = "quotation_result_data_block_creation"
 
 
+class QuotationProgressDerivation(_StrictModel):
+    """Quotations a Run found before it stopped (issue 381).
+
+    The next Run on the same source, column and engine skips their texts.
+    """
+
+    kind: Literal["quotation_progress"] = "quotation_progress"
+    column: str = Field(min_length=1, max_length=500)
+    engine_type: Literal["local", "remote"]
+    engine_id: str | None = None
+
+
 class SequentialDataBlockCreationDerivation(_StrictModel):
     kind: Literal["sequential_data_block_creation"] = "sequential_data_block_creation"
 
@@ -414,6 +426,7 @@ DerivationOperation = Annotated[
     | ConcordanceMatchDataBlockCreationDerivation
     | ConcordanceDocumentDataBlockCreationDerivation
     | QuotationResultDataBlockCreationDerivation
+    | QuotationProgressDerivation
     | SequentialDataBlockCreationDerivation
     | TopicModelingDataBlockCreationDerivation,
     Field(discriminator="kind"),
@@ -438,6 +451,7 @@ _DERIVATION_OPERATION_TYPES: dict[str, type[_StrictModel]] = {
         ConcordanceMatchDataBlockCreationDerivation,
         ConcordanceDocumentDataBlockCreationDerivation,
         QuotationResultDataBlockCreationDerivation,
+        QuotationProgressDerivation,
         SequentialDataBlockCreationDerivation,
         TopicModelingDataBlockCreationDerivation,
     )
@@ -630,6 +644,7 @@ def describe_provenance(
             ConcordanceMatchDataBlockCreationDerivation: "concordance Match Data Block Creation",
             ConcordanceDocumentDataBlockCreationDerivation: "concordance Document Data Block Creation",
             QuotationResultDataBlockCreationDerivation: "quotation Data Block Creation",
+            QuotationProgressDerivation: "quotations found so far",
             SequentialDataBlockCreationDerivation: "Trends Data Block Creation",
             TopicModelingDataBlockCreationDerivation: "topic modeling Data Block Creation",
         }
@@ -667,6 +682,7 @@ __all__ = [
     "LiteralExpression",
     "NodeProvenance",
     "NodeReference",
+    "QuotationProgressDerivation",
     "QuotationResultDataBlockCreationDerivation",
     "SequentialDataBlockCreationDerivation",
     "TopicModelingDataBlockCreationDerivation",

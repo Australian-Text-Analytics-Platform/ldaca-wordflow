@@ -50,7 +50,7 @@ const quotationHydrationMocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceData', () => ({
-  useWorkspaceData: () => ({ currentWorkspaceId: 'workspace-1' }),
+  useWorkspaceData: () => ({ currentWorkspaceId: 'workspace-1', nodes: [] }),
 }));
 
 vi.mock('@/features/workspace/common/hooks/useWorkspaceActions', () => ({

@@ -6,6 +6,7 @@ import {
   previewNodeEdit,
   queryConcordanceDocumentProjection,
   queryQuotationPreviewTable as queryQuotationPreviewTableRequest,
+  queryQuotationProgressTable as queryQuotationProgressTableRequest,
   type ConcordanceDocumentProjectionQuery,
   type QuotationPreviewQuery,
   type WorkspaceNodeInfo,
@@ -86,6 +87,30 @@ export async function queryQuotationPreviewArrowTable(options: {
   const payload: unknown = data;
   if (!(payload instanceof Blob) && !(payload instanceof ArrayBuffer)) {
     throw new Error('Quotation Preview did not return Arrow IPC');
+  }
+  return decodeArrowPage(payload, response);
+}
+
+/** One page of the rows a running Quotation Run has found so far (issue 381). */
+export async function queryQuotationProgressArrowTable(options: {
+  baseUrl?: string;
+  path: { workspace_id: string; analysis_id: string };
+  body: QuotationPreviewQuery;
+  signal?: AbortSignal;
+}): Promise<ArrowTablePage> {
+  const { data, response } = await queryQuotationProgressTableRequest({
+    ...options,
+    throwOnError: true,
+  });
+  const contentType = responseMediaType(response);
+  if (contentType !== ARROW_STREAM_MEDIA_TYPE) {
+    throw new Error(
+      `Expected ${ARROW_STREAM_MEDIA_TYPE}, received ${contentType ?? 'no content type'}`,
+    );
+  }
+  const payload: unknown = data;
+  if (!(payload instanceof Blob) && !(payload instanceof ArrayBuffer)) {
+    throw new Error('The Quotation Run did not return Arrow IPC');
   }
   return decodeArrowPage(payload, response);
 }

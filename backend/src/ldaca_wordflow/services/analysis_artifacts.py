@@ -31,6 +31,7 @@ from ..domain.workspace import (
     Node,
     QuotationResultDataBlockCreationAnalysisRequest,
     QuotationResultDataBlockCreationDerivation,
+    QuotationRunAllAnalysisRequest,
     SequentialAnalysisRequest,
     SequentialDataBlockCreationAnalysisRequest,
     SequentialDataBlockCreationDerivation,
@@ -63,12 +64,15 @@ from ..models.analysis_results import (
     TopicModelingDataBlockCreationStoredResult,
     TopicModelingDataBlockCreationWorkerResult,
     stored_result_payload,
+    QuotationRunAllWorkerResult,
 )
 from ..shared.errors import ArtifactGoneError
 from ..shared.json_data import JsonData
 from .analyses import PublishedAnalysisResult
 from .artifact_contracts import ANALYSIS_ARTIFACT_PROJECTORS, ArtifactProjection
 from .annotation_progress import discard_annotation_progress
+from .quotation_progress import discard_quotation_progress, save_quotation_progress
+from ..analysis.quotation_parts import quotation_parts_dir, read_parts
 from .node_projection import canonical_node_info
 from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from .workspace import WorkspaceLease
@@ -209,6 +213,27 @@ class AnalysisArtifactService:
                 output_node_ids=data_block_stored.output_node_ids,
             )
 
+        if isinstance(result, QuotationRunAllWorkerResult) and isinstance(
+            record.request, QuotationRunAllAnalysisRequest
+        ):
+            # Stop kept this Result: its quotations stay in the Project, so
+            # Run continues from there; a complete Run removes them (issue 381).
+            if result.checked_document_count is not None:
+                kept_path = await run_sync_in_worker_thread(
+                    partial(
+                        _keep_stopped_quotations,
+                        lease.workspace,
+                        lease.path,
+                        record,
+                    ),
+                    abandon_on_cancel=False,
+                    limiter=self._limiter,
+                )
+                if kept_path is not None:
+                    lease.rollback_paths.append(kept_path)
+            else:
+                discard_quotation_progress(lease.workspace, record.request.source)
+
         projector = ANALYSIS_ARTIFACT_PROJECTORS.get(kind)
         if projector is None:
             raise ValueError("Analysis kind has no Artifact contract")
@@ -291,6 +316,17 @@ class _FilesystemPublication:
     payload: dict[str, JsonData]
     artifacts: list[AnalysisArtifactRecord]
     published: bool
+
+
+def _keep_stopped_quotations(
+    workspace: Workspace,
+    workspace_path: Path,
+    record: AnalysisRecord,
+) -> Path | None:
+    parts = quotation_parts_dir(
+        workspace_path / "analyses" / str(record.id) / ".execution" / "scratch"
+    )
+    return save_quotation_progress(workspace, workspace_path, record, read_parts(parts))
 
 
 def _publish_annotation_run_all(

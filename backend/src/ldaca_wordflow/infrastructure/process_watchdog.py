@@ -158,6 +158,20 @@ def start_parent_watchdog(
     if parent_pid <= 0:
         raise ValueError(f"{_PARENT_PID_ENV} must be a positive integer")
 
+    watch_parent(parent_pid, interval_seconds, failure_threshold)
+
+
+def watch_parent(
+    parent_pid: int,
+    interval_seconds: float = _DEFAULT_INTERVAL_SECONDS,
+    failure_threshold: int = _DEFAULT_FAILURE_THRESHOLD,
+) -> None:
+    """Exit this process (and its children) once ``parent_pid`` is gone.
+
+    Also used by a Quotation Run's extra processes, so a stopped or killed
+    Run leaves none behind (issue 381).
+    """
+
     probe = _make_windows_probe() if sys.platform == "win32" else _make_unix_probe()
 
     def _run() -> None:

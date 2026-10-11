@@ -540,6 +540,11 @@ class QuotationRunAllWorkerResult(_StrictModel):
     state: Literal["successful"]
     source: RunAllSourceTable[PrivateArtifactPath]
     message: str
+    # Set when Stop kept the result: the documents checked before it stopped
+    # (issue 381). Left out otherwise, so 0.7.11 reads complete Results.
+    checked_document_count: int | None = Field(
+        default=None, ge=0, exclude_if=lambda value: value is None
+    )
 
 
 class _AnnotationRunAllCounts(_StrictModel):
@@ -711,11 +716,21 @@ class ConcordanceRunAllResult(_StrictModel):
 
 class QuotationRunAllStoredResult(_StrictModel):
     source: RunAllSourceTable[StoredArtifactIdentity]
+    # Set when Stop kept the result: the documents checked before it stopped
+    # (issue 381). Left out otherwise, so 0.7.11 reads complete Results.
+    checked_document_count: int | None = Field(
+        default=None, ge=0, exclude_if=lambda value: value is None
+    )
 
 
 class QuotationRunAllResult(_StrictModel):
     kind: Literal["quotation_run_all"] = "quotation_run_all"
     source: RunAllSourceTableResource
+    # Set when Stop kept the result: the documents checked before it stopped
+    # (issue 381). Left out otherwise, so 0.7.11 reads complete Results.
+    checked_document_count: int | None = Field(
+        default=None, ge=0, exclude_if=lambda value: value is None
+    )
 
 
 class AnnotationStoredResult(PreviewReadyStoredResult):

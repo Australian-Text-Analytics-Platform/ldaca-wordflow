@@ -447,6 +447,32 @@ async def query_quotation_preview_table(
 
 
 @router.post(
+    "/analyses/{analysis_id}/progress/tables/quotation/query",
+    response_class=Response,
+    responses={
+        **api_errors(400, 403, 404, 409, 410, 422, 500),
+        **ARROW_STREAM_RESPONSE,
+    },
+)
+async def query_quotation_progress_table(
+    workspace_id: uuid.UUID,
+    analysis_id: uuid.UUID,
+    body: QuotationPreviewQuery,
+    principal: CurrentSessionSecurityDep,
+    runtime: RuntimeDep,
+) -> Response:
+    """One page of the rows a running Quotation Run has found so far (issue 381)."""
+
+    result = await runtime.analysis_result_service.quotation_progress_page(
+        principal.user.id,
+        workspace_id,
+        analysis_id,
+        body,
+    )
+    return arrow_page_response(result)
+
+
+@router.post(
     "/analyses/{analysis_id}/result/topic-segments/query",
     response_model=TopicSegmentsPage,
     responses=api_errors(400, 403, 404, 409, 410, 422, 500),

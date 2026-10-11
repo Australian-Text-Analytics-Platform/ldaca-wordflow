@@ -21,11 +21,16 @@ from ..analysis.generated_columns import (
     QUOTE_EXTRACTION_COLUMN,
 )
 from .concordance import SOURCE_ROW_ID_COLUMN
-from .progress import ProgressCallback, Step, StepReporter, keep_alive
+from .progress import ProgressCallback, Step, StepReporter, keep_alive, process_tree_cpu
 from .utils import process_entrypoint
 
 # Finding quotations is nearly all of a run (issue 350).
 QUOTATION_PROGRESS_BAND = (0.25, 0.82)
+# Texts per chunk handed to one extraction process (issue 381).
+QUOTATION_CHUNK_TEXTS = 20
+# Finished chunks are written to disk at most this often, so the tab can show
+# them and a stopped Run keeps them (issue 381).
+QUOTATION_FLUSH_SECONDS = 10.0
 
 logger = logging.getLogger(__name__)
 
@@ -117,8 +122,16 @@ def run_quotation_run_all(
     quotation_service_max_batch_size: int,
     quotation_service_timeout: float,
     progress_callback: ProgressCallback,
+    parts_dir: str | None = None,
+    resume_path: str | None = None,
 ) -> dict[str, Any]:
-    """Compute one complete immutable Quotation Result table."""
+    """Compute one complete immutable Quotation Result table.
+
+    Each distinct text is extracted once, on several processes for the local
+    engine. Finished chunks go to ``parts_dir`` as they return; texts in
+    ``resume_path`` (kept from a Run that stopped) are not extracted again
+    (issue 381).
+    """
     try:
         progress_callback(0.02, "Loading the quotation extractor…")
 
@@ -131,7 +144,6 @@ def run_quotation_run_all(
         from ..domain.workspace import QuotationEngineType
         from ..infrastructure.providers.quotation_client import (
             QuotationProviderClient,
-            QuotationServiceError,
         )
         from ..infrastructure.storage.input_snapshots import load_snapshot_node
 
@@ -157,6 +169,7 @@ def run_quotation_run_all(
             progress_callback,
             band=QUOTATION_PROGRESS_BAND,
             steps=(Step("finding", "Finding quotations"),),
+            cpu_clock=process_tree_cpu,
         )
         quotation_reporter.update(
             "finding", done=0, total=len(node_corpus), unit="documents"
@@ -176,42 +189,150 @@ def run_quotation_run_all(
             ]
         )
 
-        async def extract() -> pl.DataFrame:
+        import time
+        from collections import Counter
+
+        from ..analysis.quotation_core import QUOTATION_GROUP_COLUMN, QUOTATION_GROUP_DTYPE
+        from ..analysis.quotation_extractor import extract_quotations_in_chunks
+        from ..analysis.quotation_parts import (
+            PART_TEXT_COLUMN,
+            quotation_stop_path,
+            write_part,
+        )
+        from .cpu import quotation_processes
+
+        # Stop asks the Run to keep what it found: no new chunk starts, the
+        # ones under way finish, and the result holds the documents checked.
+        stop_path = (
+            quotation_stop_path(Path(parts_dir).parent) if parts_dir is not None else None
+        )
+        stopping = False
+
+        def should_stop() -> bool:
+            nonlocal stopping
+            if not stopping and stop_path is not None and stop_path.exists():
+                stopping = True
+                quotation_reporter.update(
+                    "finding",
+                    done=done_rows,
+                    total=len(node_corpus),
+                    unit="documents",
+                    note="Stopping: finishing the documents under way. Stop again to stop at once.",
+                )
+            return stopping
+
+        rows_per_text = Counter(node_corpus)
+        found: dict[str, list[dict[str, Any]]] = {}
+        parts_path = Path(parts_dir) if parts_dir is not None else None
+        buffered_texts: list[str] = []
+        buffered_quotations: list[list[dict[str, Any]]] = []
+        last_flush = time.monotonic()
+        done_rows = 0
+
+        def flush() -> None:
+            nonlocal last_flush
+            last_flush = time.monotonic()
+            if parts_path is None or not buffered_texts:
+                return
+            try:
+                write_part(parts_path, buffered_texts, buffered_quotations)
+            except OSError:
+                # Keeping progress must never fail the Run itself.
+                logger.exception("Could not keep quotations path=%s", parts_path)
+            buffered_texts.clear()
+            buffered_quotations.clear()
+
+        def record(texts: list[str], quotations: list[list[dict[str, Any]]]) -> None:
+            nonlocal done_rows
+            for text, quotes in zip(texts, quotations, strict=True):
+                found[text] = quotes
+                done_rows += rows_per_text[text]
+            buffered_texts.extend(texts)
+            buffered_quotations.extend(quotations)
+            quotation_reporter.update(
+                "finding",
+                done=done_rows,
+                total=len(node_corpus),
+                unit="documents",
+                note="Stopping: finishing the documents under way. Stop again to stop at once."
+                if stopping
+                else None,
+            )
+            if time.monotonic() - last_flush >= QUOTATION_FLUSH_SECONDS:
+                flush()
+
+        if resume_path is not None and Path(resume_path).is_file():
+            resumed = pl.read_parquet(resume_path)
+            kept = [
+                (text, quotes)
+                for text, quotes in zip(
+                    resumed.get_column(PART_TEXT_COLUMN).to_list(),
+                    resumed.get_column(QUOTATION_GROUP_COLUMN).to_list(),
+                    strict=True,
+                )
+                if text in rows_per_text
+            ]
+            if kept:
+                record([text for text, _ in kept], [quotes or [] for _, quotes in kept])
+                flush()
+        todo = [text for text in rows_per_text if text not in found]
+
+        async def extract_remote_texts() -> None:
+            client = QuotationProviderClient(default_timeout=quotation_service_timeout)
+
             async def run_inline(function, *args):
                 return function(*args)
 
-            client = (
-                QuotationProviderClient(default_timeout=quotation_service_timeout)
-                if engine.type is QuotationEngineType.REMOTE
-                else None
-            )
-
             async def extract_remote(resolved_engine, documents):
-                if client is None:
-                    raise QuotationServiceError(
-                        "Remote extraction requested for a local Analysis"
-                    )
                 return await client.extract(resolved_engine, documents)
 
             try:
-                grouped = await compute_quotation_groups(
-                    base_df,
-                    document_column,
-                    engine,
-                    extract_remote_fn=extract_remote,
-                    run_blocking=run_inline,
-                    quotation_service_max_batch_size=quotation_service_max_batch_size,
-                    on_progress=lambda done, total: quotation_reporter.update(
-                        "finding", done=done, total=total, unit="documents"
-                    ),
-                )
-                return grouped
+                step = max(1, quotation_service_max_batch_size)
+                for start in range(0, len(todo), step):
+                    if should_stop():
+                        break
+                    chunk = todo[start : start + step]
+                    grouped = await compute_quotation_groups(
+                        pl.DataFrame({document_column: chunk}),
+                        document_column,
+                        engine,
+                        extract_remote_fn=extract_remote,
+                        run_blocking=run_inline,
+                        quotation_service_max_batch_size=quotation_service_max_batch_size,
+                    )
+                    record(chunk, grouped.get_column(QUOTATION_GROUP_COLUMN).to_list())
             finally:
-                if client is not None:
-                    await client.close()
+                await client.close()
 
         with keep_alive(quotation_reporter):
-            extracted = asyncio.run(extract())
+            if engine.type is QuotationEngineType.REMOTE:
+                asyncio.run(extract_remote_texts())
+            else:
+                processes = quotation_processes()
+                logger.info(
+                    "[Worker %d] Quotation Run: %d texts to extract on %d processes",
+                    os.getpid(),
+                    len(todo),
+                    processes,
+                )
+                extract_quotations_in_chunks(
+                    todo,
+                    processes=processes,
+                    chunk_size=QUOTATION_CHUNK_TEXTS,
+                    on_chunk=record,
+                    should_stop=should_stop,
+                )
+        flush()
+        stopped_early = any(text not in found for text in rows_per_text)
+        if stopped_early:
+            base_df = base_df.filter(pl.col(document_column).is_in(list(found)))
+        extracted = base_df.with_columns(
+            pl.Series(
+                QUOTATION_GROUP_COLUMN,
+                [found[text] for text in base_df.get_column(document_column).to_list()],
+                dtype=QUOTATION_GROUP_DTYPE,
+            )
+        )
         quote_df = (
             extracted
             .filter(pl.col("quotation").list.len().fill_null(0) > 0)
@@ -264,7 +385,12 @@ def run_quotation_run_all(
                 "document_count": int(quote_df.height),
                 "match_count": match_count,
             },
-            "message": "Quotation Run completed successfully",
+            "message": (
+                f"Quotation Run stopped after {done_rows:,} of {len(node_corpus):,} documents"
+                if stopped_early
+                else "Quotation Run completed successfully"
+            ),
+            **({"checked_document_count": done_rows} if stopped_early else {}),
         }
     except Exception:
         logger.exception("Quotation Run All failed")

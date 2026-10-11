@@ -10,6 +10,19 @@ from ldaca_wordflow.models.quotation import LocalResolvedQuotationEngine
 from ldaca_wordflow.workers.quotation import run_quotation_run_all
 
 
+def patch_text_extractor(monkeypatch, fake_groups) -> None:
+    """Extraction runs per distinct text now (issue 381); drive a DataFrame fake."""
+
+    def extract(texts, on_progress=None):
+        frame = fake_groups(pl.DataFrame({"document": texts}), "document")
+        return frame.get_column("quotation").to_list()
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.analysis.quotation_extractor.extract_quotations_for_texts",
+        extract,
+    )
+
+
 def test_quotation_run_all_writes_complete_analysis_table_artifact(
     tmp_path,
     monkeypatch,
@@ -54,10 +67,7 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
             )
         )
 
-    monkeypatch.setattr(
-        "ldaca_wordflow.analysis.quotation_core.quotation_groups_via_quote_extractor",
-        fake_quotation_groups_via_quote_extractor,
-    )
+    patch_text_extractor(monkeypatch, fake_quotation_groups_via_quote_extractor)
 
     result = run_quotation_run_all(
         artifact_dir=str(tmp_path),
@@ -157,10 +167,7 @@ def test_quotation_result_added_to_project_can_be_quoted_again(
             )
         )
 
-    monkeypatch.setattr(
-        "ldaca_wordflow.analysis.quotation_core.quotation_groups_via_quote_extractor",
-        fake_quotation_groups,
-    )
+    patch_text_extractor(monkeypatch, fake_quotation_groups)
     node_id = uuid.UUID("22222222-2222-4222-8222-222222222222")
     previous = {
         column: ["old"] for column in (QUOTE_EXTRACTION_COLUMN, *QUOTE_COLUMN_NAMES)
@@ -250,10 +257,7 @@ def test_quotation_on_a_quote_extraction_keeps_its_text_as_quote_source(
             )
         )
 
-    monkeypatch.setattr(
-        "ldaca_wordflow.analysis.quotation_core.quotation_groups_via_quote_extractor",
-        fake_quotation_groups,
-    )
+    patch_text_extractor(monkeypatch, fake_quotation_groups)
     node_id = uuid.UUID("33333333-3333-4333-8333-333333333333")
     result = run_quotation_run_all(
         artifact_dir=str(tmp_path),

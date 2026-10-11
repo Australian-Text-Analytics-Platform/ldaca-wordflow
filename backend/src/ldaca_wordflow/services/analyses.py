@@ -40,7 +40,9 @@ from ..domain.workspace import (
     Failure,
     InvalidAnalysisIntegrity,
     Progress,
+    QuotationAnalysisRequest,
     QuotationResultDataBlockCreationAnalysisRequest,
+    QuotationRunAllAnalysisRequest,
     SequentialDataBlockCreationAnalysisRequest,
     Tab,
     ValidAnalysisIntegrity,
@@ -55,6 +57,8 @@ from ..models.analysis_results import ConcordanceRunAllStoredResult
 from .annotation_progress import save_annotation_progress
 from .failures import failure_from_exception
 from ..shared.annotation_labels import annotation_labels_path, read_labels
+from ..analysis.quotation_parts import quotation_parts_dir, quotation_stop_path, read_parts
+from .quotation_progress import save_quotation_progress
 from ..shared.errors import (
     AppError,
     AnalysisCorruptError,
@@ -646,6 +650,21 @@ class AnalysisService:
             internal=True,
         ) as lease:
             record = self._require_live_record(lease, analysis_id)
+            stop_path = quotation_stop_path(
+                lease.path / "analyses" / str(record.id) / ".execution" / "scratch"
+            )
+            if (
+                record.state is AnalysisState.RUNNING
+                and isinstance(record.request, QuotationRunAllAnalysisRequest)
+                and record.cancellation_requested_at is None
+                and not stop_path.exists()
+            ):
+                # The first Stop asks a Quotation Run to keep what it found:
+                # it finishes the documents under way and publishes them as
+                # its Result. A second Stop stops it at once (issue 381).
+                await run_sync_in_worker_thread(_request_stop, stop_path)
+                lease.commit_requested = False
+                return self._project(lease, record), True
             if record.state is AnalysisState.CANCELLED:
                 lease.commit_requested = False
             elif record.state in {AnalysisState.SUCCEEDED, AnalysisState.FAILED}:
@@ -1374,6 +1393,63 @@ class AnalysisService:
             tab.modified_at = self._clock()
             tab.revision += 1
 
+    async def running_quotation_run(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+    ) -> tuple[QuotationAnalysisRequest, Path, Path] | None:
+        """A running Quotation Run's request, input snapshot and found chunks."""
+
+        async with self._workspaces.read_context(user_id, workspace_id) as lease:
+            record = self._require_live_record(lease, analysis_id)
+            if record.state is not AnalysisState.RUNNING or not isinstance(
+                record.request, QuotationRunAllAnalysisRequest
+            ):
+                return None
+            execution = lease.path / "analyses" / str(record.id) / ".execution"
+            return (
+                record.request.source,
+                execution / "input",
+                quotation_parts_dir(execution / "scratch"),
+            )
+
+    async def save_quotation_progress(
+        self,
+        key: AnalysisExecutionKey,
+        parts_dir: Path,
+    ) -> None:
+        """Keep a Quotation Run's found quotations in the Project (issue 381).
+
+        Called when the Run stops at once, fails or shuts down, before its
+        private folder is removed, so the next Run starts from there.
+        """
+
+        found = await run_sync_in_worker_thread(read_parts, parts_dir)
+        if found.height == 0:
+            return
+        try:
+            async with self._workspaces.mutation_context(
+                key.user_id,
+                key.workspace_id,
+                internal=True,
+            ) as lease:
+                record = lease.workspace.analyses.get(key.analysis_id)
+                if record is None or record.state is AnalysisState.SUCCEEDED:
+                    return
+                path = await run_sync_in_worker_thread(
+                    save_quotation_progress, lease.workspace, lease.path, record, found
+                )
+                if path is not None:
+                    lease.rollback_paths.append(path)
+                    lease.commit_requested = True
+        except Exception:
+            # Keeping progress must never change how the run ended.
+            logger.exception(
+                "Could not keep quotations analysis_id=%s",
+                key.analysis_id,
+            )
+
     async def save_annotation_progress(
         self,
         key: AnalysisExecutionKey,
@@ -1441,6 +1517,15 @@ class AnalysisService:
                 )
                 if saved_path is not None:
                     lease.rollback_paths.append(saved_path)
+                # And quotations found before it (issue 381).
+                saved_path = save_quotation_progress(
+                    lease.workspace,
+                    lease.path,
+                    record,
+                    read_parts(quotation_parts_dir(labels_path.parent)),
+                )
+                if saved_path is not None:
+                    lease.rollback_paths.append(saved_path)
                 lease.workspace.replace_analysis(
                     record.fail(
                         timestamp,
@@ -1481,6 +1566,11 @@ class AnalysisService:
         """Reject new submissions before scheduler shutdown begins."""
 
         self._accepting = False
+
+
+def _request_stop(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.touch()
 
 
 __all__ = [

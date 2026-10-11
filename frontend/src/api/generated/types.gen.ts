@@ -2998,6 +2998,8 @@ export type DerivationProvenance = {
     } & ConcordanceDocumentDataBlockCreationDerivation) | ({
         kind: 'quotation_result_data_block_creation';
     } & QuotationResultDataBlockCreationDerivation) | ({
+        kind: 'quotation_progress';
+    } & QuotationProgressDerivation) | ({
         kind: 'sequential_data_block_creation';
     } & SequentialDataBlockCreationDerivation) | ({
         kind: 'topic_modeling_data_block_creation';
@@ -3953,6 +3955,32 @@ export type QuotationPreviewQuery = {
 };
 
 /**
+ * QuotationProgressDerivation
+ *
+ * Quotations a Run found before it stopped (issue 381).
+ *
+ * The next Run on the same source, column and engine skips their texts.
+ */
+export type QuotationProgressDerivation = {
+    /**
+     * Column
+     */
+    column: string;
+    /**
+     * Engine Id
+     */
+    engine_id?: string | null;
+    /**
+     * Engine Type
+     */
+    engine_type: 'local' | 'remote';
+    /**
+     * Kind
+     */
+    kind?: 'quotation_progress';
+};
+
+/**
  * QuotationResult
  */
 export type QuotationResult = {
@@ -4017,6 +4045,10 @@ export type QuotationRunAllAnalysisRequest = {
  * QuotationRunAllResult
  */
 export type QuotationRunAllResult = {
+    /**
+     * Checked Document Count
+     */
+    checked_document_count?: number | null;
     /**
      * Kind
      */
@@ -9767,6 +9799,68 @@ export type CancelAnalysisResponses = {
 };
 
 export type CancelAnalysisResponse = CancelAnalysisResponses[keyof CancelAnalysisResponses];
+
+export type QueryQuotationProgressTableData = {
+    body: QuotationPreviewQuery;
+    path: {
+        /**
+         * Workspace Id
+         */
+        workspace_id: string;
+        /**
+         * Analysis Id
+         */
+        analysis_id: string;
+    };
+    query?: never;
+    url: '/api/workspaces/{workspace_id}/analyses/{analysis_id}/progress/tables/quotation/query';
+};
+
+export type QueryQuotationProgressTableErrors = {
+    /**
+     * Invalid request
+     */
+    400: ApiError;
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+    /**
+     * Origin, CSRF, or access check failed
+     */
+    403: ApiError;
+    /**
+     * Resource not found
+     */
+    404: ApiError;
+    /**
+     * Resource state conflict
+     */
+    409: ApiError;
+    /**
+     * Retained artifact is no longer available
+     */
+    410: ApiError;
+    /**
+     * Request validation failed
+     */
+    422: ApiError;
+    /**
+     * Stored resource is corrupt
+     */
+    500: ApiError;
+};
+
+export type QueryQuotationProgressTableError = QueryQuotationProgressTableErrors[keyof QueryQuotationProgressTableErrors];
+
+export type QueryQuotationProgressTableResponses = {
+    /**
+     * Arrow IPC stream
+     */
+    200: Blob | File;
+};
+
+export type QueryQuotationProgressTableResponse = QueryQuotationProgressTableResponses[keyof QueryQuotationProgressTableResponses];
 
 export type GetAnalysisResultData = {
     body?: never;

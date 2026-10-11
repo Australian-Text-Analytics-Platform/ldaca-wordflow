@@ -40,6 +40,8 @@ from ..models.analysis_results import (
 )
 from ..settings import Settings
 from ..shared.annotation_labels import annotation_labels_path
+from ..analysis.quotation_parts import QUOTATION_RESUME_FILE, quotation_parts_dir
+from .quotation_progress import resume_frame
 from ..shared.errors import InvalidInputError
 from ..shared.unsupported_columns import require_supported_columns
 from .category_order import is_category_dtype
@@ -538,6 +540,13 @@ def _prepare_quotation_run_all(
     context: AnalysisPreparationContext,
 ) -> QuotationRunAllInput:
     source = request.source
+    # Quotations kept from a Run that stopped are not extracted again (issue 381).
+    resume = resume_frame(context.workspace, source)
+    resume_path = None
+    if resume.height:
+        context.scratch_dir.mkdir(parents=True, exist_ok=True)
+        resume_path = context.scratch_dir / QUOTATION_RESUME_FILE
+        resume.write_parquet(resume_path)
     return QuotationRunAllInput(
         artifact_dir=str(context.artifact_dir),
         input_snapshot_dir=str(context.snapshot_dir),
@@ -548,6 +557,8 @@ def _prepare_quotation_run_all(
             context.settings.quotation_service_max_batch_size
         ),
         quotation_service_timeout=context.settings.quotation_service_timeout,
+        parts_dir=str(quotation_parts_dir(context.scratch_dir)),
+        resume_path=str(resume_path) if resume_path is not None else None,
     )
 
 

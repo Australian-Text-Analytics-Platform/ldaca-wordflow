@@ -27,6 +27,7 @@ from ..analysis.concordance_core import compute_node_concordance_page
 from ..analysis.annotation_examples import prepare_annotation_examples
 from ..analysis.concordance_projection import filter_concordance_documents
 from ..analysis.quotation_core import compute_quotation_page
+from ..analysis.quotation_parts import quotation_progress_page, read_parts
 from ..analysis.token_cache import tokenize_lazyframe, tokens_cache_path
 from ..analysis.topic_inclusion import topic_inclusion_descriptor
 from ..analysis.topic_examples import (
@@ -482,6 +483,42 @@ class AnalysisResultService:
             with anyio.CancelScope(shield=True):
                 if input_snapshot is not None:
                     await self._cleanup_query_snapshot(input_snapshot)
+
+    async def quotation_progress_page(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        query: QuotationPreviewQuery,
+    ) -> IpcTablePage:
+        """The rows a running Quotation Run has found so far (issue 381)."""
+
+        running = await self._analyses.running_quotation_run(
+            user_id, workspace_id, analysis_id
+        )
+        if running is None:
+            raise ArtifactGoneError("The Quotation Run is no longer running")
+        request, input_dir, parts_dir = running
+
+        def compute() -> tuple[pl.DataFrame, bool, int]:
+            source = load_snapshot_node(input_dir, request.node_id)
+            return quotation_progress_page(
+                source.data,
+                request.column,
+                read_parts(parts_dir),
+                page=query.page,
+                page_size=query.page_size,
+            )
+
+        try:
+            frame, has_next, checked = await self._run_sync(compute)
+        except OSError as exc:
+            raise ArtifactGoneError("The Quotation Run is no longer running") from exc
+        return IpcTablePage(
+            content=encode_ipc_stream(frame),
+            has_next=has_next,
+            total_rows=checked,
+        )
 
     async def topic_color_groups(
         self,

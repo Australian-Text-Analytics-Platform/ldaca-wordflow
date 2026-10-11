@@ -113,6 +113,11 @@ class QuotationRunAllInput:
     engine: ResolvedQuotationEngine
     quotation_service_max_batch_size: int
     quotation_service_timeout: float
+    # Finished chunks, outside artifact_dir, so the tab can show them and the
+    # backend can keep them when the Run stops; quotations kept from a Run
+    # that stopped, not extracted again (issue 381).
+    parts_dir: str | None = None
+    resume_path: str | None = None
     kind: Literal["quotation_run_all"] = field(
         default="quotation_run_all",
         init=False,

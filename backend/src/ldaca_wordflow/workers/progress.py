@@ -70,6 +70,28 @@ def format_duration(seconds: float) -> str:
     return f"{hours} h {minutes} min" if minutes else f"{hours} h"
 
 
+def process_tree_cpu() -> float:
+    """CPU seconds of this process and its live children (issue 381).
+
+    A Quotation Run extracts on extra processes, so its own CPU time alone
+    would show the processors as idle.
+    """
+
+    try:
+        import psutil
+
+        me = psutil.Process()
+        total = sum(me.cpu_times()[:2])
+        for child in me.children(recursive=True):
+            try:
+                total += sum(child.cpu_times()[:2])
+            except psutil.NoSuchProcess, psutil.AccessDenied:
+                continue
+        return total
+    except Exception:  # noqa: BLE001 - fall back to this process alone
+        return time.process_time()
+
+
 class StepReporter:
     """Turns step counts into progress reports for one band of a run.
 
@@ -193,9 +215,9 @@ class StepReporter:
         return max(0, int((self._total - self._done) / rate))
 
     def _sample_cpu(self, now: float) -> None:
-        cpu_now = self._cpu_clock()
         wall_then, cpu_then = self._cpu_sample
         if now - wall_then >= 1.0:
+            cpu_now = self._cpu_clock()
             self._busy = max(0.0, (cpu_now - cpu_then) / (now - wall_then))
             self._cpu_sample = (now, cpu_now)
 
@@ -330,4 +352,5 @@ __all__ = [
     "format_duration",
     "keep_alive",
     "polars_text_progress",
+    "process_tree_cpu",
 ]

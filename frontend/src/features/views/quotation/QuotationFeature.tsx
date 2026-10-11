@@ -49,6 +49,7 @@ import {
 import { DEFAULT_TAB_INPUT_SET_ID } from '../common/tabs/tabStateOps';
 import { QuotationEngineSettingsFields } from './components/QuotationEngineSettingsFields';
 import { type QuotationHoverState } from './components/QuotationHighlightedCell';
+import { QuotationKeptNotice } from './components/QuotationKeptNotice';
 import { QuotationResultsPanel } from './components/QuotationResultsPanel';
 import { useQuotationContextPreference } from './hooks/useQuotationContextPreference';
 import { useQuotationEngineSettings } from './hooks/useQuotationEngineSettings';
@@ -106,7 +107,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     setInputSet: onTabInputSetChange,
   } = host;
   const tabTaskId = latestPreview?.id ?? null;
-  const { currentWorkspaceId } = useWorkspaceData();
+  const { currentWorkspaceId, nodes: workspaceNodes } = useWorkspaceData();
   const { runQuotationAll, createResultDataBlocks } = useWorkspaceActions();
   const nodeInputs = useTabNodeInputs({
     tabInputSets,
@@ -265,6 +266,25 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     },
   });
   const runAllSource = runAllResultQuery.data?.source ?? null;
+  // Set when Stop kept the Run's result: the documents checked (issue 381).
+  const runAllCheckedCount = runAllResultQuery.data?.checked_document_count ?? null;
+  // While a Run goes, the table shows the rows found so far (issue 381).
+  const progressRequest =
+    quotationRunAll?.state === 'running' && quotationRunAll.request.kind === 'quotation_run_all'
+      ? quotationRunAll.request.source
+      : null;
+  const progressNodeInfo = progressRequest
+    ? nodeInputs.nodeInfoById[progressRequest.node_id]
+    : undefined;
+  const progressNode = progressNodeInfo ? projectWorkspaceNodeMetadata(progressNodeInfo) : null;
+  const progressColumn =
+    progressRequest && progressNode
+      ? sourceTextColumnName(
+          nodeInputs.getColumnInfos(progressNode).map((column) => column.name),
+          progressRequest.column,
+          'QUOTE',
+        )
+      : '';
   const resultNodeId = serverRequest?.node_id ?? displayedNodes[0]?.id ?? '';
   const previewResultNodeInfo = nodeInputs.nodeInfoById[resultNodeId];
   // A text column named like a Quotation column is QUOTE_source in the
@@ -289,7 +309,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const previewActiveSelections = resultNodeId
     ? [{ nodeId: resultNodeId, column: resultColumn }]
     : activeSelections;
-  const pageRequest = runAllSource ? runAllReviewQuery : previewPageRequest;
+  const pageRequest = runAllSource || progressNode ? runAllReviewQuery : previewPageRequest;
   const quotationPage = useQuotationPage(
     currentWorkspaceId && quotationRunAll && runAllSource
       ? {
@@ -299,21 +319,29 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           source: runAllSource,
           rowUnit: runAllReviewRowUnit,
         }
-      : currentWorkspaceId && tabTaskId && result && resultNodeId && resultColumn
+      : currentWorkspaceId && quotationRunAll && progressRequest && progressNode
         ? {
-            kind: 'preview',
+            kind: 'progress',
             workspaceId: currentWorkspaceId,
-            analysisId: tabTaskId,
-            nodeId: resultNodeId,
-            documentColumn: resultColumn,
+            analysisId: quotationRunAll.id,
+            nodeId: progressRequest.node_id,
+            documentColumn: progressColumn,
           }
-        : null,
+        : currentWorkspaceId && tabTaskId && result && resultNodeId && resultColumn
+          ? {
+              kind: 'preview',
+              workspaceId: currentWorkspaceId,
+              analysisId: tabTaskId,
+              nodeId: resultNodeId,
+              documentColumn: resultColumn,
+            }
+          : null,
     pageRequest,
   );
   const quotationDetailRows = filterQuotationRowsWithQuotes(quotationPage.data?.rows);
   const detailPage = quotationPage.data?.pagination.page ?? pageRequest.page;
   const requestDetailPage = (nextPage: number) => {
-    if (runAllSource) {
+    if (runAllSource || progressNode) {
       setRunAllReviewQuery((current) => ({ ...current, page: nextPage }));
     } else {
       setPreviewPageRequest((current) => ({ ...current, page: nextPage }));
@@ -340,7 +368,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const quotationCustomization = selectedQuotationRow
     ? buildQuotationRowDetailCustomization(selectedQuotationRow)
     : undefined;
-  const resultNodeKey = runAllSource?.node_id ?? resultNodeId;
+  const resultNodeKey = runAllSource?.node_id ?? progressNode?.id ?? resultNodeId;
   const resultsByNode =
     quotationPage.data && resultNodeKey ? { [resultNodeKey]: quotationPage.data } : {};
   const hasLoaded = Boolean(result);
@@ -423,7 +451,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     hasAttachedAnalysis: Boolean(quotationRunAll),
     hasAnyAnalysis: analyses.length > 0,
     analysisState: quotationRunAll?.state ?? null,
-    hasChanges: runAllHasParamsChanged,
+    // A Run Stop kept part of continues where it stopped (issue 381).
+    hasChanges: runAllHasParamsChanged || runAllCheckedCount !== null,
     requiresClear,
     isBusy: analysisActionLifecycle.parametersLocked,
   });
@@ -575,6 +604,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
    * Passed to quotation result blocks as the column-sort callback.
    */
   const effHandleSort = (nodeId: string, columnName: string) => {
+    // Rows found so far are shown in Data Block order until the Run ends.
+    if (progressNode && !runAllSource) return;
     if (runAllSource) {
       setRunAllReviewQuery((current) => ({
         ...current,
@@ -721,14 +752,46 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
           />
         ) : null}
 
-        {runAllSource || showPreviewTable ? (
+        {quotationRunAll?.state !== 'running' &&
+        quotationRunAll?.state !== 'queued' &&
+        (runAllSource?.node_id ?? displayedNodes[0]?.id) ? (
+          // Quotations kept from a Run that didn't finish (issue 381).
+          <QuotationKeptNotice
+            nodes={workspaceNodes}
+            sourceNodeId={runAllSource?.node_id ?? displayedNodes[0]?.id ?? ''}
+            checkedCount={runAllCheckedCount}
+            documentCount={runAllSource?.source_document_count ?? null}
+          />
+        ) : null}
+
+        {runAllSource || progressNode || showPreviewTable ? (
           <QuotationResultsPanel
-            title="Quotation Results"
+            title={!runAllSource && progressNode ? 'Quotation Results so far' : 'Quotation Results'}
             guidanceTarget={
-              runAllSource ? 'quotation-run-all-results' : 'quotation-preview-results'
+              runAllSource || progressNode
+                ? 'quotation-run-all-results'
+                : 'quotation-preview-results'
             }
             headerAction={
-              runAllSource ? (
+              !runAllSource && progressNode ? (
+                // The full Result is not known until the Run ends (issue 381).
+                <span
+                  className="flex items-center gap-2"
+                  title="Available when the Run finishes or is stopped"
+                >
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    aria-label="Download Quotation Results"
+                    disabled
+                  >
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button type="button" disabled>
+                    Add to Project
+                  </Button>
+                </span>
+              ) : runAllSource ? (
                 <div className="flex items-center gap-2">
                   <Button
                     variant="outline"
@@ -754,23 +817,27 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
               ) : null
             }
             displayedNodes={
-              runAllSource
-                ? [
-                    {
-                      id: runAllSource.node_id,
-                      name: runAllSource.node_name,
-                      color: runAllSource.color,
-                      document: runAllSource.document_column,
-                      shape: [null, null],
-                      tokenizerModel: null,
-                    },
-                  ]
-                : previewDisplayedNodes
+              !runAllSource && progressNode
+                ? [progressNode]
+                : runAllSource
+                  ? [
+                      {
+                        id: runAllSource.node_id,
+                        name: runAllSource.node_name,
+                        color: runAllSource.color,
+                        document: runAllSource.document_column,
+                        shape: [null, null],
+                        tokenizerModel: null,
+                      },
+                    ]
+                  : previewDisplayedNodes
             }
             activeSelections={
               runAllSource
                 ? [{ nodeId: runAllSource.node_id, column: runAllSource.document_column }]
-                : previewActiveSelections
+                : progressNode
+                  ? [{ nodeId: progressNode.id, column: progressColumn }]
+                  : previewActiveSelections
             }
             resultsByNode={resultsByNode}
             reviewRowUnit={runAllSource ? runAllReviewRowUnit : null}

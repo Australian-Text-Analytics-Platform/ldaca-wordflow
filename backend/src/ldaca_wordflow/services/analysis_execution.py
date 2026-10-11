@@ -35,7 +35,7 @@ from .supervised_process import (
 )
 from .workspace import WorkspaceService
 from ..workers.entrypoints import analysis_process
-from ..workers.invocations import AnnotationInput
+from ..workers.invocations import AnnotationInput, QuotationRunAllInput
 
 logger = logging.getLogger(__name__)
 
@@ -254,12 +254,23 @@ class AnalysisExecutionRuntime(AnalysisExecutionControl):
                 last_saved = time.monotonic()
                 await service.save_annotation_progress(item.key, labels_path)
 
+        # A Quotation Run keeps the quotations found so far (issue 381).
+        quotation_parts = (
+            Path(invocation.input.parts_dir)
+            if isinstance(invocation.input, QuotationRunAllInput)
+            and invocation.input.parts_dir is not None
+            else None
+        )
+
         async def keep_labels() -> None:
             # Before Stop, a failure or a shutdown is recorded: that commit
             # collects the run's private folder, labels file included.
             if labels_path is not None:
                 with anyio.CancelScope(shield=True):
                     await service.save_annotation_progress(item.key, labels_path)
+            if quotation_parts is not None:
+                with anyio.CancelScope(shield=True):
+                    await service.save_quotation_progress(item.key, quotation_parts)
 
         try:
             try:

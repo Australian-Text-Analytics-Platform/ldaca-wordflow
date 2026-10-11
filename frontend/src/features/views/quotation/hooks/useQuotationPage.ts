@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
 import type { RunAllSourceTableResource } from '@/api';
-import { queryQuotationPreviewArrowTable } from '@/api/tableApi';
+import { queryQuotationPreviewArrowTable, queryQuotationProgressArrowTable } from '@/api/tableApi';
 import { fetchArrowTablePage } from '@/lib/arrow/arrowTable';
 import { queryKeys, type NodeDataRequest } from '@/lib/queryKeys';
 
@@ -20,6 +20,14 @@ export type QuotationPageTarget =
       documentColumn: string;
     }
   | {
+      /** A running Run's rows so far, refreshed as chunks finish (issue 381). */
+      kind: 'progress';
+      workspaceId: string;
+      analysisId: string;
+      nodeId: string;
+      documentColumn: string;
+    }
+  | {
       kind: 'run_all';
       workspaceId: string;
       analysisId: string;
@@ -27,9 +35,16 @@ export type QuotationPageTarget =
       rowUnit: QuotationReviewRowUnit;
     };
 
+const PROGRESS_REFRESH_MS = 10_000;
+
 /** Fetches and projects Preview and Run All quotation pages through one Arrow-native path. */
 export function useQuotationPage(target: QuotationPageTarget | null, request: NodeDataRequest) {
-  const tableId = target?.kind === 'preview' ? 'quotation-preview' : target?.source.table.table_id;
+  const tableId =
+    target?.kind === 'preview'
+      ? 'quotation-preview'
+      : target?.kind === 'progress'
+        ? 'quotation-progress'
+        : target?.source.table.table_id;
   const rowUnit = target?.kind === 'run_all' ? target.rowUnit : 'documents';
   const ownerKey =
     target && tableId
@@ -55,6 +70,8 @@ export function useQuotationPage(target: QuotationPageTarget | null, request: No
           )
         : queryKeys.inactiveAnalysisResult({ ...request }),
     enabled: target !== null,
+    // Rows found so far grow while the Run goes.
+    refetchInterval: target?.kind === 'progress' ? PROGRESS_REFRESH_MS : false,
     placeholderData: (previousData, previousQuery) =>
       ownerKey &&
       previousQuery &&
@@ -72,14 +89,22 @@ export function useQuotationPage(target: QuotationPageTarget | null, request: No
               },
               body: request,
             })
-          : await fetchArrowTablePage(target.source.table[target.rowUnit].rows_url, {
-              page: request.page,
-              pageSize: request.page_size,
-              sortBy: request.sort_by,
-              descending: request.descending,
-            });
+          : target.kind === 'progress'
+            ? await queryQuotationProgressArrowTable({
+                path: {
+                  workspace_id: target.workspaceId,
+                  analysis_id: target.analysisId,
+                },
+                body: { page: request.page, page_size: request.page_size },
+              })
+            : await fetchArrowTablePage(target.source.table[target.rowUnit].rows_url, {
+                page: request.page,
+                pageSize: request.page_size,
+                sortBy: request.sort_by,
+                descending: request.descending,
+              });
       return projectQuotationArrowPage(
-        target.kind === 'preview'
+        target.kind === 'preview' || target.kind === 'progress'
           ? {
               kind: 'preview',
               nodeId: target.nodeId,

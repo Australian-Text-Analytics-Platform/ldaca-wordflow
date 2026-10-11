@@ -353,6 +353,74 @@ def extract_quotations_for_texts(
     return results
 
 
+def _start_quotation_process(parent_pid: int) -> None:
+    """Start one extra extraction process of a Quotation Run (issue 381).
+
+    It exits once the Run's process is gone (Stop, a crash), so none is left
+    behind, and loads the model before its first chunk.
+    """
+
+    from ..infrastructure.process_watchdog import watch_parent
+
+    watch_parent(parent_pid, interval_seconds=1.0, failure_threshold=2)
+    _get_extractor()
+
+
+def extract_quotations_in_chunks(
+    texts: list[str],
+    *,
+    processes: int,
+    chunk_size: int,
+    on_chunk: Callable[[list[str], list[list[dict[str, Any]]]], None],
+    should_stop: Callable[[], bool] = lambda: False,
+) -> None:
+    """Extract quotations chunk by chunk, on several processes when allowed.
+
+    ``on_chunk(texts, quotations)`` gets each finished chunk as it returns.
+    Chunks go out in text order, a few per process at a time, so finished
+    ones stay close to that order. Once ``should_stop()`` is true no chunk is
+    started, and the ones under way finish (issue 381).
+    """
+
+    chunks = [texts[start : start + chunk_size] for start in range(0, len(texts), chunk_size)]
+    workers = min(processes, len(chunks))
+    if workers <= 1:
+        for chunk in chunks:
+            if should_stop():
+                return
+            on_chunk(chunk, extract_quotations_for_texts(chunk))
+        return
+
+    import multiprocessing
+    import os
+    from concurrent.futures import FIRST_COMPLETED, Future, ProcessPoolExecutor, wait
+
+    remaining = iter(chunks)
+    pending: dict[Future[list[list[dict[str, Any]]]], list[str]] = {}
+    with ProcessPoolExecutor(
+        max_workers=workers,
+        mp_context=multiprocessing.get_context("spawn"),
+        initializer=_start_quotation_process,
+        initargs=(os.getpid(),),
+    ) as pool:
+
+        def submit_next() -> None:
+            if should_stop():
+                return
+            chunk = next(remaining, None)
+            if chunk is not None:
+                pending[pool.submit(extract_quotations_for_texts, chunk)] = chunk
+
+        for _ in range(workers * 2):
+            submit_next()
+        while pending:
+            done, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done:
+                chunk = pending.pop(future)
+                on_chunk(chunk, future.result())
+                submit_next()
+
+
 def quotation_groups_for_dataframe(
     df: pl.DataFrame,
     column: str,

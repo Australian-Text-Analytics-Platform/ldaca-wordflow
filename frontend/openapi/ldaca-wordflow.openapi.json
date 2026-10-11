@@ -5767,6 +5767,7 @@
                 "filter": "#/components/schemas/FilterDerivation",
                 "group_summary": "#/components/schemas/GroupSummaryDerivation",
                 "join": "#/components/schemas/JoinDerivation",
+                "quotation_progress": "#/components/schemas/QuotationProgressDerivation",
                 "quotation_result_data_block_creation": "#/components/schemas/QuotationResultDataBlockCreationDerivation",
                 "replace": "#/components/schemas/ReplaceDerivation",
                 "segment": "#/components/schemas/SegmentDerivation",
@@ -5825,6 +5826,9 @@
               },
               {
                 "$ref": "#/components/schemas/QuotationResultDataBlockCreationDerivation"
+              },
+              {
+                "$ref": "#/components/schemas/QuotationProgressDerivation"
               },
               {
                 "$ref": "#/components/schemas/SequentialDataBlockCreationDerivation"
@@ -7706,6 +7710,49 @@
         "title": "QuotationPreviewQuery",
         "type": "object"
       },
+      "QuotationProgressDerivation": {
+        "additionalProperties": false,
+        "description": "Quotations a Run found before it stopped (issue 381).\n\nThe next Run on the same source, column and engine skips their texts.",
+        "properties": {
+          "column": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Column",
+            "type": "string"
+          },
+          "engine_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Engine Id"
+          },
+          "engine_type": {
+            "enum": [
+              "local",
+              "remote"
+            ],
+            "title": "Engine Type",
+            "type": "string"
+          },
+          "kind": {
+            "const": "quotation_progress",
+            "default": "quotation_progress",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "column",
+          "engine_type"
+        ],
+        "title": "QuotationProgressDerivation",
+        "type": "object"
+      },
       "QuotationResult": {
         "additionalProperties": false,
         "properties": {
@@ -7815,6 +7862,18 @@
       "QuotationRunAllResult": {
         "additionalProperties": false,
         "properties": {
+          "checked_document_count": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checked Document Count"
+          },
           "kind": {
             "const": "quotation_run_all",
             "default": "quotation_run_all",
@@ -18243,6 +18302,146 @@
           }
         ],
         "summary": "Cancel Analysis",
+        "tags": [
+          "analyses"
+        ]
+      }
+    },
+    "/api/workspaces/{workspace_id}/analyses/{analysis_id}/progress/tables/quotation/query": {
+      "post": {
+        "description": "One page of the rows a running Quotation Run has found so far (issue 381).",
+        "operationId": "query_quotation_progress_table",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "analysis_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Analysis Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotationPreviewQuery"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/vnd.apache.arrow.stream": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Arrow IPC stream"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Invalid request"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Origin, CSRF, or access check failed"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Resource state conflict"
+          },
+          "410": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Retained artifact is no longer available"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Request validation failed"
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Stored resource is corrupt"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Query Quotation Progress Table",
         "tags": [
           "analyses"
         ]

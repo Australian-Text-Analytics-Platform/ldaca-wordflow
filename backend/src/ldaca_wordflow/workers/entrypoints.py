@@ -142,6 +142,8 @@ def analysis_process(
             ),
             quotation_service_timeout=invocation.quotation_service_timeout,
             progress_callback=progress,
+            parts_dir=invocation.parts_dir,
+            resume_path=invocation.resume_path,
         )
     if isinstance(invocation, AnnotationInput):
         from .annotation import run_annotation_analysis

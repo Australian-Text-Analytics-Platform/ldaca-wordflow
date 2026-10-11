@@ -140,6 +140,11 @@ EXPECTED_OPERATIONS = {
     ),
     (
         "POST",
+        "/api/workspaces/{workspace_id}/analyses/{analysis_id}/progress/tables/quotation/query",
+        "query_quotation_progress_table",
+    ),
+    (
+        "POST",
         "/api/workspaces/{workspace_id}/analyses/{analysis_id}/result/topic-color-groups/query",
         "query_topic_color_groups",
     ),
