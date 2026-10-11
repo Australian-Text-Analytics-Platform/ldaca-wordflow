@@ -67,6 +67,8 @@ export interface QuotationNodeBlockProps {
   showPageSize?: boolean;
   /** Trailing footer actions such as Add to Workspace. */
   children?: React.ReactNode;
+  /** Shown instead of the no-quotations line when the page has no rows. */
+  emptyMessage?: string;
 }
 
 /**
@@ -116,6 +118,7 @@ function QuotationNodeBlockContent({
   highlightDocument = true,
   showPageSize = true,
   children,
+  emptyMessage,
 }: QuotationNodeBlockProps) {
   const viewportRef = useRef<HTMLDivElement>(null);
   // Rows replaced by a sort or page change must not shrink the scrolling pane (issue 209).
@@ -286,7 +289,8 @@ function QuotationNodeBlockContent({
                     className="h-24 text-center text-description"
                     colSpan={cols.length || 1}
                   >
-                    No quotations found on this page. Source rows without quotations are omitted.
+                    {emptyMessage ??
+                      'No quotations found on this page. Source rows without quotations are omitted.'}
                   </TableCell>
                 </TableRow>
               ) : (

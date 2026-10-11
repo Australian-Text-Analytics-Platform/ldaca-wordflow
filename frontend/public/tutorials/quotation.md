@@ -98,15 +98,21 @@ works, **Quotation Results so far** shows the quotations found in order and
 updates every few seconds; sorting, downloads and **Add to Project** wait
 until the Run finishes or is stopped.
 
-**Stop** keeps what the Run has found: it finishes the documents under way,
-then shows them as the result, marked *Stopped early* with the number of
-documents checked, and you can download them or add them to the Project.
-**Run** then continues from where it stopped. **Stop** a second time stops at
-once. When a Run stops at once, fails, or Wordflow or the computer restarts,
-the quotations found are kept in a Data Block named after yours with
-*quotations in progress*, and the next Run on the same Data Block, column and
-engine continues from there. A complete Run removes that Data Block; the tab
-also offers **Remove**.
+**Stop** keeps what the Run has found: it finishes the few documents it is
+checking at that moment, which takes a few seconds, then shows everything
+found as the result, marked *Stopped early* with the number of documents
+checked, and you can download it or add it to the Project. Choose **Stop**
+again to end the Run straight away. When a Run is ended that way, fails, or
+Wordflow or the computer restarts, the quotations found are kept in a Data
+Block named after yours and the text column, with *quotations in progress*.
+Each text column keeps its own, so you can search another column in between
+and come back.
+
+While such quotations are kept for the selected Data Block, text column and
+engine, **Run** reads **Resume**: it continues from where the last Run
+stopped, without choosing **Clear** first. To check every document again
+instead, choose **Remove** on the note about the kept quotations; the button
+then reads **Run**. A complete Run removes the kept quotations.
 
 To save the Result table as a file instead, click the download icon beside
 **Add to Project**: choose the same columns, then CSV or Excel. Nothing is
@@ -165,7 +171,8 @@ in other software.
 The tab keeps its results when you move to another tool or reopen the Project.
 **Clear** removes them. Settings are locked while Preview or Run is working,
 and **Stop** stops it (a Run keeps what it found, see above). After a failure
-or a stop at once, Preview and Run stay off until you choose **Clear**. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
+or a Run ended with a second **Stop**, Preview and Run stay off until you choose **Clear**
+(unless **Resume** is offered). See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h2 id="help-quotation-troubleshooting">Troubleshooting</h2>
 

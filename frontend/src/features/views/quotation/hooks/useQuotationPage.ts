@@ -36,6 +36,7 @@ export type QuotationPageTarget =
     };
 
 const PROGRESS_REFRESH_MS = 10_000;
+const FIRST_ROWS_REFRESH_MS = 2_000;
 
 /** Fetches and projects Preview and Run All quotation pages through one Arrow-native path. */
 export function useQuotationPage(target: QuotationPageTarget | null, request: NodeDataRequest) {
@@ -70,8 +71,14 @@ export function useQuotationPage(target: QuotationPageTarget | null, request: No
           )
         : queryKeys.inactiveAnalysisResult({ ...request }),
     enabled: target !== null,
-    // Rows found so far grow while the Run goes.
-    refetchInterval: target?.kind === 'progress' ? PROGRESS_REFRESH_MS : false,
+    // Rows found so far grow while the Run goes; until the first ones come,
+    // look more often so they show early.
+    refetchInterval: (current) =>
+      target?.kind !== 'progress'
+        ? false
+        : (current.state.data?.pagination.total_source_rows ?? 0) > 0
+          ? PROGRESS_REFRESH_MS
+          : FIRST_ROWS_REFRESH_MS,
     placeholderData: (previousData, previousQuery) =>
       ownerKey &&
       previousQuery &&

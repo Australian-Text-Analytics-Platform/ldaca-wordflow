@@ -118,13 +118,24 @@ def quotation_progress_page(
     start = (page - 1) * page_size
     length = max(0, min(page_size, checked - start))
     rows = lazy.slice(start, length).collect()
-    quotes = found.rename({PART_TEXT_COLUMN: "__wordflow_text__"})
-    frame = (
-        rows.with_columns(pl.col(column).cast(pl.String).alias("__wordflow_text__"))
-        .join(quotes, on="__wordflow_text__", how="left", maintain_order="left")
-        .drop("__wordflow_text__")
-        .filter(pl.col(QUOTATION_GROUP_COLUMN).list.len().fill_null(0) > 0)
+    page_texts = rows.get_column(column).cast(pl.String).to_list()
+    wanted = found.filter(pl.col(PART_TEXT_COLUMN).is_in(page_texts))
+    by_text = dict(
+        zip(
+            wanted.get_column(PART_TEXT_COLUMN).to_list(),
+            wanted.get_column(QUOTATION_GROUP_COLUMN).to_list(),
+            strict=True,
+        )
     )
+    # Built afresh for the page: a slice of the found quotations would carry
+    # their whole buffers into the Arrow page (12 MB for 20 rows).
+    frame = rows.with_columns(
+        pl.Series(
+            QUOTATION_GROUP_COLUMN,
+            [by_text.get(text) for text in page_texts],
+            dtype=QUOTATION_GROUP_DTYPE,
+        )
+    ).filter(pl.col(QUOTATION_GROUP_COLUMN).list.len().fill_null(0) > 0)
     return frame, start + length < checked, checked
 
 

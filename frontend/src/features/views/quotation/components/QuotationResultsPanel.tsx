@@ -48,6 +48,8 @@ interface QuotationResultsPanelProps {
   onPageSizeChange: (pageSize: number) => void;
   onRowClick: (rowIndex: number) => void;
   isPageLoading: boolean;
+  /** Shown when a page has no rows, instead of the no-quotations line. */
+  emptyMessage?: string;
 }
 
 /**
@@ -87,6 +89,7 @@ export function QuotationResultsPanel({
   onPageSizeChange,
   onRowClick,
   isPageLoading,
+  emptyMessage,
 }: QuotationResultsPanelProps) {
   const metadataNodeId = displayedNodes[0]?.id ?? '';
   const metadataResult = metadataNodeId ? resultsByNode[metadataNodeId] : null;
@@ -217,6 +220,7 @@ export function QuotationResultsPanel({
                     : 'Quotes per page'
               }
               showPageSummary={reviewRowUnit === null}
+              emptyMessage={emptyMessage}
             />
           );
         })}

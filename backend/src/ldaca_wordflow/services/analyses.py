@@ -660,8 +660,8 @@ class AnalysisService:
                 and not stop_path.exists()
             ):
                 # The first Stop asks a Quotation Run to keep what it found:
-                # it finishes the documents under way and publishes them as
-                # its Result. A second Stop stops it at once (issue 381).
+                # it finishes the chunks being checked and publishes what it
+                # found as its Result. A second Stop ends it now (issue 381).
                 await run_sync_in_worker_thread(_request_stop, stop_path)
                 lease.commit_requested = False
                 return self._project(lease, record), True

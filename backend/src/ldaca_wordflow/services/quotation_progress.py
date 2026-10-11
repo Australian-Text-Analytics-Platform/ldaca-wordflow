@@ -150,7 +150,8 @@ def save_quotation_progress(
     node = Node(
         id=node_id,
         data=lazyframe,
-        name=f"{source_node.name}{PROGRESS_NAME_SUFFIX}",
+        # The column is named, since each column keeps its own quotations.
+        name=f"{source_node.name} · {source.column}{PROGRESS_NAME_SUFFIX}",
         provenance=DerivationProvenance(
             operation=_operation(source),
             inputs=[DerivationInput(role="source", value=node_reference(source_node.id))],

@@ -9,7 +9,12 @@
  */
 import { useState } from 'react';
 import type { WorkspaceNodeInfo } from '@/api';
-import { keptQuotationBlocks, type KeptQuotationsBlock } from './keptQuotationBlocks';
+import {
+  keptQuotationBlocks,
+  resumesFromKeptQuotations,
+  type KeptQuotationsBlock,
+  type ResumeSettings,
+} from './keptQuotationBlocks';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -29,28 +34,33 @@ export function QuotationKeptNotice({
   sourceNodeId,
   checkedCount,
   documentCount,
+  settings,
 }: {
   nodes: readonly WorkspaceNodeInfo[];
   sourceNodeId: string;
   /** Documents a Run Stop kept had checked, or null for a complete Run. */
   checkedCount: number | null;
   documentCount: number | null;
+  /** The tab's text column and engine: kept quotations for others can't resume. */
+  settings: ResumeSettings;
 }) {
   const { deleteNode } = useWorkspaceActions();
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<KeptQuotationsBlock | null>(null);
-  const blocks = keptQuotationBlocks(nodes, sourceNodeId);
-
-  if (checkedCount !== null) {
-    return (
+  const resumable = (block: KeptQuotationsBlock) => resumesFromKeptQuotations([block], settings);
+  // A Run Stop kept says so itself; its own kept quotations need no second note.
+  const blocks = keptQuotationBlocks(nodes, sourceNodeId).filter(
+    (block) => checkedCount === null || !resumable(block),
+  );
+  const stoppedNote =
+    checkedCount !== null ? (
       <p role="note" className="mt-2 text-label-secondary text-description">
         Stopped early: {checkedCount.toLocaleString()}
         {documentCount !== null ? ` of ${documentCount.toLocaleString()}` : ''} documents checked.
-        Run continues from there.
+        Resume continues from there.
       </p>
-    );
-  }
-  if (blocks.length === 0) return null;
+    ) : null;
+  if (blocks.length === 0) return stoppedNote;
 
   const remove = async (block: KeptQuotationsBlock) => {
     setBusy(true);
@@ -65,6 +75,7 @@ export function QuotationKeptNotice({
 
   return (
     <div className="mt-4 space-y-2">
+      {stoppedNote}
       {blocks.map((block) => (
         <div
           key={block.id}
@@ -74,8 +85,12 @@ export function QuotationKeptNotice({
           <p className="min-w-0 flex-1">
             Quotations for{' '}
             {block.texts === null ? 'the texts' : `${block.texts.toLocaleString()} texts`} from a
-            Run that didn&apos;t finish are kept in &ldquo;{block.name}&rdquo;. Run continues from
-            there.
+            Run that didn&apos;t finish are kept in &ldquo;{block.name}&rdquo;.{' '}
+            {resumable(block)
+              ? 'Resume continues from there.'
+              : block.column === settings.column
+                ? 'Choose the engine it used to resume.'
+                : `Choose the “${block.column}” text column to resume.`}
           </p>
           <Button
             type="button"

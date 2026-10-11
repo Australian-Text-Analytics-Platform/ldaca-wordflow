@@ -126,7 +126,7 @@ def test_quotation_run_all_writes_complete_analysis_table_artifact(
     assert any(
         "Finding quotations" in message for _progress, message in progress_updates
     )
-    assert progress_updates[-1] == (0.95, "Saving the results…")
+    assert progress_updates[-1] == (0.98, "Saving the results…")
 
 
 def test_quotation_result_added_to_project_can_be_quoted_again(

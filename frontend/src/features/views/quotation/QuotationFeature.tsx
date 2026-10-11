@@ -50,6 +50,7 @@ import { DEFAULT_TAB_INPUT_SET_ID } from '../common/tabs/tabStateOps';
 import { QuotationEngineSettingsFields } from './components/QuotationEngineSettingsFields';
 import { type QuotationHoverState } from './components/QuotationHighlightedCell';
 import { QuotationKeptNotice } from './components/QuotationKeptNotice';
+import { keptQuotationBlocks, resumesFromKeptQuotations } from './components/keptQuotationBlocks';
 import { QuotationResultsPanel } from './components/QuotationResultsPanel';
 import { useQuotationContextPreference } from './hooks/useQuotationContextPreference';
 import { useQuotationEngineSettings } from './hooks/useQuotationEngineSettings';
@@ -242,7 +243,18 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       refreshAnalyses();
     },
   });
-  const requiresClear = hasClearRequiredAnalysis(analyses);
+  // With quotations kept from a Run that stopped, for these settings, Run
+  // continues from them: it reads Resume and needs no Clear first (issue 381).
+  const resumeNodeId = displayedNodes[0]?.id ?? '';
+  const resumeSettings = {
+    column: activeSelections.find((selection) => selection.nodeId === resumeNodeId)?.column ?? '',
+    engineType: resolvedEnginePayload.type,
+    engineId: resolvedEnginePayload.type === 'remote' ? resolvedEnginePayload.engine_id : null,
+  };
+  const canResume =
+    Boolean(resumeNodeId) &&
+    resumesFromKeptQuotations(keptQuotationBlocks(workspaceNodes, resumeNodeId), resumeSettings);
+  const requiresClear = hasClearRequiredAnalysis(analyses) && !canResume;
   const analysisActionLifecycle = getAnalysisActionLifecycle({
     isPreviewing: isLoadingQuotations,
     isSubmittingRunAll,
@@ -452,8 +464,9 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     hasAnyAnalysis: analyses.length > 0,
     analysisState: quotationRunAll?.state ?? null,
     // A Run Stop kept part of continues where it stopped (issue 381).
-    hasChanges: runAllHasParamsChanged || runAllCheckedCount !== null,
+    hasChanges: runAllHasParamsChanged || runAllCheckedCount !== null || canResume,
     requiresClear,
+    rerunWithoutClear: canResume,
     isBusy: analysisActionLifecycle.parametersLocked,
   });
 
@@ -693,6 +706,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
                 analysisActionLifecycle.runAllDisabled ||
                 runAllActionState.runDisabled,
               runAllDisabledReason: runAllActionState.runDisabledReason,
+              runAllLabel: canResume ? 'Resume' : undefined,
               clearDisabled: actionState.clearDisabled || isClearing,
               clearDisabledReason: actionState.clearDisabledReason,
               isPreviewing: analysisActionLifecycle.isPreviewing,
@@ -761,6 +775,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             sourceNodeId={runAllSource?.node_id ?? displayedNodes[0]?.id ?? ''}
             checkedCount={runAllCheckedCount}
             documentCount={runAllSource?.source_document_count ?? null}
+            settings={resumeSettings}
           />
         ) : null}
 
@@ -860,6 +875,13 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             onPageSizeChange={effHandlePageSizeChange}
             onRowClick={openQuotationDetailAt}
             isPageLoading={quotationPage.isFetching || isResultFetching}
+            emptyMessage={
+              !runAllSource && progressNode
+                ? (quotationPage.data?.pagination.total_source_rows ?? 0) === 0
+                  ? 'Finding the first quotations…'
+                  : 'No quotations in the documents checked so far on this page.'
+                : undefined
+            }
           />
         ) : null}
       </AnalysisSplitLayout>

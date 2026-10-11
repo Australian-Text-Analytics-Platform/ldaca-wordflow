@@ -24,13 +24,23 @@ from .concordance import SOURCE_ROW_ID_COLUMN
 from .progress import ProgressCallback, Step, StepReporter, keep_alive, process_tree_cpu
 from .utils import process_entrypoint
 
-# Finding quotations is nearly all of a run (issue 350).
-QUOTATION_PROGRESS_BAND = (0.25, 0.82)
+# Finding quotations is nearly all of a run (issue 350), so the bar follows
+# the documents checked (issue 381).
+QUOTATION_PROGRESS_BAND = (0.04, 0.95)
+# Tasks while Stop keeps the Run's result (issue 381).
+STOPPING_NOTE = (
+    "Stopping: keeping the quotations found so far (a few seconds). "
+    "Choose Stop again to end now."
+)
 # Texts per chunk handed to one extraction process (issue 381).
 QUOTATION_CHUNK_TEXTS = 20
 # Finished chunks are written to disk at most this often, so the tab can show
-# them and a stopped Run keeps them (issue 381).
+# them and a stopped Run keeps them (issue 381). More often at first: chunks
+# finish out of order and the tab shows only documents up to the first one
+# not done, so the first rows need the first chunk on disk.
 QUOTATION_FLUSH_SECONDS = 10.0
+QUOTATION_EARLY_FLUSH_SECONDS = 2.0
+QUOTATION_EARLY_SECONDS = 30.0
 
 logger = logging.getLogger(__name__)
 
@@ -150,7 +160,7 @@ def run_quotation_run_all(
         logger.info("[Worker %d] Starting quotation Run All", os.getpid())
         source_snapshot = load_snapshot_node(input_snapshot_dir, parent_node_id)
 
-        progress_callback(0.2, "Preparing the text…")
+        progress_callback(0.03, "Preparing the text…")
         node_corpus, extra_columns_data, extra_columns_dtypes, source_row_ids = (
             _collect_quotation_source_from_snapshot(
                 snapshot_node=source_snapshot,
@@ -172,7 +182,7 @@ def run_quotation_run_all(
             cpu_clock=process_tree_cpu,
         )
         quotation_reporter.update(
-            "finding", done=0, total=len(node_corpus), unit="documents"
+            "finding", done=0, total=len(node_corpus), unit="documents checked"
         )
 
         input_data: dict[str, list] = {
@@ -216,8 +226,8 @@ def run_quotation_run_all(
                     "finding",
                     done=done_rows,
                     total=len(node_corpus),
-                    unit="documents",
-                    note="Stopping: finishing the documents under way. Stop again to stop at once.",
+                    unit="documents checked",
+                    note=STOPPING_NOTE,
                 )
             return stopping
 
@@ -229,11 +239,15 @@ def run_quotation_run_all(
         last_flush = time.monotonic()
         done_rows = 0
 
+        flushed_once = False
+        started = time.monotonic()
+
         def flush() -> None:
-            nonlocal last_flush
+            nonlocal last_flush, flushed_once
             last_flush = time.monotonic()
             if parts_path is None or not buffered_texts:
                 return
+            flushed_once = True
             try:
                 write_part(parts_path, buffered_texts, buffered_quotations)
             except OSError:
@@ -253,12 +267,18 @@ def run_quotation_run_all(
                 "finding",
                 done=done_rows,
                 total=len(node_corpus),
-                unit="documents",
-                note="Stopping: finishing the documents under way. Stop again to stop at once."
+                unit="documents checked",
+                note=STOPPING_NOTE
                 if stopping
                 else None,
             )
-            if time.monotonic() - last_flush >= QUOTATION_FLUSH_SECONDS:
+            now = time.monotonic()
+            interval = (
+                QUOTATION_EARLY_FLUSH_SECONDS
+                if now - started < QUOTATION_EARLY_SECONDS
+                else QUOTATION_FLUSH_SECONDS
+            )
+            if not flushed_once or now - last_flush >= interval:
                 flush()
 
         if resume_path is not None and Path(resume_path).is_file():
@@ -342,13 +362,13 @@ def run_quotation_run_all(
         match_count = int(match_count_value or 0)
         output_columns = list(quote_df.columns)
 
-        progress_callback(0.82, "Saving the results…")
+        progress_callback(0.95, "Saving the results…")
 
         result_path = Path(artifact_dir) / "quotation-run-all.parquet"
         result_path.parent.mkdir(parents=True, exist_ok=True)
         quote_df.write_parquet(result_path)
 
-        progress_callback(0.95, "Saving the results…")
+        progress_callback(0.98, "Saving the results…")
 
         logger.info("[Worker %d] Quotation Run All completed successfully", os.getpid())
 
