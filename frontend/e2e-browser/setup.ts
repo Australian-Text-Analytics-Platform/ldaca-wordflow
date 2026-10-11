@@ -51,7 +51,7 @@ export const mochaHooks = {
       maxEncodedDataSize: 10 * 1024 * 1024,
     });
     await resetProject();
-    await setTestPreferences({ theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 }, recentDataFiles: [] });
+    await setTestPreferences({ hiddenTools: [], guidance: { enabled: false, resetAcknowledgments: true }, theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 }, recentDataFiles: [] });
   },
   async afterEach(this: Mocha.Context) {
     await clearResponseStubs();

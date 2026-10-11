@@ -18,7 +18,7 @@ export function AnalysisPublishMenu({
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" disabled={disabled}>
+        <Button data-guidance-stage="followup" variant="outline" disabled={disabled}>
           Add to Project <ChevronDown className="size-4" aria-hidden />
         </Button>
       </DropdownMenuTrigger>

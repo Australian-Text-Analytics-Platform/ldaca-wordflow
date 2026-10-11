@@ -8,7 +8,13 @@ import { ServerContext } from './context';
 const request = vi.hoisted(() => vi.fn());
 vi.mock('@/api/client', async (original) => ({ ...(await original<object>()), request }));
 vi.mock('@/features/project/projectErrors', () => ({ reportProjectError: vi.fn() }));
-beforeEach(() => request.mockReset());
+beforeEach(() =>
+  request
+    .mockReset()
+    .mockImplementation((_base, path) =>
+      Promise.resolve({ json: async () => (path === '/api/server/files/{library}' ? [] : {}) }),
+    ),
+);
 function mount(select = vi.fn()) {
   return render(
     <QueryClientProvider
@@ -33,7 +39,7 @@ function mount(select = vi.fn()) {
           },
         }}
       >
-        <ServerControls projectBase="/project/session-1" />
+        <ServerControls />
       </ServerContext>
     </QueryClientProvider>,
   );
@@ -41,11 +47,16 @@ function mount(select = vi.fn()) {
 it('renames the captured session and retains an editable name after failure', async () => {
   const user = userEvent.setup();
   mount();
-  request.mockRejectedValueOnce(new ProjectError('Exists', '{"error":{"code":"file_exists"}}'));
-  await user.click(screen.getByRole('button', { name: 'Project', exact: true }));
+  request.mockImplementation((_base, path) =>
+    path === '/api/server/project/rename'
+      ? Promise.reject(new ProjectError('Exists', '{"error":{"code":"file_exists"}}'))
+      : Promise.resolve({ json: async () => [] }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Project & Data', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Current project actions' }));
   expect(screen.queryByRole('menuitem', { name: 'Save', exact: true })).not.toBeInTheDocument();
   await user.click(screen.getByRole('menuitem', { name: 'Rename…' }));
-  const input = screen.getByRole('textbox', { name: 'Project name' });
+  const input = screen.getByRole('textbox', { name: 'Filename' });
   await user.clear(input);
   await user.type(input, '研究');
   await user.click(screen.getByRole('button', { name: 'Rename', exact: true }));
@@ -59,16 +70,24 @@ it('renames the captured session and retains an editable name after failure', as
   );
   expect(input).toHaveValue('研究');
   expect(screen.getByRole('alert')).toHaveTextContent('Could not rename project');
-  request.mockResolvedValueOnce({});
+  request.mockImplementation(() => Promise.resolve({ json: async () => [] }));
   await user.click(screen.getByRole('button', { name: 'Retry' }));
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog', { name: 'Rename project' })).not.toBeInTheDocument(),
+  );
 });
 it('duplicates without changing the selected project', async () => {
   const user = userEvent.setup();
   const select = vi.fn();
   mount(select);
-  request.mockResolvedValueOnce({ json: async () => ({ name: 'Untitled-1_copy.wfpj' }) });
-  await user.click(screen.getByRole('button', { name: 'Project', exact: true }));
+  request.mockImplementation((_base, path) =>
+    Promise.resolve({
+      json: async () =>
+        path === '/api/server/project/duplicate' ? { name: 'Untitled-1_copy.wfpj' } : [],
+    }),
+  );
+  await user.click(screen.getByRole('button', { name: 'Project & Data', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Current project actions' }));
   await user.click(screen.getByRole('menuitem', { name: 'Duplicate project' }));
   expect(await screen.findByRole('status')).toHaveTextContent('Created Untitled-1_copy.wfpj');
   expect(select).not.toHaveBeenCalled();
@@ -85,18 +104,21 @@ it('confirms cancellation before closing active work, without a Save prompt', as
   const user = userEvent.setup();
   const select = vi.fn();
   mount(select);
-  request.mockRejectedValueOnce(
-    new ProjectError('Work active', '{"error":{"code":"task_active"}}'),
+  request.mockImplementation((_base, path) =>
+    path === '/api/server/project/close'
+      ? Promise.reject(new ProjectError('Work active', '{"error":{"code":"task_active"}}'))
+      : Promise.resolve({ json: async () => [] }),
   );
-  await user.click(screen.getByRole('button', { name: 'Project', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Project & Data', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Current project actions' }));
   await user.click(screen.getByRole('menuitem', { name: 'Close project…' }));
   await user.click(screen.getByRole('button', { name: 'Close project', exact: true }));
-  await screen.findByRole('button', { name: 'Cancel work and close' });
+  await screen.findByRole('button', { name: 'Cancel work and continue' });
   expect(select).not.toHaveBeenCalled();
-  request.mockResolvedValueOnce({});
-  await user.click(screen.getByRole('button', { name: 'Cancel work and close' }));
+  request.mockImplementation(() => Promise.resolve({ json: async () => [] }));
+  await user.click(screen.getByRole('button', { name: 'Cancel work and continue' }));
   await waitFor(() =>
-    expect(request).toHaveBeenLastCalledWith(
+    expect(request).toHaveBeenCalledWith(
       '/user/me/proxy/8002',
       '/api/server/project/close',
       'post',

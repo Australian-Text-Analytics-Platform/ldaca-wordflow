@@ -82,14 +82,14 @@ export function DataLoaderWorkspace({
     <section
       className="data-[file-hover=true]:outline-2 data-[file-hover=true]:outline-focus data-[file-hover=true]:-outline-offset-2 @container/data-loader flex h-full min-h-0 min-w-0 flex-col gap-3"
       aria-label="Data Loader"
-      data-project-file-drop="loader"
+      data-project-file-drop={server ? undefined : 'loader'}
     >
       <header className="flex shrink-0 items-center justify-between gap-2">
         <h1 className="text-heading-2 font-semibold">Data Loader</h1>
         <HelpIcon targetKey="data-loader.tab" label="Data Loader help" />
       </header>
       <Tabs value={source} onValueChange={setSource} className="min-h-0 flex-1 gap-4">
-        <TabsList aria-label="Data sources" className="shrink-0">
+        <TabsList data-guidance-stage="setup" aria-label="Data sources" className="shrink-0">
           <TabsTrigger value="local">{server ? 'Data files' : 'Local files'}</TabsTrigger>
           <TabsTrigger value="samples">Samples</TabsTrigger>
           <TabsTrigger value="ldaca">LDaCA</TabsTrigger>
@@ -102,14 +102,15 @@ export function DataLoaderWorkspace({
         >
           {server ? (
             <>
-              <p className="text-description text-body-secondary">
-                Drop files here or onto the graph to upload and import them.
-              </p>
               {uploaded.isPending && <p role="status">Uploading and importing…</p>}
               {uploaded.error && !('taskId' in uploaded.error && uploaded.error.taskId) && (
                 <OperationError title="Could not import dropped files" error={uploaded.error} />
               )}
               <FileLibrary
+                dropUpload
+                inDataLoader
+                base={server.base}
+                currentProject={server.status}
                 library="data"
                 tasks={tasks}
                 visible={active && source === 'local'}

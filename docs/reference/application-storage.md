@@ -22,7 +22,10 @@ paths. Gateway authentication state is outside user roots, at
 `DATA_DIR/.system/auth.sqlite3`.
 
 `--data-dir` overrides `DATA_DIR`. Otherwise the standalone server uses the native
-application data directory for `<identity>.server`. Desktop identities are
+application data directory for `<identity>.web`. If that directory does not exist
+but the legacy `<identity>.server` directory does, it continues using the legacy
+directory without moving files. When both exist, `.web` takes precedence. Explicit
+`--data-dir` and `DATA_DIR` paths bypass this fallback. Desktop identities are
 `au.edu.ldaca.wordflow`, `.dev` and `.test`. Test launchers resolve paths through
 `cargo run -p wordflow-storage --bin wordflow-storage -- --identity <Dev-or-Test-ID>`;
 the command emits JSON and does not create directories. Production is rejected
@@ -49,14 +52,19 @@ Moving staging to a different filesystem does not relax this requirement.
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "theme": "light-2026",
   "layout": {
     "sidebarWidth": 208,
     "asidePanelRatio": 0.3,
     "projectGraphRatio": 0.5
   },
-  "recentDataFiles": []
+  "recentDataFiles": [],
+  "hiddenTools": [],
+  "guidance": {
+    "enabled": true,
+    "acknowledgments": {}
+  }
 }
 ```
 
@@ -65,6 +73,12 @@ ratio is 0.15–0.8 and project graph ratio is 0.2–0.8. Ratios must be finite.
 Recent desktop import paths retain at most ten entries. Project settings,
 analyses and drafts retain their project/runtime owners. Desktop updater state
 remains separately owned by `updater-settings.json` in the resolved app data directory.
+Hidden tools use current tool IDs; Data Loader cannot be hidden. Guidance
+acknowledgments map hint IDs to positive versions. An acknowledgment patch merges
+the highest version against the latest file. Guidance history reset clears only
+acknowledgments and preserves the enable choice. Version-1 files load with defaults
+for these fields and upgrade to version 2 on the next successful write; archived
+preference stores are not imported.
 
 Desktop commands are `get_preferences`, `patch_preferences` and
 `reset_preferences`; successful writes emit `preferences-changed`. Tauri Store
@@ -86,12 +100,16 @@ manually resized; sidebar section ratios likewise reset on reload.
 
 ## Credentials and model caches
 
-Desktop and single-user server provider keys use the OS credential store,
-with `<host-identity>.ai.providers` namespaces. Multi-user worker metadata accepts
+Desktop and single-user server keys support explicit session-only or OS credential
+storage. Provider keys retain the `<host-identity>.ai.providers` namespace. Session credentials disappear
+when the host stops. Multi-user worker metadata accepts
 only `none` or `browser` credential ownership. Browser provider keys use
 `wordflow-provider-credentials:v1:<account-UUID>` localStorage entries containing
 `{"version":1,"connections":{"<connection-UUID>":"<key>"}}`. The credentials
 belong to that browser profile and account; clearing browser storage removes them.
+LDaCA access tokens are entered inline in Data Loader and retained only in window
+memory. They are never written to preferences, localStorage, host credential
+stores or project files. No legacy credentials migrate automatically.
 
 Model discovery and inference supply keys in operation headers
 `x-wordflow-ai-provider` and `x-wordflow-ai-key`. A request-scoped Rust adapter
@@ -100,6 +118,19 @@ Keys are excluded from provider metadata, stored analysis requests, project
 files, logs, cache keys and frontend query persistence. Logout revokes only the
 presented session, clears active browser memory by leaving the application, and
 retains account-partitioned browser keys for a subsequent sign-in.
+LDaCA search, browse and import receive the window token explicitly in their
+operation body. Public collections also work without a token. Frontend mutation
+variables and query keys never contain Portal tokens.
+
+## Storage inspection
+
+`GET /api/storage/locations` returns resolved directory categories, paths and
+existence plus web project/data libraries. Single-user paths are server-side;
+multi-user paths are worker-side. Native `get_storage_locations` reports desktop
+locations. Native `open_storage_directory` accepts a directory category, resolves
+it in the host and opens only an existing directory. It does not accept an
+arbitrary renderer path. Settings provides native folder opening or web path
+copying, without live directory switching.
 
 Wordflow explicitly supplies HF, tokenizer, embedding and Lindera asset contexts;
 registries include that context in their keys. It does not use ambient `HF_HOME`,

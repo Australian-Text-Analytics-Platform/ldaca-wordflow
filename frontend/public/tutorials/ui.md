@@ -142,10 +142,39 @@ and background tasks alive.
 
 <h2 id="help-ui-appearance">Appearance</h2>
 
-Settings → Appearance offers Light 2026 and Dark 2026. The choice applies
+Settings → General → Appearance offers Light 2026 and Dark 2026. The choice applies
 immediately and is saved to this device. Charts retain source identity colours;
 figure exports have a white ground. Opaque headers keep text readable while
 scrolling. Long names and CJK text wrap within their available panes.
+
+Settings is available from the workspace cog and the web welcome dialog. Its
+five sections are **General**, **AI**, **Portal**, **Storage** and **Guidance**.
+Closing Settings returns to the same workspace or welcome dialog without losing
+drafts. Preferences belong to this desktop installation, single-user web host,
+or signed-in web account, as described in the dialog.
+
+**AI** manages connections and their credentials. Annotation's **Manage
+connections** shortcut opens the same manager; choosing a provider and model
+still happens in Annotation. Built-in connections cannot be edited or deleted.
+Custom connections support renaming, credential replacement/removal and confirmed
+individual deletion.
+
+**Portal** explains LDaCA access. Enter a token inline in Data Loader’s LDaCA
+source for restricted collections. It stays in this window’s memory until the
+window closes. Public collections work without a token.
+
+**Storage** shows the application's resolved folders and web project/data
+libraries. Web locations are on the server or worker, not your local computer.
+Desktop can open existing folders; web can copy their paths. This page does not
+change storage locations.
+
+**Guidance** enables contextual hints and resets their history after confirmation.
+Hints explain the active tool's setup, main action, results and next steps.
+An outline highlights the area the hint explains. **Got it** remembers the hint;
+**Not now**, its close icon, clicking outside or Escape pauses hints until the
+next visit to that tool. **Disable hints** turns
+them off. Hints leave keyboard focus alone and pause during dialogs, editing or
+running work. Resetting history keeps your current enable choice.
 
 <h2 id="help-ui-help-feedback">Help and Feedback</h2>
 
@@ -166,7 +195,7 @@ An open project shows an in-use message. Open Wordflow to inspect rows.
 
 <h3 id="help-ui-session-errors">Session errors</h3>
 
-Settings → Diagnostics → Session errors holds the latest 200 displayed errors in
+Settings → General → Diagnostics → Session errors holds the latest 200 displayed errors in
 window memory. Details preserves original engine/provider diagnostics and available
 request context. Copy one entry or the history for troubleshooting. Clear empties
 it; reload or closing the window discards it. No request body, headers or history

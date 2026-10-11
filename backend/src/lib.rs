@@ -2,6 +2,7 @@
 //! Shared HTTP lifecycle for the desktop host and standalone server.
 
 pub mod ai;
+pub mod host_storage;
 pub use ai::AiConfiguration;
 mod analysis_api;
 mod api;
@@ -67,10 +68,17 @@ pub fn router_with_host(
     let permitted = origins.clone();
     let (health, _) = health_routes().split_for_parts();
     let (project_routes, _) = api::router().split_for_parts();
+    let storage = host_storage::StorageLocations::new(
+        projects.storage_directories().ok().flatten().as_ref(),
+        "desktop",
+        None,
+    )
+    .router();
     health
         .with_state(shutdown)
         .merge(project_routes.with_state(projects))
         .merge(host)
+        .merge(storage)
         .layer(
             CorsLayer::new()
                 .allow_origin(origins)

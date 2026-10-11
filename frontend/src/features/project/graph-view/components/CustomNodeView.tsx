@@ -271,7 +271,7 @@ export function CustomNodeView({
 
   // The detached outline is the sole persistent node-state decoration.
   const nodeClasses = cn(
-    'w-80 rounded-md border border-surface-border bg-surface text-body',
+    'w-max max-w-[320px] rounded-md border border-surface-border bg-surface text-body',
     isSelected && 'outline outline-2 outline-offset-2 outline-data-block-selection',
     data.connectionCandidate && 'ring-2 ring-focus cursor-crosshair',
   );
@@ -522,7 +522,7 @@ export function CustomNodeView({
   if (isZoomedOut) {
     // Compact view keeps critical controls visible while preserving the compact footprint.
     const compactClasses = cn(
-      'flex items-start rounded-md border border-surface-border p-3 text-foreground',
+      'flex w-max max-w-[320px] items-start rounded-md border border-surface-border p-3 text-foreground',
       isSelected && 'outline outline-2 outline-offset-2 outline-data-block-selection',
       data.connectionCandidate && 'ring-2 ring-focus cursor-crosshair',
     );
@@ -536,8 +536,6 @@ export function CustomNodeView({
         onMouseEnter={showToolbar}
         onMouseLeave={hideToolbar}
         style={{
-          minWidth: '220px',
-          maxWidth: '360px',
           position: 'relative',
           backgroundColor: identitySurfaceColor,
         }}
@@ -585,7 +583,6 @@ export function CustomNodeView({
       }}
       onMouseLeave={hideToolbar}
       style={{
-        minWidth: '320px',
         position: 'relative',
       }}
     >
@@ -622,7 +619,11 @@ export function CustomNodeView({
             {copyIdentityButton}
           </div>
         )}
-        {data.detail && <p className="text-description text-body-secondary">{data.detail}</p>}
+        {data.detail && (
+          <p className="[overflow-wrap:anywhere] text-description text-body-secondary">
+            {data.detail}
+          </p>
+        )}
         {diagnostic && (
           <p role="status" className="max-w-80 text-description text-body-secondary">
             {diagnostic}

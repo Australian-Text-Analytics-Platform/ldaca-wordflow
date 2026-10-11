@@ -1,11 +1,12 @@
 import { $, browser, expect } from '@wdio/globals';
-import { afterEach, it } from 'mocha';
+import { afterEach, beforeEach, it } from 'mocha';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { applicationDirectories, applicationEnvironment, TEST_IDENTITY } from '../../scripts/app-environment.mjs';
 import { executeSql, runSqlScript } from '../src/features/project/api';
 const base = 'http://127.0.0.1:3237';
+beforeEach(() => api('/api/preferences', 'PATCH', { hiddenTools: [], guidance: { enabled: false } }));
 afterEach(async () => {
   const [retained, ...others] = await browser.getWindowHandles();
   for (const handle of others) {
@@ -91,8 +92,8 @@ it('preserves independent Builder inputs when switching projects with matching t
     await $('#preprocessing-tab-join').click();
   }
   async function select(name: string) {
-    await $('button=Project').click();
-    await $(`[role="menuitem"]=${name}`).click();
+    await $('button=Project & Data').click();
+    await $(`[aria-label="Open ${name}.wfpj"]`).click();
     await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining(name));
     await showJoin();
   }
@@ -118,7 +119,7 @@ it('keeps a run alive while the requesting window switches to another permanent 
   const a = await api('/api/server/project', 'POST', { name: null });
   const b = await api('/api/server/project', 'POST', { name: null });
   await browser.url(`${base}/?project=${a.project_id}`);
-  await expect($('button=Project')).toBeDisplayed();
+  await expect($('button=Project & Data')).toBeDisplayed();
   const running = runSqlScript(`${base}/project/${a.project_id}`, 'SELECT sum(hash(i)) FROM range(1000000000) t(i)', 'execute', 'Background project run');
   // Attach rejection handling immediately while the browser exercises navigation.
   const outcome = running.then(() => null, (error: unknown) => error);
@@ -126,17 +127,16 @@ it('keeps a run alive while the requesting window switches to another permanent 
     const tasks = await api(`/project/${a.project_id}/api/project/tasks`);
     return tasks.tasks.some((task: { label: string; state: string }) => task.label === 'Background project run' && task.state === 'running');
   }, { timeout: 15_000 });
-  await $('button=Project').click();
-  await expect($(`[role="menuitem"]=${b.project.title}`)).toBeDisplayed();
-  await $(`[role="menuitem"]=${b.project.title}`).click();
+  await $('button=Project & Data').click();
+  await $(`[aria-label="Open ${b.project.title}.wfpj"]`).click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining(b.project.title));
   const duringSwitch = await api(`/project/${a.project_id}/api/project/tasks`);
   expect(duringSwitch.tasks.find((task: { label: string }) => task.label === 'Background project run').state).toBe('running');
   expect(await outcome).toBeNull();
   const tasks = await api(`/project/${a.project_id}/api/project/tasks`);
   expect(tasks.tasks.find((task: { label: string }) => task.label === 'Background project run').state).toBe('succeeded');
-  await $('button=Project').click();
-  await $(`[role="menuitem"]=${a.project.title}`).click();
+  await $('button=Project & Data').click();
+  await $(`[aria-label="Open ${a.project.title}.wfpj"]`).click();
   await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining(a.project.title));
   await expect($('button[aria-label^="Task: Background project run"]')).toExist();
 });

@@ -13,7 +13,8 @@ in `archive/` for reference.
 | Rust binary | `127.0.0.1:8002` | `WORDFLOW_BIND_ADDR` accepts a socket address, including port zero |
 
 Both hosts use `RUST_LOG`, defaulting to `info`, and write diagnostics to stderr.
-The library reads no environment variables. The packaged server starts Untitled. The API-only `wordflow-api-dev` test host
+The library reads no environment variables. The packaged server starts with a
+project chooser. The API-only `wordflow-api-dev` test host
 starts unbound unless `--untitled` is passed.
 Tauri initializes its project before publishing ready.
 The binary handles Ctrl-C and Unix SIGTERM. Tauri uses close and Quit events.
@@ -28,8 +29,18 @@ owned by the document window. Application preferences have a separate host owner
 Tauri owns `updater-settings.json` in its application-data directory
 (`~/Library/Application Support/au.edu.ldaca.wordflow/` on macOS). It contains
 `automaticChecks`, `lastCheckAt`, and `skippedVersion`. Theme, layout and recent-import preferences use the resolved config directory
-and the [typed application preferences adapter](application-storage.md). These
+and the [typed application preferences adapter](application-storage.md), including
+hidden tools and versioned guidance acknowledgments. These
 stores have separate owners.
+
+Settings has General, AI, Portal, Storage and Guidance sections. AI connections
+are host resources available without an open project; their secrets never enter
+application preferences or project files. Portal explains the inline, window-only
+LDaCA token entry in Data Loader. Storage
+inspection returns resolved directory categories. Desktop `get_storage_locations`
+reads them and `open_storage_directory` accepts an existing directory category,
+never an arbitrary renderer path. Web clients copy server-side or worker-side
+paths from `GET /api/storage/locations`.
 
 Old experiment/QA application identifiers and their preferences or caches are
 not read or migrated. Removing those local artifacts needs no application

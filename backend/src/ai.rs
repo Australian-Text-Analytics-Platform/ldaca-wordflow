@@ -114,12 +114,19 @@ struct Host {
     models: Arc<tokio::sync::Mutex<ModelCatalogues>>,
     browser_owned: bool,
     request_key: Option<(Uuid, String)>,
+    client: reqwest::Client,
 }
 /// Clone once per project runtime. Hosts provide their own identity and safe configuration path.
 /// Construction performs no I/O. All filesystem/keyring work runs on blocking worker threads.
 #[derive(Clone)]
 pub struct AiConfiguration(Arc<Host>);
 impl AiConfiguration {
+    pub fn router(&self) -> axum::Router {
+        http::router::<Self>()
+            .split_for_parts()
+            .0
+            .with_state(self.clone())
+    }
     pub fn new(identity: &str, path: PathBuf) -> Self {
         Self(Arc::new(Host {
             path: Some(path),
@@ -130,6 +137,7 @@ impl AiConfiguration {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            client: reqwest::Client::new(),
         }))
     }
     /// Unconfigured runtimes can use explicitly session-only keys, but cannot remember credentials.
@@ -141,6 +149,7 @@ impl AiConfiguration {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            client: reqwest::Client::new(),
         }))
     }
     /// Workers persist metadata only. Keys live in a single request-scoped adapter.
@@ -186,6 +195,7 @@ impl AiConfiguration {
             models: self.0.models.clone(),
             browser_owned: true,
             request_key,
+            client: self.0.client.clone(),
         })))
     }
     async fn access<T: Send + 'static>(
@@ -548,6 +558,7 @@ mod tests {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            client: reqwest::Client::new(),
         }))
     }
     fn create(credential: CredentialUpdate) -> CreateConnection {

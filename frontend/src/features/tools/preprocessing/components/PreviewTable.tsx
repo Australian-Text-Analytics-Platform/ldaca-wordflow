@@ -152,7 +152,12 @@ export function PreviewTable({
 
   return (
     <Card>
-      <CardHeader className="space-y-0 pb-4">
+      <CardHeader
+        data-guidance-stage={
+          ready && !loading && !error && columns.length > 0 ? 'results' : undefined
+        }
+        className="space-y-0 pb-4"
+      >
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <CardTitle data-guidance="preprocessing-preview">{title}</CardTitle>

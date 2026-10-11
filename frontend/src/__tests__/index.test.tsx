@@ -48,6 +48,38 @@ describe('application entrypoint', () => {
     await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
   });
 
+  it('loads the full browser application when its host configuration is present', async () => {
+    const loadServer = vi.fn();
+    vi.doMock('../features/server/ServerApp', () => {
+      loadServer();
+      return { default: () => null };
+    });
+    vi.doMock('../api/client', async (original) => ({
+      ...(await original<object>()),
+      request: async () =>
+        new Response(JSON.stringify({ id: 'admin', name: null, browser_credentials: false })),
+    }));
+    document.head.innerHTML =
+      '<script id="wordflow-server-config" type="application/json">{"public_base_path":"/"}</script>';
+    try {
+      await import('../index');
+      await vi.waitFor(() => expect(render).toHaveBeenCalledOnce());
+      expect(loadServer).toHaveBeenCalledOnce();
+      expect(loadDesktop).not.toHaveBeenCalled();
+      expect(render).toHaveBeenCalledWith(
+        expect.objectContaining({
+          props: expect.objectContaining({
+            children: expect.objectContaining({ props: { base: '' } }),
+          }),
+        }),
+      );
+    } finally {
+      document.head.innerHTML = '';
+      vi.doUnmock('../features/server/ServerApp');
+      vi.doUnmock('../api/client');
+    }
+  });
+
   it.each([
     ['development', false, ''],
     ['production', false, ''],

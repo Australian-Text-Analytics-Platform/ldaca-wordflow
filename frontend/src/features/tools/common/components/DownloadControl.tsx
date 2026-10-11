@@ -33,6 +33,7 @@ export function DownloadButton({
     <Tooltip>
       <TooltipTrigger asChild>
         <Button
+          data-guidance-stage="followup"
           type="button"
           variant="ghost"
           size="icon"

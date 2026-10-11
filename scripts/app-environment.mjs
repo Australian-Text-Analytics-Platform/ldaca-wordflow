@@ -24,9 +24,6 @@ export function applicationDirectories(identity, env = process.env) {
   }
   return resolved.get(key);
 }
-export function applicationConfigurationDirectory(identity, env = process.env) {
-  return applicationDirectories(identity, env).config;
-}
 export function applicationCacheDirectory(identity, env = process.env) {
   return applicationDirectories(identity, env).cache;
 }

@@ -200,6 +200,7 @@ function QuotationTab({
             />
             <div className="flex flex-wrap items-center gap-2">
               <AnalysisAction
+                data-guidance-stage={undefined}
                 reason={
                   editing
                     ? 'Finish Table editing before running an analysis.'

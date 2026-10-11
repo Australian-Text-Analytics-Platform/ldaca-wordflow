@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { DesktopWindowFrame } from '@/components/layout/DesktopWindowFrame';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { HostSettings, useHostServices } from '@/features/settings/HostSettings';
 import DocumentSession from './DocumentSession';
 
 export default function ProjectApp({
@@ -18,6 +19,7 @@ export default function ProjectApp({
   base: string;
   queryClient?: QueryClient;
 }) {
+  const host = useHostServices();
   const feedback = useUIStore((s) => s.feedback);
   const closeFeedback = useUIStore((s) => s.closeFeedback);
   const [ownedClient] = useState(createProjectQueryClient);
@@ -31,7 +33,7 @@ export default function ProjectApp({
     },
     [client, queryClient],
   );
-  return (
+  const content = (
     <QueryClientProvider client={client}>
       <TooltipProvider>
         <DesktopWindowFrame>
@@ -46,5 +48,12 @@ export default function ProjectApp({
         </DesktopWindowFrame>
       </TooltipProvider>
     </QueryClientProvider>
+  );
+  return host ? (
+    content
+  ) : (
+    <HostSettings base={base} client={client}>
+      {content}
+    </HostSettings>
   );
 }

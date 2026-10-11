@@ -32,11 +32,21 @@ struct Inner {
     preferences: PreferencesApi,
     origins: Vec<HeaderValue>,
     base_path: String,
+    worker: bool,
 }
 #[derive(Clone)]
 struct Active {
     id: Uuid,
     runtime: ProjectRuntime,
+}
+impl Active {
+    async fn status(&self) -> Result<ServerProject> {
+        let project = self.runtime.status().await?;
+        Ok(ServerProject {
+            project_id: self.id,
+            project,
+        })
+    }
 }
 #[derive(Clone, serde::Serialize, utoipa::ToSchema)]
 pub struct ServerProject {
@@ -95,6 +105,7 @@ impl Host {
             preferences,
             origins,
             base_path: config.base_path()?,
+            worker: config.worker_root.is_some(),
         })))
     }
     fn new_runtime(&self) -> Result<ProjectRuntime> {
@@ -106,20 +117,13 @@ impl Host {
         Ok(runtime)
     }
     async fn project_status(&self, id: Uuid) -> Result<ServerProject> {
-        let active = self.session(id).await?;
-        Ok(ServerProject {
-            project_id: id,
-            project: active.runtime.status().await?,
-        })
+        self.session(id).await?.status().await
     }
     pub async fn status(&self) -> Result<ServerStatus> {
         let active: Vec<_> = self.0.projects.read().await.values().cloned().collect();
         let mut projects = Vec::new();
         for project in active {
-            projects.push(ServerProject {
-                project_id: project.id,
-                project: project.runtime.status().await?,
-            });
+            projects.push(project.status().await?);
         }
         Ok(ServerStatus {
             public_base_path: self.0.base_path.clone(),
@@ -195,6 +199,8 @@ impl Host {
                 axum::routing::any(routes::project_request).with_state(self.clone()),
             )
             .merge(self.0.preferences.router())
+            .merge(self.0.ai.router())
+            .merge(wordflow_backend::host_storage::StorageLocations::new(Some(&self.0.directories), if self.0.worker { "worker" } else { "server" }, Some(self.0.files.root())).router())
             .layer(axum::middleware::from_fn_with_state(
                 self.clone(),
                 routes::check_origin,

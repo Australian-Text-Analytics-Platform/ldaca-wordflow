@@ -9,13 +9,17 @@ import { applyColorTheme } from '@/features/theme/themeRuntime';
 import { serverBase as standaloneBase } from '@/features/server/context';
 import { subscribeServerEvents } from '@/features/server/events';
 
-export type Preferences = components['schemas']['Preferences'];
+type WirePreferences = components['schemas']['Preferences'];
+export type Preferences = WirePreferences &
+  Required<Pick<WirePreferences, 'hiddenTools' | 'guidance'>>;
 export type PreferencesPatch = components['schemas']['PreferencesPatch'];
 export const defaultPreferences: Preferences = {
-  schemaVersion: 1,
+  schemaVersion: 2,
   theme: 'light-2026',
   layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 },
   recentDataFiles: [],
+  hiddenTools: [],
+  guidance: { enabled: true, acknowledgments: {} },
 };
 let current = defaultPreferences;
 let base = '';
@@ -31,8 +35,12 @@ export function subscribePreferences(listener: () => void) {
     listeners.delete(listener);
   };
 }
-export function acceptPreferences(next: Preferences) {
-  current = next;
+export function acceptPreferences(next: WirePreferences) {
+  current = {
+    ...next,
+    hiddenTools: next.hiddenTools ?? [],
+    guidance: next.guidance ?? defaultPreferences.guidance,
+  };
   applyColorTheme(next.theme, false);
   listeners.forEach((listener) => {
     listener();

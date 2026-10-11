@@ -161,7 +161,7 @@ export function SqlSubTab({
   const visible = localCells ?? [];
   return (
     <div className="min-w-0 space-y-3" data-testid="sql-console">
-      <div className="flex items-center gap-2 font-semibold">
+      <div className="flex items-center gap-2 font-semibold" data-guidance-stage="setup">
         <Code2 className="size-5" />
         SQL console
         <HelpIcon targetKey="preprocessing.sql.tab" label="SQL help" />
@@ -445,6 +445,7 @@ function SqlCell({
           <Button
             variant="outline"
             className="rounded-r-none"
+            data-guidance-stage="action"
             aria-label={`Run cell ${String(index + 1)}`}
             title="Run cell (⌘/Ctrl+Enter)"
             disabled={editing || !source.sql.trim()}

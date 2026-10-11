@@ -16,8 +16,12 @@ and persistence behavior.
 | `POST /api/project/close` | `{}` | 204, including concurrent/repeated closes |
 
 A descriptor contains `path` (null for Untitled), `title`, and
-`schema_version` (1). The title comes from the filename or is Untitled. No UUID,
-name, or path is persisted in metadata. There is no modification indicator;
+`schema_version` (1), optional `size` (database plus WAL bytes on disk), and
+optional `modified` (latest database or WAL modification time in Unix seconds).
+Reading this metadata does not checkpoint the database. Unsaved projects expose
+working file metadata while keeping their temporary path private. The title comes
+from the filename or is Untitled. No UUID, name, or path is persisted in metadata.
+There is no unsaved-changes flag;
 successful operations commit immediately. Every Untitled close prompts for a
 permanent destination, including an untouched project.
 Create refuses an existing destination. Open requires an existing supported
@@ -508,6 +512,8 @@ metadata when there are no configured member entities. Invalid text encoding
 uses replacement characters and reports affected paths, retaining those rows.
 The existing native network/document/download bounds remain in force. The
 existing `ldaca-rs` adapter owns ONI requests and RO-Crate conversion.
+Search, browse and import use the explicit body token held in window memory.
+Public requests also work without a token. There is no host Portal credential API.
 Conversion and temporary Parquet writing finish in task-owned blocking preparation
 before database permission is acquired. The write stage rechecks permission; staging
 is deleted on success, cancellation or failure.
@@ -896,6 +902,10 @@ publish. Source rows remain distinct even when their text is identical.
 | `POST /api/project/tabs/{id}/annotation/preview` | `{request,page,page_size}`; Arrow page with predictions, diagnostics, lossless row references and mutation stamp |
 | `POST /api/project/tabs/{id}/annotation` | Concrete execution request; existing accepted-task response headers and Analysis completion response |
 | `POST /api/project/analyses/{id}/annotation/query` | `view: rows`, `context` or `diagnostics`; Arrow rows/diagnostics or JSON captured context |
+
+The standalone host exposes these connection routes before project selection.
+Project-prefixed routes remain compatible and share that configuration owner.
+Settings and Annotation use the same host connection library.
 
 Provider identifiers are `openai`, `openrouter`, `anthropic`, `google`, `custom`
 and the host-supplied `apple`. Credential actions are `keep`, `session` with key,

@@ -50,7 +50,7 @@ export default function PlotsFeature(props: Props) {
             usePlotMode.getState().setMode(props.base, value as plotsApi.PlotMode);
         }}
       >
-        <TabsList aria-label="Plot modes" className="h-auto flex-wrap">
+        <TabsList data-guidance-stage="setup" aria-label="Plot modes" className="h-auto flex-wrap">
           {plotModes.map((value) => (
             <TabsTrigger key={value} value={value}>
               {plotLabels[value]}

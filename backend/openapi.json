@@ -1759,6 +1759,17 @@
         ],
         "type": "object"
       },
+      "DirectoryCategory": {
+        "enum": [
+          "config",
+          "data",
+          "local_data",
+          "cache",
+          "logs",
+          "temporary"
+        ],
+        "type": "string"
+      },
       "DocumentInput": {
         "additionalProperties": false,
         "properties": {
@@ -2755,6 +2766,58 @@
           }
         ]
       },
+      "GuidancePatch": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledge": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/HintAcknowledgment"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "enabled": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "resetAcknowledgments": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
+      "GuidancePreferences": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledgments": {
+            "additionalProperties": {
+              "format": "int32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "propertyNames": {
+              "type": "string"
+            },
+            "type": "object"
+          },
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled",
+          "acknowledgments"
+        ],
+        "type": "object"
+      },
       "Health": {
         "properties": {
           "status": {
@@ -2797,6 +2860,24 @@
           "row",
           "column",
           "measure"
+        ],
+        "type": "object"
+      },
+      "HintAcknowledgment": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "format": "int32",
+            "minimum": 0,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version"
         ],
         "type": "object"
       },
@@ -3686,6 +3767,15 @@
       "Preferences": {
         "additionalProperties": false,
         "properties": {
+          "guidance": {
+            "$ref": "#/components/schemas/GuidancePreferences"
+          },
+          "hiddenTools": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
           "layout": {
             "$ref": "#/components/schemas/LayoutPreferences"
           },
@@ -3715,6 +3805,25 @@
       "PreferencesPatch": {
         "additionalProperties": false,
         "properties": {
+          "guidance": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePatch"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "hiddenTools": {
+            "items": {
+              "type": "string"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          },
           "layout": {
             "oneOf": [
               {
@@ -3824,6 +3933,15 @@
       },
       "ProjectInfo": {
         "properties": {
+          "modified": {
+            "description": "Latest database or write-ahead-log modification time, in Unix seconds.",
+            "format": "int64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
           "path": {
             "type": [
               "string",
@@ -3833,6 +3951,15 @@
           "schema_version": {
             "format": "int32",
             "type": "integer"
+          },
+          "size": {
+            "description": "Current database and write-ahead-log bytes on disk, without checkpointing.",
+            "format": "int64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "title": {
             "type": "string"
@@ -5253,6 +5380,55 @@
         "required": [
           "source",
           "column"
+        ],
+        "type": "object"
+      },
+      "StorageLocation": {
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/DirectoryCategory"
+          },
+          "exists": {
+            "type": "boolean"
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "category",
+          "path",
+          "exists"
+        ],
+        "type": "object"
+      },
+      "StorageLocations": {
+        "properties": {
+          "data_library": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "directories": {
+            "items": {
+              "$ref": "#/components/schemas/StorageLocation"
+            },
+            "type": "array"
+          },
+          "location_scope": {
+            "type": "string"
+          },
+          "project_library": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "location_scope",
+          "directories"
         ],
         "type": "object"
       },
@@ -19322,6 +19498,25 @@
             }
           }
         }
+      }
+    },
+    "/api/storage/locations": {
+      "get": {
+        "operationId": "storage_locations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StorageLocations"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
       }
     },
     "/health/live": {

@@ -32,6 +32,11 @@ import { isTabbedTool, ToolHost } from './ToolHost';
 import { useNativeTasks } from './useNativeTasks';
 import { ViewSqlDialog } from './ViewSqlDialog';
 
+import {
+  getPreferences,
+  patchPreferences,
+  usePreferences,
+} from '@/features/preferences/preferences';
 import { usePreprocessingInputs } from '@/features/tools/preprocessing/inputState';
 import { listTabs } from '@/features/tools/common/analysisApi';
 import { openAnalysisTab } from './openAnalysisTab';
@@ -75,7 +80,15 @@ function ProjectViewContent({
     enabled: taskCentre.tasks.some((task) => Boolean(task.tab_id)),
   });
   const preprocessingTool = usePreprocessingInputs((state) => state.activeTool);
-  const [hidden, setHidden] = useState<ToolId[]>([]);
+  const preferences = usePreferences();
+  const hidden = preferences.hiddenTools.filter(isProjectTool);
+  const setHidden = (update: (tools: ToolId[]) => ToolId[]) => {
+    void patchPreferences({
+      hiddenTools: update(getPreferences().hiddenTools.filter(isProjectTool)).filter(
+        (id) => id !== 'data-loader',
+      ),
+    }).catch(() => {});
+  };
   const [editingSql, setEditingSql] = useState<objectsApi.DataTarget | null>(null);
   const [editingTable, setEditingTable] = useState<editingApi.CellEditSession | null>(null);
   const selection = useSelectionStore();
@@ -248,6 +261,12 @@ function ProjectViewContent({
                 <SidebarMenuItem key={tool.id}>
                   <SidebarMenuButton
                     aria-label={tool.label}
+                    data-guidance-for={
+                      activeTool === 'data-loader' && nodes.length > 0 && tool.id !== 'data-loader'
+                        ? 'data-loader'
+                        : undefined
+                    }
+                    data-guidance-stage="followup"
                     isActive={tool.id === activeTool}
                     onClick={() => {
                       if (isProjectTool(tool.id)) {
@@ -432,6 +451,7 @@ function ProjectViewContent({
       )}
     >
       <ToolHost
+        editing={Boolean(editingTable || editingSql)}
         base={base}
         activeTool={activeTool}
         onToolChange={setActiveTool}

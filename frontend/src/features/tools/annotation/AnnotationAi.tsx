@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Textarea } from '@/components/ui/textarea';
 import * as aiApi from '@/features/ai/api';
+import { useHostServices } from '@/features/settings/HostSettings';
 import { ProviderSelector } from '@/features/ai/ProviderSelector';
 import * as projectApi from '@/features/project/api';
 import * as objectsApi from '@/features/project/objects';
@@ -55,18 +56,23 @@ export function AnnotationAi({
   onEditingChange?: (editing: boolean) => void;
 }) {
   const cache = useQueryClient();
-  const capabilities = useQuery({
-    queryKey: [
-      'host',
-      base,
-      'ai-capabilities',
-      request.inference.provider,
-      request.inference.model,
-    ],
-    queryFn: ({ signal }) =>
-      aiApi.aiCapabilities(base, request.inference.provider, request.inference.model, signal),
-    enabled: active && Boolean(request.inference.provider && request.inference.model.trim()),
-  });
+  const host = useHostServices();
+  const hostBase = host?.base ?? base;
+  const capabilities = useQuery(
+    {
+      queryKey: [
+        'host',
+        hostBase,
+        'ai-capabilities',
+        request.inference.provider,
+        request.inference.model,
+      ],
+      queryFn: ({ signal }) =>
+        aiApi.aiCapabilities(hostBase, request.inference.provider, request.inference.model, signal),
+      enabled: active && Boolean(request.inference.provider && request.inference.model.trim()),
+    },
+    host?.client ?? cache,
+  );
   const [editor, setEditor] = useState<CorrectionSession | null>(null);
   const finishEditor = () => {
     setEditor(null);
@@ -394,6 +400,7 @@ export function AnnotationAi({
         />
         <div className="flex flex-wrap gap-2">
           <AnalysisAction
+            data-guidance-stage={undefined}
             reason={
               reason ??
               (!writable

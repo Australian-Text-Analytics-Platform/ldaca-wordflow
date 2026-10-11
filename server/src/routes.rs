@@ -270,9 +270,9 @@ async fn duplicate_project(
 async fn snapshot(State(host): State<Host>, Path(id): Path<Uuid>) -> Result<Response> {
     let active = host.session(id).await?;
     let title = active
-        .runtime
         .status()
         .await?
+        .project
         .map(|p| p.title)
         .unwrap_or_else(|| "Untitled".into());
     let file = active.runtime.snapshot().await?;

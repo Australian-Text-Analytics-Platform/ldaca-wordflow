@@ -144,6 +144,7 @@ export function LocalFileImport({
               Drop data files or folders here
             </h2>
             <Button
+              data-guidance-stage="action"
               onClick={() => {
                 void choose();
               }}

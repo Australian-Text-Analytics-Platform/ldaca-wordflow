@@ -392,3 +392,65 @@ No GitHub production build or promotion workflow was dispatched and no public
 release was mutated. Windows native behavior, physical OS pickers/menus and
 signed production-runtime acceptance in a dedicated OS account/VM remain open;
 the integration specification stays active until those gates pass.
+
+## Local main reconciliation (2026-10-12)
+
+The original uncommitted main work is preserved in `81defecd0`, based on
+`ffdc9609`. Its Settings, contextual guidance, Project & Data manager, virtual
+theme stylesheet and full-server development entry point are reconciled with
+the native integration at `bdda690d3`.
+
+The approved v0.7 decisions retain priority: server New creates a permanent file;
+Rename requires an idle project and preserves its runtime ID; Duplicate keeps
+the requesting window on its original project; switching retains background
+work. The manager uses the existing upload-card owner and atomic import planner.
+LDaCA access tokens remain inline and in window memory, with an informational
+Portal Settings section. The older server Save and host-stored Portal token
+implementation remain in the preservation commit only. The narrowly scoped
+theme audit remains a build gate while Vite generates CSS from the pinned theme.
+
+Observed reconciliation checks:
+
+- The complete frontend suite passes: 806 tests across 184 files and 17 Node
+  script checks. All nine development-entry-point tests pass.
+- Locked backend, desktop, server and storage tests pass, followed by strict
+  all-target/all-feature Clippy and Rust formatting. The server lifecycle test
+  now expects closed permanent Untitled files to keep their names occupied.
+- Frontend build, lint, tooling types, formatting, Knip and theme audit pass.
+  Generated API, bundled-documentation drift, version and Markdown-link checks
+  pass. Rust DTOs generate 110 backend operations and 134 combined client
+  operations, including read-only host storage locations.
+- All 12 server Chromium cases pass across the guidance, isolation and workflow
+  specs. They cover Settings before project selection, every tool's guidance,
+  real Frequency results/export, narrow panes, inline Portal access, shared AI
+  management, independent project drafts, background tasks and file operations.
+- All seven affected API-preview Chromium specs pass, with 22 cases covering
+  Data Loader, Diagnostics, bundled Help/theme contrast, layout, Annotation,
+  Builder and AI connections. The narrow manager and Frequency guidance
+  screenshots were also inspected for wrapping, placement and visible controls.
+- macOS WebKit Settings, preferences and Annotation specs pass: four cases cover
+  Settings focus restoration, nonmodal guidance, independent-window preference
+  synchronization, manual drafts and AI Annotation with a local test provider.
+  The opt-in Apple Foundation Models live case is skipped. Settings and direct
+  import guidance screenshots were inspected. This used the isolated Test app,
+  debug profile and instrumentation, built at `2026-10-11T23:17:56.199Z`, with
+  executable SHA-256
+  `06154306d134835437615bb85d3655c0ea3046b77ae9b48ac0ac03ff82868f34`.
+- A separate two-process native restart check passes: theme, layout, hidden
+  tools and guidance persist in schema-version-2 preferences; the inline LDaCA
+  token is absent from preferences and blank in the fresh process. Test-owned
+  browser stores, processes and caches are removed by teardown.
+- The rebuilt optimized Apple Silicon server package passes native linkage and
+  ad-hoc signature checks. Extraction outside the checkout verifies embedded UI,
+  no optional startup downloads, on-demand ICU, immediate permanent New and
+  identity-preserving Rename. Archive SHA-256:
+  `14ec04596494271182e8fe86fb3c761c5cf424efdb0d93561053d3ef78cfef4d`.
+- Canonical bundled documentation was validated and mirrored to
+  `ldaca-wordflow-docs` commit `ae84ba3589a09755645a677aa776d7b742a9d700`.
+  Its branch was pushed before the application gitlink update. This also makes
+  the previously missing `babcb5e35` commit fetchable, resolving the checkout
+  failure in GitHub run `38182759270` before its package tests could start.
+
+No production build/promotion workflow or public release mutation is part of
+this reconciliation. The existing Windows native, physical OS picker/menu and
+signed production-runtime acceptance gates remain open.

@@ -15,8 +15,27 @@ vp run dev:frontend
 vp run dev:desktop
 ```
 
-`vp run dev` starts Axum and the Rust browser preview. `dev:backend` and
-`dev:frontend` start each independently. Desktop uses Tauri's embedded backend. Interactive desktop and browser hosts use
+Command definitions live in the `scripts` sections of the [root manifest](../../package.json)
+and [frontend manifest](../../frontend/package.json). Root commands expose application
+workflows; `vp -C frontend run <command>` selects a frontend workflow. Use
+`vp -C frontend exec tauri <arguments>` for direct Tauri CLI operations and
+`cargo clean` from the repository root when a complete Rust build cleanup is needed.
+Optional language assets are checked automatically during frontend development
+and build verification.
+
+`vp run dev` prepares the embedded frontend and Rust binary, then starts the full
+single-user browser server on port 8002 and Vite with live updates on port 3000.
+Open `http://localhost:3000`. The welcome dialog exposes **Projects** and
+**Data files** side by side, stacked on narrow screens. Create or open a project
+to enter the workspace, then use **Project & Data** to reopen the manager.
+The close icon or Escape dismisses it without closing the project. Uploads can be
+managed before opening a project; Import requires a selected project. `dev:backend` prepares and starts
+the same full server alone, including its built UI at `http://localhost:8002`.
+`dev:frontend` starts Vite alone without invoking Cargo and expects that server to be running.
+`FRONTEND_PORT` and `VITE_BACKEND_PORT` override the browser development ports.
+`DATA_DIR` may select an explicit browser storage directory; otherwise the server
+uses the native application data directory for `au.edu.ldaca.wordflow.dev.web`.
+Desktop uses Tauri's embedded backend. Interactive desktop and browser hosts use
 the `.dev` identity; E2E hosts use `.test`. See the [desktop isolation contract](desktop-runtime.md#isolated-caches-and-reproducible-tests)
 for system-cache paths and per-run cleanup.
 The application no longer has a root Python environment or `dev:python` command.
@@ -50,11 +69,16 @@ then verify `node --version`, `pnpm --version`, `vp --version` and `vp env docto
 in the repository and after directory changes.
 
 Use `vp run dev`, `vp run build` and `vp -C frontend run check` for Wordflow.
-The `run` form executes our package scripts and their theme checks, TypeScript
+The `run` form executes our package scripts and their TypeScript
 checks, Node tests, build verification, Knip and documentation checks. Built-in
 `vp dev`, `vp build`, `vp test` and `vp check` run tool primitives directly and
 bypass those additional script steps. Task-result caching and commit hooks are
 not enabled for this migration.
+
+Theme CSS is generated on demand by Vite from `frontend/theme/vscode-2026.json`.
+Editing that manifest updates the stylesheet during development without reloading
+the workspace. Builds bundle the same stylesheet automatically; there is no manual
+theme generation command, committed CSS copy, freshness check or styling audit.
 
 ## Frontend lint and format policy
 
@@ -62,7 +86,7 @@ The root `vite.config.ts` owns tooling settings independently of the frontend's
 asset-syncing development/build callback. Oxlint enables its default correctness
 rules with native TypeScript and React support, type-aware linting and TypeScript
 Go type checking. The lint script retains zero-warning enforcement and the
-previous source, browser/native E2E and configuration-file scope. Explicit `tsc`
+source, theme plugin, browser/native E2E and configuration-file scope. Explicit `tsc`
 checks remain part of the frontend script chain. The solution `tsconfig.json`
 exposes application, tooling and test projects to Vite+. `tsconfig.app.json`
 retains application compilation settings. The test project retains the previous
@@ -76,7 +100,7 @@ of those policies. Babel's React Compiler still compiles the application.
 
 Oxfmt retains two-space indentation, 100-column width, single JavaScript quotes,
 semicolons, trailing commas and LF endings. Formatting scripts cover
-`frontend/src/`; generated API declarations and theme CSS are excluded. The API
+`frontend/src/`; generated API declarations are excluded. The API
 generator formats its own output with the same Oxfmt style. Import, package-key
 and Tailwind-class sorting are disabled. Formatter changes can still differ from
 Biome in line wrapping and JSX printing.
@@ -101,7 +125,8 @@ vp run docs:links
 vp run check-versions
 ```
 
-`test:e2e` runs the Chromium-with-Rust preview suite; it is not native Tauri UI
+`test:e2e` explicitly runs the API-only engine host with Vite's project preview;
+it does not use the full browser application launcher. It is not native Tauri UI
 verification. See [desktop runtime](desktop-runtime.md) for native launch and
 packaging verification.
 

@@ -24,7 +24,6 @@ export default defineConfig({
       '!frontend/src/',
       '!frontend/src/**',
       'frontend/src/api/generated/native.ts',
-      'frontend/src/styles/vscode-2026.generated.css',
     ],
   },
 });

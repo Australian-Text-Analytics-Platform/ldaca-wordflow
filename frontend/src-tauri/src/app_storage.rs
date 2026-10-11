@@ -109,3 +109,29 @@ mod tests {
         assert_eq!(validate_identity(DEV_ID).is_ok(), !cfg!(feature = "e2e"));
     }
 }
+
+#[tauri::command]
+pub(crate) fn get_storage_locations(
+    app: AppHandle,
+) -> wordflow_backend::host_storage::StorageLocations {
+    wordflow_backend::host_storage::StorageLocations::new(
+        Some(&app.state::<AppDirectories>()),
+        "desktop",
+        None,
+    )
+}
+#[tauri::command]
+pub(crate) fn open_storage_directory(
+    app: AppHandle,
+    category: wordflow_backend::host_storage::DirectoryCategory,
+) -> Result<(), Error> {
+    use tauri_plugin_opener::OpenerExt;
+    let dirs = app.state::<AppDirectories>();
+    let path = category.path(&dirs);
+    if !path.is_dir() {
+        return Err(Error::invalid("This storage directory does not exist yet"));
+    }
+    app.opener()
+        .open_path(path.to_string_lossy().into_owned(), None::<&str>)
+        .map_err(|_| Error::new("desktop_error", "Could not open the storage directory"))
+}

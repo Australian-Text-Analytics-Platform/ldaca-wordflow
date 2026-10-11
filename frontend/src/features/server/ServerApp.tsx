@@ -1,23 +1,28 @@
 import type { components } from '@/api/generated/native';
-import { AccountControls } from './AccountControls';
 import { request } from '@/api/client';
-import { Button } from '@/components/ui/button';
 import { Toaster } from '@/components/ui/sonner';
+import { HostSettings } from '@/features/settings/HostSettings';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import ProjectApp from '@/features/project/ProjectApp';
-import { createProjectQueryClient, reportProjectError } from '@/features/project/projectErrors';
+import { createProjectQueryClient } from '@/features/project/projectErrors';
 import { QueryClientProvider, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { UploadCards } from './uploads';
 import { ServerContext } from './context';
 import { subscribeServerEvents } from './events';
 import { captureProjectWindowState, restoreProjectWindowState } from './projectWindowState';
+import { ProjectDataDialog } from './ProjectDataDialog';
 
 export default function ServerApp({ base }: { base: string }) {
   const [client] = useState(createProjectQueryClient);
   return (
     <QueryClientProvider client={client}>
-      <ServerProjects base={base} />
-      <UploadCards />
+      <TooltipProvider>
+        <HostSettings base={base} client={client}>
+          <ServerProjects base={base} />
+          <UploadCards />
+        </HostSettings>
+      </TooltipProvider>
     </QueryClientProvider>
   );
 }
@@ -95,55 +100,23 @@ function ServerProjects({ base }: { base: string }) {
   );
   if (!status.data || !project)
     return (
-      <main className="p-6">
+      <main className="flex min-h-dvh flex-col bg-editor text-foreground">
         <Toaster />
-        <AccountControls base={base} />
-        <p role="status">
-          {!status.data
-            ? status.isError
-              ? 'Could not connect to Wordflow.'
-              : 'Opening Wordflow…'
-            : selected
+        <ProjectDataDialog
+          base={base}
+          projects={status.data?.projects ?? []}
+          open
+          onOpenChange={() => undefined}
+          select={select}
+          refresh={() => status.refetch()}
+          ready={Boolean(status.data)}
+          connectionError={status.isError}
+          notice={
+            status.data && selected
               ? 'This project is closed or its worker restarted. Reopen it from the library.'
-              : 'Choose a project to begin.'}
-        </p>
-        {status.isError && (
-          <Button
-            onClick={() => {
-              void status.refetch();
-            }}
-          >
-            Retry
-          </Button>
-        )}
-        {status.data && (
-          <>
-            <Button
-              onClick={() => {
-                void request(base, '/api/server/project', 'post', { body: { name: null } })
-                  .then((response) => response.json())
-                  .then((project) => {
-                    select(project.project_id);
-                    return status.refetch();
-                  })
-                  .catch(reportProjectError);
-              }}
-            >
-              New project
-            </Button>
-            {status.data.projects.map((project) => (
-              <Button
-                key={project.project_id}
-                onClick={() => {
-                  select(project.project_id);
-                }}
-              >
-                {project.project?.title ?? 'Untitled'}
-              </Button>
-            ))}
-            <ProjectLibrary base={base} select={select} refresh={() => status.refetch()} />
-          </>
-        )}
+              : undefined
+          }
+        />
       </main>
     );
   const client = clients.get(project.project_id);
@@ -164,42 +137,5 @@ function ServerProjects({ base }: { base: string }) {
         base={`${base}/project/${project.project_id}`}
       />
     </ServerContext>
-  );
-}
-function ProjectLibrary({
-  base,
-  select,
-  refresh,
-}: {
-  base: string;
-  select: (id: string) => void;
-  refresh: () => Promise<unknown>;
-}) {
-  const files = useQuery({
-    queryKey: ['server-files', base, 'projects'],
-    queryFn: async () =>
-      (
-        await request(base, '/api/server/files/{library}', 'get', { path: { library: 'projects' } })
-      ).json(),
-  });
-  return (
-    <div>
-      {files.data?.map((file) => (
-        <Button
-          key={file.name}
-          onClick={() => {
-            void request(base, '/api/server/project', 'post', { body: { name: file.name } })
-              .then((response) => response.json())
-              .then((project) => {
-                select(project.project_id);
-                return refresh();
-              })
-              .catch(reportProjectError);
-          }}
-        >
-          Open {file.name}
-        </Button>
-      ))}
-    </div>
   );
 }

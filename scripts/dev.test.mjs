@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
@@ -6,7 +7,7 @@ import {
   parseDevMode,
 } from './dev.mjs';
 
-test('the default development mode starts backend and frontend', () => {
+test('the default development mode starts the full single-user server and frontend', () => {
   const commands = createDevCommands('web', {});
 
   assert.deepEqual(
@@ -18,6 +19,16 @@ test('the default development mode starts backend and frontend', () => {
     '["http://localhost:3000","http://127.0.0.1:3000"]',
   );
   assert.equal(Object.hasOwn(commands[0].env, 'DATA_ROOT'), false);
+  assert.match(commands[0].command, /-p wordflow-server -- --mode single-user/);
+  assert.equal(commands[0].env.WORDFLOW_APP_ID, 'au.edu.ldaca.wordflow.dev');
+  assert.equal(commands[1].env.WORDFLOW_API_PREVIEW, '0');
+});
+
+test('engine tests explicitly select the API-only host and preview interface', () => {
+  const commands = createDevCommands('web', { WORDFLOW_APP_ID: 'au.edu.ldaca.wordflow.test' }, true);
+  assert.match(commands[0].command, /--bin wordflow-api-dev -- --untitled$/);
+  assert.equal(commands[0].env.WORDFLOW_APP_ID, 'au.edu.ldaca.wordflow.test');
+  assert.equal(commands[1].env.WORDFLOW_API_PREVIEW, '1');
 });
 
 test('backend development preserves an explicit CORS configuration', () => {
@@ -33,9 +44,15 @@ test('backend development preserves an explicit CORS configuration', () => {
   );
 });
 
-test('frontend development can run independently', () => {
+test('frontend development can run without a Rust toolchain', () => {
+  const result = spawnSync(process.execPath, ['--input-type=module', '--eval', `
+    import { createDevCommands } from ${JSON.stringify(new URL('./dev.mjs', import.meta.url).href)};
+    console.log(JSON.stringify(createDevCommands('frontend', {})));
+  `], { env: { ...process.env, PATH: '' }, encoding: 'utf8' });
+
+  assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(
-    createDevCommands('frontend', {}).map(({ name }) => name),
+    JSON.parse(result.stdout).map(({ name }) => name),
     ['frontend'],
   );
 });

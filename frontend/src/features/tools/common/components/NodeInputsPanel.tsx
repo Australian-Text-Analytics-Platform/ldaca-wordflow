@@ -206,6 +206,7 @@ export function NodeInputsPanel({
     <div className="@container/node-inputs relative flex flex-col gap-2">
       <div
         data-guidance={guidanceTarget}
+        data-guidance-stage={!disabled ? 'setup' : undefined}
         role="group"
         aria-label={`${title} controls`}
         className="scroll-mt-16 flex flex-wrap items-center justify-between gap-x-2 gap-y-1.5 px-3 pt-1.5"

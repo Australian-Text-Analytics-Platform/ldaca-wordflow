@@ -3,6 +3,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::{
+    collections::BTreeMap,
     fs,
     io::Write,
     path::{Path, PathBuf},
@@ -43,7 +44,7 @@ impl AppDirectories {
         if !matches!(identity, PRODUCTION_ID | DEV_ID | TEST_ID)
             && ![PRODUCTION_ID, DEV_ID, TEST_ID]
                 .iter()
-                .any(|id| identity == format!("{id}.server"))
+                .any(|id| identity == format!("{id}.web") || identity == format!("{id}.server"))
         {
             return Err(Error::Invalid(
                 "Unknown Wordflow application identity".into(),
@@ -156,14 +157,47 @@ pub struct Preferences {
     pub theme: Theme,
     pub layout: LayoutPreferences,
     pub recent_data_files: Vec<String>,
+    #[serde(default)]
+    pub hidden_tools: Vec<String>,
+    #[serde(default)]
+    pub guidance: GuidancePreferences,
+}
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GuidancePreferences {
+    pub enabled: bool,
+    pub acknowledgments: BTreeMap<String, u32>,
+}
+impl Default for GuidancePreferences {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            acknowledgments: BTreeMap::new(),
+        }
+    }
+}
+#[derive(Clone, Debug, Deserialize, Serialize, ToSchema)]
+#[serde(deny_unknown_fields)]
+pub struct HintAcknowledgment {
+    pub id: String,
+    pub version: u32,
+}
+#[derive(Clone, Debug, Default, Deserialize, Serialize, ToSchema)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+pub struct GuidancePatch {
+    pub enabled: Option<bool>,
+    pub acknowledge: Option<HintAcknowledgment>,
+    pub reset_acknowledgments: Option<bool>,
 }
 impl Default for Preferences {
     fn default() -> Self {
         Self {
-            schema_version: 1,
+            schema_version: 2,
             theme: Theme::Light,
             layout: LayoutPreferences::default(),
             recent_data_files: Vec::new(),
+            hidden_tools: Vec::new(),
+            guidance: GuidancePreferences::default(),
         }
     }
 }
@@ -180,11 +214,42 @@ pub struct PreferencesPatch {
     pub theme: Option<Theme>,
     pub layout: Option<LayoutPatch>,
     pub recent_data_files: Option<Vec<String>>,
+    pub hidden_tools: Option<Vec<String>>,
+    pub guidance: Option<GuidancePatch>,
 }
 impl Preferences {
     pub fn validate(&self) -> Result<()> {
-        if self.schema_version != 1 {
+        if ![1, 2].contains(&self.schema_version) {
             return Err(Error::Invalid("Unsupported preferences schema".into()));
+        }
+        const TOOLS: &[&str] = &[
+            "filter",
+            "token-frequency",
+            "concordance",
+            "plots",
+            "topic-modeling",
+            "quotation",
+            "annotation",
+            "export",
+        ];
+        if self
+            .hidden_tools
+            .iter()
+            .any(|id| !TOOLS.contains(&id.as_str()))
+        {
+            return Err(Error::Invalid("Invalid hidden tool".into()));
+        }
+        if self.guidance.acknowledgments.len() > 1000
+            || self.guidance.acknowledgments.iter().any(|(id, version)| {
+                id.is_empty()
+                    || id.len() > 100
+                    || !id
+                        .chars()
+                        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '.')
+                    || *version == 0
+            })
+        {
+            return Err(Error::Invalid("Invalid guidance acknowledgment".into()));
         }
         for (name, value, low, high) in [
             ("sidebarWidth", self.layout.sidebar_width, 160.0, 400.0),
@@ -212,6 +277,7 @@ impl Preferences {
     }
     pub fn patched(&self, patch: PreferencesPatch) -> Result<Self> {
         let mut next = self.clone();
+        next.schema_version = 2;
         if let Some(theme) = patch.theme {
             next.theme = theme;
         }
@@ -228,6 +294,23 @@ impl Preferences {
         }
         if let Some(files) = patch.recent_data_files {
             next.recent_data_files = files;
+        }
+        if let Some(tools) = patch.hidden_tools {
+            next.hidden_tools = tools;
+            next.hidden_tools.sort();
+            next.hidden_tools.dedup();
+        }
+        if let Some(guidance) = patch.guidance {
+            if let Some(enabled) = guidance.enabled {
+                next.guidance.enabled = enabled;
+            }
+            if guidance.reset_acknowledgments == Some(true) {
+                next.guidance.acknowledgments.clear();
+            }
+            if let Some(ack) = guidance.acknowledge {
+                let version = next.guidance.acknowledgments.entry(ack.id).or_default();
+                *version = (*version).max(ack.version);
+            }
         }
         next.validate()?;
         Ok(next)
@@ -295,6 +378,69 @@ pub fn write_json(path: &Path, value: &impl Serialize) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn version_one_upgrades_only_after_a_successful_patch() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("preferences.json");
+        let old = r#"{"schemaVersion":1,"theme":"dark-2026","layout":{"sidebarWidth":250,"asidePanelRatio":0.3,"projectGraphRatio":0.5},"recentDataFiles":["/tmp/sample"]}"#;
+        fs::write(&path, old).unwrap();
+        let store = PreferencesFile::new(dir.path());
+        assert!(store.read().unwrap().guidance.enabled);
+        assert_eq!(fs::read_to_string(&path).unwrap(), old);
+        let updated = store
+            .patch(PreferencesPatch {
+                hidden_tools: Some(vec!["export".into()]),
+                ..Default::default()
+            })
+            .unwrap();
+        assert_eq!(updated.schema_version, 2);
+        assert_eq!(updated.theme, Theme::Dark);
+        assert_eq!(updated.recent_data_files, ["/tmp/sample"]);
+        assert!(
+            store
+                .patch(PreferencesPatch {
+                    hidden_tools: Some(vec!["data-loader".into()]),
+                    ..Default::default()
+                })
+                .is_err()
+        );
+        assert_eq!(store.read().unwrap(), updated);
+    }
+    #[test]
+    fn guidance_merges_versions_and_reset_preserves_enabled_and_other_fields() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = PreferencesFile::new(dir.path());
+        for version in [3, 1, 2] {
+            store
+                .patch(PreferencesPatch {
+                    guidance: Some(GuidancePatch {
+                        enabled: Some(false),
+                        acknowledge: Some(HintAcknowledgment {
+                            id: "annotation.setup".into(),
+                            version,
+                        }),
+                        ..Default::default()
+                    }),
+                    ..Default::default()
+                })
+                .unwrap();
+        }
+        assert_eq!(
+            store.read().unwrap().guidance.acknowledgments["annotation.setup"],
+            3
+        );
+        let reset = store
+            .patch(PreferencesPatch {
+                guidance: Some(GuidancePatch {
+                    reset_acknowledgments: Some(true),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            })
+            .unwrap();
+        assert!(!reset.guidance.enabled);
+        assert!(reset.guidance.acknowledgments.is_empty());
+    }
     #[test]
     fn browser_maps_every_category_into_its_user_root() {
         let dir = tempfile::tempdir().unwrap();

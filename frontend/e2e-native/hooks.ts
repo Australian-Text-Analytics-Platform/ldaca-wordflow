@@ -28,7 +28,7 @@ export const mochaHooks = {
       await window.__wordflowDiagnostics?.flush();
       window.__wordflowDiagnostics?.disconnect();
     });
-    await browser.tauri.execute(({ core }) => core.invoke('patch_preferences', { patch: { theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 } } }));
+    await browser.tauri.execute(({ core }) => core.invoke('patch_preferences', { patch: { hiddenTools: [], guidance: { enabled: false, resetAcknowledgments: true }, theme: 'light-2026', layout: { sidebarWidth: 208, asidePanelRatio: 0.3, projectGraphRatio: 0.5 } } }));
     resetErrorCapture();
     // pagehide releases any editor left by a failed predecessor before database cleanup.
     await browser.refresh();

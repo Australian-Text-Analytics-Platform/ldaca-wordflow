@@ -94,6 +94,7 @@ export default function NativeLdacaImport({
           and import a collection into this project.
         </p>
         <form
+          data-guidance-stage="setup"
           className="flex flex-wrap items-end gap-2"
           onSubmit={(event) => {
             event.preventDefault();

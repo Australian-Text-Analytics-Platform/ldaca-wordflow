@@ -415,6 +415,7 @@ function TopicTab({
         />
         <div className="flex flex-wrap gap-2">
           <AnalysisAction
+            data-guidance-stage={undefined}
             reason={reason}
             onClick={() => {
               update(captured);

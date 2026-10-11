@@ -60,13 +60,15 @@ resize handle to adjust its shared height, bounded by the window. Click row text
 <h2 id="help-annotation-ai">AI workflow</h2>
 
 Choose a named connection and search its discovered models, or enter a model
-identifier. **New connection** and **Edit connection** manage OpenAI, OpenRouter,
+identifier. **Manage connections** opens **Settings → AI** to add or edit OpenAI, OpenRouter,
 Anthropic, Google and Custom OpenAI-compatible endpoints. Custom endpoints may be
 local and keyless. Remembered keys use the host operating system's credential
 store; **Session only** keeps a key in memory until the host closes. Keys never
 enter project files. A missing/unavailable credential store does not silently
 save plaintext. A copied project may require selecting a connection on its new
-host.
+host. Built-in connections cannot be edited or deleted. Custom connections can
+be deleted individually after confirmation. In authenticated web deployments,
+credentials are stored separately for each account in this browser.
 
 On supported Macs, **Apple Foundation Models (on-device)** is available without
 creating a connection or entering a key. It uses the system model locally and

@@ -2,10 +2,11 @@
 
 The React 19, Vite+, and TypeScript application renders the same project interface
 in Tauri, the browser preview and the packaged server. `src/index.tsx` loads
-`features/server/ServerApp` when the host injects deployment configuration,
+`features/server/ServerApp` when the standalone host or Vite injects deployment configuration,
 otherwise `features/desktop/DesktopApp`. There is no backend selector. Tauri discovers the owning window's backend through IPC. Browser
 requests use the current origin, with Vite proxying native API and health routes
-to the standalone Rust backend during development.
+to the full single-user browser host during development. Engine tests explicitly
+select the API-only project preview.
 
 ## Current Boundaries
 
@@ -17,8 +18,22 @@ to the standalone Rust backend during development.
   The breadcrumb reads the active tool's analysis tab ID from window-local state and
   its saved name from the existing query cache, without fetching tabs itself.
   Tauri owns desktop document opening, saving and closing. The standalone host
-  exposes server-only file/project controls; its session UUID scopes queries and
-  local drafts. See [server ownership](../backend/server.md).
+  enables the browser-only **Project & Data** manager; its session UUID scopes
+  queries and local drafts. Startup shows the same two-panel dialog over a quiet
+  welcome background with one proportional logo centered above the dialog, without
+  dismissal until a project is selected. The manager fills 90% of the viewport
+  width and height, with small-screen margins; the startup logo shares that height
+  and the library lists fill the remaining space. Over an open
+  project, Close and Escape dismiss the manager while keeping the workspace
+  mounted. New project creates another runtime and selects it only in this window;
+  previous projects stay open. New immediately creates a permanent
+  `Untitled-X.wfpj` file. Operations update it directly; the server offers Rename
+  and Duplicate rather than Save. Desktop keeps its native save controls.
+  Project rows show working-file size and modification time, including the WAL.
+  Both library lists accept dropped files through the same upload flow as
+  their upload buttons. Library uploads do not import; importing requires a selected project.
+  The API-only browser preview shows one disabled manager button because
+  it has no server project/file context. See [server ownership](../backend/server.md).
 - Rust DTOs and annotated handlers own the HTTP contracts;
   `api/generated/native.ts` contains their generated TypeScript declarations.
   `api/client.ts` owns transport and errors; `features/project/objects.ts` owns pure object identity. Feature adapters live beside project files, tasks, editing, AI and each analysis tool, consuming the generated contracts. The generated FastAPI client remains archived.
@@ -54,7 +69,9 @@ to the standalone Rust backend during development.
   and other interaction state. Local forms own unsubmitted input.
 - `features/theme/` applies the live VS Code theme. The host preference adapter
   loads theme, layout and recent files before React renders and synchronizes
-  confirmed changes across windows. The offline theme generator owns generated CSS.
+  confirmed changes across windows. The Vite plugin in `frontend/theme/plugin.ts`
+  generates a virtual stylesheet from the pinned theme JSON for the workspace and
+  updater entry points. Vite bundles it for production and hot-updates it in development.
   See [application storage](../../reference/application-storage.md).
 - `src-tauri/` owns independent project windows, embedded backend tasks, native
   menus/dialogs and the shared application updater.
@@ -62,6 +79,10 @@ to the standalone Rust backend during development.
 Data Loader provides Local files, Samples and LDaCA tabs inside the main pane.
 Source drafts survive navigation while the project stays open. Its import and
 drop ownership is described in [desktop architecture](desktop.md).
+In the web Data files tab, only the rounded file-library area accepts uploads;
+the tab header and surrounding controls do not. Those drops store files without
+importing. Dropping onto the exposed graph uploads and imports directly into the
+current project through the workspace's existing window-level drop handler.
 
 Saved-output loading or rendering errors change the request action from **Run** to
 **Rerun**. The shared recovery hook derives read failures from active TanStack
@@ -298,6 +319,37 @@ word-click navigation. See [native analyses](../backend/native-analyses.md) for
 artifact lifetime, database permissions and transactional publication.
 
 ## Settings and Documentation
+
+`features/settings/HostSettings.tsx` owns one five-section Settings dialog:
+General, AI, Portal, Storage and Guidance. Its explicit host base and application
+TanStack Query client work before project selection. The welcome cog, workspace
+cog and Annotation connection shortcut open this same owner; project query clients continue owning project resources. Closing
+restores focus to the opener and leaves the underlying workspace and welcome
+manager mounted. General contains Appearance, desktop-only Updates and Diagnostics.
+
+AI connection management is shared with Annotation; provider/model selection
+remains in the analysis draft. Connection UUIDs and built-in restrictions remain
+stable. Portal explains the inline, window-memory token input in Data Loader.
+AI secret updates run directly
+with local input drafts rather than secret-bearing mutation cache variables.
+The [storage contract](../../reference/application-storage.md) owns credential
+policy, preference schema and location interfaces.
+
+The sidebar pencil menu writes hidden-tool preferences and always protects Data
+Loader. `features/guidance/registry.ts` owns versioned setup, action, result and
+follow-up lessons for all nine current tools. `WorkflowGuidance` selects one
+visible, available target for the active tool visit. Driver.js's dedicated hints
+API owns popup placement, viewport updates and dismissal. React supplies the
+lesson content, and a quiet outline identifies its target without dimming the
+workspace. The hidden beacon and deferred content mount keep initial focus on
+the workspace. Dialogs, editing and pending work suppress hints; unavailable
+anchors never block work. Temporary viewport loss hides and restores the hint
+without treating it as user dismissal. Got it acknowledges the version. Not now,
+dismissal, outside clicks and Driver.js's global Escape dismissal defer the visit without
+intercepting workspace keydown shortcuts. Annotation copy follows the selected
+Manual or AI mode; Data Loader copy follows direct imports or the web file library.
+Disable hints and confirmed history reset use host/account preferences and
+existing preference synchronization events.
 
 `features/diagnostics/sessionErrors.ts` owns the latest 200 error occurrences in
 window-local Zustand state, without persistence. `reportProjectError` records an

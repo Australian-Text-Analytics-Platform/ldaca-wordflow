@@ -69,7 +69,7 @@ describe('desktop configuration contracts', () => {
     expect(scripts['build:e2e:native']).toBe('node scripts/native-e2e.mjs build debug');
     expect(config.build.beforeBuildCommand).not.toContain('prepare-icu');
     expect(config.build.frontendDist).toBe('../.tmp/e2e-build');
-    for (const name of ['dev:desktop', 'tauri:build', 'build:desktop:mac', 'build:desktop:windows', 'build:qa:mac']) {
+    for (const name of ['dev:desktop', 'build:desktop:mac', 'build:desktop:windows', 'build:qa:mac']) {
       expect(scripts[name]).not.toContain('--features');
       expect(scripts[name]).not.toContain('tauri.e2e.conf.json');
     }
@@ -142,7 +142,6 @@ describe('desktop configuration contracts', () => {
     expect(tauri.bundle.resources ?? []).not.toContain('resources/icu/*');
     expect(tauri.bundle.resources ?? []).toEqual([]);
     expect(scripts['dev:desktop']).toBe('tauri dev --config src-tauri/tauri.dev.conf.json');
-    expect(scripts['tauri:build']).toBe('tauri build');
     expect(scripts).not.toHaveProperty('prepare:backend-runtime');
     expect(read('frontend/src-tauri/Cargo.toml')).toContain('wordflow-backend = { path = "../../backend" }');
   });

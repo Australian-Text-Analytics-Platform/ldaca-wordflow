@@ -133,14 +133,17 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       await request.$('[role="tab"]=AI').click();
       const parameters = $('[aria-label="AI Annotation parameters"]');
       if (endpoint) {
-        await parameters.$('button=New connection').click();
-        const dialog = $('[role="dialog"]');
+        await parameters.$('button=Manage connections').click();
+        await $('button=Add connection').click();
+        const dialog = $('//div[@role="dialog"][.//h2[text()="New AI connection"]]');
         await dialog.$('[aria-label="Connection name"]').setValue('Synthetic provider');
         await chooseColumn('Provider', 'custom', dialog);
         await dialog.$('[aria-label="API endpoint"]').setValue(endpoint);
         await chooseColumn('Credential', 'No key / remove key', dialog);
         await dialog.$('button=Save').click();
         await dialog.waitForExist({ reverse: true });
+        await $('//div[@role="dialog"][.//h2[text()="Settings"]]').$('button=Close').click();
+        await chooseColumn('AI connection', 'Synthetic provider', parameters);
         await parameters.$('[aria-label="AI model name"]').setValue('synthetic-annotation');
       } else {
         await chooseColumn('AI connection', 'Apple Foundation Models (on-device)', parameters);
