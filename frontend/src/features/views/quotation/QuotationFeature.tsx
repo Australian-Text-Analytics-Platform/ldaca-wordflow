@@ -60,7 +60,7 @@ import {
 } from './quotationRowDetail';
 import { useQuotationTaskFlow } from './hooks/useQuotationTaskFlow';
 import { useQuotationPage } from './hooks/useQuotationPage';
-import { createNodeDataRequest, queryKeys } from '@/lib/queryKeys';
+import { createNodeDataRequest, type NodeDataRequest, queryKeys } from '@/lib/queryKeys';
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import type { QuotationReviewRowUnit } from './quotationArrowPage';
 import {
@@ -151,14 +151,14 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const [previewPageRequest, setPreviewPageRequest] = useState(() =>
     createNodeDataRequest({ page: 1, page_size: 50 }),
   );
-  const [runAllReviewQuery, setRunAllReviewQuery] = useState(() =>
-    createNodeDataRequest({
-      page: 1,
-      page_size: 20,
-      sort_by: null,
-      descending: false,
-    }),
-  );
+  // The Run's table pages: rows so far while it runs, then its Result. Each
+  // Run, and the switch from rows so far to the Result (documents to
+  // quotations per page), starts at page 1 with the chosen page size; new
+  // rows arriving keep the page (issue 381).
+  const [reviewQueryState, setReviewQueryState] = useState(() => ({
+    key: '',
+    query: createNodeDataRequest({ ...REVIEW_QUERY_DEFAULTS }),
+  }));
   // Review always pages by matches, so a page never grows unexpectedly long
   // (issue 161).
   const runAllReviewRowUnit: QuotationReviewRowUnit = 'matches';
@@ -321,6 +321,21 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const previewActiveSelections = resultNodeId
     ? [{ nodeId: resultNodeId, column: resultColumn }]
     : activeSelections;
+  const reviewQueryKey = `${quotationRunAll?.id ?? ''}:${runAllSource ? 'result' : 'progress'}`;
+  const freshReviewQuery = (pageSize: number) =>
+    createNodeDataRequest({ ...REVIEW_QUERY_DEFAULTS, page_size: pageSize });
+  const runAllReviewQuery =
+    reviewQueryState.key === reviewQueryKey
+      ? reviewQueryState.query
+      : freshReviewQuery(reviewQueryState.query.page_size);
+  const setRunAllReviewQuery = (update: (current: NodeDataRequest) => NodeDataRequest) => {
+    setReviewQueryState((state) => ({
+      key: reviewQueryKey,
+      query: update(
+        state.key === reviewQueryKey ? state.query : freshReviewQuery(state.query.page_size),
+      ),
+    }));
+  };
   const pageRequest = runAllSource || progressNode ? runAllReviewQuery : previewPageRequest;
   const quotationPage = useQuotationPage(
     currentWorkspaceId && quotationRunAll && runAllSource
@@ -593,7 +608,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
    * Passed to quotation result blocks as the page-change callback.
    */
   const effHandlePageChange = (newPage: number) => {
-    if (runAllSource) {
+    if (runAllSource || progressNode) {
       setRunAllReviewQuery((current) => ({ ...current, page: newPage }));
       return;
     }
@@ -605,7 +620,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
    * Passed to quotation result blocks as the page-size callback.
    */
   const effHandlePageSizeChange = (newSize: number) => {
-    if (runAllSource) {
+    if (runAllSource || progressNode) {
       setRunAllReviewQuery((current) => ({ ...current, page: 1, page_size: newSize }));
       return;
     }
@@ -874,7 +889,13 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
             onPageChange={effHandlePageChange}
             onPageSizeChange={effHandlePageSizeChange}
             onRowClick={openQuotationDetailAt}
-            isPageLoading={quotationPage.isFetching || isResultFetching}
+            isPageLoading={
+              // Rows so far refresh in the background; only a page asked
+              // for shows as loading.
+              !runAllSource && progressNode
+                ? quotationPage.isLoading || quotationPage.isPlaceholderData
+                : quotationPage.isFetching || isResultFetching
+            }
             emptyMessage={
               !runAllSource && progressNode
                 ? (quotationPage.data?.pagination.total_source_rows ?? 0) === 0
@@ -945,6 +966,13 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
     </>
   );
 }
+
+const REVIEW_QUERY_DEFAULTS = {
+  page: 1,
+  page_size: 20,
+  sort_by: null,
+  descending: false,
+} as const;
 
 /** The tab setting holding shown metadata and column order (issue 373). */
 const QUOTATION_COLUMNS_SETTING = 'quotation.columns';
