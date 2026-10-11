@@ -1,3 +1,4 @@
+import { WorkflowGuidance } from '@/features/guidance/WorkflowGuidance';
 import { ToolInputScope } from '@/features/tools/common/inputDestinations';
 import { ALL_TOOLS, type ToolId } from '@/features/tools/toolIds';
 import { lazy, Suspense, useState, type ReactNode } from 'react';
@@ -18,6 +19,7 @@ interface Context {
   nodes: ProjectNode[];
   tasks: NativeTask[];
   active: boolean;
+  editing?: boolean;
   onCancel: (id: string) => void;
   onToolChange: (tool: ToolId) => void;
   exportSelection: ObjectRef[];
@@ -50,17 +52,31 @@ export function ToolHost({
 }: Omit<Context, 'active'> & { activeTool: ToolId }) {
   const [visited, setVisited] = useState(() => new Set<ToolId>(['data-loader', activeTool]));
   if (!visited.has(activeTool)) setVisited(new Set([...visited, activeTool]));
-  return ALL_TOOLS.filter((tool) => visited.has(tool) || tool === activeTool).map((tool) => (
-    <div
-      key={tool}
-      hidden={tool !== activeTool}
-      className={isTabbedTool(tool) ? 'h-full min-h-0 w-full min-w-0' : 'w-full min-h-0 min-w-0'}
-    >
-      <ToolInputScope value={{ base: context.base, tool, active: tool === activeTool }}>
-        <Suspense fallback={<p>Loading…</p>}>
-          {renderers[tool]({ ...context, active: tool === activeTool })}
-        </Suspense>
-      </ToolInputScope>
-    </div>
-  ));
+  return (
+    <>
+      {ALL_TOOLS.filter((tool) => visited.has(tool) || tool === activeTool).map((tool) => (
+        <div
+          key={tool}
+          data-guidance-tool={tool}
+          hidden={tool !== activeTool}
+          className={
+            isTabbedTool(tool) ? 'h-full min-h-0 w-full min-w-0' : 'w-full min-h-0 min-w-0'
+          }
+        >
+          <ToolInputScope value={{ base: context.base, tool, active: tool === activeTool }}>
+            <Suspense fallback={<p>Loading…</p>}>
+              {renderers[tool]({ ...context, active: tool === activeTool })}
+            </Suspense>
+          </ToolInputScope>
+        </div>
+      ))}
+      <WorkflowGuidance
+        tool={activeTool}
+        blocked={Boolean(
+          context.editing ||
+          context.tasks.some((task) => ['running', 'queued', 'cancelling'].includes(task.state)),
+        )}
+      />
+    </>
+  );
 }

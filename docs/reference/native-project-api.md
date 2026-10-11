@@ -16,8 +16,12 @@ and persistence behavior.
 | `POST /api/project/close` | `{}` | 204, including concurrent/repeated closes |
 
 A descriptor contains `path` (null for Untitled), `title`, and
-`schema_version` (1). The title comes from the filename or is Untitled. No UUID,
-name, or path is persisted in metadata. There is no modification indicator;
+`schema_version` (1), optional `size` (database plus WAL bytes on disk), and
+optional `modified` (latest database or WAL modification time in Unix seconds).
+Reading this metadata does not checkpoint the database. Unsaved projects expose
+working file metadata while keeping their temporary path private. The title comes
+from the filename or is Untitled. No UUID, name, or path is persisted in metadata.
+There is no unsaved-changes flag;
 successful operations commit immediately. Every Untitled close prompts for a
 permanent destination, including an untouched project.
 Create refuses an existing destination. Open requires an existing supported
@@ -425,10 +429,15 @@ references for reusable pipelines.
 ## Desktop Imports
 
 `POST /api/project/ldaca/search` accepts `method` (`keyword` or `identifier`),
-`query`, and optional session `token`. It returns up to 25 normalized Oni `items`.
+`query`, and optional `token`. It returns up to 25 normalized Oni `items`.
 `POST /api/project/ldaca/import` accepts `identifier` and optional `token` and
 returns `{"table_names":["created_name"]}` after embedding the selected corpus. The
 existing `ldaca-rs` adapter owns ONI requests and RO-Crate conversion.
+Both operations resolve an explicit body token first, then the
+`x-wordflow-portal-token` operation header, then the configured host credential.
+Public requests also work without a token. Browser-owned account tokens use the
+header and never enter persisted request or project state. Host credential
+management is described in [application storage](application-storage.md).
 Conversion and temporary Parquet writing finish in task-owned blocking preparation
 before database permission is acquired. The write stage rechecks permission; staging
 is deleted on success, cancellation or failure.
@@ -777,6 +786,10 @@ publish. Source rows remain distinct even when their text is identical.
 | `POST /api/project/tabs/{id}/annotation/preview` | `{request,page,page_size}`; Arrow page with predictions, diagnostics, lossless row references and mutation stamp |
 | `POST /api/project/tabs/{id}/annotation` | Concrete execution request; existing accepted-task response headers and Analysis completion response |
 | `POST /api/project/analyses/{id}/annotation/query` | `view: rows`, `context` or `diagnostics`; Arrow rows/diagnostics or JSON captured context |
+
+The standalone host exposes these connection routes before project selection.
+Project-prefixed routes remain compatible and share that configuration owner.
+Settings and Annotation use the same host connection library.
 
 Provider identifiers are `openai`, `openrouter`, `anthropic`, `google`, `custom`
 and the host-supplied `apple`. Credential actions are `keep`, `session` with key,

@@ -1,5 +1,6 @@
 import { createRoot } from 'react-dom/client';
 
+import 'virtual:wordflow-theme.css';
 import '@/index.css';
 import { UpdaterWindow } from '@/features/updater/UpdaterWindow';
 import { withPreferences } from '@/features/preferences/startup';

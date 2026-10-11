@@ -6,10 +6,11 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { cn } from '@/lib/utils';
 
 interface SettingsButtonProps {
-  renderDialog: (props: {
+  renderDialog?: (props: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
   }) => React.ReactNode;
+  onOpen?: (opener: HTMLElement) => void;
   className?: string;
   iconClassName?: string;
   tooltipSide?: React.ComponentProps<typeof TooltipContent>['side'];
@@ -19,6 +20,7 @@ interface SettingsButtonProps {
 export function SettingsButton({
   className,
   renderDialog,
+  onOpen,
   iconClassName,
   tooltipSide = 'right',
 }: SettingsButtonProps) {
@@ -35,8 +37,9 @@ export function SettingsButton({
             data-tauri-drag-region="false"
             className={cn('h-7 w-7 text-description', className)}
             aria-label="Open settings"
-            onClick={() => {
-              setOpen(true);
+            onClick={(event) => {
+              if (onOpen) onOpen(event.currentTarget);
+              else setOpen(true);
             }}
           >
             <Cog data-testid="settings-button-icon" className={iconClassName ?? 'h-4 w-4'} />
@@ -45,7 +48,7 @@ export function SettingsButton({
         <TooltipContent side={tooltipSide}>Settings</TooltipContent>
       </Tooltip>
 
-      {open ? renderDialog({ open, onOpenChange: setOpen }) : null}
+      {open && renderDialog ? renderDialog({ open, onOpenChange: setOpen }) : null}
     </>
   );
 }

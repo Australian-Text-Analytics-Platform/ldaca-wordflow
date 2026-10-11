@@ -114,7 +114,10 @@ impl Project {
         Ok(self.info())
     }
     pub(super) fn info(&self) -> ProjectInfo {
+        let (size, modified) = project_file_metadata(&self.path);
         ProjectInfo {
+            size,
+            modified,
             schema_version: 1,
             path: self.temporary.is_none().then(|| self.path.clone()),
             title: if self.temporary.is_some() {
@@ -267,5 +270,48 @@ mod tests {
                 Some(std::fs::canonicalize(&destination).unwrap())
             );
         }
+    }
+}
+
+/// Status reads the working files without changing the database or its WAL.
+fn project_file_metadata(path: &Path) -> (Option<u64>, Option<u64>) {
+    let mut wal = path.as_os_str().to_os_string();
+    wal.push(".wal");
+    let files = [std::fs::metadata(path).ok(), std::fs::metadata(wal).ok()];
+    let size = files
+        .iter()
+        .flatten()
+        .map(std::fs::Metadata::len)
+        .reduce(|a, b| a + b);
+    let modified = files
+        .iter()
+        .flatten()
+        .filter_map(|file| {
+            file.modified()
+                .ok()?
+                .duration_since(std::time::UNIX_EPOCH)
+                .ok()
+                .map(|time| time.as_secs())
+        })
+        .max();
+    (size, modified)
+}
+
+#[cfg(test)]
+mod metadata_tests {
+    use super::*;
+
+    #[test]
+    fn working_file_metadata_includes_wal_and_handles_missing_files() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("untitled.wfpj");
+        assert_eq!(project_file_metadata(&path), (None, None));
+        std::fs::write(&path, b"database").unwrap();
+        let (size, modified) = project_file_metadata(&path);
+        assert_eq!(size, Some(8));
+        assert!(modified.is_some());
+        std::fs::write(directory.path().join("untitled.wfpj.wal"), b"pending").unwrap();
+        assert_eq!(project_file_metadata(&path).0, Some(15));
+        assert!(project_file_metadata(&path).1 >= modified);
     }
 }

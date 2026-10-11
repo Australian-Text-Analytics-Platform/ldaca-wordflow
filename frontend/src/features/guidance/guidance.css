@@ -1,0 +1,57 @@
+/* Automatic hints use a quiet target outline instead of a beacon or dimmed page. */
+.wordflow-guidance-beacon {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+[data-guidance-highlighted='true'] {
+  /* Driver.js clears noninteractive targets' outlines inline. Keep our visible anchor. */
+  outline: 2px solid var(--vscode-focusBorder) !important;
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
+/* Explorer clips its scroll area, so keep this outline inside the target. */
+[data-guidance-highlighted='true'][data-guidance-for='data-loader'][data-guidance-stage='results'] {
+  outline-offset: -2px;
+}
+
+.wordflow-guidance.driver-popover {
+  --driver-popover-font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  width: 320px;
+  min-width: 0;
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  padding: 16px;
+  border-radius: 6px;
+  color: var(--vscode-editorWidget-foreground);
+  background: var(--vscode-editorWidget-background);
+  box-shadow: var(--vscode-shadow-lg);
+  filter: none;
+  z-index: 40;
+}
+
+.wordflow-guidance .driver-popover-description {
+  font-size: inherit;
+}
+
+.wordflow-guidance .driver-popover-arrow-side-left,
+.wordflow-guidance .driver-popover-arrow-side-right {
+  border-left-color: var(--vscode-editorWidget-background);
+  border-right-color: var(--vscode-editorWidget-background);
+}
+
+.wordflow-guidance .driver-popover-arrow-side-left {
+  border-right-color: transparent;
+}
+.wordflow-guidance .driver-popover-arrow-side-right {
+  border-left-color: transparent;
+}
+.wordflow-guidance .driver-popover-arrow-side-top {
+  border-top-color: var(--vscode-editorWidget-background);
+}
+.wordflow-guidance .driver-popover-arrow-side-bottom {
+  border-bottom-color: var(--vscode-editorWidget-background);
+}

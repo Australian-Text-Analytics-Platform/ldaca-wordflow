@@ -154,7 +154,10 @@ function BuildSubTabContent(props: Props) {
             </Button>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4">
+        <CardFooter
+          data-guidance-stage={apply.canApply ? 'followup' : undefined}
+          className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4"
+        >
           {props.outputNameInput}
           <label className="flex min-w-0 flex-[1_1_16rem] flex-wrap items-center gap-2 text-body font-medium">
             Column name
@@ -170,6 +173,7 @@ function BuildSubTabContent(props: Props) {
           </label>
           <DisabledReasonTooltip reason={apply.disabledReason}>
             <Button
+              data-guidance-stage="action"
               size="sm"
               disabled={!apply.canApply}
               onClick={() => {

@@ -1,5 +1,4 @@
 use super::*;
-use crate::ProjectRuntime;
 use axum::{
     Json,
     extract::{Path, Query, State, rejection::JsonRejection},
@@ -7,7 +6,11 @@ use axum::{
 use std::collections::BTreeSet;
 use std::time::Duration;
 
-pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
+pub(crate) fn router<S>() -> utoipa_axum::router::OpenApiRouter<S>
+where
+    S: Clone + Send + Sync + 'static,
+    super::AiConfiguration: axum::extract::FromRef<S>,
+{
     utoipa_axum::router::OpenApiRouter::new()
         .routes(utoipa_axum::routes!(list, create))
         .routes(utoipa_axum::routes!(update, remove))
@@ -19,8 +22,8 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
     tag = "ai_http",
     responses((status = 200, description = "Success", body = Vec<ConnectionInfo>), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
-async fn list(State(runtime): State<ProjectRuntime>) -> Result<Json<Vec<ConnectionInfo>>> {
-    Ok(Json(runtime.ai().list().await?))
+async fn list(State(config): State<super::AiConfiguration>) -> Result<Json<Vec<ConnectionInfo>>> {
+    Ok(Json(config.list().await?))
 }
 #[utoipa::path(
     post, path = "/api/ai/providers", operation_id = "ai_http_create",
@@ -29,12 +32,11 @@ async fn list(State(runtime): State<ProjectRuntime>) -> Result<Json<Vec<Connecti
     responses((status = 200, description = "Success", body = ConnectionInfo), (status = 400, description = "Invalid request or operation failed", body = crate::error::ErrorEnvelope), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn create(
-    State(runtime): State<ProjectRuntime>,
+    State(config): State<super::AiConfiguration>,
     request: std::result::Result<Json<CreateConnection>, JsonRejection>,
 ) -> Result<Json<ConnectionInfo>> {
     Ok(Json(
-        runtime
-            .ai()
+        config
             .create(
                 request
                     .map_err(|_| Error::invalid("Invalid provider configuration"))?
@@ -51,13 +53,12 @@ async fn create(
     responses((status = 200, description = "Success", body = ConnectionInfo), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn update(
-    State(runtime): State<ProjectRuntime>,
+    State(config): State<super::AiConfiguration>,
     Path(id): Path<Uuid>,
     request: std::result::Result<Json<UpdateConnection>, JsonRejection>,
 ) -> Result<Json<ConnectionInfo>> {
     Ok(Json(
-        runtime
-            .ai()
+        config
             .update(
                 id,
                 request
@@ -74,10 +75,10 @@ async fn update(
     responses((status = 200, description = "Success", body = crate::api::EmptyResponse), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn remove(
-    State(runtime): State<ProjectRuntime>,
+    State(config): State<super::AiConfiguration>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<crate::api::EmptyResponse>> {
-    runtime.ai().remove(id).await?;
+    config.remove(id).await?;
     Ok(Json(crate::api::EmptyResponse {}))
 }
 #[utoipa::path(
@@ -87,12 +88,11 @@ async fn remove(
     responses((status = 200, description = "Success", body = Vec<String>), (status = 400, description = "Invalid request, extractor rejection or operation failure", content((crate::error::ErrorEnvelope = "application/json"), (String = "text/plain; charset=utf-8"))), (status = 403, description = "Origin not allowed", body = crate::error::ErrorEnvelope), (status = 404, description = "Resource unavailable", body = crate::error::ErrorEnvelope), (status = 409, description = "Operation conflict", body = crate::error::ErrorEnvelope), (status = 500, description = "Internal operation error", body = crate::error::ErrorEnvelope), (status = 503, description = "Backend stopping", body = crate::error::ErrorEnvelope))
 )]
 async fn models(
-    State(runtime): State<ProjectRuntime>,
+    State(config): State<super::AiConfiguration>,
     Path(id): Path<Uuid>,
     headers: axum::http::HeaderMap,
 ) -> Result<Json<Vec<String>>> {
-    let runtime = runtime.for_request(&headers)?;
-    let config = runtime.ai();
+    let config = config.for_request(&headers)?;
     let (connection, key) = config.resolve(id).await?;
     if connection.provider == Provider::Apple {
         return Ok(Json(vec!["system".into()]));
@@ -103,7 +103,7 @@ async fn models(
     {
         return Ok(Json(models.clone()));
     }
-    let values = discover(runtime.client(), &connection, key.as_deref()).await?;
+    let values = discover(&config.0.client, &connection, key.as_deref()).await?;
     if !config.0.browser_owned {
         config
             .0
@@ -264,10 +264,10 @@ struct ModelSelection {
     responses((status = 200, body = inference::InferenceCapabilities), (status = 400, body = crate::error::ErrorEnvelope))
 )]
 async fn model_capabilities(
-    State(runtime): State<ProjectRuntime>,
+    State(config): State<super::AiConfiguration>,
     Path(id): Path<Uuid>,
     Query(selection): Query<ModelSelection>,
 ) -> Result<Json<inference::InferenceCapabilities>> {
-    let provider = runtime.ai().provider(id).await?;
+    let provider = config.provider(id).await?;
     Ok(Json(inference::capabilities(provider, &selection.model)))
 }

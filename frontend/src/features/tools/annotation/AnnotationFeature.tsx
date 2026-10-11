@@ -198,6 +198,8 @@ function AnnotationTab({
     <>
       <section
         aria-label="Annotation request"
+        data-guidance-annotation-mode={mode}
+        data-guidance-editing={Boolean(session) || aiEditing}
         className="flex flex-col gap-3 rounded-lg border border-surface-border p-3"
       >
         <h1 className="font-semibold">Annotation</h1>
@@ -215,12 +217,12 @@ function AnnotationTab({
           </TabsList>
         </ModeTabs>
         <fieldset
+          data-guidance-stage="setup"
           disabled={Boolean(session) || aiEditing || start.isPending}
           className="min-w-0 flex flex-col gap-3"
         >
           <NodeInputsPanel
             {...picker}
-
             disabled={Boolean(session) || aiEditing || start.isPending}
             title="Annotation source"
             columnLabel="Document column"
@@ -414,6 +416,7 @@ function AnnotationTab({
                 </Button>
               ) : (
                 <Button
+                  data-guidance-stage="action"
                   disabled={
                     blocked ||
                     start.isPending ||

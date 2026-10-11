@@ -15,11 +15,11 @@ The **Tools** section in the left sidebar lists the available functions. Click a
 - [**Data Loader**](./data-loader.md) — import local, sample or LDaCA data.
 - [**Preprocessing**](./preprocessing.md) — Filter, Sample, Join, Stack, Find, Build and SQL.
 - [**Frequency**](./token-frequency.md) — count tokens or compare two corpora, with saved analysis tabs.
+- **Concordance**, **Plots**, **Topic Modelling**, **Quotation** and **Annotation** — analyse or label your text.
+- [**Export**](./export.md) — download data files or an independent Wordflow project.
 
-Other analysis tools are listed but disabled while their native implementations are pending.
-Use a Data Block's menu to [export its data](./export.md).
-
-The edit icon next to the heading lets you customise which tools appear.
+The edit icon next to the heading lets you customise which tools appear. Your
+choice is remembered; Data Loader always remains available.
 
 New analysis tabs have short numbered names: **FR** (Frequency), **CC** (Concordance),
 **QT** (Quotation), **TM** (Topic Modelling), **AN** (Annotation), **TR** (Trends),
@@ -197,11 +197,42 @@ editor must finish with its own Save or Cancel before closing the project.
 
 <h2 id="help-ui-appearance">8. Appearance</h2>
 
-Open **Settings → Appearance** to switch between **Light 2026** and
-**Dark 2026**. The interface changes immediately and the selection is saved to
-this device. Wordflow uses the last successful selection during startup so a
+Open **Settings → General → Appearance** to switch between **Light 2026** and
+**Dark 2026**. The interface changes immediately and the selection is saved with
+your preferences. Wordflow uses the last successful selection during startup so a
 reload does not briefly show the other theme. Charts and Data Block identity
 colors remain stable, while downloaded chart images keep a white background.
+
+Settings is available from the workspace cog and the web welcome dialog. Its
+five sections are **General**, **AI**, **Portal**, **Storage** and **Guidance**.
+Closing Settings returns to the same workspace or welcome dialog without losing
+drafts. Preferences belong to this desktop installation, single-user web host,
+or signed-in web account, as described in the dialog.
+
+**AI** manages connections and their credentials. Annotation's **Manage
+connections** shortcut opens the same manager; choosing a provider and model
+still happens in Annotation. Built-in connections cannot be edited or deleted.
+Custom connections support renaming, credential replacement/removal and confirmed
+individual deletion.
+
+**Portal** manages the LDaCA access token used automatically by Data Loader.
+Public collections work without a token. On desktop and single-user web hosts,
+choose **Session only** or **Remember in OS store**. Session credentials disappear
+when the host stops. In multi-user web, credentials stay in this browser for the
+signed-in account. Tokens and AI keys are kept outside project files.
+
+**Storage** shows the application's resolved folders and web project/data
+libraries. Web locations are on the server or worker, not your local computer.
+Desktop can open existing folders; web can copy their paths. This page does not
+change storage locations.
+
+**Guidance** enables contextual hints and resets their history after confirmation.
+Hints explain the active tool's setup, main action, results and next steps.
+An outline highlights the area the hint explains. **Got it** remembers the hint;
+**Not now**, its close icon, clicking outside or Escape pauses hints until the
+next visit to that tool. **Disable hints** turns
+them off. Hints leave keyboard focus alone and pause during dialogs, editing or
+running work. Resetting history keeps your current enable choice.
 
 <h2 id="help-ui-help-feedback">9. Help and Feedback</h2>
 
@@ -225,7 +256,7 @@ details. Open the project in Wordflow to explore its data and dependencies.
 
 <h3 id="help-ui-session-errors">Session errors</h3>
 
-Open **Settings → Diagnostics → Session errors** to review errors that appeared
+Open **Settings → General → Diagnostics → Session errors** to review errors that appeared
 in this window, even after dismissing a notification. Expand an entry to read
 its message, time and available technical details. Notifications show the error
 message immediately; **Show details** reveals the underlying error code and

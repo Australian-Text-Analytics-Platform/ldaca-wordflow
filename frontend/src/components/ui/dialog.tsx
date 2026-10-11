@@ -31,9 +31,10 @@ const DialogContent = ({
   className,
   children,
   onInteractOutside,
+  showCloseButton = true,
   ref,
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Content>) => (
+}: React.ComponentProps<typeof DialogPrimitive.Content> & { showCloseButton?: boolean }) => (
   <DialogPortal>
     <DialogOverlay />
     <ModalLayerRegistration>
@@ -53,10 +54,12 @@ const DialogContent = ({
         {...props}
       >
         {children}
-        <DialogPrimitive.Close className="absolute right-2 top-2 flex size-control-sm items-center justify-center rounded-sm text-description hover:bg-list-hover hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-focus disabled:pointer-events-none">
-          <X className="h-4 w-4" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
+        {showCloseButton && (
+          <DialogPrimitive.Close className="absolute right-2 top-2 flex size-control-sm items-center justify-center rounded-sm text-description hover:bg-list-hover hover:text-foreground focus-visible:outline focus-visible:outline-1 focus-visible:outline-focus disabled:pointer-events-none">
+            <X className="h-4 w-4" />
+            <span className="sr-only">Close</span>
+          </DialogPrimitive.Close>
+        )}
       </DialogPrimitive.Content>
     </ModalLayerRegistration>
   </DialogPortal>

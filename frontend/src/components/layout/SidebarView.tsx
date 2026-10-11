@@ -106,12 +106,15 @@ export function SidebarView({
   return (
     <SidebarRoot
       data-testid="sidebar-container"
-      className="@container/sidebar pt-0! pr-0! [&_[data-slot=sidebar-inner]]:overflow-hidden [&_[data-slot=sidebar-inner]]:rounded-lg [&_[data-slot=sidebar-inner]]:border [&_[data-slot=sidebar-inner]]:border-sidebar-border [&_[data-slot=sidebar-inner]]:bg-sidebar"
+      className="@container/sidebar pt-0! pr-0! [&_[data-slot=sidebar-inner]]:overflow-hidden [&_[data-slot=sidebar-inner]]:rounded-lg [&_[data-slot=sidebar-inner]]:border [&_[data-slot=sidebar-inner]]:border-surface-border [&_[data-slot=sidebar-inner]]:bg-sidebar"
     >
       <div className="flex h-full min-h-0 w-full flex-col">
         {header}
+        <h2 className="shrink-0 px-4 py-2 text-label font-semibold text-sidebar-foreground">
+          Explorer
+        </h2>
 
-        <SidebarContent className="flex-1 overflow-hidden border-y border-surface-border/60">
+        <SidebarContent className="flex-1 overflow-hidden border-y border-surface-border">
           <div ref={sectionsContainerRef} className="flex h-full flex-col overflow-hidden">
             {SECTION_KEYS.map((key, index) => {
               const title = SECTION_TITLES[key];
@@ -124,7 +127,7 @@ export function SidebarView({
                   key={key}
                   className={cn(
                     'relative flex min-h-0 flex-col',
-                    index > 0 && 'border-t border-surface-border/60',
+                    index > 0 && 'border-t border-surface-border',
                   )}
                   style={getSectionFlexStyle(key)}
                 >
@@ -150,12 +153,12 @@ export function SidebarView({
                     <div>
                       <div
                         data-testid={`sidebar-section-header-${key}`}
-                        className="group/sidebar-section-header mx-1 flex items-center rounded-md transition-colors hover:bg-list-hover focus-within:bg-list-hover"
+                        className="mx-1 flex items-center"
                       >
                         <button
                           type="button"
                           data-guidance={key === 'nodes' ? 'data-blocks' : undefined}
-                          className="flex min-w-0 flex-1 items-center justify-between px-2 py-1.5 text-label-secondary font-semibold uppercase tracking-wide text-description"
+                          className="flex min-w-0 flex-1 cursor-pointer items-center justify-between rounded-sm px-2 py-1.5 text-label-secondary font-semibold uppercase tracking-wide text-description focus-visible:outline focus-visible:outline-1 focus-visible:outline-focus"
                           onClick={() => {
                             toggleSection(key);
                           }}
@@ -273,6 +276,12 @@ export function SidebarView({
                       {!collapsed && (
                         <div className="flex h-full flex-col overflow-hidden">
                           <div
+                            data-guidance-for={
+                              key === 'nodes' && nodeCount > 0 ? 'data-loader' : undefined
+                            }
+                            data-guidance-stage={
+                              key === 'nodes' && nodeCount > 0 ? 'results' : undefined
+                            }
                             ref={(node) => {
                               assignSectionScrollRef(key, node);
                             }}

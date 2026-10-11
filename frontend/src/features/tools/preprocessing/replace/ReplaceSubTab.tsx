@@ -222,6 +222,7 @@ export function ReplaceSubTab(props: ReplaceSubTabComponentProps) {
           </div>
           <DisabledReasonTooltip reason={applyDisabledReason}>
             <Button
+              data-guidance-stage="action"
               type="button"
               size="sm"
               onClick={() => void handleApply()}

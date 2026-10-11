@@ -193,25 +193,27 @@ export function AnnotationOutput({
         )}
         <div className="flex flex-wrap items-center gap-2">
           {decoded && (
-            <ColumnChoices
-              label="Compare To"
-              columns={decoded.schema
-                .filter(
-                  (c) =>
-                    isArrowStringField(c.field) &&
-                    !roles.includes(c.name) &&
-                    !metadata.includes(c.name),
-                )
-                .map((c) => c.name)}
-              value={compare}
-              onChange={(value) => {
-                setCompare(value);
-                setRevealed([]);
-                setFilter(null);
-                setPage(1);
-                editor?.setPage(1);
-              }}
-            />
+            <div data-guidance-stage={!pending ? 'followup' : undefined}>
+              <ColumnChoices
+                label="Compare To"
+                columns={decoded.schema
+                  .filter(
+                    (c) =>
+                      isArrowStringField(c.field) &&
+                      !roles.includes(c.name) &&
+                      !metadata.includes(c.name),
+                  )
+                  .map((c) => c.name)}
+                value={compare}
+                onChange={(value) => {
+                  setCompare(value);
+                  setRevealed([]);
+                  setFilter(null);
+                  setPage(1);
+                  editor?.setPage(1);
+                }}
+              />
+            </div>
           )}
           <ColumnChoices
             label="Metadata"
@@ -514,6 +516,9 @@ export function AnnotationOutput({
   };
   return (
     <section
+      data-guidance-stage={preview?.table || rows.data?.table ? 'results' : undefined}
+      data-guidance-pending={Boolean((pending && !pending.error) || rows.isFetching)}
+      data-guidance-editing={Boolean(editorSession)}
       aria-label={previewMode ? 'Annotation Preview' : 'Annotation Results'}
       className="min-w-0 space-y-3 rounded-lg border border-surface-border p-3"
     >

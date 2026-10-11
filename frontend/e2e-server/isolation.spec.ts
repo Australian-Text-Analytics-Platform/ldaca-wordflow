@@ -56,8 +56,8 @@ it('preserves independent preprocessing inputs when switching projects with matc
     await $('#preprocessing-tab-join').click();
   }
   async function select(name: string) {
-    await $('button=Project').click();
-    await $(`[role="menuitem"]=${name}`).click();
+    await $('button=Project & Data').click();
+    await $(`[aria-label="Open ${name}.wfpj"]`).click();
     await expect($('[aria-label="Current location"]')).toHaveText(expect.stringContaining(name));
     await showJoin();
   }

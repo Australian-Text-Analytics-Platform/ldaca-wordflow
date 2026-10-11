@@ -86,7 +86,7 @@ Routine packaging copies the committed Icon Composer `Assets.car`; regenerate
 it only after changing the icon source with
 `vp -C frontend run compile:desktop:mac-icon`.
 
-To run only the Rust HTTP backend:
+To run the API-only engine test host:
 
 ```sh
 cargo run --manifest-path backend/Cargo.toml --bin wordflow-api-dev
@@ -94,12 +94,11 @@ cargo run --manifest-path backend/Cargo.toml --bin wordflow-api-dev
 
 `WORDFLOW_BIND_ADDR` overrides the default `127.0.0.1:8002`. See the
 [native backend reference](../reference/native-backend.md) for HTTP and IPC.
-`vp run dev` initializes a temporary Untitled project and starts Rust on port 8002 and Vite's project interface on port 3000.
-The project interface is also the default for `vp -C frontend run dev` and builds;
-no `--mode rust` flag or saved backend selection is needed.
-Vite binds loopback and proxies project and health requests. `vp run dev:desktop` runs the actual
-Tauri application. The Python server tooling is archived.
-`FRONTEND_PORT` and `VITE_BACKEND_PORT` override the browser development ports.
+The user-facing browser commands start the full single-user server and its
+project/file libraries; see [local development](development.md). Vite binds
+loopback and proxies API, project-session and health requests. The browser engine
+test runner explicitly selects the API-only preview instead. `vp run dev:desktop`
+runs the actual Tauri application. The Python server tooling is archived.
 
 ## Isolated caches and reproducible tests
 

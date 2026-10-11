@@ -20,7 +20,12 @@ export function AnalysisResultBoundary({
   children: ReactNode;
 }) {
   const cache = useQueryClient();
-  if (!analysisId) return children;
+  const output = (
+    <div data-guidance-stage="results" className="min-w-0">
+      {children}
+    </div>
+  );
+  if (!analysisId) return output;
   return (
     <ErrorBoundary
       key={analysisId}
@@ -40,7 +45,7 @@ export function AnalysisResultBoundary({
         />
       )}
     >
-      {children}
+      {output}
     </ErrorBoundary>
   );
 }

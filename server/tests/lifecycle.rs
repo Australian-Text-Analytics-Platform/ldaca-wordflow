@@ -56,6 +56,122 @@ async fn create(host: &Host) -> String {
     project["project_id"].as_str().unwrap().to_owned()
 }
 #[tokio::test]
+async fn settings_before_project_selection_share_host_ownership() {
+    let (directory, host) = host().await;
+    let (status, connection) = call(
+        &host, "POST", "/api/ai/providers",
+        json!({"name":"Synthetic host connection","provider":"custom","endpoint":"http://127.0.0.1:1/v1","credential":{"action":"remove"}}),
+    ).await;
+    assert_eq!(status, StatusCode::OK, "{connection}");
+    let (_, locations) = call(&host, "GET", "/api/storage/locations", Value::Null).await;
+    assert_eq!(locations["location_scope"], "server");
+    assert_eq!(locations["directories"].as_array().unwrap().len(), 6);
+    assert_eq!(
+        locations["project_library"],
+        directory
+            .path()
+            .canonicalize()
+            .unwrap()
+            .join("admin/projects")
+            .to_string_lossy()
+            .as_ref()
+    );
+    let (status, portal) = call(
+        &host,
+        "POST",
+        "/api/portal/credential",
+        json!({"action":"session","key":"synthetic-portal-token"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{portal}");
+    assert_eq!(portal["has_credential"], true);
+    assert!(!portal.to_string().contains("synthetic-portal-token"));
+    let project = create(&host).await;
+    let (_, root) = call(&host, "GET", "/api/ai/providers", Value::Null).await;
+    let (_, legacy) = call(
+        &host,
+        "GET",
+        &format!("/project/{project}/api/ai/providers"),
+        Value::Null,
+    )
+    .await;
+    assert_eq!(root, legacy);
+    assert!(
+        root.as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == connection["id"])
+    );
+    let (_, cleared) = call(
+        &host,
+        "POST",
+        "/api/portal/credential",
+        json!({"action":"remove"}),
+    )
+    .await;
+    assert_eq!(cleared["has_credential"], false);
+    host.close().await.unwrap();
+}
+
+#[tokio::test]
+async fn preference_patches_merge_visibility_and_highest_hint_version() {
+    let (_directory, host) = host().await;
+    let (status, _) = call(&host, "PATCH", "/api/preferences", json!({"hiddenTools":["plots"],"guidance":{"acknowledge":{"id":"plots.setup","version":2}}})).await;
+    assert_eq!(status, StatusCode::OK);
+    let (_, latest) = call(
+        &host,
+        "PATCH",
+        "/api/preferences",
+        json!({"theme":"dark-2026","guidance":{"acknowledge":{"id":"plots.setup","version":1}}}),
+    )
+    .await;
+    assert_eq!(latest["schemaVersion"], 2);
+    assert_eq!(latest["hiddenTools"], json!(["plots"]));
+    assert_eq!(latest["guidance"]["acknowledgments"]["plots.setup"], 2);
+    assert_eq!(latest["theme"], "dark-2026");
+    host.close().await.unwrap();
+}
+#[tokio::test]
+async fn untitled_names_are_stable_and_metadata_includes_working_files() {
+    let (_directory, host) = host().await;
+    let first = create(&host).await;
+    let second = create(&host).await;
+    for (id, name) in [(&first, "Untitled-1"), (&second, "Untitled-2")] {
+        let (status, response) = call(
+            &host,
+            "GET",
+            &format!("/api/server/project/{id}"),
+            Value::Null,
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(response["project"]["title"], name);
+        assert!(response["project"]["size"].as_u64().unwrap() > 0);
+        assert!(response["project"]["modified"].as_u64().unwrap() > 0);
+        assert!(response["project"]["path"].is_null());
+    }
+    let (_, registry) = call(&host, "GET", "/api/server", Value::Null).await;
+    assert_eq!(registry["projects"].as_array().unwrap().len(), 2);
+    let (status, _) = call(
+        &host,
+        "POST",
+        "/api/server/project/close",
+        json!({"project_id":first,"discard_untitled":true}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NO_CONTENT);
+    let third = create(&host).await;
+    let (_, response) = call(
+        &host,
+        "GET",
+        &format!("/api/server/project/{third}"),
+        Value::Null,
+    )
+    .await;
+    assert_eq!(response["project"]["title"], "Untitled-3");
+    host.close().await.unwrap();
+}
+#[tokio::test]
 async fn user_event_stream_notifies_preference_changes_and_project_registry_changes() {
     let (_directory, host) = host().await;
     let response = host

@@ -53,9 +53,9 @@ impl Config {
         }
         let path = match &self.data_dir {
             Some(path) => path.clone(),
-            None => {
-                wordflow_storage::AppDirectories::native(&format!("{}.server", self.identity))?.data
-            }
+            None => web_directory(
+                wordflow_storage::AppDirectories::native(&format!("{}.web", self.identity))?.data,
+            ),
         };
         Ok(if path.is_absolute() {
             path
@@ -82,4 +82,59 @@ impl Config {
 pub enum Mode {
     SingleUser,
     MultiUser,
+}
+
+/// Prefer the web identity, retaining existing server storage until explicitly moved.
+fn web_directory(web: PathBuf) -> PathBuf {
+    let legacy = web.with_extension("server");
+    if !web.exists() && legacy.is_dir() {
+        legacy
+    } else {
+        web
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn new_web_storage_and_legacy_fallback() {
+        let root = tempfile::tempdir().unwrap();
+        let web = root.path().join("au.edu.ldaca.wordflow.dev.web");
+        let legacy = web.with_extension("server");
+        assert_eq!(web_directory(web.clone()), web);
+        std::fs::create_dir(&legacy).unwrap();
+        std::fs::write(legacy.join("saved-project"), "existing data").unwrap();
+        assert_eq!(web_directory(web.clone()), legacy);
+        std::fs::create_dir(&web).unwrap();
+        assert_eq!(web_directory(web.clone()), web);
+        assert_eq!(
+            std::fs::read_to_string(legacy.join("saved-project")).unwrap(),
+            "existing data"
+        );
+    }
+
+    #[test]
+    fn web_identities_and_explicit_override() {
+        for identity in [
+            wordflow_storage::PRODUCTION_ID,
+            wordflow_storage::DEV_ID,
+            wordflow_storage::TEST_ID,
+        ] {
+            let web = wordflow_storage::AppDirectories::native(&format!("{identity}.web")).unwrap();
+            assert!(web.data.ends_with(format!("{identity}.web")));
+            let config = Config::parse_from([
+                "wordflow-server",
+                "--identity",
+                identity,
+                "--data-dir",
+                "custom-web-data",
+            ]);
+            assert_eq!(
+                config.directory().unwrap(),
+                std::env::current_dir().unwrap().join("custom-web-data")
+            );
+        }
+    }
 }

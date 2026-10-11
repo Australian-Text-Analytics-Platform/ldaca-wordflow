@@ -9,7 +9,7 @@ import { assertGuiTestEnvironment } from './gui-test-environment.mjs';
 import { prepareTestCache } from './test-cache.mjs';
 import { prepareQuotationModel } from './quotation-model.mjs';
 
-/** WDIO launcher service owns the same Rust/Vite hosts used by pnpm dev. */
+/** WDIO owns an API-only engine host and Vite, separate from the full browser application. */
 export default class PreviewHost {
   async onPrepare() {
     try {
@@ -37,7 +37,7 @@ export default class PreviewHost {
         FRONTEND_PORT: '3212',
         VITE_BACKEND_PORT: '8212',
 
-      });
+      }, true);
       this.backendCommand = commands.find((command) => command.name === 'backend');
       this.options = {
         cwd: fileURLToPath(new URL('../..', import.meta.url)),

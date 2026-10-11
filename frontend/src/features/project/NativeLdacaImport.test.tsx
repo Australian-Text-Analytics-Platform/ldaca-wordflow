@@ -11,9 +11,12 @@ vi.mock('@/features/project/filesApi', () => ({
   searchLdaca: vi.fn(),
   sampleCatalogue: vi.fn(),
 }));
+vi.mock('@/features/settings/portalApi', () => ({
+  portalInfo: vi.fn(async () => ({ has_credential: true, credential_mode: 'session' })),
+}));
 vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
 beforeEach(() => vi.clearAllMocks());
-it('searches with a session token, retains results and drafts across tabs, and imports without opening previews', async () => {
+it('uses centrally configured access, retains results and drafts across tabs, and imports without opening previews', async () => {
   const user = userEvent.setup();
   useProjectPreview.setState({ active: 'existing' });
   useSelectionStore.getState().replaceSelectedNodes(['selected']);
@@ -38,15 +41,14 @@ it('searches with a session token, retains results and drafts across tabs, and i
   await user.click(screen.getByRole('tab', { name: 'LDaCA' }));
   expect(screen.getByText(/Search by keyword or collection ID/)).toBeVisible();
   expect(screen.queryByText('Staff Picks')).not.toBeInTheDocument();
-  await user.click(screen.getByRole('button', { name: /Access token/ }));
-  await user.type(screen.getByLabelText('Portal token'), 'session-token');
+  expect(await screen.findByText('Portal token configured')).toBeVisible();
+  expect(screen.queryByLabelText('Portal token')).not.toBeInTheDocument();
   await user.type(screen.getByRole('textbox', { name: 'Search', exact: true }), 'corpus{Enter}');
   await screen.findByRole('article', { name: 'Example corpus' });
   expect(filesApi.searchLdaca).toHaveBeenCalledExactlyOnceWith(
     'http://project',
     'keyword',
     'corpus',
-    'session-token',
   );
   expect(screen.getByText('Licence: CC BY')).toBeVisible();
   await user.click(screen.getByRole('button', { name: 'Details' }));
@@ -55,11 +57,7 @@ it('searches with a session token, retains results and drafts across tabs, and i
   await user.click(screen.getByRole('tab', { name: 'LDaCA' }));
   expect(screen.getByRole('textbox', { name: 'Search', exact: true })).toHaveValue('corpus');
   await user.click(within(screen.getByRole('article')).getByRole('button', { name: 'Import' }));
-  expect(filesApi.importLdaca).toHaveBeenCalledExactlyOnceWith(
-    'http://project',
-    'record',
-    'session-token',
-  );
+  expect(filesApi.importLdaca).toHaveBeenCalledExactlyOnceWith('http://project', 'record');
   expect(screen.getByRole('button', { name: 'Importing…' })).toBeDisabled();
   await user.click(screen.getByRole('tab', { name: 'Local files' }));
   result.resolve({ table_names: ['documents', 'metadata'] });

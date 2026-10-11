@@ -11,7 +11,7 @@ export const ServerContext = createContext<{
 } | null>(null);
 export const useServer = () => use(ServerContext);
 
-/** Only the standalone host injects this deployment configuration. */
+/** The standalone host and browser development server inject this deployment configuration. */
 export function serverBase(): string | null {
   const element = document.getElementById('wordflow-server-config');
   if (!element) return null;

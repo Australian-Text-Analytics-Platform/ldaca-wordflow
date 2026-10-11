@@ -173,6 +173,9 @@ impl ProjectRuntime {
             }
         }))
     }
+    pub fn storage_directories(&self) -> Result<Option<wordflow_storage::AppDirectories>> {
+        Ok(locked(&self.shared.storage)?.clone())
+    }
     pub fn temporary_directory(&self) -> Result<PathBuf> {
         Ok(locked(&self.shared.storage)?
             .as_ref()
@@ -1612,5 +1615,11 @@ mod plots_icu_tests {
         assert!(intervals.value(0).ends_with("-05"));
         assert!(intervals.value(2).ends_with("-04"));
         runtime.close().await.unwrap();
+    }
+}
+
+impl axum::extract::FromRef<ProjectRuntime> for crate::AiConfiguration {
+    fn from_ref(runtime: &ProjectRuntime) -> Self {
+        runtime.ai().clone()
     }
 }

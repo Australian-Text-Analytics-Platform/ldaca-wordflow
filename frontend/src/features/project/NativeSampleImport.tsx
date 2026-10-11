@@ -147,6 +147,7 @@ export default function NativeSampleImport({ base, active }: { base: string; act
           </span>
           <Button
             disabled={busy || catalogue.isFetching || catalogue.isError || !selectedFiles.length}
+            data-guidance-stage="action"
             onClick={() => {
               imported.mutate({ file_paths: selectedFiles, as_views: asViews });
             }}

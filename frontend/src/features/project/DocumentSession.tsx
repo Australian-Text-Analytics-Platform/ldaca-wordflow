@@ -1,6 +1,7 @@
 import { DesktopNavigationHeaderView } from '@/components/layout/DesktopNavigationHeaderView';
 import { Button } from '@/components/ui/button';
 import { projectStatus } from '@/features/project/api';
+import { useServer } from '@/features/server/context';
 import { ServerControls } from '@/features/server/ServerControls';
 import { useAnnotationState } from '@/features/tools/annotation/annotationState';
 import { listTabs } from '@/features/tools/common/analysisApi';
@@ -22,6 +23,7 @@ import ProjectView, { type ProjectTool } from './ProjectView';
 /** The native host initializes and owns the document, including Save and Close. */
 export default function DocumentSession({ base }: { base: string }) {
   const cache = useQueryClient();
+  const server = useServer();
   const [activeTool, setActiveTool] = useState<ProjectTool>('data-loader');
   const annotationTabId = useAnnotationState((s) => s.active[base]);
   const frequencyTabId = useFrequencyState((state) => state.active[base]);
@@ -96,7 +98,11 @@ export default function DocumentSession({ base }: { base: string }) {
   return (
     <div className="relative flex h-full flex-col text-foreground">
       <DesktopNavigationHeaderView
-        projectName={project.data?.title ?? 'Untitled'}
+        projectName={
+          project.data?.path
+            ? project.data.title
+            : (server?.status.project?.title ?? project.data?.title ?? 'Untitled')
+        }
         location={
           project.data && section
             ? [
@@ -117,7 +123,7 @@ export default function DocumentSession({ base }: { base: string }) {
         hasNativeTrafficLights={isMacOSDesktop()}
         tools={
           <>
-            <ServerControls projectBase={base} />
+            <ServerControls />
             <NativeSettings />
           </>
         }

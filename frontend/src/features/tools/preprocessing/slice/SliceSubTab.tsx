@@ -197,7 +197,10 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4">
+        <CardFooter
+          data-guidance-stage={!applyDisabled ? 'followup' : undefined}
+          className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4"
+        >
           <div className="flex min-w-0 flex-[1_1_20rem] flex-wrap items-center gap-2">
             <Label htmlFor="slice-new-node-name" className="shrink-0">
               New data block name
@@ -230,6 +233,7 @@ function SliceSubTabContent(props: SliceSubTabComponentProps) {
           )}
           <DisabledReasonTooltip reason={applyDisabledReason}>
             <Button
+              data-guidance-stage="action"
               size="sm"
               onClick={() => {
                 void applySlice();

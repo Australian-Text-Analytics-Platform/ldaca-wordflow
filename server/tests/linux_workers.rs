@@ -161,7 +161,7 @@ async fn real_workers_isolate_storage_projects_credentials_sockets_and_limits() 
         &first,
         reqwest::Method::PATCH,
         "/api/preferences",
-        json!({"theme":"dark-2026"}),
+        json!({"theme":"dark-2026","hiddenTools":["plots"],"guidance":{"acknowledge":{"id":"plots.setup","version":2}}}),
     )
     .await;
     assert_eq!(first_pref["theme"], "dark-2026");
@@ -173,6 +173,35 @@ async fn real_workers_isolate_storage_projects_credentials_sockets_and_limits() 
     )
     .await;
     assert_eq!(second_pref["theme"], "light-2026");
+    assert_eq!(second_pref["hiddenTools"], json!([]));
+    assert_eq!(second_pref["guidance"]["acknowledgments"], json!({}));
+    let connection = json_request(&first, reqwest::Method::POST, "/api/ai/providers", json!({"name":"Browser connection","provider":"custom","endpoint":"https://provider.example/v1","credential":{"action":"browser"}})).await;
+    assert_eq!(connection["credential_mode"], "browser");
+    let portal = json_request(
+        &first,
+        reqwest::Method::POST,
+        "/api/portal/credential",
+        json!({"action":"browser"}),
+    )
+    .await;
+    assert_eq!(portal["has_credential"], false);
+    assert_eq!(portal["credential_mode"], "browser");
+    let other_portal = json_request(
+        &second,
+        reqwest::Method::GET,
+        "/api/portal/credential",
+        Value::Null,
+    )
+    .await;
+    assert_ne!(other_portal["credential_mode"], "browser");
+    let locations = json_request(
+        &first,
+        reqwest::Method::GET,
+        "/api/storage/locations",
+        Value::Null,
+    )
+    .await;
+    assert_eq!(locations["location_scope"], "worker");
     // A compromised worker can create a link that resolves outside its mount in
     // the gateway's host namespace. The gateway must reject that lookup.
     docker(&[
@@ -240,8 +269,20 @@ async fn real_workers_isolate_storage_projects_credentials_sockets_and_limits() 
             .join("projects/acceptance.wfpj")
             .exists()
     );
-    let connection = json_request(&first, reqwest::Method::POST, &format!("/project/{id}/api/ai/providers"), json!({"name":"Browser connection","provider":"custom","endpoint":"https://provider.example/v1","credential":{"action":"browser"}})).await;
-    assert_eq!(connection["credential_mode"], "browser");
+    let connections = json_request(
+        &first,
+        reqwest::Method::GET,
+        &format!("/project/{id}/api/ai/providers"),
+        Value::Null,
+    )
+    .await;
+    assert!(
+        connections
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|item| item["id"] == connection["id"])
+    );
     let metadata = std::fs::read_to_string(
         temporary
             .path()

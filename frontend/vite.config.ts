@@ -7,6 +7,7 @@ import { configDefaults } from 'vite-plus/test/config';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import babel from '@rolldown/plugin-babel';
 import tailwindcss from '@tailwindcss/postcss';
+import { wordflowTheme } from './theme/plugin';
 
 const frontendRootDir = path.dirname(fileURLToPath(import.meta.url));
 
@@ -57,6 +58,19 @@ export default defineConfig(({ mode }) => {
   clearScreen: false,
   base: './',
   plugins: [
+    wordflowTheme(path.join(frontendRootDir, 'theme/vscode-2026.json')),
+    mode !== 'tauri' && mode !== 'test' && process.env.WORDFLOW_API_PREVIEW !== '1' && {
+      name: 'wordflow-server-config',
+      apply: 'serve',
+      transformIndexHtml() {
+        return [{
+          tag: 'script',
+          attrs: { id: 'wordflow-server-config', type: 'application/json' },
+          children: JSON.stringify({ public_base_path: '/' }),
+          injectTo: 'head-prepend' as const,
+        }];
+      },
+    },
     process.env.WORDFLOW_E2E_ERRORS === '1' && {
       name: 'browser-error-capture',
       transformIndexHtml() {
@@ -103,10 +117,8 @@ export default defineConfig(({ mode }) => {
     host: '127.0.0.1',
     strictPort: true,
     proxy: mode !== 'tauri' ? {
-      '/api/preferences': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
-      '/api/ai': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
-      '/api/project': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
-      '/api/resources': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
+      '/api': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
+      '/project': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
       '/health': `http://127.0.0.1:${process.env.VITE_BACKEND_PORT ?? '8002'}`,
     } : undefined,
     watch: {

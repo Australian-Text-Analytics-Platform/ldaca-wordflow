@@ -22,19 +22,35 @@ export function parseDevMode(arguments_) {
   if (arguments_.length === 1 && arguments_[0] === '--frontend') {
     return 'frontend';
   }
-  throw new Error('Usage: pnpm dev [--backend | --frontend]');
+  throw new Error('Usage: vp run dev [--backend | --frontend]');
 }
 
-export function createDevCommands(mode, environment = process.env) {
-  const identity = environment.WORDFLOW_APP_ID === TEST_IDENTITY ? TEST_IDENTITY : DEV_IDENTITY;
+export function createDevCommands(mode, environment = process.env, apiOnly = false) {
   const frontendPort = developmentPort(environment, 'FRONTEND_PORT', '3000');
   const backendPort = developmentPort(environment, 'VITE_BACKEND_PORT', '8002');
+  const frontend = {
+    command: frontendCommand,
+    env: {
+      FRONTEND_PORT: frontendPort,
+      VITE_BACKEND_PORT: backendPort,
+      WORDFLOW_API_PREVIEW: apiOnly ? '1' : '0',
+    },
+    name: 'frontend',
+    prefixColor: 'magenta',
+  };
+  if (mode === 'frontend') {
+    return [frontend];
+  }
+
+  const identity = environment.WORDFLOW_APP_ID === TEST_IDENTITY ? TEST_IDENTITY : DEV_IDENTITY;
   const developmentCorsOrigins = [
     `http://localhost:${frontendPort}`,
     `http://127.0.0.1:${frontendPort}`,
   ];
   const backend = {
-    command: 'cargo run --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev -- --untitled',
+    command: apiOnly
+      ? 'cargo run --locked --manifest-path backend/Cargo.toml --bin wordflow-api-dev -- --untitled'
+      : 'cargo run --locked -p wordflow-server -- --mode single-user --public-base-path /',
     name: 'backend',
     prefixColor: 'blue',
     env: {
@@ -46,25 +62,22 @@ export function createDevCommands(mode, environment = process.env) {
         JSON.stringify(developmentCorsOrigins),
     },
   };
-  const frontend = {
-    command: frontendCommand,
-    env: { FRONTEND_PORT: frontendPort, VITE_BACKEND_PORT: backendPort },
-    name: 'frontend',
-    prefixColor: 'magenta',
-  };
-
   if (mode === 'backend') {
     return [backend];
-  }
-  if (mode === 'frontend') {
-    return [frontend];
   }
   return [backend, frontend];
 }
 
 export async function runDev(arguments_ = process.argv.slice(2)) {
   const mode = parseDevMode(arguments_);
-  const { result } = concurrently(createDevCommands(mode), {
+  const commands = createDevCommands(mode);
+  if (mode !== 'frontend') {
+    // Prepare embedded assets and compile Rust before making the Vite UI available.
+    for (const command of ['pnpm -C frontend build', 'cargo build --locked -p wordflow-server']) {
+      await concurrently([{ command, name: 'prepare' }], { prefix: 'name' }).result;
+    }
+  }
+  const { result } = concurrently(commands, {
     killOthersOn: ['success', 'failure'],
     prefix: 'name',
   });

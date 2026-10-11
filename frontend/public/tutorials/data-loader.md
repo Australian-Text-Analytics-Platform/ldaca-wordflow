@@ -58,8 +58,10 @@ Views keep their original revision when newer samples are published.
 <h2 id="help-data-loader-import-ldaca-button">LDaCA</h2>
 
 Open **LDaCA**, search by keyword or collection ID, and use the collection and
-file-type filters to narrow the results. Expand **Access token** when a collection
-requires credentials; the token stays in this window and is not saved in the project.
+file-type filters to narrow the results. **Manage Portal access** opens
+**Settings → Portal** when a collection requires credentials. Data Loader uses
+the configured token automatically. Public collections need no token; credentials
+never enter the project. See [the interface guide](./ui.md) for storage choices.
 
 Review each result's source, access information and licence. **Details** exposes
 the complete description and identifier; the title opens its source portal page.

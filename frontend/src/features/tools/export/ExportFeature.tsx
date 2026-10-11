@@ -101,7 +101,7 @@ export default function ExportFeature({
   return (
     <div className="space-y-3 p-3" data-testid="export-feature">
       <Tabs value={mode} onValueChange={setMode}>
-        <TabsList aria-label="Export mode">
+        <TabsList data-guidance-stage="setup" aria-label="Export mode">
           <TabsTrigger value="files">Data files</TabsTrigger>
           <TabsTrigger value="project">Wordflow project</TabsTrigger>
         </TabsList>
@@ -240,7 +240,13 @@ export default function ExportFeature({
                 saved as Tables. The original project stays open and unchanged.
               </p>
               {(complete || selected.length > 0) && (
-                <div aria-label="Export inspection" className="rounded-md border p-3 text-body">
+                <div
+                  aria-label="Export inspection"
+                  data-guidance-stage={
+                    inspection.isSuccess && !inspection.isFetching ? 'results' : undefined
+                  }
+                  className="rounded-md border p-3 text-body"
+                >
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-medium">Project contents</span>
                     <Button
@@ -313,6 +319,7 @@ export default function ExportFeature({
           )}
           <div className="flex flex-wrap items-center gap-3">
             <Button
+              data-guidance-stage="action"
               disabled={
                 download.isPending ||
                 (!complete && selected.length === 0) ||
@@ -336,6 +343,13 @@ export default function ExportFeature({
           </div>
         </CardContent>
       </Card>
+      {download.isSuccess && download.data !== null && (
+        <div>
+          <p data-guidance-stage="followup" role="status">
+            Export saved. Open the exported project or use the data files in another tool.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

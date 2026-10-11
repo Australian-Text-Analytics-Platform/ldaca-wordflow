@@ -109,3 +109,39 @@ export function transportHeaders(
   }
   return headers;
 }
+
+function portalStorageKey() {
+  if (!account?.browser_credentials)
+    throw new Error('Browser credentials require an authenticated account');
+  return `wordflow-portal-credential:v1:${account.id}`;
+}
+export function portalToken(): string | undefined {
+  if (!browserCredentials()) return undefined;
+  const raw = localStorage.getItem(portalStorageKey());
+  if (!raw) return undefined;
+  let value: unknown;
+  try {
+    value = JSON.parse(raw);
+  } catch {
+    throw new Error('Invalid browser Portal credential storage');
+  }
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    !('version' in value) ||
+    value.version !== 1 ||
+    !('token' in value) ||
+    typeof value.token !== 'string'
+  )
+    throw new Error('Invalid browser Portal credential storage');
+  return value.token;
+}
+export function storePortalToken(token: string | null) {
+  if (token === null) localStorage.removeItem(portalStorageKey());
+  else localStorage.setItem(portalStorageKey(), JSON.stringify({ version: 1, token }));
+}
+export function portalOperationHeaders(path: string): Record<string, string> {
+  if (!/^\/api\/project\/ldaca\/(search|import)$/.test(path)) return {};
+  const token = portalToken();
+  return token ? { 'x-wordflow-portal-token': token } : {};
+}

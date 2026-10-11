@@ -91,6 +91,7 @@ async fn switch_project(
             return Ok(Json(host.project_status(active.id).await?));
         }
         let runtime = host.new_runtime()?;
+        let untitled = path.is_none();
         match path {
             Some(path) => {
                 runtime.open(path).await?;
@@ -99,12 +100,20 @@ async fn switch_project(
                 runtime.create(None).await?;
             }
         }
+        let untitled_number = if untitled {
+            host.0.next_untitled.fetch_add(1, Ordering::Relaxed) + 1
+        } else {
+            0
+        };
         let id = Uuid::new_v4();
-        host.0
-            .projects
-            .write()
-            .await
-            .insert(id, Active { id, runtime });
+        host.0.projects.write().await.insert(
+            id,
+            Active {
+                id,
+                runtime,
+                untitled_number,
+            },
+        );
         host.changed();
         Ok(Json(host.project_status(id).await?))
     })
@@ -196,9 +205,9 @@ async fn save_owned(host: Host, input: ServerSave) -> Result<Json<ServerProject>
 async fn snapshot(State(host): State<Host>, Path(id): Path<Uuid>) -> Result<Response> {
     let active = host.session(id).await?;
     let title = active
-        .runtime
         .status()
         .await?
+        .project
         .map(|p| p.title)
         .unwrap_or_else(|| "Untitled".into());
     let file = active.runtime.snapshot().await?;

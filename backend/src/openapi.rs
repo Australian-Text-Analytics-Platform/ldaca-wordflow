@@ -37,6 +37,8 @@ pub fn document() -> utoipa::openapi::OpenApi {
     let (_, mut document) = crate::api::router().split_for_parts();
     let (_, health) = crate::health_routes().split_for_parts();
     document.merge(health);
+    document.merge(crate::portal::contract().split_for_parts().1);
+    document.merge(crate::host_storage::contract().split_for_parts().1);
     document.merge(Payloads::openapi());
     document.info =
         utoipa::openapi::Info::new("Wordflow native HTTP API", env!("CARGO_PKG_VERSION"));
@@ -106,7 +108,7 @@ mod tests {
                 }
             }
         }
-        assert_eq!(operations.len(), 102);
+        assert_eq!(operations.len(), 105);
         assert_eq!(
             first["components"]["schemas"]["FrequencyCorpus"]["properties"]["total_tokens"]["type"],
             "string"

@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
   Select,
@@ -10,9 +10,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import * as filesApi from '@/features/project/filesApi';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ChevronRight, ExternalLink, Search } from 'lucide-react';
 import { useState } from 'react';
+import { useHostServices } from '@/features/settings/HostSettings';
+import { portalInfo } from '@/features/settings/portalApi';
 
 function portalUrl(record: filesApi.OniSearchResult) {
   const identifier = record.crate_id?.trim() ? record.crate_id : record.id;
@@ -21,22 +23,29 @@ function portalUrl(record: filesApi.OniSearchResult) {
 }
 
 export default function NativeLdacaImport({ base }: { base: string }) {
-  const [token, setToken] = useState('');
+  const host = useHostServices();
+  const client = useQueryClient();
+  const portal = useQuery(
+    {
+      queryKey: ['host', host?.base ?? base, 'portal'],
+      queryFn: ({ signal }) => portalInfo(host?.base ?? base, signal),
+    },
+    host?.client ?? client,
+  );
   const [query, setQuery] = useState('');
   const [method, setMethod] = useState<'keyword' | 'identifier'>('keyword');
   const [collection, setCollection] = useState('all');
   const [format, setFormat] = useState('all');
   const search = useMutation({
-    mutationFn: (input: { method: 'keyword' | 'identifier'; query: string; token: string }) =>
-      filesApi.searchLdaca(base, input.method, input.query, input.token),
+    mutationFn: (input: { method: 'keyword' | 'identifier'; query: string }) =>
+      filesApi.searchLdaca(base, input.method, input.query),
     onSuccess: () => {
       setCollection('all');
       setFormat('all');
     },
   });
   const imported = useMutation({
-    mutationFn: (input: { id: string; token: string }) =>
-      filesApi.importLdaca(base, input.id, input.token || undefined),
+    mutationFn: (input: { id: string }) => filesApi.importLdaca(base, input.id),
   });
   const records = search.data ?? [];
   const options = (field: 'collections' | 'file_formats') =>
@@ -67,7 +76,7 @@ export default function NativeLdacaImport({ base }: { base: string }) {
           className="flex flex-wrap items-end gap-2"
           onSubmit={(event) => {
             event.preventDefault();
-            if (query.trim() && !search.isPending) search.mutate({ method, query, token });
+            if (query.trim() && !search.isPending) search.mutate({ method, query });
           }}
         >
           <label className="flex flex-col gap-1 text-label-secondary">
@@ -104,32 +113,20 @@ export default function NativeLdacaImport({ base }: { base: string }) {
             {search.isPending ? 'Searching…' : 'Search'}
           </Button>
         </form>
-        <Collapsible className="flex flex-col gap-2">
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="group w-fit">
-              <ChevronRight className="group-data-[state=open]:rotate-90" />
-              Access token{token ? ' · Set' : ' · Optional'}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
-            <label className="flex flex-col gap-1 text-body">
-              Portal token
-              <Input
-                aria-label="Portal token"
-                type="password"
-                autoComplete="off"
-                value={token}
-                onChange={(event) => {
-                  setToken(event.target.value);
-                }}
-              />
-              <span className="text-label-secondary text-description">
-                For collections that require access. Kept in this window only, never saved in the
-                project.
-              </span>
-            </label>
-          </CollapsibleContent>
-        </Collapsible>
+        <div className="flex flex-wrap items-center gap-2 text-description text-body-secondary">
+          <span>
+            {portal.data?.has_credential
+              ? 'Portal token configured'
+              : 'Public access · no Portal token'}
+          </span>
+          <Button
+            variant="outline"
+            disabled={!host}
+            onClick={(event) => host?.openSettings('portal', event.currentTarget)}
+          >
+            Manage Portal access
+          </Button>
+        </div>
         {search.isPending && (
           <p role="status" className="text-body text-description">
             Searching the LDaCA catalogue…
@@ -204,9 +201,10 @@ export default function NativeLdacaImport({ base }: { base: string }) {
                     <Button
                       variant="outline"
                       size="sm"
+                      data-guidance-stage="action"
                       disabled={!record.importable || imported.isPending}
                       onClick={() => {
-                        imported.mutate({ id: record.id, token });
+                        imported.mutate({ id: record.id });
                       }}
                     >
                       {imported.isPending && imported.variables.id === record.id

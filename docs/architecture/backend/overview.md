@@ -3,7 +3,8 @@
 `backend/` is the shared Rust/Axum crate. Tauri embeds its library in each
 project window. The dedicated `server/` package supplies browser storage,
 project switching and embedded production assets; see [server ownership](server.md).
-`wordflow-api-dev` remains the API-only Vite/test host. There is no backend implementation selector or Python sidecar.
+`wordflow-api-dev` remains the API-only engine test host. User-facing browser
+development runs `wordflow-server` with Vite. There is no backend implementation selector or Python sidecar.
 
 The host owns logging, its Tokio runtime, listeners and shutdown signals.
 `ProjectRuntime` owns one DuckDB project and serialized database work off Tokio

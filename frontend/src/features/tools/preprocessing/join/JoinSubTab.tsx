@@ -92,7 +92,10 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex flex-wrap items-center gap-3 border-t pt-4">
+        <CardFooter
+          data-guidance-stage={!apply.disabled ? 'followup' : undefined}
+          className="flex flex-wrap items-center gap-3 border-t pt-4"
+        >
           <div className="flex min-w-0 flex-[1_1_20rem] flex-wrap items-center gap-2">
             <Label htmlFor="join-new-node-name" className="shrink-0">
               New data block name
@@ -118,6 +121,7 @@ export function JoinSubTab(props: JoinSubTabComponentProps) {
           </div>
           <DisabledReasonTooltip reason={apply.disabledReason}>
             <Button
+              data-guidance-stage="action"
               type="button"
               size="sm"
               onClick={() => {

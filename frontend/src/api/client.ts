@@ -1,4 +1,4 @@
-import { transportHeaders, expireAccount } from '@/features/server/account';
+import { transportHeaders, expireAccount, portalOperationHeaders } from '@/features/server/account';
 import type { components } from '@/api/generated/native';
 import {
   requestUrl,
@@ -25,6 +25,7 @@ export async function request<P extends HttpPath, M extends Method<P>>(
     response = await fetch(`${base}${path}`, {
       method: requestMethod,
       headers: {
+        ...portalOperationHeaders(path),
         ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
         ...transportHeaders(
           requestMethod,

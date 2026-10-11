@@ -41,9 +41,15 @@ fn portal_error(error: ldaca_rs::data::Error) -> Error {
 )]
 pub(crate) async fn search(
     State(project): State<ProjectRuntime>,
+    headers: axum::http::HeaderMap,
     crate::api::InputJson(input): crate::api::InputJson<Search>,
 ) -> Result<Json<SearchResponse>> {
-    let client = project.portal_client(input.token.as_deref())?;
+    let token = project
+        .ai()
+        .portal()
+        .resolve(input.token.as_deref(), &headers)
+        .await?;
+    let client = project.portal_client(token.as_deref())?;
     let operation = project.operation()?;
     let shutdown = operation.cancellation.clone();
     let result = tokio::select! {
@@ -62,14 +68,20 @@ pub(crate) async fn search(
 )]
 pub(crate) async fn import(
     State(project): State<ProjectRuntime>,
+    headers: axum::http::HeaderMap,
     crate::api::InputJson(input): crate::api::InputJson<Import>,
 ) -> Result<axum::response::Response> {
+    let token = project
+        .ai()
+        .portal()
+        .resolve(input.token.as_deref(), &headers)
+        .await?;
     let runtime = project.clone();
     let task = project.submit_task("Import from LDaCA", move |context| async move {
         let project = runtime;
         context.progress("Loading collection metadata", None);
         project.ensure_writable().await?;
-        let client = project.portal_client(input.token.as_deref())?;
+        let client = project.portal_client(token.as_deref())?;
         let operation = project.operation()?;
         let shutdown = operation.cancellation.clone();
         let krate = tokio::select! {

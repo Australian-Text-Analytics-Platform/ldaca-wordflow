@@ -12,6 +12,7 @@ export function AnalysisAction({
 }: ComponentProps<typeof Button> & { reason?: string | false }) {
   return (
     <Button
+      data-guidance-stage="action"
       {...props}
       className={cn('aria-disabled:opacity-40 aria-disabled:cursor-default', className)}
       aria-disabled={Boolean(reason)}

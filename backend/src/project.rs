@@ -85,6 +85,10 @@ pub struct ProjectInfo {
     pub path: Option<PathBuf>,
     pub title: String,
     pub schema_version: i32,
+    /// Current database and write-ahead-log bytes on disk, without checkpointing.
+    pub size: Option<u64>,
+    /// Latest database or write-ahead-log modification time, in Unix seconds.
+    pub modified: Option<u64>,
 }
 fn object_kind_schema() -> utoipa::openapi::schema::Object {
     crate::openapi::string_enum(&["table", "view", "missing"])

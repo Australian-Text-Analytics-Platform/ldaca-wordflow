@@ -18,8 +18,10 @@ Wordflow supports exactly `light-2026` and `dark-2026`. Their resolved colors
 and design metrics are normalized in one manifest pinned to Visual Studio Code
 1.134.0 commit `474a349ad5b745e512ef86b864d1c74f7264dd7a`, including the bundled Light
 2026, Dark 2026, design-token guidance, button geometry, and Modern UI source.
-An offline deterministic generator emits the CSS variables and Tailwind v4
-mappings, and build checks reject stale output or legacy presentation styling.
+A Vite plugin emits the CSS variables as a virtual stylesheet directly from the
+manifest when requested. Tailwind v4 mappings consume those variables. Development
+uses CSS hot updates and production builds bundle the stylesheet; no generated CSS
+copy or separate theme validity checks are maintained.
 
 Before React loads, a synchronous script applies the last-known
 `ldaca-color-theme-v1` value or Light when storage is missing, invalid, or

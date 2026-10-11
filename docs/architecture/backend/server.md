@@ -2,7 +2,7 @@
 
 `server/` owns standalone configuration, embedded UI serving, per-user file
 libraries, authentication and worker lifecycle. `wordflow-backend` owns analysis
-and database behavior. `wordflow-api-dev` is the API-only Vite/Test host and is
+and database behavior. `wordflow-api-dev` is the API-only engine test host and is
 not a release package. The server has single-user and Linux multi-user modes.
 
 ```mermaid
@@ -15,7 +15,9 @@ flowchart LR
 ```
 
 Single-user mode runs the same per-user host in process, under `admin`. Each host
-maintains a registry of transient project UUIDs. New/Open selects a project only
+maintains a registry of transient project UUIDs. These IDs identify open sessions,
+including projects without filenames, and stay unchanged through Save As. They
+are not persisted in project files. New/Open selects a project only
 in the requesting window. Different files have independent runtimes; opening
 the same canonical file reuses its runtime. Project requests are captured under
 `/project/{id}`. Refresh reconnects to the project ID in the browser URL.
@@ -33,6 +35,14 @@ crash recovery or change to the `.wfpj` schema.
 invalidations. Preference and registry subscribers share one connection in each
 browser window, keeping refresh requests available when multiple windows are open.
 Project runtime events remain scoped to the captured project.
+
+Host Settings are available before project selection. Root `/api/ai` connection
+management and the compatible `/project/{id}/api/ai` routes share one configuration
+owner. Portal credential metadata and read-only storage locations are host
+interfaces, independent of open projects. Workers retain account-owned credential
+metadata while browser credentials accompany only the applicable operation.
+The [storage reference](../../reference/application-storage.md) owns the exact
+credential and preference contracts.
 
 Uploads and projects retain copy-on-import, no-overwrite publication, validated
 filenames and symlink rejection. A file cannot be deleted while a registry runtime

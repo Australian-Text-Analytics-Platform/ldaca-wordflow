@@ -1,6 +1,6 @@
 //! Host-owned provider configuration. Project files contain configuration IDs, never secrets.
 mod apple;
-mod credentials;
+pub(crate) mod credentials;
 pub(crate) mod http;
 pub mod inference;
 use crate::{Error, error::Result};
@@ -89,7 +89,7 @@ struct State {
     connections: Option<BTreeMap<Uuid, Connection>>,
     sessions: BTreeMap<Uuid, String>,
 }
-struct Unavailable;
+pub(crate) struct Unavailable;
 impl Secrets for Unavailable {
     fn get(&self, _: &str) -> Result<Option<String>> {
         Err(Error::new(
@@ -114,14 +114,29 @@ struct Host {
     models: Arc<tokio::sync::Mutex<ModelCatalogues>>,
     browser_owned: bool,
     request_key: Option<(Uuid, String)>,
+    portal: crate::portal::PortalConfiguration,
+    client: reqwest::Client,
 }
 /// Clone once per project runtime. Hosts provide their own identity and safe configuration path.
 /// Construction performs no I/O. All filesystem/keyring work runs on blocking worker threads.
 #[derive(Clone)]
 pub struct AiConfiguration(Arc<Host>);
 impl AiConfiguration {
+    pub fn portal(&self) -> &crate::portal::PortalConfiguration {
+        &self.0.portal
+    }
+    pub fn router(&self) -> axum::Router {
+        http::router::<Self>()
+            .split_for_parts()
+            .0
+            .with_state(self.clone())
+    }
     pub fn new(identity: &str, path: PathBuf) -> Self {
         Self(Arc::new(Host {
+            portal: crate::portal::PortalConfiguration::new(
+                identity,
+                path.with_file_name("portal.json"),
+            ),
             path: Some(path),
             secrets: Arc::new(OsSecrets {
                 namespace: format!("{identity}.ai.providers"),
@@ -130,6 +145,7 @@ impl AiConfiguration {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            client: reqwest::Client::new(),
         }))
     }
     /// Unconfigured runtimes can use explicitly session-only keys, but cannot remember credentials.
@@ -141,12 +157,17 @@ impl AiConfiguration {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            portal: crate::portal::PortalConfiguration::session_only(),
+            client: reqwest::Client::new(),
         }))
     }
     /// Workers persist metadata only. Keys live in a single request-scoped adapter.
     pub fn browser_owned(path: PathBuf) -> Self {
         let mut host = Self::session_only();
         if let Some(inner) = Arc::get_mut(&mut host.0) {
+            inner.portal = crate::portal::PortalConfiguration::browser_owned(
+                path.with_file_name("portal.json"),
+            );
             inner.path = Some(path);
             inner.browser_owned = true;
         }
@@ -186,6 +207,8 @@ impl AiConfiguration {
             models: self.0.models.clone(),
             browser_owned: true,
             request_key,
+            portal: self.0.portal.clone(),
+            client: self.0.client.clone(),
         })))
     }
     async fn access<T: Send + 'static>(
@@ -496,7 +519,7 @@ fn restore_credential(
     }
     Ok(())
 }
-fn validate_key(key: &str) -> Result<()> {
+pub(crate) fn validate_key(key: &str) -> Result<()> {
     if key.trim().is_empty() || key.len() > 8192 || key.contains(['\r', '\n', '\0']) {
         Err(Error::invalid("Enter a nonblank API key, or choose Remove"))
     } else {
@@ -548,6 +571,8 @@ mod tests {
             models: Arc::new(tokio::sync::Mutex::new(BTreeMap::new())),
             browser_owned: false,
             request_key: None,
+            portal: crate::portal::PortalConfiguration::session_only(),
+            client: reqwest::Client::new(),
         }))
     }
     fn create(credential: CredentialUpdate) -> CreateConnection {

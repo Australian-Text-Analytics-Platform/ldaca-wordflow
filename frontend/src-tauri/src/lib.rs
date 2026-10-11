@@ -159,6 +159,8 @@ pub fn run() {
             app_storage::get_preferences,
             app_storage::patch_preferences,
             app_storage::reset_preferences,
+            app_storage::get_storage_locations,
+            app_storage::open_storage_directory,
             desktop_updater::get_updater_snapshot,
             desktop_updater::check_for_updates,
             desktop_updater::download_update,

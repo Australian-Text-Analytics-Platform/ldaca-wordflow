@@ -96,6 +96,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/portal/credential': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['portal_credential_get'];
+    put?: never;
+    post: operations['portal_credential_update'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/preferences': {
     parameters: {
       query?: never;
@@ -1745,6 +1761,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/storage/locations': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['storage_locations'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/health/live': {
     parameters: {
       query?: never;
@@ -2206,6 +2238,8 @@ export interface components {
       registered: boolean;
       visible: boolean;
     };
+    /** @enum {string} */
+    DirectoryCategory: 'config' | 'data' | 'local_data' | 'cache' | 'logs' | 'temporary';
     DocumentInput: {
       column: string;
       source: components['schemas']['ObjectTarget'];
@@ -2409,6 +2443,17 @@ export interface components {
     /** @enum {string} */
     GraphMode: 'logical' | 'dependencies';
     GraphResponse: components['schemas']['Graph'] | components['schemas']['DependencyGraph'];
+    GuidancePatch: {
+      acknowledge?: components['schemas']['HintAcknowledgment'] | null;
+      enabled?: boolean | null;
+      resetAcknowledgments?: boolean | null;
+    };
+    GuidancePreferences: {
+      acknowledgments: {
+        [key: string]: number;
+      };
+      enabled: boolean;
+    };
     Health: {
       status: string;
       version: string;
@@ -2419,6 +2464,11 @@ export interface components {
       row: string;
       source: components['schemas']['ObjectTarget'];
       value?: string | null;
+    };
+    HintAcknowledgment: {
+      id: string;
+      /** Format: int32 */
+      version: number;
     };
     ImportTables: {
       sources: components['schemas']['TableImport'][];
@@ -2609,6 +2659,11 @@ export interface components {
       rows?: string[];
       transitions?: string[];
     };
+    PortalInfo: {
+      credential_error?: string | null;
+      credential_mode: components['schemas']['CredentialMode'];
+      has_credential: boolean;
+    };
     Prediction:
       | {
           label: string | null;
@@ -2628,6 +2683,8 @@ export interface components {
       message: string;
     };
     Preferences: {
+      guidance?: components['schemas']['GuidancePreferences'];
+      hiddenTools?: string[];
       layout: components['schemas']['LayoutPreferences'];
       recentDataFiles: string[];
       /** Format: int32 */
@@ -2635,6 +2692,8 @@ export interface components {
       theme: components['schemas']['Theme'];
     };
     PreferencesPatch: {
+      guidance?: components['schemas']['GuidancePatch'] | null;
+      hiddenTools?: string[] | null;
       layout?: components['schemas']['LayoutPatch'] | null;
       recentDataFiles?: string[] | null;
       theme?: components['schemas']['Theme'] | null;
@@ -2652,9 +2711,19 @@ export interface components {
     /** @enum {string} */
     Processing: 'all' | 'missing';
     ProjectInfo: {
+      /**
+       * Format: int64
+       * @description Latest database or write-ahead-log modification time, in Unix seconds.
+       */
+      modified?: number | null;
       path: string | null;
       /** Format: int32 */
       schema_version: number;
+      /**
+       * Format: int64
+       * @description Current database and write-ahead-log bytes on disk, without checkpointing.
+       */
+      size?: number | null;
       title: string;
     };
     ProjectPathRequest: {
@@ -2990,6 +3059,17 @@ export interface components {
     StopwordSource: {
       column: string;
       source: components['schemas']['ObjectTarget'];
+    };
+    StorageLocation: {
+      category: components['schemas']['DirectoryCategory'];
+      exists: boolean;
+      path: string;
+    };
+    StorageLocations: {
+      data_library?: string | null;
+      directories: components['schemas']['StorageLocation'][];
+      location_scope: string;
+      project_library?: string | null;
     };
     Tab: {
       analysis: components['schemas']['AnalysisSummary'] | null;
@@ -3665,6 +3745,64 @@ export interface operations {
         content?: never;
       };
       403: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  portal_credential_get: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PortalInfo'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  portal_credential_update: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CredentialUpdate'];
+      };
+    };
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['PortalInfo'];
+        };
+      };
+      400: {
         headers: {
           [name: string]: unknown;
         };
@@ -11951,6 +12089,25 @@ export interface operations {
         };
         content: {
           'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  storage_locations: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['StorageLocations'];
         };
       };
     };

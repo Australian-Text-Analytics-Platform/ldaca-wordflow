@@ -2,6 +2,7 @@ import { ProjectError, request } from '@/api/client';
 import { setAccount } from '@/features/server/account';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import 'virtual:wordflow-theme.css';
 import './index.css';
 import { installExternalFileDropGuard } from './lib/externalFileDropGuard';
 import { withPreferences } from './features/preferences/startup';

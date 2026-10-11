@@ -11,6 +11,7 @@ import { getTestPreferences, setTestPreferences } from '../e2e-browser/fixtures'
 it('persists native preferences across reload and synchronizes independent project windows', async () => {
   const binary = process.env.WORDFLOW_E2E_BINARY;
   if (!binary) throw new Error('Native Test binary is required');
+  await setTestPreferences({guidance:{resetAcknowledgments:true}});
   const initial = await browser.getWindowHandle();
   const directory = await mkdtemp(join(tmpdir(), 'wordflow-preferences-'));
   const path = join(directory, 'preferences-window.wfpj');
@@ -26,14 +27,19 @@ it('persists native preferences across reload and synchronizes independent proje
     if (!other) throw new Error('Second native project window did not open');
     await browser.switchToWindow(other);
     await $('h1=Data Loader').waitForDisplayed();
-    await setTestPreferences({theme:'dark-2026',layout:{sidebarWidth:280}});
+    await setTestPreferences({theme:'dark-2026',layout:{sidebarWidth:280},hiddenTools:['plots'],guidance:{enabled:false,acknowledge:{id:'export.setup',version:1}}});
     await expect($('html')).toHaveAttribute('data-theme','dark-2026');
     await browser.switchToWindow(initial);
     await expect($('html')).toHaveAttribute('data-theme','dark-2026');
     expect((await getTestPreferences()).layout.sidebarWidth).toBe(280);
+    await expect($('[data-testid="sidebar-section-tools"]').$('button=Plots')).not.toExist();
+    await expect($('[data-testid="sidebar-section-tools"]').$('button=Data Loader')).toBeDisplayed();
+    expect((await getTestPreferences()).guidance).toEqual({enabled:false,acknowledgments:{'export.setup':1}});
     await browser.refresh();
     await expect($('html')).toHaveAttribute('data-theme','dark-2026');
     expect((await getTestPreferences()).layout.sidebarWidth).toBe(280);
+    expect((await getTestPreferences()).hiddenTools).toEqual(['plots']);
+    expect((await getTestPreferences()).guidance).toEqual({enabled:false,acknowledgments:{'export.setup':1}});
   } finally {
     try {
       if (other) {

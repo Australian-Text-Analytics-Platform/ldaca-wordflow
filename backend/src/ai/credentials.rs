@@ -2,13 +2,13 @@ use crate::{Error, error::Result};
 use keyring_core::{CredentialStore, Entry};
 use std::sync::Arc;
 
-pub(super) trait Secrets: Send + Sync {
+pub(crate) trait Secrets: Send + Sync {
     fn get(&self, id: &str) -> Result<Option<String>>;
     fn set(&self, id: &str, value: &str) -> Result<()>;
     fn remove(&self, id: &str) -> Result<()>;
 }
 
-pub(super) struct OsSecrets {
+pub(crate) struct OsSecrets {
     pub namespace: String,
 }
 
@@ -60,14 +60,20 @@ impl Secrets for OsSecrets {
     }
 }
 
-/// E2E cleanup is deliberately restricted to the two Test credential namespaces.
+/// E2E cleanup is deliberately restricted to Test AI and Portal credential namespaces.
 pub(crate) fn clear_test_credentials() -> Result<()> {
     let store = native_store()?;
-    for identity in [
+    for namespace in [
         wordflow_storage::TEST_ID.to_owned(),
         format!("{}.server", wordflow_storage::TEST_ID),
-    ] {
-        let namespace = format!("{identity}.ai.providers");
+    ]
+    .into_iter()
+    .flat_map(|identity| {
+        [
+            format!("{identity}.ai.providers"),
+            format!("{identity}.portal"),
+        ]
+    }) {
         #[cfg(target_os = "windows")]
         let pattern = format!("^.*{}.*$", namespace.replace('.', "\\."));
         #[cfg(target_os = "windows")]

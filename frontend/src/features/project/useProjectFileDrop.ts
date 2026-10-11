@@ -26,14 +26,14 @@ export function useProjectFileDrop(
       highlighted?.setAttribute('data-file-hover', 'true');
     };
     const dragOver = (event: DragEvent) => {
-      if (
-        !event.dataTransfer?.types.includes('application/x-wordflow-file') &&
-        !(browserEnabled && event.dataTransfer?.types.includes('Files'))
-      )
+      const browserFiles = browserEnabled && event.dataTransfer?.types.includes('Files');
+      if (!event.dataTransfer?.types.includes('application/x-wordflow-file') && !browserFiles)
         return;
       const target = targetAt(event.target);
       highlight(target);
-      if (target) event.preventDefault();
+      if (target || browserFiles) event.preventDefault();
+      if (browserFiles && event.dataTransfer)
+        event.dataTransfer.dropEffect = target ? 'copy' : 'none';
     };
     const leave = (event: DragEvent) => {
       if (!event.relatedTarget) highlight(null);
@@ -43,9 +43,9 @@ export function useProjectFileDrop(
     };
     const drop = (event: DragEvent) => {
       highlight(null);
-      if (browserEnabled && event.dataTransfer?.files.length && targetAt(event.target)) {
+      if (browserEnabled && event.dataTransfer?.files.length) {
         event.preventDefault();
-        receiveFiles(Array.from(event.dataTransfer.files));
+        if (targetAt(event.target)) receiveFiles(Array.from(event.dataTransfer.files));
         return;
       }
       const path = event.dataTransfer?.getData('application/x-wordflow-file');

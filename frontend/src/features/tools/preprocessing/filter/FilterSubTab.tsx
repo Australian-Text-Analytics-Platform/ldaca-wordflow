@@ -95,7 +95,10 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
           />
         </CardContent>
 
-        <CardFooter className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4">
+        <CardFooter
+          data-guidance-stage={!applyButtonDisabled ? 'followup' : undefined}
+          className="flex flex-wrap items-center gap-3 border-t border-surface-border bg-panel/20 py-4"
+        >
           <div className="flex min-w-0 flex-[1_1_20rem] flex-wrap items-center gap-2">
             <label
               className="shrink-0 text-body font-medium text-description"
@@ -125,6 +128,7 @@ export function FilterSubTab(props: FilterSubTabComponentProps) {
           </div>
           <DisabledReasonTooltip reason={applyButtonDisabledReason}>
             <Button
+              data-guidance-stage="action"
               size="sm"
               onClick={() => {
                 void applyFilter();
