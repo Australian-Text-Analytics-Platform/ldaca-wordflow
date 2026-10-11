@@ -117,9 +117,31 @@ class _TabSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
+# The most Preview labels a Tab keeps (about 200 pages of 50 rows).
+MAX_ANNOTATION_PREVIEW_LABELS = 10_000
+
+
+class AnnotationPreviewLabels(BaseModel):
+    """Labels the current Preview has received, by row of its input snapshot.
+
+    Kept with the Tab so a page shown again isn't sent to the AI provider
+    again; replaced by a new Preview and removed by Clear.
+    """
+
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
+    analysis_id: uuid.UUID
+    labels: dict[int, str | None]
+
+
 class AnnotationTabSettings(_TabSettings):
     kind: Literal[AnalysisKind.ANNOTATION]
     correction_columns: dict[uuid.UUID, TabName]
+    # Left out when empty, so Projects without Preview labels stay readable
+    # by 0.7.11.
+    preview_labels: AnnotationPreviewLabels | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
 
 
 class ConcordanceTabSettings(_TabSettings):

@@ -1025,3 +1025,55 @@ async def test_annotate_all_marks_only_irreducible_row_local_failures(
     assert outcome.failed_rows == [False, True, False]
     assert outcome.failed_batch_count == 1
     assert outcome.failed_row_count == 1
+
+
+async def test_preview_page_with_every_label_kept_needs_no_provider_or_key(
+    monkeypatch, tmp_path
+):
+    from ldaca_wordflow.models.analysis_results import AnnotationQueriedResult
+    from ldaca_wordflow.services import analysis_results
+
+    calls: list[list[str]] = []
+
+    async def fake_annotate_preview(_request, _key, texts, _examples):
+        calls.append(list(texts))
+        return ["positive" for _ in texts]
+
+    class _Node:
+        def __init__(self, frame):
+            import polars as pl
+
+            self.data = pl.LazyFrame(frame)
+
+    monkeypatch.setattr(analysis_results, "annotate_preview", fake_annotate_preview)
+    monkeypatch.setattr(
+        analysis_results,
+        "load_snapshot_node",
+        lambda _dir, _node_id: _Node({"text": ["a", "b", "c", "d"], "annotation": [None] * 4}),
+    )
+    request = _source_request()
+
+    async def no_key():
+        raise AssertionError("the API key is not needed")
+
+    query = analysis_results.AnnotationResultQuery(kind="annotation", page=1, page_size=4)
+    payload, new = await analysis_results._query_annotation_snapshot(
+        tmp_path, request, query, no_key, {0: "negative", 1: None, 2: "positive", 3: "x"}
+    )
+    assert calls == [] and new == {}
+    result = AnnotationQueriedResult.model_validate(payload["result"])
+    assert [item.label for item in result.labels] == [
+        "negative",
+        None,
+        "positive",
+        "x",
+    ]
+
+    async def key():
+        return "key"
+
+    payload, new = await analysis_results._query_annotation_snapshot(
+        tmp_path, request, query, key, {1: "negative"}
+    )
+    assert calls == [["a", "c", "d"]]
+    assert new == {0: "positive", 2: "positive", 3: "positive"}

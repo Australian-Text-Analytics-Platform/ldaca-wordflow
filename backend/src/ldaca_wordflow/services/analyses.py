@@ -17,6 +17,7 @@ from anyio.to_thread import run_sync as run_sync_in_worker_thread
 from pydantic import ValidationError
 
 from ..analysis.result_integrity import validate_analysis_result_integrity
+from ..domain.workspace.tab import MAX_ANNOTATION_PREVIEW_LABELS
 from ..domain.workspace import (
     Analysis,
     AnalysisArtifactRecord,
@@ -28,7 +29,9 @@ from ..domain.workspace import (
     AnnotationAnalysisRequest,
     AnnotationAnalysisSubmission,
     AnnotationRunAllAnalysisRequest,
+    AnnotationPreviewLabels,
     AnnotationRunAllSubmission,
+    AnnotationTabSettings,
     ConcordanceDocumentDataBlockCreationAnalysisRequest,
     ConcordanceMatchDataBlockCreationAnalysisRequest,
     ConcordanceRunAllAnalysisRequest,
@@ -399,6 +402,9 @@ class AnalysisService:
             if linear_annotation:
                 for analysis_id in list(tab.analysis_ids):
                     lease.workspace.remove_analysis(analysis_id)
+                if isinstance(tab.settings, AnnotationTabSettings):
+                    # The replaced Preview's labels go with it.
+                    tab.settings.preview_labels = None
             record = AnalysisRecord.create(
                 request,
                 tab_id=tab.id,
@@ -716,6 +722,8 @@ class AnalysisService:
             ]
             timestamp = self._clock()
             tab.analysis_ids = []
+            if isinstance(tab.settings, AnnotationTabSettings):
+                tab.settings.preview_labels = None
             tab.modified_at = timestamp
             tab.revision += 1
             for root_id in root_ids:
@@ -1322,6 +1330,49 @@ class AnalysisService:
                 lease,
                 self._detached_root_id(lease, failed),
             )
+
+    async def save_annotation_preview_labels(
+        self,
+        user_id: str,
+        workspace_id: uuid.UUID,
+        analysis_id: uuid.UUID,
+        labels: dict[int, str | None],
+    ) -> None:
+        """Keep a Preview page's labels with its Tab, so it isn't sent again.
+
+        Labels for a Preview its Tab no longer shows are dropped. A Tab keeps
+        at most MAX_ANNOTATION_PREVIEW_LABELS; later pages are not kept.
+        """
+
+        if not labels:
+            return
+        async with self._workspaces.mutation_context(user_id, workspace_id) as lease:
+            record = lease.workspace.analyses.get(analysis_id)
+            tab = lease.workspace.tabs.get(record.tab_id) if record is not None else None
+            if (
+                tab is None
+                or analysis_id not in tab.analysis_ids
+                or not isinstance(tab.settings, AnnotationTabSettings)
+            ):
+                lease.commit_requested = False
+                return
+            current = tab.settings.preview_labels
+            kept = (
+                dict(current.labels)
+                if current is not None and current.analysis_id == analysis_id
+                else {}
+            )
+            new = {row: label for row, label in labels.items() if row not in kept}
+            room = MAX_ANNOTATION_PREVIEW_LABELS - len(kept)
+            if not new or room <= 0:
+                lease.commit_requested = False
+                return
+            kept.update(dict(list(new.items())[:room]))
+            tab.settings.preview_labels = AnnotationPreviewLabels(
+                analysis_id=analysis_id, labels=kept
+            )
+            tab.modified_at = self._clock()
+            tab.revision += 1
 
     async def save_annotation_progress(
         self,

@@ -516,6 +516,11 @@ const tutorial = {
     anchor: 'help-annotation-setup',
     label: 'Annotation setup',
   },
+  'analysis.annotation.thinking': {
+    file: 'tutorials/annotation.md',
+    anchor: 'help-annotation-thinking',
+    label: 'Thinking',
+  },
   'analysis.annotation.row-viewer': {
     file: 'tutorials/annotation.md',
     anchor: 'help-annotation-row-viewer',

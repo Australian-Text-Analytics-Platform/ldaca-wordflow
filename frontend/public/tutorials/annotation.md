@@ -117,12 +117,11 @@ Analysis; groups with fewer examples contribute every usable row.
 
 **Advanced settings** include the instruction prompt, the settings for the
 selected provider, and the Run settings. Each provider's settings offer
-**Thinking** (the model thinks step by step before it answers: slower, but
-often more accurate) and, where the model uses it, **Temperature** (lower gives
-more consistent answers). Anthropic has no temperature setting. For a Custom
-provider, **Thinking** off also turns off the thinking of models that think by
-default, such as Qwen on oMLX or vLLM, so they answer with the labels straight
-away. Below them, the Run settings apply to every provider: **Which rows to
+**Thinking** (the model reasons before it answers; see
+[Thinking](#help-annotation-thinking) for when to turn it on) and, where the
+model uses it, **Temperature** (lower gives more consistent answers). Anthropic
+has no temperature setting.
+Below them, the Run settings apply to every provider: **Which rows to
 annotate** (**Only rows without an annotation**, the default, or **Annotate all
 rows again**), **Rows per request** (how many rows go to the model in each
 request), **Requests at once** (how many requests Run sends at the same time:
@@ -133,14 +132,37 @@ requests don't wait in its queue until they time out. Defaults are a good
 starting point. Change one setting deliberately, because provider capability,
 cost, latency, and repeatability vary by model.
 
+<h3 id="help-annotation-thinking">Thinking</h3>
+
+**Thinking** is off by default. With it off, the model answers with the labels
+straight away, so Preview and Run are much faster and cost less.
+
+Turn it on when the codes are complicated: subtle distinctions, codes that
+depend on irony or stance, or descriptions with several conditions. The model
+then reasons before it answers, which can make the labels more precise. The
+trade-off is cost and speed: the reasoning can take thousands of extra output
+tokens per request, which you pay for, and each request takes longer.
+**Thinking effort** (low, medium or high) sets how much room the model has to
+think; more room can help hard cases and costs more.
+
+To decide, Preview the same rows with **Thinking** off and on, and compare both
+with rows you have labelled yourself. Keep it on only if the labels clearly
+improve.
+
+Not every model can think. For a Custom provider, **Thinking** off also turns
+off the thinking of models that think by default, such as Qwen on oMLX or vLLM;
+turn it on if you want them to think.
+
 <h3 id="help-annotation-preview">Preview</h3>
 
 Choose **Preview** to see predicted labels for a sample of rows without writing
 to the annotation column. Page through the predictions,
 compare them with existing labels, add corrections if useful, then revise the
 Codebook, examples, model, or settings when the errors show a pattern.
-Preview waits as long as the provider allows; choose **Stop** when you no longer
-want to wait. After a Preview, the button turns on again when you change a
+Pages you have seen are kept with the tab and saved with the Project, so going
+back to a page, reloading or reopening the tab doesn't ask the provider again;
+a new Preview or **Clear** removes them. Preview waits as long as the provider
+allows; choose **Stop** when you no longer want to wait. After a Preview, the button turns on again when you change a
 setting. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 <h3 id="help-annotation-run-all">Run and review</h3>

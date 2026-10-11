@@ -1,3 +1,4 @@
+import HelpIcon from '@/components/help/HelpIcon';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -75,7 +76,14 @@ export function ReasoningField({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div className="space-y-0.5">
-          <Label htmlFor="annotation-ai-reasoning">{label}</Label>
+          <div className="flex items-center gap-1">
+            <Label htmlFor="annotation-ai-reasoning">{label}</Label>
+            <HelpIcon
+              targetKey="analysis.annotation.thinking"
+              label="Thinking"
+              tooltip="Off is faster and cheaper. On can help with complex codes, at higher cost and time."
+            />
+          </div>
           <p className="text-label-secondary text-description">{description}</p>
         </div>
         <Switch

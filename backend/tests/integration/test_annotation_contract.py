@@ -55,6 +55,7 @@ def test_annotation_preview_is_durable_and_run_all_edits_the_source(
     run_all_examples: list[list[tuple[str, str]]] = []
     preview_retry_limits: list[int] = []
     preview_examples: list[list[tuple[str, str]]] = []
+    preview_text_counts: list[int] = []
 
     async def fake_annotate_all(
         request,
@@ -89,6 +90,7 @@ def test_annotation_preview_is_durable_and_run_all_edits_the_source(
         examples,
     ):
         preview_retry_limits.append(request.max_retries_per_batch)
+        preview_text_counts.append(len(texts))
         preview_examples.append(
             [(example.text, example.label) for example in examples]
         )
@@ -289,7 +291,24 @@ def test_annotation_preview_is_durable_and_run_all_edits_the_source(
         assert first_page.status_code == 200, first_page.text
         assert second_page.status_code == 200, second_page.text
         assert first_page.json()["result"]["rows"] == second_page.json()["result"]["rows"]
-        assert preview_retry_limits == [4, 4]
+        assert first_page.json()["result"]["labels"] == second_page.json()["result"]["labels"]
+        # The page shown again comes from the labels kept with the Tab.
+        assert preview_retry_limits == [4]
+        assert preview_text_counts == [20]
+        kept = client.get(f"/api/workspaces/{workspace_id}/tabs/{tab_id}").json()
+        assert kept["settings"]["preview_labels"]["analysis_id"] == preview_id
+        assert len(kept["settings"]["preview_labels"]["labels"]) == 20
+        # A larger page sends only the rows without a kept label.
+        wider = client.post(
+            page_url,
+            json={"kind": "annotation", "page": 1, "page_size": 30},
+            headers=unsafe,
+        )
+        assert wider.status_code == 200, wider.text
+        assert preview_text_counts == [20, 10]
+        assert [item["row_index"] for item in wider.json()["result"]["labels"]] == list(
+            range(30)
+        )
         assert preview_examples[0] == preview_examples[1]
         assert len(preview_examples[0]) == 5
         assert {label for _, label in preview_examples[0]} == {
@@ -312,6 +331,9 @@ def test_annotation_preview_is_durable_and_run_all_edits_the_source(
             headers=unsafe,
         )
         assert run_all.status_code == 201, run_all.text
+        # The replaced Preview's kept labels go with it.
+        replaced = client.get(f"/api/workspaces/{workspace_id}/tabs/{tab_id}").json()
+        assert "preview_labels" not in replaced["settings"]
         child = _wait(client, workspace_id, run_all.json()["id"])
         assert child["state"] == "succeeded", child
         assert run_all_retry_limits == [4]

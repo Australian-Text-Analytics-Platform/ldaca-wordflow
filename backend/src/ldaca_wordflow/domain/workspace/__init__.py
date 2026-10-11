@@ -27,6 +27,7 @@ from .provenance import (
 )
 from .tab import (
     AnalysisKind,
+    AnnotationPreviewLabels,
     AnnotationTabSettings,
     ConcordanceTabSettings,
     QuotationTabSettings,
@@ -111,6 +112,7 @@ __all__ = [
     "AnnotationAnalysisSubmission",
     "AnnotationRunAllAnalysisRequest",
     "AnnotationRunAllSubmission",
+    "AnnotationPreviewLabels",
     "AnnotationTabSettings",
     "AnnotationDerivation",
     "ConcordanceAnalysisRequest",

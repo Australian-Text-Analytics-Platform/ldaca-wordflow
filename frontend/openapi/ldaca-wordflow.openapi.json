@@ -1137,6 +1137,37 @@
         "title": "AnnotationPreviewLabel",
         "type": "object"
       },
+      "AnnotationPreviewLabels": {
+        "additionalProperties": false,
+        "description": "Labels the current Preview has received, by row of its input snapshot.\n\nKept with the Tab so a page shown again isn't sent to the AI provider\nagain; replaced by a new Preview and removed by Clear.",
+        "properties": {
+          "analysis_id": {
+            "format": "uuid",
+            "title": "Analysis Id",
+            "type": "string"
+          },
+          "labels": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "title": "Labels",
+            "type": "object"
+          }
+        },
+        "required": [
+          "analysis_id",
+          "labels"
+        ],
+        "title": "AnnotationPreviewLabels",
+        "type": "object"
+      },
       "AnnotationProviderConfigurationCreate": {
         "additionalProperties": false,
         "description": "Create one stable provider connection with an optional credential.",
@@ -1616,6 +1647,16 @@
             "const": "annotation",
             "title": "Kind",
             "type": "string"
+          },
+          "preview_labels": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AnnotationPreviewLabels"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [

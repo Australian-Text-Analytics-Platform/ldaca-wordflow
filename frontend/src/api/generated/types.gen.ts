@@ -560,6 +560,27 @@ export type AnnotationPreviewLabel = {
 };
 
 /**
+ * AnnotationPreviewLabels
+ *
+ * Labels the current Preview has received, by row of its input snapshot.
+ *
+ * Kept with the Tab so a page shown again isn't sent to the AI provider
+ * again; replaced by a new Preview and removed by Clear.
+ */
+export type AnnotationPreviewLabels = {
+    /**
+     * Analysis Id
+     */
+    analysis_id: string;
+    /**
+     * Labels
+     */
+    labels: {
+        [key: string]: string | null;
+    };
+};
+
+/**
  * AnnotationProviderConfigurationCreate
  *
  * Create one stable provider connection with an optional credential.
@@ -805,6 +826,7 @@ export type AnnotationTabSettings = {
      * Kind
      */
     kind: 'annotation';
+    preview_labels?: AnnotationPreviewLabels | null;
 };
 
 /**

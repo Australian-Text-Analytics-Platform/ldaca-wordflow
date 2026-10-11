@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render as renderUi, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useState } from 'react';
+import { type ReactElement, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { AnnotationProviderType } from '../aiProviders';
 import { AnnotationInferenceSettings } from '../components/AnnotationInferenceSettings';
 
@@ -83,6 +84,9 @@ function Harness({
     />
   );
 }
+
+// The Thinking help icon needs a tooltip provider, as in the app.
+const render = (ui: ReactElement) => renderUi(<TooltipProvider>{ui}</TooltipProvider>);
 
 beforeEach(() => {
   vi.clearAllMocks();

@@ -7,7 +7,7 @@ import logging
 import math
 import shutil
 import uuid
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from functools import lru_cache, partial
 from pathlib import Path
@@ -55,6 +55,7 @@ from ..analysis.generated_columns import (
     CONC_START_IDX_COLUMN,
 )
 from ..domain.workspace import (
+    AnnotationTabSettings,
     AnalysisArtifactRecord,
     AnalysisRecord,
     AnnotationAnalysisRequest,
@@ -682,6 +683,8 @@ class AnalysisResultService:
         """Return one typed projection after releasing the Workspace gate."""
 
         input_snapshot: _QueryInputSnapshot | None = None
+        # Labels this Preview already received, kept with its Tab.
+        known_preview_labels: dict[int, str | None] = {}
         try:
             async with self._analyses.successful_record_context(
                 user_id,
@@ -754,6 +757,16 @@ class AnalysisResultService:
                     ConcordanceResultQuery | AnnotationResultQuery,
                 ):
                     input_snapshot = await self._create_query_snapshot(lease, record)
+                if isinstance(effective_query, AnnotationResultQuery):
+                    tab = lease.workspace.tabs.get(record.tab_id)
+                    kept = (
+                        tab.settings.preview_labels
+                        if tab is not None
+                        and isinstance(tab.settings, AnnotationTabSettings)
+                        else None
+                    )
+                    if kept is not None and kept.analysis_id == record.id:
+                        known_preview_labels = dict(kept.labels)
 
             if isinstance(effective_query, TopicModelingResultQuery):
                 topic_stored = TopicModelingStoredResult.model_validate(stored)
@@ -795,16 +808,33 @@ class AnalysisResultService:
             ):
                 if input_snapshot is None:
                     raise RuntimeError("Annotation query input was not prepared")
-                credential = await self._credentials.resolve_annotation_provider(
-                    request,
-                    supplied=effective_query.api_key,
-                )
-                payload = await _query_annotation_snapshot(
+                annotation_request = request
+                annotation_query = effective_query
+
+                async def credential() -> str | None:
+                    return await self._credentials.resolve_annotation_provider(
+                        annotation_request,
+                        supplied=annotation_query.api_key,
+                    )
+
+                payload, new_labels = await _query_annotation_snapshot(
                     input_snapshot.path,
                     request,
                     effective_query,
                     credential,
+                    known_preview_labels,
                 )
+                if new_labels:
+                    try:
+                        await self._analyses.save_annotation_preview_labels(
+                            user_id, workspace_id, analysis_id, new_labels
+                        )
+                    except Exception:  # noqa: BLE001 - the page is shown regardless
+                        logger.warning(
+                            "Annotation Preview labels were not kept analysis_id=%s",
+                            analysis_id,
+                            exc_info=True,
+                        )
                 return ResultMaterialization(
                     kind=kind,
                     value=_RESULT_ADAPTER.validate_python(payload),
@@ -1735,8 +1765,14 @@ async def _query_annotation_snapshot(
     snapshot_dir: Path,
     request: AnnotationAnalysisRequest,
     query: AnnotationResultQuery,
-    credential: str | None,
-) -> dict[str, JsonData]:
+    credential: Callable[[], Awaitable[str | None]],
+    known_labels: dict[int, str | None],
+) -> tuple[dict[str, JsonData], dict[int, str | None]]:
+    """One Preview page, and the labels newly received for it.
+
+    Rows whose labels the Preview already received are not sent again; a page
+    whose rows all have them needs no provider request (or API key).
+    """
     source = load_snapshot_node(snapshot_dir, request.node_id)
     schema = source.data.collect_schema()
     columns = [request.text_column, request.annotation_column]
@@ -1756,6 +1792,58 @@ async def _query_annotation_snapshot(
         str(value) if value is not None else ""
         for value in page.get_column(request.text_column).to_list()
     ]
+    missing = [
+        offset for offset in range(len(texts)) if start + offset not in known_labels
+    ]
+    new_labels: dict[int, str | None] = {}
+    if missing:
+        received = await _annotate_preview_rows(
+            snapshot_dir,
+            request,
+            [texts[offset] for offset in missing],
+            await credential(),
+        )
+        new_labels = {
+            start + offset: received[position]
+            for position, offset in enumerate(missing)
+        }
+    labels = [
+        known_labels[start + offset]
+        if start + offset in known_labels
+        else new_labels[start + offset]
+        for offset in range(len(texts))
+    ]
+    rows = cast(list[dict[str, JsonData]], page.to_dicts())
+    payload = cast(
+        dict[str, JsonData],
+        {
+            "kind": "annotation",
+            "result": {
+                "variant": "queried",
+                "node_id": str(request.node_id),
+                "page": query.page,
+                "page_size": query.page_size,
+                "total_rows": total_rows,
+                "rows": rows,
+                "labels": [
+                    {"row_index": start + offset, "label": label}
+                    for offset, label in enumerate(labels)
+                ],
+                "query": query.model_dump(mode="json", exclude={"api_key"}),
+            },
+        },
+    )
+    return payload, new_labels
+
+
+async def _annotate_preview_rows(
+    snapshot_dir: Path,
+    request: AnnotationAnalysisRequest,
+    texts: list[str],
+    credential: str | None,
+) -> dict[int, str | None]:
+    """Classify Preview texts with the request's examples; labels by position."""
+
     examples = []
     if request.example_node_id is not None:
         assert request.example_text_column is not None
@@ -1786,26 +1874,7 @@ async def _query_annotation_snapshot(
             provider=request.provider,
             model=request.model,
         ) from exc
-    rows = cast(list[dict[str, JsonData]], page.to_dicts())
-    return cast(
-        dict[str, JsonData],
-        {
-            "kind": "annotation",
-            "result": {
-                "variant": "queried",
-                "node_id": str(request.node_id),
-                "page": query.page,
-                "page_size": query.page_size,
-                "total_rows": total_rows,
-                "rows": rows,
-                "labels": [
-                    {"row_index": start + offset, "label": label}
-                    for offset, label in enumerate(labels)
-                ],
-                "query": query.model_dump(mode="json", exclude={"api_key"}),
-            },
-        },
-    )
+    return dict(enumerate(labels))
 
 
 def _remove_query_root(root: Path) -> None:

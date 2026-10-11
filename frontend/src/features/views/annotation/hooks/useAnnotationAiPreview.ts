@@ -30,8 +30,9 @@ interface UseAnnotationAiPreviewArgs {
  * Projects fresh pages from one durable Annotation Preview Analysis.
  *
  * The root Analysis owns the immutable source and settings. Every page
- * navigation posts a new Result query and no prediction page is retained as
- * durable Analysis output.
+ * navigation posts a new Result query; the backend keeps the labels it has
+ * received with the Tab, so a page shown again isn't sent to the provider
+ * again.
  */
 export function useAnnotationAiPreview({
   workspaceId,
