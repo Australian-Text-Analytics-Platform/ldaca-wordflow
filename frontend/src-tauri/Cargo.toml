@@ -1,6 +1,6 @@
 [package]
 name = "ldaca-wordflow"
-version = "0.7.12"
+version = "0.7.13"
 description = "LDaCA Wordflow Desktop Application"
 authors = ["Australian Text Analytics Platform"]
 edition = "2021"
@@ -33,6 +33,11 @@ tauri-plugin-store = "2"
 tauri-plugin-updater = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+# The Help menu's search field lists Wordflow's help pages (help_search.rs).
+objc2 = "0.6.4"
+block2 = "0.6.2"
+objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSArray", "NSObject", "NSString", "NSThread"] }
+objc2-app-kit = { version = "0.3.2", default-features = false, features = ["std", "block2", "NSApplication", "NSResponder", "NSUserInterfaceItemSearching"] }
 tauri-plugin-liquid-glass = "=0.1.6"
 
 [target.'cfg(unix)'.dependencies]

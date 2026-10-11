@@ -11,6 +11,7 @@ import { RefreshStatusBanner } from '@/features/auth/components/RefreshStatusBan
 import { useUIStore } from '@/stores';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DocumentModalHost } from '@/components/dialogs/DocumentModalHost';
+import { useDesktopHelpMenu } from '@/features/desktop-help/useDesktopHelpMenu';
 import { ViewRouteSync } from '@/components/layout/ViewRouteSync';
 import { ViewRouter } from '@/components/layout/ViewRouter';
 import { isTabbedMainView } from '@/features/views/viewRegistry';
@@ -32,6 +33,8 @@ export function WorkspaceShell() {
 }
 
 function WorkspaceShellContent() {
+  // The desktop Help menu searches and opens Wordflow's help.
+  useDesktopHelpMenu();
   const currentView = useUIStore((s) => s.currentView);
   const isTabbedMain = isTabbedMainView(currentView);
 

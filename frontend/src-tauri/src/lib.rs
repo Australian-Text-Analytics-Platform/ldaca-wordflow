@@ -1,15 +1,16 @@
 mod backend_process;
 mod desktop_updater;
 mod download;
+mod help_search;
 mod platform;
 mod runtime;
 mod supervisor;
 
 use std::io;
 
-use tauri::menu::{Menu, MenuItemBuilder};
 #[cfg(not(target_os = "macos"))]
-use tauri::menu::{PredefinedMenuItem, HELP_SUBMENU_ID};
+use tauri::menu::PredefinedMenuItem;
+use tauri::menu::{Menu, MenuItemBuilder, HELP_SUBMENU_ID};
 use tauri::{Manager, State};
 
 #[tauri::command]
@@ -22,11 +23,21 @@ fn boxed_error(message: impl Into<String>) -> Box<dyn std::error::Error> {
 }
 
 const CHECK_FOR_UPDATES_MENU_ID: &str = "check-for-updates";
+const WORDFLOW_HELP_MENU_ID: &str = "wordflow-help";
 
 fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::error::Error>> {
     let menu = Menu::default(app)?;
     let check_for_updates =
         MenuItemBuilder::with_id(CHECK_FOR_UPDATES_MENU_ID, "Check for Updates…").build(app)?;
+    let wordflow_help =
+        MenuItemBuilder::with_id(WORDFLOW_HELP_MENU_ID, "Wordflow Help").build(app)?;
+    let help_menu = menu
+        .get(HELP_SUBMENU_ID)
+        .and_then(|item| item.as_submenu().cloned())
+        .ok_or_else(|| boxed_error("Default Help menu not found"))?;
+    // The Help menu opens Wordflow's own help; its search field finds help
+    // pages too (help_search.rs).
+    help_menu.prepend(&wordflow_help)?;
 
     #[cfg(target_os = "macos")]
     {
@@ -41,12 +52,8 @@ fn install_application_menu(app: &tauri::AppHandle) -> Result<(), Box<dyn std::e
 
     #[cfg(not(target_os = "macos"))]
     {
-        let help_menu = menu
-            .get(HELP_SUBMENU_ID)
-            .and_then(|item| item.as_submenu().cloned())
-            .ok_or_else(|| boxed_error("Default Help menu not found"))?;
         let separator = PredefinedMenuItem::separator(app)?;
-        help_menu.prepend_items(&[&check_for_updates, &separator])?;
+        help_menu.insert_items(&[&separator, &check_for_updates], 1)?;
     }
 
     app.set_menu(menu)?;
@@ -82,13 +89,17 @@ pub fn run() {
             desktop_updater::set_automatic_update_checks,
             download::save_backend_download,
             download::save_data_block_export,
-            download::save_generated_bytes
+            download::save_generated_bytes,
+            help_search::set_help_topics
         ])
         .setup(|app| {
             install_application_menu(app.handle())?;
+            help_search::install(app.handle());
             app.on_menu_event(|app_handle, event| {
                 if event.id() == CHECK_FOR_UPDATES_MENU_ID {
                     desktop_updater::show_manual_check(app_handle.clone());
+                } else if event.id() == WORDFLOW_HELP_MENU_ID {
+                    help_search::open_help_home(app_handle);
                 }
             });
             app.get_webview_window("main")
