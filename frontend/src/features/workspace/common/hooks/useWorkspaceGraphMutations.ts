@@ -115,15 +115,13 @@ export const useWorkspaceGraphMutations = ({
 
   const deleteNodeMutation = useMutation({
     mutationKey: ['workspace', 'delete-node'],
+    // throwOnError rejects on any error reply. The 204 success has no body
+    // (the API client gives {}), so there is nothing to check.
     mutationFn: ({ nodeId }: { nodeId: string }) =>
       deleteNode({
         path: { workspace_id: ensureWorkspaceSelected(), node_id: nodeId },
         throwOnError: true,
-      }).then(({ data }) => {
-        if (data !== undefined)
-          throw new Error('Deleting the Data Block returned an unexpected reply');
-        return undefined;
-      }),
+      }).then(() => undefined),
     onSuccess: (_, { nodeId }) => {
       removeNode(nodeId);
       invalidateNodeWorkspaceQueries(queryClient, currentWorkspaceId, nodeId, {
