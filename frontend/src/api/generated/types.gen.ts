@@ -716,6 +716,10 @@ export type AnnotationRunAllAnalysisRequest = {
      */
     kind?: 'annotation_run_all';
     /**
+     * Max Concurrency
+     */
+    max_concurrency?: number | null;
+    /**
      * Processing Mode
      */
     processing_mode?: 'reprocess_all' | 'fill_missing';
@@ -776,6 +780,10 @@ export type AnnotationRunAllSubmission = {
      * Kind
      */
     kind?: 'annotation_run_all';
+    /**
+     * Max Concurrency
+     */
+    max_concurrency?: number | null;
     /**
      * Processing Mode
      */
@@ -7196,6 +7204,10 @@ export type AnnotationRunAllSubmissionWritable = {
      * Kind
      */
     kind?: 'annotation_run_all';
+    /**
+     * Max Concurrency
+     */
+    max_concurrency?: number | null;
     /**
      * Processing Mode
      */

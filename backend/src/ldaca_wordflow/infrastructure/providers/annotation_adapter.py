@@ -109,14 +109,13 @@ def completion_error(error: Exception, fallback: str) -> AnnotationAiError:
     return AnnotationAiError(
         message,
         code=code,
-        retryable=(
-            not timed_out
-            and code
-            in {
-                "annotation_provider_rate_limited",
-                "annotation_provider_unavailable",
-            }
-        ),
+        # A timeout is retried too: a busy local server (a request queued
+        # behind others) usually answers the next attempt.
+        retryable=code
+        in {
+            "annotation_provider_rate_limited",
+            "annotation_provider_unavailable",
+        },
     )
 
 

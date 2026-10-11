@@ -1437,6 +1437,19 @@
             "title": "Kind",
             "type": "string"
           },
+          "max_concurrency": {
+            "anyOf": [
+              {
+                "maximum": 32.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrency"
+          },
           "processing_mode": {
             "default": "reprocess_all",
             "enum": [
@@ -1551,6 +1564,19 @@
             "default": "annotation_run_all",
             "title": "Kind",
             "type": "string"
+          },
+          "max_concurrency": {
+            "anyOf": [
+              {
+                "maximum": 32.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Concurrency"
           },
           "processing_mode": {
             "default": "reprocess_all",

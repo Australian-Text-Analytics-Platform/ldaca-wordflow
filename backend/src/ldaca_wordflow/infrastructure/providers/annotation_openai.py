@@ -16,10 +16,18 @@ from .annotation_adapter import (
 )
 
 
+# Custom servers that rejected the thinking switch; it isn't sent to them
+# again in this process.
+_THINKING_SWITCH_REJECTED: set[str] = set()
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAIAnnotationAdapter:
     base_url: str | None = None
     supports_json_response_format: bool = True
+    # Send chat_template_kwargs.enable_thinking (vLLM, SGLang, oMLX), so a
+    # model that thinks by default, such as Qwen, follows the Reasoning switch.
+    send_thinking_switch: bool = False
 
     async def complete(
         self,
@@ -51,9 +59,14 @@ class OpenAIAnnotationAdapter:
         temperature: float | Omit = (
             omit if config.reasoning_enabled else config.temperature
         )
-        try:
+        thinking_switch = (
+            self.send_thinking_switch
+            and self.base_url not in _THINKING_SWITCH_REJECTED
+        )
+
+        async def create(extra_body: dict[str, object] | None):
             if self.supports_json_response_format:
-                completion = await client.chat.completions.create(
+                return await client.chat.completions.create(
                     model=model,
                     messages=messages,
                     temperature=temperature,
@@ -61,16 +74,40 @@ class OpenAIAnnotationAdapter:
                     max_completion_tokens=max_completion_tokens(config),
                     response_format={"type": "json_object"},
                     stream=False,
+                    extra_body=extra_body,
                 )
-            else:
-                completion = await client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                    temperature=temperature,
-                    reasoning_effort=reasoning_effort,
-                    max_completion_tokens=max_completion_tokens(config),
-                    stream=False,
+            return await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                reasoning_effort=reasoning_effort,
+                max_completion_tokens=max_completion_tokens(config),
+                stream=False,
+                extra_body=extra_body,
+            )
+
+        try:
+            try:
+                completion = await create(
+                    {
+                        "chat_template_kwargs": {
+                            "enable_thinking": config.reasoning_enabled
+                        }
+                    }
+                    if thinking_switch
+                    else None
                 )
+            except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
+                rejected = completion_error(error, "OpenAI request failed")
+                if (
+                    not thinking_switch
+                    or rejected.code != "annotation_provider_request_rejected"
+                ):
+                    raise
+                # A server that rejects the switch gets the request without it.
+                completion = await create(None)
+                if self.base_url is not None:
+                    _THINKING_SWITCH_REJECTED.add(self.base_url)
         except Exception as error:  # noqa: BLE001 - normalize SDK failure shapes
             raise completion_error(error, "OpenAI request failed") from error
         choice = completion.choices[0]
@@ -114,6 +151,7 @@ class CustomOpenAICompatibleAnnotationAdapter:
         return await OpenAIAnnotationAdapter(
             base_url=self.base_url,
             supports_json_response_format=False,
+            send_thinking_switch=True,
         ).complete(model, api_key, system, user, config)
 
     async def list_models(self, api_key: str | None) -> list[str]:

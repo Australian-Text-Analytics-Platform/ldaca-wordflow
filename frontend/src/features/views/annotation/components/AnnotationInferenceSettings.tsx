@@ -17,6 +17,9 @@ interface AnnotationInferenceSettingsProps {
   onBatchSizeCommit: (value: number) => void;
   processingMode: 'reprocess_all' | 'fill_missing';
   onProcessingModeChange: (value: 'reprocess_all' | 'fill_missing') => void;
+  maxConcurrency: number;
+  defaultMaxConcurrency: number;
+  onMaxConcurrencyCommit: (value: number) => void;
   reasoningEnabled: boolean;
   onReasoningEnabledChange: (enabled: boolean) => void;
   reasoningEffort: string;
@@ -35,6 +38,9 @@ export function AnnotationInferenceSettings({
   onBatchSizeCommit,
   processingMode,
   onProcessingModeChange,
+  maxConcurrency,
+  defaultMaxConcurrency,
+  onMaxConcurrencyCommit,
   reasoningEnabled,
   onReasoningEnabledChange,
   reasoningEffort,
@@ -85,6 +91,9 @@ export function AnnotationInferenceSettings({
         onBatchSizeCommit={onBatchSizeCommit}
         processingMode={processingMode}
         onProcessingModeChange={onProcessingModeChange}
+        maxConcurrency={maxConcurrency}
+        defaultMaxConcurrency={defaultMaxConcurrency}
+        onMaxConcurrencyCommit={onMaxConcurrencyCommit}
         disabled={disabled}
       />
     </div>

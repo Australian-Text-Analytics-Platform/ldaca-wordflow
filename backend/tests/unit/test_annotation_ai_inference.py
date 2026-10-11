@@ -50,10 +50,10 @@ class _ProviderStatusError(Exception):
         (_ProviderStatusError(403), "annotation_provider_access_denied", False),
         (_ProviderStatusError(429), "annotation_provider_rate_limited", True),
         (_ProviderStatusError(422), "annotation_provider_request_rejected", False),
-        (_ProviderStatusError(408), "annotation_provider_unavailable", False),
-        (_ProviderStatusError(504), "annotation_provider_unavailable", False),
+        (_ProviderStatusError(408), "annotation_provider_unavailable", True),
+        (_ProviderStatusError(504), "annotation_provider_unavailable", True),
         (_ProviderStatusError(503), "annotation_provider_unavailable", True),
-        (TimeoutError("private endpoint"), "annotation_provider_unavailable", False),
+        (TimeoutError("private endpoint"), "annotation_provider_unavailable", True),
         (RuntimeError("private unknown"), "annotation_provider_failed", False),
     ],
 )
@@ -502,10 +502,72 @@ async def test_custom_chat_completion_uses_its_base_url_and_allows_no_key(
     assert constructor_kwargs["api_key"] == "no-key-required"
     assert constructor_kwargs["timeout"] == 300.0
     assert create_kwargs["model"] == "local-model"
+    # Reasoning off reaches models that think by default (Qwen on oMLX).
+    assert create_kwargs["extra_body"] == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
 
 
-async def test_annotation_preview_does_not_retry_provider_read_timeouts(monkeypatch):
+async def test_custom_chat_completion_drops_a_rejected_thinking_switch(monkeypatch):
+    calls: list[object] = []
+
+    class _FakeCompletions:
+        async def create(self, **kwargs):
+            calls.append(kwargs.get("extra_body"))
+            if kwargs.get("extra_body"):
+                raise _ProviderStatusError(400, "unknown field chat_template_kwargs")
+            return _FakeCompletion('{"labels": ["positive"]}')
+
+    class _FakeChat:
+        def __init__(self) -> None:
+            self.completions = _FakeCompletions()
+
+    class _FakeAsyncOpenAI:
+        def __init__(self, **_kwargs) -> None:
+            self.chat = _FakeChat()
+
+    monkeypatch.setattr("openai.AsyncOpenAI", _FakeAsyncOpenAI)
+    adapter = CustomOpenAICompatibleAnnotationAdapter("http://strict.example/v1")
+    config = _inference_config()
+
+    assert await adapter.complete("m", None, "s", "u", config) == '{"labels": ["positive"]}'
+    assert await adapter.complete("m", None, "s", "u", config) == '{"labels": ["positive"]}'
+    # Retried once without the switch, then never sent to that server again.
+    assert calls == [{"chat_template_kwargs": {"enable_thinking": False}}, None, None]
+
+
+async def test_openai_never_sends_the_thinking_switch(monkeypatch):
+    create_kwargs: dict = {}
+
+    class _FakeCompletions:
+        async def create(self, **kwargs):
+            create_kwargs.update(kwargs)
+            return _FakeCompletion('{"labels": ["positive"]}')
+
+    class _FakeChat:
+        def __init__(self) -> None:
+            self.completions = _FakeCompletions()
+
+    class _FakeAsyncOpenAI:
+        def __init__(self, **_kwargs) -> None:
+            self.chat = _FakeChat()
+
+    monkeypatch.setattr("openai.AsyncOpenAI", _FakeAsyncOpenAI)
+    await OpenAIAnnotationAdapter().complete("m", "key", "s", "u", _inference_config())
+
+    assert create_kwargs["extra_body"] is None
+
+
+async def test_annotation_preview_retries_provider_read_timeouts(monkeypatch):
     attempts = 0
+    waits: list[float] = []
+
+    async def no_wait(seconds: float) -> None:
+        waits.append(seconds)
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.infrastructure.providers.annotation_ai.asyncio.sleep", no_wait
+    )
 
     class _TimeoutCompletions:
         async def create(self, **_kwargs):
@@ -527,9 +589,10 @@ async def test_annotation_preview_does_not_retry_provider_read_timeouts(monkeypa
     with pytest.raises(AnnotationAiError) as exc_info:
         await annotate_preview(request, "key", ["one input"])
 
+    # A busy local server usually answers a later attempt (Max retries 2).
     assert exc_info.value.code == "annotation_provider_unavailable"
-    assert exc_info.value.retryable is False
-    assert attempts == 1
+    assert attempts == 3
+    assert waits == [1, 2]
 
 
 async def test_annotation_preview_retries_a_truncated_openrouter_completion(
@@ -685,6 +748,43 @@ async def test_annotate_all_uses_twenty_row_batches_with_ten_in_flight(
     assert max_active == 10
 
 
+@pytest.mark.parametrize(
+    ("provider", "max_concurrency", "expected"),
+    [("custom", None, 2), ("openai", None, 10), ("custom", 6, 6), ("openai", 3, 3)],
+)
+async def test_annotate_all_opens_the_requests_at_once_the_run_asks_for(
+    monkeypatch, provider, max_concurrency, expected
+):
+    active = 0
+    max_active = 0
+
+    async def fake_annotate_batch(*args):
+        nonlocal active, max_active
+        active += 1
+        max_active = max(max_active, active)
+        await asyncio.sleep(0.01)
+        active -= 1
+        return list(args[5])
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.infrastructure.providers.annotation_ai._annotate_batch",
+        fake_annotate_batch,
+    )
+    source = _source_request().model_copy(
+        update={
+            "provider": provider,
+            "provider_base_url": "http://127.0.0.1:7888/v1" if provider == "custom" else None,
+        }
+    )
+    request = AnnotationRunAllAnalysisRequest(
+        source=source, batch_size=5, max_concurrency=max_concurrency
+    )
+
+    await annotate_all(request, "key", [str(index) for index in range(100)])
+
+    assert max_active == expected
+
+
 async def test_annotate_all_splits_only_batches_rejected_by_the_context_limit(
     monkeypatch,
 ):
@@ -763,6 +863,89 @@ async def test_annotate_all_splits_batches_with_exhausted_invalid_responses(
     assert sorted(attempted_sizes) == [25, 25, 25, 25, 50, 50, 100]
 
 
+async def test_annotate_all_fails_a_batch_whose_provider_stays_unavailable(
+    monkeypatch,
+):
+    progress: list[tuple[int, int, int]] = []
+
+    async def fake_annotate_batch(*args):
+        texts = args[5]
+        if texts[0] == "20":
+            raise AnnotationAiError(
+                "provider unavailable",
+                code="annotation_provider_unavailable",
+                retryable=True,
+            )
+        return list(texts)
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.infrastructure.providers.annotation_ai._annotate_batch",
+        fake_annotate_batch,
+    )
+
+    outcome = await annotate_all(
+        _run_all_request(),
+        "key",
+        [str(index) for index in range(45)],
+        progress_callback=lambda completed, total, failed: progress.append(
+            (completed, total, failed)
+        ),
+    )
+
+    # Its rows fail; the run keeps the others.
+    assert outcome.failed_rows == [False] * 20 + [True] * 20 + [False] * 5
+    assert outcome.labels[:20] == [str(index) for index in range(20)]
+    assert outcome.failed_batch_count == 1
+    assert outcome.failed_row_count == 20
+    assert progress[-1] == (45, 45, 1)
+
+
+async def test_annotate_all_stops_when_the_provider_never_answers(monkeypatch):
+    async def fake_annotate_batch(*_args):
+        raise AnnotationAiError(
+            "provider unavailable",
+            code="annotation_provider_unavailable",
+            retryable=True,
+        )
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.infrastructure.providers.annotation_ai._annotate_batch",
+        fake_annotate_batch,
+    )
+
+    # Fewer batches than the failure streak: still a failed run.
+    with pytest.raises(AnnotationAiError):
+        await annotate_all(_run_all_request(), "key", ["a", "b"])
+
+
+async def test_annotate_all_stops_after_three_unanswered_batches_in_a_row(
+    monkeypatch,
+):
+    answered: list[str] = []
+
+    async def fake_annotate_batch(*args):
+        texts = args[5]
+        if int(texts[0]) >= 3:
+            raise AnnotationAiError(
+                "provider unavailable",
+                code="annotation_provider_unavailable",
+                retryable=True,
+            )
+        answered.extend(texts)
+        return list(texts)
+
+    monkeypatch.setattr(
+        "ldaca_wordflow.infrastructure.providers.annotation_ai._annotate_batch",
+        fake_annotate_batch,
+    )
+    request = _run_all_request(batch_size=1).model_copy(update={"max_concurrency": 1})
+
+    with pytest.raises(AnnotationAiError):
+        await annotate_all(request, "key", [str(index) for index in range(20)])
+
+    assert answered == ["0", "1", "2"]
+
+
 async def test_annotate_all_treats_provider_wide_failures_as_fatal(
     monkeypatch,
 ):
@@ -781,9 +964,8 @@ async def test_annotate_all_treats_provider_wide_failures_as_fatal(
     ):
         if texts[0] == "20":
             raise AnnotationAiError(
-                "provider unavailable",
-                code="annotation_provider_unavailable",
-                retryable=True,
+                "bad key",
+                code="annotation_provider_authentication_failed",
             )
         return list(texts)
 
@@ -802,7 +984,7 @@ async def test_annotate_all_treats_provider_wide_failures_as_fatal(
             ),
         )
 
-    assert exc_info.value.code == "annotation_provider_unavailable"
+    assert exc_info.value.code == "annotation_provider_authentication_failed"
 
 
 @pytest.mark.parametrize(

@@ -10,6 +10,16 @@ export type AnnotationMode = 'manual' | 'ai';
 export type AnnotationProcessingMode = 'reprocess_all' | 'fill_missing';
 export type AnnotationExampleSamplingMethod = 'random' | 'first_n' | 'last_n';
 
+/** The most requests a Run may have open at once (the backend's limit). */
+export const MAX_ANNOTATION_CONCURRENCY = 32;
+
+/**
+ * Requests at once until the tab sets them: a Custom provider is often a
+ * local server that runs one or two; commercial providers take many.
+ */
+export const defaultAnnotationConcurrency = (provider: AnnotationProviderType | null): number =>
+  provider === 'custom' ? 2 : 10;
+
 export interface AnnotationTabSettings {
   annotationMode: AnnotationMode;
   aiProviderModels: Record<string, string>;
@@ -23,6 +33,8 @@ export interface AnnotationTabSettings {
   aiExampleRandomSeed: number;
   aiBatchSize: number;
   aiProcessingMode: AnnotationProcessingMode;
+  /** Requests at once, per provider configuration id (unset: the provider's default). */
+  aiProviderConcurrency: Record<string, number>;
   aiReasoningEnabled: boolean;
   aiReasoningEffort: string;
   annotationTargets: Record<string, string>;
@@ -43,7 +55,10 @@ export const DEFAULT_ANNOTATION_TAB_SETTINGS: AnnotationTabSettings = {
   aiExampleSamplingMethod: 'random',
   aiExampleRandomSeed: 0,
   aiBatchSize: 20,
-  aiProcessingMode: 'reprocess_all',
+  // Run sends only rows without a label unless the tab says otherwise, so
+  // labels already paid for aren't sent again.
+  aiProcessingMode: 'fill_missing',
+  aiProviderConcurrency: {},
   aiReasoningEnabled: false,
   aiReasoningEffort: 'medium',
   annotationTargets: {},
@@ -60,6 +75,19 @@ const stringMap = (value: unknown): Record<string, string> =>
     ? Object.fromEntries(
         Object.entries(value).filter(
           (entry): entry is [string, string] => typeof entry[1] === 'string',
+        ),
+      )
+    : {};
+
+const concurrencyMap = (value: unknown): Record<string, number> =>
+  isRecord(value)
+    ? Object.fromEntries(
+        Object.entries(value).filter(
+          (entry): entry is [string, number] =>
+            typeof entry[1] === 'number' &&
+            Number.isInteger(entry[1]) &&
+            entry[1] >= 1 &&
+            entry[1] <= MAX_ANNOTATION_CONCURRENCY,
         ),
       )
     : {};
@@ -164,7 +192,8 @@ const settingsFromRecord = (
         : 'random',
     aiExampleRandomSeed: integerInRange(value.aiExampleRandomSeed, 0, 0),
     aiBatchSize: integerInRange(value.aiBatchSize, 20, 1, 100),
-    aiProcessingMode: value.aiProcessingMode === 'fill_missing' ? 'fill_missing' : 'reprocess_all',
+    aiProcessingMode: value.aiProcessingMode === 'reprocess_all' ? 'reprocess_all' : 'fill_missing',
+    aiProviderConcurrency: concurrencyMap(value.aiProviderConcurrency),
     aiReasoningEnabled: value.aiReasoningEnabled === true,
     aiReasoningEffort:
       typeof value.aiReasoningEffort === 'string' ? value.aiReasoningEffort : 'medium',

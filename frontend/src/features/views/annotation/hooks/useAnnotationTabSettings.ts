@@ -7,6 +7,7 @@ import {
   type AnnotationMode,
   type AnnotationProcessingMode,
   type AnnotationTabSettings,
+  defaultAnnotationConcurrency,
   parseAnnotationTabSettings,
 } from '../annotationTabSettings';
 
@@ -134,6 +135,25 @@ export function useAnnotationTabSettings({
     },
     [commitSettings],
   );
+  // Requests at once for the selected provider: its own value, or the
+  // provider type's default (2 for Custom, 10 otherwise).
+  const aiMaxConcurrency =
+    (settings.aiProviderConfigurationId
+      ? settings.aiProviderConcurrency[settings.aiProviderConfigurationId]
+      : undefined) ?? defaultAnnotationConcurrency(settings.aiProviderType);
+  const commitAiMaxConcurrency = useCallback(
+    (value: number, providerConfigurationId?: string) => {
+      commitSettings((current) => {
+        const id = providerConfigurationId ?? current.aiProviderConfigurationId;
+        if (!id) return current;
+        return {
+          ...current,
+          aiProviderConcurrency: { ...current.aiProviderConcurrency, [id]: value },
+        };
+      });
+    },
+    [commitSettings],
+  );
   const setAiReasoningEnabled = useCallback(
     (aiReasoningEnabled: boolean) => {
       commitSettings({ aiReasoningEnabled });
@@ -228,6 +248,8 @@ export function useAnnotationTabSettings({
     commitAiExampleRandomSeed,
     commitAiBatchSize,
     setAiProcessingMode,
+    aiMaxConcurrency,
+    commitAiMaxConcurrency,
     setAiReasoningEnabled,
     setAiReasoningEffort,
     setAnnotationTarget,

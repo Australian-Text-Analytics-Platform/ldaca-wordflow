@@ -119,10 +119,17 @@ Analysis; groups with fewer examples contribute every usable row.
 selected provider, and the Run settings. Each provider's settings offer
 **Thinking** (the model thinks step by step before it answers: slower, but
 often more accurate) and, where the model uses it, **Temperature** (lower gives
-more consistent answers). Anthropic has no temperature setting. Below them,
-the Run settings apply to every provider: **Which rows to annotate** (**Annotate
-all rows again**, or **Only rows without an annotation**), **Rows per request**
-(how many rows go to the model at once), and **Retries if a request fails**. Defaults are a good
+more consistent answers). Anthropic has no temperature setting. For a Custom
+provider, **Thinking** off also turns off the thinking of models that think by
+default, such as Qwen on oMLX or vLLM, so they answer with the labels straight
+away. Below them, the Run settings apply to every provider: **Which rows to
+annotate** (**Only rows without an annotation**, the default, or **Annotate all
+rows again**), **Rows per request** (how many rows go to the model in each
+request), **Requests at once** (how many requests Run sends at the same time:
+2 for a Custom provider, 10 for the others, kept for each provider), and
+**Retries if a request fails**. A server on your own computer usually works on
+one or two requests at a time; set **Requests at once** to its own limit, so
+requests don't wait in its queue until they time out. Defaults are a good
 starting point. Change one setting deliberately, because provider capability,
 cost, latency, and repeatability vary by model.
 
@@ -161,13 +168,19 @@ stops before that (you click **Stop**, close the tab, Wordflow or the computer
 restarts), the temporary Data Block stays, so the labels already paid for are not
 lost. The Annotation tab then offers **Write them into the column**, which fills
 the rows with those texts and keeps every other value, and **Remove**. After
-writing them, it offers **Annotate only the empty rows**, which sets **Which rows
-to annotate** to **Only rows without an annotation**, so the next Run sends only
-the rest. The tab keeps that choice for later Runs; change it back in
-**Advanced settings**. You can also join the temporary Data Block to your Data
-Block on the text column yourself.
+writing them, it says which rows the next Run sends. With the default, **Only
+rows without an annotation**, Run sends only the rest; if the tab is set to
+**Annotate all rows again**, it offers **Annotate only the empty rows**. The tab
+keeps that choice for later Runs; change it in **Advanced settings**. You can
+also join the temporary Data Block to your Data Block on the text column
+yourself.
 
-A provider-wide failure is shown in Annotation and Tasks and writes no labels.
+A request that times out or finds the provider busy is tried again (see
+**Retries if a request fails**). If it still fails, its rows count as failed and
+the run goes on. If three requests in a row fail that way, or the provider never
+answers, the run stops; the labels that came back are kept as above. Other
+provider-wide failures, such as a wrong API key, are shown in Annotation and
+Tasks and write no labels.
 When only individual rows cannot fit the provider context or produce a valid
 response, successful rows are published and a warning reports failed rows and
 batches. Failed rows keep their existing values in **Annotate all rows again** and

@@ -177,6 +177,7 @@ def test_annotation_requests_share_one_annotation_class_schema() -> None:
     assert set(schemas["AnnotationRunAllAnalysisRequest"]["properties"]) == {
         "batch_size",
         "kind",
+        "max_concurrency",
         "processing_mode",
         "source",
     }
@@ -184,6 +185,7 @@ def test_annotation_requests_share_one_annotation_class_schema() -> None:
         "api_key",
         "batch_size",
         "kind",
+        "max_concurrency",
         "processing_mode",
         "source",
     }

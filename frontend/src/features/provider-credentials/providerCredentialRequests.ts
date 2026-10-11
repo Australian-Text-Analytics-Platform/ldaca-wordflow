@@ -104,6 +104,7 @@ export const submitAnnotationRunAllWithProviderCredential = ({
   source,
   batchSize,
   processingMode,
+  maxConcurrency,
 }: {
   workspaceId: string;
   tabId: string;
@@ -111,6 +112,8 @@ export const submitAnnotationRunAllWithProviderCredential = ({
   source: AnnotationAnalysisRequest;
   batchSize: number;
   processingMode: 'reprocess_all' | 'fill_missing';
+  /** Requests open at once. */
+  maxConcurrency: number;
 }) => {
   const apiKey = annotationCredential(providerConfigurationId);
   const body: AnnotationRunAllSubmissionWritable & { kind: 'annotation_run_all' } = {
@@ -118,6 +121,7 @@ export const submitAnnotationRunAllWithProviderCredential = ({
     source,
     batch_size: batchSize,
     processing_mode: processingMode,
+    max_concurrency: maxConcurrency,
     ...(apiKey ? { api_key: apiKey } : {}),
   };
   return submitTabAnalysis({

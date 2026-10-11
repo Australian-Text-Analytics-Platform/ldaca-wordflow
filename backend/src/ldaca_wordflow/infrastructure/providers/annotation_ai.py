@@ -28,7 +28,16 @@ from .annotation_openai import (
     OpenAIAnnotationAdapter,
 )
 
+# Requests open at once when the Run doesn't say: commercial providers take
+# many; a Custom provider is often a local server that runs one or two.
 MAX_CONCURRENCY = 10
+CUSTOM_PROVIDER_MAX_CONCURRENCY = 2
+# Batches whose provider stayed unreachable after their retries become failed
+# rows; this many in a row, with no batch answered between, stop the run.
+PROVIDER_FAILURE_STREAK = 3
+_BATCH_PROVIDER_FAILURES = frozenset(
+    {"annotation_provider_rate_limited", "annotation_provider_unavailable"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +48,12 @@ class AnnotationAllResult:
     failed_rows: list[bool]
     failed_batch_count: int
     failed_row_count: int
+
+
+def default_max_concurrency(provider_id: str) -> int:
+    """Requests at once for a provider when the Run doesn't set them."""
+
+    return CUSTOM_PROVIDER_MAX_CONCURRENCY if provider_id == "custom" else MAX_CONCURRENCY
 
 
 def resolve_provider_adapter(
@@ -244,10 +259,24 @@ async def annotate_all(
     config = _inference_config(source)
     size = request.batch_size
     chunks = [texts[start : start + size] for start in range(0, len(texts), size)]
-    semaphore = asyncio.Semaphore(MAX_CONCURRENCY)
+    semaphore = asyncio.Semaphore(
+        request.max_concurrency or default_max_concurrency(source.provider)
+    )
     completed_rows = 0
     failed_batch_count = 0
     failed_row_count = 0
+    answered_batches = 0
+    provider_failure_streak = 0
+    last_provider_failure: AnnotationAiError | None = None
+
+    def record_provider_failure(error: AnnotationAiError) -> None:
+        """Count an unreachable provider; stop the run when it stays down."""
+
+        nonlocal provider_failure_streak, last_provider_failure
+        provider_failure_streak += 1
+        last_provider_failure = error
+        if provider_failure_streak >= PROVIDER_FAILURE_STREAK:
+            raise error
 
     def record_terminal_batch(row_count: int, *, failed: bool) -> None:
         nonlocal completed_rows, failed_batch_count, failed_row_count
@@ -259,6 +288,7 @@ async def annotate_all(
             progress_callback(completed_rows, len(texts), failed_batch_count)
 
     async def run(chunk: list[str]) -> tuple[list[str | None], list[bool]]:
+        nonlocal answered_batches, provider_failure_streak
         try:
             async with semaphore:
                 labels = await _annotate_batch(
@@ -272,7 +302,16 @@ async def annotate_all(
                     source.max_retries_per_batch,
                     examples,
                 )
-        except AnnotationContextLimitError, AnnotationResponseError:
+        except AnnotationAiError as error:
+            if error.code in _BATCH_PROVIDER_FAILURES:
+                # Its rows fail; the run goes on unless the provider stays down.
+                record_provider_failure(error)
+                record_terminal_batch(len(chunk), failed=True)
+                return [None] * len(chunk), [True] * len(chunk)
+            if not isinstance(
+                error, (AnnotationContextLimitError, AnnotationResponseError)
+            ):
+                raise
             if len(chunk) == 1:
                 record_terminal_batch(1, failed=True)
                 return [None], [True]
@@ -282,12 +321,17 @@ async def annotate_all(
                 run(chunk[midpoint:]),
             )
             return [*left[0], *right[0]], [*left[1], *right[1]]
+        answered_batches += 1
+        provider_failure_streak = 0
         if labels_callback is not None:
             labels_callback(chunk, labels)
         record_terminal_batch(len(chunk), failed=False)
         return labels, [False] * len(labels)
 
     batches = await asyncio.gather(*(run(chunk) for chunk in chunks))
+    if answered_batches == 0 and last_provider_failure is not None:
+        # The provider never answered: a failed run, not one of failed rows.
+        raise last_provider_failure
     return AnnotationAllResult(
         labels=[label for batch, _failed in batches for label in batch],
         failed_rows=[failed for _batch, failures in batches for failed in failures],
@@ -298,6 +342,7 @@ async def annotate_all(
 
 __all__ = [
     "AnnotationAiError",
+    "default_max_concurrency",
     "AnnotationAllResult",
     "AnnotationContextLimitError",
     "AnnotationResponseError",

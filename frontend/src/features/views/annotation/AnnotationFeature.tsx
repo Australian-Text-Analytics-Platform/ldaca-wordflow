@@ -66,6 +66,7 @@ import { CreateStringColumnDialog } from './components/CreateStringColumnDialog'
 import { useAnnotationAiPreview } from './hooks/useAnnotationAiPreview';
 import { useAnnotationClassDescriptions } from './hooks/useAnnotationClassDescriptions';
 import { useAnnotationTabSettings } from './hooks/useAnnotationTabSettings';
+import { defaultAnnotationConcurrency } from './annotationTabSettings';
 import { toastError } from '@/lib/toastError';
 import { ErrorNotice } from '@/components/errors/ErrorNotice';
 
@@ -229,6 +230,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     commitAiBatchSize,
     aiProcessingMode,
     setAiProcessingMode,
+    aiMaxConcurrency,
+    commitAiMaxConcurrency,
     aiReasoningEnabled,
     setAiReasoningEnabled,
     aiReasoningEffort,
@@ -717,6 +720,12 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       commitAiExampleRandomSeed(request.example_random_seed ?? 0);
       if (!latestPreview && annotationRunAll?.request.kind === 'annotation_run_all') {
         commitAiBatchSize(annotationRunAll.request.batch_size ?? 20);
+        if (annotationRunAll.request.max_concurrency) {
+          commitAiMaxConcurrency(
+            annotationRunAll.request.max_concurrency,
+            annotationRunAll.request.source.provider_configuration_id,
+          );
+        }
         // After a run that didn't finish, the Tab's own choice of rows wins, so
         // "Only rows without an annotation" chosen to finish it survives a reload.
         if (annotationRunAll.state === 'succeeded') {
@@ -775,6 +784,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
         source: currentAiRequest,
         batch_size: aiBatchSize,
         processing_mode: aiProcessingMode,
+        max_concurrency: aiMaxConcurrency,
       }
     : null;
   const serverRunAllSignature =
@@ -783,6 +793,9 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           source: annotationRunAll.request.source,
           batch_size: annotationRunAll.request.batch_size,
           processing_mode: annotationRunAll.request.processing_mode,
+          max_concurrency:
+            annotationRunAll.request.max_concurrency ??
+            defaultAnnotationConcurrency(annotationRunAll.request.source.provider),
         }
       : null;
   const runAllActionState = getRerunActionState({
@@ -847,6 +860,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
           source: currentAiRequest,
           batchSize: aiBatchSize,
           processingMode: aiProcessingMode,
+          maxConcurrency: aiMaxConcurrency,
         });
         return data;
       },
@@ -1190,6 +1204,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                               onBatchSizeCommit={commitAiBatchSize}
                               processingMode={aiProcessingMode}
                               onProcessingModeChange={setAiProcessingMode}
+                              maxConcurrency={aiMaxConcurrency}
+                              defaultMaxConcurrency={defaultAnnotationConcurrency(
+                                selectedAiProvider?.provider ?? null,
+                              )}
+                              onMaxConcurrencyCommit={commitAiMaxConcurrency}
                               reasoningEnabled={aiReasoningEnabled}
                               onReasoningEnabledChange={setAiReasoningEnabled}
                               reasoningEffort={aiReasoningEffort}

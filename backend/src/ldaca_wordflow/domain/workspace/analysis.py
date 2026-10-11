@@ -488,11 +488,19 @@ class SequentialDataBlockCreationAnalysisRequest(_StrictModel):
     source: SequentialDataBlockCreationSource
 
 
+MAX_ANNOTATION_CONCURRENCY = 32
+
+
 class AnnotationRunAllAnalysisRequest(_StrictModel):
     kind: Literal["annotation_run_all"] = "annotation_run_all"
     source: AnnotationAnalysisRequest
     batch_size: int = Field(default=20, ge=1, le=100)
     processing_mode: Literal["reprocess_all", "fill_missing"] = "reprocess_all"
+    # Requests open at once; None uses the provider's default (2 for Custom
+    # providers, 10 otherwise). Left out when None so older versions read it.
+    max_concurrency: int | None = Field(
+        default=None, ge=1, le=MAX_ANNOTATION_CONCURRENCY, exclude_if=lambda value: value is None
+    )
 
 
 class AnnotationRunAllSubmission(_StrictModel):
@@ -500,6 +508,7 @@ class AnnotationRunAllSubmission(_StrictModel):
     source: AnnotationAnalysisRequest
     batch_size: int = Field(default=20, ge=1, le=100)
     processing_mode: Literal["reprocess_all", "fill_missing"] = "reprocess_all"
+    max_concurrency: int | None = Field(default=None, ge=1, le=MAX_ANNOTATION_CONCURRENCY)
     api_key: SecretStr | None = Field(
         default=None,
         min_length=1,
@@ -512,6 +521,7 @@ class AnnotationRunAllSubmission(_StrictModel):
             source=self.source,
             batch_size=self.batch_size,
             processing_mode=self.processing_mode,
+            max_concurrency=self.max_concurrency,
         )
 
 

@@ -22,6 +22,7 @@ function Harness({
   onMaxRetriesPerBatchCommit = vi.fn(),
   onBatchSizeCommit = vi.fn(),
   onProcessingModeChange = vi.fn(),
+  onMaxConcurrencyCommit = vi.fn(),
 }: {
   provider?: AnnotationProviderType | null;
   initialTemperature?: number;
@@ -35,11 +36,14 @@ function Harness({
   onMaxRetriesPerBatchCommit?: (value: number) => void;
   onBatchSizeCommit?: (value: number) => void;
   onProcessingModeChange?: (value: 'reprocess_all' | 'fill_missing') => void;
+  onMaxConcurrencyCommit?: (value: number) => void;
 }) {
   const [temperature, setTemperature] = useState(initialTemperature);
   const [maxRetriesPerBatch, setMaxRetriesPerBatch] = useState(initialMaxRetriesPerBatch);
   const [batchSize, setBatchSize] = useState(initialBatchSize);
   const [processingMode, setProcessingMode] = useState(initialProcessingMode);
+  const defaultMaxConcurrency = provider === 'custom' ? 2 : 10;
+  const [maxConcurrency, setMaxConcurrency] = useState(defaultMaxConcurrency);
   const [reasoningEnabled, setReasoningEnabled] = useState(initialReasoning);
   const [reasoningEffort, setReasoningEffort] = useState(initialEffort);
   return (
@@ -64,6 +68,12 @@ function Harness({
       onProcessingModeChange={(value) => {
         setProcessingMode(value);
         onProcessingModeChange(value);
+      }}
+      maxConcurrency={maxConcurrency}
+      defaultMaxConcurrency={defaultMaxConcurrency}
+      onMaxConcurrencyCommit={(value) => {
+        setMaxConcurrency(value);
+        onMaxConcurrencyCommit(value);
       }}
       reasoningEnabled={reasoningEnabled}
       onReasoningEnabledChange={setReasoningEnabled}
@@ -211,6 +221,26 @@ describe('AnnotationInferenceSettings', () => {
     expect(onProcessingModeChange).toHaveBeenCalledWith('fill_missing');
     expect(screen.getByRole('radio', { name: 'Only rows without an annotation' })).toBeChecked();
   });
+
+  it.each([
+    ['custom', '2'],
+    ['openai', '10'],
+  ] as const)(
+    'starts Requests at once at the %s default and clamps what is typed',
+    async (provider, expected) => {
+      const user = userEvent.setup();
+      const onMaxConcurrencyCommit = vi.fn();
+      render(<Harness provider={provider} onMaxConcurrencyCommit={onMaxConcurrencyCommit} />);
+
+      const field = screen.getByLabelText('Requests at once');
+      expect(field).toHaveValue(Number(expected));
+      await user.clear(field);
+      await user.type(field, '99');
+      await user.tab();
+
+      expect(onMaxConcurrencyCommit).toHaveBeenCalledWith(32);
+    },
+  );
 
   it('renders every control read-only when the Advanced section is locked', () => {
     render(<Harness initialTemperature={0.5} initialReasoning disabled />);
