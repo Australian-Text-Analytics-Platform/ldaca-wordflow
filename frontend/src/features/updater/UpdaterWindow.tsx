@@ -14,6 +14,7 @@ import {
   openUpdateLink,
   type UpdateMetadata,
 } from './desktopUpdater';
+import { bundledReleaseNotes } from './bundledReleaseNotes';
 
 type ViewState =
   | { status: 'checking' }
@@ -222,17 +223,26 @@ export function UpdaterWindow({ mode }: { mode: 'manual' | 'available' }) {
       )}
 
       {view.status === 'upToDate' && (
-        <div
-          className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center"
-          role="status"
-        >
-          <CheckCircle2 className="size-10 text-chart-3" aria-hidden />
-          <div>
-            <h1 className="text-heading-2 font-semibold">Wordflow is up to date</h1>
-            <p className="mt-2 text-body text-description">
-              You’re using version {view.currentVersion}.
-            </p>
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-6 py-5">
+          <div className="flex items-center gap-3" role="status">
+            <CheckCircle2 className="size-8 shrink-0 text-chart-3" aria-hidden />
+            <div>
+              <h1 className="text-heading-2 font-semibold">Wordflow is up to date</h1>
+              <p className="mt-1 text-body text-description">
+                You’re using version {view.currentVersion}.
+              </p>
+            </div>
           </div>
+          {/* What the installed version brought (Chao, 2026-10-12). */}
+          {bundledReleaseNotes(view.currentVersion) ? (
+            <section
+              aria-label={`What’s new in ${view.currentVersion}`}
+              className="rounded-md border border-surface-border bg-panel/30 p-4"
+            >
+              <p className="mb-2 text-body font-semibold">What’s new in {view.currentVersion}</p>
+              <ReleaseNotes notes={bundledReleaseNotes(view.currentVersion)} />
+            </section>
+          ) : null}
         </div>
       )}
 

@@ -297,8 +297,15 @@ pub(crate) enum UpdaterSnapshot {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
 #[serde(tag = "status", rename_all = "camelCase")]
 pub(crate) enum CheckOutcome {
-    UpToDate { current_version: String },
-    Available { update: UpdateMetadata },
+    // The enum's rename_all names the variants only; the field needs its own,
+    // or the window reads no version ("You're using version .").
+    #[serde(rename_all = "camelCase")]
+    UpToDate {
+        current_version: String,
+    },
+    Available {
+        update: UpdateMetadata,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -725,9 +732,21 @@ pub(crate) fn handle_window_event(window: &Window, event: &WindowEvent) -> bool 
 mod tests {
     use super::{
         automatic_check_is_due, should_present_update, transition_allowed, validated_update_link,
-        DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
+        CheckOutcome, DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
         AUTOMATIC_CHECK_INTERVAL,
     };
+
+    #[test]
+    fn up_to_date_names_its_version_in_camel_case() {
+        let outcome = CheckOutcome::UpToDate {
+            current_version: "0.7.13".into(),
+        };
+
+        assert_eq!(
+            serde_json::to_value(outcome).unwrap(),
+            serde_json::json!({ "status": "upToDate", "currentVersion": "0.7.13" })
+        );
+    }
 
     #[test]
     fn automatic_checks_default_to_enabled_and_due() {

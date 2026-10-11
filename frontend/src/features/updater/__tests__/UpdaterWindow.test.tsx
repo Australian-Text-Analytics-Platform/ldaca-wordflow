@@ -44,6 +44,16 @@ describe('UpdaterWindow', () => {
     expect(screen.getByText('Checking for updates…')).toBeInTheDocument();
     finishCheck?.({ status: 'upToDate', currentVersion: '0.7.5' });
     expect(await screen.findByText('Wordflow is up to date')).toBeInTheDocument();
+    expect(screen.getByText('You’re using version 0.7.5.')).toBeInTheDocument();
+  });
+
+  it('shows the installed version’s release notes when it is up to date', async () => {
+    mocks.checkForUpdates.mockResolvedValue({ status: 'upToDate', currentVersion: '0.7.12' });
+    render(<UpdaterWindow mode="manual" />);
+
+    expect(await screen.findByRole('region', { name: 'What’s new in 0.7.12' })).toHaveTextContent(
+      'Quotation Runs several times faster',
+    );
   });
 
   it('renders GFM notes safely and opens HTTPS links through native IPC', async () => {
