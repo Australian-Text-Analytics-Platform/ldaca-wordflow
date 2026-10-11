@@ -1,12 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as Api from '@/api';
 import type { WorkspaceNodeInfo } from '@/api';
 import { AnnotationSavedLabelsNotice } from '../AnnotationSavedLabelsNotice';
 import { savedLabelBlocks } from '../savedLabelBlocks';
+import type { AnnotationProcessingMode } from '../../annotationTabSettings';
 
 const mocks = vi.hoisted(() => ({ apply: vi.fn(), deleteNode: vi.fn() }));
 
@@ -69,6 +70,8 @@ describe('AnnotationSavedLabelsNotice (issue 371)', () => {
         nodes={[plainBlock, labelBlock('tweets')]}
         sourceNodeId="tweets"
         running={false}
+        processingMode="reprocess_all"
+        onProcessingModeChange={vi.fn()}
       />,
       { wrapper },
     );
@@ -93,6 +96,8 @@ describe('AnnotationSavedLabelsNotice (issue 371)', () => {
         nodes={[labelBlock('tweets')]}
         sourceNodeId="tweets"
         running={false}
+        processingMode="reprocess_all"
+        onProcessingModeChange={vi.fn()}
       />,
       { wrapper },
     );
@@ -108,8 +113,44 @@ describe('AnnotationSavedLabelsNotice (issue 371)', () => {
         nodes={[labelBlock('tweets')]}
         sourceNodeId="tweets"
         running
+        processingMode="reprocess_all"
+        onProcessingModeChange={vi.fn()}
       />,
     );
     expect(screen.getByText(/Labels are kept in .* as they return/)).toBeInTheDocument();
+  });
+
+  it('after writing, nudges the next Run to the empty rows and says where to change it back', async () => {
+    const user = userEvent.setup();
+    function Harness({ nodes }: { nodes: WorkspaceNodeInfo[] }) {
+      const [mode, setMode] = useState<AnnotationProcessingMode>('reprocess_all');
+      return (
+        <AnnotationSavedLabelsNotice
+          workspaceId="ws"
+          nodes={nodes}
+          sourceNodeId="tweets"
+          running={false}
+          processingMode={mode}
+          onProcessingModeChange={setMode}
+        />
+      );
+    }
+    const { rerender } = render(<Harness nodes={[plainBlock, labelBlock('tweets')]} />, {
+      wrapper,
+    });
+    expect(screen.queryByText(/Run will annotate/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Write them into/ }));
+    await screen.findByText(/Run will annotate every row again/);
+
+    // Removing the label block keeps the nudge.
+    rerender(<Harness nodes={[plainBlock]} />);
+    await user.click(screen.getByRole('button', { name: 'Annotate only the empty rows' }));
+    expect(
+      screen.getByText(
+        /Run will annotate only the rows still empty in "stance"\. To annotate every row again, change "Which rows to annotate" in Advanced settings\./,
+      ),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'OK' }));
+    expect(screen.queryByText(/Run will annotate/)).not.toBeInTheDocument();
   });
 });

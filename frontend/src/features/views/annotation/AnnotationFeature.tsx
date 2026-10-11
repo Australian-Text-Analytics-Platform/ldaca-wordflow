@@ -40,10 +40,7 @@ import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspace
 import { isArrowStringField } from '@/lib/arrow/arrowTable';
 import { queryKeys } from '@/lib/queryKeys';
 import { cn } from '@/lib/utils';
-import {
-  getAnalysisActionLifecycle,
-  hasClearRequiredAnalysis,
-} from '../common/analysisActionLifecycle';
+import { getAnalysisActionLifecycle } from '../common/analysisActionLifecycle';
 import { getAnalysisOutputResource } from '../common/analysisApi';
 import { ANALYSIS_TASK_TYPES } from '../common/analysisIds';
 import AnalysisTaskBanner from '../common/components/AnalysisTaskBanner';
@@ -720,7 +717,11 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
       commitAiExampleRandomSeed(request.example_random_seed ?? 0);
       if (!latestPreview && annotationRunAll?.request.kind === 'annotation_run_all') {
         commitAiBatchSize(annotationRunAll.request.batch_size ?? 20);
-        setAiProcessingMode(annotationRunAll.request.processing_mode ?? 'reprocess_all');
+        // After a run that didn't finish, the Tab's own choice of rows wins, so
+        // "Only rows without an annotation" chosen to finish it survives a reload.
+        if (annotationRunAll.state === 'succeeded') {
+          setAiProcessingMode(annotationRunAll.request.processing_mode ?? 'reprocess_all');
+        }
       }
       setAiReasoningEnabled(request.reasoning_enabled ?? false);
       setAiReasoningEffort(request.reasoning_effort ?? 'medium');
@@ -751,13 +752,13 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
   const reviewSourceColumns = annotationRunAllSource
     ? (resultColumnInfoCache[annotationRunAllSource.node_id]?.map((column) => column.name) ?? [])
     : [];
-  const requiresClear = hasClearRequiredAnalysis(analyses);
+  // A new Annotation submission replaces the Tab's earlier Analyses, so a
+  // stopped or failed run doesn't need Clear before Preview or Run.
   const analysisActionLifecycle = getAnalysisActionLifecycle({
     isPreviewing: isAiRunning,
     isSubmittingRunAll,
     runAllState: annotationRunAll?.state ?? null,
     hasActiveAnalysis: Boolean(activeAnalysis),
-    requiresClear,
   });
   const aiActionState = getRerunActionState({
     hasWorkspace: Boolean(currentWorkspaceId),
@@ -766,7 +767,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     hasAnyAnalysis: analyses.length > 0,
     analysisState: aiTaskStatus.tasks[0]?.state ?? null,
     hasChanges: !serverAiRequest || hasParameterDiff(currentAiRequest, serverAiRequest),
-    requiresClear,
+    rerunWithoutClear: true,
     isBusy: analysisActionLifecycle.parametersLocked,
   });
   const currentRunAllSignature = currentAiRequest
@@ -792,7 +793,7 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     analysisState: annotationRunAll?.state ?? null,
     hasChanges:
       !serverRunAllSignature || hasParameterDiff(currentRunAllSignature, serverRunAllSignature),
-    requiresClear,
+    rerunWithoutClear: true,
     isBusy: analysisActionLifecycle.parametersLocked,
   });
   const selectedProviderNeedsKey = Boolean(
@@ -1300,6 +1301,8 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
             nodes={nodes}
             sourceNodeId={sourceNode.id}
             running={annotationRunAll?.state === 'queued' || annotationRunAll?.state === 'running'}
+            processingMode={aiProcessingMode}
+            onProcessingModeChange={setAiProcessingMode}
           />
         ) : null}
         {annotationMode === 'ai' && annotationRunAll?.state === 'failed' ? (

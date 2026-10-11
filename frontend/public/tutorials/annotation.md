@@ -160,9 +160,12 @@ go into the annotation column and the temporary Data Block is removed. If the ru
 stops before that (you click **Stop**, close the tab, Wordflow or the computer
 restarts), the temporary Data Block stays, so the labels already paid for are not
 lost. The Annotation tab then offers **Write them into the column**, which fills
-the rows with those texts and keeps every other value, and **Remove**. To finish
-the rest, Run again with **Only rows without an annotation**. You can also join
-the temporary Data Block to your Data Block on the text column yourself.
+the rows with those texts and keeps every other value, and **Remove**. After
+writing them, it offers **Annotate only the empty rows**, which sets **Which rows
+to annotate** to **Only rows without an annotation**, so the next Run sends only
+the rest. The tab keeps that choice for later Runs; change it back in
+**Advanced settings**. You can also join the temporary Data Block to your Data
+Block on the text column yourself.
 
 A provider-wide failure is shown in Annotation and Tasks and writes no labels.
 When only individual rows cannot fit the provider context or produce a valid
@@ -183,8 +186,9 @@ the latest manual edit, AI write, or column creation. Undo history lasts only
 until the Project is closed.
 
 Settings are locked while Preview or Run is working. After a failure or a stop,
-you can edit the settings again, but Preview and Run stay off until you choose
-**Clear**. Tables on screen keep the settings of the Preview, Run or Start that
+you can edit the settings and choose Preview or Run again straight away; the new
+Preview or Run replaces the tab's earlier results, so **Clear** is not needed
+first. Tables on screen keep the settings of the Preview, Run or Start that
 made them while you edit the next setup. See [How Preview, Run and Clear work](./ui.md#help-ui-preview-run-clear).
 
 Before using labels downstream, sample every code, inspect uncertain or costly

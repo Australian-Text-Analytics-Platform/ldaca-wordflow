@@ -4,7 +4,9 @@
  * The owning Tab's attached Analysis, not Result availability, determines
  * whether Clear is available. Active Analyses cannot be replaced; failed and
  * cancelled roots require Clear; successful Analyses require an exact request
- * change before their corresponding action is enabled again.
+ * change before their corresponding action is enabled again. A view whose
+ * new submission replaces the Tab's finished Analyses (Annotation) may run
+ * again after a failed or cancelled run without Clear.
  */
 export interface RerunActionStateInput {
   hasWorkspace: boolean;
@@ -20,6 +22,8 @@ export interface RerunActionStateInput {
   hasChanges: boolean;
   /** A failed or cancelled root requires Clear Results before either action can run. */
   requiresClear?: boolean;
+  /** A new submission replaces failed or cancelled Analyses, so Clear isn't needed first. */
+  rerunWithoutClear?: boolean;
   isBusy?: boolean;
 }
 
@@ -44,10 +48,12 @@ export const getRerunActionState = ({
   analysisState,
   hasChanges,
   requiresClear = false,
+  rerunWithoutClear = false,
   isBusy = false,
 }: RerunActionStateInput): RerunActionState => {
   const isActiveAnalysis = analysisState === 'queued' || analysisState === 'running';
-  const isClearRequiredState = analysisState === 'failed' || analysisState === 'cancelled';
+  const isUnfinishedState = analysisState === 'failed' || analysisState === 'cancelled';
+  const isClearRequiredState = isUnfinishedState && !rerunWithoutClear;
   const attachedStateUnavailable = hasAttachedAnalysis && analysisState === null;
 
   const runDisabled =
@@ -58,7 +64,7 @@ export const getRerunActionState = ({
     requiresClear ||
     isClearRequiredState ||
     attachedStateUnavailable ||
-    (hasAttachedAnalysis && !hasChanges);
+    (hasAttachedAnalysis && !hasChanges && !isUnfinishedState);
 
   const clearDisabled = !hasWorkspace || !hasAnyAnalysis || isBusy || isActiveAnalysis;
   const clearDisabledReason = !hasWorkspace
@@ -76,7 +82,7 @@ export const getRerunActionState = ({
     if (isActiveAnalysis) return 'The analysis is already queued or running';
     if (requiresClear || isClearRequiredState) return 'Choose Clear before running again';
     if (attachedStateUnavailable) return 'Clear the current analysis before running again';
-    if (hasAttachedAnalysis && !hasChanges) {
+    if (hasAttachedAnalysis && !hasChanges && !isUnfinishedState) {
       return 'Change a parameter or the selection to run again';
     }
     return undefined;

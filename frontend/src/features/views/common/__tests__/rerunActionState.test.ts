@@ -120,4 +120,23 @@ describe('getRerunActionState', () => {
       runDisabledReason: 'Choose Clear before running again',
     });
   });
+
+  it.each(['failed', 'cancelled'] as const)(
+    'lets a view whose submissions replace the Tab run again after a %s run without Clear',
+    (analysisState) => {
+      expect(
+        getRerunActionState({
+          ...baseInput,
+          hasAttachedAnalysis: true,
+          analysisState,
+          hasChanges: false,
+          rerunWithoutClear: true,
+        }),
+      ).toMatchObject({
+        runDisabled: false,
+        clearDisabled: false,
+        runDisabledReason: undefined,
+      });
+    },
+  );
 });

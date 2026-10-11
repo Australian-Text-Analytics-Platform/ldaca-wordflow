@@ -274,8 +274,9 @@ What to expect:
 - **Settings are locked while a task runs.** Use **Stop** to cancel it. The
   running task also appears in **Tasks**.
 - **After a failure or a stop**, you can edit the settings again, but Preview
-  and Run stay off until you choose **Clear**. The message explains what went
-  wrong; **Details** has the technical text for a feedback report.
+  and Run stay off until you choose **Clear**. Annotation is the exception: its
+  Preview and Run replace the tab's earlier results, so they turn on again
+  without **Clear**. The message explains what went wrong; **Details** has the technical text for a feedback report.
 - **Results stay with the tab.** They are still there when you move to another
   tool, or close and reopen the Project.
 

@@ -6,6 +6,10 @@
  * run that finishes removes it; one that stops, fails or is interrupted
  * leaves it, and this notice offers to write its labels into the column or
  * to remove it. While a run goes, it says the labels are being kept.
+ *
+ * Once the labels are written, the notice nudges the next Run to annotate
+ * only the rows still empty, so the finished rows aren't sent again, and says
+ * where that choice is changed back.
  */
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
@@ -26,27 +30,37 @@ import {
 import { invalidateNodeWorkspaceQueries } from '@/features/workspace/common/hooks/workspaceMutationCache';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { toastError } from '@/lib/toastError';
+import type { AnnotationProcessingMode } from '../annotationTabSettings';
 
 export function AnnotationSavedLabelsNotice({
   workspaceId,
   nodes,
   sourceNodeId,
   running,
+  processingMode,
+  onProcessingModeChange,
 }: {
   workspaceId: string | null;
   nodes: readonly WorkspaceNodeInfo[];
   sourceNodeId: string;
   running: boolean;
+  /** The Tab's "Which rows to annotate" choice for the next Run. */
+  processingMode: AnnotationProcessingMode;
+  onProcessingModeChange: (mode: AnnotationProcessingMode) => void;
 }) {
   const queryClient = useQueryClient();
   const { deleteNode } = useWorkspaceActions();
   const [written, setWritten] = useState<ReadonlySet<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState<SavedLabelsBlock | null>(null);
+  // The column the saved labels were written into; the next-Run nudge shows
+  // until it is dismissed or a run starts, even after the block is removed.
+  const [nextRunColumn, setNextRunColumn] = useState<string | null>(null);
   const blocks = savedLabelBlocks(nodes, sourceNodeId);
-  if (blocks.length === 0) return null;
+  const nudge = running ? null : nextRunColumn;
+  if (blocks.length === 0 && nudge === null) return null;
 
-  if (running) {
+  if (running && blocks.length > 0) {
     return (
       <p className="mt-2 text-label-secondary text-description">
         Labels are kept in &ldquo;{blocks[blocks.length - 1]?.name}&rdquo; as they return, so a
@@ -68,6 +82,7 @@ export function AnnotationSavedLabelsNotice({
         includeSchema: true,
       });
       setWritten(new Set([...written, block.id]));
+      setNextRunColumn(data.annotation_column);
       toast.success(
         `${data.written_rows.toLocaleString()} row${data.written_rows === 1 ? '' : 's'} labelled in "${data.annotation_column}" from the saved labels.`,
       );
@@ -135,6 +150,39 @@ export function AnnotationSavedLabelsNotice({
           </div>
         );
       })}
+      {nudge === null ? null : (
+        <div
+          role="note"
+          className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md border border-surface-border bg-panel p-3 text-body"
+        >
+          <p className="min-w-0 flex-1">
+            {processingMode === 'fill_missing'
+              ? `Run will annotate only the rows still empty in "${nudge}". To annotate every row again, change "Which rows to annotate" in Advanced settings.`
+              : `Run will annotate every row again, including the ones already labelled in "${nudge}".`}
+          </p>
+          {processingMode === 'fill_missing' ? null : (
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                onProcessingModeChange('fill_missing');
+              }}
+            >
+              Annotate only the empty rows
+            </Button>
+          )}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              setNextRunColumn(null);
+            }}
+          >
+            {processingMode === 'fill_missing' ? 'OK' : 'Keep every row'}
+          </Button>
+        </div>
+      )}
       <AlertDialog
         open={confirmRemove !== null}
         onOpenChange={(open) => {
