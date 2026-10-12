@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { PanelRightOpen, Wrench } from 'lucide-react';
+import { PanelBottomOpen, PanelRightOpen, Wrench } from 'lucide-react';
 import { WorkspaceControls } from './WorkspaceControls';
 import { InsetCard } from './InsetCard';
 import { useResizableSplit } from '@/hooks/useResizableSplit';
@@ -20,8 +20,9 @@ import { ResizeHandle } from './ResizeHandle';
  * Flow: connect split refs to graph/table panes, imperatively resize during drag, then render controls, graph, splitter, and data table.
  *
  * ``collapsed`` (from WorkspaceShell): when true, the panel is completely
- * collapsed into a slim vertical handle with an expand button on the right.
- * ``onToggleCollapse`` toggles that mode.
+ * collapsed into an expand button on the right. When the shell stacks the
+ * panel below the analysis (narrow screens), it collapses downwards into a
+ * slim bar instead (issue 390). ``onToggleCollapse`` toggles that mode.
  */
 function WorkspaceView({
   collapsed = false,
@@ -59,15 +60,26 @@ function WorkspaceView({
 
   if (collapsed) {
     return (
-      <button
-        type="button"
-        onClick={onToggleCollapse}
-        className="absolute top-4.5 right-0 z-30 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-l-full rounded-r-none border border-surface-border bg-surface text-foreground transition-all hover:bg-panel active:scale-95"
-        aria-label="Expand right panel"
-        title="Expand right panel"
-      >
-        <PanelRightOpen className="h-4 w-4" />
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="absolute top-4.5 right-0 z-30 inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-l-full rounded-r-none border border-surface-border bg-surface text-foreground transition-all hover:bg-panel active:scale-95 max-md:hidden @max-[639px]/workspace-shell:hidden"
+          aria-label="Expand right panel"
+          title="Expand right panel"
+        >
+          <PanelRightOpen className="h-4 w-4" />
+        </button>
+        <button
+          type="button"
+          onClick={onToggleCollapse}
+          className="hidden w-full shrink-0 cursor-pointer items-center justify-center gap-2 border-t border-surface-border bg-panel px-3 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-label-secondary text-foreground hover:bg-surface max-md:flex @max-[639px]/workspace-shell:flex"
+          aria-label="Show Project Graph and Data Editor"
+        >
+          <PanelBottomOpen className="h-4 w-4" aria-hidden="true" />
+          Project Graph and Data Editor
+        </button>
+      </>
     );
   }
 

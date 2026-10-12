@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { PanelRightClose, Pencil } from 'lucide-react';
+import { PanelBottomClose, PanelRightClose, Pencil } from 'lucide-react';
 import { useWorkspaceData } from '@/features/workspace/common/hooks/useWorkspaceData';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import { toast } from 'sonner';
@@ -45,7 +45,9 @@ export function WorkspaceControls({ onToggleCollapse }: { onToggleCollapse?: () 
           aria-label="Collapse Project panel"
           title="Collapse"
         >
-          <PanelRightClose className="h-4 w-4" />
+          {/* Stacked below the analysis on narrow screens, it collapses downwards (issue 390). */}
+          <PanelRightClose className="h-4 w-4 max-md:hidden @max-[639px]/workspace-shell:hidden" />
+          <PanelBottomClose className="hidden h-4 w-4 max-md:block @max-[639px]/workspace-shell:block" />
         </button>
       )}
       <h3 className="text-body font-medium text-foreground">Project Graph</h3>

@@ -101,7 +101,13 @@ function WorkspaceShellContent() {
                     <InsetCard
                       ref={mainRef}
                       role="main"
-                      className={`relative h-full p-2 pt-0 pl-0 ${isRightCollapsed ? 'pr-2' : 'pr-0'} max-md:h-auto max-md:min-h-[calc(100dvh-3.5rem)] max-md:w-full! max-md:min-w-0! max-md:px-2 @max-[639px]/workspace-shell:h-auto @max-[639px]/workspace-shell:min-h-[calc(100dvh-3.5rem)] @max-[639px]/workspace-shell:w-full! @max-[639px]/workspace-shell:min-w-0! @max-[639px]/workspace-shell:px-2 ${
+                      className={`relative h-full p-2 pt-0 pl-0 ${
+                        isRightCollapsed
+                          ? // Stacked and collapsed: the analysis takes the
+                            // whole height above the Project panel's bar (issue 390).
+                            'pr-2 max-md:min-h-0 max-md:flex-1 @max-[639px]/workspace-shell:min-h-0 @max-[639px]/workspace-shell:flex-1'
+                          : 'pr-0 max-md:min-h-[calc(100dvh-3.5rem)] @max-[639px]/workspace-shell:min-h-[calc(100dvh-3.5rem)]'
+                      } max-md:h-auto max-md:w-full! max-md:min-w-0! max-md:px-2 @max-[639px]/workspace-shell:h-auto @max-[639px]/workspace-shell:w-full! @max-[639px]/workspace-shell:min-w-0! @max-[639px]/workspace-shell:px-2 ${
                         isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'
                       }`}
                       style={{
@@ -139,7 +145,7 @@ function WorkspaceShellContent() {
                       ref={asideRef}
                       className={`relative flex h-full flex-col bg-transparent ${isResizing ? 'transition-none' : 'transition-all duration-300 ease-in-out'} ${
                         isRightCollapsed
-                          ? 'min-w-0 w-0 overflow-visible flex-none'
+                          ? 'min-w-0 w-0 overflow-visible flex-none max-md:h-auto max-md:w-full! @max-[639px]/workspace-shell:h-auto @max-[639px]/workspace-shell:w-full!'
                           : 'min-w-[320px] overflow-hidden max-md:h-[70dvh] max-md:w-full! max-md:min-w-0! max-md:flex-none @max-[639px]/workspace-shell:h-[70dvh] @max-[639px]/workspace-shell:w-full! @max-[639px]/workspace-shell:min-w-0! @max-[639px]/workspace-shell:flex-none'
                       }`}
                       style={
