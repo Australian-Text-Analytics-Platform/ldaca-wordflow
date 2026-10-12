@@ -12,6 +12,7 @@ import { useUIStore } from '@/stores';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { DocumentModalHost } from '@/components/dialogs/DocumentModalHost';
 import { useDesktopHelpMenu } from '@/features/desktop-help/useDesktopHelpMenu';
+import { useWebUpdateNotice } from '@/features/app-update/useWebUpdateNotice';
 import { ViewRouteSync } from '@/components/layout/ViewRouteSync';
 import { ViewRouter } from '@/components/layout/ViewRouter';
 import { isTabbedMainView } from '@/features/views/viewRegistry';
@@ -35,6 +36,8 @@ export function WorkspaceShell() {
 function WorkspaceShellContent() {
   // The desktop Help menu searches and opens Wordflow's help.
   useDesktopHelpMenu();
+  // Binder, pip and server hear about a newer Wordflow (issue 386).
+  useWebUpdateNotice();
   const currentView = useUIStore((s) => s.currentView);
   const isTabbedMain = isTabbedMainView(currentView);
 

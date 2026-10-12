@@ -878,6 +878,30 @@ export type ApiError = {
 };
 
 /**
+ * AppUpdateResource
+ *
+ * This Wordflow's version and the newest release, when it could be read.
+ */
+export type AppUpdateResource = {
+    /**
+     * Current Version
+     */
+    current_version: string;
+    /**
+     * Deployment
+     */
+    deployment: 'binder' | 'server' | 'pip' | 'desktop';
+    /**
+     * Latest Version
+     */
+    latest_version: string | null;
+    /**
+     * Update Available
+     */
+    update_available: boolean;
+};
+
+/**
  * AuthProvider
  *
  * One configured hosted login provider.
@@ -7390,6 +7414,31 @@ export type ListAnnotationModelsResponses = {
 };
 
 export type ListAnnotationModelsResponse = ListAnnotationModelsResponses[keyof ListAnnotationModelsResponses];
+
+export type GetAppUpdateData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/app-update';
+};
+
+export type GetAppUpdateErrors = {
+    /**
+     * Authentication required
+     */
+    401: ApiError;
+};
+
+export type GetAppUpdateError = GetAppUpdateErrors[keyof GetAppUpdateErrors];
+
+export type GetAppUpdateResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppUpdateResource;
+};
+
+export type GetAppUpdateResponse = GetAppUpdateResponses[keyof GetAppUpdateResponses];
 
 export type CilogonCallbackData = {
     body?: never;

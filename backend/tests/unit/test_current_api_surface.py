@@ -76,6 +76,7 @@ EXPECTED_OPERATIONS = {
     ("GET", "/api/session", "get_session"),
     ("DELETE", "/api/session", "delete_session"),
     ("GET", "/api/storage", "get_storage"),
+    ("GET", "/api/app-update", "get_app_update"),
     ("GET", "/api/tool-caches", "list_tool_caches"),
     ("DELETE", "/api/tool-caches/{kind}", "clear_user_tool_cache"),
     ("GET", "/api/tokenizer-models", "list_tokenizer_models"),

@@ -584,6 +584,11 @@ const info = {
     anchor: 'info-general-overview',
     label: 'About Wordflow',
   },
+  'general.new-versions': {
+    file: 'information/general.md',
+    anchor: 'info-general-new-versions',
+    label: 'New versions',
+  },
   'data-loader.overview': {
     file: 'information/data-loader.md',
     anchor: 'info-data-loader-overview',

@@ -1761,6 +1761,49 @@
         "title": "ApiError",
         "type": "object"
       },
+      "AppUpdateResource": {
+        "additionalProperties": false,
+        "description": "This Wordflow's version and the newest release, when it could be read.",
+        "properties": {
+          "current_version": {
+            "title": "Current Version",
+            "type": "string"
+          },
+          "deployment": {
+            "enum": [
+              "binder",
+              "server",
+              "pip",
+              "desktop"
+            ],
+            "title": "Deployment",
+            "type": "string"
+          },
+          "latest_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latest Version"
+          },
+          "update_available": {
+            "title": "Update Available",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "deployment",
+          "current_version",
+          "latest_version",
+          "update_available"
+        ],
+        "title": "AppUpdateResource",
+        "type": "object"
+      },
       "AuthProvider": {
         "additionalProperties": false,
         "description": "One configured hosted login provider.",
@@ -13509,6 +13552,43 @@
         "summary": "List Annotation Models",
         "tags": [
           "annotations"
+        ]
+      }
+    },
+    "/api/app-update": {
+      "get": {
+        "description": "Ask the Latest GitHub release for the newest version, once per app start.\n\nThe desktop app checks by itself, so its backend does not ask; neither\ndoes a backend with the check turned off. The page shows a notice when a\nnewer version exists.",
+        "operationId": "get_app_update",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppUpdateResource"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            },
+            "description": "Authentication required"
+          }
+        },
+        "security": [
+          {
+            "WordflowSession": []
+          }
+        ],
+        "summary": "Get App Update",
+        "tags": [
+          "app-update"
         ]
       }
     },

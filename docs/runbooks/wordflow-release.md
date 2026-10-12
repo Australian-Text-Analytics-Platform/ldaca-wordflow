@@ -115,8 +115,15 @@ gh workflow run desktop-release.yml --repo Australian-Text-Analytics-Platform/ld
   content length is unavailable.
 - Verify **Skip this version** suppresses that exact version only for automatic
   checks, **Decide later** dismisses without skipping, and manual checks still
-  show a skipped release. Confirm automatic checking occurs at most once in 24
-  hours and the desktop General setting can disable and re-enable it.
+  show a skipped release. Confirm automatic checking runs at every start and
+  the desktop General setting can disable and re-enable it.
+- Confirm the release has the five update-check copies
+  (`latest-darwin-aarch64.json`, `latest-windows-x86_64.json`,
+  `latest-web-binder.json`, `latest-web-pip.json`, `latest-web-server.json`).
+  Their download counts are the usage counts; read them with
+  `gh release view vX.Y.Z --repo Australian-Text-Analytics-Platform/ldaca-wordflow --json assets -q '.assets[] | select(.name | startswith("latest")) | "\(.name) \(.downloadCount)"'`
+  before replacing any asset, because GitHub resets the count with the asset.
+  Counts start again with each release and include automated fetches.
 - Download the signed update, choose **Restart and install**, and confirm macOS
   relaunches into the new version and Windows exits into the passive installer.
   Confirm closing the updater window never stops the backend and closure is

@@ -216,13 +216,25 @@ authentication, router, or Workspace. The updater webview receives only
 plugins directly. Typed Rust commands expose only the updater operations and
 validated HTTPS release-note links it needs.
 
-Automatic checks are enabled by default and occur at most once per 24 hours.
+Automatic checks are enabled by default and run at every start (issue 385).
 Rust persists `automaticChecks`, `lastCheckAt`, and `skippedVersion` in the
 device-local Tauri Store. Automatic checks remain silent when no update is
 available, fail without interrupting startup, and suppress only the exact
-skipped version. Manual checks bypass both cadence and skip suppression. The
-desktop-only General setting changes automatic checking; browser deployments
-render no setting and make no updater request.
+skipped version. Manual checks bypass skip suppression. The
+desktop-only General setting changes automatic checking. Browser deployments
+render no setting and make no updater request; their backend asks instead (see
+below).
+
+The updater asks for `latest-{{target}}-{{arch}}.json` first and falls back to
+`latest.json`. The release uploads one copy of the update file per kind of
+Wordflow, so GitHub's download count of each copy reads as starts of that kind:
+`latest-darwin-aarch64.json`, `latest-windows-x86_64.json`,
+`latest-web-binder.json`, `latest-web-pip.json` and `latest-web-server.json`.
+For Binder, pip and server, `GET /api/app-update` fetches the matching
+`latest-web-{kind}.json` (Binder and pip once per backend start, at most once a
+day; a server on every page load) and the page shows a notice once a day per
+version (issue 386). `UPDATE_CHECK_ENABLED=false` turns the check off;
+`DEPLOYMENT_KIND` overrides the detected kind.
 
 ```mermaid
 sequenceDiagram

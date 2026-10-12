@@ -36,6 +36,7 @@ from ._middleware import (
     RequestLoggingMiddleware,
     normalized_scope_path,
 )
+from .api.app_update import router as app_update_router
 from .api.auth import router as auth_router
 from .api.annotations import router as annotations_router
 from .api.data_portal import router as data_portal_router
@@ -303,6 +304,7 @@ def _register_routers(app: FastAPI) -> None:
     """Attach API routers in one deterministic order."""
 
     for router in (
+        app_update_router,
         auth_router,
         annotations_router,
         data_portal_router,

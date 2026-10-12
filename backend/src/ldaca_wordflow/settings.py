@@ -225,6 +225,24 @@ class Settings(BaseSettings):
     # Authentication Configuration
     multi_user: bool = Field(default=False, description="Multi-user mode enabled")
 
+    # New-version notice for Binder, pip and server (issue 386). Each check
+    # fetches one small file from the Latest GitHub release; GitHub's download
+    # counts of those files are Wordflow's only usage figures.
+    update_check_enabled: bool = Field(
+        default=True, description="Check GitHub for a newer Wordflow when the app opens"
+    )
+    deployment_kind: Literal["binder", "server", "pip", "desktop"] | None = Field(
+        default=None,
+        description="How Wordflow runs here; detected when unset",
+    )
+    update_check_url: str = Field(
+        default=(
+            "https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow"
+            "/releases/latest/download/latest-web-{kind}.json"
+        ),
+        description="Update file for each deployment kind ({kind} is filled in)",
+    )
+
     # Google OAuth Configuration (when multi_user=True)
     google_client_id: str = Field(default="", description="Google OAuth client ID")
 
