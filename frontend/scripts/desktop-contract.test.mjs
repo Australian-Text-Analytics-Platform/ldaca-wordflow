@@ -83,6 +83,8 @@ describe('desktop configuration contracts', () => {
     expect(buildWorkflow).toContain('.app.tar.gz.sig');
     expect(releaseWorkflow).toContain('secrets: inherit');
     expect(releaseWorkflow).toContain('release-assets/latest.json');
+    // Per-kind copies whose download counts measure update checks (issues 385, 386).
+    expect(releaseWorkflow).toContain('release-assets/update-checks/*.json');
     expect(releaseWorkflow).not.toContain('pnpm tauri build');
   });
 
@@ -98,6 +100,7 @@ describe('desktop configuration contracts', () => {
 
     expect(tauri.bundle.createUpdaterArtifacts).toBe(true);
     expect(tauri.plugins.updater.endpoints).toEqual([
+      'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest/download/latest-{{target}}-{{arch}}.json',
       'https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest/download/latest.json',
     ]);
     expect(capability.permissions).not.toContain('updater:default');

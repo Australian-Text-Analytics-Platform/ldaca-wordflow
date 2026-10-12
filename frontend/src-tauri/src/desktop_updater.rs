@@ -13,7 +13,6 @@ use tauri_plugin_store::StoreExt;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const CHECK_TIMEOUT: Duration = Duration::from_secs(15);
-const AUTOMATIC_CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
 const SETTINGS_STORE: &str = "updater-settings.json";
 const AUTOMATIC_CHECKS_KEY: &str = "automaticChecks";
 const LAST_CHECK_AT_KEY: &str = "lastCheckAt";
@@ -416,11 +415,11 @@ fn now_epoch_seconds() -> Result<u64, String> {
         .map_err(|error| error.to_string())
 }
 
-fn automatic_check_is_due(preferences: &StoredPreferences, now: u64) -> bool {
+/// Wordflow checks at every start while automatic checks are on, so a
+/// release is offered the next time the app opens; each check is also how
+/// GitHub's download counts tell how often the app starts (issue 385).
+fn automatic_check_is_due(preferences: &StoredPreferences) -> bool {
     preferences.automatic_checks
-        && preferences.last_check_at.is_none_or(|last_check| {
-            now.saturating_sub(last_check) >= AUTOMATIC_CHECK_INTERVAL.as_secs()
-        })
 }
 
 fn should_present_update(manual: bool, skipped_version: Option<&str>, version: &str) -> bool {
@@ -498,14 +497,14 @@ pub(crate) fn schedule_automatic_check(app: AppHandle) {
                 StoredPreferences::default()
             }
         };
-        if !automatic_check_is_due(&preferences, now) {
+        if !automatic_check_is_due(&preferences) {
             return;
         }
 
         let state = app.state::<DesktopUpdaterState>();
         let _check_guard = state.check_gate.lock().await;
         let preferences = load_preferences(&app).unwrap_or_default();
-        if !automatic_check_is_due(&preferences, now) {
+        if !automatic_check_is_due(&preferences) {
             return;
         }
 
@@ -733,7 +732,6 @@ mod tests {
     use super::{
         automatic_check_is_due, should_present_update, transition_allowed, validated_update_link,
         CheckOutcome, DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
-        AUTOMATIC_CHECK_INTERVAL,
     };
 
     #[test]
@@ -752,7 +750,7 @@ mod tests {
     fn automatic_checks_default_to_enabled_and_due() {
         let preferences = StoredPreferences::default();
 
-        assert!(automatic_check_is_due(&preferences, 1_000));
+        assert!(automatic_check_is_due(&preferences));
     }
 
     #[test]
@@ -763,33 +761,18 @@ mod tests {
             skipped_version: None,
         };
 
-        assert!(!automatic_check_is_due(&preferences, 1_000));
+        assert!(!automatic_check_is_due(&preferences));
     }
 
     #[test]
-    fn recent_automatic_check_is_not_due() {
-        let now = AUTOMATIC_CHECK_INTERVAL.as_secs() + 100;
+    fn a_recent_check_does_not_hold_back_the_next_start() {
         let preferences = StoredPreferences {
             automatic_checks: true,
-            last_check_at: Some(101),
+            last_check_at: Some(1_000),
             skipped_version: None,
         };
 
-        assert!(!automatic_check_is_due(&preferences, now));
-    }
-
-    #[test]
-    fn automatic_check_becomes_due_after_twenty_four_hours() {
-        let preferences = StoredPreferences {
-            automatic_checks: true,
-            last_check_at: Some(100),
-            skipped_version: None,
-        };
-
-        assert!(automatic_check_is_due(
-            &preferences,
-            100 + AUTOMATIC_CHECK_INTERVAL.as_secs()
-        ));
+        assert!(automatic_check_is_due(&preferences));
     }
 
     #[test]

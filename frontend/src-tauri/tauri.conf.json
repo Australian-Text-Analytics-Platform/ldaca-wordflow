@@ -59,6 +59,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEU1MEREMUE2Rjg2M0YyNEEKUldSSzhtUDRwdEVONWFLUUxsOWRsNkFsaUVldmIwOCt3WCs2eTVyQ1dQZVh2ckRNemFxZ3dETm0K",
       "endpoints": [
+        "https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest/download/latest-{{target}}-{{arch}}.json",
         "https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow/releases/latest/download/latest.json"
       ]
     }

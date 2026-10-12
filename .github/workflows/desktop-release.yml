@@ -212,6 +212,14 @@ jobs:
             '.version != "" and (.platforms | keys | sort) == ["darwin-aarch64", "windows-x86_64"] and all(.platforms[]; .signature != "" and .url != "")' \
             release-assets/latest.json >/dev/null
 
+          # One copy per kind of app that checks for updates. GitHub counts
+          # each file's downloads, so the counts tell how often each kind
+          # starts (issues 385, 386). Older desktop apps read latest.json.
+          mkdir -p release-assets/update-checks
+          for name in latest-darwin-aarch64 latest-windows-x86_64 latest-web-binder latest-web-server latest-web-pip; do
+            cp release-assets/latest.json "release-assets/update-checks/$name.json"
+          done
+
       - name: Replace GitHub release assets
         shell: bash
         env:
@@ -229,5 +237,6 @@ jobs:
             release-assets/macos/updater/*.app.tar.gz \
             release-assets/macos/updater/*.app.tar.gz.sig \
             release-assets/latest.json \
+            release-assets/update-checks/*.json \
             --repo "$GITHUB_REPOSITORY"
           gh release edit "$RELEASE_TAG" --latest --repo "$GITHUB_REPOSITORY"
