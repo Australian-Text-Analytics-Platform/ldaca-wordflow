@@ -15,7 +15,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Loader2, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Loader2, Pencil, Plus, Trash2, TriangleAlert } from 'lucide-react';
 import { toast } from 'sonner';
 import { useWorkspaceActions } from '@/features/workspace/common/hooks/useWorkspaceActions';
 import {
@@ -23,10 +23,39 @@ import {
   useAnnotationClassDescriptions,
 } from '../hooks/useAnnotationClassDescriptions';
 import { toastError } from '@/lib/toastError';
+import { cn } from '@/lib/utils';
+import {
+  checkCodebook,
+  codebookSuggestions,
+  codeKey,
+  hasCodebookProblems,
+  mergedDescription,
+  resolveCode,
+  withoutRepeatedRows,
+} from '../codebookChecks';
 
 // Compact card shows class-name badges; extras collapse into a "+N more" badge
 // so the card stays tight while the full list lives in the Edit dialog.
 const CLASS_NAME_PREVIEW_LIMIT = 20;
+
+/** Suggestions for repeated codes or shared descriptions (issue 389). */
+function CodebookSuggestions({ suggestions, hint }: { suggestions: string[]; hint?: string }) {
+  if (suggestions.length === 0) return null;
+  return (
+    <div
+      role="status"
+      className="flex items-start gap-1.5 rounded-md border border-warning bg-warning-background px-3 py-2 text-label-secondary text-warning"
+    >
+      <TriangleAlert aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+      <div className="space-y-1">
+        {suggestions.map((suggestion) => (
+          <p key={suggestion}>{suggestion}</p>
+        ))}
+        {hint ? <p>{hint}</p> : null}
+      </div>
+    </div>
+  );
+}
 
 interface AnnotationClassDescriptionsEditorProps {
   workspaceId: string | null;
@@ -77,6 +106,8 @@ export function AnnotationClassDescriptionsEditor({
     }))
     .filter((chip) => chip.name.length > 0);
   const visibleClassChips = classChips.slice(0, CLASS_NAME_PREVIEW_LIMIT);
+  const savedCheck = checkCodebook(savedRows);
+  const draftCheck = checkCodebook(editorRows);
   const hiddenClassCount = classChips.length - visibleClassChips.length;
 
   const updateDraftCell = (rowIndex: number, field: 'class' | 'description', value: string) => {
@@ -111,9 +142,9 @@ export function AnnotationClassDescriptionsEditor({
       toast.error('Every annotation code needs a name.');
       return;
     }
-    const uniqueNames = new Set(normalized.map((row) => row.class.toLocaleLowerCase()));
+    const uniqueNames = new Set(normalized.map((row) => codeKey(row.class)));
     if (uniqueNames.size !== normalized.length) {
-      toast.error('Annotation code names must be unique.');
+      toast.error('Each code can appear only once. Follow the suggestion below the codes.');
       return;
     }
     setIsSaving(true);
@@ -188,7 +219,8 @@ export function AnnotationClassDescriptionsEditor({
                       aria-label={`Code ${String(index + 1)}`}
                       value={row.class}
                       placeholder="Code"
-                      className="w-1/3"
+                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                      className={cn('w-1/3', draftCheck.rowsToMark.has(index) && 'border-warning')}
                       disabled={false}
                       onChange={(event) => {
                         updateDraftCell(index, 'class', event.target.value);
@@ -200,7 +232,11 @@ export function AnnotationClassDescriptionsEditor({
                       rows={2}
                       placeholder="Description"
                       disabled={false}
-                      className="min-h-9 flex-1 resize-y"
+                      data-codebook-problem={draftCheck.rowsToMark.has(index) || undefined}
+                      className={cn(
+                        'min-h-9 flex-1 resize-y',
+                        draftCheck.rowsToMark.has(index) && 'border-warning',
+                      )}
                       onChange={(event) => {
                         updateDraftCell(index, 'description', event.target.value);
                       }}
@@ -221,6 +257,70 @@ export function AnnotationClassDescriptionsEditor({
                 ))
               )}
             </div>
+            {hasCodebookProblems(draftCheck) ? (
+              <div className="max-h-[30vh] space-y-2 overflow-y-auto pr-1">
+                <CodebookSuggestions suggestions={codebookSuggestions(editorRows, draftCheck)} />
+                {draftCheck.repeatedRows.length > 0 ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isSaving}
+                    onClick={() => {
+                      setDraftRows(withoutRepeatedRows(editorRows));
+                    }}
+                  >
+                    Remove repeated rows
+                  </Button>
+                ) : null}
+                {draftCheck.codesWithSeveralDescriptions.map((code) => (
+                  <fieldset
+                    key={code.key}
+                    className="space-y-1.5 rounded-md border border-surface-border px-3 pb-2"
+                  >
+                    <legend className="px-1 text-label-secondary font-medium">
+                      Description for “{code.name}”
+                    </legend>
+                    {code.descriptions.map((description, index) => (
+                      <div key={description} className="flex items-start justify-between gap-2">
+                        <p className="text-body break-words">
+                          {description || (
+                            <span className="text-description">(no description)</span>
+                          )}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="shrink-0"
+                          aria-label={`Use description ${String(index + 1)} for ${code.name}`}
+                          disabled={isSaving}
+                          onClick={() => {
+                            setDraftRows(resolveCode(editorRows, code.key, description));
+                          }}
+                        >
+                          Use this
+                        </Button>
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-label={`Merge the descriptions for ${code.name}`}
+                      disabled={isSaving}
+                      onClick={() => {
+                        setDraftRows(
+                          resolveCode(editorRows, code.key, mergedDescription(code.descriptions)),
+                        );
+                      }}
+                    >
+                      Merge descriptions
+                    </Button>
+                  </fieldset>
+                ))}
+              </div>
+            ) : null}
             <DialogFooter className="sm:justify-between">
               <Button
                 type="button"
@@ -292,6 +392,14 @@ export function AnnotationClassDescriptionsEditor({
           </div>
         </TooltipProvider>
       )}
+      <CodebookSuggestions
+        suggestions={codebookSuggestions(savedRows, savedCheck)}
+        hint={
+          savedCheck.codesWithSeveralDescriptions.length > 0
+            ? 'Choose Edit to fix the codebook. AI Preview and Run wait until each code has one description.'
+            : 'Choose Edit to fix the codebook.'
+        }
+      />
     </div>
   );
 }

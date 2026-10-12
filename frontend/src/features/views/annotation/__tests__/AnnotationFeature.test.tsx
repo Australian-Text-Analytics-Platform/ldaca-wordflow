@@ -214,6 +214,8 @@ vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
       onPreview: () => void | Promise<void>;
       onRunAll: () => void | Promise<void>;
       onClear: () => void | Promise<void>;
+      previewDisabledReason?: string | null;
+      runAllDisabledReason?: string | null;
     };
   }) => (
     <div>
@@ -230,6 +232,8 @@ vi.mock('@/features/views/common/components/AnalysisCardLayout', () => ({
           <button type="button" onClick={() => void actions.onClear()}>
             Clear
           </button>
+          <p data-testid="preview-disabled-reason">{actions.previewDisabledReason}</p>
+          <p data-testid="run-disabled-reason">{actions.runAllDisabledReason}</p>
         </>
       ) : null}
     </div>
@@ -365,6 +369,48 @@ describe('AnnotationFeature', () => {
     mocks.ensureNodeColors.mockResolvedValue(undefined);
     mocks.submitPreview.mockResolvedValue({ data: { id: 'analysis-1' } });
     mocks.submitRunAll.mockResolvedValue({ data: { id: 'run-all-1' } });
+  });
+
+  it('holds AI Preview and Run while a code has different descriptions (issue 389)', () => {
+    mocks.classSelected = true;
+    mocks.classRows = [
+      { class: 'support', description: 'Supports the claim' },
+      { class: 'Support', description: 'Agrees' },
+    ];
+    mocks.providerConfigurations = [
+      { id: 'provider-1', name: 'OpenAI', provider: 'openai', base_url: null, has_api_key: true },
+    ];
+    mocks.sourceColumnNames = ['text', 'annotation'];
+
+    render(
+      <AnnotationFeature
+        host={{
+          tabId: 'tab-1',
+          analyses: [],
+          latestPreview: null,
+          latestRunAll: null,
+          activeAnalysis: null,
+          inputSets: {},
+          settings: annotationSettings({
+            annotationMode: 'ai',
+            annotationTargets: { 'source-1': 'annotation' },
+            aiProviderConfigurationId: 'provider-1',
+            aiProviderType: 'openai',
+            aiProviderModels: { 'provider-1': 'gpt-test' },
+          }),
+          correctionColumns: {},
+          setInputSet: mocks.setInputSet,
+          setSetting: mocks.setSetting,
+          setCorrectionColumn: vi.fn(),
+          clearCorrectionColumns: vi.fn(),
+          refreshAnalyses: vi.fn(),
+        }}
+      />,
+    );
+
+    const reason = '“support” has different descriptions in the Codebook. Choose one with Edit.';
+    expect(screen.getByTestId('preview-disabled-reason')).toHaveTextContent(reason);
+    expect(screen.getByTestId('run-disabled-reason')).toHaveTextContent(reason);
   });
 
   it('propagates persisted example sampling settings to Preview and Run All', async () => {

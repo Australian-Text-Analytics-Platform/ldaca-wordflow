@@ -55,6 +55,7 @@ import { canAnnotate, canListModels, resolveAnnotationProviderConfiguration } fr
 import { AnnotationAiPreviewPanel } from './components/AnnotationAiPreviewPanel';
 import { AnnotationAiSettings } from './components/AnnotationAiSettings';
 import { AnnotationClassDescriptionsEditor } from './components/AnnotationClassDescriptionsEditor';
+import { checkCodebook, codeKey } from './codebookChecks';
 import { AnnotationExampleSamplingControls } from './components/AnnotationExampleSamplingControls';
 import { AnnotationInferenceSettings } from './components/AnnotationInferenceSettings';
 import {
@@ -580,10 +581,17 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
     }
   };
 
+  // Rows repeating a code with the same description add nothing; a code with
+  // different descriptions holds AI runs until the person picks one (issue 389).
+  const codebookCheck = checkCodebook(classDescriptions.rows);
+  const conflictingCode = codebookCheck.codesWithSeveralDescriptions[0];
+  const codebookBlockReason = conflictingCode
+    ? `“${conflictingCode.name}” has different descriptions in the Codebook. Choose one with Edit.`
+    : null;
   const aiClasses = classDescriptions.rows.reduce<{ name: string; description: string }[]>(
     (rows, row) => {
       const name = row.class.trim();
-      if (!name || rows.some((item) => item.name === name)) return rows;
+      if (!name || rows.some((item) => codeKey(item.name) === codeKey(name))) return rows;
       rows.push({ name, description: row.description });
       return rows;
     },
@@ -986,20 +994,24 @@ function AnnotationFeature({ host }: AnalysisTabFeatureProps) {
                           await host.clearCorrectionColumns();
                         },
                         previewDisabled:
+                          Boolean(codebookBlockReason) ||
                           analysisActionLifecycle.previewDisabled ||
                           aiActionState.runDisabled ||
                           isCreatingColumn ||
                           analysisActionLifecycle.isPreviewing,
                         previewDisabledReason: isCreatingColumn
                           ? 'Wait for the column to finish creating'
-                          : providerDisabledReason,
+                          : (codebookBlockReason ?? providerDisabledReason),
                         runAllDisabled:
+                          Boolean(codebookBlockReason) ||
                           !currentAiRequest ||
                           analysisActionLifecycle.runAllDisabled ||
                           runAllActionState.runDisabled,
-                        runAllDisabledReason: selectedProviderNeedsKey
-                          ? 'Add an API key in Settings → AI before running Annotation'
-                          : runAllActionState.runDisabledReason,
+                        runAllDisabledReason:
+                          codebookBlockReason ??
+                          (selectedProviderNeedsKey
+                            ? 'Add an API key in Settings → AI before running Annotation'
+                            : runAllActionState.runDisabledReason),
                         clearDisabled: aiActionState.clearDisabled,
                         clearDisabledReason: aiActionState.clearDisabledReason,
                         isPreviewing: analysisActionLifecycle.isPreviewing,

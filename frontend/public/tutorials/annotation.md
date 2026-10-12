@@ -23,6 +23,12 @@ either directly or with predictions from a configured AI provider.
 
    ![Edit codebook dialog with three codes](tutorials/assets/annotation/edit_codebook.png)
 
+   Each code should appear once, with its own description. If a code is
+   repeated, or two codes share a description, the Codes card and the Edit
+   dialog say so and suggest a fix: remove repeated rows, choose one of a
+   code's descriptions or merge them, or give each code its own description.
+   AI Preview and Run wait until each code has one description.
+
 4. Use the **Manual / AI** switch to choose a mode. The source and Codebook are
    shared between both modes.
 
