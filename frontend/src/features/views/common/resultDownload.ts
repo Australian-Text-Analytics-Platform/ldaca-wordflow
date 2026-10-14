@@ -26,6 +26,10 @@ export const downloadResultSelection = async ({
     body: { request, format },
     throwOnError: true,
   });
-  const fallback = `${safeDownloadStem(fallbackName, 'results')}.${format}`;
+  // Several sources come back as one ZIP. If the name can't be read, the
+  // file type still decides the extension, so a ZIP is never saved under a
+  // CSV or Excel name (issue 393).
+  const extension = data.type === 'application/zip' ? 'zip' : format;
+  const fallback = `${safeDownloadStem(fallbackName, 'results')}.${extension}`;
   return saveBlob(data, filenameFromResponse(response) ?? fallback);
 };

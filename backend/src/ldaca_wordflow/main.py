@@ -402,6 +402,8 @@ def create_app(
             "X-Request-ID",
         ],
         expose_headers=[
+            # Download names, for pages on another origin (desktop app, dev; issue 393).
+            "Content-Disposition",
             "ETag",
             "Location",
             "X-Request-ID",
