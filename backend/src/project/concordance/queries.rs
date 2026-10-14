@@ -1,4 +1,4 @@
-//! Typed projections over owned Concordance relations. Filters never touch current sources.
+//! Typed Concordance projections over live processed-text joins or historical v1 snapshots.
 use super::*;
 #[derive(Clone, Debug, Default, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(default, deny_unknown_fields)]
@@ -34,7 +34,7 @@ fn corpus(conn: &Connection, id: Uuid, index: usize) -> Result<ConcordanceCorpus
     let analysis = read_analysis(conn, id)?;
     let result: ConcordanceResultV1 =
         serde_json::from_value(analysis.output("concordance")?.clone())?;
-    let corpus = result
+    let mut corpus = result
         .corpora
         .into_iter()
         .nth(index)
@@ -42,7 +42,77 @@ fn corpus(conn: &Connection, id: Uuid, index: usize) -> Result<ConcordanceCorpus
     for artifact in [corpus.documents, corpus.matches, corpus.projection] {
         artifact_relation(conn, id, artifact)?;
     }
+    if corpus.processed_column.is_some() {
+        let request: ConcordanceRequest = serde_json::from_value(analysis.request)?;
+        corpus.input = request
+            .inputs
+            .into_iter()
+            .nth(index)
+            .ok_or_else(|| Error::invalid("Unknown Concordance source"))?;
+        let relation = Relation {
+            schema: corpus
+                .input
+                .source
+                .schema
+                .clone()
+                .unwrap_or_else(|| "data".into()),
+            name: corpus.input.source.name.clone(),
+        };
+        conn.prepare(&format!(
+            "SELECT {} FROM {} LIMIT 0",
+            query::quote(&corpus.input.column),
+            relation.sql()
+        ))?;
+        corpus.columns = mutations::columns(conn, &relation)?;
+    }
     Ok(corpus)
+}
+fn corpus_projection(source: &ConcordanceCorpus) -> String {
+    if let Some(column) = &source.processed_column {
+        live_projection_sql(
+            &DocumentInput {
+                source: source.input.source.clone(),
+                column: source.input.column.clone(),
+            },
+            &format!("wordflow.{}", artifact_table(source.documents)),
+            &format!("wordflow.{}", artifact_table(source.matches)),
+            column,
+            &source.columns,
+        )
+    } else {
+        format!(
+            "SELECT * FROM wordflow.{}",
+            artifact_table(source.projection)
+        )
+    }
+}
+fn corpus_annotations(
+    conn: &Connection,
+    source: &ConcordanceCorpus,
+) -> Result<arrow_metadata::Annotations> {
+    if source.processed_column.is_some() {
+        arrow_metadata::Annotations::load(
+            conn,
+            &Relation {
+                schema: source
+                    .input
+                    .source
+                    .schema
+                    .clone()
+                    .unwrap_or_else(|| "data".into()),
+                name: source.input.source.name.clone(),
+            },
+        )
+        .map(|a| a.prefixed("source"))
+    } else {
+        arrow_metadata::Annotations::load(
+            conn,
+            &Relation {
+                schema: "wordflow".into(),
+                name: artifact_table(source.projection),
+            },
+        )
+    }
 }
 fn bin_expression(source: &ConcordanceCorpus, count: u32) -> Result<String> {
     if !(1..=1000).contains(&count) {
@@ -59,6 +129,9 @@ fn filtered(
     filter: &ConcordanceFilter,
 ) -> Result<(String, Vec<SqlValue>)> {
     let mut clauses = Vec::new();
+    if source.processed_column.is_some() {
+        clauses.push("match_order IS NOT NULL".into());
+    }
     let mut parameters = Vec::new();
     if let Some(id) = &filter.document_id {
         let id = id
@@ -105,8 +178,8 @@ fn filtered(
     }
     Ok((
         format!(
-            "SELECT * FROM wordflow.{}{}",
-            artifact_table(source.projection),
+            "SELECT * FROM ({}){}",
+            corpus_projection(source),
             if clauses.is_empty() {
                 String::new()
             } else {
@@ -157,6 +230,14 @@ impl Database {
         id: Uuid,
         request: ConcordanceQuery,
     ) -> Result<DocumentPage> {
+        self.concordance_rows(id, request, false)
+    }
+    pub(in crate::project) fn concordance_rows(
+        &mut self,
+        id: Uuid,
+        request: ConcordanceQuery,
+        all: bool,
+    ) -> Result<DocumentPage> {
         let offset = page_offset(request.page, request.page_size)?;
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         let source = corpus(&self.conn, id, request.source_index)?;
@@ -184,15 +265,16 @@ impl Database {
         };
         let file = arrow_page(
             &self.conn,
-            &format!("{projection} LIMIT {} OFFSET {offset}", request.page_size),
+            &format!(
+                "{projection}{}",
+                if all {
+                    String::new()
+                } else {
+                    format!(" LIMIT {} OFFSET {offset}", request.page_size)
+                }
+            ),
             &parameters,
-            &arrow_metadata::Annotations::load(
-                &self.conn,
-                &Relation {
-                    schema: "wordflow".into(),
-                    name: artifact_table(source.projection),
-                },
-            )?,
+            &corpus_annotations(&self.conn, &source)?,
             &self.cancellation,
         )?;
         check_cancellation(&self.cancellation)?;
@@ -226,8 +308,8 @@ impl Database {
         let file = arrow_page(
             &self.conn,
             &format!(
-                "SELECT {term} AS term,{bin} AS bin,count(*)::UBIGINT AS count FROM wordflow.{} GROUP BY term,bin ORDER BY term,bin",
-                artifact_table(source.projection)
+                "SELECT {term} AS term,{bin} AS bin,count(*)::UBIGINT AS count FROM ({}) WHERE match_order IS NOT NULL GROUP BY term,bin ORDER BY term,bin",
+                corpus_projection(&source)
             ),
             &[],
             &arrow_metadata::Annotations::default(),
@@ -266,6 +348,7 @@ impl Database {
         }
         let tx = self.conn.transaction()?;
         let mut targets = Vec::new();
+        let mut live_publication = false;
         for selected in &request.sources {
             check_cancellation(&self.cancellation)?;
             let source = corpus(&tx, id, selected.source_index)?;
@@ -330,6 +413,11 @@ impl Database {
                     ));
                 }
             }
+            let document_rows = |sql: &str| {
+                format!(
+                    "SELECT document_id,first(source) AS source,coalesce(string_agg(trim(regexp_replace(extraction,'\\s+',' ','g')),chr(10) ORDER BY match_order),'') AS CONC_extraction FROM ({sql}) GROUP BY document_id"
+                )
+            };
             let rows = if request.projection == Projection::Documents {
                 format!(
                     "SELECT document_id,first(source) AS source,string_agg(trim(regexp_replace(extraction,'\\s+',' ','g')),chr(10) ORDER BY match_order) AS CONC_extraction FROM ({sql}) GROUP BY document_id"
@@ -337,19 +425,94 @@ impl Database {
             } else {
                 sql
             };
-            tx.execute(
-                &format!(
-                    "CREATE TABLE {} AS SELECT {} FROM ({rows}) ORDER BY document_id{}",
-                    target.sql(),
-                    fields.join(","),
-                    if request.projection == Projection::Matches {
-                        ",match_order"
-                    } else {
-                        ""
-                    }
-                ),
-                params_from_iter(parameters.iter()),
-            )?;
+            if let Some(processed_column) = &source.processed_column {
+                live_publication = true;
+                let documents = artifact_relation(&tx, id, source.documents)?;
+                let copied_documents = copy_publication_relation(&tx, &documents)?;
+                let matches = artifact_relation(&tx, id, source.matches)?;
+                let (filtered, filter_parameters) = filtered(&source, &selected.filter)?;
+                let copied_matches = copy_publication_query(
+                    &tx,
+                    &format!(
+                        "SELECT m.* FROM {} m WHERE EXISTS(SELECT 1 FROM ({filtered}) p WHERE p.processed_id=m.document_id AND p.match_order=m.match_order)",
+                        matches.sql()
+                    ),
+                    &filter_parameters,
+                )?;
+                if let Some(document) = &selected.filter.document_id {
+                    let document: u64 = document
+                        .parse()
+                        .map_err(|_| Error::invalid("Invalid document ID"))?;
+                    let population = live_document_rows(
+                        &DocumentInput {
+                            source: source.input.source.clone(),
+                            column: source.input.column.clone(),
+                        },
+                        &documents.sql(),
+                        processed_column,
+                        &source.columns,
+                    );
+                    tx.execute(&format!("DELETE FROM {} WHERE document_id NOT IN (SELECT processed_id FROM ({population}) WHERE document_id=?)", copied_documents.sql()), [document])?;
+                }
+                let publication = PublicationSource::selected(
+                    &tx,
+                    &DocumentInput {
+                        source: source.input.source.clone(),
+                        column: source.input.column.clone(),
+                    },
+                    std::iter::once(source.input.column.clone())
+                        .chain(selected.metadata.iter().cloned())
+                        .collect(),
+                )?;
+                let joined = live_projection_sql(
+                    &DocumentInput {
+                        source: source.input.source.clone(),
+                        column: source.input.column.clone(),
+                    },
+                    &copied_documents.sql(),
+                    &copied_matches.sql(),
+                    processed_column,
+                    &publication.columns(&source.columns),
+                );
+                publish_live_view(
+                    &tx,
+                    &target,
+                    vec![copied_documents, copied_matches],
+                    publication,
+                    &joined,
+                    |join| {
+                        let all = format!("SELECT * FROM {}", join.sql());
+                        let rows = if request.projection == Projection::Documents {
+                            document_rows(&all)
+                        } else {
+                            all
+                        };
+                        format!(
+                            "SELECT {} FROM ({rows}) ORDER BY document_id{}",
+                            fields.join(","),
+                            if request.projection == Projection::Matches {
+                                ",match_order"
+                            } else {
+                                ""
+                            }
+                        )
+                    },
+                )?;
+            } else {
+                tx.execute(
+                    &format!(
+                        "CREATE TABLE {} AS SELECT {} FROM ({rows}) ORDER BY document_id{}",
+                        target.sql(),
+                        fields.join(","),
+                        if request.projection == Projection::Matches {
+                            ",match_order"
+                        } else {
+                            ""
+                        }
+                    ),
+                    params_from_iter(parameters.iter()),
+                )?;
+            }
             tx.execute(
                 "INSERT INTO wordflow.nodes(table_name,document_column) VALUES (?,?)",
                 params![target.name, source.input.column],
@@ -361,15 +524,9 @@ impl Database {
                 .filter(|name| names.contains(&name.to_ascii_lowercase()))
                 .cloned()
                 .collect::<Vec<_>>();
-            arrow_metadata::Annotations::load(
-                &tx,
-                &Relation {
-                    schema: "wordflow".into(),
-                    name: artifact_table(source.projection),
-                },
-            )?
-            .source_columns(&selected_columns)
-            .store(&tx, &target)?;
+            corpus_annotations(&tx, &source)?
+                .source_columns(&selected_columns)
+                .store(&tx, &target)?;
             let parent = &source.input.source;
             if parent
                 .schema
@@ -385,6 +542,9 @@ impl Database {
             });
         }
         let mut scope = ChangeScope::resource(Resource::Graph);
+        if live_publication {
+            scope.resources.push(Resource::Project);
+        }
         scope.objects = targets
             .iter()
             .map(|target| Relation {

@@ -109,6 +109,8 @@ pub(crate) struct Node {
     pub can_undo: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostic: Option<Error>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication: Option<document_matches::PublicationOwnership>,
 }
 impl Node {
     fn relation(&self) -> Relation {
@@ -287,6 +289,7 @@ impl Database {
             "TABLE"
         };
         tx.execute_batch(&format!("DROP {kind} IF EXISTS {}", relation.sql()))?;
+        document_matches::delete_publication(&tx, &relation)?;
         check_cancellation(&self.cancellation)?;
         change.commit(tx, &self.changes, &self.cancellation)?;
         Ok(())
@@ -732,6 +735,7 @@ impl Database {
             .collect();
         let mut tokenizer_models =
             std::collections::HashMap::<String, std::collections::BTreeMap<String, String>>::new();
+        let mut publications = document_matches::publication_ownership(&self.conn)?;
         let mut preferences = self.conn.prepare(
             "SELECT table_name,column_name,tokenizer_model FROM wordflow.tokenizer_models",
         )?;
@@ -749,6 +753,7 @@ impl Database {
                 .insert(column, model);
         }
         for item in &mut nodes {
+            item.publication = publications.remove(&item.table_name);
             item.tokenizer_models = tokenizer_models
                 .remove(&item.table_name)
                 .unwrap_or_default();
@@ -908,6 +913,7 @@ fn read_node(r: &duckdb::Row<'_>) -> duckdb::Result<Node> {
         column_count: None,
         can_undo: false,
         diagnostic: None,
+        publication: None,
     })
 }
 fn node(conn: &Connection, name: &str) -> Result<Node> {
@@ -976,11 +982,15 @@ fn validate_project(conn: &Connection) -> Result<()> {
             |r| Ok((r.get::<_, i64>(0)?, r.get::<_, Option<i32>>(1)?)),
         )
         .map_err(|e| Error::new("invalid_project", e.to_string()))?;
-    if header != (1, Some(1)) {
+    if !matches!(header, (1, Some(1 | 2))) {
         return Err(Error::new(
             "invalid_project",
             "Unsupported or invalid Wordflow project format",
         ));
+    }
+    if header.1 == Some(2) {
+        conn.prepare("SELECT node_name,relations,bindings FROM wordflow.publications LIMIT 0")
+            .map_err(|e| Error::new("invalid_project", e.to_string()))?;
     }
     for sql in [
         "SELECT singleton,description,created_at FROM wordflow.project LIMIT 0",
@@ -1036,6 +1046,7 @@ pub mod frequency;
 pub(crate) mod imports;
 pub(crate) mod plots;
 pub(crate) mod quotation;
+pub(crate) mod result_downloads;
 pub(crate) mod topic_modeling;
 pub(crate) use analyses::*;
 use changes::{ChangeScope, PendingChange, Resource};

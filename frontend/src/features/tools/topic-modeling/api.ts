@@ -115,7 +115,8 @@ export async function getTopicResult(
   if (value.kind === 'topic-modeling' && value.result === null) return null;
   if (
     value.kind !== 'topic-modeling' ||
-    value.result?.version !== 1 ||
+    !value.result ||
+    ![1, 2].includes(value.result?.version ?? 0) ||
     !Array.isArray(value.result.payload.sources) ||
     !Number.isInteger(value.result.payload.natural_topic_count)
   )

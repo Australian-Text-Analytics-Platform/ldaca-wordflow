@@ -48,6 +48,13 @@ pub(crate) fn router() -> utoipa_axum::router::OpenApiRouter<ProjectRuntime> {
         .routes(utoipa_axum::routes!(query_quotation))
         .routes(utoipa_axum::routes!(publish_quotation))
         .routes(utoipa_axum::routes!(result))
+        .routes(utoipa_axum::routes!(download_result))
+        .merge(
+            utoipa_axum::router::OpenApiRouter::new()
+                .routes(utoipa_axum::routes!(download_captured_result))
+                .layer(axum::extract::DefaultBodyLimit::disable()),
+        )
+        .routes(utoipa_axum::routes!(download_topic_preview))
         .routes(utoipa_axum::routes!(query))
         .routes(utoipa_axum::routes!(export))
         .routes(utoipa_axum::routes!(tokenizers))
@@ -702,4 +709,78 @@ async fn query_annotation(
         }
         annotation::review::Output::Context(value) => Ok(Json(value).into_response()),
     }
+}
+
+#[utoipa::path(
+    post, path = "/api/project/analyses/{id}/download", operation_id = "analysis_api_download_result",
+    tag = "analysis_api",
+    params(("id" = String, Path)),
+    request_body = crate::project::result_downloads::ResultDownload,
+    responses((status = 200, description = "Complete filtered and ordered result download", content((crate::openapi::Binary = "application/octet-stream")), headers(("x-wordflow-task-id" = String, description = "Export task identity"), ("Content-Disposition" = String, description = "Download filename"))), (status = 400, body = crate::error::ErrorEnvelope), (status = 404, body = crate::error::ErrorEnvelope), (status = 409, body = crate::error::ErrorEnvelope), (status = 500, body = crate::error::ErrorEnvelope), (status = 503, body = crate::error::ErrorEnvelope))
+)]
+async fn download_result(
+    State(project): State<ProjectRuntime>,
+    Path(id): Path<Uuid>,
+    InputJson(input): InputJson<crate::project::result_downloads::ResultDownload>,
+) -> Result<axum::response::Response> {
+    let export = crate::ExportRequest::Files {
+        objects: vec!["results".into()],
+        format: input.format,
+    };
+    let filename = export.filename("results");
+    let media_type = export.media_type();
+    let task =
+        project
+            .clone()
+            .submit_task(format!("Download {filename}"), move |context| async move {
+                context.progress("Capturing matching result rows", None);
+                let file = project.download_result(id, input).await?;
+                let mut response = file_response(file, media_type)?;
+                response.headers_mut().insert(
+                    axum::http::header::CONTENT_DISPOSITION,
+                    format!("attachment; filename={filename}")
+                        .parse()
+                        .map_err(|_| crate::Error::invalid("Invalid download filename"))?,
+                );
+                Ok(response)
+            })?;
+    crate::api::task_response(task).await
+}
+
+#[utoipa::path(
+    post, path = "/api/project/results/download", operation_id = "analysis_api_download_captured_result",
+    tag = "analysis_api",
+    request_body = crate::project::result_downloads::CapturedResultDownload,
+    responses((status = 200, description = "Export already completed Preview rows without inference", content((crate::openapi::Binary = "application/octet-stream"))), (status = 400, body = crate::error::ErrorEnvelope), (status = 409, body = crate::error::ErrorEnvelope), (status = 500, body = crate::error::ErrorEnvelope), (status = 503, body = crate::error::ErrorEnvelope))
+)]
+async fn download_captured_result(
+    State(project): State<ProjectRuntime>,
+    InputJson(input): InputJson<crate::project::result_downloads::CapturedResultDownload>,
+) -> Result<axum::response::Response> {
+    let media = crate::ExportRequest::Files {
+        objects: vec!["preview".into()],
+        format: input.format,
+    }
+    .media_type();
+    file_response(project.download_captured_result(input).await?, media)
+}
+
+#[utoipa::path(
+    post, path = "/api/project/tabs/{tab}/topic-modeling/previews/{id}/download", operation_id = "analysis_api_download_topic_preview",
+    tag = "analysis_api",
+    params(("tab" = String, Path),("id" = String, Path)),
+    request_body = crate::project::result_downloads::TopicPreviewDownload,
+    responses((status = 200, description = "Export all matching sampled documents without refitting", content((crate::openapi::Binary = "application/octet-stream"))), (status = 400, body = crate::error::ErrorEnvelope), (status = 404, body = crate::error::ErrorEnvelope), (status = 409, body = crate::error::ErrorEnvelope), (status = 500, body = crate::error::ErrorEnvelope), (status = 503, body = crate::error::ErrorEnvelope))
+)]
+async fn download_topic_preview(
+    State(project): State<ProjectRuntime>,
+    Path((tab, id)): Path<(Uuid, Uuid)>,
+    InputJson(input): InputJson<crate::project::result_downloads::TopicPreviewDownload>,
+) -> Result<axum::response::Response> {
+    let media = crate::ExportRequest::Files {
+        objects: vec!["preview".into()],
+        format: input.format,
+    }
+    .media_type();
+    file_response(project.download_topic_preview(tab, id, input).await?, media)
 }

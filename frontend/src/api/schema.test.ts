@@ -27,8 +27,8 @@ describe('native OpenAPI contracts', () => {
         );
       }
     }
-    // This guards accidental route omission during the initial cutover.
-    expect(ids.size).toBe(134);
+    // Include saved, captured-Preview and sampled-Topics download adapters.
+    expect(ids.size).toBe(137);
     const refs = JSON.stringify(contract).matchAll(/"\$ref":"([^"]+)"/g);
     for (const [, ref] of refs) {
       expect(ref?.startsWith('#/components/schemas/')).toBe(true);
@@ -121,6 +121,10 @@ describe('native OpenAPI contracts', () => {
         dominant_counts: [],
         colour_fields: [],
         colour_counts: null,
+        document_counts: [],
+        outlier_counts: [],
+        source_columns: [],
+        source_inputs: [],
       }),
     ).toBe(true);
     expect(

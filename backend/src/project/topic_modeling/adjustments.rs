@@ -84,13 +84,24 @@ pub(super) fn store_outputs(
     model: &TopicModel,
 ) -> Result<(Uuid, Option<Uuid>, Option<Uuid>)> {
     let natural = model.revision;
+    let bytes = if model
+        .sources
+        .iter()
+        .all(|source| source.processed_column.is_some())
+    {
+        let mut projection = serde_json::to_value(&model.natural)?;
+        projection["documents"] = serde_json::json!([]);
+        serde_json::to_vec(&projection)?
+    } else {
+        serde_json::to_vec(&model.natural)?
+    };
     register_blob(
         conn,
         id,
         natural,
         "natural_projection",
         "application/json",
-        &serde_json::to_vec(&model.natural)?,
+        &bytes,
     )?;
     let context = model
         .natural
@@ -147,7 +158,15 @@ impl Database {
                     model_error("Retained source is unavailable. Rerun this analysis.")
                 })?,
             )?;
-            let column = format!("source.{}", query::quote(&source.input.column));
+            let column = format!(
+                "source.{}",
+                query::quote(
+                    source
+                        .processed_column
+                        .as_ref()
+                        .unwrap_or(&source.input.column)
+                )
+            );
             texts.extend(
                 self.conn
                     .prepare(&format!(
@@ -197,6 +216,24 @@ impl Database {
             tx.execute("DELETE FROM wordflow.artifacts WHERE id=? AND analysis_id=? AND storage_kind='blob'", params![artifact.to_string(), id.to_string()])?;
         }
         let (natural, context, stages) = store_outputs(&tx, id, &model)?;
+        if output
+            .sources
+            .iter()
+            .all(|source| source.processed_column.is_some())
+        {
+            let updates = document_outputs(&tx, &model.sources, &model.natural.documents)?;
+            for (index, source) in model.sources.iter().enumerate() {
+                let relation = artifact_relation(
+                    &tx,
+                    id,
+                    source
+                        .documents
+                        .ok_or_else(|| model_error("Processed Topic outputs are unavailable"))?,
+                )?;
+                tx.execute_batch(&format!("UPDATE {} d SET dominant=a.dominant,coverage=from_json(a.coverage,'[{{\"topic_id\":\"INTEGER\",\"coverage\":\"DOUBLE\"}}]') FROM {updates} a WHERE a.source_index={index} AND a.document_id=d.document_id",relation.sql()))?;
+            }
+            tx.execute_batch(&format!("DROP TABLE {updates}"))?;
+        }
         output.natural_projection = natural;
         output.projection_context = context;
         output.retained_stages = stages;
@@ -224,6 +261,7 @@ mod tests {
             preview_documents: Vec::new(),
             revision: Uuid::new_v4(),
             metadata: Vec::new(),
+            population: None,
             parameters: None,
             sources: Vec::new(),
             natural: TopicModelingResult {

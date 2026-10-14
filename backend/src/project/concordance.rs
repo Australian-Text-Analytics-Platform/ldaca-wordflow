@@ -73,6 +73,8 @@ pub(crate) struct ConcordanceCorpus {
     pub document_count: u64,
     pub matching_documents: u64,
     pub match_count: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processed_column: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 pub(crate) struct ConcordanceResultV1 {
@@ -179,7 +181,7 @@ impl CapturedSource {
         input: &ConcordanceInput,
         page: Option<&ConcordancePreview>,
     ) -> Result<Self> {
-        let captured = capture_documents(
+        let mut captured = capture_documents(
             conn,
             &DocumentInput {
                 source: input.source.clone(),
@@ -191,6 +193,9 @@ impl CapturedSource {
                 sort: p.sort.as_ref().map(|s| (s.column.as_str(), s.descending)),
             }),
         )?;
+        if page.is_none() {
+            distinct_documents(conn, &mut captured)?;
+        }
         let matches = temporary_name();
         conn.execute_batch(&format!("CREATE TEMP TABLE {matches}(document_id UBIGINT, match_order UBIGINT, left_context VARCHAR, matched_text VARCHAR, right_context VARCHAR, start_idx BIGINT, end_idx BIGINT, l1 VARCHAR, r1 VARCHAR, extraction VARCHAR)"))?;
         Ok(Self {
@@ -271,6 +276,18 @@ fn projection_sql(documents: &str, matches: &str) -> String {
         "SELECT m.*, d.source, count(*) OVER (PARTITION BY m.l1)::UBIGINT AS l1_frequency, count(*) OVER (PARTITION BY m.r1)::UBIGINT AS r1_frequency FROM {matches} m JOIN {documents} d USING(document_id)"
     )
 }
+fn live_projection_sql(
+    input: &DocumentInput,
+    documents: &str,
+    matches: &str,
+    processed_column: &str,
+    columns: &[(String, String)],
+) -> String {
+    let rows = live_document_rows(input, documents, processed_column, columns);
+    format!(
+        "SELECT s.document_id,m.* EXCLUDE(document_id),s.source,s.processed_id,count(m.match_order) OVER (PARTITION BY m.l1)::UBIGINT AS l1_frequency,count(m.match_order) OVER (PARTITION BY m.r1)::UBIGINT AS r1_frequency FROM ({rows}) s LEFT JOIN {matches} m ON m.document_id=s.processed_id"
+    )
+}
 fn document_page_sql(projection: &str) -> String {
     format!(
         "SELECT document_id, first(source) AS source, list(struct_pack(match_order := match_order, left_context := left_context, matched_text := matched_text, right_context := right_context, start_idx := start_idx, end_idx := end_idx, l1 := l1, r1 := r1, l1_frequency := l1_frequency, r1_frequency := r1_frequency, extraction := extraction) ORDER BY match_order) AS matches FROM ({projection}) GROUP BY document_id ORDER BY document_id"
@@ -340,17 +357,21 @@ impl Database {
         check_cancellation(&self.cancellation)?;
         progress("Saving results");
         let cancellation = self.cancellation.clone();
-        self.publish_analysis(AcceptedAnalysis {id,tab_id:tab,kind:"concordance"},move |conn| {
+        self.publish_analysis_version(AcceptedAnalysis {id,tab_id:tab,kind:"concordance"},2,None,move |conn| {
             let mut corpora = Vec::new();
             for (index,source) in captured.iter().enumerate() {
                 check_cancellation(&cancellation)?;
                 let documents = Uuid::new_v4(); let matches = Uuid::new_v4(); let projection = Uuid::new_v4();
                 let documents_sql = format!("wordflow.{}",artifact_table(documents));
                 let matches_sql = format!("wordflow.{}",artifact_table(matches));
-                conn.execute_batch(&format!("CREATE TABLE {documents_sql} AS SELECT * FROM {} WHERE document_id IN (SELECT document_id FROM {}); CREATE TABLE {matches_sql} AS SELECT * FROM {}; CREATE VIEW wordflow.{} AS {}",source.documents,source.matches,source.matches,artifact_table(projection),projection_sql(&documents_sql,&matches_sql)))?;
+                let input = DocumentInput { source: source.input.source.clone(), column: source.input.column.clone() };
+                let joined = live_projection_sql(&input, &documents_sql, &matches_sql, &source.input.column, &source.columns);
+                conn.execute_batch(&format!("CREATE TABLE {documents_sql} AS SELECT * FROM {}; CREATE TABLE {matches_sql} AS SELECT * FROM {}; CREATE VIEW wordflow.{} AS {}",source.documents,source.matches,artifact_table(projection),projection_sql(&documents_sql,&matches_sql)))?;
                 for (artifact,name) in [(documents,"documents"),(matches,"matches"),(projection,"projection")] { register_table(conn,id,artifact,&format!("source_{index}_{name}"))?; }
-                for artifact in [documents,projection] { source.metadata.store(conn, &Relation {schema:"wordflow".into(),name:artifact_table(artifact)})?; }
-                corpora.push(ConcordanceCorpus { input: source.input.clone(), columns:source.columns.clone(),  documents,matches,projection,document_count:source.document_count,matching_documents:source.matching_documents,match_count:source.match_count });
+                source.metadata.source_columns(std::slice::from_ref(&source.input.column)).prefixed("source").store(conn, &Relation {schema:"wordflow".into(),name:artifact_table(documents)})?;
+                source.metadata.source_columns(std::slice::from_ref(&source.input.column)).prefixed("source").store(conn, &Relation {schema:"wordflow".into(),name:artifact_table(projection)})?;
+                let (document_count, matching_documents, match_count) = conn.query_row(&format!("SELECT count(DISTINCT document_id),count(DISTINCT document_id) FILTER(WHERE match_order IS NOT NULL),count(match_order) FROM ({joined})"), [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+                corpora.push(ConcordanceCorpus { input: source.input.clone(), columns:source.columns.clone(),  documents,matches,projection,document_count,matching_documents,match_count,processed_column:Some(source.input.column.clone()) });
             }
             Ok(serde_json::to_value(ConcordanceResultV1 {corpora})?)
         })
@@ -360,6 +381,8 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ExportRequest;
+    use crate::project::mutations::ColumnChange;
     impl Database {
         fn test_concordance(
             &mut self,
@@ -371,6 +394,60 @@ mod tests {
             let id =
                 self.begin_analysis_run(tab, "concordance", serde_json::to_value(&request)?)?;
             self.run_concordance(tab, id, request, matchers, progress)
+        }
+        /// Construct the historical snapshot payload; production Run always creates v2.
+        fn historical_concordance_v1(
+            &mut self,
+            tab: Uuid,
+            request: ConcordanceRequest,
+            matchers: Vec<DocumentMatcher>,
+            _progress: impl FnMut(&str),
+        ) -> Result<Analysis> {
+            let id =
+                self.begin_analysis_run(tab, "concordance", serde_json::to_value(&request)?)?;
+            let mut captured = Vec::new();
+            for (input, matcher) in request.inputs.iter().zip(matchers) {
+                let docs = capture_documents(
+                    &self.conn,
+                    &DocumentInput {
+                        source: input.source.clone(),
+                        column: input.column.clone(),
+                    },
+                    None,
+                )?;
+                let matches = temporary_name();
+                self.conn.execute_batch(&format!("CREATE TEMP TABLE {matches}(document_id UBIGINT, match_order UBIGINT, left_context VARCHAR, matched_text VARCHAR, right_context VARCHAR, start_idx BIGINT, end_idx BIGINT, l1 VARCHAR, r1 VARCHAR, extraction VARCHAR)"))?;
+                let mut source = CapturedSource {
+                    documents: docs.name,
+                    matches,
+                    columns: docs.columns,
+                    metadata: docs.metadata,
+                    input: input.clone(),
+                    document_count: docs.count,
+                    match_count: 0,
+                    matching_documents: 0,
+                };
+                source.calculate(
+                    &self.conn,
+                    &matcher,
+                    source.document_count,
+                    &self.cancellation,
+                )?;
+                captured.push(source);
+            }
+            self.publish_analysis(AcceptedAnalysis { id, tab_id: tab, kind: "concordance" }, |conn| {
+                let mut corpora = Vec::new();
+                for (index, source) in captured.iter().enumerate() {
+                    let documents = Uuid::new_v4(); let matches = Uuid::new_v4(); let projection = Uuid::new_v4();
+                    let docs = format!("wordflow.{}", artifact_table(documents));
+                    let hits = format!("wordflow.{}", artifact_table(matches));
+                    conn.execute_batch(&format!("CREATE TABLE {docs} AS SELECT * FROM {} WHERE document_id IN(SELECT document_id FROM {}); CREATE TABLE {hits} AS SELECT * FROM {}; CREATE VIEW wordflow.{} AS {}", source.documents,source.matches,source.matches,artifact_table(projection),projection_sql(&docs,&hits)))?;
+                    for (artifact, name) in [(documents,"documents"),(matches,"matches"),(projection,"projection")] { register_table(conn,id,artifact,&format!("source_{index}_{name}"))?; }
+                    for artifact in [documents,projection] { source.metadata.store(conn, &Relation { schema: "wordflow".into(), name: artifact_table(artifact) })?; }
+                    corpora.push(ConcordanceCorpus { input: source.input.clone(), columns: source.columns.clone(), documents,matches,projection,document_count:source.document_count,matching_documents:source.matching_documents,match_count:source.match_count,processed_column:None });
+                }
+                Ok(serde_json::to_value(ConcordanceResultV1 { corpora })?)
+            })
         }
     }
 
@@ -399,6 +476,425 @@ mod tests {
         )
     }
 
+    #[test]
+    fn live_results_deduplicate_text_keep_empty_publications_and_survive_tab_cleanup() {
+        let (mut p, tab, input, search) = setup();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let analysis = p
+            .database
+            .test_concordance(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        assert_eq!(analysis.result.as_ref().unwrap().version, 2);
+        let result: ConcordanceResultV1 =
+            serde_json::from_value(analysis.result.unwrap().payload).unwrap();
+        let source = &result.corpora[0];
+        let count: u64 = p
+            .database
+            .conn
+            .query_row(
+                &format!(
+                    "SELECT count(*) FROM wordflow.{}",
+                    artifact_table(source.documents)
+                ),
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 2);
+        let records = p
+            .database
+            .conn
+            .prepare(&format!(
+                "SELECT to_json(source)::VARCHAR FROM wordflow.{}",
+                artifact_table(source.documents)
+            ))
+            .unwrap()
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .collect::<duckdb::Result<Vec<_>>>()
+            .unwrap();
+        assert!(records.iter().all(|row| {
+            serde_json::from_str::<Value>(row)
+                .unwrap()
+                .as_object()
+                .unwrap()
+                .len()
+                == 1
+        }));
+        p.database
+            .publish_concordance(
+                analysis.id,
+                ConcordancePublish {
+                    projection: Projection::Documents,
+                    sources: vec![PublishSource {
+                        source_index: 0,
+                        name: "live_result".into(),
+                        metadata: vec!["tags".into()],
+                        fields: vec![],
+                        filter: ConcordanceFilter::default(),
+                    }],
+                },
+            )
+            .unwrap();
+        assert_eq!(p.info().unwrap().schema_version, 2);
+        let graph = p.database.graph().unwrap();
+        let owner = graph
+            .nodes
+            .iter()
+            .find(|node| node.table_name == "live_result")
+            .unwrap()
+            .publication
+            .as_ref()
+            .unwrap();
+        assert_eq!(owner.relation_count, 3);
+        assert_eq!(owner.source.column, "text");
+        assert_eq!(
+            owner.columns,
+            [
+                ("text".into(), "text".into()),
+                ("tags".into(), "tags".into())
+            ]
+        );
+
+        let count: u64 = p
+            .database
+            .conn
+            .query_row("SELECT count(*) FROM data.live_result", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 3);
+        let empty: String = p
+            .database
+            .conn
+            .query_row(
+                "SELECT CONC_extraction FROM data.live_result WHERE text='nothing'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(empty, "");
+        let portable = p
+            .database
+            .write_export(
+                &ExportRequest::CompleteProject,
+                tempfile::NamedTempFile::new().unwrap(),
+                None,
+            )
+            .unwrap();
+        let mut reopened = Project::open(portable.path()).unwrap();
+        assert_eq!(reopened.info().unwrap().schema_version, 2);
+        assert_eq!(
+            reopened
+                .database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_result", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            3
+        );
+        reopened.database.clear_analysis_tab(tab).unwrap();
+        assert_eq!(
+            reopened
+                .database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_result", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            3
+        );
+        reopened.database.delete_node("live_result").unwrap();
+        assert_eq!(
+            reopened
+                .database
+                .conn
+                .query_row("SELECT count(*) FROM wordflow.publications", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            0
+        );
+        p.database.conn.execute_batch("INSERT INTO data.docs VALUES ('unprocessed cat',[], 'new'),('😀 cat cat',[99], 'duplicate'); UPDATE data.docs SET tags=[42] WHERE document_id='original'").unwrap();
+        let count: u64 = p
+            .database
+            .conn
+            .query_row("SELECT count(*) FROM data.live_result", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 4);
+        let updated: u64 = p
+            .database
+            .conn
+            .query_row(
+                "SELECT count(*) FROM data.live_result WHERE tags=[42]",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(updated, 1);
+        p.database.clear_analysis_tab(tab).unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_result", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            4
+        );
+        p.database.delete_objects(vec!["docs".into()]).unwrap();
+        assert!(
+            p.database
+                .conn
+                .prepare("SELECT * FROM data.live_result")
+                .is_err()
+        );
+        p.database.conn.execute_batch("CREATE TABLE data.docs(text VARCHAR,tags INTEGER[],document_id VARCHAR); INSERT INTO data.docs VALUES ('😀 cat cat',[7],'restored'); INSERT INTO wordflow.nodes(table_name) VALUES ('docs')").unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_result", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            1
+        );
+        p.database
+            .delete_objects(vec!["live_result".into()])
+            .unwrap();
+        assert_eq!(p.database.conn.query_row("SELECT count(*) FROM duckdb_tables() WHERE schema_name='wordflow' AND table_name LIKE 'published_%'", [], |r| r.get::<_, u64>(0)).unwrap(), 0);
+    }
+
+    #[test]
+    fn direct_download_uses_all_filtered_rows_and_selected_column_order() {
+        use super::super::result_downloads::*;
+        let (mut p, tab, input, search) = setup();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let analysis = p
+            .database
+            .test_concordance(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        let download = |format| ResultDownload {
+            format,
+            selection: ResultSelection::Concordance {
+                query: ConcordanceQuery {
+                    source_index: 0,
+                    projection: Projection::Matches,
+                    page: 2,
+                    page_size: 1,
+                    sort: Some(SavedSort {
+                        field: "document_id".into(),
+                        metadata: true,
+                        descending: true,
+                    }),
+                    filter: ConcordanceFilter::default(),
+                },
+            },
+            columns: vec![
+                ResultColumn {
+                    column: "tags".into(),
+                    metadata: true,
+                },
+                ResultColumn {
+                    column: "matched_text".into(),
+                    metadata: false,
+                },
+                ResultColumn {
+                    column: "text".into(),
+                    metadata: true,
+                },
+                ResultColumn {
+                    column: "start_idx".into(),
+                    metadata: false,
+                },
+            ],
+        };
+        let json = p
+            .database
+            .download_result(analysis.id, download(ExportFormat::Json))
+            .unwrap();
+        let rows: Vec<Value> = serde_json::from_reader(json.reopen().unwrap()).unwrap();
+        assert_eq!(rows.len(), 4);
+        assert_eq!(rows[0]["tags"], serde_json::json!([3]));
+        assert_eq!(rows[2]["tags"], serde_json::json!([1, 2]));
+        assert!(!rows[0].as_object().unwrap().contains_key("document_band"));
+        let csv = p
+            .database
+            .download_result(analysis.id, download(ExportFormat::Csv))
+            .unwrap();
+        let bytes = std::fs::read(csv.path()).unwrap();
+        assert!(bytes.starts_with(b"\xef\xbb\xbftags,matched_text,text,start_idx\n"));
+        assert_eq!(String::from_utf8(bytes).unwrap().lines().count(), 5);
+        let mut invalid = download(ExportFormat::Json);
+        invalid.columns.retain(|c| c.column != "text");
+        assert!(
+            p.database
+                .download_result(analysis.id, invalid)
+                .unwrap_err()
+                .message
+                .contains("Position fields")
+        );
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM wordflow.publications", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap_or(0),
+            0
+        );
+    }
+    #[test]
+    fn live_publication_refreshes_enum_types_and_preserves_rename_bindings() {
+        let (mut p, tab, input, search) = setup();
+        p.database.conn.execute_batch("INSERT INTO wordflow.arrow_metadata VALUES ('data','docs','[\"text\"]','test.text','initial')").unwrap();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let analysis = p
+            .database
+            .test_concordance(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        p.database
+            .publish_concordance(
+                analysis.id,
+                ConcordancePublish {
+                    projection: Projection::Documents,
+                    sources: vec![PublishSource {
+                        source_index: 0,
+                        name: "live".into(),
+                        metadata: vec!["document_id".into()],
+                        fields: vec![],
+                        filter: ConcordanceFilter::default(),
+                    }],
+                },
+            )
+            .unwrap();
+        let mut changes = p.database.changes.subscribe();
+        p.database
+            .change_column(
+                "docs".into(),
+                ColumnChange::OrderCategories {
+                    column: "document_id".into(),
+                    values: vec![
+                        "repeat".into(),
+                        "original".into(),
+                        "second".into(),
+                        "null".into(),
+                    ],
+                },
+            )
+            .unwrap();
+        assert!(changes.try_recv().unwrap().objects.contains(&Relation {
+            schema: "data".into(),
+            name: "live".into()
+        }));
+        let labels = p
+            .database
+            .conn
+            .prepare("SELECT document_id::VARCHAR FROM data.live ORDER BY document_id")
+            .unwrap()
+            .query_map([], |r| r.get::<_, String>(0))
+            .unwrap()
+            .collect::<duckdb::Result<Vec<_>>>()
+            .unwrap();
+        assert_eq!(labels, ["repeat", "original", "second"]);
+        p.database
+            .change_column(
+                "docs".into(),
+                ColumnChange::Delete {
+                    column: "tags".into(),
+                },
+            )
+            .unwrap();
+
+        p.database
+            .change_column(
+                "docs".into(),
+                ColumnChange::Rename {
+                    column: "text".into(),
+                    name: "document".into(),
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row(
+                    "SELECT count(*) FROM data.live WHERE text='😀 cat cat'",
+                    [],
+                    |r| r.get::<_, u64>(0)
+                )
+                .unwrap(),
+            2
+        );
+        p.database.sql(SqlBatch{script:Some("UPDATE wordflow.arrow_metadata SET extension_metadata='updated' WHERE schema_name='data' AND relation_name='docs' AND field_path='[\"document\"]'".into()),response:SqlResponse::Command,..Default::default()}).unwrap();
+        p.database
+            .change_column(
+                "live".into(),
+                ColumnChange::Rename {
+                    column: "text".into(),
+                    name: "quoted_document".into(),
+                },
+            )
+            .unwrap();
+        let annotations = arrow_metadata::Annotations::load(
+            &p.database.conn,
+            &Relation {
+                schema: "data".into(),
+                name: "live".into(),
+            },
+        )
+        .unwrap();
+        assert!(
+            annotations
+                .0
+                .iter()
+                .any(|a| a.path == ["quoted_document"] && a.payload.as_deref() == Some("updated"))
+        );
+        let page = p
+            .database
+            .concordance_page(
+                analysis.id,
+                ConcordanceQuery {
+                    source_index: 0,
+                    projection: Projection::Documents,
+                    filter: ConcordanceFilter::default(),
+                    page: 1,
+                    page_size: 20,
+                    sort: None,
+                },
+            )
+            .unwrap();
+        assert_eq!(page.document_count, 2);
+        let reader =
+            arrow_ipc::reader::StreamReader::try_new(page.file.reopen().unwrap(), None).unwrap();
+        let duckdb::arrow::datatypes::DataType::Struct(fields) = reader
+            .schema()
+            .field_with_name("source")
+            .unwrap()
+            .data_type()
+            .clone()
+        else {
+            panic!("source")
+        };
+        assert!(fields.iter().any(|f| f.name() == "document"));
+    }
     #[test]
     fn regex_whole_words_and_token_alternatives_follow_archived_options() {
         let (_, _, mut input, mut search) = setup();
@@ -464,18 +960,16 @@ mod tests {
             .unwrap();
         assert_eq!(page.total_rows, 2);
         assert!(!page.has_next);
-        let manifest: ConcordanceResultV1 =
-            serde_json::from_value(result.result.unwrap().payload).unwrap();
-        let relation = artifact_table(manifest.corpora[0].projection);
-        let frequency: u64 = project
-            .database
-            .conn
-            .query_row(
-                &format!("SELECT l1_frequency FROM wordflow.{relation} WHERE start_idx=6 LIMIT 1"),
-                [],
-                |r| r.get(0),
-            )
-            .unwrap();
+        let mut reader =
+            arrow_ipc::reader::StreamReader::try_new(page.file.reopen().unwrap(), None).unwrap();
+        let batch = reader.next().unwrap().unwrap();
+        let frequency = batch
+            .column_by_name("l1_frequency")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<duckdb::arrow::array::UInt64Array>()
+            .unwrap()
+            .value(0);
         assert_eq!(frequency, 2);
         let inspected = project
             .database
@@ -756,7 +1250,7 @@ mod tests {
         let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
         let result = project
             .database
-            .test_concordance(
+            .historical_concordance_v1(
                 tab,
                 ConcordanceRequest {
                     inputs: vec![input],
@@ -919,7 +1413,7 @@ mod tests {
         let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
         let result = project
             .database
-            .test_concordance(
+            .historical_concordance_v1(
                 tab,
                 ConcordanceRequest {
                     inputs: vec![input],
@@ -991,7 +1485,7 @@ mod tests {
         let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
         let result = project
             .database
-            .test_concordance(
+            .historical_concordance_v1(
                 tab,
                 ConcordanceRequest {
                     inputs: vec![input],

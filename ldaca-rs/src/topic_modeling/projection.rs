@@ -678,6 +678,23 @@ pub fn basis_from_result(
     projected: &TopicModelingResult,
     corpus_sizes: &[usize],
 ) -> Result<TopicProjectionBasis> {
+    compact_basis(projected, corpus_sizes, None)
+}
+
+/// Count current source multiplicities without changing fitted assignments or coordinates.
+pub fn basis_from_result_with_weights(
+    projected: &TopicModelingResult,
+    corpus_sizes: &[usize],
+    weights: &[usize],
+) -> Result<TopicProjectionBasis> {
+    compact_basis(projected, corpus_sizes, Some(weights))
+}
+
+fn compact_basis(
+    projected: &TopicModelingResult,
+    corpus_sizes: &[usize],
+    weights: Option<&[usize]>,
+) -> Result<TopicProjectionBasis> {
     let topic_count = projected.topics.len();
     let document_count = corpus_sizes.iter().try_fold(0usize, |total, size| {
         total
@@ -686,6 +703,9 @@ pub fn basis_from_result(
     })?;
     if document_count != projected.documents.len() {
         bail!("Topic projection documents do not align with corpus sizes");
+    }
+    if weights.is_some_and(|weights| weights.len() != document_count) {
+        bail!("Topic population weights do not align with processed texts");
     }
 
     let corpus_by_document = corpus_sizes
@@ -743,7 +763,7 @@ pub fn basis_from_result(
                         topic_id as usize,
                         minimum_n,
                     ))
-                    .or_insert(0) += 1;
+                    .or_insert(0) += weights.map_or(1, |weights| weights[document.doc_index]);
             }
             rank_start = rank_end;
         }
@@ -772,6 +792,26 @@ pub fn project_serialized_context_basis(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn live_population_weights_change_counts_without_changing_the_fitted_topics() {
+        let result = project(&fixture(), 3).unwrap();
+        let original = basis_from_result(&result, &[1, 1]).unwrap();
+        let weighted = basis_from_result_with_weights(&result, &[1, 1], &[4, 0]).unwrap();
+        assert_eq!(
+            serde_json::to_value(&original.topics).unwrap(),
+            serde_json::to_value(&weighted.topics).unwrap()
+        );
+        for [source, topic, rank, count] in &weighted.activations {
+            let original_count = original
+                .activations
+                .iter()
+                .find(|entry| entry[..3] == [*source, *topic, *rank])
+                .unwrap()[3];
+            assert_eq!(*count, if *source == 0 { 4 * original_count } else { 0 });
+        }
+        assert!(basis_from_result_with_weights(&result, &[2], &[1]).is_err());
+    }
 
     #[test]
     fn independent_words_and_documents_match_full_projection() {

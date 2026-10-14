@@ -1,3 +1,6 @@
+import { orderedResultColumns, readColumnOrder } from '../common/resultColumns';
+import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
+import { ResultDownloadMenu } from '../common/components/ResultDownloadMenu';
 import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
@@ -75,7 +78,9 @@ export function QuotationResults({
   const saved = view === 'saved';
   const request =
     saved && result
-      ? decodeAnalysisRequest('quotation', result.request_status).request
+      ? result.result.version === 1
+        ? { input: result.result.payload.input }
+        : decodeAnalysisRequest('quotation', result.request_status).request
       : submitted?.request;
   const [page, setPage] = useState(1);
   const [pageSizes, setPageSizes] = useState({ preview: 50, saved: 20 });
@@ -86,6 +91,7 @@ export function QuotationResults({
   }>({ preview: 'documents', saved: 'matches' });
   const unit = units[view];
   const [sort, setSort] = useState<quotationApi.QuotationQuery['sort']>(null);
+  const [columnSearch, setColumnSearch] = useState('');
   const [detail, setDetail] = useState<number | null>(null);
   const [publish, setPublish] = useState<'documents' | 'matches' | null>(null);
   const context = typeof settings.context === 'number' ? settings.context : 5;
@@ -118,7 +124,10 @@ export function QuotationResults({
       input,
     }),
     enabled: active && Boolean(request) && (saved || !stopped),
-    meta: { ...(saved ? {} : objectDependencies(input.source)), reportError: false },
+    meta: {
+      ...(!saved || result?.result.version === 2 ? objectDependencies(input.source) : {}),
+      reportError: false,
+    },
     placeholderData: keepPreviousData,
     staleTime: Infinity,
   });
@@ -137,6 +146,14 @@ export function QuotationResults({
     ? Object.keys(rows[0].source)
     : (result?.result.payload.columns.map(([name]) => name) ?? []);
   const selected = metadata.filter((name) => fields.includes(name));
+  const displayColumns = orderedResultColumns(
+    [
+      { column: input.column, metadata: true },
+      ...selected.map((column) => ({ column, metadata: true })),
+      ...generated.map((column) => ({ column, metadata: false })),
+    ],
+    readColumnOrder(settings.column_order),
+  );
   const stale = retained.stale[0] || (!saved && stopped);
   const setSorting = (field: string, isMetadata: boolean) => {
     setSort({
@@ -255,6 +272,12 @@ export function QuotationResults({
                 className="max-h-[min(24rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto"
               >
                 <div className="flex flex-col gap-3">
+                  <Input
+                    aria-label="Find Quotation column"
+                    value={columnSearch}
+                    placeholder="Find a column…"
+                    onChange={(event) => setColumnSearch(event.target.value)}
+                  />
                   <fieldset className="flex min-w-0 flex-col gap-2">
                     <legend className="mb-2 text-description text-label-secondary">
                       Source metadata
@@ -280,7 +303,11 @@ export function QuotationResults({
                       Select no metadata
                     </Button>
                     {fields
-                      .filter((name) => name !== input.column)
+                      .filter(
+                        (name) =>
+                          name !== input.column &&
+                          name.toLocaleLowerCase().includes(columnSearch.toLocaleLowerCase()),
+                      )
                       .map((name) => (
                         <label key={name} className="flex min-w-0 items-center gap-2">
                           <Checkbox
@@ -319,25 +346,52 @@ export function QuotationResults({
                     >
                       Select no fields
                     </Button>
-                    {quotationFields.map((field) => (
-                      <label key={field} className="flex items-center gap-2">
-                        <Checkbox
-                          checked={generated.includes(field)}
-                          onCheckedChange={(v) => {
-                            onSettings({
-                              fields: v
-                                ? [...generated, field]
-                                : generated.filter((n) => n !== field),
-                            });
-                          }}
-                        />
-                        {field.replaceAll('_', ' ')}
-                      </label>
-                    ))}
+                    {quotationFields
+                      .filter((field) =>
+                        field.toLocaleLowerCase().includes(columnSearch.toLocaleLowerCase()),
+                      )
+                      .map((field) => (
+                        <label key={field} className="flex items-center gap-2">
+                          <Checkbox
+                            checked={generated.includes(field)}
+                            onCheckedChange={(v) => {
+                              onSettings({
+                                fields: v
+                                  ? [...generated, field]
+                                  : generated.filter((n) => n !== field),
+                              });
+                            }}
+                          />
+                          {field.replaceAll('_', ' ')}
+                        </label>
+                      ))}
                   </fieldset>
                 </div>
               </PopoverContent>
             </Popover>
+            <ResultColumnOrder
+              columns={displayColumns}
+              onChange={(column_order) => onSettings({ column_order })}
+            />
+            {saved && result && (
+              <ResultDownloadMenu
+                base={base}
+                id={result.id}
+                selection={{ kind: 'quotation', query }}
+                columns={displayColumns}
+                document={{ column: input.column, metadata: true }}
+                disabled={editing || stale}
+              />
+            )}
+            {!saved && displayed && (
+              <ResultDownloadMenu
+                base={base}
+                captured={displayed.table}
+                columns={displayColumns}
+                document={{ column: input.column, metadata: true }}
+                disabled={editing || stale}
+              />
+            )}
           </div>
           <div className="flex flex-wrap gap-3 text-label-secondary">
             {Object.entries(quoteColors).map(([kind, value]) => (
@@ -366,31 +420,19 @@ export function QuotationResults({
             <table className="w-full text-body">
               <thead className="sticky top-0 z-10 bg-panel">
                 <tr>
-                  <th className="p-2 text-left">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSorting(input.column, true);
-                      }}
-                    >
-                      Document
-                      {sort?.field === input.column ? (sort.descending ? ' ↓' : ' ↑') : ''}
-                    </Button>
-                  </th>
-                  {[
-                    ...selected.map((field) => ({ field, metadata: true })),
-                    ...generated.map((field) => ({ field, metadata: false })),
-                  ].map(({ field, metadata }) => (
+                  {displayColumns.map(({ column: field, metadata }) => (
                     <th key={`${String(metadata)}-${field}`} className="p-2 text-left">
                       <Button
                         variant="ghost"
                         disabled={!metadata && (!saved || unit === 'documents')}
-                        onClick={() => {
-                          setSorting(field, metadata);
-                        }}
+                        onClick={() => setSorting(field, Boolean(metadata))}
                       >
-                        {field}
-                        {sort?.field === field ? (sort.descending ? ' ↓' : ' ↑') : ''}
+                        {metadata && field === input.column ? 'Document' : field}
+                        {sort?.field === field && Boolean(sort.metadata) === Boolean(metadata)
+                          ? sort.descending
+                            ? ' ↓'
+                            : ' ↑'
+                          : ''}
                       </Button>
                     </th>
                   ))}
@@ -408,29 +450,32 @@ export function QuotationResults({
                         });
                       }}
                     >
-                      <td className="min-w-56 max-w-3xl p-2">
-                        <button
-                          className="w-full whitespace-pre-wrap text-left"
-                          aria-label={`Inspect document ${row.documentId}`}
-                          onClick={() => {
-                            if (!window.getSelection()?.toString()) setDetail(index);
-                          }}
+                      {displayColumns.map(({ column: field, metadata }) => (
+                        <td
+                          key={`${String(metadata)}-${field}`}
+                          className={
+                            metadata && field === input.column
+                              ? 'min-w-56 max-w-3xl p-2'
+                              : 'whitespace-pre-wrap p-2'
+                          }
                         >
-                          <QuotationCell
-                            text={showValue(row.source[displayInput.column] ?? '')}
-                            quotes={row.quotes}
-                            context={context}
-                          />
-                        </button>
-                      </td>
-                      {selected.map((field) => (
-                        <td key={field} className="whitespace-pre-wrap p-2">
-                          {quotationCell(row, field, false)}
-                        </td>
-                      ))}
-                      {generated.map((field) => (
-                        <td key={field} className="whitespace-pre-wrap p-2">
-                          {quotationCell(row, field, true)}
+                          {metadata && field === input.column ? (
+                            <button
+                              className="w-full whitespace-pre-wrap text-left"
+                              aria-label={`Inspect document ${row.documentId}`}
+                              onClick={() => {
+                                if (!window.getSelection()?.toString()) setDetail(index);
+                              }}
+                            >
+                              <QuotationCell
+                                text={showValue(row.source[displayInput.column] ?? '')}
+                                quotes={row.quotes}
+                                context={context}
+                              />
+                            </button>
+                          ) : (
+                            quotationCell(row, field, !metadata)
+                          )}
                         </td>
                       ))}
                     </tr>
@@ -497,6 +542,8 @@ export function QuotationResults({
         <QuotationPublishDialog
           base={base}
           result={result}
+          sourceInput={result.result.version === 2 ? input : undefined}
+          columnNames={result.result.version === 2 ? fields : undefined}
           projection={publish}
           onClose={() => {
             setPublish(null);
@@ -607,18 +654,23 @@ function QuotationPublishDialog({
   base,
   result: initialResult,
   projection,
+  sourceInput,
+  columnNames,
   onClose,
 }: {
   base: string;
   result: quotationApi.QuotationAnalysisResult;
   projection: 'documents' | 'matches';
+  sourceInput?: quotationApi.QuotationRequest['input'];
+  columnNames?: string[];
   onClose: () => void;
 }) {
   const cache = useQueryClient();
   const [result] = useState(initialResult);
+  const input = sourceInput ?? result.result.payload.input;
   const [name, setName] = useState(() =>
     suggestDataBlockName(
-      [result.result.payload.input.source.name],
+      [input.source.name],
       projection === 'documents' ? 'qt_doc' : 'qt',
       cachedDataBlockNames(cache, base),
     ),
@@ -629,9 +681,9 @@ function QuotationPublishDialog({
     ...quotationFields.map((field) => `QUOTE_${field}`.toLowerCase()),
     'quote_extraction',
   ]);
-  const choices = result.result.payload.columns
-    .map(([name]) => name)
-    .filter((name) => name !== result.result.payload.input.column);
+  const choices = (columnNames ?? result.result.payload.columns.map(([name]) => name)).filter(
+    (name) => name !== input.column,
+  );
   const mutation = useMutation({
     meta: { reportError: false },
     mutationFn: () =>
@@ -655,7 +707,7 @@ function QuotationPublishDialog({
             overwritten.
           </DialogDescription>
         </DialogHeader>
-        <p className="break-all">{result.result.payload.input.source.name}</p>
+        <p className="break-all">{input.source.name}</p>
         <label>
           Table name
           <Input
@@ -666,7 +718,7 @@ function QuotationPublishDialog({
           />
         </label>
         <p>
-          Required: {result.result.payload.input.column}
+          Required: {input.column}
           {projection === 'documents' ? ' and QUOTE_extraction' : ''}
         </p>
         <div className="flex gap-2">

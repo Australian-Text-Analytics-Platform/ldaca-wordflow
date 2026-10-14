@@ -27,6 +27,8 @@ pub(crate) struct QuotationResultV1 {
     pub document_count: u64,
     pub matching_documents: u64,
     pub match_count: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processed_column: Option<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -72,6 +74,62 @@ fn check_tab(conn: &Connection, tab: Uuid) -> Result<()> {
 }
 fn projection(documents: &str, matches: &str) -> String {
     format!("SELECT m.*,d.source FROM {matches} m JOIN {documents} d USING(document_id)")
+}
+fn live_projection(
+    input: &DocumentInput,
+    documents: &str,
+    matches: &str,
+    processed_column: &str,
+    columns: &[(String, String)],
+) -> String {
+    let rows = live_document_rows(input, documents, processed_column, columns);
+    format!(
+        "SELECT s.document_id,m.* EXCLUDE(document_id),s.source,s.processed_id FROM ({rows}) s LEFT JOIN {matches} m ON m.document_id=s.processed_id"
+    )
+}
+fn saved_projection(source: &QuotationResultV1) -> String {
+    if let Some(column) = &source.processed_column {
+        live_projection(
+            &source.input,
+            &format!("wordflow.{}", artifact_table(source.documents)),
+            &format!("wordflow.{}", artifact_table(source.matches)),
+            column,
+            &source.columns,
+        )
+    } else {
+        format!(
+            "SELECT * FROM wordflow.{}",
+            artifact_table(source.projection)
+        )
+    }
+}
+fn source_annotations(
+    conn: &Connection,
+    source: &QuotationResultV1,
+) -> Result<arrow_metadata::Annotations> {
+    if source.processed_column.is_some() {
+        arrow_metadata::Annotations::load(
+            conn,
+            &Relation {
+                schema: source
+                    .input
+                    .source
+                    .schema
+                    .clone()
+                    .unwrap_or_else(|| "data".into()),
+                name: source.input.source.name.clone(),
+            },
+        )
+        .map(|a| a.prefixed("source"))
+    } else {
+        arrow_metadata::Annotations::load(
+            conn,
+            &Relation {
+                schema: "wordflow".into(),
+                name: artifact_table(source.projection),
+            },
+        )
+    }
 }
 fn document_rows(sql: &str) -> String {
     let fields = FIELDS
@@ -141,9 +199,29 @@ fn calculate(
 }
 fn manifest(conn: &Connection, id: Uuid) -> Result<QuotationResultV1> {
     let analysis = read_analysis(conn, id)?;
-    let result: QuotationResultV1 = serde_json::from_value(analysis.output("quotation")?.clone())?;
+    let mut result: QuotationResultV1 =
+        serde_json::from_value(analysis.output("quotation")?.clone())?;
     for artifact in [result.documents, result.matches, result.projection] {
         artifact_relation(conn, id, artifact)?;
+    }
+    if result.processed_column.is_some() {
+        let request: QuotationRequest = serde_json::from_value(analysis.request)?;
+        result.input = request.input;
+        let relation = Relation {
+            schema: result
+                .input
+                .source
+                .schema
+                .clone()
+                .unwrap_or_else(|| "data".into()),
+            name: result.input.source.name.clone(),
+        };
+        conn.prepare(&format!(
+            "SELECT {} FROM {} LIMIT 0",
+            query::quote(&result.input.column),
+            relation.sql()
+        ))?;
+        result.columns = mutations::columns(conn, &relation)?;
     }
     Ok(result)
 }
@@ -207,9 +285,10 @@ impl Database {
     ) -> Result<Analysis> {
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         check_tab(&self.conn, tab)?;
-        let docs = capture_documents(&self.conn, &request.input, None)?;
+        let mut docs = capture_documents(&self.conn, &request.input, None)?;
+        distinct_documents(&self.conn, &mut docs)?;
         progress("Extracting quotations");
-        let (temporary_matches, match_count, matching_documents) = calculate(
+        let (temporary_matches, _, _) = calculate(
             &self.conn,
             &docs,
             docs.count,
@@ -219,12 +298,14 @@ impl Database {
         self.conn.execute_batch("COMMIT")?;
         check_cancellation(&self.cancellation)?;
         progress("Saving results");
-        self.publish_analysis(
+        self.publish_analysis_version(
             AcceptedAnalysis {
                 id,
                 tab_id: tab,
                 kind: "quotation",
             },
+            2,
+            None,
             move |conn| {
                 let documents = Uuid::new_v4();
                 let matches = Uuid::new_v4();
@@ -233,12 +314,12 @@ impl Database {
                 let matches_sql = format!("wordflow.{}", artifact_table(matches));
                 conn.execute_batch(&format!(
                     "CREATE TABLE {documents_sql} AS SELECT * FROM {captured}
-                       WHERE document_id IN (SELECT document_id FROM {temporary_matches});
+                       ;
                      CREATE TABLE {matches_sql} AS SELECT * FROM {temporary_matches};
                      CREATE VIEW wordflow.{view} AS {projection}",
                     captured = docs.name,
                     view = artifact_table(view),
-                    projection = projection(&documents_sql, &matches_sql),
+                    projection = projection(&documents_sql,&matches_sql),
                 ))?;
                 for (artifact, name) in [
                     (documents, "documents"),
@@ -247,24 +328,21 @@ impl Database {
                 ] {
                     register_table(conn, id, artifact, name)?;
                 }
-                for artifact in [documents, view] {
-                    docs.metadata.store(
-                        conn,
-                        &Relation {
-                            schema: "wordflow".into(),
-                            name: artifact_table(artifact),
-                        },
-                    )?;
-                }
+                docs.metadata.source_columns(std::slice::from_ref(&docs.input.column)).prefixed("source").store(conn,&Relation {schema:"wordflow".into(),name:artifact_table(documents)})?;
+                docs.metadata.source_columns(std::slice::from_ref(&docs.input.column)).prefixed("source").store(conn,&Relation {schema:"wordflow".into(),name:artifact_table(view)})?;
+                let joined = live_projection(&docs.input,&documents_sql,&matches_sql,&docs.input.column,&docs.columns);
+                let (document_count, matching_documents, match_count) = conn.query_row(&format!("SELECT count(DISTINCT document_id),count(DISTINCT document_id) FILTER(WHERE quote_row_idx IS NOT NULL),count(quote_row_idx) FROM ({joined})"), [], |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?)))?;
+                let processed_column = Some(docs.input.column.clone());
                 let result = QuotationResultV1 {
                     input: docs.input,
                     columns: docs.columns,
                     documents,
                     matches,
                     projection: view,
-                    document_count: docs.count,
+                    document_count,
                     matching_documents,
                     match_count,
+                    processed_column,
                 };
                 Ok(serde_json::to_value(result)?)
             },
@@ -276,20 +354,28 @@ impl Database {
         id: Uuid,
         request: QuotationQuery,
     ) -> Result<DocumentPage> {
+        self.quotation_rows(id, request, false)
+    }
+    pub(super) fn quotation_rows(
+        &mut self,
+        id: Uuid,
+        request: QuotationQuery,
+        all: bool,
+    ) -> Result<DocumentPage> {
         let offset = page_offset(request.page, request.page_size)?;
         self.conn.execute_batch("BEGIN TRANSACTION READ ONLY")?;
         let source = manifest(&self.conn, id)?;
         let mut parameters = Vec::new();
         let mut sql = format!(
-            "SELECT * FROM wordflow.{}",
-            artifact_table(source.projection)
+            "SELECT * FROM ({}) WHERE quote_row_idx IS NOT NULL",
+            saved_projection(&source)
         );
         if let Some(id) = request.document_id {
             parameters.push(SqlValue::UBigInt(
                 id.parse()
                     .map_err(|_| Error::invalid("Invalid document ID"))?,
             ));
-            sql.push_str(" WHERE document_id=?");
+            sql.push_str(" AND document_id=?");
         }
         let (match_count, document_count): (u64, u64) = self.conn.query_row(
             &format!("SELECT count(*),count(DISTINCT document_id) FROM ({sql})"),
@@ -325,25 +411,23 @@ impl Database {
             (sql, match_count)
         };
         let sql = format!(
-            "SELECT * FROM ({sql}) ORDER BY {order} document_id{} LIMIT {} OFFSET {offset}",
+            "SELECT * FROM ({sql}) ORDER BY {order} document_id{}{}",
             if request.projection == Projection::Matches {
                 ",quote_row_idx"
             } else {
                 ""
             },
-            request.page_size
+            if all {
+                String::new()
+            } else {
+                format!(" LIMIT {} OFFSET {offset}", request.page_size)
+            }
         );
         let file = arrow_page(
             &self.conn,
             &sql,
             &parameters,
-            &arrow_metadata::Annotations::load(
-                &self.conn,
-                &Relation {
-                    schema: "wordflow".into(),
-                    name: artifact_table(source.projection),
-                },
-            )?,
+            &source_annotations(&self.conn, &source)?,
             &self.cancellation,
         )?;
         check_cancellation(&self.cancellation)?;
@@ -405,16 +489,63 @@ impl Database {
             }
             projection
         };
-        tx.execute_batch(&format!(
-            "CREATE TABLE {} AS SELECT {} FROM ({rows}) ORDER BY document_id{}",
-            target.sql(),
-            fields.join(","),
-            if request.projection == Projection::Matches {
-                ",quote_row_idx"
-            } else {
-                ""
-            }
-        ))?;
+        if let Some(column) = &source.processed_column {
+            let documents =
+                copy_publication_relation(&tx, &artifact_relation(&tx, id, source.documents)?)?;
+            let matches =
+                copy_publication_relation(&tx, &artifact_relation(&tx, id, source.matches)?)?;
+            let publication = PublicationSource::selected(
+                &tx,
+                &source.input,
+                std::iter::once(source.input.column.clone())
+                    .chain(request.metadata.iter().cloned())
+                    .collect(),
+            )?;
+            let joined = live_projection(
+                &source.input,
+                &documents.sql(),
+                &matches.sql(),
+                column,
+                &publication.columns(&source.columns),
+            );
+            publish_live_view(
+                &tx,
+                &target,
+                vec![documents, matches],
+                publication,
+                &joined,
+                |join| {
+                    let rows = if request.projection == Projection::Documents {
+                        format!(
+                            "SELECT document_id,first(source) AS source,coalesce(string_agg(quote,chr(10) ORDER BY quote_row_idx),'') AS QUOTE_extraction FROM {} GROUP BY document_id",
+                            join.sql()
+                        )
+                    } else {
+                        format!("SELECT * FROM {}", join.sql())
+                    };
+                    format!(
+                        "SELECT {} FROM ({rows}) ORDER BY document_id{}",
+                        fields.join(","),
+                        if request.projection == Projection::Matches {
+                            ",quote_row_idx"
+                        } else {
+                            ""
+                        }
+                    )
+                },
+            )?;
+        } else {
+            tx.execute_batch(&format!(
+                "CREATE TABLE {} AS SELECT {} FROM ({rows}) ORDER BY document_id{}",
+                target.sql(),
+                fields.join(","),
+                if request.projection == Projection::Matches {
+                    ",quote_row_idx"
+                } else {
+                    ""
+                }
+            ))?;
+        }
         tx.execute(
             "INSERT INTO wordflow.nodes(table_name,document_column) VALUES (?,?)",
             params![target.name, source.input.column],
@@ -426,15 +557,9 @@ impl Database {
             .filter(|name| names.contains(&name.to_ascii_lowercase()))
             .cloned()
             .collect::<Vec<_>>();
-        arrow_metadata::Annotations::load(
-            &tx,
-            &Relation {
-                schema: "wordflow".into(),
-                name: artifact_table(source.projection),
-            },
-        )?
-        .source_columns(&selected_columns)
-        .store(&tx, &target)?;
+        source_annotations(&tx, &source)?
+            .source_columns(&selected_columns)
+            .store(&tx, &target)?;
         if source
             .input
             .source
@@ -446,6 +571,9 @@ impl Database {
             tx.execute("INSERT INTO wordflow.edges(source_name,target_name) SELECT table_name,? FROM wordflow.nodes WHERE lower(table_name)=lower(?) AND table_name<>? ON CONFLICT DO NOTHING",params![target.name,source.input.source.name,target.name])?;
         }
         let mut scope = ChangeScope::resource(Resource::Graph);
+        if source.processed_column.is_some() {
+            scope.resources.push(Resource::Project);
+        }
         scope.objects.push(target.clone());
         PendingChange::new(&tx, scope, &self.cancellation).commit(
             tx,
@@ -520,6 +648,32 @@ mod tests {
         ) -> Result<Analysis> {
             let id = self.begin_analysis_run(tab, "quotation", serde_json::to_value(&request)?)?;
             self.run_quotation(tab, id, request, extractor, progress)
+        }
+        fn historical_quotation_v1(
+            &mut self,
+            tab: Uuid,
+            request: QuotationRequest,
+            mut extractor: QuotationExtractor,
+            _progress: impl FnMut(&str),
+        ) -> Result<Analysis> {
+            let id = self.begin_analysis_run(tab, "quotation", serde_json::to_value(&request)?)?;
+            let docs = capture_documents(&self.conn, &request.input, None)?;
+            let (temporary_matches, match_count, matching_documents) = calculate(
+                &self.conn,
+                &docs,
+                docs.count,
+                &mut extractor,
+                &self.cancellation,
+            )?;
+            self.publish_analysis(AcceptedAnalysis {id,tab_id:tab,kind:"quotation"},|conn| {
+                let documents=Uuid::new_v4(); let matches=Uuid::new_v4(); let view=Uuid::new_v4();
+                let documents_sql=format!("wordflow.{}",artifact_table(documents));
+                let matches_sql=format!("wordflow.{}",artifact_table(matches));
+                conn.execute_batch(&format!("CREATE TABLE {documents_sql} AS SELECT * FROM {} WHERE document_id IN(SELECT document_id FROM {temporary_matches}); CREATE TABLE {matches_sql} AS SELECT * FROM {temporary_matches}; CREATE VIEW wordflow.{} AS {}",docs.name,artifact_table(view),projection(&documents_sql,&matches_sql)))?;
+                for (artifact,name) in [(documents,"documents"),(matches,"matches"),(view,"projection")] { register_table(conn,id,artifact,name)?; }
+                for artifact in [documents,view] { docs.metadata.store(conn,&Relation {schema:"wordflow".into(),name:artifact_table(artifact)})?; }
+                Ok(serde_json::to_value(QuotationResultV1 {input:docs.input,columns:docs.columns,documents,matches,projection:view,document_count:docs.count,matching_documents,match_count,processed_column:None})?)
+            })
         }
     }
 
@@ -600,6 +754,92 @@ mod tests {
     }
     #[test]
     #[ignore = "requires explicitly provisioned WORDFLOW_TEST_UDPIPE_MODEL"]
+    fn live_quotation_checks_empty_texts_and_publishes_independent_current_source_views() {
+        let (mut p, tab, request) = setup();
+        let analysis = p
+            .database
+            .test_quotation(tab, request, extractor(), |_| {})
+            .unwrap();
+        assert_eq!(analysis.result.as_ref().unwrap().version, 2);
+        let result: QuotationResultV1 =
+            serde_json::from_value(analysis.result.unwrap().payload).unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row(
+                    &format!(
+                        "SELECT count(*) FROM wordflow.{}",
+                        artifact_table(result.documents)
+                    ),
+                    [],
+                    |r| r.get::<_, u64>(0)
+                )
+                .unwrap(),
+            2
+        );
+        let page = p
+            .database
+            .quotation_page(analysis.id, query(Projection::Documents))
+            .unwrap();
+        assert_eq!(page.document_count, 2);
+        p.database
+            .publish_quotation(
+                analysis.id,
+                QuotationPublish {
+                    name: "live_quotes".into(),
+                    projection: Projection::Documents,
+                    metadata: vec!["tags".into()],
+                    fields: vec![],
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_quotes", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            3
+        );
+        assert_eq!(
+            p.database
+                .conn
+                .query_row(
+                    "SELECT QUOTE_extraction FROM data.live_quotes WHERE text='No quotation here.'",
+                    [],
+                    |r| r.get::<_, String>(0)
+                )
+                .unwrap(),
+            ""
+        );
+        p.database.clear_analysis_tab(tab).unwrap();
+        p.database.conn.execute("INSERT INTO data.docs(text,tags,document_id) VALUES (?,[3],'later'),('unchecked',[4],'new')",[TEXT]).unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_quotes", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            4
+        );
+        p.database
+            .conn
+            .execute_batch("UPDATE data.docs SET tags=[9] WHERE document_id='none'")
+            .unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row(
+                    "SELECT count(*) FROM data.live_quotes WHERE tags=[9]",
+                    [],
+                    |r| r.get::<_, u64>(0)
+                )
+                .unwrap(),
+            1
+        );
+    }
+    #[test]
+    #[ignore = "requires explicitly provisioned WORDFLOW_TEST_UDPIPE_MODEL"]
     fn quotation_preview_pages_and_saved_typed_results_survive_sources() {
         let (mut project, tab, request) = setup();
         let page = project
@@ -655,11 +895,11 @@ mod tests {
         assert!(empty.has_next);
         let first = project
             .database
-            .test_quotation(tab, request.clone(), extractor(), |_| {})
+            .historical_quotation_v1(tab, request.clone(), extractor(), |_| {})
             .unwrap();
         let result = project
             .database
-            .test_quotation(tab, request, extractor(), |_| {})
+            .historical_quotation_v1(tab, request, extractor(), |_| {})
             .unwrap();
         assert!(project.database.analysis(first.id).is_err());
         let manifest: QuotationResultV1 =

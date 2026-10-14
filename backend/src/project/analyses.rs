@@ -69,7 +69,11 @@ impl Analysis {
                 "This analysis has no saved output. Run the analysis to calculate results.",
             )
         })?;
-        if self.kind != kind || result.version != 1 {
+        if self.kind != kind
+            || !(result.version == 1
+                || result.version == 2
+                    && matches!(kind, "concordance" | "quotation" | "topic-modeling"))
+        {
             return Err(Error::new(
                 "analysis_version_unsupported",
                 "This analysis result version is not supported",
@@ -256,6 +260,15 @@ impl Database {
         source: Option<Relation>,
         write: impl FnOnce(&Connection) -> Result<Value>,
     ) -> Result<Analysis> {
+        self.publish_analysis_version(accepted, 1, source, write)
+    }
+    pub(super) fn publish_analysis_version(
+        &mut self,
+        accepted: AcceptedAnalysis,
+        version: i32,
+        source: Option<Relation>,
+        write: impl FnOnce(&Connection) -> Result<Value>,
+    ) -> Result<Analysis> {
         let tx = self.conn.transaction()?;
         claim_tab(&tx, accepted.tab_id, accepted.kind)?;
         let claimed = tx.execute("UPDATE wordflow.analyses SET request=request WHERE id=? AND tab_id=? AND result IS NULL", params![accepted.id.to_string(),accepted.tab_id.to_string()])?;
@@ -266,7 +279,7 @@ impl Database {
             ));
         }
         let payload = write(&tx)?;
-        tx.execute("UPDATE wordflow.analyses SET result=?,result_version=1,finished_at=current_timestamp WHERE id=?", params![payload.to_string(),accepted.id.to_string()])?;
+        tx.execute("UPDATE wordflow.analyses SET result=?,result_version=?,finished_at=current_timestamp WHERE id=?", params![payload.to_string(),version,accepted.id.to_string()])?;
         let analysis = read_analysis(&tx, accepted.id)?;
         let mut scope = ChangeScope::analysis(accepted.id);
         if let Some(source) = source {

@@ -1316,7 +1316,7 @@ mod tests {
         project.save_as(&path).unwrap();
         drop(project);
         let opened = Project::open(&path).unwrap();
-        assert_eq!(opened.info().schema_version, 1);
+        assert_eq!(opened.info().unwrap().schema_version, 1);
         let tabs = opened.database.tabs(None).unwrap();
         assert_eq!(tabs[0].id, second.id);
         assert_eq!(tabs[1].name, "My words");

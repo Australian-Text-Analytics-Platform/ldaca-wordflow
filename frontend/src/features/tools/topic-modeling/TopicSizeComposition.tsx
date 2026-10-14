@@ -19,6 +19,13 @@ export function topicShare(count: number, denominator?: number) {
     : `${percent >= 10 ? percent.toFixed(0) : percent.toFixed(1)}%`;
 }
 
+export const topicGroupLabel = (label: string) =>
+  label === ''
+    ? 'Empty text'
+    : label.trim() === ''
+      ? `Blank text (${JSON.stringify(label)})`
+      : label;
+
 /** Dominant-document counts and each group's own population, including samples. */
 export function TopicSizeComposition({
   sizes,

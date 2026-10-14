@@ -1,3 +1,6 @@
+import { orderedResultColumns, readColumnOrder } from '../common/resultColumns';
+import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -26,6 +29,7 @@ export function ColumnChoices({
   value: string[];
   onChange: (columns: string[]) => void;
 }) {
+  const [search, setSearch] = useState('');
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -38,6 +42,12 @@ export function ColumnChoices({
         aria-label={label}
         className="flex max-h-80 flex-col gap-2 overflow-y-auto"
       >
+        <Input
+          aria-label={`Find ${label} column`}
+          value={search}
+          placeholder="Find a column…"
+          onChange={(event) => setSearch(event.target.value)}
+        />
         <div className="flex gap-2">
           <Button
             variant="ghost"
@@ -56,17 +66,21 @@ export function ColumnChoices({
             Select none
           </Button>
         </div>
-        {columns.map((column) => (
-          <label key={column} className="flex items-center gap-2 break-all">
-            <Checkbox
-              checked={value.includes(column)}
-              onCheckedChange={(checked) => {
-                onChange(checked === true ? [...value, column] : value.filter((v) => v !== column));
-              }}
-            />
-            {column}
-          </label>
-        ))}
+        {columns
+          .filter((column) => column.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
+          .map((column) => (
+            <label key={column} className="flex items-center gap-2 break-all">
+              <Checkbox
+                checked={value.includes(column)}
+                onCheckedChange={(checked) => {
+                  onChange(
+                    checked === true ? [...value, column] : value.filter((v) => v !== column),
+                  );
+                }}
+              />
+              {column}
+            </label>
+          ))}
       </PopoverContent>
     </Popover>
   );
@@ -221,6 +235,8 @@ export function AnnotationEditor({
   onFinished,
   title = 'Manual Annotation',
   onUseExamples,
+  settings = {},
+  onSettings,
 }: {
   base: string;
   session: editingApi.CellEditSession;
@@ -228,6 +244,8 @@ export function AnnotationEditor({
   onFinished: () => void;
   title?: string;
   onUseExamples?: () => void;
+  settings?: Record<string, unknown>;
+  onSettings?: (patch: Record<string, unknown>) => void;
 }) {
   const [compare, setCompare] = useState<string[]>([]);
   const [metadata, setMetadata] = useState<string[]>([]);
@@ -261,9 +279,16 @@ export function AnnotationEditor({
     enabled: Boolean(setup?.codebook),
     meta: setup?.codebook ? objectDependencies(setup.codebook.source) : undefined,
   });
-  const visible = setup
-    ? [...roles, ...compare, ...metadata.filter((c) => !compare.includes(c))]
-    : session.columns.map((c) => c.name);
+  const displayColumns = orderedResultColumns(
+    (setup
+      ? [...roles, ...compare, ...metadata.filter((c) => !compare.includes(c))]
+      : session.columns.map((c) => c.name)
+    )
+      .filter((column): column is string => Boolean(column))
+      .map((column) => ({ column, metadata: false })),
+    readColumnOrder(settings.column_order),
+  );
+  const visible = displayColumns.map((column) => column.column);
   const summary = editor.rows.data?.review;
   return (
     <section
@@ -306,6 +331,10 @@ export function AnnotationEditor({
               columns={available.filter((c) => !compare.includes(c))}
               value={metadata}
               onChange={setMetadata}
+            />
+            <ResultColumnOrder
+              columns={displayColumns}
+              onChange={(column_order) => onSettings?.({ column_order })}
             />
             <SearchableSelect
               ariaLabel="Agreement measure"

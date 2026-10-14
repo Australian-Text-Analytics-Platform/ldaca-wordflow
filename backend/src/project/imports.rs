@@ -2,7 +2,7 @@
 use super::*;
 use calamine::Reader;
 use std::{collections::BTreeSet, fs::File, io::Read, path::Component};
-mod readers;
+pub(super) mod readers;
 #[cfg(test)]
 mod tests;
 

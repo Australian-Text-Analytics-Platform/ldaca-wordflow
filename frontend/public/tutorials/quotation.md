@@ -70,20 +70,32 @@ has already been calculated.
 
 <h3 id="help-quotation-run-all">Step 3 — Run</h3>
 
-**Run** extracts the complete input as a native task. It saves matching original
-rows and quotations inside the project. First it saves the submitted request and
+**Run** extracts the complete input as a native task. It processes distinct exact texts and saves checked-text records and quotations
+inside the project, including checked texts with no quotations. First it saves the submitted request and
 clears previous output atomically. A later failure or cancellation leaves the
 request but no completed result. You can
 edit the next request while a task runs; its captured input does not change.
 Finish any Table editing session before starting Run. Progress appears in the progress card and in Tasks.
 
-A successful Run replaces the Preview display automatically; there is no Preview/Saved results switch. The **Quotations** tab is selected by default and shows one occurrence per row. **Documents** groups quotations into their original rows. Saved pages offer numbered navigation and page jumps; Preview uses document lookahead without counting the whole source. Saved results remain readable after source edits, deletion, Save As and
-project reopening. Rerunning requires a valid current input.
+A successful Run replaces the Preview display automatically; there is no Preview/Saved results switch. The **Quotations** tab is selected by default and shows one occurrence per row. **Documents** groups quotations into their original rows. Saved pages offer numbered navigation and page jumps; Preview uses document lookahead without counting the whole source. New results attach to current source rows by exact processed text, keeping
+duplicate rows and live metadata. Unprocessed new texts are absent; edited/removed
+texts stop matching. A missing source produces the normal database error. Historical
+results remain snapshots until Rerun.
 
-**Add to Project → Quotations** creates one row per saved quotation. **Add to Project → Documents** creates one row per matching document with `QUOTE_extraction` joining
-its quotation text. Choose a new Table name and optional fields. The original
-document is always included; existing objects are never overwritten. These new
-Data Blocks own their rows independently of the analysis.
+Search **Metadata and fields**, then use **Column order** to drag columns or move
+them with arrow buttons or Alt + ↑ / ↓. Presentation order is saved independently
+of sorting. **Download** exports all filtered/sorted pages as CSV, XLSX, JSON or
+Parquet. **Download Preview** uses only the completed current page. Document text
+can be omitted from downloads, together with its dependent position fields.
+
+**Add to Project → Quotations** creates a live View with one row per saved quote.
+**Add to Project → Documents** creates a live View with `QUOTE_extraction` joining
+quotation text. Checked texts with no quotation remain included with empty outputs.
+The original document is required. Publication copies generated outputs into
+independent hidden relations owned by the published Data Block, so later analysis
+cleanup cannot alter them. Metadata stays live; a missing source retains its SQL
+reference and normal database error. Deleting the published Data Block removes its
+hidden output relations.
 
 <h3 id="help-quotation-clear-results">Cancel and Clear results</h3>
 

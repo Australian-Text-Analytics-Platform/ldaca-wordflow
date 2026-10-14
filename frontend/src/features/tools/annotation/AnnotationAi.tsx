@@ -1,3 +1,4 @@
+import { useTabSettings } from '../common/useTabSettings';
 import { RunError } from '../common/components/RunError';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -55,6 +56,7 @@ export function AnnotationAi({
   active: boolean;
   onEditingChange?: (editing: boolean) => void;
 }) {
+  const { settings, change: changeSettings } = useTabSettings(base, tab);
   const cache = useQueryClient();
   const host = useHostServices();
   const hostBase = host?.base ?? base;
@@ -470,6 +472,8 @@ export function AnnotationAi({
             key={editor?.preview || preview.state ? 'preview' : (editor?.analysisId ?? id)}
             base={base}
             tab={tab.id}
+            settings={settings}
+            onSettings={changeSettings}
             setup={outputSetup}
             result={!preview.state && !editor?.preview ? (result.data ?? undefined) : undefined}
             previewMode={Boolean(preview.state) || Boolean(editor?.preview)}

@@ -479,3 +479,51 @@ Observed checks:
 Live Colour by ordering, final WebKit/Windows UI acceptance and the previously
 open physical native-control/signed-runtime gates remain outstanding. This is not
 a completion record for the six-batch extension.
+
+## v0.7.12–v0.7.13 batch 2: live results and publication ownership
+
+New Topic, Concordance and Quotation runs store distinct exact texts and generated
+outputs. Reads join checked texts to current source rows, preserving duplicates,
+source order and current typed metadata. Processed empty outcomes remain eligible
+for publication. Preview uses its sampled population only. Version-1 analyses keep
+their historical meaning until Rerun.
+
+First live publication upgrades the native project to format 2 inside the same
+transaction that copies independent hidden relations and creates its live View.
+Publications own cleanup, retain source lookup references and follow native
+rename/schema invalidation. Opening version-1 projects does not upgrade them.
+Result downloads use native all-page projections and the existing four exporters;
+AI Preview exports only completed captured rows and manual drafts require Save or
+Cancel. Column order is a presentation preference independent of sorting.
+
+Observed checks:
+
+- Backend package: 237 library, 58 integration and two CLI tests passed; 15 optional
+  library tests and one subprocess helper ignored. Regressions cover
+  first-publication rollback/reopen, exact text with collations, duplicate and
+  checked-empty outcomes, live schemas and Arrow metadata, source restoration,
+  independent publication cleanup, sampled counts and all-page export ordering.
+- Real pinned UDPipe: five direct Quotation tests and the HTTP ownership test
+  pass with explicitly configured isolated model storage. The HTTP fixture now
+  checks missing-source errors and compatible restoration.
+- Frontend: 812 tests and 17 script tests passed. Subsequent focused download,
+  column-order, Concordance and Data View tests pass. Build, lint, Knip, generated
+  API, documentation drift, formatting and Markdown links pass.
+- Chromium: both Concordance cases and the Quotation journey pass, including
+  expected missing-source diagnostics, restoration, native extraction, live
+  publication, persisted column order and all-page JSON download. The Frequency
+  handoff needed an isolated rerun after one stale-element driver failure; that
+  rerun passes without a product workaround. Light/dark narrow screenshots were
+  inspected. These browser tests use the debug API host and instrumentation.
+- Backend strict all-target/all-feature Clippy and Rust formatting pass. All ten
+  Topic projection tests pass in the separate all-feature library configuration.
+  The explicitly provisioned, signed DuckDB 1.5.6 ICU asset loads and passes the
+  daylight-saving daily-bin test. The optional fixture helper now matches the
+  bundled engine version; production cache contents were not changed.
+
+- Library strict all-target/all-feature Clippy passes. No-default,
+  tokenisation-only, data-only and Topic-only feature checks pass; narrow builds
+  retain their existing unused cache-fingerprint warnings.
+
+Focused batch acceptance is complete. Final WebKit/native release acceptance, the remaining
+batches and carried-forward native/platform gates remain open.

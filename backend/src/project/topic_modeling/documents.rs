@@ -24,6 +24,7 @@ pub(in crate::project) struct PreviewDocuments {
     schema: SchemaRef,
     batches: Vec<RecordBatch>,
     temporary: PathBuf,
+    processed_ids: Option<Vec<u64>>,
 }
 impl PreviewDocuments {
     pub(in crate::project) fn texts(&self, column: &str) -> Result<Vec<String>> {
@@ -46,32 +47,91 @@ impl PreviewDocuments {
                 });
             }
         }
-        Ok(texts)
+        if let Some(ids) = &self.processed_ids {
+            let mut distinct = std::collections::BTreeMap::new();
+            for (id, text) in ids.iter().copied().zip(texts) {
+                distinct.entry(id).or_insert(text);
+            }
+            Ok(distinct.into_values().collect())
+        } else {
+            Ok(texts)
+        }
     }
+    #[cfg(test)]
     pub(super) fn capture(
         conn: &Connection,
         docs: &CapturedDocuments,
         cancellation: &CancellationToken,
     ) -> Result<Self> {
-        let mut statement = conn.prepare(&format!(
-            "SELECT source FROM {} ORDER BY document_id",
-            docs.name
-        ))?;
+        Self::capture_sql(
+            conn,
+            &format!("SELECT source FROM {} ORDER BY document_id", docs.name),
+            &docs.metadata,
+            cancellation,
+        )
+    }
+    pub(super) fn capture_joined(
+        conn: &Connection,
+        rows: &str,
+        docs: &CapturedDocuments,
+        cancellation: &CancellationToken,
+    ) -> Result<Self> {
+        Self::capture_sql(
+            conn,
+            &format!("SELECT source,processed_id FROM ({rows}) ORDER BY document_id"),
+            &docs.metadata,
+            cancellation,
+        )
+    }
+    fn capture_sql(
+        conn: &Connection,
+        sql: &str,
+        metadata: &arrow_metadata::Annotations,
+        cancellation: &CancellationToken,
+    ) -> Result<Self> {
+        let mut statement = conn.prepare(sql)?;
         let raw = statement.query_arrow([])?.get_schema();
-        let schema = Arc::new(docs.metadata.enrich(&raw, raw.fields().len())?);
+        let schema = Arc::new(metadata.enrich(&raw, raw.fields().len())?);
         let mut batches = Vec::new();
+        let mut processed_ids = raw.field_with_name("processed_id").ok().map(|_| Vec::new());
         while let Some(array) = statement.step()? {
             check_cancellation(cancellation)?;
-            batches.push(arrow_metadata::enrich_batch(
-                RecordBatch::from(&array),
-                schema.clone(),
-            )?);
+            let batch = RecordBatch::from(&array);
+            if let Some(ids) = processed_ids.as_mut() {
+                let column = batch
+                    .column_by_name("processed_id")
+                    .and_then(|array| array.as_any().downcast_ref::<UInt64Array>())
+                    .ok_or_else(|| model_error("Sampled processed-text identity is unavailable"))?;
+                ids.extend(column.values().iter().copied());
+            }
+            batches.push(arrow_metadata::enrich_batch(batch, schema.clone())?);
         }
         Ok(Self {
             schema,
             batches,
             temporary: temporary_directory(conn)?,
+            processed_ids,
         })
+    }
+    fn expand_selection(&self, selected: &[(u64, f64)]) -> Vec<(u64, f64)> {
+        let Some(ids) = &self.processed_ids else {
+            return selected.to_vec();
+        };
+        let selected = selected
+            .iter()
+            .copied()
+            .collect::<std::collections::BTreeMap<_, _>>();
+        let mut rows = ids
+            .iter()
+            .enumerate()
+            .filter_map(|(index, id)| {
+                selected
+                    .get(id)
+                    .map(|coverage| (index as u64 + 1, *coverage))
+            })
+            .collect::<Vec<_>>();
+        rows.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+        rows
     }
 
     fn page(&self, selected: &[(u64, f64)], columns: &[String]) -> Result<tempfile::NamedTempFile> {
@@ -149,11 +209,29 @@ impl Database {
         analysis: Option<Uuid>,
         request: TopicQuery,
     ) -> Result<TopicProjection> {
+        self.project_topic_rows(model, analysis, request, false)
+    }
+    pub(in crate::project) fn project_topic_rows(
+        &self,
+        model: &TopicModel,
+        analysis: Option<Uuid>,
+        request: TopicQuery,
+        all: bool,
+    ) -> Result<TopicProjection> {
         let TopicQuery::Documents(input) = request else {
             let excluded = self.topic_exclusions(request.stopwords())?;
             return model.query(request, excluded);
         };
-        let offset = page_offset(input.page, input.page_size)?;
+        let offset = if all {
+            0
+        } else {
+            page_offset(input.page, input.page_size)?
+        };
+        let page_size = if all {
+            usize::MAX
+        } else {
+            input.page_size as usize
+        };
         model.validate_count(input.topic_count)?;
         if input.topic >= input.topic_count || !(1..=input.topic_count).contains(&input.top_n) {
             return Err(Error::invalid("Choose a valid topic and Top-N membership"));
@@ -176,12 +254,14 @@ impl Database {
         }
         let begin = model.sources[..input.source]
             .iter()
-            .map(|s| s.document_count)
+            .map(TopicSource::processed_count)
             .sum::<usize>();
         let documents = model.documents(input.topic_count)?;
         let mut selected = documents
             .iter()
-            .filter(|doc| doc.doc_index >= begin && doc.doc_index < begin + source.document_count)
+            .filter(|doc| {
+                doc.doc_index >= begin && doc.doc_index < begin + source.processed_count()
+            })
             .filter(|doc| memberships(doc, input.top_n).contains(&(input.topic as i32)))
             .map(|doc| {
                 (
@@ -194,11 +274,98 @@ impl Database {
             })
             .collect::<Vec<_>>();
         selected.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
+        if let Some(key) = &source.processed_column {
+            let (file, total_rows) = if let Some(analysis) = analysis {
+                let relation = artifact_relation(
+                    &self.conn,
+                    analysis,
+                    source
+                        .documents
+                        .ok_or_else(|| model_error("Processed Topic outputs are unavailable"))?,
+                )?;
+                let chosen = temporary_name();
+                self.conn.execute_batch(&format!(
+                    "CREATE TEMP TABLE {chosen}(document_id UBIGINT,coverage DOUBLE)"
+                ))?;
+                {
+                    let mut appender = self.conn.appender(&chosen)?;
+                    for (id, coverage) in &selected {
+                        check_cancellation(&self.cancellation)?;
+                        appender.append_row(params![id, coverage])?;
+                    }
+                    appender.flush()?;
+                }
+                let rows = live_document_rows(&source.input, &relation.sql(), key, &source.columns);
+                let fields = columns
+                    .iter()
+                    .map(|name| {
+                        format!("{} := r.source.{}", query::quote(name), query::quote(name))
+                    })
+                    .collect::<Vec<_>>()
+                    .join(",");
+                let captured = temporary_name();
+                self.conn.execute_batch(&format!("CREATE TEMP TABLE {captured} AS SELECT r.document_id,p.coverage,struct_pack({fields}) AS source FROM ({rows}) r JOIN {chosen} p ON p.document_id=r.processed_id"))?;
+                let total_rows: u64 =
+                    self.conn
+                        .query_row(&format!("SELECT count(*) FROM {captured}"), [], |r| {
+                            r.get(0)
+                        })?;
+                let original = Relation {
+                    schema: source
+                        .input
+                        .source
+                        .schema
+                        .clone()
+                        .unwrap_or_else(|| "data".into()),
+                    name: source.input.source.name.clone(),
+                };
+                let annotations =
+                    arrow_metadata::Annotations::load(&self.conn, &original)?.prefixed("source");
+                let file = arrow_page(
+                    &self.conn,
+                    &format!(
+                        "SELECT * FROM {captured} ORDER BY coverage DESC,document_id{}",
+                        if all {
+                            String::new()
+                        } else {
+                            format!(" LIMIT {} OFFSET {offset}", input.page_size)
+                        }
+                    ),
+                    &[],
+                    &annotations,
+                    &self.cancellation,
+                )?;
+                self.conn
+                    .execute_batch(&format!("DROP TABLE {captured}; DROP TABLE {chosen}"))?;
+                (file, total_rows)
+            } else {
+                let preview = model
+                    .preview_documents
+                    .get(input.source)
+                    .ok_or_else(|| model_error("Preview documents are unavailable"))?;
+                let selected = preview.expand_selection(&selected);
+                let total_rows = selected.len() as u64;
+                let page = selected
+                    .into_iter()
+                    .skip(usize::try_from(offset).unwrap_or(usize::MAX))
+                    .take(page_size)
+                    .collect::<Vec<_>>();
+                (preview.page(&page, &columns)?, total_rows)
+            };
+            check_cancellation(&self.cancellation)?;
+            return Ok(TopicProjection::Documents(DocumentPage {
+                file,
+                total_rows,
+                has_next: offset.saturating_add(input.page_size) < total_rows,
+                document_count: total_rows,
+                match_count: total_rows,
+            }));
+        }
         let total_rows = selected.len() as u64;
         let page = selected
             .iter()
             .skip(usize::try_from(offset).unwrap_or(usize::MAX))
-            .take(input.page_size as usize)
+            .take(page_size)
             .copied()
             .collect::<Vec<_>>();
         check_cancellation(&self.cancellation)?;
@@ -278,14 +445,18 @@ mod tests {
         let model = TopicModel {
             revision: Uuid::new_v4(),
             metadata: Vec::new(),
+            population: None,
             parameters: None,
             preview_documents: vec![preview],
             sources: vec![TopicSource {
                 input: docs.input.clone(),
                 columns: docs.columns.clone(),
                 document_count: 4,
+                processed_text_count: None,
                 total_count: 4,
                 documents: None,
+                processed_column: None,
+                projection: None,
             }],
             natural: TopicModelingResult {
                 topics: (0..2)
@@ -319,6 +490,134 @@ mod tests {
             resolved_model: "test".into(),
         };
         (p, model, docs)
+    }
+    #[test]
+    fn live_inspection_expands_duplicates_before_paging_and_download_and_keeps_nested_types() {
+        let (mut p, mut model, _) = fixture();
+        let request = TopicRequest {
+            inputs: vec![model.sources[0].input.clone()],
+            embedding_model: MODELS[0].id.into(),
+            tokenizer: "native:plain_words_en".into(),
+            segmentation: SegmentationMethod::Automatic,
+            max_segment_tokens: 256,
+            minimum_topic_size: 10,
+            maximum_topic_size: None,
+            seed: 7,
+        };
+        let (retained, sources, _) =
+            capture(&p.database.conn, &request, None, &CancellationToken::new()).unwrap();
+        model.sources = sources;
+        model.preview_documents.clear();
+        model.natural.documents = vec![
+            DocumentResult {
+                doc_index: 0,
+                dominant_topic: 0,
+                topic_coverage: vec![(0, 1.0)],
+            },
+            DocumentResult {
+                doc_index: 1,
+                dominant_topic: 1,
+                topic_coverage: vec![(1, 1.0)],
+            },
+        ];
+        let tab = p
+            .database
+            .create_analysis_tab(CreateTab {
+                kind: KIND.into(),
+                name: None,
+            })
+            .unwrap()
+            .id;
+        let id = p
+            .database
+            .begin_analysis_run(tab, KIND, serde_json::to_value(request).unwrap())
+            .unwrap();
+        p.database
+            .publish_analysis_version(
+                AcceptedAnalysis {
+                    id,
+                    tab_id: tab,
+                    kind: KIND,
+                },
+                2,
+                None,
+                move |conn| persist_model(conn, id, model, retained),
+            )
+            .unwrap();
+        let input = TopicDocumentQuery {
+            source: 0,
+            topic: 0,
+            topic_count: 2,
+            top_n: 1,
+            page: 2,
+            page_size: 1,
+            metadata: vec!["id".into(), "metadata".into()],
+        };
+        let TopicProjection::Documents(page) = p
+            .database
+            .query_topic_model(id, TopicQuery::Documents(input.clone()))
+            .unwrap()
+        else {
+            panic!("documents")
+        };
+        assert_eq!(page.total_rows, 2);
+        let batch = read(&page);
+        assert_eq!(batch.num_rows(), 1);
+        let source = batch
+            .column_by_name("source")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<StructArray>()
+            .unwrap();
+        let id_values = source
+            .column_by_name("id")
+            .unwrap()
+            .as_any()
+            .downcast_ref::<duckdb::arrow::array::StringArray>()
+            .unwrap();
+        assert_eq!(id_values.value(0), "1");
+        let DataType::Struct(fields) = batch
+            .schema()
+            .field_with_name("source")
+            .unwrap()
+            .data_type()
+            .clone()
+        else {
+            panic!("source")
+        };
+        let DataType::Struct(nested) = fields
+            .iter()
+            .find(|f| f.name() == "metadata")
+            .unwrap()
+            .data_type()
+        else {
+            panic!("metadata")
+        };
+        assert_eq!(nested[0].metadata()["ARROW:extension:metadata"], "opaque");
+        let download = p
+            .database
+            .download_result(
+                id,
+                result_downloads::ResultDownload {
+                    selection: result_downloads::ResultSelection::Topics { query: input },
+                    format: ExportFormat::Json,
+                    columns: vec![
+                        result_downloads::ResultColumn {
+                            column: "id".into(),
+                            metadata: true,
+                        },
+                        result_downloads::ResultColumn {
+                            column: "coverage".into(),
+                            metadata: false,
+                        },
+                    ],
+                },
+            )
+            .unwrap();
+        let rows: Vec<Value> = serde_json::from_reader(download.reopen().unwrap()).unwrap();
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0]["id"], "01");
+        assert_eq!(rows[1]["id"], "1");
     }
     fn request(page: u64, top_n: usize) -> TopicQuery {
         TopicQuery::Documents(TopicDocumentQuery {

@@ -151,9 +151,21 @@ pub(crate) struct TopicSource {
     pub input: DocumentInput,
     pub columns: Vec<(String, String)>,
     pub document_count: usize,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processed_text_count: Option<usize>,
     pub total_count: u64,
     pub documents: Option<Uuid>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub processed_column: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub projection: Option<Uuid>,
 }
+impl TopicSource {
+    fn processed_count(&self) -> usize {
+        self.processed_text_count.unwrap_or(self.document_count)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, utoipa::ToSchema)]
 pub(crate) struct TopicResultV1 {
     pub sources: Vec<TopicSource>,
@@ -183,6 +195,7 @@ pub(super) struct TopicModel {
     pub(in crate::project) preview_documents: Vec<PreviewDocuments>,
     pub(in crate::project) revision: Uuid,
     metadata: Vec<ColourField>,
+    population: Option<Vec<usize>>,
     parameters: Option<TopicAdjustmentSettings>,
     pub sources: Vec<TopicSource>,
     pub natural: TopicModelingResult,
@@ -225,6 +238,10 @@ pub(crate) enum TopicProjection {
         dominant_counts: Vec<Vec<usize>>,
         colour_fields: Vec<ColourFieldSummary>,
         colour_counts: Option<Vec<Vec<usize>>>,
+        document_counts: Vec<usize>,
+        outlier_counts: Vec<usize>,
+        source_columns: Vec<Vec<(String, String)>>,
+        source_inputs: Vec<DocumentInput>,
     },
     Words {
         words: Vec<Vec<RepresentativeWord>>,
@@ -257,14 +274,36 @@ pub(super) fn model_error(error: impl std::fmt::Display) -> Error {
 }
 impl TopicModel {
     pub(super) fn summary(&self) -> PreviewSummary {
+        let counts = self.population_sizes();
+        let mut sources = self.sources.clone();
+        for (source, count) in sources.iter_mut().zip(counts) {
+            source.document_count = count;
+        }
         PreviewSummary {
-            sources: self.sources.clone(),
+            sources,
             natural_topic_count: self.natural.topics.len(),
             segment_count: self.natural.n_segments,
             resolved_model: self.resolved_model.clone(),
             natural_projection: self.revision,
             parameters: self.parameters.clone(),
         }
+    }
+    fn population_sizes(&self) -> Vec<usize> {
+        let mut begin = 0;
+        self.sources
+            .iter()
+            .map(|source| {
+                let end = begin + source.processed_count();
+                let count = self
+                    .population
+                    .as_ref()
+                    .map_or(source.document_count, |weights| {
+                        weights[begin..end].iter().sum()
+                    });
+                begin = end;
+                count
+            })
+            .collect()
     }
     fn validate_count(&self, count: usize) -> Result<()> {
         let natural = self.natural.topics.len();
@@ -290,34 +329,77 @@ impl TopicModel {
                 let sizes = self
                     .sources
                     .iter()
-                    .map(|s| s.document_count)
+                    .map(TopicSource::processed_count)
                     .collect::<Vec<_>>();
-                let basis = if topic_count == self.natural.topics.len() {
-                    projection::basis_from_result(&self.natural, &sizes)
+                let adjusted = if topic_count == self.natural.topics.len() {
+                    None
                 } else {
-                    projection::project_basis(
-                        self.context
-                            .as_ref()
-                            .ok_or_else(|| model_error("Missing projection context"))?,
-                        topic_count,
-                        &sizes,
+                    Some(
+                        projection::project(
+                            self.context
+                                .as_ref()
+                                .ok_or_else(|| model_error("Missing projection context"))?,
+                            topic_count,
+                        )
+                        .map_err(model_error)?,
                     )
+                };
+                let projected = adjusted.as_ref().unwrap_or(&self.natural);
+                let basis = if let Some(weights) = &self.population {
+                    projection::basis_from_result_with_weights(projected, &sizes, weights)
+                } else {
+                    projection::basis_from_result(projected, &sizes)
                 }
                 .map_err(model_error)?;
-                let documents = self.documents(topic_count)?;
+                let documents = &projected.documents;
+                let selected_colour = colour_by.as_deref().filter(|column| {
+                    self.population.is_none()
+                        || self.metadata.iter().any(|field| field.column == *column)
+                });
                 let (dominant_counts, colour_counts) = metadata::counts(
-                    &documents,
+                    documents,
                     &sizes,
                     &self.metadata,
-                    colour_by.as_deref(),
+                    selected_colour,
                     topic_count,
+                    self.population.as_deref(),
                 )?;
+                let mut outlier_counts = vec![0; sizes.len()];
+                let mut begin = 0;
+                for (source, size) in sizes.iter().enumerate() {
+                    for document in &documents[begin..begin + size] {
+                        if document.dominant_topic == -1
+                            && document
+                                .topic_coverage
+                                .iter()
+                                .any(|(topic, coverage)| *topic == -1 && *coverage > 0.0)
+                        {
+                            outlier_counts[source] += self
+                                .population
+                                .as_ref()
+                                .map_or(1, |weights| weights[document.doc_index]);
+                        }
+                    }
+                    begin += size;
+                }
                 Ok(TopicProjection::Map {
                     basis: basis.into(),
                     natural_projection: self.revision,
                     dominant_counts,
                     colour_counts,
                     colour_fields: self.metadata.iter().map(ColourField::summary).collect(),
+                    document_counts: self.population_sizes(),
+                    outlier_counts,
+                    source_columns: self
+                        .sources
+                        .iter()
+                        .map(|source| source.columns.clone())
+                        .collect(),
+                    source_inputs: self
+                        .sources
+                        .iter()
+                        .map(|source| source.input.clone())
+                        .collect(),
                 })
             }
             TopicQuery::Words { topic_count, .. } => Ok(TopicProjection::Words {
@@ -386,6 +468,16 @@ fn capture(
             docs.name = sample;
             docs.count = count;
         }
+        let document_count: usize = conn.query_row(
+            &format!(
+                "SELECT count(source.{}) FROM {}",
+                query::quote(&docs.input.column),
+                docs.name
+            ),
+            [],
+            |r| r.get(0),
+        )?;
+        distinct_documents_in(conn, &mut docs, sampling.is_some())?;
         let mut after = 0;
         loop {
             check_cancellation(cancellation)?;
@@ -401,9 +493,12 @@ fn capture(
         sources.push(TopicSource {
             input: docs.input.clone(),
             columns: docs.columns.clone(),
-            document_count: docs.count as usize,
+            document_count,
+            processed_text_count: Some(docs.count as usize),
             total_count: total,
             documents: None,
+            processed_column: Some(docs.input.column.clone()),
+            projection: None,
         });
         retained.push(docs);
     }
@@ -440,6 +535,7 @@ fn fit(
         preview_documents: Vec::new(),
         revision: Uuid::new_v4(),
         metadata: Vec::new(),
+        population: None,
         parameters: Some(TopicAdjustmentSettings::from(request)),
         sources,
         natural,
@@ -461,8 +557,9 @@ fn manifest(conn: &Connection, id: Uuid) -> Result<TopicResultV1> {
     let analysis = read_analysis(conn, id)?;
     Ok(serde_json::from_value(analysis.output(KIND)?.clone())?)
 }
-fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
-    let output = manifest(conn, id)?;
+pub(super) fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
+    let analysis = read_analysis(conn, id)?;
+    let mut output = manifest(conn, id)?;
     let mut natural: TopicModelingResult =
         serde_json::from_slice(&artifact_blob(conn, id, output.natural_projection)?)?;
     natural.retained_stages = output
@@ -471,13 +568,56 @@ fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
             Ok::<_, Error>(serde_json::from_slice(&artifact_blob(conn, id, artifact)?)?)
         })
         .transpose()?;
-    let metadata = output
+    let mut metadata = output
         .metadata
         .map(|artifact| {
             Ok::<_, Error>(serde_json::from_slice(&artifact_blob(conn, id, artifact)?)?)
         })
         .transpose()?
         .unwrap_or_default();
+    let population = if analysis
+        .result
+        .as_ref()
+        .is_some_and(|result| result.version == 2)
+    {
+        let request: TopicRequest = serde_json::from_value(analysis.request)?;
+        if request.inputs.len() != output.sources.len() {
+            return Err(model_error(
+                "Saved Topic input bindings are incomplete. Rerun this analysis.",
+            ));
+        }
+        let mut tables = Vec::new();
+        for (source, input) in output.sources.iter_mut().zip(request.inputs) {
+            source.input = input;
+            let relation = Relation {
+                schema: source
+                    .input
+                    .source
+                    .schema
+                    .clone()
+                    .unwrap_or_else(|| "data".into()),
+                name: source.input.source.name.clone(),
+            };
+            source.columns = mutations::columns(conn, &relation)?;
+            tables.push(
+                artifact_relation(
+                    conn,
+                    id,
+                    source.documents.ok_or_else(|| {
+                        model_error("Processed Topic texts are unavailable. Rerun this analysis.")
+                    })?,
+                )?
+                .sql(),
+            );
+        }
+        natural.documents = read_document_outputs(conn, &output.sources, &tables)?;
+        let (weights, fields) =
+            current_population(conn, &output.sources, &tables, &vec![None; tables.len()])?;
+        metadata = fields;
+        Some(weights)
+    } else {
+        None
+    };
     let context = output
         .projection_context
         .map(|artifact| {
@@ -489,6 +629,7 @@ fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
         preview_documents: Vec::new(),
         revision: output.natural_projection,
         metadata,
+        population,
         parameters: output.parameters,
         natural,
         context,
@@ -496,6 +637,216 @@ fn load_model(conn: &Connection, id: Uuid) -> Result<TopicModel> {
         resolved_model: output.resolved_model,
     })
 }
+
+fn current_population(
+    conn: &Connection,
+    sources: &[TopicSource],
+    tables: &[String],
+    samples: &[Option<String>],
+) -> Result<(Vec<usize>, Vec<ColourField>)> {
+    if sources.len() != tables.len() || sources.len() != samples.len() {
+        return Err(model_error("Live Topic population bindings are incomplete"));
+    }
+    let mut weights = Vec::new();
+    let mut fields = Vec::new();
+    for (index, source) in sources.iter().enumerate() {
+        let key = source.processed_column.as_deref().ok_or_else(|| {
+            model_error("Processed Topic text bindings are unavailable. Rerun this analysis.")
+        })?;
+        let rows = live_document_rows_in(
+            &source.input,
+            &tables[index],
+            key,
+            &source.columns,
+            samples[index].as_deref(),
+        );
+        let scalar = source
+            .columns
+            .iter()
+            .filter(|(column, kind)| metadata::eligible(column, kind, &source.input.column))
+            .map(|(column, _)| {
+                format!(
+                    "{} := r.source.{}",
+                    query::quote(column),
+                    query::quote(column)
+                )
+            })
+            .collect::<Vec<_>>();
+        let projection = if scalar.is_empty() {
+            "NULL::INTEGER AS source".into()
+        } else {
+            format!("struct_pack({}) AS source", scalar.join(","))
+        };
+        let population = temporary_name();
+        conn.execute_batch(&format!("CREATE TEMP TABLE {population} AS SELECT r.document_id,r.processed_id,{projection} FROM ({rows}) r"))?;
+        let begin = weights.len();
+        weights.resize(begin + source.processed_count(), 0);
+        let grouped = conn
+            .prepare(&format!(
+                "SELECT processed_id,count(*)::UBIGINT FROM {population} GROUP BY processed_id"
+            ))?
+            .query_map([], |r| Ok((r.get::<_, u64>(0)?, r.get::<_, u64>(1)?)))?
+            .collect::<duckdb::Result<Vec<_>>>()?;
+        for (document, count) in grouped {
+            let local = usize::try_from(document)
+                .ok()
+                .and_then(|id| id.checked_sub(1))
+                .filter(|id| *id < source.processed_count())
+                .ok_or_else(|| model_error("Processed Topic text identity is invalid"))?;
+            weights[begin + local] = count as usize;
+        }
+        if sources.len() == 1 {
+            fields = metadata::live_fields(
+                conn,
+                &format!("SELECT * FROM {population}"),
+                &source.columns,
+                &source.input.column,
+            )?;
+        }
+        conn.execute_batch(&format!("DROP TABLE {population}"))?;
+    }
+    Ok((weights, fields))
+}
+
+fn document_outputs(
+    conn: &Connection,
+    sources: &[TopicSource],
+    documents: &[DocumentResult],
+) -> Result<String> {
+    let name = temporary_name();
+    conn.execute_batch(&format!("CREATE TEMP TABLE {name}(source_index UBIGINT,document_id UBIGINT,dominant INTEGER,coverage VARCHAR)"))?;
+    let mut appender = conn.appender(&name)?;
+    let mut begin: usize = 0;
+    for (index, source) in sources.iter().enumerate() {
+        let end = begin
+            .checked_add(source.processed_count())
+            .ok_or_else(|| model_error("Processed Topic output size is invalid"))?;
+        for (local, document) in documents
+            .get(begin..end)
+            .ok_or_else(|| model_error("Processed Topic outputs are incomplete"))?
+            .iter()
+            .enumerate()
+        {
+            let coverage = document
+                .topic_coverage
+                .iter()
+                .map(|(topic, coverage)| serde_json::json!({"topic_id":topic,"coverage":coverage}))
+                .collect::<Vec<_>>();
+            let dominant = document
+                .topic_coverage
+                .iter()
+                .any(|(_, coverage)| *coverage > 0.0)
+                .then_some(document.dominant_topic);
+            appender.append_row(params![
+                index as u64,
+                local as u64 + 1,
+                dominant,
+                serde_json::to_string(&coverage)?
+            ])?;
+        }
+        begin = end;
+    }
+    appender.flush()?;
+    Ok(name)
+}
+
+fn read_document_outputs(
+    conn: &Connection,
+    sources: &[TopicSource],
+    tables: &[String],
+) -> Result<Vec<DocumentResult>> {
+    let mut documents = Vec::new();
+    for (source, table) in sources.iter().zip(tables) {
+        let rows = conn.prepare(&format!("SELECT document_id,dominant,to_json(coverage)::VARCHAR FROM {table} ORDER BY document_id"))?.query_map([],|row|Ok((row.get::<_,u64>(0)?,row.get::<_,Option<i32>>(1)?.unwrap_or(-1),row.get::<_,String>(2)?)))?.collect::<duckdb::Result<Vec<_>>>()?;
+        if rows.len() != source.processed_count() {
+            return Err(model_error(
+                "Processed Topic outputs are incomplete. Rerun this analysis.",
+            ));
+        }
+        for (expected, (id, dominant, coverage)) in rows.into_iter().enumerate() {
+            if id != expected as u64 + 1 {
+                return Err(model_error("Processed Topic output identity is invalid"));
+            }
+            #[derive(Deserialize)]
+            struct Coverage {
+                topic_id: i32,
+                coverage: f32,
+            }
+            let coverage: Vec<Coverage> = serde_json::from_str(&coverage)?;
+            documents.push(DocumentResult {
+                doc_index: documents.len(),
+                dominant_topic: dominant,
+                topic_coverage: coverage
+                    .into_iter()
+                    .map(|c| (c.topic_id, c.coverage))
+                    .collect(),
+            });
+        }
+    }
+    Ok(documents)
+}
+fn persist_model(
+    conn: &Connection,
+    id: Uuid,
+    model: TopicModel,
+    retained: Vec<CapturedDocuments>,
+) -> Result<Value> {
+    let (natural_projection, projection_context, retained_stages) =
+        adjustments::store_outputs(conn, id, &model)?;
+    let outputs = document_outputs(conn, &model.sources, &model.natural.documents)?;
+    let mut sources = model.sources;
+    for (index, (source, captured)) in sources.iter_mut().zip(retained).enumerate() {
+        let artifact = Uuid::new_v4();
+        let relation = Relation {
+            schema: "wordflow".into(),
+            name: artifact_table(artifact),
+        };
+        conn.execute_batch(&format!(
+            "CREATE TABLE {} AS SELECT d.*,a.dominant,from_json(a.coverage,'[{{\"topic_id\":\"INTEGER\",\"coverage\":\"DOUBLE\"}}]') AS coverage FROM {} d JOIN {outputs} a ON a.document_id=d.document_id AND a.source_index={index}",
+            relation.sql(),
+            captured.name
+        ))?;
+        captured
+            .metadata
+            .source_columns(std::slice::from_ref(&captured.input.column))
+            .prefixed("source")
+            .store(conn, &relation)?;
+        register_table(conn, id, artifact, &format!("documents_{index}"))?;
+        source.documents = Some(artifact);
+        let view = Uuid::new_v4();
+        conn.execute_batch(&format!(
+            "CREATE VIEW wordflow.{} AS SELECT * FROM {}",
+            artifact_table(view),
+            relation.sql()
+        ))?;
+        register_table(conn, id, view, &format!("source_{index}_projection"))?;
+        captured
+            .metadata
+            .source_columns(std::slice::from_ref(&captured.input.column))
+            .prefixed("source")
+            .store(
+                conn,
+                &Relation {
+                    schema: "wordflow".into(),
+                    name: artifact_table(view),
+                },
+            )?;
+        source.projection = Some(view);
+    }
+    conn.execute_batch(&format!("DROP TABLE {outputs}"))?;
+    Ok(serde_json::to_value(TopicResultV1 {
+        sources,
+        natural_topic_count: model.natural.topics.len(),
+        segment_count: model.natural.n_segments,
+        resolved_model: model.resolved_model,
+        natural_projection,
+        projection_context,
+        retained_stages,
+        metadata: None,
+        parameters: model.parameters,
+    })?)
+}
+
 impl Database {
     pub(super) fn validate_topic_request(&self, tab: Uuid, request: &TopicRequest) -> Result<()> {
         request.validate()?;
@@ -521,8 +872,7 @@ impl Database {
         progress("Capturing source documents", None);
         let (retained, sources, texts) = capture(&self.conn, &request, None, &self.cancellation)?;
         self.conn.execute_batch("COMMIT")?;
-        let metadata = metadata::capture(&self.conn, &retained)?;
-        let mut model = fit(
+        let model = fit(
             &request,
             sources,
             &texts,
@@ -531,55 +881,17 @@ impl Database {
             &self.cancellation,
             &mut progress,
         )?;
-        model.metadata = metadata;
         drop(texts);
         progress("Saving model", None);
-        self.publish_analysis(
+        self.publish_analysis_version(
             AcceptedAnalysis {
                 id,
                 tab_id: tab,
                 kind: KIND,
             },
-            move |conn| {
-                let (natural_projection, projection_context, retained_stages) =
-                    adjustments::store_outputs(conn, id, &model)?;
-                let metadata = Uuid::new_v4();
-                register_blob(
-                    conn,
-                    id,
-                    metadata,
-                    "metadata",
-                    "application/json",
-                    &serde_json::to_vec(&model.metadata)?,
-                )?;
-                let mut sources = model.sources;
-                for (index, (source, captured)) in sources.iter_mut().zip(retained).enumerate() {
-                    let artifact = Uuid::new_v4();
-                    let relation = Relation {
-                        schema: "wordflow".into(),
-                        name: artifact_table(artifact),
-                    };
-                    conn.execute_batch(&format!(
-                        "CREATE TABLE {} AS SELECT * FROM {}",
-                        relation.sql(),
-                        captured.name
-                    ))?;
-                    captured.metadata.store(conn, &relation)?;
-                    register_table(conn, id, artifact, &format!("documents_{index}"))?;
-                    source.documents = Some(artifact);
-                }
-                Ok(serde_json::to_value(TopicResultV1 {
-                    sources,
-                    natural_topic_count: model.natural.topics.len(),
-                    segment_count: model.natural.n_segments,
-                    resolved_model: model.resolved_model,
-                    natural_projection,
-                    projection_context,
-                    retained_stages,
-                    metadata: Some(metadata),
-                    parameters: model.parameters,
-                })?)
-            },
+            2,
+            None,
+            move |conn| persist_model(conn, id, model, retained),
         )
     }
     pub(super) fn preview_topic_model(
@@ -598,16 +910,35 @@ impl Database {
             Some(&input.sampling),
             &self.cancellation,
         )?;
-        let metadata = metadata::capture(&self.conn, &retained)?;
+        let tables = retained
+            .iter()
+            .map(|docs| docs.name.clone())
+            .collect::<Vec<_>>();
+        let samples = retained
+            .iter()
+            .map(|docs| docs.population.clone())
+            .collect::<Vec<_>>();
+        let (population, metadata) = current_population(&self.conn, &sources, &tables, &samples)?;
         let mut preview_documents = Vec::new();
         for docs in retained {
-            preview_documents.push(PreviewDocuments::capture(
+            let rows = live_document_rows_in(
+                &docs.input,
+                &docs.name,
+                &docs.input.column,
+                &docs.columns,
+                docs.population.as_deref(),
+            );
+            preview_documents.push(PreviewDocuments::capture_joined(
                 &self.conn,
+                &rows,
                 &docs,
                 &self.cancellation,
             )?);
             self.conn
                 .execute_batch(&format!("DROP TABLE {}", docs.name))?;
+            if let Some(sample) = docs.population {
+                self.conn.execute_batch(&format!("DROP TABLE {sample}"))?;
+            }
         }
         self.conn.execute_batch("COMMIT")?;
         let mut model = fit(
@@ -621,6 +952,7 @@ impl Database {
         )?;
         model.preview_documents = preview_documents;
         model.metadata = metadata;
+        model.population = Some(population);
         Ok(model)
     }
     pub(super) fn topic_exclusions(
@@ -694,14 +1026,18 @@ impl Database {
         {
             let mut appender = tx.appender(&assignments)?;
             for (source_index, source) in model.sources.iter().enumerate() {
-                for local in 0..source.document_count {
+                for local in 0..source.processed_count() {
                     check_cancellation(&self.cancellation)?;
                     let doc = documents
                         .get(offset + local)
                         .ok_or_else(|| model_error("Document identity is missing"))?;
                     let members = memberships(doc, request.top_n);
                     for &topic in &members {
-                        counts[topic as usize][source_index] += 1;
+                        counts[topic as usize][source_index] += model
+                            .population
+                            .as_ref()
+                            .map_or(1, |weights| weights[doc.doc_index])
+                            as u64;
                     }
                     let selected = request.selected_topics.is_empty()
                         || members
@@ -717,15 +1053,25 @@ impl Database {
                             serde_json::json!({"topic_id":topic,"coverage":value})
                         })
                         .collect::<Vec<_>>();
+                    let dominant = if source.processed_column.is_some()
+                        && !doc
+                            .topic_coverage
+                            .iter()
+                            .any(|(_, coverage)| *coverage > 0.0)
+                    {
+                        None
+                    } else {
+                        Some(doc.dominant_topic)
+                    };
                     appender.append_row(params![
                         source_index as u64,
                         local as u64 + 1,
-                        doc.dominant_topic,
+                        dominant,
                         serde_json::to_string(&coverage)?,
                         selected
                     ])?;
                 }
-                offset += source.document_count;
+                offset += source.processed_count();
             }
             appender.flush()?;
         }
@@ -775,19 +1121,74 @@ impl Database {
                 .map(|name| format!("d.source.{} AS {}", query::quote(name), query::quote(name)))
                 .collect::<Vec<_>>();
             let dominant = generated_name(&mut names, "TOPIC_top1");
-            fields.push(format!("a.dominant AS {}", query::quote(&dominant)));
-            let mut annotations =
-                arrow_metadata::Annotations::load(&tx, &relation)?.source_columns(&columns);
+            let output_alias = if source.processed_column.is_some() {
+                "d"
+            } else {
+                "a"
+            };
+            fields.push(format!(
+                "{output_alias}.dominant AS {}",
+                query::quote(&dominant)
+            ));
+            let mut annotations = if source.processed_column.is_some() {
+                arrow_metadata::Annotations::load(
+                    &tx,
+                    &Relation {
+                        schema: source
+                            .input
+                            .source
+                            .schema
+                            .clone()
+                            .unwrap_or_else(|| "data".into()),
+                        name: source.input.source.name.clone(),
+                    },
+                )?
+                .prefixed("source")
+                .source_columns(&columns)
+            } else {
+                arrow_metadata::Annotations::load(&tx, &relation)?.source_columns(&columns)
+            };
             if selected.coverage {
                 let name = generated_name(&mut names, "TOPIC_coverage");
-                fields.push(format!("CAST(from_json(a.coverage,'[{{\"topic_id\":\"BIGINT\",\"coverage\":\"DOUBLE\"}}]') AS STRUCT(topic_id BIGINT,coverage DOUBLE)[{}]) AS {}",request.topic_count+1,query::quote(&name)));
+                fields.push(format!("CAST(from_json({output_alias}.coverage,'[{{\"topic_id\":\"BIGINT\",\"coverage\":\"DOUBLE\"}}]') AS STRUCT(topic_id BIGINT,coverage DOUBLE)[{}]) AS {}",request.topic_count+1,query::quote(&name)));
                 annotations.0.push(arrow_metadata::Annotation {
                     path: vec![name],
                     extension: "org.ldaca.wordflow.topic_coverage.v1".into(),
                     payload: Some("{\"version\":1}".into()),
                 });
             }
-            tx.execute_batch(&format!("CREATE TABLE {} AS SELECT {} FROM {} d JOIN {assignments} a ON a.document_id=d.document_id AND a.source_index={} WHERE a.selected ORDER BY d.document_id",target.sql(),fields.join(","),relation.sql(),selected.source))?;
+            if let Some(key) = &source.processed_column {
+                let outputs = copy_publication_query(
+                    &tx,
+                    &format!(
+                        "SELECT d.document_id,d.source,a.dominant,a.coverage,a.selected FROM {} d JOIN {assignments} a ON a.document_id=d.document_id AND a.source_index={}",
+                        relation.sql(),
+                        selected.source
+                    ),
+                    &[],
+                )?;
+                let publication = PublicationSource::selected(&tx, &source.input, columns.clone())?;
+                let rows = live_document_rows(
+                    &source.input,
+                    &outputs.sql(),
+                    key,
+                    &publication.columns(&source.columns),
+                );
+                let joined = format!(
+                    "SELECT r.document_id,r.source,a.dominant,a.coverage,a.selected FROM ({rows}) r JOIN {} a ON a.document_id=r.processed_id",
+                    outputs.sql()
+                );
+                publish_live_view(&tx, &target, vec![outputs], publication, &joined, |view| {
+                    format!(
+                        "SELECT {} FROM {} d WHERE d.selected ORDER BY d.document_id",
+                        fields.join(","),
+                        view.sql()
+                    )
+                })?;
+                scope.resources.push(Resource::Project);
+            } else {
+                tx.execute_batch(&format!("CREATE TABLE {} AS SELECT {} FROM {} d JOIN {assignments} a ON a.document_id=d.document_id AND a.source_index={} WHERE a.selected ORDER BY d.document_id",target.sql(),fields.join(","),relation.sql(),selected.source))?;
+            }
             let document = columns
                 .contains(&source.input.column)
                 .then_some(&source.input.column);
@@ -915,8 +1316,11 @@ mod tests {
                 input: request.inputs[0].clone(),
                 columns: vec![],
                 document_count: texts.len(),
+                processed_text_count: None,
                 total_count: texts.len() as u64,
                 documents: None,
+                processed_column: None,
+                projection: None,
             }];
             let fitted = fit(
                 &request,
@@ -1120,7 +1524,7 @@ mod tests {
                 .conn
                 .prepare(&format!(
                     "SELECT source.id FROM {} ORDER BY document_id",
-                    retained[0].name
+                    retained[0].population.as_ref().unwrap()
                 ))
                 .unwrap()
                 .query_map([], |r| r.get::<_, i64>(0))
@@ -1150,20 +1554,27 @@ mod tests {
         assert!(Sampling::Count { count: 0 }.count(10).is_err());
     }
     #[test]
-    fn full_capture_keeps_every_row_and_preview_creates_no_project_records() {
+    fn full_capture_deduplicates_exact_text_and_preview_creates_no_project_records() {
         let p = source();
-        let (_, sources, texts) = capture(
+        let (retained, sources, texts) = capture(
             &p.database.conn,
             &request(),
             None,
             &CancellationToken::new(),
         )
         .unwrap();
-        assert_eq!(sources[0].document_count, 25);
-        assert_eq!(texts.len(), 25);
-        assert_eq!(texts[1], "");
-        assert_eq!(texts[2], "");
-        assert_eq!(texts[3], texts[4]);
+        assert_eq!(sources[0].document_count, 24);
+        assert_eq!(sources[0].processed_text_count, Some(2));
+        assert_eq!(texts, ["repeated 😀 文本", ""]);
+        let (population, fields) = current_population(
+            &p.database.conn,
+            &sources,
+            &[retained[0].name.clone()],
+            &[None],
+        )
+        .unwrap();
+        assert_eq!(population, [23, 1]);
+        assert!(fields.is_empty());
         for table in ["analyses", "artifacts"] {
             let count: i64 = p
                 .database
@@ -1174,6 +1585,188 @@ mod tests {
                 .unwrap();
             assert_eq!(count, 0);
         }
+    }
+    #[test]
+    fn live_topic_population_uses_current_rows_but_preview_uses_only_sampled_rows() {
+        let mut p = source();
+        p.database.conn.execute_batch("ALTER TABLE data.texts ADD COLUMN category VARCHAR; UPDATE data.texts SET category=CASE WHEN id%2=0 THEN 'a' ELSE 'b' END").unwrap();
+        let tab = p
+            .database
+            .create_analysis_tab(CreateTab {
+                kind: KIND.into(),
+                name: None,
+            })
+            .unwrap()
+            .id;
+        let id = p
+            .database
+            .begin_analysis_run(tab, KIND, serde_json::to_value(request()).unwrap())
+            .unwrap();
+        let (retained, sources, _) = capture(
+            &p.database.conn,
+            &request(),
+            None,
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        let model = TopicModel {
+            revision: Uuid::new_v4(),
+            parameters: None,
+            metadata: vec![],
+            population: None,
+            preview_documents: vec![],
+            sources,
+            natural: TopicModelingResult {
+                topics: vec![],
+                documents: vec![
+                    DocumentResult {
+                        doc_index: 0,
+                        dominant_topic: -1,
+                        topic_coverage: vec![(-1, 1.0)],
+                    },
+                    DocumentResult {
+                        doc_index: 1,
+                        dominant_topic: -1,
+                        topic_coverage: vec![],
+                    },
+                ],
+                n_segments: 1,
+                max_topic_size: None,
+                projection_context: None,
+                retained_stages: None,
+            },
+            context: None,
+            resolved_model: MODELS[0].id.into(),
+        };
+        p.database
+            .publish_analysis_version(
+                AcceptedAnalysis {
+                    id,
+                    tab_id: tab,
+                    kind: KIND,
+                },
+                2,
+                None,
+                move |conn| persist_model(conn, id, model, retained),
+            )
+            .unwrap();
+        let map = |p: &mut Project| {
+            p.database
+                .query_topic_model(
+                    id,
+                    TopicQuery::Map {
+                        topic_count: 0,
+                        colour_by: None,
+                    },
+                )
+                .unwrap()
+        };
+        let TopicProjection::Map {
+            document_counts,
+            outlier_counts,
+            colour_fields,
+            ..
+        } = map(&mut p)
+        else {
+            panic!("map")
+        };
+        assert_eq!(document_counts, [24]);
+        assert_eq!(outlier_counts, [23]);
+        assert_eq!(
+            colour_fields
+                .iter()
+                .find(|f| f.column == "category")
+                .unwrap()
+                .groups
+                .iter()
+                .map(|g| g.count)
+                .sum::<usize>(),
+            24
+        );
+        p.database.conn.execute_batch("UPDATE data.texts SET text='unprocessed' WHERE id IN (3,4); INSERT INTO data.texts VALUES (25,'repeated 😀 文本','c')").unwrap();
+        let TopicProjection::Map {
+            document_counts,
+            outlier_counts,
+            colour_fields,
+            ..
+        } = map(&mut p)
+        else {
+            panic!("map")
+        };
+        assert_eq!(document_counts, [23]);
+        assert_eq!(outlier_counts, [22]);
+        assert_eq!(
+            colour_fields
+                .iter()
+                .find(|f| f.column == "category")
+                .unwrap()
+                .groups
+                .len(),
+            3
+        );
+        p.database
+            .publish_topic_model(
+                id,
+                TopicPublish {
+                    expected_projection: None,
+                    topic_count: 0,
+                    top_n: 0,
+                    selected_topics: vec![],
+                    sources: vec![TopicPublishSource {
+                        source: 0,
+                        name: "live_topics".into(),
+                        columns: vec!["id".into(), "category".into()],
+                        coverage: true,
+                    }],
+                    dictionary_name: "dictionary".into(),
+                    words: vec![],
+                },
+            )
+            .unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_topics", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            23
+        );
+        assert_eq!(
+            p.database
+                .conn
+                .query_row(
+                    "SELECT count(*) FROM data.live_topics WHERE text='' AND TOPIC_top1 IS NULL",
+                    [],
+                    |r| r.get::<_, u64>(0)
+                )
+                .unwrap(),
+            1
+        );
+        p.database.clear_analysis_tab(tab).unwrap();
+        assert_eq!(
+            p.database
+                .conn
+                .query_row("SELECT count(*) FROM data.live_topics", [], |r| r
+                    .get::<_, u64>(0))
+                .unwrap(),
+            23
+        );
+        let (sample, sources, _) = capture(
+            &p.database.conn,
+            &request(),
+            Some(&[Sampling::Count { count: 5 }]),
+            &CancellationToken::new(),
+        )
+        .unwrap();
+        let (weights, _) = current_population(
+            &p.database.conn,
+            &sources,
+            &[sample[0].name.clone()],
+            &[sample[0].population.clone()],
+        )
+        .unwrap();
+        assert!(weights.iter().sum::<usize>() <= 5);
+        assert!(weights.iter().sum::<usize>() < 23);
     }
     #[test]
     fn publication_membership_includes_cutoff_ties_but_never_outliers_or_zero() {
@@ -1208,7 +1801,7 @@ mod tests {
             register_table(conn,id,docs,"documents_0")?;
             let result=TopicModelingResult { topics:vec![],documents:(0..25).map(|doc_index|DocumentResult {doc_index,dominant_topic:-1,topic_coverage:if doc_index==1 || doc_index==2 {vec![]} else {vec![(-1,1.0)]}}).collect(),n_segments:23,max_topic_size:None,projection_context:None,retained_stages:None };
             register_blob(conn,id,natural,"natural_projection","application/json",&serde_json::to_vec(&result)?)?;
-            Ok(serde_json::to_value(TopicResultV1 { sources:vec![TopicSource { input:request().inputs.remove(0),columns:vec![("id".into(),"BIGINT".into()),("text".into(),"VARCHAR".into())],document_count:25,total_count:25,documents:Some(docs) }],natural_topic_count:0,segment_count:23,resolved_model:MODELS[0].id.into(),natural_projection:natural,projection_context:None,retained_stages:None,metadata:None,parameters:None })?)
+            Ok(serde_json::to_value(TopicResultV1 { sources:vec![TopicSource { input:request().inputs.remove(0),columns:vec![("id".into(),"BIGINT".into()),("text".into(),"VARCHAR".into())],document_count:25,processed_text_count:None,total_count:25,documents:Some(docs),processed_column:None,projection:None }],natural_topic_count:0,segment_count:23,resolved_model:MODELS[0].id.into(),natural_projection:natural,projection_context:None,retained_stages:None,metadata:None,parameters:None })?)
         }).unwrap();
         let publish = |dictionary_name: &str| TopicPublish {
             expected_projection: None,

@@ -2,6 +2,7 @@ import { suggestDataBlockName } from '../../src/features/project/automaticNames'
 import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
 import { browser, $, expect } from '@wdio/globals';
+import { expectAppError } from '../../e2e-browser/diagnostics';
 import { Key } from 'webdriverio';
 import * as projectApi from '@/features/project/api';
 import * as objectsApi from '@/features/project/objects';
@@ -158,10 +159,17 @@ export async function quotationScenario(base: string, prefix: string) {
     }
   }
   await setAnalysisPaneSize('normal');
+  expectAppError(new RegExp(`Table with name ${name} does not exist`));
   await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.identifier(name)}` }], {
     objects: [{ schema: 'data', name }],
     resources: ['graph'],
   });
+  await results.$('[role="alert"]').waitForExist();
+  await projectApi.executeSql(base,[
+    {sql:`CREATE TABLE ${objectsApi.identifier(name)} (text VARCHAR,tags INTEGER[])`},
+    {sql:`INSERT INTO ${objectsApi.identifier(name)} VALUES (?,[1,2]),(NULL,[]),('No quotations here.',[]),(?,[3])`,parameters:['😀 Alice said, "The revised project will finish next month."','Alice said, "The project will finish tomorrow morning." She added, "The team will begin the following project next week."']},
+  ],{objects:[{schema:'data',name}],resources:['graph']});
+  await results.$('button[aria-label="Inspect document 1"]').waitForExist();
   await browser.refresh();
   await $('button=Quotation').waitForEnabled();
   await $('button=Quotation').click();
@@ -173,7 +181,8 @@ export async function quotationScenario(base: string, prefix: string) {
   if (!completedId) throw new Error('Saved quotation result missing');
   const manifest = await quotationApi.getQuotationResult(base, completedId);
   if (!manifest) throw new Error('Completed Quotation analysis has no saved output');
-  expect(manifest.result.payload.document_count).toBe(4);
+  expect(manifest.result.version).toBe(2);
+  expect(manifest.result.payload.document_count).toBe(3);
   expect(manifest.result.payload.matching_documents).toBe(2);
   expect(manifest.result.payload.match_count).toBeGreaterThanOrEqual(3);
 }

@@ -71,7 +71,7 @@ Sets the smallest number of Topic Segments that can form a natural HDBSCAN
 Topic. The default is 10 and the minimum is 2. Smaller values can produce more,
 finer natural Topics but may be noisier; larger values require more supporting
 segments per natural Topic. The request controls apply on the next Run.
-In Results, **Adjust retained stages** changes clustering on the captured data.
+In Results, **Adjust retained stages** changes clustering on the processed texts.
 An optional maximum topic size must exceed the minimum; it defaults to unlimited.
 
 <h4 id="help-topic-modeling-random-seed">Random seed</h4>
@@ -154,9 +154,17 @@ result atomically. Failure keeps the last valid chart with the original diagnost
 and Retry. Older results without required intermediates ask for Rerun; Wordflow
 does not silently rebuild them.
 
-For one Data Block, **Colour by** offers retained fields with 2–8 nonmissing
-groups. Missing values are grey. Legend counts and all count chips use the captured
-run or sampled Preview population, even after source edits. Shares use each group’s
+New Runs fit distinct exact texts independently within each Data Block. Outputs
+attach to current source rows by exact processed text, preserving duplicate rows.
+Source metadata and document counts update live without changing fitted assignments
+or map coordinates. Unprocessed new texts are absent; edited/removed texts stop
+matching. Processed empty outcomes remain part of the eligible population. A
+missing source produces the normal database error. Historical results keep their
+snapshot meaning until Rerun.
+
+For one Data Block, **Colour by** offers current fields with 2–8 nonmissing groups.
+Missing values are grey. Legend counts and count chips use current matching source
+rows for Run and only the sampled population for Preview. Shares use each group’s
 own denominator: whole percentages from 10%, one decimal below, and `<0.1%` for tiny
 positive shares. Tooltips give exact counts and populations. Colours blend the two
 strongest population-adjusted groups; opacity ranges from 0.25 to 0.8 with
@@ -258,7 +266,16 @@ available for the next run.
 
 [← Back to tutorial index](./index.md)
 
-Use **View documents** beside a topic to inspect its saved or sampled documents. Select a source, optional metadata and a page. Coverage is ordered highest first and Top-N cutoff ties are included. Expand text to read it in full. This dialog is read-only and never retrains the model. Downloads include a topic ID/word/count key.
+Use **View documents** beside a topic to inspect its saved or sampled documents. Select a source, optional metadata and a page. Coverage is ordered highest first and Top-N cutoff ties are included. Expand text to read it in full. This dialog is read-only and never retrains the model. **Download** exports all
+matching source documents across pages as CSV, XLSX, JSON or Parquet; **Download
+sample** uses all matching sampled documents without refitting. Document text can
+be omitted from downloads. Figure downloads include a topic ID/word/count key.
+
+New Add to Project outputs are live Views with independently copied generated
+assignments. The original document is always retained and source metadata stays
+live. Clear, Rerun and tab deletion cannot alter published outputs. A missing source
+retains its SQL reference and normal database error; deleting the published Data
+Block cleans up its hidden generated outputs.
 
 The shared Stopwords section places its selector beside an inline word editor, stacking them in narrow panes. Add/remove words, paste lists, sort and add language presets directly there. Changes save immediately to the shared Table. Views require **Create editable copy** before editing. Turning stopwords off hides the content but retains the selected list.
 

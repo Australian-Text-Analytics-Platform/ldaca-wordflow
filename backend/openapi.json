@@ -412,6 +412,38 @@
         "format": "binary",
         "type": "string"
       },
+      "CapturedResultDownload": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "items": {
+              "format": "int32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": "array"
+          },
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ResultColumn"
+            },
+            "type": "array"
+          },
+          "document": {
+            "$ref": "#/components/schemas/ResultColumn"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          }
+        },
+        "required": [
+          "bytes",
+          "format",
+          "document",
+          "columns"
+        ],
+        "type": "object"
+      },
       "CastShortcut": {
         "enum": [
           "string",
@@ -1076,6 +1108,12 @@
             "format": "int64",
             "minimum": 0,
             "type": "integer"
+          },
+          "processed_column": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "projection": {
             "format": "uuid",
@@ -3365,6 +3403,16 @@
             ],
             "type": "string"
           },
+          "publication": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PublicationOwnership"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "table_name": {
             "type": "string"
           },
@@ -4059,6 +4107,38 @@
         ],
         "type": "string"
       },
+      "PublicationOwnership": {
+        "properties": {
+          "columns": {
+            "items": {
+              "items": false,
+              "prefixItems": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "string"
+                }
+              ],
+              "type": "array"
+            },
+            "type": "array"
+          },
+          "relation_count": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "source": {
+            "$ref": "#/components/schemas/DocumentInput"
+          }
+        },
+        "required": [
+          "source",
+          "columns",
+          "relation_count"
+        ],
+        "type": "object"
+      },
       "PublishSource": {
         "additionalProperties": false,
         "properties": {
@@ -4250,6 +4330,12 @@
             "format": "int64",
             "minimum": 0,
             "type": "integer"
+          },
+          "processed_column": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "projection": {
             "format": "uuid",
@@ -4654,6 +4740,120 @@
             },
             "required": [
               "request",
+              "kind"
+            ],
+            "type": "object"
+          }
+        ]
+      },
+      "ResultColumn": {
+        "additionalProperties": false,
+        "properties": {
+          "column": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "column"
+        ],
+        "type": "object"
+      },
+      "ResultDownload": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ResultColumn"
+            },
+            "type": "array"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "selection": {
+            "$ref": "#/components/schemas/ResultSelection"
+          }
+        },
+        "required": [
+          "selection",
+          "format",
+          "columns"
+        ],
+        "type": "object"
+      },
+      "ResultSelection": {
+        "oneOf": [
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "concordance"
+                ],
+                "type": "string"
+              },
+              "query": {
+                "$ref": "#/components/schemas/ConcordanceQuery"
+              }
+            },
+            "required": [
+              "query",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "quotation"
+                ],
+                "type": "string"
+              },
+              "query": {
+                "$ref": "#/components/schemas/QuotationQuery"
+              }
+            },
+            "required": [
+              "query",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "topics"
+                ],
+                "type": "string"
+              },
+              "query": {
+                "$ref": "#/components/schemas/TopicDocumentQuery"
+              }
+            },
+            "required": [
+              "query",
+              "kind"
+            ],
+            "type": "object"
+          },
+          {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "annotation"
+                ],
+                "type": "string"
+              },
+              "query": {
+                "$ref": "#/components/schemas/AnnotationQuery"
+              }
+            },
+            "required": [
+              "query",
               "kind"
             ],
             "type": "object"
@@ -5858,6 +6058,29 @@
         ],
         "type": "object"
       },
+      "TopicPreviewDownload": {
+        "additionalProperties": false,
+        "properties": {
+          "columns": {
+            "items": {
+              "$ref": "#/components/schemas/ResultColumn"
+            },
+            "type": "array"
+          },
+          "format": {
+            "$ref": "#/components/schemas/ExportFormat"
+          },
+          "query": {
+            "$ref": "#/components/schemas/TopicDocumentQuery"
+          }
+        },
+        "required": [
+          "query",
+          "format",
+          "columns"
+        ],
+        "type": "object"
+      },
       "TopicPreviewRequest": {
         "additionalProperties": false,
         "properties": {
@@ -5986,6 +6209,13 @@
                     },
                     "type": "array"
                   },
+                  "document_counts": {
+                    "items": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
                   "dominant_counts": {
                     "items": {
                       "items": {
@@ -5999,12 +6229,47 @@
                   "natural_projection": {
                     "format": "uuid",
                     "type": "string"
+                  },
+                  "outlier_counts": {
+                    "items": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": "array"
+                  },
+                  "source_columns": {
+                    "items": {
+                      "items": {
+                        "items": false,
+                        "prefixItems": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "string"
+                          }
+                        ],
+                        "type": "array"
+                      },
+                      "type": "array"
+                    },
+                    "type": "array"
+                  },
+                  "source_inputs": {
+                    "items": {
+                      "$ref": "#/components/schemas/DocumentInput"
+                    },
+                    "type": "array"
                   }
                 },
                 "required": [
                   "natural_projection",
                   "dominant_counts",
-                  "colour_fields"
+                  "colour_fields",
+                  "document_counts",
+                  "outlier_counts",
+                  "source_columns",
+                  "source_inputs"
                 ],
                 "type": "object"
               },
@@ -6405,6 +6670,26 @@
           },
           "input": {
             "$ref": "#/components/schemas/DocumentInput"
+          },
+          "processed_column": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "processed_text_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "projection": {
+            "format": "uuid",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "total_count": {
             "format": "int64",
@@ -7864,6 +8149,105 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/analyses/{id}/download": {
+      "post": {
+        "operationId": "analysis_api_download_result",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResultDownload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Binary"
+                }
+              }
+            },
+            "description": "Complete filtered and ordered result download",
+            "headers": {
+              "Content-Disposition": {
+                "description": "Download filename",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "x-wordflow-task-id": {
+                "description": "Export task identity",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -14896,6 +15280,72 @@
         ]
       }
     },
+    "/api/project/results/download": {
+      "post": {
+        "operationId": "analysis_api_download_captured_result",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CapturedResultDownload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Binary"
+                }
+              }
+            },
+            "description": "Export already completed Preview rows without inference"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
     "/api/project/samples": {
       "get": {
         "operationId": "samples_catalogue",
@@ -18193,6 +18643,99 @@
               }
             },
             "description": "Backend stopping"
+          }
+        },
+        "tags": [
+          "analysis_api"
+        ]
+      }
+    },
+    "/api/project/tabs/{tab}/topic-modeling/previews/{id}/download": {
+      "post": {
+        "operationId": "analysis_api_download_topic_preview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tab",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TopicPreviewDownload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "$ref": "#/components/schemas/Binary"
+                }
+              }
+            },
+            "description": "Export all matching sampled documents without refitting"
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "500": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
           }
         },
         "tags": [

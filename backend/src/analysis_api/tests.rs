@@ -58,6 +58,27 @@ async fn fixture() -> (ProjectRuntime, Router, String) {
 }
 
 #[tokio::test]
+async fn captured_preview_downloads_accept_arrow_larger_than_the_default_json_limit() {
+    let (project, router, _) = fixture().await;
+    let output = project
+        .sql(SqlBatch {
+            script: Some("SELECT repeat('x',700000) AS text".into()),
+            mode: crate::project::SqlMode::Read,
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    let crate::project::SqlOutput::Arrow { file, .. } = output else {
+        panic!("Arrow")
+    };
+    let response=send(&router,"POST","/api/project/results/download",json!({"bytes":std::fs::read(file.path()).unwrap(),"format":"json","document":{"column":"text","metadata":false},"columns":[{"column":"text","metadata":false}]})).await;
+    assert_eq!(response.status(), StatusCode::OK);
+    let rows = json_body(response).await;
+    assert_eq!(rows[0]["text"].as_str().unwrap().len(), 700000);
+    project.close().await.unwrap();
+}
+
+#[tokio::test]
 async fn frequency_routes_identify_accepted_success_and_leave_reads_untracked() {
     let (project, router, tab_id) = fixture().await;
     let response = send(
@@ -312,6 +333,9 @@ async fn concordance_preview_saved_queries_and_publication_have_distinct_ownersh
         .await
         .unwrap();
     let published=send(&router,"POST",&format!("/api/project/analyses/{result_id}/concordance/publish"),json!({"projection":"documents","sources":[{"source_index":0,"name":"retained","metadata":[],"fields":[]}]})).await;
+    assert_eq!(published.status(), StatusCode::BAD_REQUEST);
+    project.sql(SqlBatch{script:Some("CREATE TABLE documents(text VARCHAR); INSERT INTO documents VALUES ('Alpha beta alpha')".into()),response:SqlResponse::Command,..Default::default()}).await.unwrap();
+    let published=send(&router,"POST",&format!("/api/project/analyses/{result_id}/concordance/publish"),json!({"projection":"documents","sources":[{"source_index":0,"name":"retained","metadata":[],"fields":[]}]})).await;
     assert_eq!(published.status(), StatusCode::OK);
     assert!(published.headers().contains_key("x-wordflow-task-id"));
 }
@@ -319,9 +343,23 @@ async fn concordance_preview_saved_queries_and_publication_have_distinct_ownersh
 #[tokio::test]
 #[ignore = "requires explicitly provisioned WORDFLOW_QUOTATION_MODEL"]
 async fn quotation_preview_tasks_and_saved_publication_use_native_ownership() {
-    assert!(std::env::var_os("WORDFLOW_QUOTATION_MODEL").is_some());
-    let (project, router, _) = fixture().await;
-    project.sql(SqlBatch {script:Some("UPDATE documents SET text='Alice said, \"The project will finish tomorrow morning.\"'".into()),response:SqlResponse::Command,..Default::default()}).await.unwrap();
+    let model = std::env::var_os("WORDFLOW_QUOTATION_MODEL").unwrap();
+    let directory = tempfile::tempdir().unwrap();
+    let paths = wordflow_storage::AppDirectories::browser(directory.path()).unwrap();
+    for path in paths.all() {
+        std::fs::create_dir_all(path).unwrap();
+    }
+    let model_path = paths.cache.join("udpipe");
+    std::fs::create_dir_all(&model_path).unwrap();
+    std::fs::copy(model, model_path.join(ldaca_rs::quotation::MODEL_FILENAME)).unwrap();
+    let project = ProjectRuntime::new(CancellationToken::new());
+    project.set_storage(paths).unwrap();
+    project.create(None).await.unwrap();
+    let router = crate::api::router()
+        .split_for_parts()
+        .0
+        .with_state(project.clone());
+    project.sql(SqlBatch {script:Some("CREATE TABLE documents AS SELECT 'Alice said, \"The project will finish tomorrow morning.\"' AS text FROM range(2)".into()),response:SqlResponse::Command,..Default::default()}).await.unwrap();
     let tab = json_body(
         send(
             &router,
@@ -406,6 +444,9 @@ async fn quotation_preview_tasks_and_saved_publication_use_native_ownership() {
         })
         .await
         .unwrap();
+    let query=send(&router,"POST",&format!("/api/project/analyses/{result_id}/quotation/query"),json!({"projection":"matches","page":1,"page_size":1,"sort":{"field":"quote_token_count","descending":true}})).await;
+    assert!(!query.status().is_success());
+    project.sql(SqlBatch {script:Some("CREATE TABLE documents AS SELECT 'Alice said, \"The project will finish tomorrow morning.\"' AS text FROM range(2)".into()),response:SqlResponse::Command,..Default::default()}).await.unwrap();
     let query=send(&router,"POST",&format!("/api/project/analyses/{result_id}/quotation/query"),json!({"projection":"matches","page":1,"page_size":1,"sort":{"field":"quote_token_count","descending":true}})).await;
     assert_eq!(query.status(), StatusCode::OK);
     assert_eq!(query.headers()["x-wordflow-total-rows"], "2");

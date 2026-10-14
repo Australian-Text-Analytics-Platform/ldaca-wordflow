@@ -20,7 +20,7 @@ No push or release publication is authorized by this implementation task.
 
 - [x] Register all 80 decisions and audit all 204 commits.
 - [x] Batch 1: native SQL editing, categories and statistics (live Colour by ordering belongs to batch 2).
-- [ ] Batch 2: live result storage, publication ownership and direct downloads.
+- [x] Batch 2: live result storage, publication ownership and direct downloads.
 - [ ] Batch 3: Topics fitting, adjustments and presentation.
 - [ ] Batch 4: incremental Annotation and Quotation.
 - [ ] Batch 5: LDaCA, caches and shared UI.

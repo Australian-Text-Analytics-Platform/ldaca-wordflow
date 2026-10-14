@@ -80,9 +80,11 @@ recalculating Preview. Finish Table editing before submitting Preview.
 <h3 id="help-concordance-views">Result presentation</h3>
 
 The Results panel follows the latest Preview or successful Run. Run replaces the Preview display; there is no Preview/Saved results switch. Use the **Table** and **Dispersion** tabs at the top to change presentation. A notice marks
-results whose submitted settings differ from the current draft. Saved results
-retain matching source rows and remain readable after the original source changes
-or disappears. Rerunning requires valid current inputs.
+results whose submitted settings differ from the current draft. New Runs process each distinct exact text once within each input. Results attach
+to current source rows with that exact processed text, preserving duplicate rows
+and current metadata. Newly added texts remain absent until Run; edits and removals
+stop matching. A missing source produces the normal database error. Historical
+results keep their saved snapshots until Rerun.
 
 <h3 id="help-concordance-table-view">Table</h3>
 
@@ -179,16 +181,27 @@ Closing a tab cancels its work and removes owned results. Published Data Blocks 
 Download summary charts as PNG, SVG or JPEG. Native saving uses the system chooser;
 browser saving downloads the file.
 
-**Add to Project → Matches** creates one row per saved occurrence. **Add to Project → Documents** creates one row per qualifying retained document and required
-`CONC_extraction` from surviving contexts. Both publication modes capture the
-current presentation: Dispersion applies its term/bin filters, while Table
-publishes without those filters. Both include all qualifying rows across pages.
+Use **Metadata** to search and select fields. **Column order** changes presentation
+without changing sorting; drag a column or use the arrow buttons or Alt + ↑ / ↓.
+**Download** exports all filtered and sorted pages as CSV, XLSX, JSON or Parquet in
+that column order. Omit document text only in downloads; its position fields are
+omitted too. **Download Preview** uses only the completed current page.
+The download menu also offers extraction and start/end offsets without adding
+them to the KWIC table or sorting choices.
 
-Choose sources, edit output names, select metadata/generated columns, use Select
-all/none or Sync columns, then Add. The document column is required. All selected
-Tables commit together, and existing objects are never overwritten. Cancel leaves
-the project unchanged. Published Tables are independent of later result clearing,
-rerunning or tab deletion; export them through ordinary Data Block controls.
+**Add to Project → Matches** creates a live View with one row per saved occurrence.
+**Add to Project → Documents** creates a live View with `CONC_extraction` assembled
+from surviving contexts. Processed texts with no matches are included with empty
+outputs. Dispersion applies term/bin filters; Table publishes without those filters.
+Publication keeps current source order independently of review sorting.
+
+Choose sources, output names and optional metadata/generated fields. The original
+document is required. All selected outputs commit atomically. Each published
+Data Block owns an independent copy of generated outputs, so Clear, Rerun or tab
+deletion cannot alter them. Source metadata remains live. Deleting the source
+leaves its SQL reference and normal database error; restoring a compatible source
+under the same name can resolve it. Deleting the published Data Block cleans up
+its hidden output relations.
 
 <h2 id="help-concordance-clear-results">Clear results</h2>
 

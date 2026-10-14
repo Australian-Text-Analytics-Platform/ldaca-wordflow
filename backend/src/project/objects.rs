@@ -194,6 +194,7 @@ impl Database {
                 let kind = if node.kind == "view" { "VIEW" } else { "TABLE" };
                 tx.execute_batch(&format!("DROP {kind} {}", relation.sql()))?;
             }
+            super::document_matches::delete_publication(&tx, relation)?;
         }
         check_cancellation(&self.cancellation)?;
         change.commit(tx, &self.changes, &self.cancellation)?;

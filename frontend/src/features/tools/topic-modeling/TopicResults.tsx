@@ -31,6 +31,7 @@ import {
 import { useStopwords } from '../common/stopwords/useStopwords';
 import { GREY, VIZ_PALETTE, interpolateVizColor } from '../common/vizPalette';
 import { TopicDocuments } from './TopicDocuments';
+import { topicGroupLabel } from './TopicSizeComposition';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { TopicPublishDialog } from './TopicPublishDialog';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
@@ -126,7 +127,10 @@ export function TopicResults({
         summary.natural_projection,
       ),
     enabled: active,
-    meta: { reportError: false },
+    meta: {
+      ...objectDependencies(...request.inputs.map((input) => input.source)),
+      reportError: false,
+    },
     staleTime: Infinity,
     placeholderData: keepPreviousData,
   });
@@ -187,10 +191,16 @@ export function TopicResults({
     setCount(summary.natural_topic_count);
     setTopN((old) => Math.min(summary.natural_topic_count, old));
   }
+  const sources = summary.sources.map((source, index) => ({
+    ...source,
+    document_count: applied?.basis.document_counts?.[index] ?? source.document_count,
+    columns: applied?.basis.source_columns?.[index] ?? source.columns,
+    input: applied?.basis.source_inputs?.[index] ?? source.input,
+  }));
   const colors = (settings.colors ?? {}) as Record<string, string>;
-  const sourceIds = summary.sources.map((s) => objectsApi.targetKey(s.input.source));
+  const sourceIds = sources.map((s) => objectsApi.targetKey(s.input.source));
   const nodeColors = Object.fromEntries(
-    summary.sources.map((s, i) => [
+    sources.map((s, i) => [
       sourceIds[i] ?? '',
       nodes.find((node) => node.table_name === s.input.source.name)?.color ??
         colors[objectsApi.targetKey(s.input.source)] ??
@@ -204,13 +214,12 @@ export function TopicResults({
     color: group.missing ? GREY : (VIZ_PALETTE[index % VIZ_PALETTE.length] ?? GREY),
   }));
   const corpusPresentation = {
-    corpusCount: colourGroups?.length ?? summary.sources.length,
+    corpusCount: colourGroups?.length ?? sources.length,
     denominators:
-      colourGroups?.map((group) => group.count) ??
-      summary.sources.map((source) => source.document_count),
+      colourGroups?.map((group) => group.count) ?? sources.map((source) => source.document_count),
     labels:
-      colourGroups?.map((group) => group.label) ??
-      summary.sources.map((source) => source.input.source.name),
+      colourGroups?.map((group) => topicGroupLabel(group.label)) ??
+      sources.map((source) => source.input.source.name),
     groupColors: colourGroups?.map((group) => group.color),
     panelNodeIds: sourceIds,
     nodeColors,
@@ -219,12 +228,12 @@ export function TopicResults({
   const memberships = new Map<number, number[]>();
   for (const [source, topic, rank, rows] of applied?.basis.activations ?? []) {
     if (rank > topN) continue;
-    const counts = memberships.get(topic) ?? summary.sources.map(() => 0);
+    const counts = memberships.get(topic) ?? sources.map(() => 0);
     counts[source] = (counts[source] ?? 0) + rows;
     memberships.set(topic, counts);
   }
   const allTopics: TopicModelingTopic[] = (applied?.basis.topics ?? []).map((topic) => {
-    const size = memberships.get(topic.id) ?? summary.sources.map(() => 0);
+    const size = memberships.get(topic.id) ?? sources.map(() => 0);
     return {
       ...topic,
       representative_words: applied?.words.words[topic.id] ?? [],
@@ -240,7 +249,7 @@ export function TopicResults({
   }));
   const bubbles = buildTopicBubbleModels({
     topics,
-    corpusSizes: summary.sources.map((s) => s.document_count),
+    corpusSizes: sources.map((s) => s.document_count),
     ...corpusPresentation,
     selectedTopicIds: selection,
     lassoTopicIds: lasso,
@@ -262,7 +271,7 @@ export function TopicResults({
     !applied;
   const scope = isSaved
     ? 'Full data'
-    : `Sampled Preview · ${summary.sources.map((s) => `${s.document_count.toLocaleString()} of ${s.total_count.toLocaleString()} ${s.input.source.name}`).join(' · ')}`;
+    : `Sampled Preview · ${sources.map((s) => `${s.document_count.toLocaleString()} of ${s.total_count.toLocaleString()} ${s.input.source.name}`).join(' · ')}`;
   const download = useMutation({
     mutationFn: async (format: ChartExportFormat) => {
       let svg = frame.current?.querySelector<SVGSVGElement>(
@@ -282,7 +291,7 @@ export function TopicResults({
       if (!svg || unresolved) throw new Error('The displayed model is not ready to download.');
       const snapshot = topicDownload(svg, {
         scope,
-        sources: summary.sources.map((s) => s.input.source.name),
+        sources: sources.map((s) => s.input.source.name),
         model: request.embedding_model,
         count: applied.count,
         topN,
@@ -290,13 +299,11 @@ export function TopicResults({
         wordLimit,
         search,
         lasso: [...lasso],
-        documentCounts: summary.sources.map((s) => s.document_count),
+        documentCounts: sources.map((s) => s.document_count),
         colourGroups,
         topics: allTopics,
         selected: selection,
-        colors: summary.sources.map(
-          (s) => nodeColors[objectsApi.targetKey(s.input.source)] ?? GREY,
-        ),
+        colors: sources.map((s) => nodeColors[objectsApi.targetKey(s.input.source)] ?? GREY),
       });
       const image = await buildChartExport(snapshot.svg, format);
       const stem = `${tab.name}${isSaved ? '' : '_sample'}`;
@@ -372,7 +379,7 @@ export function TopicResults({
               onClick={() => {
                 const existingNames = nodes.map((node) => node.table_name);
                 const outputs = suggestDataBlockNames(
-                  summary.sources.map((s, i) => ({
+                  sources.map((s, i) => ({
                     sources: [s.input.source.name],
                     operation: 'tm',
                     source: i,
@@ -393,7 +400,7 @@ export function TopicResults({
                     coverage,
                   })),
                   dictionary_name: suggestDataBlockName(
-                    summary.sources.map((s) => s.input.source.name),
+                    sources.map((s) => s.input.source.name),
                     'tm_dict',
                     [...existingNames, ...outputs.map((output) => output.name)],
                   ),
@@ -421,7 +428,7 @@ export function TopicResults({
           : 'Sample topics may differ from a full Run.'}
       </p>
       <div className="flex flex-wrap gap-3">
-        {summary.sources.map((source, i) => (
+        {sources.map((source, i) => (
           <span key={i} className="inline-flex min-w-0 items-center gap-2 break-words">
             <span
               className="size-3 shrink-0 rounded-full"
@@ -431,7 +438,7 @@ export function TopicResults({
           </span>
         ))}
       </div>
-      {summary.sources.length === 2 && (
+      {sources.length === 2 && (
         <p className="flex flex-wrap items-center gap-2 text-description">
           <span
             className="size-3 rounded-full"
@@ -454,7 +461,7 @@ export function TopicResults({
         disabled={editing || outdated || !active}
         onAdjusted={onAdjusted}
       />
-      {summary.sources.length === 1 && (
+      {sources.length === 1 && (
         <label className="block max-w-sm space-y-1">
           <span>Colour by</span>
           <Select
@@ -479,7 +486,7 @@ export function TopicResults({
           </Select>
           {applied.basis.colour_fields.length === 0 && (
             <p className="text-description text-label-secondary">
-              No retained field has 2–8 nonmissing groups.
+              No current field has 2–8 nonmissing groups.
             </p>
           )}
         </label>
@@ -489,7 +496,7 @@ export function TopicResults({
           {colourGroups.map((group, index) => (
             <span key={index} className="inline-flex items-center gap-1 text-description">
               <span className="size-3 rounded-full" style={{ background: group.color }} />
-              {group.label} · {group.count.toLocaleString()} documents
+              {topicGroupLabel(group.label)} · {group.count.toLocaleString()} documents
             </span>
           ))}
         </div>
@@ -663,7 +670,7 @@ export function TopicResults({
           key={`${modelId}-${String(applied.count)}-${String(topN)}`}
           base={base}
           owner={owner}
-          summary={summary}
+          summary={{ ...summary, sources }}
           topic={inspectedTopic}
           count={applied.count}
           topN={topN}

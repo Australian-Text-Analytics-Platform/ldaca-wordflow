@@ -173,8 +173,15 @@ automatic orphan cleanup in this implementation.
 
 ## Metadata and Results
 
-[The schema](../../backend/src/schema.sql) defines the integer `schema_version = 1`
-contract, independently of the application version. New projects contain `data`
+[The initial schema](../../backend/src/schema.sql) defines native project format 1,
+independently of the application version. Opening a version-1 project does not
+upgrade it. The first new live-result publication upgrades the header and creates
+`wordflow.publications` atomically in the publication transaction. Format 2 records
+each published Data Block's independently owned hidden backing relations and
+selected source-field bindings for live Arrow annotations. Upgraded projects
+require the newer runtime. Publication failure rolls the upgrade back. Existing
+historical analyses remain unchanged until explicit Rerun; Python projects are
+not migrated. New projects contain `data`
 for user Tables and Views, and `wordflow` for application records, private output
 relations and generated types. Connections default to `data`; explicitly qualified
 objects in other user schemas remain supported. Data Blocks are returned in
@@ -190,6 +197,7 @@ case-insensitive name order, with the original name breaking ties.
 | `tabs` | Identity, tool kind, name, position and display settings |
 | `analyses` | One submitted request per owning tab, optionally with completed output |
 | `artifacts` | Named relation or BLOB outputs owned by one analysis |
+| `publications` (format 2) | Hidden backing relations and live source-field bindings owned by each published result View |
 | `sql_cells` | Saved SQL source, order and execution mode |
 
 ```mermaid
@@ -224,11 +232,14 @@ Concordance and Quotation are restored; other tools remain unavailable.
 
 Result JSON contains output-specific descriptors, artifact references and summaries,
 not duplicated generic requests or complete rows. Private Tables and Views retain
-exact values and BLOB artifacts retain their bytes. Sources captured in output
-descriptors are provenance, not live dependencies. Saved output remains readable
-and exportable after source changes or deletion. Frequency stores counts and a
-statistics View over those counts; Concordance and Quotation retain matching source
-rows needed for inspection and independent publication.
+exact values and BLOB artifacts retain their bytes. Frequency, Plots and historical version-1 analyses
+keep their original snapshot/provenance meaning. New version-2 Topics, Concordance
+and Quotation retain distinct processed texts and generated outputs, including
+empty outcomes. Current source rows join by exact text equality, with duplicate
+rows preserved independently. Metadata values are live rather than copied.
+Publication owns independent hidden outputs and a live source-joined View;
+analysis cleanup cannot alter them. Missing sources retain SQL references and
+ordinary engine errors, independently of Builder dependency-deletion rules.
 
 `arrow_metadata` is the single source for explicit Arrow extension annotations.
 Its key is `(schema_name, relation_name, field_path)`. Paths are canonical JSON

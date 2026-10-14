@@ -25,7 +25,7 @@ export async function getQuotationResult(
     await request(base, '/api/project/analyses/{id}', 'get', { path: { id }, signal })
   ).json();
   if (result.kind === 'quotation' && result.result === null) return null;
-  if (result.kind !== 'quotation' || result.result?.version !== 1)
+  if (result.kind !== 'quotation' || ![1, 2].includes(result.result?.version ?? 0))
     throw new Error('Unsupported Quotation result version');
   return result as QuotationAnalysisResult;
 }

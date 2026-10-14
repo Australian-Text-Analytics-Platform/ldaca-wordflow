@@ -162,7 +162,7 @@ pub(super) struct PendingChange {
 impl PendingChange {
     pub fn new(conn: &Connection, mut scope: ChangeScope, cancel: &CancellationToken) -> Self {
         let before = if !scope.all && !scope.objects.is_empty() {
-            match objects::inspect_dependencies(conn, cancel) {
+            match invalidation_graph(conn, cancel) {
                 Ok(graph) => Some(graph),
                 Err(_) => {
                     scope.all = true;
@@ -174,9 +174,9 @@ impl PendingChange {
         };
         Self { scope, before }
     }
-    fn finish(mut self, conn: &Connection, cancel: &CancellationToken) -> ChangeScope {
+    fn finish(mut self, conn: &Connection, cancel: &CancellationToken) -> Result<ChangeScope> {
         if !self.scope.all && !self.scope.objects.is_empty() {
-            match objects::inspect_dependencies(conn, cancel) {
+            match invalidation_graph(conn, cancel) {
                 Ok(after) => {
                     let graphs = self
                         .before
@@ -207,7 +207,8 @@ impl PendingChange {
                 Err(_) => self.scope.all = true,
             }
         }
-        self.scope
+        document_matches::refresh_publications(conn, &self.scope.objects, self.scope.all)?;
+        Ok(self.scope)
     }
     pub fn commit(
         self,
@@ -215,7 +216,7 @@ impl PendingChange {
         sender: &Notifications,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        let scope = self.finish(&tx, cancel);
+        let scope = self.finish(&tx, cancel)?;
         check_cancellation(cancel)?;
         tx.commit()?;
         scope.publish(sender);
@@ -227,12 +228,22 @@ impl PendingChange {
         sender: &Notifications,
         cancel: &CancellationToken,
     ) -> Result<()> {
-        let scope = self.finish(conn, cancel);
+        let scope = self.finish(conn, cancel)?;
         check_cancellation(cancel)?;
         conn.execute_batch("COMMIT")?;
         scope.publish(sender);
         Ok(())
     }
+}
+fn invalidation_graph(
+    conn: &Connection,
+    cancel: &CancellationToken,
+) -> Result<objects::DependencyGraph> {
+    let mut graph = objects::inspect_dependencies(conn, cancel)?;
+    graph
+        .edges
+        .extend(document_matches::publication_dependencies(conn)?);
+    Ok(graph)
 }
 fn same(a: &Relation, b: &Relation) -> bool {
     a.schema.eq_ignore_ascii_case(&b.schema) && a.name.eq_ignore_ascii_case(&b.name)

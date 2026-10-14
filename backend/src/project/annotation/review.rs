@@ -32,6 +32,14 @@ impl Database {
         id: Uuid,
         query: Query,
     ) -> Result<Output> {
+        self.annotation_rows(id, query, false)
+    }
+    pub(in crate::project) fn annotation_rows(
+        &mut self,
+        id: Uuid,
+        query: Query,
+        all: bool,
+    ) -> Result<Output> {
         let analysis = self.analysis(id)?;
         let report: Report = serde_json::from_value(analysis.output("annotation")?.clone())?;
         if matches!(query, Query::Context) {
@@ -108,7 +116,31 @@ impl Database {
             .map(|c| query::quote(&c.name))
             .collect::<Vec<_>>()
             .join(",");
-        let mut stmt=tx.prepare(&format!("SELECT {projection},CAST(rowid AS VARCHAR) FROM {} ORDER BY {} LIMIT {page_size} OFFSET {offset}",reviewed.source,order.join(",")))?;
+        if all {
+            let file = document_matches::arrow_page(
+                &tx,
+                &format!(
+                    "SELECT {projection} FROM {} ORDER BY {}",
+                    reviewed.source,
+                    order.join(",")
+                ),
+                &[],
+                &arrow_metadata::Annotations::load(&tx, &relation)?,
+                &self.cancellation,
+            )?;
+            tx.commit()?;
+            return Ok(Output::Page(file));
+        }
+        let limit = if all {
+            String::new()
+        } else {
+            format!(" LIMIT {page_size} OFFSET {offset}")
+        };
+        let mut stmt = tx.prepare(&format!(
+            "SELECT {projection},CAST(rowid AS VARCHAR) FROM {} ORDER BY {}{limit}",
+            reviewed.source,
+            order.join(",")
+        ))?;
         let data = stmt.query_arrow([])?;
         let indices = (0..columns.len()).collect::<Vec<_>>();
         let schema = data.get_schema().project(&indices).map_err(arrow_error)?;

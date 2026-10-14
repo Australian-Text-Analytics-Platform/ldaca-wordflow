@@ -464,7 +464,7 @@ function ConcordanceTab({
         >
           <ConcordanceResults
             base={base}
-            tab={tab}
+            tab={{ ...tab, settings }}
             result={result.data ?? undefined}
             submitted={submitted}
             draft={captured}

@@ -1,3 +1,5 @@
+import { ResultDownloadMenu } from '../common/components/ResultDownloadMenu';
+import { objectDependencies } from '@/features/project/projectChanges';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -62,8 +64,9 @@ export function TopicDocuments({
     queryKey: [...root, base, owner, summary.natural_projection, input],
     queryFn: ({ signal }) => topicApi.queryTopicDocuments(base, owner, input, signal),
     staleTime: Infinity,
+    meta: selected?.processed_column ? objectDependencies(selected.input.source) : undefined,
   });
-  // Closing an inspector releases in-flight reads; immutable completed pages may be reused.
+  // Closing releases in-flight reads; live pages refresh through source invalidation.
   useEffect(
     () => () => {
       void client.cancelQueries({
@@ -91,8 +94,12 @@ export function TopicDocuments({
         <DialogHeader>
           <DialogTitle>Topic {topic} documents</DialogTitle>
           <DialogDescription>
-            {'analysis' in owner ? 'Saved source snapshot' : 'Preview sample'} · Top {topN}{' '}
-            memberships, including ties. Ordered by topic coverage. Read only.
+            {'analysis' in owner
+              ? selected.processed_column
+                ? 'Current matching source rows'
+                : 'Saved source snapshot'
+              : 'Preview sample'}{' '}
+            · Top {topN} memberships, including ties. Ordered by topic coverage. Read only.
           </DialogDescription>
           {corpusPresentation && (
             <TopicSizeComposition sizes={topicCounts} {...corpusPresentation} />
@@ -165,6 +172,56 @@ export function TopicDocuments({
               ))}
           </PopoverContent>
         </Popover>
+        {'analysis' in owner && (
+          <ResultDownloadMenu
+            base={base}
+            id={owner.analysis}
+            selection={{
+              kind: 'topics',
+              query: {
+                source,
+                topic,
+                topic_count: count,
+                top_n: topN,
+                page: 1,
+                page_size: size,
+                metadata,
+              },
+            }}
+            columns={[
+              { column: selected.input.column, metadata: true },
+              ...metadata.map((column) => ({ column, metadata: true })),
+              { column: 'coverage', metadata: false },
+            ]}
+            document={{ column: selected.input.column, metadata: true }}
+            disabled={rows.isFetching || rows.isError}
+          />
+        )}
+        {!('analysis' in owner) && rows.data && (
+          <ResultDownloadMenu
+            base={base}
+            topicPreview={{
+              tab: owner.tab,
+              id: owner.preview,
+              query: {
+                source,
+                topic,
+                topic_count: count,
+                top_n: topN,
+                page: 1,
+                page_size: size,
+                metadata,
+              },
+            }}
+            columns={[
+              { column: selected.input.column, metadata: true },
+              ...metadata.map((column) => ({ column, metadata: true })),
+              { column: 'coverage', metadata: false },
+            ]}
+            document={{ column: selected.input.column, metadata: true }}
+            disabled={rows.isFetching || rows.isError}
+          />
+        )}
         {rows.isError ? (
           <p role="alert">
             Could not load these documents.{' '}

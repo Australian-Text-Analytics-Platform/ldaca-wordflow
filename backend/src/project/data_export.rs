@@ -2,6 +2,13 @@
 use super::*;
 use std::io::{Seek, SeekFrom, Write};
 
+fn columns(conn: &Connection, relation: &Relation) -> Result<Vec<(String, String)>> {
+    Ok(conn
+        .prepare(&format!("DESCRIBE SELECT * FROM {}", relation.sql()))?
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))?
+        .collect::<duckdb::Result<Vec<_>>>()?)
+}
+
 fn nested(kind: &str) -> bool {
     kind.starts_with("STRUCT(")
         || kind.starts_with("MAP(")
@@ -31,7 +38,7 @@ pub(super) fn csv(
     mut output: tempfile::NamedTempFile,
     cancellation: &CancellationToken,
 ) -> Result<tempfile::NamedTempFile> {
-    let fields = mutations::columns(conn, relation)?;
+    let fields = columns(conn, relation)?;
     let raw = temporary_file(conn)?;
     conn.execute(
         &format!(
@@ -54,7 +61,7 @@ pub(super) fn xlsx(
     cancellation: &CancellationToken,
 ) -> Result<tempfile::NamedTempFile> {
     use rust_xlsxwriter::{ExcelDateTime, Format, Workbook};
-    let fields = mutations::columns(conn, relation)?;
+    let fields = columns(conn, relation)?;
     let count: u64 = conn.query_row(
         &format!("SELECT count(*) FROM {}", relation.sql()),
         [],

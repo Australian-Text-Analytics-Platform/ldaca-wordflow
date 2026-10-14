@@ -65,7 +65,7 @@ impl Project {
         let same_file = path.exists() && std::fs::canonicalize(path)? == self.path;
         if same_file && (!rename || path.file_name() == self.path.file_name()) {
             self.database.conn.execute_batch("CHECKPOINT")?;
-            return Ok(self.info());
+            return self.info();
         }
         if rename && path.exists() && !same_file {
             return Err(Error::new(
@@ -170,14 +170,18 @@ impl Project {
             return Err(error.into());
         }
         *self = saved;
-        Ok(self.info())
+        self.info()
     }
-    pub(super) fn info(&self) -> ProjectInfo {
+    pub(super) fn info(&self) -> Result<ProjectInfo> {
         let (size, modified) = project_file_metadata(&self.path);
-        ProjectInfo {
+        Ok(ProjectInfo {
             size,
             modified,
-            schema_version: 1,
+            schema_version: self.database.conn.query_row(
+                "SELECT schema_version FROM wordflow.project",
+                [],
+                |row| row.get(0),
+            )?,
             path: self.temporary.is_none().then(|| self.path.clone()),
             title: if self.temporary.is_some() {
                 "Untitled".into()
@@ -188,7 +192,7 @@ impl Project {
                     .to_string_lossy()
                     .into_owned()
             },
-        }
+        })
     }
 }
 
@@ -350,7 +354,7 @@ mod tests {
             child.stdin.take().unwrap().write_all(b"release\n").unwrap();
             assert!(child.wait().unwrap().success());
             assert_eq!(outcome.unwrap_err().code, "project_busy");
-            assert!(source.info().path.is_none());
+            assert!(source.info().unwrap().path.is_none());
             assert_eq!(std::fs::read(&destination).unwrap(), original);
             assert_eq!(
                 source
@@ -362,7 +366,7 @@ mod tests {
             );
             source.save_as(&destination).unwrap();
             assert_eq!(
-                source.info().path,
+                source.info().unwrap().path,
                 Some(std::fs::canonicalize(&destination).unwrap())
             );
         }

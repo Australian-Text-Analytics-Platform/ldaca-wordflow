@@ -578,7 +578,7 @@ fn zip_error(error: zip::result::ZipError) -> Error {
     Error::new("export_error", error.to_string())
 }
 
-fn write_data(
+pub(super) fn write_data(
     conn: &Connection,
     relation: &Relation,
     format: ExportFormat,

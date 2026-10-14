@@ -10,6 +10,7 @@ import { defaultNodeView, useProjectViewState } from './projectViewState';
 
 import { useProjectPreview } from './previewState';
 import { EditorToolbar } from './data-editor/DataEditorPanel';
+import { DataBlockDownload } from './DataBlockDownload';
 import { compileEditor } from './data-editor/expressions';
 import { usePreprocessingPreview } from '@/features/tools/preprocessing/hooks/usePreprocessingPreview';
 import { previewSql } from '@/features/tools/preprocessing/projectPreprocessing';
@@ -163,7 +164,10 @@ export default function NativeDataView({
     <ProjectDataTableView
       toolbar={
         <>
-          <EditorToolbar target={name} column={fields[0]?.name ?? ''} />
+          <div className="flex flex-wrap items-center gap-1">
+            <EditorToolbar target={name} column={fields[0]?.name ?? ''} />
+            {node && <DataBlockDownload base={base} target={name} />}
+          </div>
           {showingEdit && (
             <p className="px-2 text-label-secondary text-description">
               {editPreview.outdated

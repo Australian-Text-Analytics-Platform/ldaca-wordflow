@@ -29,6 +29,7 @@ pub(super) fn clone_node(conn: &Connection, id: &str, name: &str) -> Result<()> 
 pub(super) fn rename_node(conn: &Connection, object: &ResolvedObject, name: &str) -> Result<()> {
     let source = &object.relation;
     arrow_metadata::rename_relation(conn, source, name)?;
+    super::document_matches::rename_publication(conn, source, name)?;
     if object.registered {
         for (table, columns) in [
             ("nodes", &["table_name"][..]),

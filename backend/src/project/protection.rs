@@ -11,7 +11,13 @@ pub(super) struct Protection {
 struct Entry {
     // None is arbitrary SQL; application operations identify their write targets.
     targets: Option<Vec<ObjectTarget>>,
-    editing: bool,
+    purpose: Purpose,
+}
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Purpose {
+    Mutation,
+    Manual,
+    Analysis,
 }
 pub(super) struct Lease {
     owner: Arc<Protection>,
@@ -44,7 +50,7 @@ impl Protection {
     fn reserve(
         self: &Arc<Self>,
         targets: Option<Vec<ObjectTarget>>,
-        editing: bool,
+        purpose: Purpose,
     ) -> Result<Lease> {
         let mut entries = self
             .entries
@@ -52,7 +58,7 @@ impl Protection {
             .map_err(|_| Error::new("worker_failed", "Table protection lock poisoned"))?;
         if let Some(entry) = entries
             .values()
-            .find(|entry| entry.editing && overlaps(&entry.targets, &targets))
+            .find(|entry| entry.purpose != Purpose::Mutation && overlaps(&entry.targets, &targets))
         {
             let target = entry
                 .targets
@@ -62,31 +68,50 @@ impl Protection {
                 .unwrap_or_default();
             return Err(Error::new(
                 "editing_active",
-                format!(
-                    "Table {target} is protected by an editing operation. Finish it with Save or Cancel first"
-                ),
+                if entry.purpose == Purpose::Analysis {
+                    format!(
+                        "Table {target} is protected by an Annotation Run. Wait for it or Stop first"
+                    )
+                } else {
+                    format!(
+                        "Table {target} is protected by an editing operation. Finish it with Save or Cancel first"
+                    )
+                },
             ));
         }
         let id = Uuid::new_v4();
-        entries.insert(id, Entry { targets, editing });
+        entries.insert(id, Entry { targets, purpose });
         Ok(Lease {
             owner: self.clone(),
             id,
         })
     }
     pub fn mutation(self: &Arc<Self>, targets: Option<Vec<ObjectTarget>>) -> Result<Lease> {
-        self.reserve(targets, false)
+        self.reserve(targets, Purpose::Mutation)
     }
     /// Reserve before waiting so newly arriving writes cannot overtake this editor.
     pub fn editing(self: &Arc<Self>, target: ObjectTarget) -> Result<Lease> {
-        self.reserve(Some(vec![target]), true)
+        self.reserve(Some(vec![target]), Purpose::Manual)
+    }
+    pub fn analysis(self: &Arc<Self>, target: ObjectTarget) -> Result<Lease> {
+        self.reserve(Some(vec![target]), Purpose::Analysis)
+    }
+    pub fn is_manually_editing(&self, target: &ObjectTarget) -> bool {
+        self.entries
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .values()
+            .any(|entry| {
+                entry.purpose == Purpose::Manual
+                    && overlaps(&entry.targets, &Some(vec![target.clone()]))
+            })
     }
     pub fn is_editing(&self) -> bool {
         self.entries
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
             .values()
-            .any(|entry| entry.editing)
+            .any(|entry| entry.purpose != Purpose::Mutation)
     }
 }
 impl Lease {
@@ -102,7 +127,9 @@ impl Lease {
                     })?;
                 let entry = &entries[&self.id];
                 entries.iter().any(|(id, other)| {
-                    id != &self.id && !other.editing && overlaps(&entry.targets, &other.targets)
+                    id != &self.id
+                        && other.purpose == Purpose::Mutation
+                        && overlaps(&entry.targets, &other.targets)
                 })
             };
             if !busy {
@@ -119,6 +146,23 @@ impl Lease {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn committed_analysis_reads_are_allowed_but_manual_drafts_require_finishing() {
+        let protection = Arc::new(Protection::default());
+        let run = protection.analysis("docs".into()).unwrap();
+        assert!(protection.is_editing());
+        assert!(!protection.is_manually_editing(&"docs".into()));
+        assert!(protection.mutation(Some(vec!["docs".into()])).is_err());
+        let editor = protection.editing("other".into()).unwrap();
+        assert!(!protection.is_manually_editing(&"docs".into()));
+        assert!(protection.is_manually_editing(&"other".into()));
+        drop(editor);
+        drop(run);
+        let editor = protection.editing("docs".into()).unwrap();
+        assert!(protection.is_manually_editing(&"docs".into()));
+        drop(editor);
+        assert!(!protection.is_editing());
+    }
     #[tokio::test]
     async fn protects_only_targets_and_reserves_before_waiting() {
         let protection = Arc::new(Protection::default());

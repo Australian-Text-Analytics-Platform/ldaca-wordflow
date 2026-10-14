@@ -93,6 +93,9 @@ Page, sort, column widths and presentation choices are remembered for each Data
 Block in this window. Reset sort clears sorting and returns to page one. The
 header and controls remain available while pages load or fail.
 
+The Editor's **Download Data Block** button exports all committed rows as CSV,
+XLSX, JSON or Parquet. An unapplied edit preview does not change this download.
+
 Double-click a Data Block or column name to rename, or use its menu. Newly entered
 names trim outer whitespace; existing exact names and internal whitespace remain.
 Case-insensitive collisions are rejected. Names are not automatically truncated.

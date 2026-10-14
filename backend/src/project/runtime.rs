@@ -10,6 +10,7 @@ mod frequency_execution;
 mod imports_execution;
 mod plot_execution;
 mod quotation_execution;
+mod result_downloads_execution;
 pub(super) mod topic_preview;
 
 #[derive(Clone)]
@@ -774,7 +775,7 @@ impl ProjectRuntime {
                     });
                 }
                 project.database.changes = shared.changes.clone();
-                let info = project.info();
+                let info = project.info()?;
                 *state = Some(project);
                 Ok(info)
             })
@@ -838,7 +839,7 @@ impl ProjectRuntime {
                         ));
                     }
                     project.database.conn.execute_batch("CHECKPOINT")?;
-                    Ok(project.info())
+                    project.info()
                 }
             })
             .await?
@@ -848,7 +849,10 @@ impl ProjectRuntime {
     pub async fn status(&self) -> Result<Option<ProjectInfo>> {
         let shared = self.shared.clone();
         tokio::task::spawn_blocking(move || {
-            Ok(locked(&shared.project)?.as_ref().map(Project::info))
+            locked(&shared.project)?
+                .as_ref()
+                .map(Project::info)
+                .transpose()
         })
         .await?
     }

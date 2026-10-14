@@ -1,3 +1,7 @@
+import { Input } from '@/components/ui/input';
+import { orderedResultColumns, readColumnOrder, resultColumnKey } from '../common/resultColumns';
+import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
+import { ResultDownloadMenu } from '../common/components/ResultDownloadMenu';
 import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
 import { Button } from '@/components/ui/button';
@@ -74,9 +78,15 @@ export function ConcordanceResults({
   onCancelPreview,
 }: Props) {
   const saved = view === 'saved';
-  const request =
+  const savedRequest =
     saved && result
       ? decodeAnalysisRequest('concordance', result.request_status).request
+      : undefined;
+  const request =
+    savedRequest && result
+      ? result.result.version === 1
+        ? { ...savedRequest, inputs: result.result.payload.corpora.map((source) => source.input) }
+        : savedRequest
       : submitted?.request;
   const [presentation, setPresentation] = useState(
     tab.settings.presentation === 'dispersion' ? 'dispersion' : 'table',
@@ -88,6 +98,7 @@ export function ConcordanceResults({
   const [sorts, setSorts] = useState<(concordanceApi.ConcordanceSort | null)[]>([]);
   const [highlightContext, setHighlightContext] = useState(true);
   const [metadata, setMetadata] = useState<string[]>([]);
+  const [columnSearch, setColumnSearch] = useState('');
   const [detail, setDetail] = useState<{ row: DocumentRow; index: number; group: number } | null>(
     null,
   );
@@ -134,7 +145,10 @@ export function ConcordanceResults({
             ? concordanceApi.queryConcordance(base, result?.id ?? '', query, signal)
             : concordanceApi.previewConcordance(base, tab.id, preview, signal),
         enabled: active && Boolean(saved ? result : submitted) && (!stopped || saved),
-        meta: { ...(saved ? {} : objectDependencies(input.source)), reportError: false },
+        meta: {
+          ...(!saved || result?.result.version === 2 ? objectDependencies(input.source) : {}),
+          reportError: false,
+        },
         placeholderData: saved ? undefined : keepPreviousData,
         staleTime: Infinity,
       };
@@ -170,6 +184,15 @@ export function ConcordanceResults({
                 signal,
               ),
             enabled: active && presentation === 'dispersion',
+            meta: {
+              ...(result.result.version === 2
+                ? objectDependencies(
+                    request?.inputs[source_index]?.source ??
+                      result.result.payload.corpora[source_index]!.input.source,
+                  )
+                : {}),
+              reportError: false,
+            },
             staleTime: Infinity,
           }))
         : [],
@@ -208,7 +231,7 @@ export function ConcordanceResults({
       : 'currentColor';
   };
   const sourceColumns = (request?.inputs ?? []).map((_, index) =>
-    saved
+    saved && result?.result.version === 1
       ? (result?.result.payload.corpora[index]?.columns.map(([name]) => name) ?? [])
       : (data[index]?.table.schema.fields
           .find((field) => field.name === 'source')
@@ -478,6 +501,12 @@ export function ConcordanceResults({
               className="max-h-[min(24rem,var(--radix-popover-content-available-height))] w-80 max-w-[calc(100vw-2rem)] overflow-y-auto"
             >
               <div className="flex flex-col gap-3">
+                <Input
+                  aria-label="Find Concordance metadata"
+                  value={columnSearch}
+                  placeholder="Find a column…"
+                  onChange={(event) => setColumnSearch(event.target.value)}
+                />
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -507,26 +536,32 @@ export function ConcordanceResults({
                       <legend className="mb-2 break-all text-description text-label-secondary">
                         {group.label}
                       </legend>
-                      {group.fields.map((column) => (
-                        <label key={column} className="flex items-center gap-2">
-                          <Checkbox
-                            checked={metadata.includes(column)}
-                            aria-disabled={combined && !commonColumns.includes(column)}
-                            onCheckedChange={(checked) => {
-                              if (combined && !commonColumns.includes(column)) {
-                                toast.info(
-                                  'Combined results can show only metadata shared by both sources. Switch to Separated to use this column.',
+                      {group.fields
+                        .filter((column) =>
+                          column.toLocaleLowerCase().includes(columnSearch.toLocaleLowerCase()),
+                        )
+                        .map((column) => (
+                          <label key={column} className="flex items-center gap-2">
+                            <Checkbox
+                              checked={metadata.includes(column)}
+                              aria-disabled={combined && !commonColumns.includes(column)}
+                              onCheckedChange={(checked) => {
+                                if (combined && !commonColumns.includes(column)) {
+                                  toast.info(
+                                    'Combined results can show only metadata shared by both sources. Switch to Separated to use this column.',
+                                  );
+                                  return;
+                                }
+                                setMetadata((old) =>
+                                  checked
+                                    ? [...old, column]
+                                    : old.filter((item) => item !== column),
                                 );
-                                return;
-                              }
-                              setMetadata((old) =>
-                                checked ? [...old, column] : old.filter((item) => item !== column),
-                              );
-                            }}
-                          />
-                          <span className="min-w-0 break-all">{column}</span>
-                        </label>
-                      ))}
+                              }}
+                            />
+                            <span className="min-w-0 break-all">{column}</span>
+                          </label>
+                        ))}
                     </fieldset>
                   ))}
               </div>
@@ -546,6 +581,21 @@ export function ConcordanceResults({
           {groups.map((group, index) => {
             const blockMetadata = visibleMetadata.filter(
               (column) => combined || sourceColumns[index]?.includes(column),
+            );
+            const displayColumns = orderedResultColumns(
+              [
+                ...[
+                  'left_context',
+                  'matched_text',
+                  'right_context',
+                  'l1',
+                  ...(saved ? ['l1_frequency'] : []),
+                  'r1',
+                  ...(saved ? ['r1_frequency'] : []),
+                ].map((column) => ({ column, metadata: false })),
+                ...blockMetadata.map((column) => ({ column, metadata: true })),
+              ],
+              readColumnOrder(tab.settings.column_order),
             );
             return (
               <section
@@ -670,28 +720,31 @@ export function ConcordanceResults({
                     <TableHeader className="sticky top-0 z-10 bg-panel">
                       <TableRow>
                         {combined && <TableHead>Source</TableHead>}
-                        <TableHead>
-                          {highlightContext
-                            ? sortButton(index, 'l1', 'Left context')
-                            : 'Left context'}
-                        </TableHead>
-                        <TableHead>{sortButton(index, 'matched_text', 'Match')}</TableHead>
-                        <TableHead>
-                          {highlightContext
-                            ? sortButton(index, 'r1', 'Right context')
-                            : 'Right context'}
-                        </TableHead>
-                        <TableHead>{sortButton(index, 'l1', 'L1')}</TableHead>
-                        {saved && (
-                          <TableHead>{sortButton(index, 'l1_frequency', 'L1 frequency')}</TableHead>
-                        )}
-                        <TableHead>{sortButton(index, 'r1', 'R1')}</TableHead>
-                        {saved && (
-                          <TableHead>{sortButton(index, 'r1_frequency', 'R1 frequency')}</TableHead>
-                        )}
-                        {blockMetadata.map((column) => (
-                          <TableHead key={column}>
-                            {sortButton(index, column, column, true)}
+                        {displayColumns.map((column) => (
+                          <TableHead key={resultColumnKey(column)}>
+                            {column.metadata
+                              ? sortButton(index, column.column, column.column, true)
+                              : column.column === 'left_context'
+                                ? highlightContext
+                                  ? sortButton(index, 'l1', 'Left context')
+                                  : 'Left context'
+                                : column.column === 'right_context'
+                                  ? highlightContext
+                                    ? sortButton(index, 'r1', 'Right context')
+                                    : 'Right context'
+                                  : sortButton(
+                                      index,
+                                      column.column,
+                                      (
+                                        {
+                                          matched_text: 'Match',
+                                          l1: 'L1',
+                                          r1: 'R1',
+                                          l1_frequency: 'L1 frequency',
+                                          r1_frequency: 'R1 frequency',
+                                        } as Record<string, string>
+                                      )[column.column] ?? column.column,
+                                    )}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -720,37 +773,43 @@ export function ConcordanceResults({
                                 {request.inputs[row.sourceIndex]?.source.name}
                               </TableCell>
                             )}
-                            <TableCell className="text-right whitespace-pre-wrap">
-                              <Context
-                                text={match.left_context}
-                                word={highlightContext ? match.l1 : ''}
-                                last
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <button
-                                className="font-semibold underline-offset-2 hover:underline"
-                                style={{ color: color(row.sourceIndex) }}
-                                onClick={() => {
-                                  if (!window.getSelection()?.toString())
-                                    setDetail({ row, index: rowIndex, group: index });
-                                }}
+                            {displayColumns.map((column) => (
+                              <TableCell
+                                key={resultColumnKey(column)}
+                                className={
+                                  column.column === 'left_context' && !column.metadata
+                                    ? 'text-right whitespace-pre-wrap'
+                                    : 'whitespace-pre-wrap'
+                                }
                               >
-                                {match.matched_text}
-                              </button>
-                            </TableCell>
-                            <TableCell className="whitespace-pre-wrap">
-                              <Context
-                                text={match.right_context}
-                                word={highlightContext ? match.r1 : ''}
-                              />
-                            </TableCell>
-                            <TableCell>{match.l1}</TableCell>
-                            {saved && <TableCell>{showValue(match.l1_frequency)}</TableCell>}
-                            <TableCell>{match.r1}</TableCell>
-                            {saved && <TableCell>{showValue(match.r1_frequency)}</TableCell>}
-                            {blockMetadata.map((column) => (
-                              <TableCell key={column}>{showValue(row.source[column])}</TableCell>
+                                {column.metadata ? (
+                                  showValue(row.source[column.column])
+                                ) : column.column === 'left_context' ? (
+                                  <Context
+                                    text={match.left_context}
+                                    word={highlightContext ? match.l1 : ''}
+                                    last
+                                  />
+                                ) : column.column === 'right_context' ? (
+                                  <Context
+                                    text={match.right_context}
+                                    word={highlightContext ? match.r1 : ''}
+                                  />
+                                ) : column.column === 'matched_text' ? (
+                                  <button
+                                    className="font-semibold underline-offset-2 hover:underline"
+                                    style={{ color: color(row.sourceIndex) }}
+                                    onClick={() => {
+                                      if (!window.getSelection()?.toString())
+                                        setDetail({ row, index: rowIndex, group: index });
+                                    }}
+                                  >
+                                    {match.matched_text}
+                                  </button>
+                                ) : (
+                                  showValue(match[column.column as keyof Match])
+                                )}
+                              </TableCell>
                             ))}
                           </TableRow>
                         )),
@@ -765,6 +824,76 @@ export function ConcordanceResults({
                     </TableBody>
                   </Table>
                 )}
+                {presentation === 'table' && (
+                  <div className="flex flex-wrap gap-2">
+                    <ResultColumnOrder
+                      columns={displayColumns}
+                      onChange={(column_order) => onSettings({ column_order })}
+                    />
+                    {saved &&
+                      result &&
+                      (combined ? request.inputs.map((_, source) => source) : [index]).map(
+                        (source) => (
+                          <div key={source}>
+                            {combined && (
+                              <span className="text-description">
+                                {request.inputs[source]?.source.name}
+                              </span>
+                            )}
+                            <ResultDownloadMenu
+                              base={base}
+                              id={result.id}
+                              selection={{
+                                kind: 'concordance',
+                                query: {
+                                  source_index: source,
+                                  projection: 'matches',
+                                  page: 1,
+                                  page_size: pageSize,
+                                  sort: combined ? null : (sorts[source] ?? null),
+                                  filter: filter(source),
+                                },
+                              }}
+                              columns={displayColumns.filter(
+                                (column) =>
+                                  !column.metadata ||
+                                  sourceColumns[source]?.includes(column.column),
+                              )}
+                              document={{
+                                column: request.inputs[source]?.column ?? '',
+                                metadata: true,
+                              }}
+                              optionalColumns={['extraction', 'start_idx', 'end_idx'].map(
+                                (column) => ({ column, metadata: false }),
+                              )}
+                              disabled={editing || Boolean(retained.stale[source])}
+                            />
+                          </div>
+                        ),
+                      )}
+                  </div>
+                )}
+                {!saved &&
+                  presentation === 'table' &&
+                  (combined ? request.inputs.map((_, source) => source) : [index]).map((source) =>
+                    data[source] ? (
+                      <ResultDownloadMenu
+                        key={source}
+                        base={base}
+                        captured={data[source]?.table}
+                        columns={displayColumns.filter(
+                          (column) =>
+                            !column.metadata || sourceColumns[source]?.includes(column.column),
+                        )}
+                        document={{ column: request.inputs[source]?.column ?? '', metadata: true }}
+                        optionalColumns={['extraction', 'start_idx', 'end_idx'].map((column) => ({
+                          column,
+                          metadata: false,
+                        }))}
+                        disabled={editing || Boolean(retained.stale[source])}
+                      />
+                    ) : null,
+                  )}
                 {presentation === 'table' && pagination(index)}
               </section>
             );
@@ -810,6 +939,14 @@ export function ConcordanceResults({
         <ConcordancePublishDialog
           base={base}
           result={result}
+          sources={
+            result.result.version === 2
+              ? request?.inputs.map((input, index) => ({
+                  input,
+                  columns: sourceColumns[index] ?? [],
+                }))
+              : undefined
+          }
           projection={publish}
           filters={result.result.payload.corpora.map((_, index) => filter(index))}
           onClose={() => {

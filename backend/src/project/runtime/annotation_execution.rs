@@ -38,7 +38,7 @@ impl ProjectRuntime {
                         guard = shared.lifecycle.clone().read_owned() => guard,
                         () = work.cancellation.cancelled() => return Err(interrupted()),
                     };
-                    let protection = shared.protection.editing(request.setup.source.clone())?;
+                    let protection = shared.protection.analysis(request.setup.source.clone())?;
                     protection.ready(&work.cancellation).await?;
                     context.progress("Capturing source and Codebook", None);
                     let config = request.inference.clone();

@@ -26,7 +26,8 @@ absent from both graph modes. `storage_kind='relation'` references a Table or Vi
 `'blob'` stores bytes with a media type. Typed relations retain exact integer and
 floating-point values; result JSON stores small descriptors. Extension annotations
 live only in qualified `wordflow.arrow_metadata` rows, independently copied onto
-each retained relation. Saved reads never consult current source annotations.
+each retained relation. Version-1 snapshots keep their annotations; live version-2
+Topics, Concordance and Quotation projections read current source annotations.
 
 Frequency creates and reads tabular artifacts. The schema and shared transactional
 cleanup also support BLOB ownership; a future binary-producing analysis will
@@ -38,8 +39,10 @@ There is no dynamic analysis registry, general artifact SQL endpoint, filesystem
 manifest or per-result directory. Save As copies results with the rest of the
 database.
 
-Source descriptions record the inputs used by a successful run. They do not
-create live SQL dependencies, source freshness flags or a revision history.
+Frequency and Plots source descriptions record provenance without live SQL dependencies.
+Topics, Concordance and Quotation version-2 results instead use the exact-text
+lookup contract below. Historical version-1 analyses retain their original meaning
+until explicit Rerun.
 Frequency persists full count Tables and a comparison View over those counts,
 but no permanent source document copy. Results remain readable after their
 sources change or disappear.
@@ -233,32 +236,46 @@ transaction claims the still-existing tab and publishes its complete result.
 Failure or cancellation after the initial Run transition leaves no result; a deleted tab cannot be
 recreated by publication.
 
-Each source owns three private relations:
+New Runs use result version 2. Each input processes distinct exact non-NULL texts
+independently. Its private documents Table contains processed text under its
+original source field name and a result-local output key, including texts with
+zero matches. The matches Table contains outputs keyed to that processed text;
+a stable private projection joins only the owned processed-text/output relations.
+Reads build the current-source join at query time by exact text equality, so stale
+private schema bindings cannot prevent ordinary source renames or metadata edits. Source metadata values are not persisted. Duplicate current rows remain
+separate. Newly added unprocessed texts and edited/removed texts do not match.
 
-- A documents Table retains each matching original row once, its DuckDB types,
-  applicable Arrow metadata and a result-local document ID.
-- A matches Table retains document IDs, occurrence order, contexts, matched text,
-  Unicode character offsets, L1/R1 and extraction.
-- A projection View joins those owned Tables and derives whole-result L1/R1
-  frequencies before display filters.
+Page and density queries rebuild the typed source STRUCT from the current schema.
+Presentation excludes empty match outcomes, filters before counting/sorting and
+applies explicit source-row and within-document ordering before pagination.
+Concordance document bands are calculated across the full filtered/sorted result.
+Offsets remain Unicode character offsets in the processed original text.
+Version-1 results continue to read their independent source snapshots.
 
-Source fields live inside a separate struct, so generated field names cannot
-overwrite original columns. Identical document text remains separate through
-document IDs. No saved relation references the current source. JSON stores the
-versioned `ConcordanceResultV1` descriptor and summaries, not retained rows.
+Add to Project atomically copies processed text and selected generated outputs to
+independently owned hidden backing relations and creates a live source-joined
+View. It includes processed empty outcomes; document extraction is empty text for
+those rows. Generated names cannot overwrite selected source fields. Publication
+preserves source order independently of review sorting. Clearing, rerunning or
+deleting the tab cannot change these copied outputs.
 
-Saved queries filter before counting, sorting and pagination. Density aggregates
-the complete saved source, independently of the visible page. Document inspection
-can request all retained matches for a document ID. Native offsets count Unicode
-characters; the frontend converts text to code points before highlighting.
+`project/document_matches.rs` owns publication ownership and its first-use native
+format upgrade. Published Data Blocks own the backing relations and delete them
+with the public View. Source-field bindings preserve current Arrow annotations,
+including renamed output fields, without storing source metadata values. The graph
+returns typed publication ownership from this registry. Private lookup edges participate in existing mutation
+invalidation and schema rebinding, separately from ordinary Builder deletion
+closures. Source deletion retains SQL references and raises the ordinary engine
+error; compatible same-name restoration can resolve them. Native renames preserve
+bindings through the existing rename owner.
 
-Add to Project is an ordinary native task. A single transaction creates every
-selected output Table, its registration and applicable metadata. Match mode emits
-one row per occurrence. Document mode emits one retained row per qualifying
-document with `CONC_extraction` assembled from surviving extracts. Captured
-sources still registered become logical parents; missing sources are neither
-required nor recreated. Name or column collisions abort the entire publication.
-Published Tables own their rows independently of analysis cleanup.
+`project/result_downloads.rs` captures all filtered/sorted rows through each
+analysis owner, then reuses the bounded Arrow reader and native CSV/XLSX/JSON/
+Parquet exporters. Selected fields flatten in presentation order. Document
+omission is download-only and position fields require the document. Annotation
+downloads reject an active source editor and unsaved review changes. Preview
+exports receive only already completed Arrow rows and make no provider calls.
+No permanent Data Block or second result store is created by downloading.
 
 
 ## Quotation Preview and saved results
@@ -276,22 +293,15 @@ multiple quotes remain nested in their original document. Preview has request
 cancellation and no persistent result or task record. Context clipping and field
 visibility are frontend presentation changes, not extraction requests.
 
-Run uses the same extractor in 256-document batches and the existing task,
-editor and publication boundaries. `QuotationResultV1` owns a matching-documents
-Table, a scalar-quotes Table and their joined projection View. Original rows
-remain typed inside `source`; generated fields cannot collide with metadata.
-Saved document queries group all quotations for each retained document. Match
-queries page individual quotations. Both support stable metadata ordering; match
-queries additionally support generated-field sorting. Character offsets always
-refer to the original Unicode text.
-
-Publication creates an independent registered Table: either one row per quote
-with selected `QUOTE_*` fields, or one row per matching document with required
-`QUOTE_extraction`. It preserves selected source metadata, records a logical
-parent only if the source is still registered, and rejects name/column collisions
-atomically. Source deletion, result replacement and Clear results cannot remove
-published rows. No remote-engine service, persistent Preview data or format change is
-introduced. The [quotation runtime reference](../../reference/quotation-runtime.md)
+Run uses the pinned native extractor and existing task, editor and publication
+boundaries. Version-2 results use the same processed-text/current-source contract
+as Concordance, with a separate checked-documents Table and scalar-quotation
+Table. Zero-quotation texts are retained as processed records and excluded from
+presentation. Document queries group quotations; match queries page individual
+occurrences. Both apply SQL ordering before paging and direct downloads.
+Publication includes checked empty outcomes and copies generated outputs into
+independent backing relations for a live View. Historical version-1 results
+remain snapshot-based until Rerun. The [quotation runtime reference](../../reference/quotation-runtime.md)
 owns model provisioning and software notices.
 
 ## Native Plots
@@ -328,28 +338,31 @@ Plots display budgets and measured browser/native evidence are documented in
 ## Topic Modelling
 
 `project/topic_modeling.rs` adapts the framework-independent `ldaca-rs` engine.
-One or two typed source snapshots feed one joint fit. The Run request has no
-sampling fields and belongs only to its accepted Analysis. The version-1 output
-contains source descriptors/counts and owned artifact references: retained source
-Tables, a natural projection BLOB, a projection-context BLOB, reduced segment
-vectors and assignment/settings facts. Full segment embeddings remain in the
-existing content-addressed application cache. Captured metadata contributes
-bounded group summaries and compact membership indices, independently owned
-with the result.
-Original rows carry result-local identities and independent Arrow annotations.
-Publication claims the exact accepted Analysis in a fresh transaction.
+One or two inputs feed one joint fit, processing distinct exact texts within each
+input. New version-2 outputs retain text plus generated dominant/coverage outputs
+in private typed Tables. They retain the natural layout, projection hierarchy,
+reduced vectors and assignment/settings artifacts under the existing analysis
+owner. Full segment embeddings stay in the exact application cache. Source
+metadata values are not persisted. The projection BLOB does not duplicate the
+Tables' document outputs. Version-1 analyses retain snapshot semantics until Rerun.
 
-Map queries return topic coordinates, compact Top-N activation counts, dominant
-document counts and retained metadata group summaries. One-input Colour by
-offers fields with 2–8 distinct nonmissing scalar groups. Missing values form a
-separate grey group. Counts and populations come from the captured run or sample;
-no query joins current source rows by position. Word
-queries independently apply a stopword Table/View to complete c-TF-IDF rankings
-before taking 100 candidates. They do not run PaCMAP. Top-N membership changes
-are local; publication uses the same positive-share/cutoff-tie rule. Saved queries
-never consult live source rows. Publication creates typed annotated Tables and a
-complete dictionary atomically, with logical parents only for still-registered
-sources. Independently published Tables survive Clear and source deletion.
+Map queries derive source multiplicity, dominant-document counts, shares and
+compact metadata memberships from current rows with processed text records.
+Counts include processed empty outcomes in the eligible population. Source
+summaries use `document_count` for eligible source rows and `processed_text_count`
+for distinct fitted texts; duplicate source rows do not create extra fitting units.
+Metadata edits cannot change fitted assignments or coordinates. One-input Colour by offers
+current scalar fields with 2–8 nonmissing groups, native ENUM order where present
+and count order otherwise; missing values form a grey group. No positional joins
+are used. Preview joins only its temporary sampled population, so matching rows
+outside the sample cannot inflate counts.
+
+Word queries apply presentation stopwords to retained c-TF-IDF rankings without
+rerunning PaCMAP. Top-N publication uses positive coverage and cutoff ties. It
+atomically copies chosen generated assignments into independent hidden relations
+and creates live source-joined Views plus a dictionary. Published outputs survive
+analysis cleanup. Source lookup failures retain their SQL references and ordinary
+engine diagnostics.
 
 `runtime/topic_preview.rs` owns a narrow connection-scoped Preview. Its POST SSE
 response owns the in-memory model through a lease; query handles are valid only
@@ -361,8 +374,9 @@ model is not running work. Run waits for prior Preview cleanup before fitting.
 Queries use existing runtime operations and expire with their owner. There is
 no automatic reconnect, retraining, polling or persistent Preview cache.
 
-`topic_modeling/adjustments.rs` replaces derived BLOBs in one transaction while
-retaining captured rows, metadata and the original Run request. Clustering changes
+`topic_modeling/adjustments.rs` replaces derived outputs in one transaction while
+retaining processed texts and the original Run request. Historical version-1
+results retain their captured rows and metadata. Clustering changes
 reuse reduced vectors; representative-word changes reuse assignments. Exact
 embedding-cache keys include the resolved model fingerprint and provider. Missing
 intermediates or cached embeddings produce an ordinary Rerun error without

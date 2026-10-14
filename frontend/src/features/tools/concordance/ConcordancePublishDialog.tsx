@@ -31,20 +31,28 @@ export function ConcordancePublishDialog({
   result: initialResult,
   projection,
   filters,
+  sources,
   onClose,
 }: {
   base: string;
   result: concordanceApi.ConcordanceAnalysisResult;
   projection: 'matches' | 'documents';
   filters: concordanceApi.ConcordanceFilter[];
+  sources?: { input: concordanceApi.ConcordanceRequest['inputs'][number]; columns: string[] }[];
   onClose: () => void;
 }) {
   const cache = useQueryClient();
   const [result] = useState(initialResult);
-  const [selected, setSelected] = useState(result.result.payload.corpora.map(() => true));
+  const corpora =
+    sources ??
+    result.result.payload.corpora.map((corpus) => ({
+      input: corpus.input,
+      columns: corpus.columns.map(([name]) => name),
+    }));
+  const [selected, setSelected] = useState(corpora.map(() => true));
   const [outputs, setOutputs] = useState<concordanceApi.ConcordancePublishSource[]>(() => {
     const names = suggestDataBlockNames(
-      result.result.payload.corpora.map((corpus) => ({
+      corpora.map((corpus) => ({
         sources: [corpus.input.source.name],
         operation: projection === 'documents' ? 'cc_doc' : 'cc',
       })),
@@ -66,13 +74,13 @@ export function ConcordancePublishDialog({
     onSuccess: onClose,
   });
   const common =
-    result.result.payload.corpora
+    corpora
       .filter((_, index) => selected[index])
       .reduce<string[] | null>(
         (previous, corpus) =>
           previous === null
-            ? corpus.columns.map(([column]) => column)
-            : previous.filter((column) => corpus.columns.some(([name]) => name === column)),
+            ? corpus.columns
+            : previous.filter((column) => corpus.columns.includes(column)),
         null,
       ) ?? [];
   const update = (index: number, key: 'metadata' | 'fields', value: string, checked: boolean) => {
@@ -104,11 +112,11 @@ export function ConcordancePublishDialog({
           ? {
               ...output,
               metadata: checked
-                ? (result.result.payload.corpora[index]?.columns ?? [])
-                    .map(([column]) => column)
+                ? (corpora[index]?.columns ?? [])
+                    .map((column) => column)
                     .filter(
                       (column) =>
-                        column !== result.result.payload.corpora[index]?.input.column &&
+                        column !== corpora[index]?.input.column &&
                         !reserved.has(column.toLowerCase()),
                     )
                 : [],
@@ -195,7 +203,7 @@ export function ConcordancePublishDialog({
           )}
         </div>
         {outputs.map((output, index) => {
-          const corpus = result.result.payload.corpora[index];
+          const corpus = corpora[index];
           if (!corpus) return null;
           return (
             <section key={index} className="space-y-3 border-t border-surface-border pt-3">
@@ -232,8 +240,8 @@ export function ConcordancePublishDialog({
                   </p>
                   <div className="flex flex-wrap gap-3">
                     {corpus.columns
-                      .filter(([column]) => column !== corpus.input.column)
-                      .map(([column]) => (
+                      .filter((column) => column !== corpus.input.column)
+                      .map((column) => (
                         <label className="flex items-center gap-2" key={column}>
                           <Checkbox
                             checked={output.metadata.includes(column)}

@@ -1,3 +1,8 @@
+import type { SortingState } from '@tanstack/react-table';
+import { previewDownload } from './previewDownload';
+import { orderedResultColumns, readColumnOrder } from '../common/resultColumns';
+import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
+import { ResultDownloadMenu } from '../common/components/ResultDownloadMenu';
 import { Button } from '@/components/ui/button';
 import { SearchableSelect } from '@/components/ui/searchable-select';
 import { ProjectTable } from '@/features/project/data-view/components/ProjectTable';
@@ -16,6 +21,8 @@ import { ReviewViewport } from './ReviewViewport';
 export function AnnotationOutput({
   base,
   tab,
+  settings = {},
+  onSettings,
   setup,
   result,
   preview,
@@ -40,6 +47,8 @@ export function AnnotationOutput({
   onRetryPreview?: () => void;
   base: string;
   tab: string;
+  settings?: Record<string, unknown>;
+  onSettings?: (patch: Record<string, unknown>) => void;
   setup: annotationApi.AnnotationSetup;
   result?: annotationApi.AnnotationResult;
   preview?: annotationApi.AnnotationPreview;
@@ -50,6 +59,8 @@ export function AnnotationOutput({
   onUseExamples: () => void;
   onEdit: (session: editingApi.CellEditSession, setup: annotationApi.AnnotationSetup) => void;
 }) {
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const nativeSorting = sorting.map((sort) => ({ column: sort.id, descending: sort.desc }));
   const [page, setPage] = useState(1),
     [size, setSize] = useState(10);
   const [compare, setCompare] = useState<string[]>([]),
@@ -81,6 +92,7 @@ export function AnnotationOutput({
       compare,
       filter,
       setup.correction,
+      sorting,
     ],
     queryFn: ({ signal }) =>
       annotationApi.annotationRows(
@@ -91,6 +103,7 @@ export function AnnotationOutput({
         { compare, changes: [], filter },
         signal,
         setup.correction,
+        nativeSorting,
       ),
     enabled: Boolean(result) && !editorSession,
     staleTime: Infinity,
@@ -134,9 +147,16 @@ export function AnnotationOutput({
       ...(setup.annotation ? [setup.annotation] : []),
       ...(setup.correction ? [setup.correction] : []),
     ];
-    const visible = [...roles, ...compare, ...metadata].filter(
-      (name, index, all) => decoded?.columns.includes(name) && all.indexOf(name) === index,
+    const displayColumns = orderedResultColumns(
+      [...roles, ...compare, ...metadata]
+        .filter(
+          (name, index, all) => decoded?.columns.includes(name) && all.indexOf(name) === index,
+        )
+        .map((column) => ({ column, metadata: false })),
+      readColumnOrder(settings.column_order),
     );
+    const visible = displayColumns.map((column) => column.column);
+    const completedPreview = preview ? previewDownload(preview) : null;
     const editableCell = (index: number, column: string) => {
       if (!editor || column !== setup.correction) return undefined;
       if (!previewMode) return editor.cell(index, column);
@@ -223,6 +243,42 @@ export function AnnotationOutput({
             value={metadata}
             onChange={setMetadata}
           />
+          <ResultColumnOrder
+            columns={displayColumns}
+            onChange={(column_order) => onSettings?.({ column_order })}
+          />
+          {result && !previewMode && (
+            <ResultDownloadMenu
+              base={base}
+              id={result.id}
+              selection={{
+                kind: 'annotation',
+                query: {
+                  view: 'rows',
+                  page: 1,
+                  page_size: size,
+                  sorting: nativeSorting,
+                  review: { compare, changes: [], filter },
+                  correction: setup.correction,
+                },
+              }}
+              columns={displayColumns}
+              document={{ column: setup.document, metadata: false }}
+              disabled={editing || outdated || rows.isFetching}
+            />
+          )}
+          {completedPreview && (
+            <ResultDownloadMenu
+              base={base}
+              captured={completedPreview.table}
+              columns={[
+                ...displayColumns,
+                ...completedPreview.columns.map((column) => ({ column, metadata: false })),
+              ]}
+              document={{ column: setup.document, metadata: false }}
+              disabled={editing || outdated}
+            />
+          )}
           <SearchableSelect
             ariaLabel="Comparison metric"
             value={metric}
@@ -440,6 +496,18 @@ export function AnnotationOutput({
                 ),
               )}
               columns={visible}
+              sorting={previewMode ? [] : (editor?.sorting ?? sorting)}
+              onSortingChange={
+                previewMode
+                  ? undefined
+                  : (value) => {
+                      if (editor) editor.setSorting(value);
+                      else {
+                        setSorting(value);
+                        setPage(1);
+                      }
+                    }
+              }
               columnFields={Object.fromEntries(decoded.schema.map((c) => [c.name, c.field]))}
               fetching={editingPage ? editor?.rows.isFetching : rows.isFetching}
               pageError={editingPage ? editor?.rows.error : rows.error}

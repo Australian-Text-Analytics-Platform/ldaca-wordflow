@@ -181,6 +181,7 @@ pub(super) fn plot_fields(kind: &str) -> &'static [&'static str] {
     }
 }
 pub(super) fn reconcile(conn: &Connection, rename: &Rename) -> Result<Vec<Uuid>> {
+    document_matches::rename_publication_source(conn, rename)?;
     let rows = conn.prepare("SELECT a.id::VARCHAR,t.kind,a.request::VARCHAR,a.result::VARCHAR FROM wordflow.analyses a JOIN wordflow.tabs t ON t.id=a.tab_id")?.query_map([],|r|Ok((r.get::<_,String>(0)?,r.get::<_,String>(1)?,r.get::<_,String>(2)?,r.get::<_,Option<String>>(3)?)))?.collect::<duckdb::Result<Vec<_>>>()?;
     let mut affected = Vec::new();
     for (id, kind, request, result) in rows {

@@ -1,6 +1,7 @@
 import { suggestDataBlockName } from '../../src/features/project/automaticNames';
 import { outputAnalysisId } from './analysisState';
 import { setAnalysisPaneSize } from '../../e2e-browser/layout';
+import { expectAppError } from '../../e2e-browser/diagnostics';
 import { browser, $, expect } from '@wdio/globals';
 import { Key } from 'webdriverio';
 import * as projectApi from '@/features/project/api';
@@ -231,12 +232,18 @@ export async function concordanceScenario(base: string, prefix: string) {
   }
   await setAnalysisPaneSize('normal');
 
-  await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.identifier(name)}` }], {
-    objects: [{ schema: 'data', name }],
-    resources: ['graph'],
-  });
   await results.$('button=Table').scrollIntoView();
   await results.$('button=Table').click();
+  await results.$('button=cat').waitForExist();
+  expectAppError(new RegExp(`Table with name ${name} does not exist`));
+  await projectApi.executeSql(base, [{ sql: `DROP TABLE ${ objectsApi.identifier(name)}` }], {
+    objects: [{ schema: 'data', name }], resources: ['graph'],
+  });
+  await results.$('[role="alert"]').waitForExist();
+  await projectApi.executeSql(base,[
+    {sql:`CREATE TABLE ${objectsApi.identifier(name)} (text VARCHAR,category VARCHAR)`},
+    {sql:`INSERT INTO ${objectsApi.identifier(name)} VALUES ('😀 cat cat dog','one'),('cat fresh','two'),('猫 cat','three')`},
+  ],{objects:[{schema:'data',name}],resources:['graph']});
   await results.$('button=cat').waitForExist();
   // Reload only after the presentation write has reached the backend.
   await browser.waitUntil(async () =>

@@ -156,4 +156,11 @@ Before using labels downstream, inspect examples from every code and review
 uncertain or costly errors. Agreement and model predictions support review;
 they do not establish that a label is correct.
 
+Search **Metadata** and use **Column order** to drag columns or use arrow buttons or
+Alt + ↑ / ↓. Column presentation order is saved independently of sorting.
+**Download** exports all matching result rows as CSV, XLSX, JSON or Parquet. Finish
+manual drafts with **Save** or **Cancel** first. **Download Preview** exports only
+the completed current page with its returned predictions and errors; it makes no
+additional provider calls. Document text is optional in downloads.
+
 [← Back to tutorial index](./index.md)

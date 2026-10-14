@@ -85,7 +85,13 @@ export function completedAnalysis<K extends keyof Payloads>(
   value: components['schemas']['Analysis'],
   kind: K,
 ): AnalysisResult<Payloads[K]> {
-  if (value.kind !== kind || value.result?.version !== 1)
+  if (
+    value.kind !== kind ||
+    !(
+      value.result?.version === 1 ||
+      (value.result?.version === 2 && ['concordance', 'quotation', 'topic-modeling'].includes(kind))
+    )
+  )
     throw new Error('Unsupported analysis result version');
   return value as AnalysisResult<Payloads[K]>;
 }

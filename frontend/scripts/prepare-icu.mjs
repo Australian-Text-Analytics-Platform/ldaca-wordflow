@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { gunzipSync } from 'node:zlib';
-const version = 'v1.5.5';
+const version = 'v1.5.6';
 const arguments_ = process.argv.slice(2);
 const argument = (name) => { const index = arguments_.indexOf(name); return index < 0 ? undefined : arguments_[index + 1]; };
 const target = argument('--target') ?? process.env.TAURI_ENV_TARGET_TRIPLE;

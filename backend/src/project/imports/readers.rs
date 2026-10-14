@@ -39,7 +39,7 @@ fn writer(path: &Path, schema: SchemaRef) -> Result<ArrowWriter<File>> {
     )
     .map_err(import_error)
 }
-fn batches(
+pub(in crate::project) fn batches(
     path: &Path,
     reader: impl RecordBatchReader,
     cancellation: &CancellationToken,

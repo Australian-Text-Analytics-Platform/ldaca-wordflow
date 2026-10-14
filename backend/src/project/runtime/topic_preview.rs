@@ -392,6 +392,15 @@ impl ProjectRuntime {
         id: Uuid,
         request: TopicQuery,
     ) -> Result<TopicProjection> {
+        self.query_topic_preview_rows(tab, id, request, false).await
+    }
+    async fn query_topic_preview_rows(
+        &self,
+        tab: Uuid,
+        id: Uuid,
+        request: TopicQuery,
+        all: bool,
+    ) -> Result<TopicProjection> {
         let preview = self.topic_preview(tab, id)?;
         let model = locked(&preview.model)?
             .clone()
@@ -408,7 +417,7 @@ impl ProjectRuntime {
         });
         let result = self
             .run_operation(operation, Access::Read, move |db, _| {
-                let result = db.project_topic_model(&model, None, request)?;
+                let result = db.project_topic_rows(&model, None, request, all)?;
                 check_cancellation(&db.cancellation)?;
                 Ok(result)
             })
@@ -416,6 +425,43 @@ impl ProjectRuntime {
         finished.cancel();
         let _ = monitor.await;
         result
+    }
+
+    pub(crate) async fn download_topic_preview(
+        &self,
+        tab: Uuid,
+        id: Uuid,
+        input: result_downloads::TopicPreviewDownload,
+    ) -> Result<tempfile::NamedTempFile> {
+        let preview = self.topic_preview(tab, id)?;
+        let model = locked(&preview.model)?
+            .clone()
+            .ok_or_else(|| Error::new("preview_not_ready", "Preview is still calculating"))?;
+        let source = model
+            .sources
+            .get(input.query.source)
+            .ok_or_else(|| Error::invalid("Unknown Topics source"))?;
+        let document = result_downloads::ResultColumn {
+            column: source.input.column.clone(),
+            metadata: true,
+        };
+        let TopicProjection::Documents(page) = self
+            .query_topic_preview_rows(tab, id, TopicQuery::Documents(input.query), true)
+            .await?
+        else {
+            return Err(Error::invalid("Choose Topic documents"));
+        };
+        self.with_project(move |p| {
+            result_downloads::export_result_rows(
+                &p.conn,
+                page.file,
+                &document,
+                &input.columns,
+                input.format,
+                &p.cancellation,
+            )
+        })
+        .await
     }
 }
 

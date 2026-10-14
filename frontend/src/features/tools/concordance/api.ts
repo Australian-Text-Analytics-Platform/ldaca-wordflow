@@ -57,7 +57,7 @@ export async function getConcordanceResult(
     await request(base, '/api/project/analyses/{id}', 'get', { path: { id }, signal })
   ).json();
   if (result.kind === 'concordance' && result.result === null) return null;
-  if (result.kind !== 'concordance' || result.result?.version !== 1)
+  if (result.kind !== 'concordance' || ![1, 2].includes(result.result?.version ?? 0))
     throw new Error('Unsupported Concordance result version');
   return result as ConcordanceAnalysisResult;
 }

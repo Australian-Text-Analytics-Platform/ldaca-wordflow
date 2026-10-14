@@ -240,6 +240,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/analyses/{id}/download': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_download_result'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/analyses/{id}/frequency/export': {
     parameters: {
       query?: never;
@@ -1169,6 +1185,22 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/project/results/download': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_download_captured_result'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/project/samples': {
     parameters: {
       query?: never;
@@ -1563,6 +1595,22 @@ export interface paths {
     get?: never;
     put?: never;
     post: operations['analysis_api_query_topic_preview'];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/project/tabs/{tab}/topic-modeling/previews/{id}/download': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post: operations['analysis_api_download_topic_preview'];
     delete?: never;
     options?: never;
     head?: never;
@@ -2114,6 +2162,12 @@ export interface components {
     };
     /** Format: binary */
     Binary: string;
+    CapturedResultDownload: {
+      bytes: number[];
+      columns: components['schemas']['ResultColumn'][];
+      document: components['schemas']['ResultColumn'];
+      format: components['schemas']['ExportFormat'];
+    };
     /** @enum {string} */
     CastShortcut: 'string' | 'integer' | 'float' | 'datetime' | 'categorical';
     CastType:
@@ -2286,6 +2340,7 @@ export interface components {
       matches: string;
       /** Format: int64 */
       matching_documents: number;
+      processed_column?: string | null;
       /** Format: uuid */
       projection: string;
     };
@@ -2847,6 +2902,7 @@ export interface components {
       document_column: string | null;
       /** @enum {string} */
       kind: 'table' | 'view' | 'missing';
+      publication?: components['schemas']['PublicationOwnership'] | null;
       table_name: string;
       tokenizer_models?: {
         [key: string]: string;
@@ -3013,6 +3069,11 @@ export interface components {
     Projection: 'matches' | 'documents';
     /** @enum {string} */
     Provider: 'openai' | 'openrouter' | 'anthropic' | 'google' | 'custom' | 'apple';
+    PublicationOwnership: {
+      columns: [string, string][];
+      relation_count: number;
+      source: components['schemas']['DocumentInput'];
+    };
     PublishSource: {
       fields: string[];
       filter?: components['schemas']['ConcordanceFilter'];
@@ -3059,6 +3120,7 @@ export interface components {
       matches: string;
       /** Format: int64 */
       matching_documents: number;
+      processed_column?: string | null;
       /** Format: uuid */
       projection: string;
     };
@@ -3165,6 +3227,36 @@ export interface components {
           /** @enum {string} */
           kind: 'sankey';
           request: components['schemas']['SankeyRequest'];
+        };
+    ResultColumn: {
+      column: string;
+      metadata?: boolean;
+    };
+    ResultDownload: {
+      columns: components['schemas']['ResultColumn'][];
+      format: components['schemas']['ExportFormat'];
+      selection: components['schemas']['ResultSelection'];
+    };
+    ResultSelection:
+      | {
+          /** @enum {string} */
+          kind: 'concordance';
+          query: components['schemas']['ConcordanceQuery'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'quotation';
+          query: components['schemas']['QuotationQuery'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'topics';
+          query: components['schemas']['TopicDocumentQuery'];
+        }
+      | {
+          /** @enum {string} */
+          kind: 'annotation';
+          query: components['schemas']['AnnotationQuery'];
         };
     Review: {
       changes?: components['schemas']['CellEditPatch'][];
@@ -3447,6 +3539,11 @@ export interface components {
       /** Format: float */
       y: number;
     };
+    TopicPreviewDownload: {
+      columns: components['schemas']['ResultColumn'][];
+      format: components['schemas']['ExportFormat'];
+      query: components['schemas']['TopicDocumentQuery'];
+    };
     TopicPreviewRequest: {
       request: components['schemas']['TopicRequest'];
       sampling: components['schemas']['Sampling'][];
@@ -3479,9 +3576,13 @@ export interface components {
       | (components['schemas']['TopicProjectionBasis'] & {
           colour_counts?: number[][] | null;
           colour_fields: components['schemas']['ColourFieldSummary'][];
+          document_counts: number[];
           dominant_counts: number[][];
           /** Format: uuid */
           natural_projection: string;
+          outlier_counts: number[];
+          source_columns: [string, string][][];
+          source_inputs: components['schemas']['DocumentInput'][];
         } & {
           /** @enum {string} */
           projection: 'map';
@@ -3564,6 +3665,10 @@ export interface components {
       /** Format: uuid */
       documents?: string | null;
       input: components['schemas']['DocumentInput'];
+      processed_column?: string | null;
+      processed_text_count?: number | null;
+      /** Format: uuid */
+      projection?: string | null;
       /** Format: int64 */
       total_count: number;
     };
@@ -4659,6 +4764,76 @@ export interface operations {
         };
       };
       /** @description Backend stopping */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_download_result: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ResultDownload'];
+      };
+    };
+    responses: {
+      /** @description Complete filtered and ordered result download */
+      200: {
+        headers: {
+          /** @description Download filename */
+          'Content-Disposition'?: string;
+          /** @description Export task identity */
+          'x-wordflow-task-id'?: string;
+          [name: string]: unknown;
+        };
+        content: {
+          'application/octet-stream': components['schemas']['Binary'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
       503: {
         headers: {
           [name: string]: unknown;
@@ -9547,6 +9722,62 @@ export interface operations {
       };
     };
   };
+  analysis_api_download_captured_result: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CapturedResultDownload'];
+      };
+    };
+    responses: {
+      /** @description Export already completed Preview rows without inference */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/octet-stream': components['schemas']['Binary'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
   samples_catalogue: {
     parameters: {
       query?: never;
@@ -11776,6 +12007,73 @@ export interface operations {
         };
       };
       /** @description Backend stopping */
+      503: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  analysis_api_download_topic_preview: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tab: string;
+        id: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TopicPreviewDownload'];
+      };
+    };
+    responses: {
+      /** @description Export all matching sampled documents without refitting */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/octet-stream': components['schemas']['Binary'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+      500: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
       503: {
         headers: {
           [name: string]: unknown;

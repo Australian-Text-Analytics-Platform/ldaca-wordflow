@@ -130,10 +130,11 @@ export async function annotationRows(
   review: AnnotationReview,
   signal?: AbortSignal,
   correction: string | null = null,
+  sorting: components['schemas']['CellEditSort'][] = [],
 ) {
   const response = await request(base, '/api/project/analyses/{id}/annotation/query', 'post', {
     path: { id },
-    body: { view: 'rows', page, page_size, sorting: [], review, correction },
+    body: { view: 'rows', page, page_size, sorting, review, correction },
     signal,
   });
   const table = tableFromIPC<TypeMap>(new Uint8Array(await response.arrayBuffer()));

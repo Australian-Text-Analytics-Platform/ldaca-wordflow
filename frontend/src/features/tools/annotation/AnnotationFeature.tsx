@@ -458,6 +458,8 @@ function AnnotationTab({
           base={base}
           session={session}
           setup={setup}
+          settings={settings}
+          onSettings={change}
           onFinished={() => {
             setSession(null);
           }}
