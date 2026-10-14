@@ -73,13 +73,38 @@ fn temporary_path(target: &Path) -> Result<PathBuf, String> {
     )))
 }
 
+/// The file type the Save dialog offers, from the suggested name's extension
+/// (issue 395). With it, Windows adds the extension to a name typed without
+/// one (and still asks before replacing a file), and macOS keeps it; without
+/// it, such a name was saved as a plain "File" that Excel refused.
+fn save_filter(filename: &str) -> Option<(String, String)> {
+    let extension = Path::new(filename)
+        .extension()?
+        .to_str()?
+        .to_ascii_lowercase();
+    let label = match extension.as_str() {
+        "csv" => "CSV file".to_owned(),
+        "xlsx" => "Excel workbook".to_owned(),
+        "zip" => "ZIP archive".to_owned(),
+        "json" => "JSON file".to_owned(),
+        "parquet" => "Parquet file".to_owned(),
+        "html" => "Web page".to_owned(),
+        _ => format!("{} file", extension.to_ascii_uppercase()),
+    };
+    Some((label, extension))
+}
+
 fn selected_save_path(window: &WebviewWindow, filename: &str) -> Result<Option<PathBuf>, String> {
     let filename = safe_filename(filename)?;
-    window
+    let mut dialog = window
         .dialog()
         .file()
         .set_parent(window)
-        .set_file_name(filename)
+        .set_file_name(filename);
+    if let Some((label, extension)) = save_filter(filename) {
+        dialog = dialog.add_filter(label, &[extension.as_str()]);
+    }
+    dialog
         .blocking_save_file()
         .map(|path| {
             path.into_path()
@@ -93,6 +118,18 @@ async fn install_temporary(target: &Path, temporary: &Path) -> Result<PathBuf, S
         .await
         .map_err(|_| "download_install_failed".to_owned())?;
     Ok(target.to_path_buf())
+}
+
+const MAX_ERROR_BODY_BYTES: u64 = 64 * 1024;
+
+/// The `message` of the backend's JSON error envelope, if there is one.
+fn backend_error_message(body: &[u8]) -> Option<String> {
+    if body.len() as u64 > MAX_ERROR_BODY_BYTES {
+        return None;
+    }
+    let value: serde_json::Value = serde_json::from_slice(body).ok()?;
+    let message = value.get("message")?.as_str()?.trim();
+    (!message.is_empty()).then(|| message.to_owned())
 }
 
 fn backend_client() -> Result<reqwest::Client, String> {
@@ -113,10 +150,19 @@ async fn download_response(
         .await
         .map_err(|_| "backend_download_failed".to_owned())?;
     if !response.status().is_success() {
-        return Err(format!(
-            "backend_download_http_{}",
-            response.status().as_u16()
-        ));
+        let status = response.status().as_u16();
+        // Pass the backend's own message on, such as Excel's cell limit
+        // (issue 396); before, the page showed this code instead.
+        let small = response
+            .content_length()
+            .is_none_or(|length| length <= MAX_ERROR_BODY_BYTES);
+        let body = if small {
+            response.bytes().await.unwrap_or_default()
+        } else {
+            Default::default()
+        };
+        return Err(backend_error_message(&body)
+            .unwrap_or_else(|| format!("backend_download_http_{status}")));
     }
     let response_headers = response.headers().clone();
 
@@ -297,6 +343,34 @@ mod tests {
     use super::*;
     use std::io::{Read, Write};
     use std::net::TcpListener;
+
+    #[test]
+    fn save_dialog_offers_the_suggested_file_type() {
+        assert_eq!(
+            save_filter("concordance.csv"),
+            Some(("CSV file".to_owned(), "csv".to_owned()))
+        );
+        assert_eq!(
+            save_filter("results_and_more.ZIP"),
+            Some(("ZIP archive".to_owned(), "zip".to_owned()))
+        );
+        assert_eq!(
+            save_filter("project.plbin"),
+            Some(("PLBIN file".to_owned(), "plbin".to_owned()))
+        );
+        assert_eq!(save_filter("no_extension"), None);
+    }
+
+    #[test]
+    fn failed_downloads_carry_the_backend_message() {
+        let body = br#"{"code":"invalid_input","message":"Excel cells hold at most 32,767 characters.","request_id":"x"}"#;
+        assert_eq!(
+            backend_error_message(body).as_deref(),
+            Some("Excel cells hold at most 32,767 characters.")
+        );
+        assert_eq!(backend_error_message(b"<html>502</html>"), None);
+        assert_eq!(backend_error_message(br#"{"message":"  "}"#), None);
+    }
 
     #[test]
     fn filename_and_url_boundaries_are_strict() {
