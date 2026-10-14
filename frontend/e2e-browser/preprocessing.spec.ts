@@ -9,6 +9,8 @@ import { role, text, label, testId, placeholder, press, screenshot } from './fix
 
 import type { FilterCondition } from '../src/features/tools/preprocessing/types';
 import * as projectApi from '@/features/project/api';
+import { compileEditor, initialEditorDraft } from '../src/features/project/data-editor/expressions';
+import { columnExamplesSql, corpusOverviewSql } from '../src/features/project/data-editor/columnStatistics';
 import { joinColumnMappings } from '../src/features/tools/preprocessing/join/columnMappings';
 import {
   applyTransformation,
@@ -46,6 +48,30 @@ const single = (select: string): Transformation => ({
 });
 const scalar = async (select: string) =>
   (await projectApi.querySql(base, [{ sql: select }])).get(0)?.toJSON() as Record<string, unknown>;
+
+it('Editor Map values, category order and statistics agree with native SQL on Tables and Views', async () => {
+  await projectApi.executeSql(base, [
+    { sql: "CREATE TABLE data.editor_values(value VARCHAR,number DOUBLE,flag BOOLEAN)" },
+    { sql: "INSERT INTO data.editor_values VALUES ('', 'NaN', NULL),(' ', 0, FALSE),('A', 1, TRUE),('B', 2, TRUE),(NULL,NULL,NULL)" },
+    { sql: "CREATE VIEW data.editor_values_view AS SELECT * FROM data.editor_values" },
+    { sql: "INSERT INTO wordflow.nodes(table_name) VALUES ('editor_values'),('editor_values_view')" },
+  ], { all: true });
+  for (const target of ['editor_values_view', 'editor_values']) {
+    const operation = compileEditor('map', { ...initialEditorDraft('value'), mappings: [{ key: '""', value: 'empty' }, { key: '"A"', value: null }, { key: null, value: '' }] }, ['value', 'number', 'flag']);
+    const preview = await projectApi.querySql(base, [{ sql: operation.select.replace('__wf_current', `data.${target}`) }]);
+    await projectApi.changeColumn(base, target, operation.change);
+    const applied = await projectApi.querySql(base, [{ sql: `SELECT * FROM data.${target}` }]);
+    expect(Array.from(applied, (row) => row['value mapped'])).toEqual(Array.from(preview, (row) => row['value mapped']));
+    expect(Array.from(applied, (row) => row['value mapped'])).toEqual(['empty', ' ', null, 'B', '']);
+    const categories = compileEditor('categories', { ...initialEditorDraft('value'), categoryOrder: ['B', ' ', '', 'A'] }, ['value', 'number', 'flag']);
+    await projectApi.changeColumn(base, target, categories.change);
+    expect(Array.from(await projectApi.querySql(base, [{ sql: `SELECT value FROM data.${target} ORDER BY value` }]), (row) => row.value)).toEqual(['B', ' ', '', 'A', null]);
+  }
+  const schema = await projectApi.nodeSchema(base, 'editor_values');
+  const examples = await scalar(columnExamplesSql('editor_values', schema));
+  expect(examples).toMatchObject({ value: 'A', number: '0.0', flag: 'false' });
+  expect(await scalar(corpusOverviewSql('editor_values', 'value', schema.length))).toMatchObject({ rows: 5n, empty_documents: 3n });
+});
 
 it('join metadata follows native merged keys and duplicate output names', async () => {
   await projectApi.executeSql(base, [

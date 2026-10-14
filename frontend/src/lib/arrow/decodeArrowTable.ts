@@ -66,6 +66,7 @@ export const arrowTypeDisplayName = (field: ArrowField): string => {
   const extensionName = arrowExtensionName(field);
   if (extensionName !== null) return extensionName;
   if (DataType.isDate(field.type)) return 'date';
+  if (DataType.isInterval(field.type)) return 'elapsed time';
   if (DataType.isDecimal(field.type))
     return `decimal (${String(field.type.precision)}, ${String(field.type.scale)})`;
   if (

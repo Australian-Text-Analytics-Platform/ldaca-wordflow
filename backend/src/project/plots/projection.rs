@@ -93,6 +93,13 @@ pub(super) fn validate(request: &PlotRequest, columns: &[(String, String)]) -> R
             }
             let kind = column_type(columns, &r.axis)?;
             match &r.interval {
+                Interval::Categories => {
+                    if !(kind.starts_with("ENUM(") || kind == "VARCHAR") {
+                        return Err(Error::invalid(
+                            "Category intervals require a category or text axis",
+                        ));
+                    }
+                }
                 Interval::Numeric { width, origin } => {
                     if !numeric(kind) {
                         return Err(Error::invalid("Numeric intervals require a numeric axis"));
@@ -244,6 +251,7 @@ fn trend_interval(
 ) -> Result<(String, String, String)> {
     let axis = field(&r.axis);
     match &r.interval {
+        Interval::Categories => Ok((axis, format!("CAST({bucket_ref} AS VARCHAR)"), "1".into())),
         Interval::Numeric { width, origin } => numeric_interval(
             &axis,
             width,
@@ -296,7 +304,11 @@ pub(super) fn row_projection(
             let (bucket, text, _) = trend_interval(conn, r, columns, table, "bucket")?;
             extra = format!(",{bucket} AS bucket");
             interval = text;
-            usable = format!("isfinite({})", field(&r.axis));
+            usable = if matches!(r.interval, Interval::Categories) {
+                format!("{} IS NOT NULL", field(&r.axis))
+            } else {
+                format!("isfinite({})", field(&r.axis))
+            };
             group = category(
                 columns,
                 &r.groups.iter().map(String::as_str).collect::<Vec<_>>(),
@@ -391,6 +403,17 @@ pub(super) fn chart_projection(
         "WITH rows AS ({rows}), groups AS (SELECT group_key,count(*) AS group_count FROM rows WHERE usable GROUP BY group_key HAVING count(*)>={}), eligible AS (SELECT rows.*,group_count FROM rows JOIN groups USING(group_key) WHERE usable)",
         query.minimum_rows
     );
+    let groups: u64 = conn.query_row(
+        &format!("{common} SELECT count(*) FROM groups"),
+        [],
+        |row| row.get(0),
+    )?;
+    if groups > 1000 {
+        return Err(Error::new(
+            "display_capacity_exceeded",
+            "This projection contains more than 1000 groups. Saved rows are complete. Choose fewer groups or increase minimum rows per group.",
+        ));
+    }
     let sql = match request {
         PlotRequest::Trends(r) => {
             let (_, text, step) = trend_interval(conn, r, columns, table, "grid.bucket")?;
@@ -399,6 +422,22 @@ pub(super) fn chart_projection(
             } else {
                 "NULL"
             };
+            if matches!(r.interval, Interval::Categories) {
+                let buckets: u64 = conn.query_row(
+                    &format!("{common} SELECT count(DISTINCT bucket) FROM rows WHERE usable"),
+                    [],
+                    |row| row.get(0),
+                )?;
+                if buckets.saturating_mul(groups) > 100_000 {
+                    return Err(Error::new(
+                        "display_capacity_exceeded",
+                        "This category grid exceeds 100000 plotted values. Saved rows are complete. Choose fewer groups or categories.",
+                    ));
+                }
+                return Ok(format!(
+                    "{common}, grid AS (SELECT DISTINCT bucket FROM rows WHERE usable), aggregated AS (SELECT bucket,group_key,{agg} AS value,count(*) AS row_count,count(measurement) AS contributing_count FROM eligible GROUP BY bucket,group_key) SELECT CAST(grid.bucket AS VARCHAR) AS interval_key,CAST(grid.bucket AS VARCHAR) AS axis_value,g.group_key,g.group_count,CASE WHEN a.row_count IS NULL THEN {empty} ELSE a.value END AS value,coalesce(a.row_count,0)::UBIGINT AS row_count,coalesce(a.contributing_count,0)::UBIGINT AS contributing_count FROM grid CROSS JOIN groups g LEFT JOIN aggregated a ON a.bucket=grid.bucket AND a.group_key=g.group_key ORDER BY grid.bucket,g.group_key"
+                ));
+            }
             let bounds = if matches!(r.interval, Interval::Numeric { .. }) {
                 "CAST(min(bucket) AS BIGINT) AS start,CAST(max(bucket) AS BIGINT) AS finish"
             } else {

@@ -181,10 +181,10 @@ impl Database {
                     })?;
                 for value in values.iter().flatten() {
                     groups.insert(value.to_owned());
-                    if groups.len() > 500 {
+                    if groups.len() > 1000 {
                         return Err(Error::new(
                             "display_capacity_exceeded",
-                            "This projection contains more than 500 series (the display budget). Saved rows are complete. Increase minimum rows per group, merge case variants, or choose fewer grouping columns.",
+                            "This projection contains more than 1000 groups (the display budget). Saved rows are complete. Increase minimum rows per group, merge case variants, or choose fewer grouping columns.",
                         ));
                     }
                 }

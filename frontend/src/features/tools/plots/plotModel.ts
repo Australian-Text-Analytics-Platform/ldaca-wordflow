@@ -207,9 +207,15 @@ export function buildPlot(
       totals.set(key, (totals.get(key) ?? 0) + (number(r, 'value') ?? 0));
     });
     const isTime = request.interval.type === 'time';
+    const isCategory = request.interval.type === 'categories';
+    const categories = [...new Set(rows.map((row) => text(row, 'axis_value')))];
     const axis = numericAxis(rows.map((r) => r.axis_value));
     const x = (r: PlotRow) =>
-      isTime ? timeCoordinate(text(r, 'axis_value')) : axis.coordinate(r.axis_value);
+      isTime
+        ? timeCoordinate(text(r, 'axis_value'))
+        : isCategory
+          ? categories.indexOf(text(r, 'axis_value'))
+          : axis.coordinate(r.axis_value);
     const value = (r: PlotRow) => {
       const v = number(r, 'value');
       const total = totals.get(text(r, 'interval_key')) ?? 0;
@@ -416,11 +422,25 @@ export function buildPlot(
             type: isTime ? 'time' : 'value',
             name:
               request.axis +
-              (isTime ? (display.timezone ? ` (${display.timezone})` : '') : axis.suffix),
+              (isTime
+                ? display.timezone
+                  ? ` (${display.timezone})`
+                  : ''
+                : isCategory
+                  ? ''
+                  : axis.suffix),
             nameLocation: 'middle',
             nameGap: 36,
             axisLabel: {
               hideOverlap: true,
+              ...(isCategory
+                ? {
+                    formatter: (value: number) =>
+                      Number.isInteger(value) && categories[value] !== undefined
+                        ? wrapPlotLabel(categoryLabel(JSON.stringify([categories[value]])), 100)
+                        : '',
+                  }
+                : {}),
               ...(isTime
                 ? {
                     formatter: (value: number) =>
@@ -451,6 +471,7 @@ export function buildPlot(
                   }
                 : {}),
             },
+            ...(isCategory ? { minInterval: 1 } : {}),
             scale: true,
           },
           { type: isTime ? 'time' : 'value', show: false, scale: true },

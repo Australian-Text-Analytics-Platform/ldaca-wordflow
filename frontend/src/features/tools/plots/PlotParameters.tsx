@@ -9,6 +9,7 @@ import type { ArrowField } from '@/lib/arrow/decodeArrowTable';
 import { useQuery } from '@tanstack/react-query';
 import { DataType } from 'apache-arrow';
 import { Plus, X } from 'lucide-react';
+import HelpIcon from '@/components/help/HelpIcon';
 import { NodeColumnSelector } from '../common/components/NodeColumnSelector';
 export function PlotParameters({
   base,
@@ -30,6 +31,7 @@ export function PlotParameters({
   const temporal = fields
     .filter((f) => DataType.isDate(f.type) || DataType.isTimestamp(f.type))
     .map((f) => f.name);
+  const categorical = fields.filter((f) => DataType.isDictionary(f.type)).map((f) => f.name);
   const aware =
     'axis' in r &&
     fields.some(
@@ -133,10 +135,12 @@ export function PlotParameters({
                 axis,
                 interval: temporal.includes(axis)
                   ? { type: 'time', unit: 'day', step: 1 }
-                  : { type: 'numeric', width: '1', origin: null },
+                  : categorical.includes(axis)
+                    ? { type: 'categories' }
+                    : { type: 'numeric', width: '1', origin: null },
               });
             },
-            [...numeric, ...temporal],
+            [...numeric, ...temporal, ...categorical],
           )}
           {r.interval.type === 'numeric' ? (
             <>
@@ -166,7 +170,7 @@ export function PlotParameters({
                 />
               </label>
             </>
-          ) : (
+          ) : r.interval.type === 'time' ? (
             <>
               <label>
                 Interval
@@ -227,6 +231,8 @@ export function PlotParameters({
                 </label>
               )}
             </>
+          ) : (
+            <p>Categories follow the column’s native order.</p>
           )}
           {measure}
           <section
@@ -237,6 +243,7 @@ export function PlotParameters({
               <div>
                 <h3 className="text-description font-medium">
                   Grouping <span className="text-label-secondary">({r.groups.length}/3)</span>
+                  <HelpIcon targetKey="analysis.plots.grouping" label="About grouping" />
                 </h3>
                 <p className="text-description text-label-secondary">
                   Split the measure into series. Leave empty for all rows.

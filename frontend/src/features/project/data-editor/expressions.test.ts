@@ -1,5 +1,23 @@
 import { expect, it } from 'vite-plus/test';
 import { combineExpression, compileEditor, initialEditorDraft } from './expressions';
+it('maps exact typed JSON keys, missing and empty outputs without changing unedited values', () => {
+  const draft = {
+    ...initialEditorDraft('value'),
+    mappings: [
+      { key: '""', value: '  ' },
+      { key: null, value: 'Missing label' },
+      { key: '9007199254740993', value: null },
+    ],
+  };
+  const operation = compileEditor('map', draft, ['value']);
+  expect(operation.select).toContain(`IS NOT DISTINCT FROM '""' THEN '  '`);
+  expect(operation.select).toContain("IS NOT DISTINCT FROM NULL THEN 'Missing label'");
+  expect(operation.select).toContain("IS NOT DISTINCT FROM '9007199254740993' THEN NULL");
+  expect(operation.select).toContain('ELSE CAST("value" AS VARCHAR) END');
+  expect(() => compileEditor('map', initialEditorDraft('value'), ['value'])).toThrow(
+    'Change at least one',
+  );
+});
 it('compiles escaped templates, explicit missing behaviour and constant columns without synthetic rows', () => {
   expect(combineExpression('{{{Body}}}: {id}', ['Body', 'id'], 'blank')).toBe(
     "'{' || coalesce(CAST(\"Body\" AS VARCHAR), '') || '}: ' || coalesce(CAST(\"id\" AS VARCHAR), '')",

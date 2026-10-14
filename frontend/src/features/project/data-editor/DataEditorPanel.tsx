@@ -9,6 +9,10 @@ import { useProjectPreview, type EditorSession } from '@/features/project/previe
 import { usePreprocessingPreview } from '@/features/tools/preprocessing/hooks/usePreprocessingPreview';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useRef, useState, type ReactNode } from 'react';
+import { ColumnValues } from './ColumnValues';
+import { columnExamplesSql, corpusOverviewSql } from './columnStatistics';
+import { objectDependencies } from '@/features/project/projectChanges';
+import { DataType } from 'apache-arrow';
 import {
   CLEAN_OPERATIONS,
   compileEditor,
@@ -55,7 +59,7 @@ function Choice({
   onChange,
   disabled,
 }: {
-  label: string;
+  label: ReactNode;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
@@ -92,6 +96,28 @@ export function DataEditorPanel({
   const [error, setError] = useState<unknown>();
   const submitted = useRef(false);
   const [delimiter, setDelimiter] = useState('');
+  const examples = useQuery({
+    queryKey: ['native', base, 'delete-column-examples', target, schema.data],
+    queryFn: async ({ signal }) =>
+      Array.from(
+        await querySql(base, [{ sql: columnExamplesSql(target, schema.data ?? []) }], signal),
+      )[0],
+    enabled: tool === 'delete' && Boolean(schema.data?.length),
+    meta: { ...objectDependencies(target), reportError: false },
+  });
+  const overview = useQuery({
+    queryKey: ['native', base, 'corpus-overview', target, draft.column, columns.length],
+    queryFn: async ({ signal }) =>
+      Array.from(
+        await querySql(
+          base,
+          [{ sql: corpusOverviewSql(target, draft.column, columns.length) }],
+          signal,
+        ),
+      )[0],
+    enabled: tool === 'overview' && columns.includes(draft.column),
+    meta: { ...objectDependencies(target), reportError: false },
+  });
   const suggested = suggestedEditorName(tool, draft, columns);
   let operation: ReturnType<typeof compileEditor> | undefined;
   let incomplete = '';
@@ -144,7 +170,7 @@ export function DataEditorPanel({
   const find =
     tool === 'replace' || tool === 'extract' || (tool === 'count' && draft.measure === 'matches');
   const newName =
-    !['delete', 'split'].includes(tool) &&
+    !['delete', 'split', 'categories', 'overview'].includes(tool) &&
     ((tool !== 'replace' && tool !== 'clean') || draft.newColumn);
   const addDelimiter = () => {
     if (delimiter && !draft.delimiters.includes(delimiter))
@@ -178,7 +204,14 @@ export function DataEditorPanel({
                 aria-label="Editor column"
                 className={selectStyle}
                 value={draft.column}
-                onChange={(event) => update({ column: event.target.value, output: '' })}
+                onChange={(event) =>
+                  update({
+                    column: event.target.value,
+                    output: '',
+                    mappings: [],
+                    categoryOrder: null,
+                  })
+                }
               >
                 <option value="">Choose a column</option>
                 {columns.map((column) => (
@@ -188,6 +221,50 @@ export function DataEditorPanel({
                 ))}
               </select>
             </Field>
+          )}
+          {(tool === 'map' || tool === 'categories') && (
+            <ColumnValues
+              key={draft.column}
+              base={base}
+              target={target}
+              draft={draft}
+              ordering={tool === 'categories'}
+              category={Boolean(
+                schema.data?.find(
+                  (column) =>
+                    column.name === draft.column && DataType.isDictionary(column.field.type),
+                ),
+              )}
+              onChange={update}
+            />
+          )}
+          {tool === 'overview' && overview.data && (
+            <dl className="grid grid-cols-2 gap-2">
+              {Object.entries(overview.data).map(([name, value]) => (
+                <div key={name}>
+                  <dt className="text-description">{name.replaceAll('_', ' ')}</dt>
+                  <dd>
+                    {value == null
+                      ? 'Missing'
+                      : typeof value === 'string' ||
+                          typeof value === 'number' ||
+                          typeof value === 'bigint' ||
+                          typeof value === 'boolean'
+                        ? String(value)
+                        : JSON.stringify(value)}
+                  </dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {tool === 'overview' && overview.error && (
+            <OperationError
+              title="Couldn't read Corpus overview"
+              error={overview.error}
+              onRetry={() => {
+                void overview.refetch();
+              }}
+            />
           )}
           {find && (
             <>
@@ -440,7 +517,16 @@ export function DataEditorPanel({
               {columns.map((column) => (
                 <Choice
                   key={column}
-                  label={column}
+                  label={
+                    <span className="min-w-0 break-words">
+                      {column}
+                      {examples.data?.[column] != null && (
+                        <span className="ml-2 text-description">
+                          {String(examples.data[column])}
+                        </span>
+                      )}
+                    </span>
+                  }
                   checked={draft.deleted.includes(column)}
                   onChange={(checked) =>
                     update({
@@ -453,7 +539,18 @@ export function DataEditorPanel({
               ))}
             </>
           )}
-          {incomplete && <p className="text-body text-description">{incomplete}</p>}
+          {incomplete && tool !== 'overview' && (
+            <p className="text-body text-description">{incomplete}</p>
+          )}
+          {tool === 'delete' && examples.error && (
+            <OperationError
+              title="Couldn't read column examples"
+              error={examples.error}
+              onRetry={() => {
+                void examples.refetch();
+              }}
+            />
+          )}
           {stat && !stats.outdated && (
             <p role="status" className="text-body">
               {String(stat.changed)} of {String(stat.total)} rows affected.
@@ -492,9 +589,11 @@ export function DataEditorPanel({
             />
           )}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={!operation || mutation.isPending}>
-              {mutation.isPending ? 'Applying…' : 'Apply'}
-            </Button>
+            {tool !== 'overview' && (
+              <Button type="submit" disabled={!operation || mutation.isPending}>
+                {mutation.isPending ? 'Applying…' : 'Apply'}
+              </Button>
+            )}
             <Button
               type="button"
               variant="outline"

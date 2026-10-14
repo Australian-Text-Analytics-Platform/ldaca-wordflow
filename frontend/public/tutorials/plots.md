@@ -16,7 +16,8 @@ There is no Preview. Run saves the submitted settings and replaces previous
 output; cancellation or failure retains the submitted settings without output.
 The progress card and Task Centre show the same task.
 
-- **Trends:** choose a date/time or numeric axis and up to three grouping columns.
+- **Trends:** choose a date/time, numeric or category axis and up to three grouping columns.
+  Category axes follow the native ENUM order, including empty and blank labels.
   Count rows is the default; Sum, Mean and Median use a numeric value column.
   Date intervals default to daily, with Monday weeks. Custom intervals use a
   positive number of seconds, minutes, hours, days or weeks. Numeric width defaults
@@ -53,12 +54,16 @@ rows but no usable numeric measurements is also a gap, including Sum.
 Unusable axes and measurements are reported; they are never silently imputed.
 NULL categories, empty strings and literal labels remain distinct.
 
+<h3 id="plots-grouping">Grouping</h3>
+
 **Uncased** merges string categories. Means and medians are recalculated from the
 saved rows. Trends' **Minimum rows per group** defaults to zero and applies to
 complete groups after merging. Legend buttons hide groups. Compare offers category
 or descending-total order and Horizontal/Vertical orientation. Long category names
 initially use horizontal bars. Category labels wrap instead of being skipped;
 large charts use local scrolling and category zoom to keep labels readable.
+Charts with more than 1,000 eligible groups show a display-capacity error while
+retaining their complete saved rows. Trends also retains its 100,000-value grid limit.
 
 Heatmap identifies the measure and both category columns. Blank cells have no
 usable measurement or no observations; zero remains a measured value. Selected

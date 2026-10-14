@@ -355,6 +355,11 @@ const tutorial = {
     anchor: 'plots-parameters',
     label: 'Plots parameters',
   },
+  'analysis.plots.grouping': {
+    file: 'tutorials/plots.md',
+    anchor: 'plots-grouping',
+    label: 'Grouping',
+  },
   'analysis.sequential-analysis.tab': {
     file: 'tutorials/sequential-analysis.md',
     anchor: 'help-sequential-section',

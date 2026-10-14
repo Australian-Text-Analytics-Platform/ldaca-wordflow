@@ -10,6 +10,9 @@ export const EDITOR_TOOLS = {
   clean: 'Clean',
   split: 'Split',
   count: 'Count',
+  map: 'Map values',
+  categories: 'Category order',
+  overview: 'Corpus overview',
   delete: 'Delete columns',
 } as const;
 export type EditorTool = keyof typeof EDITOR_TOOLS;
@@ -47,6 +50,8 @@ export interface EditorDraft {
   measure: 'words' | 'characters' | 'non_whitespace' | 'matches';
   deleted: string[];
   malformedOnly: boolean;
+  mappings: { key: string | null; value: string | null }[];
+  categoryOrder: string[] | null;
 }
 export function initialEditorDraft(column: string): EditorDraft {
   return {
@@ -71,6 +76,8 @@ export function initialEditorDraft(column: string): EditorDraft {
     measure: 'words',
     deleted: [],
     malformedOnly: false,
+    mappings: [],
+    categoryOrder: null,
   };
 }
 const fold = (value: string) => value.replace(/[A-Z]/g, (c) => c.toLowerCase());
@@ -98,6 +105,9 @@ export function suggestedEditorName(
             clean: 'cleaned',
             split: 'split',
             delete: '',
+            map: 'mapped',
+            categories: '',
+            overview: '',
           } as const
         )[tool];
   return uniqueColumnName(
@@ -151,6 +161,7 @@ export function compileEditor(
   columns: readonly string[],
   preserveTypes = false,
 ): EditorOperation {
+  if (tool === 'overview') throw new Error('Corpus overview reads the source without changing it.');
   if (tool === 'delete') {
     if (!draft.deleted.length) throw new Error('Choose columns to delete.');
     if (draft.deleted.length >= columns.length) throw new Error('Keep at least one column.');
@@ -165,6 +176,17 @@ export function compileEditor(
   }
   if (tool !== 'combine' && !columns.includes(draft.column)) throw new Error('Choose a column.');
   const source = identifier(draft.column);
+  if (tool === 'categories') {
+    if (!draft.categoryOrder) throw new Error('Loading category values.');
+    return {
+      change: { operation: 'order_categories', column: draft.column, values: draft.categoryOrder },
+      select: draft.categoryOrder.length
+        ? `SELECT * REPLACE (CAST(CAST(${source} AS VARCHAR) AS ENUM (${draft.categoryOrder.map(literal).join(', ')})) AS ${source}) FROM __wf_current`
+        : 'SELECT * FROM __wf_current',
+      outputs: [draft.column],
+      changed: 'FALSE',
+    };
+  }
   const text = `CAST(${source} AS VARCHAR)`;
   const matchArguments = `${text}, ${literal(draft.pattern)}, ${literal(draft.regex)}, ${literal(draft.whole)}, ${literal(draft.sensitive)}`;
   const matches = `wordflow_matches(${matchArguments})`;
@@ -190,7 +212,10 @@ export function compileEditor(
   } else if (tool === 'combine')
     expression = combineExpression(draft.template, columns, draft.missing);
   else if (tool === 'duplicate') expression = source;
-  else if (tool === 'count')
+  else if (tool === 'map') {
+    if (!draft.mappings.length) throw new Error('Change at least one value.');
+    expression = `CASE ${draft.mappings.map(({ key, value }) => `WHEN CAST(to_json(${source}) AS VARCHAR) IS NOT DISTINCT FROM ${key === null ? 'NULL' : literal(key)} THEN ${value === null ? 'NULL' : literal(value)}`).join(' ')} ELSE ${text} END`;
+  } else if (tool === 'count')
     expression = {
       words: `wordflow_word_count(${text})`,
       characters: `length(${text})`,

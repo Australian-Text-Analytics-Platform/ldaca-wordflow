@@ -90,7 +90,7 @@ export function plotExportContext(
   if ('axis' in request) {
     const interval = request.interval;
     context.push(
-      `Axis: ${request.axis} · Interval: ${interval.type === 'time' ? `${String(interval.step)} ${interval.unit}${interval.step === 1 ? '' : 's'}` : `${interval.width} (origin: ${interval.origin ?? 'automatic'})`}`,
+      `Axis: ${request.axis} · Interval: ${interval.type === 'categories' ? 'Native category order' : interval.type === 'time' ? `${String(interval.step)} ${interval.unit}${interval.step === 1 ? '' : 's'}` : `${interval.width} (origin: ${interval.origin ?? 'automatic'})`}`,
     );
     if (display.timezone) context.push(`Timezone: ${display.timezone}`);
     if (request.groups.length) context.push(`Groups: ${request.groups.join(', ')}`);

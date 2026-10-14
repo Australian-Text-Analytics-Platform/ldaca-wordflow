@@ -174,10 +174,21 @@ Stack always creates a new View; its referenced inputs appear as SQL dependencie
 <h2 id="help-preprocessing-find-replace">Data Editor</h2>
 
 Open a Data Block's Data View and choose **Find/Replace**, **Extract**, **Combine**,
-**Duplicate**, **Clean**, **Split**, **Count** or **Delete columns** from its Editor
+**Duplicate**, **Clean**, **Split**, **Count**, **Map values**, **Category order**,
+**Corpus overview** or **Delete columns** from its Editor
 strip. The form occupies the graph area. Collapse Data View when more form space
 is useful. Preview reveals affected columns once without moving keyboard focus.
 Counts describe the complete current input; previews remain paged.
+
+Map values creates a new text column. Search or page through the values, enter
+only the changes you need, and use **Set missing** for a missing output or
+**Reset** to keep a value unchanged. Missing, empty text and blank text are
+distinct. Category order uses the column's native category order; move values
+with drag or the arrow buttons, or use A–Z, Z–A and Reverse. Apply validates the
+complete value set together. Corpus overview reads row/column totals, empty and
+duplicate documents, character totals and document lengths only when opened.
+Delete columns shows a bounded first displayable value beside each column;
+failure to read examples does not prevent deletion.
 
 Find/Replace and Extract use literal matching by default. Enable **Regex** for
 patterns and `$1`, `$2` capture replacements. Outside Regex, `$1` is literal text.

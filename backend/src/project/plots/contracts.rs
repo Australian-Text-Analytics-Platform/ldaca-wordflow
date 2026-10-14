@@ -58,6 +58,7 @@ impl TimeUnit {
 #[derive(Clone, Debug, Deserialize, Serialize, utoipa::ToSchema)]
 #[serde(tag = "type", rename_all = "snake_case", deny_unknown_fields)]
 pub(crate) enum Interval {
+    Categories,
     Numeric {
         width: String,
         origin: Option<String>,

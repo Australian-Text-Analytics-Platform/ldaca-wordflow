@@ -104,6 +104,14 @@ so one Undo removes the complete edit. Tables show a permanent-change warning an
 have no SQL-layer Undo. A failed Apply retains the form and draft; a successful Apply
 closes the form while leaving the Data View open.
 
+Map values creates a text column using exact typed value comparisons. Unedited
+values retain their text representation; an explicit missing output is distinct
+from an empty or blank output. Category order creates a native ENUM with the
+reviewed exact labels and validates the complete current value set atomically.
+Search and paging do not impose an application category-count limit. Native SQL
+ordering remains authoritative. Corpus overview and bounded Delete-column examples
+are explicit read-only SQL scans, never background graph/View row-count scans.
+
 Group and Deduplicate create multiple live Views in one native transaction. Group
 counts, previews and created Views use the same grouping expression, with at most
 50 outputs and one merged empty category. Deduplicate retains first occurrences

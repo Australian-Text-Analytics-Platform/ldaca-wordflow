@@ -454,3 +454,28 @@ Observed reconciliation checks:
 No production build/promotion workflow or public release mutation is part of
 this reconciliation. The existing Windows native, physical OS picker/menu and
 signed production-runtime acceptance gates remain open.
+
+## v0.7.12–v0.7.13 batch 1: native SQL editing and categories
+
+Added SQL Map values, native ENUM ordering, on-demand Corpus overview and bounded
+Delete-column examples. Categorical Trends retains native order; rendering above
+1000 groups returns an ordinary capacity error while preserving saved rows.
+Native INTERVAL uses the elapsed time display label.
+
+Observed checks:
+
+- Backend full suite: 223 library tests, 58 integration tests and two CLI tests
+  passed; 14 optional library tests and one subprocess helper remain ignored.
+  Subsequent category regressions also pass, including unused ENUM labels.
+- Frontend: all 808 unit tests and 17 script tests passed. Build, lint, Knip,
+  generated API checks, bundled docs and Markdown links passed.
+- Chromium: ten existing preprocessing journeys passed. After correcting a test
+  fixture to submit one statement per SQL batch entry, the new native HTTP case
+  passes Map Preview/Apply equality for Tables/Views, exact empty/missing values,
+  category order and SQL overview/examples.
+- Strict backend Clippy passes. Existing vendored UDPipe/compiler-linker warnings
+  remain. CLI feasibility checks are not substituted for bundled-engine acceptance.
+
+Live Colour by ordering, final WebKit/Windows UI acceptance and the previously
+open physical native-control/signed-runtime gates remain outstanding. This is not
+a completion record for the six-batch extension.

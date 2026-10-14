@@ -1,5 +1,49 @@
 use super::*;
 use serde_json::json;
+#[test]
+fn category_trends_follow_native_enum_order_and_include_empty_categories() {
+    let (p, id) = setup(
+        PlotMode::Trends,
+        json!({"source":{"name":"corpus"},"axis":"category","groups":[],"measure":"count","value":null,"interval":{"type":"categories"},"timezone":"UTC"}),
+        "CREATE TYPE wordflow.category AS ENUM ('B','','A'); CREATE TABLE data.corpus(category wordflow.category); INSERT INTO data.corpus VALUES ('A'),('B'),(''),('B'),(NULL)",
+    );
+    let projected = rows(&p, id, PlotMode::Trends, PlotQuery::default());
+    assert_eq!(
+        projected.iter().map(|r| r[0].as_str()).collect::<Vec<_>>(),
+        vec!["B", "", "A"]
+    );
+    assert_eq!(projected[0][4], "2");
+}
+
+#[test]
+fn group_rendering_guard_keeps_complete_saved_rows() {
+    let (p, id) = setup(
+        PlotMode::Trends,
+        json!({"source":{"name":"corpus"},"axis":"axis","groups":["grouping"],"measure":"count","value":null,"interval":{"type":"numeric","width":"1","origin":null},"timezone":"UTC"}),
+        "CREATE TABLE data.corpus AS SELECT 1 AS axis,i::VARCHAR AS grouping FROM range(1001) t(i)",
+    );
+    let (request, result, relation) = saved(&p.database.conn, id, PlotMode::Trends).unwrap();
+    let error = chart_projection(
+        &p.database.conn,
+        &request,
+        &result.columns,
+        &relation.sql(),
+        &PlotQuery::default(),
+    )
+    .unwrap_err();
+    assert_eq!(error.code, "display_capacity_exceeded");
+    assert!(error.message.contains("1000 groups"));
+    let count: u64 = p
+        .database
+        .conn
+        .query_row(
+            &format!("SELECT count(*) FROM {}", relation.sql()),
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert_eq!(count, 1001);
+}
 fn setup(mode: PlotMode, request: Value, sql: &str) -> (Project, Uuid) {
     let mut p = Project::untitled().unwrap();
     p.database.conn.execute_batch(sql).unwrap();

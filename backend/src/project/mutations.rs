@@ -30,6 +30,10 @@ pub(crate) enum ColumnChange {
     DeleteMany {
         columns: Vec<String>,
     },
+    OrderCategories {
+        column: String,
+        values: Vec<String>,
+    },
 }
 #[derive(Deserialize, utoipa::ToSchema)]
 #[serde(deny_unknown_fields)]
@@ -109,7 +113,8 @@ impl Database {
             ColumnChange::Cast {
                 target: CastType::Shortcut(CastShortcut::Categorical),
                 ..
-            } => scope.resources.push(Resource::SqlTypes),
+            }
+            | ColumnChange::OrderCategories { .. } => scope.resources.push(Resource::SqlTypes),
             _ => {}
         }
         if let Some(rename) = scope.renames.first() {
@@ -119,6 +124,75 @@ impl Database {
         let pending = PendingChange::new(&tx, scope, &self.cancellation);
         let previous = query::view_query(&tx, relation)?;
         let fields = columns(&tx, relation)?;
+        if let ColumnChange::OrderCategories { column, values } = &change {
+            let column = column_name(&tx, relation, column)?;
+            let unique = values.iter().collect::<std::collections::HashSet<_>>();
+            if unique.len() != values.len() {
+                return Err(Error::invalid("Each category must appear exactly once"));
+            }
+            let categorical = fields
+                .iter()
+                .any(|(name, kind)| name == &column && kind.starts_with("ENUM("));
+            let current_sql = if categorical {
+                format!(
+                    "SELECT unnest(enum_range(first({}))) FROM {}",
+                    query::quote(&column),
+                    relation.sql()
+                )
+            } else {
+                format!(
+                    "SELECT DISTINCT CAST({} AS VARCHAR) FROM {} WHERE {} IS NOT NULL",
+                    query::quote(&column),
+                    relation.sql(),
+                    query::quote(&column)
+                )
+            };
+            let current = tx
+                .prepare(&current_sql)?
+                .query_map([], |row| row.get::<_, String>(0))?
+                .collect::<duckdb::Result<std::collections::HashSet<_>>>()?;
+            if current.len() != unique.len() || current.iter().any(|value| !unique.contains(value))
+            {
+                return Err(Error::invalid(
+                    "Category values changed. Refresh and review their order.",
+                ));
+            }
+            let sql_type = format!(
+                "wordflow.{}",
+                query::quote(&format!("enum_{}", Uuid::new_v4().simple()))
+            );
+            let definition = if values.is_empty() {
+                "SELECT NULL::VARCHAR WHERE FALSE".into()
+            } else {
+                format!(
+                    "SELECT value FROM (VALUES {}) AS categories(value)",
+                    values
+                        .iter()
+                        .map(|value| format!("({})", query::literal(value)))
+                        .collect::<Vec<_>>()
+                        .join(",")
+                )
+            };
+            tx.execute_batch(&format!("CREATE TYPE {sql_type} AS ENUM ({definition})"))?;
+            let q = query::quote(&column);
+            let expression = format!("CAST(CAST({q} AS VARCHAR) AS {sql_type})");
+            if let Some(previous) = previous.as_deref() {
+                edit_view(
+                    &tx,
+                    relation,
+                    previous,
+                    &format!("SELECT * REPLACE ({expression} AS {q}) FROM __wf_current"),
+                )?;
+            } else {
+                tx.execute_batch(&format!(
+                    "ALTER TABLE {} ALTER COLUMN {q} TYPE {sql_type} USING {expression}",
+                    relation.sql()
+                ))?;
+            }
+            metadata::transformed_column(&tx, &object, &column, true)?;
+            pending.commit(tx, &self.changes, &self.cancellation)?;
+            return Ok(change_id);
+        }
         if matches!(
             &change,
             ColumnChange::TransformMany { .. } | ColumnChange::DeleteMany { .. }
@@ -142,7 +216,9 @@ impl Database {
             | ColumnChange::Rename { column, .. }
             | ColumnChange::Delete { column }
             | ColumnChange::Transform { column, .. } => column,
-            ColumnChange::TransformMany { .. } | ColumnChange::DeleteMany { .. } => unreachable!(),
+            ColumnChange::TransformMany { .. }
+            | ColumnChange::DeleteMany { .. }
+            | ColumnChange::OrderCategories { .. } => unreachable!(),
         };
         let requested = if matches!(change, ColumnChange::Add { .. }) {
             requested.trim()
@@ -374,7 +450,9 @@ impl Database {
                 }
                 metadata::transformed_column(&tx, &object, &column, true)?;
             }
-            ColumnChange::TransformMany { .. } | ColumnChange::DeleteMany { .. } => unreachable!(),
+            ColumnChange::TransformMany { .. }
+            | ColumnChange::DeleteMany { .. }
+            | ColumnChange::OrderCategories { .. } => unreachable!(),
         }
         pending.commit(tx, &self.changes, &self.cancellation)?;
         Ok(change_id)
@@ -590,6 +668,80 @@ fn transform_columns(
 #[cfg(test)]
 mod mutation_tests {
     use super::*;
+
+    #[test]
+    fn category_order_preserves_exact_labels_and_rejects_stale_values_atomically() {
+        let mut p = Project::untitled().unwrap();
+        p.database.conn.execute_batch("CREATE TABLE data.categories(value VARCHAR); INSERT INTO data.categories VALUES ('B'),(''),(' '),('A'),(NULL); INSERT INTO wordflow.nodes(table_name) VALUES ('categories'); CREATE VIEW data.category_view AS SELECT * FROM data.categories; INSERT INTO wordflow.nodes(table_name) VALUES ('category_view')").unwrap();
+        for target in ["category_view", "categories"] {
+            p.database
+                .change_column(
+                    target.into(),
+                    ColumnChange::OrderCategories {
+                        column: "value".into(),
+                        values: vec!["B".into(), " ".into(), "".into(), "A".into()],
+                    },
+                )
+                .unwrap();
+            let values = p
+                .database
+                .conn
+                .prepare(&format!("SELECT value FROM data.{target} ORDER BY value"))
+                .unwrap()
+                .query_map([], |r| r.get::<_, Option<String>>(0))
+                .unwrap()
+                .collect::<duckdb::Result<Vec<_>>>()
+                .unwrap();
+            assert_eq!(
+                values,
+                vec![
+                    Some("B".into()),
+                    Some(" ".into()),
+                    Some("".into()),
+                    Some("A".into()),
+                    None
+                ]
+            );
+            assert!(
+                p.database
+                    .change_column(
+                        target.into(),
+                        ColumnChange::OrderCategories {
+                            column: "value".into(),
+                            values: vec!["A".into()]
+                        }
+                    )
+                    .unwrap_err()
+                    .message
+                    .contains("changed")
+            );
+        }
+    }
+
+    #[test]
+    fn category_order_retains_unused_enum_labels() {
+        let mut p = Project::untitled().unwrap();
+        p.database.conn.execute_batch("CREATE TYPE wordflow.categories AS ENUM ('used','unused'); CREATE TABLE data.categories(value wordflow.categories); INSERT INTO data.categories VALUES ('used'); INSERT INTO wordflow.nodes(table_name) VALUES ('categories')").unwrap();
+        p.database
+            .change_column(
+                "categories".into(),
+                ColumnChange::OrderCategories {
+                    column: "value".into(),
+                    values: vec!["unused".into(), "used".into()],
+                },
+            )
+            .unwrap();
+        let labels: String = p
+            .database
+            .conn
+            .query_row(
+                "SELECT array_to_string(enum_range(first(value)),',') FROM data.categories",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(labels, "unused,used");
+    }
 
     fn expression(column: &str, sql: &str, replace: bool) -> ColumnExpression {
         ColumnExpression {

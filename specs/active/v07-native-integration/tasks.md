@@ -15,3 +15,14 @@
 - [ ] Archive the integration spec after the outstanding platform acceptance gates pass.
 
 No push or release publication is authorized by this implementation task.
+
+## v0.7.12–v0.7.13 extension
+
+- [x] Register all 80 decisions and audit all 204 commits.
+- [x] Batch 1: native SQL editing, categories and statistics (live Colour by ordering belongs to batch 2).
+- [ ] Batch 2: live result storage, publication ownership and direct downloads.
+- [ ] Batch 3: Topics fitting, adjustments and presentation.
+- [ ] Batch 4: incremental Annotation and Quotation.
+- [ ] Batch 5: LDaCA, caches and shared UI.
+- [ ] Batch 6: native Help, updater and documentation.
+- [ ] Required checks and native acceptance; retain existing outstanding platform gates.

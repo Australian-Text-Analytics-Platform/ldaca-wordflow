@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { expect, it } from 'vite-plus/test';
 import { decodeAnalysisRequest } from '../common/analysisRequest';
 import { PlotParameters } from './PlotParameters';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 function Harness() {
   const [draft, setDraft] = useState<PlotRequest>({
@@ -30,7 +31,9 @@ it('removes any grouping row, preserves the other choices and permits adding aga
   const user = userEvent.setup();
   render(
     <QueryClientProvider client={new QueryClient()}>
-      <Harness />
+      <TooltipProvider>
+        <Harness />
+      </TooltipProvider>
     </QueryClientProvider>,
   );
   expect(screen.getByRole('button', { name: 'Add group' })).toBeDisabled();

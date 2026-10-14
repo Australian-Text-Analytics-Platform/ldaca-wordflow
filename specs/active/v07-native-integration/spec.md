@@ -68,3 +68,40 @@ explicit manual acceptance record in the register. Run affected package checks,
 generated API checks and Markdown links. Exercise Chromium/WebKit and native
 macOS/Windows for platform behavior; report unavailable lanes honestly. Use
 isolated test-owned projects and storage. Archive only after acceptance.
+
+## Approved v0.7.12–v0.7.13 extension
+
+Review V07-233–312 covers all 204 commits from `3cd4deda4` through `e8c247959`,
+including the late v0.7.11 gap, against native main `4ad0c6d925`.
+The extended decision register and [commit audit](v0713-commit-audit.md) record
+adoption, existing behaviour, deliberate departures, deferred work and reproduction gates.
+
+New Topics, Concordance and Quotation results process distinct exact texts per
+input and retain generated outputs plus completed-text records, including empty
+outputs. Live source rows join by exact text, retain duplicate source rows and
+exclude unprocessed/removed texts. Source positions are query-time ordering keys,
+never join identities or stored processing-order fields. Presentation excludes
+empty matches; publication includes completed empty outcomes. Current matching
+source rows own metadata and population summaries. Preview uses its temporary
+sample, not all source duplicates. Historical analyses retain their format until Rerun.
+
+Publication copies fixed outputs into independently Data Block-owned hidden
+relations and creates live Views. Upgrade native ownership metadata atomically
+on first new publication, never on opening. Missing sources yield ordinary SQL
+errors; retain references so compatible same-name restoration can resolve again.
+No source-metadata snapshots, automatic detach or legacy project migration.
+
+Topics retain native HDBSCAN with internal minimum 10, a hard optional maximum
+segment size and a target count through constrained retained-hierarchy merges.
+No automatic retries. Automatic packs neighbouring whole paragraphs; oversized
+units use the existing native splitter. True outliers appear in a separate grey
+footer; shared search/lasso predicates retain faded selected cards.
+
+Annotation commits completed distinct-text batches directly to protected source
+Tables. Quotation uses parallel native workers and durable private batches with
+checked-text records; Stop preserves progress and Resume is explicit. Preserve
+fresh AI Preview, fatal timeouts, manual drafts and one task per Run.
+
+Recurring Suggestions, Topic examples/typicality, persistent Topic names,
+approximate Run, expanded conversions, custom elapsed-time parsing and structured
+progress/ETA remain excluded. Existing platform acceptance gates remain open.

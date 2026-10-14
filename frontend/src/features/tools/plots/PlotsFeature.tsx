@@ -10,6 +10,7 @@ import * as tasksApi from '@/features/project/tasksApi';
 import * as analysesApi from '@/features/tools/common/analysisApi';
 import * as plotsApi from '@/features/tools/plots/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { Tabs } from '../common/Tabs';
 import { analysisDraftKey } from '../common/analysisDraftStore';
 import { matchesAnalysisRequest, useRequestRestoration } from '../common/analysisRequest';
@@ -114,6 +115,13 @@ function PlotTab({
     ...schemaQuery(base, draft.source),
     enabled: active && Boolean(draft.source.name),
   });
+  useEffect(() => {
+    if (!schema.data || schema.isFetching || !('groups' in draft)) return;
+    const fields = new Set(schema.data.map((column) => column.name));
+    const groups = draft.groups.filter((name) => !name || fields.has(name));
+    if (groups.length !== draft.groups.length)
+      usePlotState.getState().setDraft(base, tab.id, { ...draft, groups });
+  }, [schema.data, schema.isFetching, draft, base, tab.id]);
   const picker = useNodeInputs({
     value: draft.source.name ? [{ node_id: draft.source.name }] : [],
     onChange: (next) => {

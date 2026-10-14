@@ -2235,6 +2235,12 @@ export interface components {
           columns: string[];
           /** @enum {string} */
           operation: 'delete_many';
+        }
+      | {
+          column: string;
+          /** @enum {string} */
+          operation: 'order_categories';
+          values: string[];
         };
     ColumnExpression: {
       column: string;
@@ -2751,6 +2757,10 @@ export interface components {
       temperature_with_reasoning: boolean;
     };
     Interval:
+      | {
+          /** @enum {string} */
+          type: 'categories';
+        }
       | {
           origin?: string | null;
           /** @enum {string} */
