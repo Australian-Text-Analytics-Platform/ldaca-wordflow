@@ -72,3 +72,33 @@ def test_excel_writes_zoned_datetimes_as_utc() -> None:
     assert workbook["created_at"].to_list() == [dt.datetime(2020, 10, 16, 15, 0)]
     # 02:00 in Brisbane (UTC+10) is 16:00 the previous day in UTC.
     assert workbook["local"].to_list() == [dt.datetime(2020, 10, 16, 16, 0)]
+
+
+def test_zip_entries_are_dated_when_downloaded(tmp_path) -> None:
+    """Not 1 January 1980, ZipInfo's default for a bare name (issue 394)."""
+
+    import struct
+    import time
+    import zipfile
+
+    from ldaca_wordflow.models.node_resources import DataBlockExportFormat
+
+    frames = (
+        ("first", "a", pl.LazyFrame({"text": ["one"]})),
+        ("second", "b", pl.LazyFrame({"text": ["two"]})),
+    )
+    target = tmp_path / "export.zip"
+    before = int(time.time())
+    data_block_exports._write_export(frames, DataBlockExportFormat.CSV, target, 1_000_000)
+    after = int(time.time())
+
+    with zipfile.ZipFile(target) as archive:
+        members = archive.infolist()
+        assert len(members) == 2
+        for member in members:
+            assert member.date_time[:3] == time.localtime(before)[:3]
+            assert member.compress_type == zipfile.ZIP_DEFLATED
+            tag, size, flags, stamp = struct.unpack("<HHBl", member.extra[:9])
+            assert (tag, size, flags) == (0x5455, 5, 1)
+            assert before <= stamp <= after
+        assert archive.read(members[0]).decode("utf-8-sig").splitlines() == ["text", "one"]

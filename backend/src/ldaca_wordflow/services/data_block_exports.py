@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import io
 import os
+import struct
+import time
 import uuid
 import zipfile
 from dataclasses import dataclass
@@ -251,12 +253,15 @@ def _write_export(
                     compression=zipfile.ZIP_DEFLATED,
                     compresslevel=6,
                 ) as archive:
+                    now = time.time()
                     for (_name, _fallback, frame), archive_name in zip(
                         frames,
                         _archive_names(frames, spec.extension),
                         strict=True,
                     ):
-                        with archive.open(archive_name, mode="w") as member:
+                        with archive.open(
+                            _archive_member(archive_name, now), mode="w"
+                        ) as member:
                             writer = _BudgetedBinaryWriter(member, budget)
                             _write_lazyframe(
                                 frame, export_format, writer, columns_chosen=columns_chosen
@@ -266,6 +271,23 @@ def _write_export(
     except BaseException:
         target.unlink(missing_ok=True)
         raise
+
+
+def _archive_member(name: str, now: float) -> zipfile.ZipInfo:
+    """A ZIP entry dated now, not 1 January 1980 (issue 394).
+
+    A bare name gives the entry ZipInfo's default date, the earliest a ZIP
+    can hold. The standard date has no time zone, so it holds the server's
+    local time; the extended-timestamp field (0x5455) holds the exact UTC
+    time, which unzip tools that read it show in the reader's time zone.
+    """
+
+    member = zipfile.ZipInfo(name, date_time=time.localtime(now)[:6])
+    member.compress_type = zipfile.ZIP_DEFLATED
+    member.compress_level = 6
+    member.external_attr = 0o644 << 16
+    member.extra = struct.pack("<HHBl", 0x5455, 5, 1, int(now))
+    return member
 
 
 def _write_lazyframe(
