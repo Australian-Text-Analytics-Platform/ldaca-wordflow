@@ -69,7 +69,10 @@ def main(argv: list[str] | None = None) -> None:
 
     from ._logging import setup_logging
     from .infrastructure.process_watchdog import start_parent_watchdog
+    from .infrastructure.system_certificates import use_system_certificates
     from .settings import load_settings
+
+    use_system_certificates()
 
     cli_settings = (
         load_settings(multi_user=True) if args.multi_user else load_settings()

@@ -361,7 +361,9 @@ def _start_quotation_process(parent_pid: int) -> None:
     """
 
     from ..infrastructure.process_watchdog import watch_parent
+    from ..infrastructure.system_certificates import use_system_certificates
 
+    use_system_certificates()
     watch_parent(parent_pid, interval_seconds=1.0, failure_threshold=2)
     _get_extractor()
 

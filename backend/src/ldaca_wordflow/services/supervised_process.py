@@ -18,6 +18,7 @@ import anyio
 from anyio.to_thread import run_sync as run_sync_in_worker_thread
 
 from ..infrastructure.storage.safe_paths import logical_tree_usage
+from ..infrastructure.system_certificates import use_system_certificates
 from ..shared.errors import AppError
 
 # The operating-system cap on any one file an analysis process writes. It is a
@@ -103,6 +104,8 @@ def _run_process(
     """Run one picklable worker and return one validated outer envelope."""
 
     try:
+        # A spawned worker starts a fresh interpreter (issue 391).
+        use_system_certificates()
         if os.name != "nt":
             try:
                 import resource
