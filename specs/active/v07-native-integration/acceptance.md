@@ -527,3 +527,8 @@ Observed checks:
 
 Focused batch acceptance is complete. Final WebKit/native release acceptance, the remaining
 batches and carried-forward native/platform gates remain open.
+
+Historical download follow-up: version-1 Concordance and Quotation downloads
+resolve the original text binding from their saved manifest after source renames.
+The bundled-engine regression checks original text plus offsets across every
+page and confirms that the historical result stays at version 1.

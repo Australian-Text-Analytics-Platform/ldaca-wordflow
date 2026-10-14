@@ -80,24 +80,42 @@ impl Database {
             ResultSelection::Concordance { query } => {
                 let inputs: concordance::ConcordanceRequest =
                     serde_json::from_value(analysis.request)?;
-                let input = inputs
+                let mut input = inputs
                     .inputs
                     .get(query.source_index)
-                    .ok_or_else(|| Error::invalid("Unknown Concordance source"))?;
+                    .ok_or_else(|| Error::invalid("Unknown Concordance source"))?
+                    .clone();
+                if let Some(result) = analysis.result.filter(|result| result.version == 1) {
+                    let retained: concordance::ConcordanceResultV1 =
+                        serde_json::from_value(result.payload)?;
+                    input = retained
+                        .corpora
+                        .get(query.source_index)
+                        .ok_or_else(|| Error::invalid("Unknown Concordance source"))?
+                        .input
+                        .clone();
+                }
                 (
                     self.concordance_rows(id, query, true)?.file,
                     ResultColumn {
-                        column: input.column.clone(),
+                        column: input.column,
                         metadata: true,
                     },
                 )
             }
             ResultSelection::Quotation { query } => {
                 let inputs: quotation::QuotationRequest = serde_json::from_value(analysis.request)?;
+                let input = if let Some(result) =
+                    analysis.result.filter(|result| result.version == 1)
+                {
+                    serde_json::from_value::<quotation::QuotationResultV1>(result.payload)?.input
+                } else {
+                    inputs.input
+                };
                 (
                     self.quotation_rows(id, query, true)?.file,
                     ResultColumn {
-                        column: inputs.input.column,
+                        column: input.column,
                         metadata: true,
                     },
                 )

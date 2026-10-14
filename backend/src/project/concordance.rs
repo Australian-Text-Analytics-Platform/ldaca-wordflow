@@ -477,6 +477,80 @@ mod tests {
     }
 
     #[test]
+    fn historical_downloads_keep_original_text_bindings_after_a_source_column_rename() {
+        use super::super::result_downloads::{ResultColumn, ResultDownload, ResultSelection};
+        let (mut project, tab, input, search) = setup();
+        let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
+        let result = project
+            .database
+            .historical_concordance_v1(
+                tab,
+                ConcordanceRequest {
+                    inputs: vec![input],
+                    search,
+                },
+                vec![matcher],
+                |_| {},
+            )
+            .unwrap();
+        project
+            .database
+            .change_column(
+                "docs".into(),
+                ColumnChange::Rename {
+                    column: "text".into(),
+                    name: "renamed".into(),
+                },
+            )
+            .unwrap();
+        let file = project
+            .database
+            .download_result(
+                result.id,
+                ResultDownload {
+                    selection: ResultSelection::Concordance {
+                        query: ConcordanceQuery {
+                            source_index: 0,
+                            projection: Projection::Matches,
+                            page: 1,
+                            page_size: 1,
+                            sort: None,
+                            filter: Default::default(),
+                        },
+                    },
+                    format: ExportFormat::Json,
+                    columns: vec![
+                        ResultColumn {
+                            column: "text".into(),
+                            metadata: true,
+                        },
+                        ResultColumn {
+                            column: "start_idx".into(),
+                            metadata: false,
+                        },
+                    ],
+                },
+            )
+            .unwrap();
+        let rows: Vec<Value> = serde_json::from_reader(file.reopen().unwrap()).unwrap();
+        assert_eq!(rows.len(), 4);
+        assert!(
+            rows.iter()
+                .all(|row| row["text"] == "😀 cat cat" && row["start_idx"].is_number())
+        );
+        assert_eq!(
+            project
+                .database
+                .analysis(result.id)
+                .unwrap()
+                .result
+                .unwrap()
+                .version,
+            1
+        );
+    }
+
+    #[test]
     fn live_results_deduplicate_text_keep_empty_publications_and_survive_tab_cleanup() {
         let (mut p, tab, input, search) = setup();
         let matcher = DocumentMatcher::prepare(&search, &input).unwrap();
