@@ -9,6 +9,14 @@ export const LANDING_PAGE_URL =
 const NOTICE_KEY = 'wordflow.updateNotice';
 /** The same version is mentioned again after a day. */
 const REMIND_AFTER_MS = 24 * 60 * 60 * 1000;
+/** A page left open asks again once a day has passed (issue 392). */
+const RECHECK_AFTER_MS = 24 * 60 * 60 * 1000;
+/** How often an open page looks at the clock; wall-clock time, so sleep is caught up. */
+export const RECHECK_POLL_MS = 60 * 60 * 1000;
+
+/** Whether a page left open should ask for a newer version again. */
+export const recheckIsDue = (lastCheckedAt: number, now = Date.now()): boolean =>
+  now - lastCheckedAt >= RECHECK_AFTER_MS;
 
 export interface UpdateNoticeText {
   title: string;

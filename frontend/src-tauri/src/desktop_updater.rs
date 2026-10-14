@@ -13,6 +13,11 @@ use tauri_plugin_store::StoreExt;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 const CHECK_TIMEOUT: Duration = Duration::from_secs(15);
+/// An app left open checks again once a day has passed since the last check
+/// (issue 392). It wakes hourly and compares wall-clock times, so a computer
+/// that slept through the day checks soon after it wakes.
+const DAILY_CHECK_INTERVAL: Duration = Duration::from_secs(24 * 60 * 60);
+const DAILY_CHECK_POLL: Duration = Duration::from_secs(60 * 60);
 const SETTINGS_STORE: &str = "updater-settings.json";
 const AUTOMATIC_CHECKS_KEY: &str = "automaticChecks";
 const LAST_CHECK_AT_KEY: &str = "lastCheckAt";
@@ -422,6 +427,14 @@ fn automatic_check_is_due(preferences: &StoredPreferences) -> bool {
     preferences.automatic_checks
 }
 
+/// A running app's automatic check is due again a day after the last check.
+fn daily_check_is_due(preferences: &StoredPreferences, now: u64) -> bool {
+    preferences.automatic_checks
+        && preferences
+            .last_check_at
+            .is_none_or(|last| now.saturating_sub(last) >= DAILY_CHECK_INTERVAL.as_secs())
+}
+
 fn should_present_update(manual: bool, skipped_version: Option<&str>, version: &str) -> bool {
     manual || skipped_version != Some(version)
 }
@@ -482,63 +495,88 @@ pub(crate) fn show_manual_check(app: AppHandle) {
 }
 
 pub(crate) fn schedule_automatic_check(app: AppHandle) {
+    tauri::async_runtime::spawn(async move { run_automatic_check(&app).await });
+}
+
+/// Keep checking daily while the app stays open (issue 392). An update
+/// already on offer or underway is left alone; after Decide later, the next
+/// day's check offers it again. A skipped version stays skipped.
+pub(crate) fn start_daily_checks(app: AppHandle) {
     tauri::async_runtime::spawn(async move {
-        let now = match now_epoch_seconds() {
-            Ok(now) => now,
-            Err(error) => {
-                eprintln!("Could not determine the updater check time: {error}");
-                return;
+        loop {
+            tokio::time::sleep(DAILY_CHECK_POLL).await;
+            let Ok(now) = now_epoch_seconds() else {
+                continue;
+            };
+            let preferences = load_preferences(&app).unwrap_or_default();
+            if !daily_check_is_due(&preferences, now) {
+                continue;
             }
-        };
-        let preferences = match load_preferences(&app) {
-            Ok(preferences) => preferences,
-            Err(error) => {
-                eprintln!("Could not load updater preferences: {error}");
-                StoredPreferences::default()
+            let state = app.state::<DesktopUpdaterState>();
+            if !matches!(state.dismissible_version(), Ok(None)) {
+                continue;
             }
-        };
-        if !automatic_check_is_due(&preferences) {
-            return;
-        }
-
-        let state = app.state::<DesktopUpdaterState>();
-        let _check_guard = state.check_gate.lock().await;
-        let preferences = load_preferences(&app).unwrap_or_default();
-        if !automatic_check_is_due(&preferences) {
-            return;
-        }
-
-        let result = fetch_update(&app).await;
-        if let Err(error) = save_last_check_at(&app, now) {
-            eprintln!("Could not save the automatic update check time: {error}");
-        }
-
-        match result {
-            Ok(Some(update)) => {
-                let metadata = UpdateMetadata::from(&update);
-                let current_preferences = load_preferences(&app).unwrap_or_default();
-                if !current_preferences.automatic_checks
-                    || !should_present_update(
-                        false,
-                        current_preferences.skipped_version.as_deref(),
-                        &metadata.version,
-                    )
-                {
-                    return;
-                }
-                if let Err(error) = state.set_available(PendingUpdate { update, metadata }) {
-                    eprintln!("Could not stage the automatic update: {error}");
-                    return;
-                }
-                if let Err(error) = open_updater_window(&app, false) {
-                    let _ = state.dismiss();
-                    eprintln!("Failed to open the automatic updater window: {error}");
-                }
-            }
-            Ok(None) => {}
-            Err(error) => eprintln!("Automatic update check failed: {error}"),
+            run_automatic_check(&app).await;
         }
     });
+}
+
+async fn run_automatic_check(app: &AppHandle) {
+    let now = match now_epoch_seconds() {
+        Ok(now) => now,
+        Err(error) => {
+            eprintln!("Could not determine the updater check time: {error}");
+            return;
+        }
+    };
+    let preferences = match load_preferences(app) {
+        Ok(preferences) => preferences,
+        Err(error) => {
+            eprintln!("Could not load updater preferences: {error}");
+            StoredPreferences::default()
+        }
+    };
+    if !automatic_check_is_due(&preferences) {
+        return;
+    }
+
+    let state = app.state::<DesktopUpdaterState>();
+    let _check_guard = state.check_gate.lock().await;
+    let preferences = load_preferences(app).unwrap_or_default();
+    if !automatic_check_is_due(&preferences) {
+        return;
+    }
+
+    let result = fetch_update(app).await;
+    if let Err(error) = save_last_check_at(app, now) {
+        eprintln!("Could not save the automatic update check time: {error}");
+    }
+
+    match result {
+        Ok(Some(update)) => {
+            let metadata = UpdateMetadata::from(&update);
+            let current_preferences = load_preferences(app).unwrap_or_default();
+            if !current_preferences.automatic_checks
+                || !should_present_update(
+                    false,
+                    current_preferences.skipped_version.as_deref(),
+                    &metadata.version,
+                )
+            {
+                return;
+            }
+            if let Err(error) = state.set_available(PendingUpdate { update, metadata }) {
+                eprintln!("Could not stage the automatic update: {error}");
+                return;
+            }
+            if let Err(error) = open_updater_window(app, false) {
+                let _ = state.dismiss();
+                eprintln!("Failed to open the automatic updater window: {error}");
+            }
+        }
+        Ok(None) => {}
+        Err(error) => eprintln!("Automatic update check failed: {error}"),
+    }
 }
 
 fn require_window(window: &WebviewWindow, expected_label: &str) -> Result<(), String> {
@@ -730,8 +768,9 @@ pub(crate) fn handle_window_event(window: &Window, event: &WindowEvent) -> bool 
 #[cfg(test)]
 mod tests {
     use super::{
-        automatic_check_is_due, should_present_update, transition_allowed, validated_update_link,
-        CheckOutcome, DesktopUpdaterState, OperationPhase, StoredPreferences, UpdaterSnapshot,
+        automatic_check_is_due, daily_check_is_due, should_present_update, transition_allowed,
+        validated_update_link, CheckOutcome, DesktopUpdaterState, OperationPhase,
+        StoredPreferences, UpdaterSnapshot,
     };
 
     #[test]
@@ -773,6 +812,26 @@ mod tests {
         };
 
         assert!(automatic_check_is_due(&preferences));
+    }
+
+    #[test]
+    fn an_app_left_open_checks_again_after_a_day() {
+        let day = 24 * 60 * 60;
+        let checked = |last_check_at| StoredPreferences {
+            last_check_at,
+            ..StoredPreferences::default()
+        };
+
+        assert!(daily_check_is_due(&checked(None), 5));
+        assert!(!daily_check_is_due(&checked(Some(1_000)), 1_000 + day - 1));
+        assert!(daily_check_is_due(&checked(Some(1_000)), 1_000 + day));
+        // A clock set back does not hold checks off for long, nor overflow.
+        assert!(!daily_check_is_due(&checked(Some(1_000)), 10));
+        let disabled = StoredPreferences {
+            automatic_checks: false,
+            ..checked(None)
+        };
+        assert!(!daily_check_is_due(&disabled, 5));
     }
 
     #[test]

@@ -216,7 +216,11 @@ authentication, router, or Workspace. The updater webview receives only
 plugins directly. Typed Rust commands expose only the updater operations and
 validated HTTPS release-note links it needs.
 
-Automatic checks are enabled by default and run at every start (issue 385).
+Automatic checks are enabled by default and run at every start (issue 385) and
+again once 24 hours have passed while the app stays open (issue 392): a task
+wakes hourly and compares wall-clock time with `lastCheckAt`, so a computer that
+slept catches up soon after waking. An update already on offer or underway is
+left alone.
 Rust persists `automaticChecks`, `lastCheckAt`, and `skippedVersion` in the
 device-local Tauri Store. Automatic checks remain silent when no update is
 available, fail without interrupting startup, and suppress only the exact
@@ -233,7 +237,8 @@ Wordflow, so GitHub's download count of each copy reads as starts of that kind:
 For Binder, pip and server, `GET /api/app-update` fetches the matching
 `latest-web-{kind}.json` (Binder and pip once per backend start, at most once a
 day; a server on every page load) and the page shows a notice once a day per
-version (issue 386). `UPDATE_CHECK_ENABLED=false` turns the check off;
+version (issue 386). An open page asks again once 24 hours have passed (issue
+392). `UPDATE_CHECK_ENABLED=false` turns the check off;
 `DEPLOYMENT_KIND` overrides the detected kind.
 
 ```mermaid

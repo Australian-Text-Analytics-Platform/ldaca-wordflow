@@ -12,6 +12,6 @@ Wordflow also runs as a desktop app for macOS and Windows, which keeps your Proj
 
 <h2 id="info-general-new-versions">New versions</h2>
 
-Each time Wordflow starts, it asks GitHub whether a newer version has been released. The desktop app opens its update window when there is one. On Binder, a pip install or a shared server, a short notice says how to get the new version; it appears at most once a day for each version.
+Each time Wordflow starts, and once a day while it stays open, it asks GitHub whether a newer version has been released. The desktop app opens its update window when there is one. On Binder, a pip install or a shared server, a short notice says how to get the new version; it appears at most once a day for each version.
 
 The check sends nothing about you, your Projects or your data. GitHub sees a request for one small file, like any download, and counts how often that file is fetched; these counts tell the Wordflow team roughly how often each kind of Wordflow is started. In the desktop app, you can turn automatic checks off in Settings, under General.

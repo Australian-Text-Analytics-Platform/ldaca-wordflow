@@ -106,6 +106,7 @@ pub fn run() {
                 .ok_or_else(|| boxed_error("Main window not found"))?;
             supervisor::start(app.handle().clone());
             desktop_updater::schedule_automatic_check(app.handle().clone());
+            desktop_updater::start_daily_checks(app.handle().clone());
             Ok(())
         })
         .on_window_event(|window, event| {

@@ -44,7 +44,7 @@ export function DesktopUpdateSettings() {
       <div>
         <h3 className="text-body font-semibold">Desktop updates</h3>
         <p className="text-body text-description">
-          Check for a signed Wordflow update each time Wordflow starts.
+          Check for a signed Wordflow update when Wordflow starts, and daily while it stays open.
         </p>
       </div>
       <div className="flex items-center justify-between gap-4 rounded-md border px-3 py-2">
