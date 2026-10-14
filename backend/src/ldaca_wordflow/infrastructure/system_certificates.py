@@ -9,12 +9,12 @@ and the new-version check.
 
 truststore makes Python's ``ssl`` module (and so httpx, the AI SDKs and
 requests) verify against the macOS Keychain or the Windows certificate store.
-Linux keeps its current behaviour: there the system bundle is what Python
-already uses, and the hosted server and Binder run on Linux.
+Linux keeps certifi's bundle as before: the hosted server and Binder run on
+Linux and reach these services without TLS inspection.
 
 Call ``use_system_certificates`` once in every process before it opens an
-HTTPS connection: the CLI's main process and each spawned worker, which
-starts a fresh interpreter.
+HTTPS connection: the CLI's main process, the ``asgi`` module uvicorn imports
+directly, and each spawned worker, which starts a fresh interpreter.
 """
 
 from __future__ import annotations
