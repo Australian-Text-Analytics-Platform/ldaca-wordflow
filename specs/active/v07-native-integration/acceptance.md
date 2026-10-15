@@ -765,3 +765,61 @@ active for the outstanding acceptance gates.
 
 All changes and the docs mirror are delivered as local commits. No push, public
 release, updater publication, tag movement or legacy-project migration occurred.
+
+## 2026-10-16 CI remediation
+
+Investigated CI run `38811757428` at `69076f7ea`, including the previous failing
+run, before editing. The Rust compatibility failures preceded the integration.
+Current stable Rust 1.99.1 rejects the deprecated atomic update API, and sha2 0.11
+digests require explicit hexadecimal encoding. Both now use the supported APIs.
+USearch 2.24 fails to compile on Windows. The latest USearch release cannot satisfy
+PaCMAP 0.2.6's `fp16lib` feature, so Topic Modelling pins the compatible 2.23 release
+without adding that dependency to minimal/data-only builds.
+
+Deterministic regressions reproduced a cancelled readiness request being reported
+as backend failure, stale scoped accessible locators after sidebar remounting, and
+fixture schema cleanup leaving independently published backing joins behind.
+Readiness ignores AbortError while preserving real failures. Browser selectors
+resolve the current parent using WDIO function selectors; the runner serializes
+JSON-escaped test arguments without changing application CSP. Fixture cleanup
+uses native publication deletion before dropping schemas. Graph movement tests
+hold the approved platform modifier, and Quotation expectations include processed
+empty outcomes while excluding NULL texts. Native publication uses explicit
+keyboard focus and complete-project export failures retain their original body.
+Remaining scenario corrections scope Join choices to the appropriate labelled
+listbox while another popup closes, restore normal Data View height before table
+interaction, and use the graph's keyboard toolbar entry for clipped compact cards.
+Clipped graph metadata is asserted through its rendered text content rather than
+WebDriver's visible-text projection. No assertion or application error check is
+removed, and no retry, remount, or graph-geometry workaround is added.
+Server guidance also asserts the approved pause after acknowledgement, then uses
+a keyboard action to advance. Its former immediate-advance expectation failed
+against a freshly rebuilt current-source server before correction.
+
+Local verification on macOS:
+
+- Rust 1.99.1: 484 backend/server/storage/library tests and 39 desktop tests pass;
+  24 model/network/platform-dependent tests remain ignored. Strict all-target,
+  all-feature Clippy and formatting pass. Minimal, data-only and text-feature
+  checks pass; the text-only check retains an existing unused-helper warning.
+- Frontend: 822 unit tests and 17 script tests pass. Build, lint, formatting,
+  tooling types, Knip, version checks, bundled-doc validation, generated API and
+  Markdown links pass.
+- Chromium: all 114 scenarios across 39 spec files pass across the full run and
+  focused corrections. The initial full run passed 35 files; each of the four
+  remaining scenarios passed after its scoped selector or layout correction.
+  Frequency stopword edits, saved-request compatibility, SQL Definition, task
+  cancellation and Topics pass without additional application changes.
+- Server UI: all 12 scenarios across three files pass against a freshly rebuilt
+  Rust 1.99.1 server with the tested production frontend. Coverage includes hint
+  progression, independent windows, shared Rename/Close, project switching during
+  Run, task history cleanup, process restart, file management and exports.
+- Native release-profile Test bundle: 19 scenarios pass in the eight-spec run;
+  the remaining Quotation menu scenario passes after correction in a focused run.
+  Optional Apple inference remains skipped. Project reopen now passes after the
+  publication cleanup regression. This is instrumented WebKit evidence, not
+  signed production or physical native-control acceptance.
+
+Windows compilation and Linux worker/process execution require their CI hosts.
+The existing Windows, physical-control and signed-runtime acceptance gates remain
+open. No release, updater publication or push is part of this remediation.

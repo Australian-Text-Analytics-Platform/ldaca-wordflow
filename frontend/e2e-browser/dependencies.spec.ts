@@ -1,16 +1,15 @@
 import { expectAppError } from './diagnostics';
 import { browser, expect } from '@wdio/globals';
 import { it } from 'mocha';
-import { checked, clearResponseStubs, hover, post, press, rect, role, screenshot, stubResponse, testId } from './fixtures';
+import { checked, clearResponseStubs, post, press, role, screenshot, stubResponse, testId } from './fixtures';
 
 const objectCard = (schema: string, name: string) => browser.$(`.react-flow__node[data-id='${JSON.stringify([schema, name])}']`);
 async function toolbar(schema: string, name: string, action: string) {
   const card = objectCard(schema, name);
-  await hover(card);
-  const button = role('button', { name: action, exact: true });
-  const bounds = await rect(button);
-  await browser.action('pointer', { id: 'mouse' }).move({ x: Math.round(bounds.x + bounds.width / 2), y: Math.round(bounds.y + bounds.height / 2), duration: 200 }).perform(true);
-  await button.click();
+  // Fit keeps a minimum zoom; retained canvas positions can clip a compact card.
+  // Its keyboard entry reaches the toolbar without changing that viewport.
+  await press('Enter', card.$('[tabindex="0"]'));
+  await press('Space', role('button', { name: action, exact: true }));
 }
 async function sql(script: string) {
   const response = await post('/api/project/sql', { script, response: 'command' });
@@ -73,6 +72,7 @@ it('switches graph projections, retains preview and canvas state, and clones wit
   await role('button', { name: 'Rename', exact: true }, rename).click();
   await expect(objectCard('other', 'renamed')).toExist();
   await toolbar('other', 'renamed', 'Preview data');
+  await press('Enter', role('separator', { name: 'Resize graph and data panels' }));
   await expect(role('cell', { name: '42', exact: true })).toBeDisplayed();
   await role('button', { name: 'Change data type for column n' }).click();
   await role('menuitemradio', { name: 'text', exact: true }).click();

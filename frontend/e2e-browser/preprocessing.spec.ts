@@ -587,9 +587,10 @@ it('Join graph additions choose separate roles for the same Data Block', async (
   await expect(text('Right input (1/1)', { exact: true }, pane)).toBeDisplayed();
   await expect(testId('project-data-overlay')).not.toExist();
   await role('combobox', { name: 'Left column:' }, pane).click();
-  await role('option', { name: 'id', exact: true }).click();
+  await role('option', { name: 'id', exact: true }, role('listbox', { name: 'Left column:' })).click();
+  await expect(role('listbox', { name: 'Left column:' })).not.toExist();
   await role('combobox', { name: 'Right column:' }, pane).click();
-  await role('option', { name: 'n', exact: true }).click();
+  await role('option', { name: 'n', exact: true }, role('listbox', { name: 'Right column:' })).click();
   await expect(role('combobox', { name: 'Left column:' }, pane)).toHaveText(
     expect.stringContaining('id'),
   );

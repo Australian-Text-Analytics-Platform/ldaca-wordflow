@@ -66,8 +66,8 @@ it('one toggled preview switches data without changing selection or graph positi
   await overlay().waitForStable();
   await role('link', { name: 'Go to next page' }).click();
   await expect(role('cell', { name: '20', exact: true })).toBeDisplayed();
-  // Keep both graph cards accessible above the overlay.
-  await press('End', role('separator', { name: 'Resize graph and data panels' }));
+  // Restore room for the Data View before checking its label and cells.
+  await press('Enter', role('separator', { name: 'Resize graph and data panels' }));
   await keyboardPreview('beta');
   await expect(title()).toHaveText('beta');
   await expect(role('cell', { name: '99', exact: true })).toBeDisplayed();

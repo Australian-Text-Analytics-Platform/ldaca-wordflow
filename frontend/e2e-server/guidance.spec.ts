@@ -179,6 +179,8 @@ it('walks real frequency results and exports with guidance and preserves highlig
   await expect($('h2=Results')).toBeDisplayed();
   // Running is an outside interaction: guidance resumes on the next tool visit.
   await visit('Data Loader'); await visit('Frequency'); await acknowledge('token-frequency.results');
+  await expect($$('[data-guidance-popup]')).toBeElementsArrayOfSize(0);
+  await browser.keys('Tab');
   await hint('token-frequency.followup');
   await browser.saveScreenshot(resolve('.tmp/wdio/server/frequency-guidance.png'));
   await acknowledge('token-frequency.followup');
@@ -211,6 +213,8 @@ it('walks real frequency results and exports with guidance and preserves highlig
   await $('[role="tab"]=Wordflow project').click();
   await $('[data-testid="export-feature"]').$('button=Add data block').click(); await $('button=guidance').click();
   await visit('Frequency'); await visit('Export'); await acknowledge('export.action');
+  await expect($$('[data-guidance-popup]')).toBeElementsArrayOfSize(0);
+  await browser.keys('Tab');
   await hint('export.results'); await browser.setWindowSize(800, 900); await hint('export.results');
   await browser.saveScreenshot(resolve('.tmp/wdio/server/narrow-guidance.png'));
   await acknowledge('export.results');
