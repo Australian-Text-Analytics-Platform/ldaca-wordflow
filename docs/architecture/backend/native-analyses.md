@@ -366,6 +366,12 @@ owner. Full segment embeddings stay in the exact application cache. Source
 metadata values are not persisted. The projection BLOB does not duplicate the
 Tables' document outputs. Version-1 analyses retain snapshot semantics until Rerun.
 
+PaCMAP 0.2.6 requires USearch's `fp16lib` feature, removed in USearch 2.25.
+The engine pins USearch 2.23.0 because 2.24 also introduced an unguarded
+`MAP_FAILED` reference that prevents Windows compilation. Revisit the pin when
+[PaCMAP's dependency](https://github.com/beamform/pacmap-rs/blob/v0.2.6/Cargo.toml)
+supports newer USearch releases; no vendored allocator patch is applied.
+
 Map queries derive source multiplicity, dominant-document counts, shares and
 compact metadata memberships from current rows with processed text records.
 Counts include processed empty outcomes in the eligible population. Source

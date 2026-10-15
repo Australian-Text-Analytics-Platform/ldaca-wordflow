@@ -557,7 +557,7 @@ impl Client {
                 let mut bytes = Vec::new();
                 while let Some(chunk) = stream.try_next().await? {
                     total
-                        .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
+                        .try_update(Ordering::Relaxed, Ordering::Relaxed, |n| {
                             n.checked_add(chunk.len() as u64)
                                 .filter(|n| *n <= max_total_bytes)
                         })

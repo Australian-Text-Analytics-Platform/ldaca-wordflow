@@ -12,6 +12,11 @@ and embedded-WebDriver native tests on macOS and Windows. The optional
 Playwright and serialized-plan tooling is reference material under
 [archive/](../../archive/README.md), outside the active test commands.
 
+CI installs current stable Rust. Refresh the local toolchain with
+`rustup update stable`, or install the exact version in the CI log and use
+`cargo +<version>` for parity checks. An installed toolchain named `stable` can
+be older than CI, whose Clippy checks treat compiler warnings as errors.
+
 Release workflows do not run these suites. CI also validates the server package
 on Linux/macOS/Windows, direct browser file management, and the clean macOS
 application's Quick Look and resource loading. See the
@@ -88,7 +93,7 @@ Scatter points and overlapping Sankey transitions. Annotation exercises exact
 label changes, Fill missing, partial failure, authentication rejection and
 cancellation against a deterministic external HTTP provider.
 
-Export tests parse all five formats and verify exact values and ZIP members.
+Export tests parse all four public formats and verify exact values and ZIP members.
 Fresh standalone runtimes open selected and complete project exports; this is
 file-format persistence evidence. The native `project-reopen.spec.ts` additionally
 opens, deduplicates, closes and reopens a saved project window through the desktop

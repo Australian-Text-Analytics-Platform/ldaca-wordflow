@@ -95,10 +95,9 @@ async fn real_workers_isolate_storage_projects_credentials_sockets_and_limits() 
     let workers = Workers::new(&config).await.unwrap();
     let a = Uuid::new_v4();
     let b = Uuid::new_v4();
-    let namespace = format!(
-        "{:x}",
-        Sha256::digest(temporary.path().as_os_str().as_encoded_bytes())
-    );
+    let namespace = hex::encode(Sha256::digest(
+        temporary.path().as_os_str().as_encoded_bytes(),
+    ));
     let names: Vec<_> = [a, b]
         .into_iter()
         .map(|user| format!("wordflow-{}-{user}", &namespace[..16]))
