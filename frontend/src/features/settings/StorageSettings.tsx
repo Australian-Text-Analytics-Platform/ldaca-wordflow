@@ -5,6 +5,13 @@ import { request } from '@/api/client';
 import type { components } from '@/api/generated/native';
 import { Button } from '@/components/ui/button';
 import { isTauri } from '@/lib/isTauri';
+import { OperationError } from '@/features/project/OperationError';
+import { ConfirmAction } from './ConfirmAction';
+type CacheKind = components['schemas']['ReusableCache'];
+const cacheLabels: Record<CacheKind, string> = {
+  tokens: 'Token cache',
+  embeddings: 'Embedding cache',
+};
 const labels = {
   config: 'Configuration',
   data: 'Application data',
@@ -22,6 +29,14 @@ export function StorageSettings({ base }: { base: string }) {
         : (await request(base, '/api/storage/locations', 'get', { signal })).json(),
   });
   const [notice, setNotice] = useState('');
+  const [clearing, setClearing] = useState<CacheKind | null>(null);
+  const caches = useQuery({
+    queryKey: ['host', base, 'reusable-caches'],
+    enabled: false,
+    meta: { reportError: false },
+    queryFn: async ({ signal }) =>
+      (await request(base, '/api/storage/caches', 'get', { signal })).json(),
+  });
   return (
     <section className="space-y-4" aria-label="Storage locations">
       <h2 className="text-heading-3 font-semibold">Storage locations</h2>
@@ -100,6 +115,56 @@ export function StorageSettings({ base }: { base: string }) {
       <p role="status" className="text-description">
         {notice}
       </p>
+      <section
+        aria-label="Reusable caches"
+        className="space-y-3 border-t border-surface-border pt-4"
+      >
+        <h3 className="font-semibold">Reusable caches</h3>
+        <p className="text-description text-body-secondary">
+          Inspect or clear reusable token and embedding data. Models, assets, projects and saved
+          analysis outputs are retained. Active analyses must finish before their cache can be
+          cleared.
+        </p>
+        <Button
+          variant="outline"
+          disabled={caches.isFetching}
+          onClick={() => void caches.refetch()}
+        >
+          {caches.isFetching ? 'Inspecting…' : 'Inspect cache sizes'}
+        </Button>
+        {caches.isError && (
+          <OperationError
+            title="Cache inspection failed"
+            error={caches.error}
+            onRetry={() => void caches.refetch()}
+          />
+        )}
+        {caches.data?.map((item) => (
+          <div key={item.cache} className="flex flex-wrap items-center justify-between gap-3">
+            <span>
+              {cacheLabels[item.cache]}: {new Intl.NumberFormat().format(item.bytes)} bytes
+            </span>
+            <Button variant="outline" onClick={() => setClearing(item.cache)}>
+              Clear {cacheLabels[item.cache].toLowerCase()}
+            </Button>
+          </div>
+        ))}
+        {clearing && (
+          <ConfirmAction
+            title={`Clear ${cacheLabels[clearing].toLowerCase()}?`}
+            description="Reusable computations will be calculated again when needed. This clears only the selected cache."
+            action="Clear cache"
+            pendingLabel="Clearing…"
+            onClose={() => setClearing(null)}
+            onConfirm={async () => {
+              await request(base, '/api/storage/caches/{cache}', 'delete', {
+                path: { cache: clearing },
+              });
+              await caches.refetch();
+            }}
+          />
+        )}
+      </section>
     </section>
   );
 }

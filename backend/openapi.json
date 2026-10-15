@@ -4996,6 +4996,30 @@
           }
         ]
       },
+      "ReusableCache": {
+        "enum": [
+          "tokens",
+          "embeddings"
+        ],
+        "type": "string"
+      },
+      "ReusableCacheSize": {
+        "properties": {
+          "bytes": {
+            "format": "int64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "cache": {
+            "$ref": "#/components/schemas/ReusableCache"
+          }
+        },
+        "required": [
+          "cache",
+          "bytes"
+        ],
+        "type": "object"
+      },
       "Review": {
         "additionalProperties": false,
         "properties": {
@@ -20521,6 +20545,84 @@
             }
           }
         }
+      }
+    },
+    "/api/storage/caches": {
+      "get": {
+        "operationId": "storage_caches",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ReusableCacheSize"
+                  },
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
+      }
+    },
+    "/api/storage/caches/{cache}": {
+      "delete": {
+        "operationId": "storage_clear_cache",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "cache",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/ReusableCache"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReusableCacheSize"
+                }
+              }
+            }
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "settings"
+        ]
       }
     },
     "/api/storage/locations": {

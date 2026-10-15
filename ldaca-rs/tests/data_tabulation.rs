@@ -316,6 +316,71 @@ fn wordflow_baseline_schemas_are_unchanged() {
         );
     }
 }
+
+#[test]
+fn designated_transcripts_preserve_utterances_speakers_and_exact_text() {
+    let krate = RoCrate::from_value(json!({"@graph":[
+        {"@id":"item", "@type":"RepositoryObject", "name":"Interview", "ldac:mainText":{"@id":"main.csv"}, "ldac:indexableText":{"@id":"index.txt"}, "ldac:speaker":{"@id":"person"}},
+        {"@id":"person", "@type":"Person", "name":"José", "age":32},
+        {"@id":"main.csv", "@type":"File", "encodingFormat":"Text/CSV; charset=utf-8"},
+        {"@id":"index.txt", "@type":"File", "encodingFormat":"text/plain", "ldac:annotationOf":{"@id":"item"}},
+        {"@id":"indexItem", "@type":"RepositoryObject", "ldac:mainText":{"@id":"audio.wav"}, "ldac:indexableText":{"@id":"index.csv"}},
+        {"@id":"audio.wav", "@type":"File", "encodingFormat":"audio/wav"},
+        {"@id":"index.csv", "@type":"File", "encodingFormat":"text/csv"},
+        {"@id":"fallback.txt", "@type":"File", "encodingFormat":"text/plain"},
+        {"@id":"restricted.txt", "@type":"File", "encodingFormat":"text/plain", "_access":{"hasAccess":false}}
+    ]})).unwrap();
+    let documents = profiles::select_documents(&krate);
+    assert_eq!(
+        documents
+            .iter()
+            .map(|document| document.path.as_str())
+            .collect::<Vec<_>>(),
+        ["fallback.txt", "index.csv", "main.csv"]
+    );
+    let texts = indexmap::IndexMap::from([
+        (
+            "main.csv".into(),
+            "\u{feff}speaker,utterance,start\r\nA,\"Café, 猫\",0\r\nB,\"two\nlines\",\r\n".into(),
+        ),
+        ("index.csv".into(), "utterance\n\"\"\n".into()),
+        ("fallback.txt".into(), "whole document".into()),
+    ]);
+    let table = profiles::document_table(&documents, &texts).unwrap();
+    assert_eq!(table.num_rows(), 4);
+    assert_eq!(
+        strings(&table, "utterance"),
+        [
+            None,
+            Some("".into()),
+            Some("Café, 猫".into()),
+            Some("two\nlines".into())
+        ]
+    );
+    assert_eq!(
+        strings(&table, "start"),
+        [None, None, Some("0".into()), Some("".into())]
+    );
+    assert_eq!(
+        strings(&table, "item_ldac:speaker_name"),
+        [None, None, Some("José".into()), Some("José".into())]
+    );
+    assert_eq!(
+        strings(&table, "item_id"),
+        [
+            None,
+            Some("indexItem".into()),
+            Some("item".into()),
+            Some("item".into())
+        ]
+    );
+    let mut broken = texts.clone();
+    broken.insert("main.csv".into(), "speaker,utterance\nA,x,extra\n".into());
+    assert!(profiles::document_table(&documents, &broken)
+        .unwrap_err()
+        .to_string()
+        .contains("main.csv"));
+}
 #[test]
 fn combined_expansions_move_to_companion_tables() {
     let roles: Vec<_> = (0..6).map(|n| json!(n)).collect();

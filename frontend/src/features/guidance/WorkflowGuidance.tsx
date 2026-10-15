@@ -33,7 +33,10 @@ function GuidanceVisit({ tool, blocked }: { tool: ToolId; blocked: boolean }) {
   const modals = useModalLayerStore((state) => state.count);
   const mutations = useIsMutating();
   const [paused, setPaused] = useState(false);
-  const [targets, setTargets] = useState<Partial<Record<HintStage, HTMLElement>>>({});
+  const [targets, setTargets] = useState<
+    Partial<Record<HintStage, { anchor: HTMLElement; owner: HTMLElement }>>
+  >({});
+  const [waitingForAction, setWaitingForAction] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [annotationMode, setAnnotationMode] = useState<'manual' | 'ai'>('manual');
@@ -45,7 +48,7 @@ function GuidanceVisit({ tool, blocked }: { tool: ToolId; blocked: boolean }) {
       setAnnotationMode(
         root?.querySelector('[data-guidance-annotation-mode="ai"]') ? 'ai' : 'manual',
       );
-      const next: Partial<Record<HintStage, HTMLElement>> = {};
+      const next: typeof targets = {};
       const candidates = [
         ...Array.from(document.querySelectorAll<HTMLElement>(`[data-guidance-for="${tool}"]`)),
         ...Array.from(root?.querySelectorAll<HTMLElement>('[data-guidance-stage]') ?? []),
@@ -60,12 +63,19 @@ function GuidanceVisit({ tool, blocked }: { tool: ToolId; blocked: boolean }) {
         ) {
           const heading = element.querySelector<HTMLElement>('h2, h3');
           const header = heading?.closest<HTMLElement>('.flex.justify-between');
-          next[stage] = header && element.contains(header) ? header : (heading ?? element);
+          next[stage] = {
+            anchor: header && element.contains(header) ? header : (heading ?? element),
+            owner: element,
+          };
         }
       });
       setTargets((old) =>
         Object.keys(next).length === Object.keys(old).length &&
-        Object.entries(next).every(([key, element]) => old[key as HintStage] === element)
+        Object.entries(next).every(
+          ([key, element]) =>
+            old[key as HintStage]?.anchor === element.anchor &&
+            old[key as HintStage]?.owner === element.owner,
+        )
           ? old
           : next,
       );
@@ -136,15 +146,75 @@ function GuidanceVisit({ tool, blocked }: { tool: ToolId; blocked: boolean }) {
     annotationMode,
     hasFileLibrary,
   );
-  const target = hint ? targets[hint.stage] : undefined;
-  const shown = Boolean(hint && target && !blocked && !modals && !mutations && !editing && !saving);
-  if (!shown || !hint || !target) return null;
+  const target = hint ? targets[hint.stage]?.anchor : undefined;
+  const owner = hint ? targets[hint.stage]?.owner : undefined;
+  const shown = Boolean(
+    hint && target && !blocked && !modals && !mutations && !editing && !saving && !waitingForAction,
+  );
   const save = (patch: Parameters<typeof patchPreferences>[0]) => {
+    setWaitingForAction(true);
     setSaving(true);
     void patchPreferences(patch)
       .catch(() => setPaused(true))
       .finally(() => setSaving(false));
   };
+  const acknowledgeTarget = useEffectEvent(() => {
+    if (hint) save({ guidance: { acknowledge: { id: hint.id, version: hint.version } } });
+  });
+  useEffect(() => {
+    // A focused field temporarily hides the popover; its actual edit still
+    // acknowledges the same workflow target.
+    if (
+      !hint ||
+      !owner ||
+      !guidance.enabled ||
+      paused ||
+      waitingForAction ||
+      saving ||
+      blocked ||
+      modals
+    )
+      return;
+    const used = (event: Event) => {
+      const element = event.target instanceof Element ? event.target : null;
+      const control = element?.closest(
+        'button, a[href], summary, select, [role="button"], [role="combobox"], input, textarea',
+      );
+      if (
+        !control ||
+        !owner.contains(control) ||
+        control.matches(':disabled, [aria-disabled="true"]')
+      )
+        return;
+      acknowledgeTarget();
+    };
+    document.addEventListener('click', used, true);
+    document.addEventListener('change', used, true);
+    document.addEventListener('input', used, true);
+    return () => {
+      document.removeEventListener('click', used, true);
+      document.removeEventListener('change', used, true);
+      document.removeEventListener('input', used, true);
+    };
+  }, [hint, owner, guidance.enabled, paused, waitingForAction, saving, blocked, modals]);
+  useEffect(() => {
+    if (!waitingForAction) return;
+    let frame = 0;
+    const advance = () => {
+      if (!frame) frame = requestAnimationFrame(() => setWaitingForAction(false));
+    };
+    const key = (event: KeyboardEvent) => {
+      if (!['Meta', 'Control', 'Alt', 'Shift'].includes(event.key)) advance();
+    };
+    document.addEventListener('click', advance, true);
+    document.addEventListener('keydown', key, true);
+    return () => {
+      cancelAnimationFrame(frame);
+      document.removeEventListener('click', advance, true);
+      document.removeEventListener('keydown', key, true);
+    };
+  }, [waitingForAction]);
+  if (!shown || !hint || !target) return null;
   return (
     <GuidancePopover hint={hint} target={target} defer={() => setPaused(true)}>
       <div className="flex items-start justify-between gap-3">

@@ -87,3 +87,26 @@ it('does not route to disabled, inactive or another project destinations', () =>
   expect(add).not.toHaveBeenCalled();
   expect(useInputDestinations.getState().destinations.map((item) => item.label)).toEqual(['Other']);
 });
+it('validates a drop against the current destination and project, including unmounts', () => {
+  const add = vi.fn(() => [{ id: 'A', reason: 'This input is full.' }]);
+  const view = render(
+    <ToolInputScope value={{ base: 'one', tool: 'filter', active: true }}>
+      <Destination label="Input" add={add} />
+    </ToolInputScope>,
+  );
+  const id = useInputDestinations.getState().destinations[0]!.id;
+  const drop = (base: string) =>
+    useInputDestinations
+      .getState()
+      .drop(id, JSON.stringify({ base, target: { schema: 'data', name: 'A' } }));
+  act(() => {
+    drop('other');
+    useInputDestinations.getState().drop(id, 'invalid');
+  });
+  expect(add).not.toHaveBeenCalled();
+  act(() => drop('one'));
+  expect(add).toHaveBeenCalledExactlyOnceWith([{ schema: 'data', name: 'A' }]);
+  view.unmount();
+  act(() => drop('one'));
+  expect(add).toHaveBeenCalledOnce();
+});

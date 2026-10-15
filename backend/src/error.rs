@@ -69,7 +69,8 @@ impl IntoResponse for Error {
             | "session_changed"
             | "file_exists"
             | "save_required"
-            | "upload_active" => StatusCode::CONFLICT,
+            | "upload_active"
+            | "cache_busy" => StatusCode::CONFLICT,
             "project_not_found"
             | "provider_not_found"
             | "node_not_found"

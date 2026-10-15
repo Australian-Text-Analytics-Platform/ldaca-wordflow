@@ -503,7 +503,12 @@ to 500 entries; filtering loaded names/descriptions is local.
 after embedding the selected corpus. Metadata-only imports never download text.
 Collection members are discovered by the portal's root membership index, bounded
 by the native client's document limit (10,000 by default). Metadata requests do
-not recursively resolve additional crates. Each member is staged and the combined
+not recursively resolve additional crates. Each item prefers `ldac:mainText`, then
+`ldac:indexableText`, then plain-text fallback. Designated transcript CSVs retain
+one row per utterance with original fields as text and `item_*` speaker/item
+metadata. Original CSV names win collisions; generated metadata names receive
+unique suffixes. Duplicate headers/malformed records fail atomically, and explicit
+access-denied files are not fetched. Each member is staged and the combined
 output commits once; any member failure leaves no partial Data Blocks.
 The collection title proposes its name, with ` (metadata)` for metadata-only
 imports. Source metadata and referenced Person/Speaker fields accompany documents;

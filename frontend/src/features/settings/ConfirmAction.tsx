@@ -8,22 +8,25 @@ import {
   AlertDialogAction,
 } from '@/components/ui/alert-dialog';
 import { useRef, useState } from 'react';
+import { OperationError } from '@/features/project/OperationError';
 export function ConfirmAction({
   title,
   description,
   action,
   onConfirm,
   onClose,
+  pendingLabel = 'Saving…',
 }: {
   title: string;
   description: string;
   action: string;
   onConfirm: () => Promise<void>;
   onClose: () => void;
+  pendingLabel?: string;
 }) {
   const opener = useRef(document.activeElement);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
   return (
     <AlertDialog
       open
@@ -51,7 +54,7 @@ export function ConfirmAction({
       >
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
-        {error && <p role="alert">{error}</p>}
+        {error != null && <OperationError error={error} title={`${title} failed`} />}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={pending}>Cancel</AlertDialogCancel>
           <AlertDialogAction
@@ -61,11 +64,11 @@ export function ConfirmAction({
               setPending(true);
               void onConfirm()
                 .then(onClose)
-                .catch(() => setError('The change could not be saved. Retry or cancel.'))
+                .catch(setError)
                 .finally(() => setPending(false));
             }}
           >
-            {pending ? 'Saving…' : action}
+            {pending ? pendingLabel : action}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

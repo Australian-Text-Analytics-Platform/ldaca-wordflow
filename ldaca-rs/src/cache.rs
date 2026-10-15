@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 #[cfg(test)]
 use crate::file_lock::lock_path_for;
-use crate::file_lock::with_file_lock;
+use crate::file_lock::{try_cache_maintenance, with_cache_lease, with_file_lock};
 pub(crate) use crate::fingerprint::hash_text;
 use anyhow::{Context, Result};
 use duckdb::Connection;
@@ -51,6 +51,18 @@ where
     get_or_insert_text_values_in(path, table, texts, None, compute_misses)
 }
 pub fn get_or_insert_text_values_in<T: TextCacheTable>(
+    path: &Path,
+    table: &T,
+    texts: &[String],
+    temporary: Option<&Path>,
+    compute_misses: impl FnOnce(&[String]) -> Result<Vec<T::Value>>,
+) -> Result<Vec<Arc<T::Value>>> {
+    with_cache_lease(path, || {
+        get_or_insert_leased(path, table, texts, temporary, compute_misses)
+    })
+}
+
+fn get_or_insert_leased<T: TextCacheTable>(
     path: &Path,
     table: &T,
     texts: &[String],
@@ -208,6 +220,30 @@ fn remove_if_exists(path: &Path) -> Result<()> {
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(error) => Err(error).with_context(|| format!("remove {}", path.display())),
     }
+}
+
+/// Inspect only the reusable database and its WAL; model assets and analysis
+/// artifacts are deliberately outside this operation.
+pub fn size(path: &Path) -> Result<u64> {
+    [path.to_path_buf(), wal_path_for(path)]
+        .iter()
+        .try_fold(0_u64, |total, file| match std::fs::symlink_metadata(file) {
+            Ok(metadata) if metadata.is_file() => Ok(total + metadata.len()),
+            Ok(_) => anyhow::bail!("cache path is not a regular file: {}", file.display()),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(total),
+            Err(error) => Err(error).context("inspect reusable cache"),
+        })
+}
+
+/// None means an active computation or another process holds a lease. Both
+/// database handles have closed before removal, including on Windows.
+pub fn clear(path: &Path) -> Result<Option<u64>> {
+    try_cache_maintenance(path, || {
+        let bytes = size(path)?;
+        remove_if_exists(&wal_path_for(path))?;
+        remove_if_exists(path)?;
+        Ok(bytes)
+    })
 }
 
 /// Load unique hashes into a connection-local table for one set-based lookup.
@@ -492,6 +528,92 @@ CREATE TABLE IF NOT EXISTS string_cache (
         drop(conn);
         let _ = std::fs::remove_file(path.as_ref());
         let _ = std::fs::remove_file(lock_path_for(path.as_ref()));
+        Ok(())
+    }
+
+    #[test]
+    fn maintenance_rejects_active_miss_and_preserves_other_assets() -> Result<()> {
+        let directory = tempfile::tempdir()?;
+        let path = directory.path().join("tokens.duckdb");
+        let asset = directory.path().join("model.onnx");
+        std::fs::write(&asset, b"model")?;
+        assert_eq!(size(&path)?, 0);
+        let (started, waiting) = std::sync::mpsc::channel();
+        let (release, released) = std::sync::mpsc::channel();
+        let worker_path = path.clone();
+        let worker = std::thread::spawn(move || {
+            get_or_insert_text_values(
+                &worker_path,
+                &StringTable {
+                    namespace: "active",
+                },
+                &["text".into()],
+                |misses| {
+                    started.send(())?;
+                    released.recv()?;
+                    Ok(misses.to_vec())
+                },
+            )
+        });
+        waiting.recv_timeout(std::time::Duration::from_secs(10))?;
+        assert_eq!(clear(&path)?, None);
+        release.send(())?;
+        assert_eq!(worker.join().unwrap()?[0].as_str(), "text");
+        let bytes = size(&path)?;
+        assert!(bytes > 0);
+        assert_eq!(clear(&path)?, Some(bytes));
+        assert_eq!(size(&path)?, 0);
+        assert_eq!(std::fs::read(asset)?, b"model");
+        assert!(lock_path_for(&path).exists());
+        assert!(directory.path().join("tokens.duckdb.lease.lock").exists());
+        Ok(())
+    }
+
+    #[test]
+    #[ignore = "subprocess helper for cross-process cache leases"]
+    fn cache_lease_process_helper() -> Result<()> {
+        let path = PathBuf::from(std::env::var("WORDFLOW_CACHE_LEASE_FIXTURE")?);
+        crate::file_lock::with_cache_lease(&path, || {
+            std::fs::write(path.with_extension("ready"), b"ready")?;
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+            while !path.with_extension("release").exists() {
+                anyhow::ensure!(
+                    std::time::Instant::now() < deadline,
+                    "cache lease fixture timed out"
+                );
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            Ok(())
+        })
+    }
+
+    #[test]
+    fn another_process_cache_lease_prevents_clear() -> Result<()> {
+        let directory = tempfile::tempdir()?;
+        let path = directory.path().join("embeddings.duckdb");
+        std::fs::write(&path, b"cache bytes")?;
+        let mut child = std::process::Command::new(std::env::current_exe()?)
+            .args([
+                "--ignored",
+                "--exact",
+                "cache::tests::cache_lease_process_helper",
+            ])
+            .env("WORDFLOW_CACHE_LEASE_FIXTURE", &path)
+            .stdout(std::process::Stdio::null())
+            .spawn()?;
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        while !path.with_extension("ready").exists() {
+            anyhow::ensure!(
+                std::time::Instant::now() < deadline,
+                "cache subprocess did not acquire lease"
+            );
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        let result = clear(&path);
+        std::fs::write(path.with_extension("release"), b"release")?;
+        assert!(child.wait()?.success());
+        assert_eq!(result?, None);
+        assert_eq!(clear(&path)?, Some(11));
         Ok(())
     }
 }

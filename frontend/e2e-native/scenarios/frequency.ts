@@ -1076,6 +1076,8 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       probe.observer.observe(cloud, { childList: true, subtree: true });
       window.__frequencyCloudProbe = probe;
     }, cloudSelector);
+    const graphModifier = (await browser.execute(() => /Mac|iPhone|iPad/.test(navigator.platform))) ? Key.Command : Key.Control;
+    await browser.action('key', {id: 'graph-modifier'}).down(graphModifier).perform(true);
     try {
       if (await browser.execute(() => '__TAURI_INTERNALS__' in window)) {
         // Embedded-driver MouseEvents omit `view` and held buttons, which d3-drag
@@ -1111,6 +1113,7 @@ export async function frequencyStopwordsScenario(base: string, prefix: string) {
       await browser.pause(100);
       expect(await browser.execute(() => window.__frequencyCloudProbe?.mutations)).toBe(0);
     } finally {
+      await browser.action('key', {id: 'graph-modifier'}).up(graphModifier).perform();
       await browser.execute(() => {
         window.__frequencyCloudProbe?.observer.disconnect();
         delete window.__frequencyCloudProbe;

@@ -1,3 +1,4 @@
+import { GeneratedFieldHint } from '../common/components/GeneratedFieldHint';
 import { Input } from '@/components/ui/input';
 import { orderedResultColumns, readColumnOrder, resultColumnKey } from '../common/resultColumns';
 import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
@@ -49,6 +50,15 @@ import {
   type DocumentRow,
   type Match,
 } from './concordanceRows';
+const matchLabels: Record<string, string> = {
+  left_context: 'Left context',
+  right_context: 'Right context',
+  matched_text: 'Match',
+  l1: 'L1',
+  r1: 'R1',
+  l1_frequency: 'L1 frequency',
+  r1_frequency: 'R1 frequency',
+};
 interface Props {
   onCancelPreview?: () => void;
   base: string;
@@ -721,7 +731,14 @@ export function ConcordanceResults({
                       <TableRow>
                         {combined && <TableHead>Source</TableHead>}
                         {displayColumns.map((column) => (
-                          <TableHead key={resultColumnKey(column)}>
+                          <TableHead
+                            key={resultColumnKey(column)}
+                            aria-label={
+                              column.metadata
+                                ? column.column
+                                : (matchLabels[column.column] ?? column.column)
+                            }
+                          >
                             {column.metadata
                               ? sortButton(index, column.column, column.column, true)
                               : column.column === 'left_context'
@@ -735,16 +752,9 @@ export function ConcordanceResults({
                                   : sortButton(
                                       index,
                                       column.column,
-                                      (
-                                        {
-                                          matched_text: 'Match',
-                                          l1: 'L1',
-                                          r1: 'R1',
-                                          l1_frequency: 'L1 frequency',
-                                          r1_frequency: 'R1 frequency',
-                                        } as Record<string, string>
-                                      )[column.column] ?? column.column,
+                                      matchLabels[column.column] ?? column.column,
                                     )}
+                            {!column.metadata && <GeneratedFieldHint field={column.column} />}
                           </TableHead>
                         ))}
                       </TableRow>
@@ -818,6 +828,12 @@ export function ConcordanceResults({
                         <TableRow>
                           <TableCell colSpan={20}>
                             No matches in {saved ? 'this selection' : 'this document page'}.
+                            {!saved && (
+                              <p className="mt-1 text-description">
+                                Preview checks only the selected document page. Run processes the
+                                complete input.
+                              </p>
+                            )}
                           </TableCell>
                         </TableRow>
                       )}

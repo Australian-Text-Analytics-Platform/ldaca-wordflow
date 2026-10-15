@@ -60,7 +60,7 @@ const DropdownMenuContent = ({
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-32 overflow-y-auto overflow-x-hidden rounded-md border border-[var(--vscode-menu-border)] bg-menu p-1 text-menu-foreground shadow-[var(--vscode-shadow-lg)]',
+        'z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-56 max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--vscode-menu-border)] bg-menu p-1 text-menu-foreground shadow-[var(--vscode-shadow-lg)]',
         'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 origin-[--radix-dropdown-menu-content-transform-origin]',
         className,
       )}
@@ -79,7 +79,7 @@ const DropdownMenuItem = ({
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex h-control-sm cursor-default select-none items-center gap-2 rounded-sm px-2 py-0.5 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled [&>svg]:size-4 [&>svg]:shrink-0',
+      'relative flex min-h-control-sm whitespace-normal break-words cursor-default select-none items-center gap-2 rounded-sm px-2 py-0.5 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled [&>svg]:size-4 [&>svg]:shrink-0',
       inset && 'pl-8',
       className,
     )}
@@ -98,7 +98,7 @@ const DropdownMenuCheckboxItem = ({
   <DropdownMenuPrimitive.CheckboxItem
     ref={ref}
     className={cn(
-      'relative flex h-control-sm cursor-default select-none items-center rounded-sm py-0.5 pl-8 pr-2 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled',
+      'relative flex min-h-control-sm whitespace-normal break-words cursor-default select-none items-center rounded-sm py-0.5 pl-8 pr-2 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled',
       className,
     )}
     checked={checked}
@@ -123,7 +123,7 @@ const DropdownMenuRadioItem = ({
   <DropdownMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      'relative flex h-control-sm cursor-default select-none items-center rounded-sm py-0.5 pl-8 pr-2 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled',
+      'relative flex min-h-control-sm whitespace-normal break-words cursor-default select-none items-center rounded-sm py-0.5 pl-8 pr-2 text-body outline-hidden transition-colors focus:bg-[var(--vscode-menu-selectionBackground)] focus:text-[var(--vscode-menu-selectionForeground)] data-disabled:pointer-events-none data-disabled:text-disabled',
       className,
     )}
     {...props}

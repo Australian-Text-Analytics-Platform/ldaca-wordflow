@@ -64,7 +64,7 @@ it('closes and reopens a saved project through native file opening, deduplicatin
       const panel = $('[data-testid="frequency-workspace"]');
       await addResearchInput(panel, 'reopen_corpus');
       await chooseColumn('Column', 'text', panel);
-      await chooseColumn('reopen_corpus tokenizer', 'Plain words (English)', panel);
+      await chooseColumn('reopen_corpus tokenizer', 'Plain words (languages with spaces)', panel);
       const id = await runResearchAnalysis(initial, 'frequency', panel);
       const tabs = await savedTabs(initial);
       // The native save chooser has a separate OS acceptance check. Generate this

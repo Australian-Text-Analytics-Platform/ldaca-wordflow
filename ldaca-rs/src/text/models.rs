@@ -4,12 +4,13 @@ pub struct TokenizerModel {
     pub model_id: &'static str,
     pub label: &'static str,
     pub about_url: &'static str,
+    /// Language recommendations, not a restriction on accepted Unicode text.
     pub languages: &'static [&'static str],
 }
 pub const TOKENIZER_MODELS: &[TokenizerModel] = &[
     TokenizerModel {
         model_id: "native:plain_words_en",
-        label: "Plain words (English)",
+        label: "Plain words (languages with spaces)",
         about_url: "https://github.com/Australian-Text-Analytics-Platform/ldaca-wordflow",
         languages: &["en"],
     },

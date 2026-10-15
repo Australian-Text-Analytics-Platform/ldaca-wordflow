@@ -2049,6 +2049,38 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  '/api/storage/caches': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get: operations['storage_caches'];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/storage/caches/{cache}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete: operations['storage_clear_cache'];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   '/api/storage/locations': {
     parameters: {
       query?: never;
@@ -3335,6 +3367,13 @@ export interface components {
           kind: 'annotation';
           query: components['schemas']['AnnotationQuery'];
         };
+    /** @enum {string} */
+    ReusableCache: 'tokens' | 'embeddings';
+    ReusableCacheSize: {
+      /** Format: int64 */
+      bytes: number;
+      cache: components['schemas']['ReusableCache'];
+    };
     Review: {
       changes?: components['schemas']['CellEditPatch'][];
       compare: string[];
@@ -13433,6 +13472,70 @@ export interface operations {
         };
         content: {
           'application/octet-stream': components['schemas']['Binary'];
+        };
+      };
+      409: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  storage_caches: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReusableCacheSize'][];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
+        };
+      };
+    };
+  };
+  storage_clear_cache: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        cache: components['schemas']['ReusableCache'];
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ReusableCacheSize'];
+        };
+      };
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          'application/json': components['schemas']['ErrorEnvelope'];
         };
       };
       409: {

@@ -1,3 +1,4 @@
+import { GeneratedFieldHint } from '../common/components/GeneratedFieldHint';
 import type { SortingState } from '@tanstack/react-table';
 import { previewDownload } from './previewDownload';
 import { orderedResultColumns, readColumnOrder } from '../common/resultColumns';
@@ -583,7 +584,12 @@ export function AnnotationOutput({
               rowActions={
                 preview
                   ? {
-                      header: 'Prediction',
+                      header: (
+                        <span aria-label="Prediction">
+                          Prediction
+                          <GeneratedFieldHint field="prediction" />
+                        </span>
+                      ),
                       render: (index) => {
                         const prediction = preview.predictions[index];
                         return prediction === null ? (

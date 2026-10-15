@@ -704,7 +704,8 @@ export function ProjectTable({
                     colSpan={visibleColumnCount}
                     className="px-4 py-6 text-center text-body text-description"
                   >
-                    No rows to display
+                    No rows to display. This Data Block is empty or no rows match the current
+                    filters.
                   </TableCell>
                 </TableRow>
               )}

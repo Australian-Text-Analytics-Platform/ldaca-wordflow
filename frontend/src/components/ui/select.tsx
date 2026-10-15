@@ -45,7 +45,7 @@ const SelectContent = ({
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        'relative z-50 max-h-(--radix-select-content-available-height) min-w-32 overflow-y-auto overflow-x-hidden rounded-md border border-[var(--vscode-widget-border)] bg-widget text-widget-foreground shadow-[var(--vscode-shadow-lg)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 origin-[--radix-select-content-transform-origin]',
+        'relative z-50 max-h-(--radix-select-content-available-height) min-w-64 max-w-[min(32rem,calc(100vw-2rem))] overflow-y-auto overflow-x-hidden rounded-md border border-[var(--vscode-widget-border)] bg-widget text-widget-foreground shadow-[var(--vscode-shadow-lg)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 origin-[--radix-select-content-transform-origin]',
         position === 'popper' &&
           'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
         className,
@@ -72,7 +72,7 @@ const SelectItem = ({ className, children, ref, ...props }: SelectItemProps) => 
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex h-control-sm w-full cursor-default select-none items-center rounded-sm py-0.5 pl-2 pr-8 text-body outline-hidden focus:bg-list-hover focus:text-foreground data-[highlighted]:bg-list-hover data-[highlighted]:text-foreground data-disabled:pointer-events-none data-disabled:text-disabled',
+      'relative flex min-h-control-sm w-full whitespace-normal break-words cursor-default select-none items-center rounded-sm py-0.5 pl-2 pr-8 text-body outline-hidden focus:bg-list-hover focus:text-foreground data-[highlighted]:bg-list-hover data-[highlighted]:text-foreground data-disabled:pointer-events-none data-disabled:text-disabled',
       className,
     )}
     {...props}

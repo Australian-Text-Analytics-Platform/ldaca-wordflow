@@ -153,6 +153,8 @@ it('defers on hint Escape without acknowledgment and shows hints again on the ne
     guidance: { acknowledge: { id: 'data-loader.setup', version: 1 } },
   });
   patch.mockClear();
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  await user.click(screen.getByRole('button', { name: 'Set up' }));
   await screen.findByRole('complementary');
   await user.click(await screen.findByRole('button', { name: 'Dismiss hint' }));
   expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
@@ -174,6 +176,44 @@ it('defers on hint Escape without acknowledgment and shows hints again on the ne
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
   expect(patch).not.toHaveBeenCalled();
+});
+it('acknowledges a pointed control and removes its outline without chaining a hint', async () => {
+  const user = userEvent.setup();
+  setup();
+  await screen.findByRole('complementary');
+  const control = screen.getByRole('button', { name: 'Set up' });
+  await user.click(control);
+  expect(patch).toHaveBeenCalledExactlyOnceWith({
+    guidance: { acknowledge: { id: 'data-loader.setup', version: 1 } },
+  });
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+  expect(control).not.toHaveAttribute('data-guidance-highlighted');
+  await act(async () => {});
+  expect(screen.queryByRole('complementary')).not.toBeInTheDocument();
+});
+it('acknowledges a target field edit after focus has temporarily hidden the hint', async () => {
+  const user = userEvent.setup();
+  render(
+    <QueryClientProvider client={new QueryClient()}>
+      <div data-guidance-tool="data-loader">
+        <section data-guidance-stage="setup">
+          <h2>Input</h2>
+          <input aria-label="Target field" />
+        </section>
+      </div>
+      <WorkflowGuidance tool="data-loader" blocked={false} />
+    </QueryClientProvider>,
+  );
+  await screen.findByRole('complementary');
+  await user.tab();
+  await waitFor(() => expect(screen.queryByRole('complementary')).not.toBeInTheDocument());
+  expect(patch).not.toHaveBeenCalled();
+  await user.type(screen.getByRole('textbox', { name: 'Target field' }), 'text', {
+    skipClick: true,
+  });
+  expect(patch).toHaveBeenCalledWith({
+    guidance: { acknowledge: { id: 'data-loader.setup', version: 1 } },
+  });
 });
 it('suppresses modal, editing and pending-operation hints and ignores missing or disabled targets', async () => {
   const { rerender, client } = setup({ blocked: true });

@@ -10,7 +10,7 @@ paths and do not select an application identity or modify the process environmen
 | Config | `config/` | `preferences.json`, nonsecret `ai-providers.json` |
 | Data | `state/` | Durable application state |
 | Local data | `local/` | Host-local persistent state, worker socket and lock |
-| Cache | `cache/` | HF hub trees, Lindera, UDPipe, ICU, language assets, embeddings |
+| Cache | `cache/` | HF hub trees, Lindera, UDPipe, ICU, language assets, reusable token/embedding databases |
 | Logs | `logs/` | Worker log |
 | Temporary | `tmp/` | Untitled projects, Arrow responses, staging and database spills |
 | Upload library | `data/` | Uploaded originals, independent of imported Data Blocks |
@@ -131,6 +131,17 @@ locations. Native `open_storage_directory` accepts a directory category, resolve
 it in the host and opens only an existing directory. It does not accept an
 arbitrary renderer path. Settings provides native folder opening or web path
 copying, without live directory switching.
+
+`GET /api/storage/caches` inspects only `tokens.duckdb` and
+`embeddings.duckdb` plus their WAL bytes, on explicit request. Settings confirms
+`DELETE /api/storage/caches/{cache}` separately for `tokens` or `embeddings`.
+The library owns shared cross-process computation leases and the existing short
+DuckDB file lock. Clear takes a nonblocking exclusive lease and returns `cache_busy`
+(409) if work still holds a lease, including an unlocked miss computation. Handles
+close before file removal. Lock sidecars remain; deleting a sidecar could split
+waiting processes between different locks. Models, language/ICU assets, projects
+and owned analysis artifacts are outside this maintenance boundary. No cache quota
+or automatic clearing is introduced.
 
 Wordflow explicitly supplies HF, tokenizer, embedding and Lindera asset contexts;
 registries include that context in their keys. It does not use ambient `HF_HOME`,

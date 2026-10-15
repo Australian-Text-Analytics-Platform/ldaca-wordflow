@@ -10,6 +10,7 @@ import type { NodeAddRejection } from './nodeInputs/nodeInputsCore';
 export const ToolInputScope = createContext<{ base: string; tool: ToolId; active: boolean } | null>(
   null,
 );
+export const DATA_BLOCK_TRANSFER = 'application/x-wordflow-data-block';
 interface Destination {
   id: string;
   base: string;
@@ -29,6 +30,7 @@ export const useInputDestinations = create<{
   destinations: Destination[];
   selection: Selection | null;
   add: (base: string, tool: ToolId, targets: DataTarget[]) => void;
+  drop: (id: string, transfer: string) => void;
 }>((set, get) => ({
   destinations: [],
   selection: null,
@@ -37,6 +39,29 @@ export const useInputDestinations = create<{
     const references = targets.map(objectRef);
     if (choices.length === 1) report(choices[0]!.add(references));
     else if (choices.length > 1) set({ selection: { base, tool, targets: references } });
+  },
+  drop: (id, transfer) => {
+    let value: unknown;
+    try {
+      value = JSON.parse(transfer);
+    } catch {
+      return;
+    }
+    if (!value || typeof value !== 'object' || !('base' in value) || !('target' in value)) return;
+    const target = value.target;
+    if (
+      !target ||
+      typeof target !== 'object' ||
+      !('schema' in target) ||
+      !('name' in target) ||
+      typeof target.schema !== 'string' ||
+      typeof target.name !== 'string'
+    )
+      return;
+    const destination = get().destinations.find(
+      (item) => item.id === id && item.base === value.base,
+    );
+    if (destination) report(destination.add([{ schema: target.schema, name: target.name }]));
   },
 }));
 export function useInputDestination(label: string, add: Destination['add'], disabled: boolean) {
@@ -67,6 +92,7 @@ export function useInputDestination(label: string, add: Destination['add'], disa
       }));
     };
   }, [id, base, tool, active, disabled, label]);
+  return id;
 }
 export function InputDestinationChooser({ base, tool }: { base: string; tool: ToolId }) {
   const { selection, destinations } = useInputDestinations();

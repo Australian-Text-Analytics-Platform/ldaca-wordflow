@@ -324,7 +324,7 @@ export function EditorTabs({
         <div
           ref={scrollRef}
           className={cn(
-            'relative max-w-full overflow-x-auto overflow-y-hidden overscroll-x-contain px-[8px] pt-[8px]',
+            'relative max-w-full overflow-x-auto overflow-y-hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden overscroll-x-contain px-[8px] pt-[8px]',
             className,
           )}
           role="tablist"

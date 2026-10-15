@@ -23,6 +23,6 @@ No push or release publication is authorized by this implementation task.
 - [x] Batch 2: live result storage, publication ownership and direct downloads.
 - [x] Batch 3: Topics fitting, adjustments and presentation.
 - [x] Batch 4: incremental Annotation and Quotation.
-- [ ] Batch 5: LDaCA, caches and shared UI.
+- [x] Batch 5: LDaCA, caches and shared UI.
 - [ ] Batch 6: native Help, updater and documentation.
 - [ ] Required checks and native acceptance; retain existing outstanding platform gates.

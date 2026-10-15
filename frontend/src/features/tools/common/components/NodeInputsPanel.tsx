@@ -6,7 +6,11 @@ import type { NodeMetadata } from '@/features/tools/common/nodeInputs/nodeMetada
 import { Plus, Search, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { useInputDestination } from '../inputDestinations';
+import {
+  DATA_BLOCK_TRANSFER,
+  useInputDestination,
+  useInputDestinations,
+} from '../inputDestinations';
 import type { NodeAddRejection, ResolvedNodeInput } from '../nodeInputs/nodeInputsCore';
 import { VIZ_PALETTE } from '../vizPalette';
 import { NodeColorPicker } from './NodeColorPicker';
@@ -200,10 +204,48 @@ export function NodeInputsPanel({
 
   const count = selectionItems.length;
   const countLabel = maxNodes != null ? `${String(count)}/${String(maxNodes)}` : String(count);
-  useInputDestination(title, (targets) => onAddNodes(targets.map(identifyInput)), disabled);
+  const destination = useInputDestination(
+    title,
+    (targets) => onAddNodes(targets.map(identifyInput)),
+    disabled,
+  );
+  const [dragOver, setDragOver] = useState(false);
 
   return (
-    <div className="@container/node-inputs relative flex flex-col gap-2">
+    <div
+      className="@container/node-inputs relative flex flex-col gap-2 data-[input-drag-over=true]:outline data-[input-drag-over=true]:outline-2 data-[input-drag-over=true]:outline-focus"
+      data-input-destination={destination}
+      data-input-drag-over={dragOver && !disabled}
+      onDragOver={(event) => {
+        if (
+          !disabled &&
+          event.dataTransfer.types.includes(DATA_BLOCK_TRANSFER) &&
+          useInputDestinations.getState().destinations.some((item) => item.id === destination)
+        ) {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'copy';
+          setDragOver(true);
+        }
+      }}
+      onDragLeave={(event) => {
+        if (
+          !(
+            event.relatedTarget instanceof Element &&
+            event.currentTarget.contains(event.relatedTarget)
+          )
+        )
+          setDragOver(false);
+      }}
+      onDrop={(event) => {
+        if (!event.dataTransfer.types.includes(DATA_BLOCK_TRANSFER)) return;
+        event.preventDefault();
+        setDragOver(false);
+        if (!disabled)
+          useInputDestinations
+            .getState()
+            .drop(destination, event.dataTransfer.getData(DATA_BLOCK_TRANSFER));
+      }}
+    >
       <div
         data-guidance={guidanceTarget}
         data-guidance-stage={!disabled ? 'setup' : undefined}

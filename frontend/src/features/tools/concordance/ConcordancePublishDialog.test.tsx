@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vite-plus/test';
 import { ConcordancePublishDialog } from './ConcordancePublishDialog';
 import { emptyConcordance } from './concordanceState';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 vi.mock('@/features/tools/concordance/api', async (original) => ({
   ...(await original<object>()),
@@ -58,13 +59,15 @@ it('publishes captured result and filters when a newer run arrives while the dia
   const close = vi.fn();
   const view = (value: concordanceApi.ConcordanceAnalysisResult) => (
     <QueryClientProvider client={client}>
-      <ConcordancePublishDialog
-        base="http://test"
-        result={value}
-        projection="matches"
-        filters={[filter]}
-        onClose={close}
-      />
+      <TooltipProvider>
+        <ConcordancePublishDialog
+          base="http://test"
+          result={value}
+          projection="matches"
+          filters={[filter]}
+          onClose={close}
+        />
+      </TooltipProvider>
     </QueryClientProvider>
   );
   const { rerender } = render(view(result));

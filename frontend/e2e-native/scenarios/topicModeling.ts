@@ -42,7 +42,7 @@ export async function topicModelingScenario(
       await $('[role="option"][aria-label="Jieba"]').click();
       await expect(panel.$(`[aria-label="${second} tokenizer"]`)).toHaveText('Jieba');
       await panel.$(`[aria-label="${second} tokenizer"]`).click();
-      await $('[role="option"][aria-label="Plain words (English)"]').click();
+      await $('[role="option"][aria-label="Plain words (languages with spaces)"]').click();
       await expect(panel.$(`[aria-label="${second} tokenizer"]`)).toHaveText(
         await tokenizer.getText(),
       );

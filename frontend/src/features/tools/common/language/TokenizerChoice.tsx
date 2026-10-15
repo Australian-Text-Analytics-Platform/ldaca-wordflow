@@ -56,9 +56,11 @@ export function TokenizerChoice({
   const modelLabel = (model: frequencyApi.TokenizerInfo) => (
     <>
       {model.label}
-      <span className="ml-2 text-label-secondary">
-        {model.languages.map((code) => languageNames.of(code) ?? code).join(', ')}
-      </span>
+      {model.model_id !== 'native:plain_words_en' && (
+        <span className="ml-2 text-label-secondary">
+          {model.languages.map((code) => languageNames.of(code) ?? code).join(', ')}
+        </span>
+      )}
     </>
   );
   return (

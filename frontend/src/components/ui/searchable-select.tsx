@@ -169,7 +169,7 @@ export function SearchableSelect({
       </PopoverTrigger>
       <PopoverContent
         align="start"
-        className={cn('w-(--radix-popover-trigger-width) min-w-56 p-0', contentClassName)}
+        className={cn('w-max min-w-64 max-w-[min(32rem,calc(100vw-2rem))] p-0', contentClassName)}
         onCloseAutoFocus={(event) => {
           const direction = tabDirectionRef.current;
           if (!direction) return;
@@ -242,7 +242,7 @@ export function SearchableSelect({
                   aria-selected={isSelected}
                   data-active={isActive ? 'true' : undefined}
                   className={cn(
-                    'relative flex h-control-sm w-full items-center rounded-sm py-0.5 pl-2 pr-8 text-left text-body',
+                    'relative flex min-h-control-sm w-full items-center rounded-sm py-0.5 pl-2 pr-8 text-left text-body',
                     isActive && 'bg-list-hover text-foreground',
                   )}
                   onMouseMove={() => {
@@ -252,7 +252,7 @@ export function SearchableSelect({
                     commit(row.value);
                   }}
                 >
-                  <span className="truncate">{row.label ?? row.value}</span>
+                  <span className="whitespace-normal break-words">{row.label ?? row.value}</span>
                   {isSelected && <Check className="absolute right-2 h-4 w-4" aria-hidden="true" />}
                 </button>
               );

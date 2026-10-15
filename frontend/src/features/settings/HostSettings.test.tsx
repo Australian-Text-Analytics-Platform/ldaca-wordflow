@@ -97,6 +97,47 @@ it('opens before project selection and uses the explicit host base for storage',
   );
   expect(screen.getByRole('button', { name: 'Copy Cache path' })).toBeEnabled();
 });
+it('inspects cache sizes only on demand and separately confirms clearing each cache', async () => {
+  const user = userEvent.setup();
+  const locations = vi.mocked(request).getMockImplementation()!;
+  vi.mocked(request).mockImplementation(async (base, path, method, options) => {
+    if (path === '/api/storage/caches')
+      return {
+        json: async () => [
+          { cache: 'tokens', bytes: 0 },
+          { cache: 'embeddings', bytes: 1234 },
+        ],
+      } as never;
+    if (path === '/api/storage/caches/{cache}')
+      throw new Error('This cache is in use. Wait for active analyses to finish, then retry.');
+    return locations(base, path, method, options);
+  });
+  setup(<NativeSettings />);
+  await user.click(screen.getByRole('button', { name: 'Open settings' }));
+  await user.click(screen.getByRole('button', { name: 'Storage', exact: true }));
+  expect(request).not.toHaveBeenCalledWith(
+    '/prefix',
+    '/api/storage/caches',
+    'get',
+    expect.anything(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Inspect cache sizes' }));
+  expect(await screen.findByText('Embedding cache: 1,234 bytes')).toBeVisible();
+  await user.click(screen.getByRole('button', { name: 'Clear token cache' }));
+  expect(request).not.toHaveBeenCalledWith(
+    '/prefix',
+    '/api/storage/caches/{cache}',
+    'delete',
+    expect.anything(),
+  );
+  await user.click(screen.getByRole('button', { name: 'Cancel', exact: true }));
+  await user.click(screen.getByRole('button', { name: 'Clear embedding cache' }));
+  await user.click(screen.getByRole('button', { name: 'Clear cache', exact: true }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('This cache is in use.');
+  expect(request).toHaveBeenCalledWith('/prefix', '/api/storage/caches/{cache}', 'delete', {
+    path: { cache: 'embeddings' },
+  });
+});
 it('restores opener focus and preserves a mounted workspace draft on Escape', async () => {
   const user = userEvent.setup();
   setup();

@@ -193,13 +193,89 @@ fn file_path(id: &str) -> Option<String> {
         Some(id.strip_prefix("./").unwrap_or(id).into())
     }
 }
+pub fn has_access(entity: &serde_json::Map<String, Value>) -> bool {
+    entity.get("error").and_then(Value::as_str) != Some("not_authorized")
+        && entity
+            .get("_access")
+            .and_then(|access| access.get("hasAccess"))
+            .and_then(Value::as_bool)
+            != Some(false)
+}
+fn text_format(entity: &serde_json::Map<String, Value>) -> Option<&'static str> {
+    crate::data::metadata::strings(entity.get("encodingFormat"))
+        .iter()
+        .find_map(|format| {
+            match format
+                .split(';')
+                .next()
+                .unwrap_or_default()
+                .trim()
+                .to_ascii_lowercase()
+                .as_str()
+            {
+                "text/plain" => Some("text/plain"),
+                "text/csv" | "application/csv" => Some("text/csv"),
+                _ => None,
+            }
+        })
+}
 pub fn select_documents(krate: &RoCrate) -> Vec<Document> {
     let mut selected: IndexMap<String, Document> = IndexMap::new();
+    // Curator-designated text wins over filename heuristics. Keep item identity
+    // separate from file identity so its metadata accompanies every utterance.
     for (id, entity) in krate.entities() {
-        if !entity_types(entity).iter().any(|t| t == "File")
-            || !crate::data::metadata::strings(entity.get("encodingFormat"))
+        if !has_access(entity)
+            || !entity_types(entity)
                 .iter()
-                .any(|s| s.eq_ignore_ascii_case("text/plain"))
+                .any(|kind| kind == "RepositoryObject")
+        {
+            continue;
+        }
+        for property in ["mainText", "indexableText"] {
+            let value = entity
+                .get(&format!("ldac:{property}"))
+                .or_else(|| entity.get(property));
+            let chosen = as_list(value.unwrap_or(&Value::Null))
+                .into_iter()
+                .filter_map(reference)
+                .find_map(|file_id| {
+                    let file = krate.entity(file_id)?;
+                    if !has_access(file) {
+                        return None;
+                    }
+                    let format = text_format(file)?;
+                    let path = file_path(file_id).filter(|path| !path.is_empty())?;
+                    Some(Document {
+                        file_id: file_id.into(),
+                        path: path.clone(),
+                        name: first_string(file.get("name")).unwrap_or(path),
+                        encoding_format: format.into(),
+                        content_size: content_size(file.get("contentSize")),
+                        annotation_of: Some(id.clone()),
+                        work_name: first_string(entity.get("name")),
+                        date_created: first_string(entity.get("dateCreated")),
+                        metadata: document_metadata(krate, file, Some(entity)),
+                    })
+                });
+            if let Some(document) = chosen {
+                selected.insert(id.clone(), document);
+                break;
+            }
+        }
+    }
+    let designated_items = selected
+        .keys()
+        .cloned()
+        .collect::<std::collections::HashSet<_>>();
+    let designated_files = selected
+        .values()
+        .map(|document| document.file_id.clone())
+        .collect::<std::collections::HashSet<_>>();
+    for (id, entity) in krate.entities() {
+        if designated_files.contains(id)
+            || !has_access(entity)
+            || !entity_types(entity).iter().any(|t| t == "File")
+            || text_format(entity) != Some("text/plain")
         {
             continue;
         }
@@ -212,6 +288,9 @@ pub fn select_documents(krate: &RoCrate) -> Vec<Document> {
                 .or_else(|| entity.get("annotationOf")),
         );
         let work = annotation_of.as_ref().and_then(|id| krate.entity(id));
+        if work.is_some_and(|work| !has_access(work)) {
+            continue;
+        }
         let key = annotation_of.clone().unwrap_or_else(|| {
             path.strip_suffix("-plain.txt")
                 .or_else(|| path.strip_suffix(".txt"))
@@ -229,9 +308,11 @@ pub fn select_documents(krate: &RoCrate) -> Vec<Document> {
             metadata: document_metadata(krate, entity, work),
             path,
         };
-        if selected.get(&key).is_none_or(|current| {
-            candidate.path.contains("-plain.") && !current.path.contains("-plain.")
-        }) {
+        if !designated_items.contains(&key)
+            && selected.get(&key).is_none_or(|current| {
+                candidate.path.contains("-plain.") && !current.path.contains("-plain.")
+            })
+        {
             selected.insert(key, candidate);
         }
     }
@@ -240,6 +321,20 @@ pub fn select_documents(krate: &RoCrate) -> Vec<Document> {
     documents
 }
 pub fn document_table(documents: &[Document], texts: &IndexMap<String, String>) -> Result<Table> {
+    document_table_in(documents, texts, None)
+}
+pub fn document_table_for_item(
+    documents: &[Document],
+    texts: &IndexMap<String, String>,
+    item_id: &str,
+) -> Result<Table> {
+    document_table_in(documents, texts, Some(item_id))
+}
+fn document_table_in(
+    documents: &[Document],
+    texts: &IndexMap<String, String>,
+    item_id: Option<&str>,
+) -> Result<Table> {
     let mut rows = Vec::new();
     for document in documents {
         let text = texts.get(&document.path).ok_or_else(|| {
@@ -249,11 +344,73 @@ pub fn document_table(documents: &[Document], texts: &IndexMap<String, String>) 
             return Err(Error::Conversion("invalid document".into()));
         };
         let mut row: Row = object.into_iter().collect();
-        row.insert("text".into(), Value::String(text.clone()));
         for (key, value) in &document.metadata {
             row.entry(key.clone()).or_insert_with(|| value.clone());
         }
-        rows.push(row);
+        row.insert(
+            "item_id".into(),
+            document
+                .annotation_of
+                .as_deref()
+                .filter(|id| *id != "./")
+                .or(item_id)
+                .map(str::to_owned)
+                .map(Value::String)
+                .unwrap_or(Value::Null),
+        );
+        row.insert("item_file".into(), Value::String(document.file_id.clone()));
+        for (key, value) in &document.metadata {
+            if let Some(key) = key.strip_prefix("work_") {
+                row.insert(format!("item_{key}"), value.clone());
+            } else if !key.starts_with("file_") {
+                row.insert(format!("item_{key}"), value.clone());
+            }
+        }
+        if document.encoding_format.eq_ignore_ascii_case("text/plain") {
+            row.insert("text".into(), Value::String(text.clone()));
+            rows.push(row);
+        } else {
+            let mut reader = csv::ReaderBuilder::new()
+                .from_reader(text.trim_start_matches('\u{feff}').as_bytes());
+            let headers = reader
+                .headers()
+                .map_err(|error| Error::Conversion(format!("{}: {error}", document.path)))?
+                .clone();
+            let mut unique = std::collections::HashSet::new();
+            for header in &headers {
+                if !unique.insert(header.to_lowercase()) {
+                    return Err(Error::Conversion(format!(
+                        "{}: duplicate transcript column {header:?}",
+                        document.path
+                    )));
+                }
+            }
+            let mut metadata = Row::new();
+            for (key, value) in row {
+                let mut name = key.clone();
+                let mut suffix = 2;
+                while !unique.insert(name.to_lowercase()) {
+                    name = format!("{key}_{suffix}");
+                    suffix += 1;
+                }
+                metadata.insert(name, value);
+            }
+            let row = metadata;
+            let mut added = false;
+            for record in reader.records() {
+                let record = record
+                    .map_err(|error| Error::Conversion(format!("{}: {error}", document.path)))?;
+                let mut utterance = row.clone();
+                for (header, value) in headers.iter().zip(record.iter()) {
+                    utterance.insert(header.into(), Value::String(value.into()));
+                }
+                rows.push(utterance);
+                added = true;
+            }
+            if !added {
+                rows.push(row);
+            }
+        }
     }
     Table::from_rows_with_columns(
         "documents",

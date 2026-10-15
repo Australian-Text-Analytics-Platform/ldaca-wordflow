@@ -11,7 +11,7 @@ name = "ldaca_rs"
 
 [features]
 default = []
-data = ["dep:arrow-array", "dep:arrow-schema", "dep:arrow-ipc", "dep:arrow-csv", "dep:parquet", "dep:futures-util", "dep:indexmap", "dep:reqwest", "dep:tempfile", "dep:tokio", "dep:tokio-util", "dep:url", "dep:encoding_rs"]
+data = ["dep:arrow-array", "dep:arrow-schema", "dep:arrow-ipc", "dep:arrow-csv", "dep:csv", "dep:parquet", "dep:futures-util", "dep:indexmap", "dep:reqwest", "dep:tempfile", "dep:tokio", "dep:tokio-util", "dep:url", "dep:encoding_rs"]
 cache = ["dep:duckdb", "dep:fs2", "dep:tempfile"]
 tokenization = ["dep:fs2", "dep:hf-hub", "dep:lindera", "dep:tokenizers", "dep:ureq", "dep:zip", "dep:caseless"]
 embedding = ["dep:hf-hub", "dep:ndarray", "dep:ort", "dep:tokenizers"]
@@ -20,6 +20,7 @@ quotation = ["dep:cxx", "dep:cxx-build"]
 full = ["data", "tokenization", "embedding", "topic-modeling", "quotation", "cache"]
 
 [dependencies]
+csv = { version = "1.4.0", optional = true }
 hex = "0.4.3"
 cxx = { version = "1.0.202", optional = true }
 thiserror = { version = "2.0.21" }

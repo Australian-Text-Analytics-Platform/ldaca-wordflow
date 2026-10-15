@@ -637,3 +637,59 @@ Browser acceptance uses the instrumented debug API host. Final WebKit/release an
 Windows durability, physical-control and signed-runtime gates remain open. The
 provider catalogue is a verified explicit subset, not a claim about unknown models.
 No push or release publication occurred.
+
+
+## v0.7.12–v0.7.13 batch 5: LDaCA, reusable caches and shared UI
+
+The LDaCA adapter follows curator-designated mainText, then indexableText, then
+plain-text fallback. Transcript CSVs retain utterances and original string fields,
+with file/item/speaker metadata on each row. Original names win metadata collisions;
+generated metadata names receive unique suffixes. Member staging still publishes
+once through the existing native import owner. Explicit access-denied files are
+not fetched and invalid UTF-8 remains replacement-with-report for LDaCA.
+
+Storage inspection reads reusable token/embedding database and WAL sizes only on
+request. Each Clear has a separate confirmation. The cache library extends its
+existing file-lock owner with shared computation leases across lookup, miss work
+and persistence. Nonblocking exclusive maintenance rejects in-use caches, leaves
+sidecars in place and preserves models, assets, projects and analysis artifacts.
+
+Graph plain drag previews input transfer using the current destination registry;
+Command/Ctrl-drag moves nodes. Fit has a 0.35 minimum and double-click no longer
+zooms. Shared menus wrap bounded long names, ordinary tooltips wrap at 20rem,
+tab scrollbars are hidden, and generated fields have shared explanations without
+renaming headers. Hints acknowledge target use, including focused field edits,
+clean their outline and wait for another user action. Disable hints stays immediate.
+Plain words is labelled for languages with spaces; identifiers, tokenisation and
+recommendation defaults remain unchanged.
+
+Observed checks:
+
+- Backend: 250 library, 59 integration and two CLI tests pass. The native LDaCA
+  handler fixture imports utterances/speakers, reports encoding replacement, skips
+  denied files, deduplicates member IDs and proves a malformed later member leaves
+  the existing single imported Data Block unchanged. Cache routes inspect only
+  selected files, return 409 under a lease and reject unknown cache categories.
+- Library: 119 library and 24 integration tests pass, with five optional tests/helpers
+  ignored. Cache acceptance includes an unlocked active miss and an actual second
+  process; clearing retains unrelated model bytes. Transcript fixtures preserve
+  zero-looking/blank fields, quoted newlines, Unicode and MIME parameters.
+- Backend/library strict all-target/all-feature Clippy and formatting pass. No-default,
+  tokenisation-only, data-only and Topic-only feature checks pass, retaining the
+  existing narrow-feature fingerprint warning. API generation/checks pass.
+- Frontend: all 817 tests and 17 script tests pass. A lazy Help test needed an isolated
+  rerun under build contention, then the complete suite passed. Build, lint, tooling,
+  Knip, bundled-doc validation, Markdown links and diff checks pass. Later focused
+  tokeniser-selector checks retain existing recommendation behaviour.
+- Chromium: both Concordance journeys and Quotation pass with the new result/menu
+  content. A Quotation transport failure did not reproduce in the isolated rerun.
+  Real graph input transfer, continuous modified movement, modifier release and
+  double-click without viewport change pass. Browser Actions now explicitly retain
+  the held modifier across commands; product release handling also recognises the
+  released modifier key directly. Fresh result screenshots remain available for
+  final native visual acceptance.
+
+Public Oni configuration/OpenAPI were checked at version 2.1.5; actual imports use
+bounded loopback fixtures, without private portal data or stored credentials.
+Final WebKit, uninstrumented release and carried-forward Windows/physical/signed
+runtime gates remain open. No push or publication occurred.

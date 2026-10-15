@@ -22,8 +22,8 @@ frequency statistics, embeddings, topic computation/projections and quotation
 extraction. The Polars adapter owns Series conversion, lazy plugin registration,
 Python argument validation and output schemas. Model and algorithm code has one
 implementation in the core, including the formerly Python frequency statistics.
-Hosts select uncapped, adaptive or fixed topic-size clustering explicitly;
-Wordflow uses uncapped clustering. Projection contexts retain Unicode-character
+The library retains explicit clustering controls for adapters. Wordflow fits once
+with an optional fixed maximum and uses cap-constrained retained-hierarchy merges. Projection contexts retain Unicode-character
 segment spans for the adapter's per-topic document extraction.
 
 The native backend selects the data and analysis features it needs. It owns project naming,
@@ -34,7 +34,9 @@ Python SDK bindings remain. The old FastAPI LDaCA integration is outside this
 cutover's compatibility boundary.
 
 The ONI adapter owns paginated collection/member discovery and explicit strict or
-replacement-with-report text decoding. The backend supervises member preparation
+replacement-with-report text decoding. Wordflow transcript selection follows
+mainText, indexableText and plain-text fallback; CSV utterances carry item and
+speaker metadata without converting numeric-looking fields. The backend supervises member preparation
 and atomic publication; frontend catalogue queries and window-memory credentials
 remain in their established owners. The [native API reference](../../reference/native-project-api.md#desktop-imports)
 records current bounds, import modes and reporting contracts.

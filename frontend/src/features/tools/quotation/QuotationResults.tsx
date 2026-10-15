@@ -1,5 +1,6 @@
 import { orderedResultColumns, readColumnOrder } from '../common/resultColumns';
 import { ResultColumnOrder } from '../common/components/ResultColumnOrder';
+import { GeneratedFieldHint } from '../common/components/GeneratedFieldHint';
 import { ResultDownloadMenu } from '../common/components/ResultDownloadMenu';
 import { OperationError } from '@/features/project/OperationError';
 import HelpIcon from '@/components/help/HelpIcon';
@@ -357,6 +358,7 @@ export function QuotationResults({
                       .map((field) => (
                         <label key={field} className="flex items-center gap-2">
                           <Checkbox
+                            aria-label={field.replaceAll('_', ' ')}
                             checked={generated.includes(field)}
                             onCheckedChange={(v) => {
                               onSettings({
@@ -366,7 +368,10 @@ export function QuotationResults({
                               });
                             }}
                           />
-                          {field.replaceAll('_', ' ')}
+                          <span>
+                            {field.replaceAll('_', ' ')}
+                            <GeneratedFieldHint field={field} />
+                          </span>
                         </label>
                       ))}
                   </fieldset>
@@ -425,7 +430,11 @@ export function QuotationResults({
               <thead className="sticky top-0 z-10 bg-panel">
                 <tr>
                   {displayColumns.map(({ column: field, metadata }) => (
-                    <th key={`${String(metadata)}-${field}`} className="p-2 text-left">
+                    <th
+                      key={`${String(metadata)}-${field}`}
+                      aria-label={metadata && field === input.column ? 'Document' : field}
+                      className="p-2 text-left"
+                    >
                       <Button
                         variant="ghost"
                         disabled={!metadata && (!saved || unit === 'documents')}
@@ -438,6 +447,7 @@ export function QuotationResults({
                             : ' ↑'
                           : ''}
                       </Button>
+                      {!metadata && <GeneratedFieldHint field={field} />}
                     </th>
                   ))}
                 </tr>

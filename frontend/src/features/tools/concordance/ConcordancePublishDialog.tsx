@@ -1,4 +1,5 @@
 import { OperationError } from '@/features/project/OperationError';
+import { GeneratedFieldHint } from '../common/components/GeneratedFieldHint';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -259,12 +260,16 @@ export function ConcordancePublishDialog({
                       {generated.map(([field, label]) => (
                         <label key={field} className="flex items-center gap-2">
                           <Checkbox
+                            aria-label={label}
                             checked={output.fields.includes(field)}
                             onCheckedChange={(value) => {
                               update(index, 'fields', field, value === true);
                             }}
                           />
-                          {label}
+                          <span>
+                            {label}
+                            <GeneratedFieldHint field={field} />
+                          </span>
                         </label>
                       ))}
                     </div>

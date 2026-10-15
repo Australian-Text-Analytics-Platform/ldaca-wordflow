@@ -88,7 +88,11 @@ Review each result's source, access information and licence. **Details** exposes
 the complete description and identifier; the title opens its source portal page.
 Choose **Import** to embed accessible text and metadata, or **Import metadata only**
 for public metadata without downloading text. Restricted text remains disabled.
-Member crates import together atomically. Invalid text encoding is replaced,
+Member crates import together atomically. Each item's **mainText** is preferred,
+then **indexableText**, then plain-text fallback. Transcript CSVs import one row
+per utterance, preserving their original columns as text and adding **item_***
+metadata, including available speaker details. Malformed CSVs fail the entire
+import; no partial Data Blocks remain. Invalid text encoding is replaced,
 with affected files reported and their rows retained. Search results remain
 available afterward; failures retain their diagnostic and **Retry**.
 

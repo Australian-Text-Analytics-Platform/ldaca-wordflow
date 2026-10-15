@@ -1,6 +1,6 @@
 import type { NodeTypes, ReactFlowProps } from '@xyflow/react';
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ObjectRef } from '@/features/project/objects';
 import '@xyflow/react/dist/style.css';
 
@@ -136,7 +136,7 @@ function ProjectGraphControls({
         accessibleLabel="Fit view"
         label="Fit view"
         onClick={() => {
-          void fitView({ padding: 0.2, includeHiddenNodes: false });
+          void fitView({ padding: 0.2, includeHiddenNodes: false, minZoom: 0.35 });
         }}
       >
         <Scan aria-hidden="true" />
@@ -241,6 +241,25 @@ export function ProjectGraphView({
   deleteNodes: (ids: ObjectRef[]) => void;
 }) {
   const [boxSelection, setBoxSelection] = useState(false);
+  const [moveModifier, setMoveModifier] = useState(false);
+  useEffect(() => {
+    const mac = /Mac|iPhone|iPad/.test(navigator.platform);
+    const update = (event: KeyboardEvent) => {
+      const modifier = mac ? 'Meta' : 'Control';
+      setMoveModifier(
+        event.key === modifier ? event.type === 'keydown' : mac ? event.metaKey : event.ctrlKey,
+      );
+    };
+    const reset = () => setMoveModifier(false);
+    window.addEventListener('keydown', update);
+    window.addEventListener('keyup', update);
+    window.addEventListener('blur', reset);
+    return () => {
+      window.removeEventListener('keydown', update);
+      window.removeEventListener('keyup', update);
+      window.removeEventListener('blur', reset);
+    };
+  }, []);
   if (graph.isGraphLoading) {
     return <GraphLoadingState />;
   }
@@ -271,7 +290,8 @@ export function ProjectGraphView({
         minZoom={0.05}
         maxZoom={4}
         connectOnClick={false}
-        nodesDraggable={!graph.pickingConnection}
+        nodesDraggable={!graph.pickingConnection && moveModifier}
+        zoomOnDoubleClick={false}
         nodesConnectable={graph.pickingConnection}
         connectionDragThreshold={0}
         selectionOnDrag={boxSelection}

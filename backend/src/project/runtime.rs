@@ -1750,6 +1750,115 @@ mod plots_icu_tests {
     }
 }
 
+#[cfg(test)]
+mod ldaca_import_tests {
+    use super::*;
+    use axum::{
+        Json,
+        extract::Query,
+        response::IntoResponse,
+        routing::{get, post},
+    };
+    use serde_json::{Value, json};
+    use tower::ServiceExt;
+
+    #[tokio::test]
+    async fn member_csv_imports_are_atomic_access_aware_and_report_encoding() {
+        let broken = Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let failures = broken.clone();
+        let portal = axum::Router::new()
+            .route("/api/object/meta", get(|Query(query): Query<HashMap<String,String>>| async move {
+                let id = &query["id"];
+                let graph = if id == "collection" { json!([{"@id":"./","@type":"RepositoryCollection","name":"Interviews"}]) }
+                else if id == "csv" { json!([
+                    {"@id":"./","@type":"RepositoryObject","name":"Conversation","ldac:mainText":{"@id":"speech.csv"},"ldac:speaker":{"@id":"speaker"}},
+                    {"@id":"speaker","@type":"Person","name":"José"},
+                    {"@id":"speech.csv","@type":"File","encodingFormat":"text/csv"},
+                    {"@id":"denied.txt","@type":"File","encodingFormat":"text/plain","_access":{"hasAccess":false}}
+                ]) } else { json!([
+                    {"@id":"./","@type":"RepositoryObject","ldac:indexableText":{"@id":"plain.txt"}},
+                    {"@id":"plain.txt","@type":"File","encodingFormat":"text/plain"}
+                ]) };
+                Json(json!({"@graph":graph}))
+            }))
+            .route("/api/search/index/items", post(|| async { Json(json!({"hits":{"total":{"value":3},"hits":[{"_source":{"@id":"csv"}},{"_source":{"@id":"plain"}},{"_source":{"@id":"csv"}}]}})) }))
+            .route("/api/stream", get(move |Query(query): Query<HashMap<String,String>>, headers: axum::http::HeaderMap| {
+                let broken = failures.clone(); async move {
+                    assert_eq!(headers["authorization"], "Bearer fixture-token");
+                    match query["path"].as_str() {
+                        "speech.csv" if broken.load(std::sync::atomic::Ordering::SeqCst) => b"utterance,start\nx,0,extra\n".to_vec().into_response(),
+                        "speech.csv" => "utterance,start\n\"Café, 猫\",0\nsecond,1\n".into_response(),
+                        "plain.txt" => vec![b'x',0xff].into_response(),
+                        _ => panic!("restricted or unselected document requested"),
+                    }
+                }
+            }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let options = ldaca_rs::data::ClientOptions {
+            base_url: format!("http://{}/api", listener.local_addr().unwrap()),
+            max_documents: 3,
+            ..Default::default()
+        };
+        let task = tokio::spawn(async move {
+            axum::serve(listener, portal).await.unwrap();
+        });
+        let shutdown = CancellationToken::new();
+        let runtime = ProjectRuntime::new(shutdown.clone());
+        *runtime.shared.portal.lock().unwrap() =
+            Some(ldaca_rs::data::Client::new(None, options).unwrap());
+        runtime.create(None).await.unwrap();
+        for should_fail in [false, true] {
+            broken.store(should_fail, std::sync::atomic::Ordering::SeqCst);
+            let router = crate::router(vec![], shutdown.clone(), runtime.clone());
+            let response = router
+                .oneshot(
+                    axum::http::Request::post("/api/project/ldaca/import")
+                        .header("content-type", "application/json")
+                        .body(axum::body::Body::from(
+                            json!({"identifier":"collection","token":"fixture-token"}).to_string(),
+                        ))
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            let status = response.status();
+            let body: Value = serde_json::from_slice(
+                &axum::body::to_bytes(response.into_body(), 1024 * 1024)
+                    .await
+                    .unwrap(),
+            )
+            .unwrap();
+            if should_fail {
+                assert_eq!(status, 400, "{body}");
+                assert!(
+                    body["error"]["message"]
+                        .as_str()
+                        .unwrap()
+                        .contains("speech.csv")
+                );
+            } else {
+                assert_eq!(status, 200, "{body}");
+                assert_eq!(body["replaced_paths"], json!(["plain: plain.txt"]));
+                let name = body["table_names"][0].as_str().unwrap().to_owned();
+                runtime.with_project(move |project| {
+                    let name = query::quote(&name);
+                    let rows: u64 = project.conn.query_row(&format!("SELECT count(*) FROM data.{name}"),[],|row|row.get(0))?;
+                    assert_eq!(rows,3);
+                    let speaker: String = project.conn.query_row(&format!("SELECT \"item_ldac:speaker_name\" FROM data.{name} WHERE utterance='Café, 猫'"),[],|row|row.get(0))?;
+                    assert_eq!(speaker,"José"); Ok(())
+                }).await.unwrap();
+            }
+        }
+        let nodes = runtime
+            .with_project(|project| Ok(project.graph()?.nodes.len()))
+            .await
+            .unwrap();
+        assert_eq!(nodes, 1);
+        runtime.close().await.unwrap();
+        task.abort();
+    }
+}
+
 impl axum::extract::FromRef<ProjectRuntime> for crate::AiConfiguration {
     fn from_ref(runtime: &ProjectRuntime) -> Self {
         runtime.ai().clone()

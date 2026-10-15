@@ -1,6 +1,8 @@
 //! Native text analysis and ONI data access. Hosts own execution and persistence.
 #[cfg(feature = "cache")]
 mod cache;
+#[cfg(feature = "cache")]
+pub use cache::{clear as clear_text_cache, size as text_cache_size};
 #[cfg(feature = "data")]
 pub mod data;
 #[cfg(feature = "embedding")]

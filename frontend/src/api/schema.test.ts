@@ -28,7 +28,7 @@ describe('native OpenAPI contracts', () => {
       }
     }
     // Includes result downloads, Quotation partial/Resume and provider concurrency.
-    expect(ids.size).toBe(140);
+    expect(ids.size).toBe(142);
     const refs = JSON.stringify(contract).matchAll(/"\$ref":"([^"]+)"/g);
     for (const [, ref] of refs) {
       expect(ref?.startsWith('#/components/schemas/')).toBe(true);

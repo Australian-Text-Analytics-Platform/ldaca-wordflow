@@ -19,3 +19,8 @@ Download tables as CSV or Markdown and clouds as PNG, JPEG or SVG. Bundled downl
 For the complete workflow, see the [Frequency tutorial](../tutorials/token-frequency.md). Background material is available in the [ATAP text-analysis methods collection](https://www.atap.edu.au/text-analysis/methods/) and the [legacy keyword-analysis notebook](https://github.com/Australian-Text-Analytics-Platform/keywords-analysis). Use the application's Feedback action to contact the Wordflow team.
 
 The filter, display mode, limits and statistics sorting are window-local and reset on reload. Colours and stopword source selection are saved. Table downloads read current stopwords; chart downloads use the displayed chart and its matching word list.
+
+
+**Plain words (languages with spaces)** is the generic Unicode word tokeniser.
+Its internal model identifier remains unchanged; it is not restricted to English.
+Language-specific tokenisers remain separate choices with their own About links.

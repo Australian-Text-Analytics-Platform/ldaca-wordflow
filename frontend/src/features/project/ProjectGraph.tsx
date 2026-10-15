@@ -161,7 +161,7 @@ export default function ProjectGraph({
   useEffect(() => {
     if (!graph.nodes.length || fitted.current || !flow.current) return;
     const frame = requestAnimationFrame(() => {
-      void flow.current?.fitView({ padding: 0.2 });
+      void flow.current?.fitView({ padding: 0.2, minZoom: 0.35 });
       fitted.current = true;
     });
     return () => {
@@ -391,7 +391,7 @@ export default function ProjectGraph({
           handleInit: (instance) => {
             flow.current = instance;
             if (nodes.length && !fitted.current) {
-              void instance.fitView({ padding: 0.2 });
+              void instance.fitView({ padding: 0.2, minZoom: 0.35 });
               fitted.current = true;
             }
           },

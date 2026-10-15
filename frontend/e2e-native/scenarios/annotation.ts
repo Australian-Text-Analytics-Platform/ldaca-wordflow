@@ -166,7 +166,7 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
       await parameters.$('summary=Advanced settings and examples').click();
       await parameters.$('button=Preview').click();
       const preview = $('[aria-label="Annotation Preview"]');
-      await preview.$('th=Prediction').waitForDisplayed({ timeout: 60000 });
+      await preview.$('th*=Prediction').waitForDisplayed({ timeout: 60000 });
       const predictions = await preview
         .$('tbody')
         .$$('tr')
@@ -181,10 +181,10 @@ export async function annotationAiScenario(base: string, provider?: AnnotationPr
         const before = provider.requests();
         await preview.$('[aria-label="Go to next page"]').click();
         await browser.waitUntil(() => provider.requests() > before);
-        await preview.$('th=Prediction').waitForDisplayed();
+        await preview.$('th*=Prediction').waitForDisplayed();
         await preview.$('[aria-label="Go to previous page"]').click();
         await browser.waitUntil(() => provider.requests() > before + 1);
-        await preview.$('th=Prediction').waitForDisplayed();
+        await preview.$('th*=Prediction').waitForDisplayed();
         expect(await sourceRows(base, sourceName)).toEqual(original);
       }
       await preview.$('button=Edit corrections').click();

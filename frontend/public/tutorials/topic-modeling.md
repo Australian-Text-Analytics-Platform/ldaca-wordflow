@@ -252,7 +252,7 @@ available for the next run.
 | Run scope | Every row |
 | Preview sampling | Up to 1,000 documents per Data Block |
 | Embedding model | English MiniLM |
-| Representative tokenizer | Plain words (English), shared |
+| Representative tokenizer | Plain words (languages with spaces), shared |
 | Segmentation method | Automatic |
 | Maximum tokens per segment | 256 |
 | Internal minimum Topic size | 10 segments |

@@ -140,7 +140,7 @@ it('exports every row and value in four formats, ZIP members, and reopens select
     const frequency = $('[data-testid="frequency-workspace"]');
     await addResearchInput(frequency, source);
     await chooseColumn('Column', 'label', frequency);
-    await chooseColumn(`${source} tokenizer`, 'Plain words (English)', frequency);
+    await chooseColumn(`${source} tokenizer`, 'Plain words (languages with spaces)', frequency);
     const analysisId = await runResearchAnalysis(baseUrl, 'frequency', frequency);
     const tabs = await analysesApi.listTabs(baseUrl);
     expect(tabs).toHaveLength(1);

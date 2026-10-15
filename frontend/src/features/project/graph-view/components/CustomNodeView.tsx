@@ -1,4 +1,6 @@
 import { DataBlockName } from '@/components/DataBlockName';
+import { DATA_BLOCK_TRANSFER } from '@/features/tools/common/inputDestinations';
+import { objectRef, type ObjectRef } from '@/features/project/objects';
 
 import { DataBlockExportDialog } from '@/features/project/common/components/DataBlockExportDialog';
 import { DataBlockRenameDialog } from '@/features/project/common/components/DataBlockRenameDialog';
@@ -25,6 +27,8 @@ import {
 } from './customNodeToolbarOwner';
 
 export interface CustomNodeData extends Record<string, unknown> {
+  base?: string;
+  target?: ObjectRef;
   node: ProjectGraphNodeCard;
   databaseObject?: boolean;
   detail?: string;
@@ -166,6 +170,22 @@ export function CustomNodeView({
   const { showMenu, dialog, copied, isHovered, isFocused, isToolbarHovered } = uiState;
 
   const zoom = useStore((s) => s.transform[2]);
+  const moving = useStore((s) => s.nodesDraggable);
+  const transferring = !moving && !data.onConnectionPick;
+  const transferProps = {
+    draggable: transferring,
+    onDragStart: (event: React.DragEvent) => {
+      if (!transferring) {
+        event.preventDefault();
+        return;
+      }
+      event.dataTransfer.effectAllowed = 'copy';
+      event.dataTransfer.setData(
+        DATA_BLOCK_TRANSFER,
+        JSON.stringify({ base: data.base, target: data.target ?? objectRef(id) }),
+      );
+    },
+  };
   const isZoomedOut = zoom < COMPACT_NODE_ZOOM_THRESHOLD;
 
   // Which node currently owns the visible hover toolbar (singleton across the
@@ -529,7 +549,8 @@ export function CustomNodeView({
     return (
       <div
         {...focusProps}
-        className={compactClasses}
+        {...transferProps}
+        className={cn(compactClasses, transferring && 'nodrag nopan cursor-grab')}
         data-testid="custom-node-compact-card"
         onClick={stopPortaledGraphEvent}
         onDoubleClick={stopPortaledGraphEvent}
@@ -574,7 +595,8 @@ export function CustomNodeView({
   return (
     <div
       {...focusProps}
-      className={nodeClasses}
+      {...transferProps}
+      className={cn(nodeClasses, transferring && 'nodrag nopan cursor-grab')}
       data-testid="custom-node-card"
       onClick={stopPortaledGraphEvent}
       onDoubleClick={stopPortaledGraphEvent}

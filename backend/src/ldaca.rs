@@ -134,6 +134,9 @@ pub(crate) async fn import(
                     () = shutdown.cancelled() => return Err(Error::new("interrupted", "Import interrupted")),
                 }
             };
+            if !input.metadata_only && krate.root(&id).is_some_and(|root| !ldaca_rs::data::profiles::has_access(root)) {
+                return Err(Error::new("portal_access_denied", "This item does not allow text access. Import metadata only or enter a token with access."));
+            }
             let documents = if input.metadata_only { Vec::new() } else { ldaca_rs::data::profiles::select_documents(&krate) };
             let paths = documents.iter().map(|document| document.path.clone()).collect::<Vec<_>>();
             context.progress("Downloading documents", None);
@@ -148,7 +151,7 @@ pub(crate) async fn import(
                 let result = if documents.is_empty() {
                     ldaca_rs::data::profiles::wordflow_metadata(&krate, &id, None)
                 } else {
-                    ldaca_rs::data::profiles::document_table(&documents, &downloaded.texts)
+                    ldaca_rs::data::profiles::document_table_for_item(&documents, &downloaded.texts, &id)
                 }.map_err(portal_error)?;
                 context.check_cancelled()?;
                 result.write(&staged.path().join(format!("{index:05}.parquet")), ldaca_rs::data::table::ExportFormat::Parquet)

@@ -26,7 +26,7 @@ const TooltipContent = ({
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-50 overflow-hidden rounded-md border border-[var(--vscode-widget-border)] bg-widget px-2 py-1 text-label-secondary text-widget-foreground shadow-[var(--vscode-shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 origin-[--radix-tooltip-content-transform-origin]',
+        'z-50 max-w-80 whitespace-normal break-words overflow-hidden rounded-md border border-[var(--vscode-widget-border)] bg-widget px-2 py-1 text-label-secondary text-widget-foreground shadow-[var(--vscode-shadow-lg)] animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 origin-[--radix-tooltip-content-transform-origin]',
         className,
       )}
       {...props}
