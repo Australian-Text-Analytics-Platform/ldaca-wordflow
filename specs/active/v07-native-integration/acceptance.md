@@ -755,13 +755,13 @@ is updated locally only.
 
 Computer Use screen capture failed when selecting the release bundle. Physical
 macOS Help menu/search, Help during Run, release visual/performance acceptance,
-Windows controls/locking and signed production runtime remain open. Automatic
-approval review rejected terminating the idle Test QA process through SIGTERM,
-because that bypasses native Quit. The idle synthetic project was subsequently
-closed through the supported native API. The Test application and cache lock
-remain open pending explicit approval or manual Quit; they must be cleaned before
-another cache-owning Test run. This is an acceptance/cleanup limitation, not a
-product fallback. The integration spec remains active.
+Windows controls/locking and signed production runtime remain open. After explicit
+user approval, the verified isolated QA process was terminated with SIGTERM; its
+idle synthetic project had already closed through the supported native API.
+The QA helper stopped, and the existing Test-cache cleanup owner removed Test
+credentials, preferences, caches, temporary projects, logs and the cache lock.
+All Rust-resolved Test roots were verified absent. The integration spec remains
+active for the outstanding acceptance gates.
 
 All changes and the docs mirror are delivered as local commits. No push, public
 release, updater publication, tag movement or legacy-project migration occurred.
