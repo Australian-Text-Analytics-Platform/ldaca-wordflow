@@ -203,3 +203,31 @@ def test_excel_export_explains_when_a_block_is_too_large(
 
     assert response.status_code == 400
     assert "CSV or Parquet" in response.text
+
+
+def test_excel_export_names_the_long_column_for_the_page(
+    files_test_client: TestClient, monkeypatch
+) -> None:
+    """The page needs the code and the columns to show its suggestion (issue 397)."""
+
+    from ldaca_wordflow.services import data_block_exports
+
+    monkeypatch.setattr(data_block_exports, "_EXCEL_MAX_CELL_CHARACTERS", 3)
+    workspace_id = _create_workspace(files_test_client)
+    node_id = _create_node(
+        files_test_client,
+        workspace_id,
+        file_path="large.csv",
+        name="Long text",
+    )
+
+    response = files_test_client.post(
+        f"/api/workspaces/{workspace_id}/nodes/exports",
+        json={"node_ids": [node_id], "format": "xlsx"},
+    )
+
+    assert response.status_code == 400
+    body = response.json()
+    assert body["code"] == "excel_cell_too_long"
+    assert body["details"]["columns"]
+    assert "can't be exported as Excel" in body["message"]

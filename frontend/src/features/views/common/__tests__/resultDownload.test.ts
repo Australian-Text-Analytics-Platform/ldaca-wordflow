@@ -30,7 +30,9 @@ describe('downloadResultSelection names (issue 393)', () => {
       response: new Response(null),
     });
     await download();
-    expect(mocks.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'speeches_concordance.zip');
+    expect(mocks.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'speeches_concordance.zip', {
+      reportFailure: false,
+    });
   });
 
   it("uses the backend's name when it can be read", async () => {
@@ -46,6 +48,7 @@ describe('downloadResultSelection names (issue 393)', () => {
     expect(mocks.saveBlob).toHaveBeenCalledWith(
       expect.any(Blob),
       'speeches_concordance_and_more.zip',
+      { reportFailure: false },
     );
   });
 
@@ -55,6 +58,8 @@ describe('downloadResultSelection names (issue 393)', () => {
       response: new Response(null),
     });
     await download();
-    expect(mocks.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'speeches_concordance.csv');
+    expect(mocks.saveBlob).toHaveBeenCalledWith(expect.any(Blob), 'speeches_concordance.csv', {
+      reportFailure: false,
+    });
   });
 });

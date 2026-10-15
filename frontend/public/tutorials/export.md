@@ -41,7 +41,16 @@ CSV files are saved as UTF-8 with a byte-order mark (a hidden marker at the star
 
 Excel has no time zones, so date-times are written in UTC in Excel files; CSV, JSON, and Parquet keep the time zone.
 
-An Excel worksheet holds at most 1,048,576 rows, and each cell at most 32,767 characters. If a Data Block is larger, or has longer texts, Excel export stops with a message; export it as CSV or Parquet instead to keep every row and the full text.
+An Excel worksheet holds at most 1,048,576 rows, and each cell at most 32,767 characters. If a Data Block is larger, or has longer texts, Excel export stops with a message; export it as CSV or Parquet instead to keep every row and the full text. See [Excel's cell limit](#help-export-excel-limit) for opening long texts.
+
+<h3 id="help-export-excel-limit">Excel's cell limit</h3>
+
+An Excel cell holds at most 32,767 characters. Long documents, such as interview transcripts or full news articles, are often longer, and this affects both Excel files and CSV files opened in Excel.
+
+- **Excel files.** Wordflow won't write a column with text longer than a cell holds into an Excel file, because Excel would cut it. It stops and names the column, with a suggestion beside **Format**. In a Concordance or Quotation download, untick that column (usually the document column) to download the other columns as Excel. In Export, choose CSV or Parquet.
+- **CSV files keep the full text**, but Excel can't: no Excel cell holds more than 32,767 characters, however the file is opened. When Excel opens such a CSV, the long text is split into extra rows, so the columns no longer line up. This happens in Excel on Windows and on Mac.
+- **Programs that open long text correctly:** LibreOffice Calc (free, for Windows, Mac and Linux) and Numbers (Mac) open a Wordflow CSV with each document in one cell. For analysis, R and Python read the CSV in full. Google Sheets also limits long cells, so it is not a safe choice for long documents.
+- **Only need the matches?** Leave the document column out: the Concordance and Quotation columns (left context, match, right context, quotes) are short and fit Excel.
 
 <h2 id="help-export-results">Step 3: Download</h2>
 
@@ -77,7 +86,8 @@ Loader's Project manager.
 |---|---|---|
 | Download button does nothing | Browser blocked the download | Check browser download permissions or pop-up blocker settings |
 | File opens with garbled characters | The tool did not read the file as UTF-8 | Excel reads Wordflow CSV files correctly; in other tools, choose UTF-8 encoding when opening the CSV, or export as Excel (.xlsx) |
-| Excel export stops with a message | The Data Block has more than 1,048,576 rows or a text longer than 32,767 characters | Export as CSV or Parquet instead |
+| Excel export stops with a message | The Data Block has more than 1,048,576 rows or a text longer than 32,767 characters | Export as CSV or Parquet instead; see [Excel's cell limit](#help-export-excel-limit) |
+| A CSV opens in Excel with text in the wrong rows | Excel splits text longer than 32,767 characters into extra rows | Open the CSV in LibreOffice Calc or Numbers, or leave the long column out; see [Excel's cell limit](#help-export-excel-limit) |
 | Date-times in Excel are hours off | Excel files store date-times in UTC | Use CSV, JSON, or Parquet to keep the time zone |
 | Parquet file unreadable | Tool does not support Parquet | Use pandas, DuckDB, or re-import into this app instead |
 

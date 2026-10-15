@@ -56,6 +56,7 @@ import type { ConcordanceRunAllReviewSource } from './concordanceRunAllReview';
 import { queryKeys } from '@/lib/queryKeys';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
 import { downloadResultSelection } from '../common/resultDownload';
+import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import { Download } from 'lucide-react';
 import {
   projectWorkspaceNodeMetadata,
@@ -257,6 +258,8 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
   const [highlightL1R1, setHighlightL1R1] = useState(true);
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  // Excel's cell limit, as a suggestion in the download window (issue 397).
+  const excelLimit = useExcelCellLimitNotice({ canUntick: true });
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);
   // Metadata visibility derives from the selected columns: any selection
@@ -767,6 +770,7 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
     format: DataBlockExportFormat,
   ) => {
     if (!concordanceRunAll || !currentWorkspaceId) return;
+    excelLimit.clear();
     setIsDownloading(true);
     try {
       const saved = await downloadResultSelection({
@@ -778,7 +782,9 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       });
       if (saved) setDownloadDialogOpen(false);
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: "Couldn't download the Concordance Results." });
+      if (!excelLimit.report(cause, "Couldn't download the Concordance Results.")) {
+        toastError(cause, 'Try again.', { title: "Couldn't download the Concordance Results." });
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -1052,7 +1058,11 @@ function ConcordanceFeature({ host }: AnalysisTabFeatureProps) {
       {downloadDialogOpen ? (
         <ResultAddToWorkspaceDialog
           open
-          onOpenChange={setDownloadDialogOpen}
+          onOpenChange={(nextOpen) => {
+            excelLimit.clear();
+            setDownloadDialogOpen(nextOpen);
+          }}
+          notice={excelLimit.card}
           title={`Download Concordance ${concordanceView === 'dispersion' ? 'Documents' : 'Matches'}`}
           nameSuffix={concordanceView === 'dispersion' ? 'concordance_documents' : 'concordance'}
           sources={addToWorkspaceSources}

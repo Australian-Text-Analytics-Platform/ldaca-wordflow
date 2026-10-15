@@ -16,6 +16,7 @@ export const NUDGE_TARGETS = {
   topicDocumentSampling: 'topic-document-sampling',
   topicClusterSample: 'topic-cluster-sample',
   tokenizer: 'tokenizer-model',
+  exportFormat: 'export-format',
 } as const;
 
 /**
@@ -97,6 +98,15 @@ export const NUDGES = {
       'For a faster first run, use a sample: fewer documents with Sampling, or fewer segments with Topic sampling.',
     help: 'analysis.topic-modeling.topic-sampling',
     targets: [NUDGE_TARGETS.topicDocumentSampling, NUDGE_TARGETS.topicClusterSample],
+  },
+  'excel-cell-limit': {
+    title: 'Too long for Excel',
+    // Shown after an Excel download or export is refused (issue 397); the
+    // detail names the columns. Excel breaks a CSV with such text too.
+    message:
+      'Excel cells hold at most 32,767 characters. Choose CSV to keep the full text, and open it in LibreOffice Calc or Numbers: Excel splits such text into extra rows.',
+    help: 'analysis.export.excel-limit',
+    targets: [NUDGE_TARGETS.exportFormat],
   },
 } as const satisfies Record<string, NudgeDefinition>;
 

@@ -122,14 +122,24 @@ async fn install_temporary(target: &Path, temporary: &Path) -> Result<PathBuf, S
 
 const MAX_ERROR_BODY_BYTES: u64 = 64 * 1024;
 
-/// The `message` of the backend's JSON error envelope, if there is one.
-fn backend_error_message(body: &[u8]) -> Option<String> {
+/// The backend's JSON error envelope (code, message, details, status), as JSON
+/// text for the page, if the body is one with a message.
+fn backend_error(body: &[u8], status: u16) -> Option<String> {
     if body.len() as u64 > MAX_ERROR_BODY_BYTES {
         return None;
     }
     let value: serde_json::Value = serde_json::from_slice(body).ok()?;
     let message = value.get("message")?.as_str()?.trim();
-    (!message.is_empty()).then(|| message.to_owned())
+    if message.is_empty() {
+        return None;
+    }
+    let mut error = serde_json::json!({ "message": message, "status": status });
+    for key in ["code", "details", "request_id"] {
+        if let Some(field) = value.get(key) {
+            error[key] = field.clone();
+        }
+    }
+    Some(error.to_string())
 }
 
 fn backend_client() -> Result<reqwest::Client, String> {
@@ -151,8 +161,9 @@ async fn download_response(
         .map_err(|_| "backend_download_failed".to_owned())?;
     if !response.status().is_success() {
         let status = response.status().as_u16();
-        // Pass the backend's own message on, such as Excel's cell limit
-        // (issue 396); before, the page showed this code instead.
+        // Pass the backend's own error on, such as Excel's cell limit
+        // (issue 396), as JSON the page reads back into an ApiError with its
+        // code and details (issue 397); before, the page showed this code.
         let small = response
             .content_length()
             .is_none_or(|length| length <= MAX_ERROR_BODY_BYTES);
@@ -161,7 +172,7 @@ async fn download_response(
         } else {
             Default::default()
         };
-        return Err(backend_error_message(&body)
+        return Err(backend_error(&body, status)
             .unwrap_or_else(|| format!("backend_download_http_{status}")));
     }
     let response_headers = response.headers().clone();
@@ -362,14 +373,19 @@ mod tests {
     }
 
     #[test]
-    fn failed_downloads_carry_the_backend_message() {
-        let body = br#"{"code":"invalid_input","message":"Excel cells hold at most 32,767 characters.","request_id":"x"}"#;
+    fn failed_downloads_carry_the_backend_error() {
+        let body = br#"{"code":"excel_cell_too_long","message":"Excel cells hold at most 32,767 characters.","details":{"columns":["document"]},"request_id":"x"}"#;
+        let error: serde_json::Value =
+            serde_json::from_str(&backend_error(body, 400).unwrap()).unwrap();
         assert_eq!(
-            backend_error_message(body).as_deref(),
-            Some("Excel cells hold at most 32,767 characters.")
+            error["message"],
+            "Excel cells hold at most 32,767 characters."
         );
-        assert_eq!(backend_error_message(b"<html>502</html>"), None);
-        assert_eq!(backend_error_message(br#"{"message":"  "}"#), None);
+        assert_eq!(error["code"], "excel_cell_too_long");
+        assert_eq!(error["details"]["columns"][0], "document");
+        assert_eq!(error["status"], 400);
+        assert_eq!(backend_error(b"<html>502</html>", 502), None);
+        assert_eq!(backend_error(br#"{"message":"  "}"#, 400), None);
     }
 
     #[test]

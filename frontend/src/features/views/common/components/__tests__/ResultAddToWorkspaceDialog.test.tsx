@@ -2,6 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ResultAddToWorkspaceDialog } from '../ResultAddToWorkspaceDialog';
 
+vi.mock('@/components/help/HelpIcon', () => ({ default: () => null }));
+
 describe('ResultAddToWorkspaceDialog', () => {
   it('selects all or no optional columns independently in contract order', () => {
     const onSubmit = vi.fn();

@@ -576,6 +576,11 @@ const tutorial = {
     anchor: 'help-export-run',
     label: 'Export action',
   },
+  'analysis.export.excel-limit': {
+    file: 'tutorials/export.md',
+    anchor: 'help-export-excel-limit',
+    label: "Excel's cell limit",
+  },
 } as const satisfies Record<string, DocTarget>;
 
 const info = {

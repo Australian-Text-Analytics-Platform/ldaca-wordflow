@@ -69,6 +69,7 @@ import {
 } from './quotationResultsModel';
 import { ResultAddToWorkspaceDialog } from '../common/components/ResultAddToWorkspaceDialog';
 import { downloadResultSelection } from '../common/resultDownload';
+import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import { Download } from 'lucide-react';
 import { projectWorkspaceNodeMetadata } from '@/features/workspace/common/workspaceNodeMetadata';
 import { toastError } from '@/lib/toastError';
@@ -165,6 +166,8 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   const [isClearing, setIsClearing] = useState(false);
   const [addToWorkspaceDialogOpen, setAddToWorkspaceDialogOpen] = useState(false);
   const [downloadDialogOpen, setDownloadDialogOpen] = useState(false);
+  // Excel's cell limit, as a suggestion in the download window (issue 397).
+  const excelLimit = useExcelCellLimitNotice({ canUntick: true });
   const [isDownloading, setIsDownloading] = useState(false);
   const [isAddingToWorkspace, setIsAddingToWorkspace] = useState(false);
   const [errorDialogOpen, setErrorDialogOpen] = useState(false);
@@ -572,6 +575,7 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
   ) => {
     const source = sources[0];
     if (!quotationRunAll || !source || sources.length !== 1 || !currentWorkspaceId) return;
+    excelLimit.clear();
     setIsDownloading(true);
     try {
       const saved = await downloadResultSelection({
@@ -583,7 +587,9 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       });
       if (saved) setDownloadDialogOpen(false);
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: "Couldn't download the Quotation Results." });
+      if (!excelLimit.report(cause, "Couldn't download the Quotation Results.")) {
+        toastError(cause, 'Try again.', { title: "Couldn't download the Quotation Results." });
+      }
     } finally {
       setIsDownloading(false);
     }
@@ -909,7 +915,11 @@ function QuotationFeature({ host }: AnalysisTabFeatureProps) {
       {downloadDialogOpen && runAllSource ? (
         <ResultAddToWorkspaceDialog
           open
-          onOpenChange={setDownloadDialogOpen}
+          onOpenChange={(nextOpen) => {
+            excelLimit.clear();
+            setDownloadDialogOpen(nextOpen);
+          }}
+          notice={excelLimit.card}
           title="Download Quotation Results"
           nameSuffix="quotation"
           sources={[runAllSource]}

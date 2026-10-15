@@ -326,7 +326,8 @@ column to download the other columns as Excel;
 its character positions (`CONC_start_idx` and `CONC_end_idx`) are left out with it, since they only make
 sense with the document. Excel also breaks a CSV with such long text into extra
 rows when it opens the file, so the columns no longer line up; the CSV itself
-is correct and opens properly in other programs.
+is correct and opens properly in LibreOffice Calc, Numbers and other programs.
+See [Excel's cell limit](export.md#help-export-excel-limit).
 
 Use **Add to Project** to create new Data Blocks after reviewing the
 result. From Table view, **Add Concordance Matches to Project** creates a Data

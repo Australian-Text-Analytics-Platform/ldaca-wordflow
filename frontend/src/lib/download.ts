@@ -7,6 +7,7 @@
  * browser's own download UI handles progress and the destination folder.
  */
 import { toast } from 'sonner';
+import { ApiError } from '@/lib/apiError';
 import { getCsrfToken } from '@/lib/backend/csrfToken';
 import { isTauri } from '@/lib/isTauri';
 import { toastError } from '@/lib/toastError';
@@ -58,7 +59,40 @@ const toBasename = (filename: string): string => {
 export interface SaveBlobOptions {
   /** When true, suppress toasts even in Tauri (e.g. for caller-controlled flows). */
   silent?: boolean;
+  /** When false, a failure is left to the caller, which reports it (no second toast). */
+  reportFailure?: boolean;
 }
+
+/**
+ * The desktop downloader passes the backend's error on as JSON text (code,
+ * message, details, status; issues 396, 397). Reads it back into an ApiError,
+ * so pages see the same error as in a browser; anything else is unchanged.
+ */
+export const nativeDownloadError = (error: unknown): unknown => {
+  if (typeof error !== 'string' || !error.startsWith('{')) return error;
+  try {
+    const parsed = JSON.parse(error) as Record<string, unknown>;
+    if (typeof parsed.message !== 'string') return error;
+    const code = typeof parsed.code === 'string' ? parsed.code : undefined;
+    const status = typeof parsed.status === 'number' ? parsed.status : undefined;
+    const reference = typeof parsed.request_id === 'string' ? parsed.request_id : null;
+    const technical = [
+      code ? `Error code: ${code}` : null,
+      status ? `HTTP status: ${String(status)}` : null,
+      reference ? `Reference: ${reference}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    return new ApiError(parsed.message, {
+      status,
+      code,
+      detail: parsed,
+      technical: technical || undefined,
+    });
+  } catch {
+    return error;
+  }
+};
 
 interface BrowserDownload {
   blob: Blob;
@@ -127,6 +161,7 @@ const saveNativeDownload = async (
   args: Record<string, unknown>,
   filename: string,
   silent: boolean,
+  reportFailure = true,
 ): Promise<boolean> => {
   try {
     const fullPath = await invokeNativeDownload<string | null>(command, args);
@@ -134,8 +169,9 @@ const saveNativeDownload = async (
     showNativeDownloadSuccess(fullPath, silent);
     return true;
   } catch (error) {
-    reportDownloadFailure(filename, error, silent);
-    throw error;
+    const failure = nativeDownloadError(error);
+    if (reportFailure) reportDownloadFailure(filename, failure, silent);
+    throw failure;
   }
 };
 
@@ -168,8 +204,9 @@ export const saveBackendDownload = async (
       omittedAnalysisCount: result.omittedAnalysisCount,
     };
   } catch (error) {
-    reportDownloadFailure(safeFilename, error, options.silent ?? false);
-    throw error;
+    const failure = nativeDownloadError(error);
+    reportDownloadFailure(safeFilename, failure, options.silent ?? false);
+    throw failure;
   }
 };
 
@@ -194,11 +231,13 @@ export const saveDataBlockDownload = async ({
     reportDownloadFailure(safeFilename, error, options.silent ?? false);
     throw error;
   }
+  // Every caller reports a failure itself, so none is reported here.
   return saveNativeDownload(
     'save_data_block_export',
     { workspaceId, nodeIds, format, filename: safeFilename, csrfToken },
     safeFilename,
     options.silent ?? false,
+    options.reportFailure ?? false,
   );
 };
 
@@ -230,5 +269,6 @@ export const saveBlob = async (
     { filename: safeFilename, bytes: new Uint8Array(await blob.arrayBuffer()) },
     safeFilename,
     silent,
+    options.reportFailure ?? true,
   );
 };

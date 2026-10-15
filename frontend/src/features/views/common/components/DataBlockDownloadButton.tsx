@@ -10,6 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { downloadDataBlocks } from '@/features/workspace/common/dataBlockExport';
 import { toastError } from '@/lib/toastError';
+import { excelCellLimitColumns } from '@/lib/excelCellLimit';
+import { toastExcelCellLimit } from '../useExcelCellLimitNotice';
 
 interface DataBlockDownloadButtonProps {
   workspaceId: string;
@@ -50,7 +52,13 @@ export function DataBlockDownloadButton({
         format,
       });
     } catch (cause) {
-      toastError(cause, 'Try again.', { title: `Couldn't download the ${label}.` });
+      // A menu has no room for a suggestion, so Excel's cell limit is a
+      // toast with Learn more (issue 397).
+      if (excelCellLimitColumns(cause)) {
+        toastExcelCellLimit(cause, `Couldn't download the ${label} as Excel.`);
+      } else {
+        toastError(cause, 'Try again.', { title: `Couldn't download the ${label}.` });
+      }
     } finally {
       setBusy(false);
     }

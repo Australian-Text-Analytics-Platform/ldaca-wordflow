@@ -130,6 +130,16 @@ class InvalidInputError(AppError):
     code = "invalid_input"
 
 
+class ExcelCellLimitError(InvalidInputError):
+    """Text too long for an Excel cell; ``details.columns`` names the columns.
+
+    Its own code lets the page show a suggestion with a link to the help on
+    Excel's cell limit (issue 397).
+    """
+
+    code = "excel_cell_too_long"
+
+
 class InvalidClusterCountError(AppError):
     status_code = 422
     code = "invalid_topic_cluster_count"

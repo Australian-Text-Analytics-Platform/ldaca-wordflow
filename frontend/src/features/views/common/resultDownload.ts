@@ -31,5 +31,6 @@ export const downloadResultSelection = async ({
   // CSV or Excel name (issue 393).
   const extension = data.type === 'application/zip' ? 'zip' : format;
   const fallback = `${safeDownloadStem(fallbackName, 'results')}.${extension}`;
-  return saveBlob(data, filenameFromResponse(response) ?? fallback);
+  // The page reports a failure (with the Excel suggestion), so saveBlob doesn't.
+  return saveBlob(data, filenameFromResponse(response) ?? fallback, { reportFailure: false });
 };

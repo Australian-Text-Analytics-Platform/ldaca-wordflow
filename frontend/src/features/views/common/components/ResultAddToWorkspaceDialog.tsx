@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { orderColumns } from '../columnOrder';
 import type {
   DataBlockExportFormat,
   SortedDataBlockCreationSource,
   RunAllSourceTableResource,
 } from '@/api';
+import HelpIcon from '@/components/help/HelpIcon';
 import { Label } from '@/components/ui/label';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
 import {
   Select,
   SelectContent,
@@ -34,6 +36,8 @@ interface Props {
   purpose?: 'add' | 'download';
   /** The results table's column order, kept in the new Data Block or file (issue 373). */
   columnOrder?: readonly string[];
+  /** Shown under the Format choice, such as the Excel cell-limit suggestion (issue 397). */
+  notice?: ReactNode;
 }
 
 /** Spreadsheet formats offered by a Result download (issue 352). */
@@ -155,6 +159,7 @@ export function ResultAddToWorkspaceDialog({
   allowSourceSelection = false,
   purpose = 'add',
   columnOrder = [],
+  notice,
 }: Props) {
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
   return (
@@ -173,25 +178,38 @@ export function ResultAddToWorkspaceDialog({
       purpose={purpose}
       options={
         purpose === 'download' ? (
-          <div className="flex items-center gap-2">
-            <Label htmlFor="result-download-format">Format</Label>
-            <Select
-              value={format}
-              onValueChange={(value) => {
-                setFormat(value as DataBlockExportFormat);
-              }}
-            >
-              <SelectTrigger id="result-download-format" className="h-8 w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DOWNLOAD_FORMATS.map((option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="result-download-format">Format</Label>
+              <Select
+                value={format}
+                onValueChange={(value) => {
+                  setFormat(value as DataBlockExportFormat);
+                }}
+              >
+                <SelectTrigger
+                  id="result-download-format"
+                  className="h-8 w-40"
+                  data-nudge-target={NUDGE_TARGETS.exportFormat}
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOWNLOAD_FORMATS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <HelpIcon
+                targetKey="analysis.export.excel-limit"
+                label="Excel's cell limit"
+                tooltip="Excel cells hold at most 32,767 characters, also when Excel opens a CSV."
+                className="h-5 w-5 text-description"
+              />
+            </div>
+            {notice}
           </div>
         ) : undefined
       }

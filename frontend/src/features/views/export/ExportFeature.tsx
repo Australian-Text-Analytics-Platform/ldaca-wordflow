@@ -11,6 +11,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import HelpIcon from '@/components/help/HelpIcon';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { useExcelCellLimitNotice } from '../common/useExcelCellLimitNotice';
 import InfoIcon from '@/components/help/InfoIcon';
 import { useGuidance } from '@/features/guidance/GuidanceContext';
 import { CONTEXTUAL_HINT_IDS } from '@/features/guidance/registry';
@@ -43,6 +45,8 @@ function ExportFeature() {
     inputs: [],
   });
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
+  // Excel's cell limit, as a suggestion under Format (issue 397).
+  const excelLimit = useExcelCellLimitNotice({ canUntick: false });
   const [exportingDataBlocks, setExportingDataBlocks] = useState(false);
   const [exportingWorkspace, setExportingWorkspace] = useState(false);
   const inputs = selection.workspaceId === currentWorkspaceId ? selection.inputs : [];
@@ -63,6 +67,7 @@ function ExportFeature() {
 
   const handleDataBlockExport = async () => {
     if (!currentWorkspaceId || selectedIds.length === 0 || exportingDataBlocks) return;
+    excelLimit.clear();
     setExportingDataBlocks(true);
     try {
       const filename = await downloadDataBlocks({
@@ -79,7 +84,9 @@ function ExportFeature() {
           : `${String(selectedIds.length)} Data Blocks exported`,
       );
     } catch (error) {
-      toastError(error, "Couldn't export Data Blocks");
+      if (!excelLimit.report(error, "Couldn't export Data Blocks")) {
+        toastError(error, "Couldn't export Data Blocks");
+      }
     } finally {
       setExportingDataBlocks(false);
     }
@@ -165,7 +172,7 @@ function ExportFeature() {
                 <HelpIcon
                   targetKey="analysis.export.format"
                   label="About export formats"
-                  tooltip="CSV opens in Excel and most tools; Excel (.xlsx) writes dates and times in UTC; Parquet keeps data types exactly."
+                  tooltip="CSV keeps all text; Excel (.xlsx) cells hold 32,767 characters and times in UTC; Parquet keeps types."
                   className="h-5 w-5 text-description"
                 />
               </div>
@@ -179,7 +186,11 @@ function ExportFeature() {
                   if (next) setFormat(next.value);
                 }}
               >
-                <SelectTrigger id="data-block-export-format" aria-label="Export format">
+                <SelectTrigger
+                  id="data-block-export-format"
+                  aria-label="Export format"
+                  data-nudge-target={NUDGE_TARGETS.exportFormat}
+                >
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -190,6 +201,7 @@ function ExportFeature() {
                   ))}
                 </SelectContent>
               </Select>
+              {excelLimit.card}
             </div>
             <div className="space-y-1 text-right">
               <Button

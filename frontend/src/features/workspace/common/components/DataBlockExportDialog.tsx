@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import type { DataBlockExportFormat } from '@/api';
+import { NUDGE_TARGETS } from '@/features/nudges/nudges';
+import { useExcelCellLimitNotice } from '@/features/views/common/useExcelCellLimitNotice';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -42,9 +44,12 @@ export function DataBlockExportDialog({
 }: DataBlockExportDialogProps) {
   const [format, setFormat] = useState<DataBlockExportFormat>('csv');
   const [exporting, setExporting] = useState(false);
+  // Excel's cell limit, as a suggestion under Format (issue 397).
+  const excelLimit = useExcelCellLimitNotice({ canUntick: false });
 
   const handleExport = async () => {
     if (exporting) return;
+    excelLimit.clear();
     setExporting(true);
     try {
       const filename = await downloadDataBlocks({
@@ -57,7 +62,9 @@ export function DataBlockExportDialog({
       toast.success('Data Block exported');
       onOpenChange(false);
     } catch (error) {
-      toastError(error, "Couldn't export Data Block");
+      if (!excelLimit.report(error, "Couldn't export Data Block")) {
+        toastError(error, "Couldn't export Data Block");
+      }
     } finally {
       setExporting(false);
     }
@@ -95,7 +102,11 @@ export function DataBlockExportDialog({
               if (next) setFormat(next.value);
             }}
           >
-            <SelectTrigger id={`node-export-format-${dataBlock.id}`} aria-label="Export format">
+            <SelectTrigger
+              id={`node-export-format-${dataBlock.id}`}
+              aria-label="Export format"
+              data-nudge-target={NUDGE_TARGETS.exportFormat}
+            >
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -106,6 +117,7 @@ export function DataBlockExportDialog({
               ))}
             </SelectContent>
           </Select>
+          {excelLimit.card}
         </div>
         <DialogFooter>
           <Button

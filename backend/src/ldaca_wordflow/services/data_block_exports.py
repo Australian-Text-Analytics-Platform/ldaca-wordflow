@@ -24,11 +24,13 @@ from ..models.node_resources import (
 )
 from ..shared.errors import (
     AnalysisNotFoundError,
+    ExcelCellLimitError,
     InvalidInputError,
     NodeNotFoundError,
     ResourceTooLargeError,
 )
 from ..infrastructure.storage.bounded_io import BoundedSeekableWriter
+from ..shared.json_data import JsonData
 from .response_snapshots import ResponseSnapshot, ResponseSnapshotService
 from .workspace import WorkspaceService
 
@@ -319,6 +321,35 @@ def _write_lazyframe(
         raise
 
 
+def _excel_cell_limit_message(columns: list[str], *, columns_chosen: bool) -> str:
+    """Which columns can't go in an Excel file, what to do, and that Excel
+    also breaks such text in a CSV (issues 355, 397)."""
+
+    names = " and ".join(
+        [", ".join(f"'{name}'" for name in columns[:-1]), f"'{columns[-1]}'"]
+        if len(columns) > 1
+        else [f"'{columns[0]}'"]
+    )
+    several = len(columns) > 1
+    what = (
+        f"so {'those columns' if several else 'that column'} can't go in an Excel file"
+        if columns_chosen
+        else "so this Data Block can't be exported as Excel"
+    )
+    remedy = (
+        f" Untick {'them' if several else 'it'} to download the other columns as Excel, "
+        "or choose CSV to keep the full text."
+        if columns_chosen
+        else " Export it as CSV or Parquet to keep the full text."
+    )
+    return (
+        f"Excel cells hold at most 32,767 characters, and some text in {names} "
+        f"{'is' if not several else 'are'} longer, {what}.{remedy} Excel also splits "
+        "such long text into extra rows when it opens a CSV, so open the CSV in "
+        "LibreOffice Calc or Numbers instead. See Help, Export: Excel's cell limit."
+    )
+
+
 def _flatten_nested_columns(frame: pl.LazyFrame) -> pl.LazyFrame:
     """Write list and struct values as JSON text: CSV and Excel cells are flat.
 
@@ -409,18 +440,13 @@ def _excel_workbook_bytes(frame: pl.LazyFrame, *, columns_chosen: bool = False) 
             if (longest[name] or 0) > _EXCEL_MAX_CELL_CHARACTERS
         ]
         if too_long:
-            # A Result download chooses its columns, so the long one can be
-            # left out (issue 355).
-            remedy = (
-                " Untick it to download as Excel, or choose CSV to keep the full text."
-                if columns_chosen
-                else " Export it as CSV or Parquet to keep the full text."
-            )
-            raise InvalidInputError(
-                "Excel cells hold at most 32,767 characters, and some text in "
-                + ", ".join(f"'{name}'" for name in too_long)
-                + " is longer."
-                + remedy
+            details: dict[str, JsonData] = {
+                "columns": list[JsonData](too_long),
+                "limit": _EXCEL_MAX_CELL_CHARACTERS,
+            }
+            raise ExcelCellLimitError(
+                _excel_cell_limit_message(too_long, columns_chosen=columns_chosen),
+                details=details,
             )
     buffer = io.BytesIO()
     data.write_excel(
