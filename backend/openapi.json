@@ -6010,7 +6010,7 @@
             "type": "integer"
           },
           "topic": {
-            "minimum": 0,
+            "format": "int32",
             "type": "integer"
           },
           "topic_count": {
@@ -6229,6 +6229,16 @@
                   "natural_projection": {
                     "format": "uuid",
                     "type": "string"
+                  },
+                  "outlier_colour_counts": {
+                    "items": {
+                      "minimum": 0,
+                      "type": "integer"
+                    },
+                    "type": [
+                      "array",
+                      "null"
+                    ]
                   },
                   "outlier_counts": {
                     "items": {
@@ -6552,6 +6562,13 @@
           "minimum_topic_size": {
             "minimum": 0,
             "type": "integer"
+          },
+          "requested_topic_count": {
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
           },
           "seed": {
             "format": "int64",

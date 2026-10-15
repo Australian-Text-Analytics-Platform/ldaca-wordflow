@@ -16,7 +16,7 @@
 //!
 //! Called by: `topic_modeling::run` after `reduce`, on the reduced segment points.
 
-use anyhow::Result;
+use anyhow::{ensure, Result};
 use hdbscan::{DistanceMetric, Hdbscan, HdbscanHyperParams};
 
 /// Outlier/noise label emitted by HDBSCAN for segments that belong to no topic.
@@ -33,8 +33,8 @@ const AUTO_DOMINANT_SHARE: f64 = 0.5;
 /// the dominant topic.
 const AUTO_MAX_PASSES: usize = 8;
 
-/// Clustering policy selected by the host. The desktop keeps its established
-/// uncapped behavior, while the Polars adapter offers Auto and fixed caps.
+/// Clustering policy selected by the host. Native Wordflow uses uncapped or fixed
+/// limits; Auto remains available to independent adapters.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TopicSizeLimit {
     Uncapped,
@@ -57,8 +57,8 @@ pub struct ClusterResult {
 
 /// Cluster `points` into topics.
 ///
-/// Flow: with a fixed Max topic size, run HDBSCAN once with that cap (never
-/// below `min_cluster_size + 1`). With Auto, run uncapped; while one
+/// Flow: with a fixed Max topic size, reject caps at or below the minimum and
+/// run HDBSCAN once. With Auto, run uncapped; while one
 /// topic holds more than half of all points, re-run with the cap just below
 /// that topic's size and keep the capped labels only when `accept_capped`
 /// approves them. The crate's labels are already contiguous from zero, which
@@ -69,6 +69,12 @@ pub fn cluster(
     limit: TopicSizeLimit,
 ) -> Result<ClusterResult> {
     let n = points.len();
+    if let TopicSizeLimit::Fixed(requested) = limit {
+        ensure!(
+            requested > min_cluster_size,
+            "Maximum topic size must exceed the minimum topic size"
+        );
+    }
     if n < 2 {
         return Ok(ClusterResult {
             labels: vec![OUTLIER_LABEL; n],
@@ -80,11 +86,7 @@ pub fn cluster(
     match limit {
         TopicSizeLimit::Uncapped => return run_hdbscan(points, min_cluster_size, None),
         TopicSizeLimit::Fixed(requested) => {
-            return run_hdbscan(
-                points,
-                min_cluster_size,
-                Some(requested.max(min_cluster_size + 1)),
-            );
+            return run_hdbscan(points, min_cluster_size, Some(requested));
         }
         TopicSizeLimit::Auto => {}
     }
@@ -124,14 +126,22 @@ fn run_hdbscan(
         builder = builder.max_cluster_size(cap);
     }
     let clusterer = Hdbscan::new(points, builder.build());
-    let labels = clusterer
-        .cluster()
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(crate::embedding::computation_threads())
+        .build()?;
+    let labels = pool
+        .install(|| clusterer.cluster_par())
         .map_err(|e| anyhow::anyhow!("HDBSCAN clustering failed: {e}"))?;
     let n_topics = labels
         .iter()
         .filter(|&&l| l != OUTLIER_LABEL)
         .collect::<std::collections::HashSet<_>>()
         .len();
+    ensure!(
+        max_cluster_size
+            .is_none_or(|maximum| largest_topic(&labels).is_none_or(|(_, count)| count <= maximum)),
+        "HDBSCAN returned a Topic larger than the maximum segment size"
+    );
     Ok(ClusterResult {
         labels,
         n_topics,
@@ -201,6 +211,11 @@ mod tests {
         let res = cluster(&[vec![1.0, 2.0]], 10, TopicSizeLimit::Auto).unwrap();
         assert_eq!(res.n_topics, 0);
         assert_eq!(res.labels, vec![OUTLIER_LABEL]);
+    }
+
+    #[test]
+    fn fixed_limit_is_rejected_instead_of_silently_increased() {
+        assert!(cluster(&[vec![1.0], vec![2.0]], 10, TopicSizeLimit::Fixed(10)).is_err());
     }
 
     #[test]

@@ -1,5 +1,5 @@
 import type { TopicModelingTopic } from './topicPresentation';
-import { matchTopicWords } from './topicSearch';
+import { topicEligibility, type TopicEligibility } from './topicSearch';
 import { GREY, VIZ_PALETTE, interpolateVizColor } from '../common/vizPalette';
 
 export const TOPIC_GRAPH_WIDTH = 1000;
@@ -25,6 +25,7 @@ export interface TopicBubbleModel {
   lassoed: boolean;
   hovered: boolean;
   filteredOut: boolean;
+  highlightedWords: Set<string>;
 }
 
 interface BuildTopicBubbleModelsOptions {
@@ -38,6 +39,7 @@ interface BuildTopicBubbleModelsOptions {
   hoveredTopicId: number | null;
   topicSearchQuery: string;
   colorScheme?: TopicColorScheme | null;
+  eligibility?: TopicEligibility;
 }
 
 export interface TopicColorScheme {
@@ -129,6 +131,7 @@ export function buildTopicBubbleModels({
   hoveredTopicId,
   topicSearchQuery,
   colorScheme,
+  eligibility,
 }: BuildTopicBubbleModelsOptions): TopicBubbleModel[] {
   const corpusCount = corpusSizes.length;
   const visibleTopics = topics.filter((topic) => topic.total_size > 0);
@@ -150,7 +153,7 @@ export function buildTopicBubbleModels({
     nodeColors,
     defaultPalette,
   );
-  const hasSearchFilter = topicSearchQuery.trim().length > 0;
+  const projection = eligibility ?? topicEligibility(topics, topicSearchQuery, lassoTopicIds);
 
   return visibleTopics
     .toSorted((a, b) => b.total_size - a.total_size || a.id - b.id)
@@ -178,12 +181,8 @@ export function buildTopicBubbleModels({
         selected: selectedTopicIds.has(topic.id),
         lassoed: lassoTopicIds.has(topic.id),
         hovered: hoveredTopicId === topic.id,
-        filteredOut:
-          hasSearchFilter &&
-          !matchTopicWords(
-            topic.representative_words.map((term) => term.word),
-            topicSearchQuery,
-          ),
+        filteredOut: !projection.eligible.has(topic.id),
+        highlightedWords: projection.highlights.get(topic.id) ?? new Set<string>(),
       };
     });
 }

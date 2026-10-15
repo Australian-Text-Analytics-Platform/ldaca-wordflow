@@ -39,7 +39,7 @@ import { useNodePreferences } from '../common/useNodePreferences';
 import { useTabSettings } from '../common/useTabSettings';
 import { GREY, VIZ_PALETTE } from '../common/vizPalette';
 import { TopicResults } from './TopicResults';
-import { MaximumTopicSize } from './TopicAdjustments';
+import { MaximumTopicSize, RequestedTopicCount } from './TopicAdjustments';
 import { TopicSamplingDialog } from './TopicSamplingDialog';
 import { topicKey, useTopicSampling, useTopicState } from './topicState';
 import { useTopicPreview } from './useTopicPreview';
@@ -106,7 +106,10 @@ function TopicTab({
       ? { embedding_model: modelDefault.id, max_segment_tokens: modelDefault.token_limit }
       : {}),
   };
-  const draft = stored ?? (tab.analysis ? restored.request : currentDefaults);
+  const draft = {
+    ...(stored ?? (tab.analysis ? restored.request : currentDefaults)),
+    minimum_topic_size: 10,
+  };
   const update = (next: topicApi.TopicRequest) => {
     useTopicState.getState().setDraft(base, tab.id, next);
   };
@@ -354,29 +357,14 @@ function TopicTab({
               }}
             />
           </label>
-          <label className="space-y-1">
-            <span>Minimum topic size (segments)</span>
-            <AnalysisNumberInput
-              aria-label="Minimum topic size"
-              min={2}
-              max={Number.MAX_SAFE_INTEGER}
-              value={draft.minimum_topic_size}
-              onCommit={(minimum_topic_size) => {
-                update({
-                  ...captured,
-                  minimum_topic_size,
-                  maximum_topic_size:
-                    captured.maximum_topic_size == null
-                      ? null
-                      : Math.max(captured.maximum_topic_size, minimum_topic_size + 1),
-                });
-              }}
-            />
-          </label>
           <MaximumTopicSize
             value={draft.maximum_topic_size}
             minimum={draft.minimum_topic_size}
             onChange={(maximum_topic_size) => update({ ...captured, maximum_topic_size })}
+          />
+          <RequestedTopicCount
+            value={draft.requested_topic_count}
+            onChange={(requested_topic_count) => update({ ...captured, requested_topic_count })}
           />
           <label className="space-y-1">
             <span>Random seed</span>

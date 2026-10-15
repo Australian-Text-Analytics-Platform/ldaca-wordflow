@@ -68,7 +68,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
   const diameter = outerRadius * 2;
   const tooltipPosition = bubble.position.x <= TOPIC_GRAPH_WIDTH / 2 ? 'right' : 'left';
   return (
-    <Tooltip>
+    <Tooltip disableHoverableContent>
       <TooltipTrigger
         data-testid={`topic-flow-node-${String(bubble.id)}`}
         data-topic-id={bubble.id}
@@ -159,6 +159,7 @@ function TopicBubbleNode({ data }: NodeProps<TopicFlowNode>) {
             rows={bubble.topic.representative_words.map((term) => ({
               token: term.word,
               frequency: term.occurrence_count,
+              highlighted: bubble.highlightedWords.has(term.word),
             }))}
           />
         </div>

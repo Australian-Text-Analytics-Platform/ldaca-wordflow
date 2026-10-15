@@ -23,7 +23,7 @@ use anyhow::{Context, Result};
 use hf_hub::{HFRepositorySync, RepoTypeModel};
 #[cfg(any(target_os = "macos", target_os = "windows"))]
 use ort::ep;
-use ort::session::builder::GraphOptimizationLevel;
+use ort::session::builder::{GraphOptimizationLevel, SessionBuilder};
 use ort::session::{Session, SessionInputValue};
 use ort::value::{Tensor, ValueType};
 use serde::de::DeserializeOwned;
@@ -787,6 +787,15 @@ fn ensure_external_onnx_data(repo: &PinnedRepo, onnx_file: &str) {
 
 fn build_session(onnx_path: &Path) -> Result<(Session, String)> {
     let provider_id = planned_provider_id();
+    let session = configured_session_builder(execution_providers())?
+        .commit_from_file(onnx_path)
+        .with_context(|| format!("load ONNX model {}", onnx_path.display()))?;
+    Ok((session, provider_id))
+}
+
+fn configured_session_builder(
+    providers: Vec<ort::ep::ExecutionProviderDispatch>,
+) -> Result<SessionBuilder> {
     let mut builder = Session::builder()
         .context("create ONNX Runtime session builder")?
         .with_optimization_level(GraphOptimizationLevel::Level3)
@@ -794,25 +803,19 @@ fn build_session(onnx_path: &Path) -> Result<(Session, String)> {
         .with_memory_pattern(false)
         .map_err(|err| anyhow::anyhow!("configure ONNX memory pattern: {err:?}"))?;
 
-    if embedding_threads().is_some() {
-        builder = builder
-            .with_intra_threads(1)
-            .map_err(|err| anyhow::anyhow!("configure ONNX intra-op threads: {err:?}"))?
-            .with_inter_threads(1)
-            .map_err(|err| anyhow::anyhow!("configure ONNX inter-op threads: {err:?}"))?;
-    }
+    builder = builder
+        .with_intra_threads(computation_threads())
+        .map_err(|err| anyhow::anyhow!("configure ONNX intra-op threads: {err:?}"))?
+        .with_inter_threads(1)
+        .map_err(|err| anyhow::anyhow!("configure ONNX inter-op threads: {err:?}"))?;
 
-    let providers = execution_providers();
     if !providers.is_empty() {
         builder = builder
             .with_execution_providers(providers)
             .map_err(|err| anyhow::anyhow!("configure ONNX execution providers: {err:?}"))?;
     }
 
-    let session = builder
-        .commit_from_file(onnx_path)
-        .with_context(|| format!("load ONNX model {}", onnx_path.display()))?;
-    Ok((session, provider_id))
+    Ok(builder)
 }
 
 fn execution_providers() -> Vec<ort::ep::ExecutionProviderDispatch> {
@@ -844,6 +847,16 @@ fn embedding_threads() -> Option<usize> {
         .ok()
         .and_then(|value| value.parse::<usize>().ok())
         .filter(|threads| *threads > 0)
+}
+
+/// Bound native computation by the process's available CPUs and an explicit host cap.
+pub(crate) fn computation_threads() -> usize {
+    let available = std::thread::available_parallelism().map_or(1, usize::from);
+    bounded_threads(available, embedding_threads())
+}
+
+fn bounded_threads(available: usize, cap: Option<usize>) -> usize {
+    cap.map_or(available, |cap| cap.min(available)).max(1)
 }
 
 impl Embedder {
@@ -892,6 +905,102 @@ mod tests {
     use std::collections::HashMap;
 
     use tokenizers::models::wordlevel::WordLevel;
+
+    #[test]
+    fn native_threads_obey_available_processors_and_explicit_caps() {
+        assert_eq!(bounded_threads(8, None), 8);
+        assert_eq!(bounded_threads(8, Some(2)), 2);
+        assert_eq!(bounded_threads(2, Some(32)), 2);
+        assert_eq!(bounded_threads(0, None), 1);
+    }
+
+    #[test]
+    #[ignore = "explicit isolated model provisioning and ONNX provider acceptance"]
+    fn preferred_provider_and_cpu_fallback_execute_real_embedding_nodes() -> Result<()> {
+        let root = PathBuf::from(
+            env::var_os("WORDFLOW_TEST_EMBEDDING_ASSETS")
+                .context("Set an isolated embedding asset directory")?,
+        );
+        let assets = ModelAssets {
+            huggingface: root.join("huggingface"),
+            lindera: root.join("lindera"),
+            temporary: root.join("tmp"),
+        };
+        std::fs::create_dir_all(&assets.temporary)?;
+        let mut encoder = load_embedder(DEFAULT_EMBEDDER_REPO_ID, Some(&assets))?;
+        let repo = crate::model_assets::huggingface_model(DEFAULT_EMBEDDER_REPO_ID, Some(&assets))?;
+        let modules = crate::model_assets::huggingface_file(&repo, "modules.json", "main")?;
+        let (snapshot_root, revision) = snapshot_from_path(&modules)?;
+        let pinned = PinnedRepo {
+            repo,
+            snapshot_root,
+            revision,
+        };
+        let (path, _) = resolve_onnx_artifact(&pinned, DEFAULT_EMBEDDER_REPO_ID)?;
+        let profiles = tempfile::tempdir_in(&assets.temporary)?;
+        let texts = vec![
+            "Affordable homes and lower rent.".into(),
+            "Doctors treat hospital patients.".into(),
+        ];
+        let mut preferred = None;
+        for (name, providers) in [
+            ("preferred", execution_providers()),
+            ("cpu", vec![ort::ep::CPU::default().build()]),
+        ] {
+            let session = configured_session_builder(providers)?
+                .with_profiling(profiles.path().join(name))
+                .map_err(|error| anyhow::anyhow!("configure ONNX profiling: {error:?}"))?
+                .commit_from_file(&path)?;
+            encoder.session = Mutex::new(session);
+            let vectors = encoder.encode_batches(&texts, 2)?;
+            let profile = encoder
+                .session
+                .lock()
+                .map_err(|_| anyhow::anyhow!("Session lock poisoned"))?
+                .end_profiling()?;
+            let events: serde_json::Value = serde_json::from_slice(&std::fs::read(profile)?)?;
+            let used = events
+                .as_array()
+                .context("Expected ONNX profile events")?
+                .iter()
+                .filter_map(|event| event["args"]["provider"].as_str())
+                .collect::<std::collections::BTreeSet<_>>();
+            anyhow::ensure!(!used.is_empty(), "No real ONNX node execution was recorded");
+            if name == "cpu" {
+                anyhow::ensure!(
+                    used == std::collections::BTreeSet::from(["CPUExecutionProvider"]),
+                    "CPU fallback used unexpected providers"
+                );
+                let expected: Vec<Vec<f32>> =
+                    preferred.take().context("Missing preferred embeddings")?;
+                for (left, right) in expected.iter().zip(&vectors) {
+                    let cosine = left
+                        .iter()
+                        .zip(right)
+                        .map(|(a, b)| f64::from(*a) * f64::from(*b))
+                        .sum::<f64>()
+                        / (left
+                            .iter()
+                            .map(|value| f64::from(*value).powi(2))
+                            .sum::<f64>()
+                            .sqrt()
+                            * right
+                                .iter()
+                                .map(|value| f64::from(*value).powi(2))
+                                .sum::<f64>()
+                                .sqrt());
+                    anyhow::ensure!(cosine > 0.99, "Provider fallback changed embedding meaning");
+                }
+            } else {
+                preferred = Some(vectors);
+            }
+            eprintln!(
+                "EMBEDDING PROVIDERS {name}: {used:?}; native_threads={}",
+                computation_threads()
+            );
+        }
+        Ok(())
+    }
 
     fn mean_pooling() -> PoolingConfig {
         PoolingConfig {

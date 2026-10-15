@@ -50,14 +50,18 @@ it('debounces adjustments, ignores superseded replies and keeps failed editable 
     </QueryClientProvider>,
   );
   await act(async () => {});
-  const input = screen.getByRole('spinbutton', { name: 'Adjusted minimum topic size' });
-  fireEvent.change(input, { target: { value: '11' } });
+  expect(
+    screen.queryByRole('spinbutton', { name: 'Adjusted minimum topic size' }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Limit maximum topic size' }));
+  const input = screen.getByRole('spinbutton', { name: 'Maximum topic size' });
+  fireEvent.change(input, { target: { value: '25' } });
   fireEvent.blur(input);
   await act(() => vi.advanceTimersByTimeAsync(299));
   expect(api.adjustTopicModel).not.toHaveBeenCalled();
   await act(() => vi.advanceTimersByTimeAsync(1));
   const first = vi.mocked(api.adjustTopicModel).mock.calls[0]!;
-  fireEvent.change(input, { target: { value: '12' } });
+  fireEvent.change(input, { target: { value: '30' } });
   fireEvent.blur(input);
   expect(first[3].aborted).toBe(true);
   await act(async () => {
@@ -66,7 +70,7 @@ it('debounces adjustments, ignores superseded replies and keeps failed editable 
   expect(receive).not.toHaveBeenCalled();
   await act(() => vi.advanceTimersByTimeAsync(300));
   expect(screen.getByRole('alert')).toHaveTextContent('Original engine diagnostic');
-  expect(input).toHaveValue(12);
+  expect(input).toHaveValue(30);
   fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
   await act(() => vi.advanceTimersByTimeAsync(300));
   expect(receive).toHaveBeenCalledExactlyOnceWith({
@@ -74,6 +78,6 @@ it('debounces adjustments, ignores superseded replies and keeps failed editable 
   });
   expect(vi.mocked(api.adjustTopicModel).mock.calls[2]?.[2]).toEqual({
     expected_projection: 'old',
-    settings: { minimum_topic_size: 12, maximum_topic_size: null, tokenizer: request.tokenizer },
+    settings: { minimum_topic_size: 10, maximum_topic_size: 30, tokenizer: request.tokenizer },
   });
 });

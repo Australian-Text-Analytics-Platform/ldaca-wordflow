@@ -390,10 +390,31 @@ valid chart while waiting or after failure.
 
 Explicit Run remains repeatable and always captures current sources, segments,
 reduces, clusters and summarises anew. Only exact token/embedding caches are
-reused. Automatic segmentation keeps every nonempty paragraph separate and
-applies the existing sentence/word/token fallback inside oversized paragraphs.
-Fixed maximum Topic size is optional and defaults to unlimited; no automatic
-clustering retry policy is exposed.
+reused. Automatic segmentation packs neighbouring whole paragraphs within the
+token budget, without cutting a paragraph to fill unused space. Oversized
+paragraphs retain the existing sentence/word/token splitter.
+
+Native HDBSCAN uses minimum size 10 and its default density settings. A finite
+maximum must exceed 10; unlimited is the default. One parallel fit applies the
+native cap, then version-4 retained hierarchy cuts skip merges that would exceed
+it. Requested Topic count is a target, defaulting to the natural count. Queries
+report the achieved count when the hierarchy cannot reach the target. Count-only
+changes read the hierarchy without embeddings or clustering; maximum-size
+adjustments reuse reduced vectors for one fit. Historical contexts retain their
+original cuts, and historical analyses require Rerun before new stage adjustments.
+No automatic clustering retry policy is exposed.
+
+Encoder CPU threads and each HDBSCAN pool use process-available parallelism,
+bounded by a positive `LDACA_EMBEDDING_THREADS` host cap. This preserves affinity
+and container CPU limits without initializing a global Rayon pool. CoreML and
+DirectML remain preferred on their supported platforms, with CPU fallback.
+
+Graph and lists share a derived search/lasso eligibility projection and matched
+representative-word highlights. Selected cards remain visible when excluded and
+follow selection recency. True dominant `-1` outliers have a grey footer with
+source/group counts, shares and inspection, never synthetic map coordinates.
+Processed empty outcomes are excluded from this footer. New live document pages
+and downloads follow current source order; historical pages keep their old order.
 
 Hosts provide the external embedding-cache path. Model preparation occurs outside
 DB connections. Progress/cancellation callbacks occur between documents, batches

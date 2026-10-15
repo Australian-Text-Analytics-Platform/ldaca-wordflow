@@ -224,15 +224,30 @@ pub(super) fn reconcile(conn: &Connection, rename: &Rename) -> Result<Vec<Uuid>>
     }
     let tabs = conn
         .prepare(
-            "SELECT id::VARCHAR, settings::VARCHAR FROM wordflow.tabs WHERE kind='annotation'",
+            "SELECT t.id::VARCHAR,t.kind,t.settings::VARCHAR,a.request::VARCHAR,a.result_version FROM wordflow.tabs t LEFT JOIN wordflow.analyses a ON a.tab_id=t.id WHERE t.kind IN ('annotation','topic-modeling')",
         )?
-        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))?
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, String>(2)?, r.get::<_, Option<String>>(3)?, r.get::<_, Option<u32>>(4)?)))?
         .collect::<duckdb::Result<Vec<_>>>()?;
-    for (id, settings) in tabs {
+    for (id, kind, settings, request, version) in tabs {
         let mut settings: Value = serde_json::from_str(&settings)?;
         let original = settings.clone();
-        if let Some(manual) = settings.get_mut("manual") {
+        if kind == "annotation"
+            && let Some(manual) = settings.get_mut("manual")
+        {
             rename.request("annotation", manual);
+        }
+        if kind == "topic-modeling"
+            && version != Some(1)
+            && let (Rename::Column { before, after, .. }, Some(request)) = (rename, request)
+        {
+            let mut request: Value = serde_json::from_str(&request)?;
+            if let Some(inputs) = request.get_mut("inputs").and_then(Value::as_array_mut)
+                && inputs.len() == 1
+                && rename.input(&mut inputs[0], &[])
+                && let Some(column) = settings.get_mut("topic_colour_by")
+            {
+                rename_field(column, before, after);
+            }
         }
         if original != settings {
             conn.execute(
@@ -247,6 +262,44 @@ pub(super) fn reconcile(conn: &Connection, rename: &Rename) -> Result<Vec<Uuid>>
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn colour_by_rename_follows_only_the_bound_live_topic_source() {
+        let mut p = Project::untitled().unwrap();
+        let db = &mut p.database;
+        db.conn.execute_batch("CREATE TABLE docs(text VARCHAR,category VARCHAR); INSERT INTO docs VALUES ('text','A'); INSERT INTO wordflow.nodes(table_name) VALUES ('docs')").unwrap();
+        let mut tabs = Vec::new();
+        for (version, source) in [(1, "docs"), (2, "docs"), (2, "other")] {
+            let tab = db
+                .create_analysis_tab(CreateTab {
+                    kind: "topic-modeling".into(),
+                    name: None,
+                })
+                .unwrap();
+            let id = db
+                .begin_analysis_run(
+                    tab.id,
+                    "topic-modeling",
+                    serde_json::json!({"inputs":[{"source":{"name":source},"column":"text"}]}),
+                )
+                .unwrap();
+            db.conn.execute("UPDATE wordflow.analyses SET result='{}',result_version=?,finished_at=current_timestamp WHERE id=?",params![version,id.to_string()]).unwrap();
+            db.conn.execute("UPDATE wordflow.tabs SET settings='{\"topic_colour_by\":\"category\",\"future\":true}' WHERE id=?",[tab.id.to_string()]).unwrap();
+            tabs.push(tab.id);
+        }
+        db.change_column(
+            "docs".into(),
+            mutations::ColumnChange::Rename {
+                column: "category".into(),
+                name: "ordered".into(),
+            },
+        )
+        .unwrap();
+        for (tab, expected) in tabs.into_iter().zip(["category", "ordered", "category"]) {
+            let settings = db.analysis_tab(tab).unwrap().settings;
+            assert_eq!(settings["topic_colour_by"], expected);
+            assert_eq!(settings["future"], true);
+        }
+    }
     #[test]
     fn renamed_column_preserves_views_and_unknown_request_fields() {
         let mut p = Project::untitled().unwrap();

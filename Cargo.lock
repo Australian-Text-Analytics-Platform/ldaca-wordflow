@@ -3147,6 +3147,7 @@ checksum = "466aa8bfaa22c81efcf67c84e6ad046de13a05c6cc9d41a5094361bff464247a"
 dependencies = [
  "kdtree",
  "num-traits",
+ "rayon",
 ]
 
 [[package]]
@@ -3996,6 +3997,7 @@ dependencies = [
  "pacmap",
  "parquet",
  "proptest",
+ "rayon",
  "regex",
  "reqwest 0.13.5",
  "rmp-serde",

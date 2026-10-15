@@ -50,6 +50,40 @@ export function MaximumTopicSize({
   );
 }
 
+export function RequestedTopicCount({
+  value,
+  onChange,
+}: {
+  value?: number | null;
+  onChange: (value: number | null) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <label className="flex items-center gap-2">
+        <Checkbox
+          checked={value != null}
+          onCheckedChange={(checked) => onChange(checked === true ? 1 : null)}
+        />
+        Request a number of Topics
+      </label>
+      {value == null ? (
+        <p className="text-description text-label-secondary">Natural Topic count</p>
+      ) : (
+        <AnalysisNumberInput
+          aria-label="Requested number of Topics"
+          min={1}
+          max={Number.MAX_SAFE_INTEGER}
+          value={value}
+          onCommit={onChange}
+        />
+      )}
+      <p className="text-description text-label-secondary">
+        A target for hierarchy merges. The maximum segment size remains a hard limit.
+      </p>
+    </div>
+  );
+}
+
 export function TopicAdjustments({
   base,
   owner,
@@ -68,11 +102,15 @@ export function TopicAdjustments({
     analysis?: topicApi.TopicAnalysisResult;
   }) => void;
 }) {
-  const initial = summary.parameters ?? {
-    minimum_topic_size: request.minimum_topic_size,
-    maximum_topic_size: request.maximum_topic_size ?? null,
-    tokenizer: request.tokenizer,
+  const initial = {
+    ...(summary.parameters ?? {
+      minimum_topic_size: request.minimum_topic_size,
+      maximum_topic_size: request.maximum_topic_size ?? null,
+      tokenizer: request.tokenizer,
+    }),
+    minimum_topic_size: 10,
   };
+  const historical = summary.sources.some((source) => source.processed_column == null);
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<unknown>(null);
   const [pending, setPending] = useState(false);
@@ -87,7 +125,7 @@ export function TopicAdjustments({
   const settings = JSON.stringify(draft);
   const accepted = JSON.stringify(initial);
   useEffect(() => {
-    if (disabled || settings === accepted) return;
+    if (disabled || historical || settings === accepted) return;
     const controller = new AbortController();
     const timer = setTimeout(() => {
       setPending(true);
@@ -116,34 +154,23 @@ export function TopicAdjustments({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [base, key, settings, accepted, disabled, summary.natural_projection, retry]);
+  }, [base, key, settings, accepted, disabled, historical, summary.natural_projection, retry]);
   return (
-    <fieldset disabled={disabled} className="space-y-2 rounded border border-surface-border p-2">
+    <fieldset
+      disabled={disabled || historical}
+      className="space-y-2 rounded border border-surface-border p-2"
+    >
       <legend className="px-1 text-body">Adjust retained stages</legend>
       <p className="text-description text-label-secondary">
-        These controls reuse captured documents and reduced vectors. Run processes the current Data
+        These controls reuse processed texts and reduced vectors. Run processes the current Data
         Blocks through every stage.
       </p>
+      {historical && (
+        <p className="text-description">
+          Rerun this historical analysis to use the current Topic fitting controls.
+        </p>
+      )}
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-3">
-        <label className="space-y-1">
-          <span>Minimum topic size (segments)</span>
-          <AnalysisNumberInput
-            aria-label="Adjusted minimum topic size"
-            value={draft.minimum_topic_size}
-            min={2}
-            max={Number.MAX_SAFE_INTEGER}
-            onCommit={(minimum_topic_size) =>
-              setDraft({
-                ...draft,
-                minimum_topic_size,
-                maximum_topic_size:
-                  draft.maximum_topic_size == null
-                    ? null
-                    : Math.max(minimum_topic_size + 1, draft.maximum_topic_size),
-              })
-            }
-          />
-        </label>
         <MaximumTopicSize
           value={draft.maximum_topic_size}
           minimum={draft.minimum_topic_size}

@@ -146,7 +146,7 @@ pub(super) fn counts(
     selected: Option<&str>,
     topic_count: usize,
     population: Option<&[usize]>,
-) -> Result<(Counts, Option<Counts>)> {
+) -> Result<(Counts, Option<Counts>, Option<Vec<usize>>)> {
     let mut counts = vec![vec![0; sizes.len()]; topic_count];
     let field = selected
         .map(|column| {
@@ -157,6 +157,7 @@ pub(super) fn counts(
         })
         .transpose()?;
     let mut colour = field.map(|field| vec![vec![0; field.groups.len()]; topic_count]);
+    let mut outliers = field.map(|field| vec![0; field.groups.len()]);
     let mut source = 0;
     let mut end = sizes.first().copied().unwrap_or(0);
     for document in documents {
@@ -165,6 +166,15 @@ pub(super) fn counts(
             end += sizes[source];
         }
         if document.dominant_topic < 0 {
+            if is_outlier(document)
+                && let (Some(field), Some(outliers)) = (field, outliers.as_mut())
+                && field.members.is_empty()
+            {
+                let group = *field.assignments.get(document.doc_index).ok_or_else(|| {
+                    model_error("Retained metadata is unavailable. Rerun this analysis.")
+                })?;
+                outliers[group] += 1;
+            }
             continue;
         }
         let topic = document.dominant_topic as usize;
@@ -190,10 +200,14 @@ pub(super) fn counts(
                 .ok_or_else(|| model_error("Live Topic metadata is unavailable"))?;
             if document.dominant_topic >= 0 {
                 colour[document.dominant_topic as usize][member.group] += member.count;
+            } else if is_outlier(document)
+                && let Some(outliers) = outliers.as_mut()
+            {
+                outliers[member.group] += member.count;
             }
         }
     }
-    Ok((counts, colour))
+    Ok((counts, colour, outliers))
 }
 
 /// Compact current metadata groups; source rows are never persisted with new analyses.
@@ -297,7 +311,7 @@ mod tests {
                 ("Missing", 1, true)
             ]
         );
-        let (_, colours) = counts(
+        let (_, colours, _) = counts(
             &[DocumentResult {
                 doc_index: 0,
                 dominant_topic: 0,
@@ -311,6 +325,23 @@ mod tests {
         )
         .unwrap();
         assert_eq!(colours.unwrap(), [vec![2, 1, 1, 1, 1]]);
+        for (coverage, expected) in [(vec![(-1, 1.0)], vec![2, 1, 1, 1, 1]), (vec![], vec![0; 5])] {
+            let (real, _, outliers) = counts(
+                &[DocumentResult {
+                    doc_index: 0,
+                    dominant_topic: -1,
+                    topic_coverage: coverage,
+                }],
+                &[1],
+                &fields,
+                Some("category"),
+                1,
+                Some(&[6]),
+            )
+            .unwrap();
+            assert_eq!(real, [vec![0]]);
+            assert_eq!(outliers.unwrap(), expected);
+        }
     }
     #[test]
     fn retained_groups_are_bounded_access_source_order_and_own_denominators() {
@@ -356,7 +387,7 @@ mod tests {
                 topic_coverage: vec![],
             })
             .collect::<Vec<_>>();
-        let (counts, colour) = counts(&docs, &[10], &fields, Some("category"), 2, None).unwrap();
+        let (counts, colour, _) = counts(&docs, &[10], &fields, Some("category"), 2, None).unwrap();
         assert_eq!(counts, vec![vec![5], vec![4]]);
         assert_eq!(colour.unwrap(), vec![vec![2, 2, 1], vec![2, 1, 1]]);
         assert!(capture(conn, &[]).unwrap().is_empty());

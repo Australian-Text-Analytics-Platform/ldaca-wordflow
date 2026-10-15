@@ -4,8 +4,8 @@
 //! modelling pipeline. Segmenting before embedding lets long documents
 //! contribute several points and ultimately multi-Topic Coverage.
 //!
-//! Automatic mode prefers blank-line, Unicode sentence, word, and finally token
-//! boundaries. Line and Sentence modes retain their semantic units and split an
+//! Automatic mode packs whole paragraphs and uses Unicode sentence, word and token
+//! boundaries inside oversized paragraphs. Line and Sentence retain semantic units and split an
 //! oversized unit into complete, non-overlapping token-budgeted spans.
 //!
 //! Called by: `topic_modeling::run` (orchestrator) before embedding.
@@ -19,7 +19,7 @@ use unicode_segmentation::UnicodeSegmentation;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum SegmentationMethod {
-    /// Keep paragraphs separate and split oversized paragraphs to the token budget.
+    /// Pack whole neighbouring paragraphs and split oversized paragraphs to the token budget.
     #[default]
     Automatic,
     /// Treat every non-empty newline-delimited line as one segment.
@@ -240,6 +240,7 @@ fn segment_document_automatic(
 ) -> Result<Vec<TopicSegment>> {
     let mut segments = Vec::new();
     let mut start = 0;
+    let mut pending: Option<(usize, usize, usize)> = None;
     for end in paragraph_end_offsets(doc) {
         let paragraph = doc.get(start..end).context("invalid paragraph range")?;
         let paragraph_tokens = tokens_in_range(tokens, start, end)
@@ -249,14 +250,41 @@ fn segment_document_automatic(
                 end: token.end - start,
             })
             .collect::<Vec<_>>();
-        for mut segment in
-            segment_oversized_paragraph(doc_index, paragraph, &paragraph_tokens, max_tokens)?
-        {
-            segment.start_byte += start;
-            segment.end_byte += start;
-            segments.push(segment);
+        if let Some((trimmed_start, trimmed_end)) = trimmed_range(doc, start, end)? {
+            let count = paragraph_tokens.len();
+            if count <= max_tokens {
+                if let Some((_, pending_end, pending_count)) = &mut pending {
+                    if *pending_count + count <= max_tokens {
+                        *pending_end = trimmed_end;
+                        *pending_count += count;
+                        start = end;
+                        continue;
+                    }
+                }
+                if let Some((begin, finish, _)) = pending.take() {
+                    segments.push(topic_segment(doc_index, doc, begin, finish)?);
+                }
+                pending = Some((trimmed_start, trimmed_end, count));
+            } else {
+                if let Some((begin, finish, _)) = pending.take() {
+                    segments.push(topic_segment(doc_index, doc, begin, finish)?);
+                }
+                for mut segment in segment_oversized_paragraph(
+                    doc_index,
+                    paragraph,
+                    &paragraph_tokens,
+                    max_tokens,
+                )? {
+                    segment.start_byte += start;
+                    segment.end_byte += start;
+                    segments.push(segment);
+                }
+            }
         }
         start = end;
+    }
+    if let Some((begin, finish, _)) = pending {
+        segments.push(topic_segment(doc_index, doc, begin, finish)?);
     }
     Ok(segments)
 }
@@ -603,14 +631,38 @@ mod tests {
     }
 
     #[test]
-    fn automatic_keeps_short_paragraphs_separate_even_when_the_document_fits() {
+    fn automatic_packs_neighbouring_whole_paragraphs_when_they_fit() {
         let cfg = SegmentationConfig {
             method: SegmentationMethod::Automatic,
             max_tokens: 64,
         };
         assert_eq!(
             word_segments("a\n\n猫\n\n   \nlast paragraph", cfg),
-            vec!["a", "猫", "last paragraph"]
+            vec!["a\n\n猫\n\n   \nlast paragraph"]
+        );
+    }
+
+    #[test]
+    fn automatic_does_not_cut_a_paragraph_to_fill_remaining_space() {
+        let cfg = SegmentationConfig {
+            method: SegmentationMethod::Automatic,
+            max_tokens: 4,
+        };
+        assert_eq!(
+            word_segments("one two three\n\nfour five\n\nsix seven", cfg),
+            vec!["one two three", "four five\n\nsix seven"]
+        );
+    }
+
+    #[test]
+    fn oversized_paragraphs_use_the_native_splitter_between_whole_paragraphs() {
+        let cfg = SegmentationConfig {
+            method: SegmentationMethod::Automatic,
+            max_tokens: 3,
+        };
+        assert_eq!(
+            word_segments("one\n\ntwo three four five six\n\nseven", cfg),
+            vec!["one", "two three four", "five six", "seven"]
         );
     }
 

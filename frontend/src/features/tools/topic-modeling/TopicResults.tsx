@@ -31,10 +31,11 @@ import {
 import { useStopwords } from '../common/stopwords/useStopwords';
 import { GREY, VIZ_PALETTE, interpolateVizColor } from '../common/vizPalette';
 import { TopicDocuments } from './TopicDocuments';
-import { topicGroupLabel } from './TopicSizeComposition';
+import { TopicSizeComposition, topicGroupLabel } from './TopicSizeComposition';
 import { TopicModelingFlowChart } from './TopicModelingFlowChart';
 import { TopicPublishDialog } from './TopicPublishDialog';
 import { TopicSelectionPanel } from './TopicSelectionPanel';
+import { topicEligibility } from './topicSearch';
 import { topicDownload } from './topicExport';
 import { buildTopicBubbleModels } from './topicModelingGraph';
 import type { TopicModelingTopic } from './topicPresentation';
@@ -76,11 +77,8 @@ export function TopicResults({
     | undefined;
   const [count, setCount] = useState(() =>
     isSaved && preference?.analysis === modelId && typeof preference.topic_count === 'number'
-      ? Math.max(
-          summary.natural_topic_count ? 1 : 0,
-          Math.min(summary.natural_topic_count, preference.topic_count),
-        )
-      : summary.natural_topic_count,
+      ? preference.topic_count
+      : (request.requested_topic_count ?? summary.natural_topic_count),
   );
   const [sliderValue, setSliderValue] = useState<number | null>(null);
   const [topN, setTopN] = useState(() =>
@@ -109,9 +107,7 @@ export function TopicResults({
     active,
     onSelect: selectStopwords,
   });
-  const [colourBy, setColourBy] = useState<string | null>(
-    typeof settings.topic_colour_by === 'string' ? settings.topic_colour_by : null,
-  );
+  const colourBy = typeof settings.topic_colour_by === 'string' ? settings.topic_colour_by : null;
   const [revision, setRevision] = useState(summary.natural_projection);
   const root = isSaved
     ? ['native', base, 'analyses', modelId, 'topic-modeling']
@@ -173,6 +169,7 @@ export function TopicResults({
     (applied?.basis !== map.data || applied.words !== words.data)
   )
     setApplied({ count, basis: map.data, words: words.data });
+  if (applied && topN > applied.basis.topics.length) setTopN(applied.basis.topics.length);
   const [inspectedTopic, setInspectedTopic] = useState<number | null>(null);
   const [selection, setSelection] = useState(new Set<number>());
   const [lasso, setLasso] = useState(new Set<number>());
@@ -188,7 +185,6 @@ export function TopicResults({
     setInspectedTopic(null);
     setSelection(new Set());
     setLasso(new Set());
-    setCount(summary.natural_topic_count);
     setTopN((old) => Math.min(summary.natural_topic_count, old));
   }
   const sources = summary.sources.map((source, index) => ({
@@ -225,6 +221,9 @@ export function TopicResults({
     nodeColors,
     defaultPalette: VIZ_PALETTE,
   };
+  const outlierCounts = colourGroups
+    ? (applied?.basis.outlier_colour_counts ?? [])
+    : (applied?.basis.outlier_counts ?? []);
   const memberships = new Map<number, number[]>();
   for (const [source, topic, rank, rows] of applied?.basis.activations ?? []) {
     if (rank > topN) continue;
@@ -247,7 +246,9 @@ export function TopicResults({
     ...topic,
     representative_words: topic.representative_words.slice(0, wordLimit),
   }));
+  const eligibility = topicEligibility(topics, search, lasso);
   const bubbles = buildTopicBubbleModels({
+    eligibility,
     topics,
     corpusSizes: sources.map((s) => s.document_count),
     ...corpusPresentation,
@@ -327,14 +328,13 @@ export function TopicResults({
     if (next === count) return;
     setCount(next);
     setInspectedTopic(null);
-    setTopN((old) => Math.min(next, old));
     setSelection(new Set());
     setLasso(new Set());
     setHover(null);
     setLassoMode(false);
     if (isSaved)
       onSettings({
-        topic_projection: { analysis: modelId, topic_count: next, top_n: Math.min(next, topN) },
+        topic_projection: { analysis: modelId, topic_count: next, top_n: topN },
       });
   };
   if (!applied && failed)
@@ -424,7 +424,9 @@ export function TopicResults({
       <p className="text-description text-label-secondary">
         {scope} · {summary.segment_count.toLocaleString()} segments.{' '}
         {isSaved
-          ? 'Saved model is independent of current source data.'
+          ? sources.some((source) => source.processed_column != null)
+            ? 'Fitted outputs stay fixed; matching source rows and metadata are live.'
+            : 'Historical result retains its saved source snapshot.'
           : 'Sample topics may differ from a full Run.'}
       </p>
       <div className="flex flex-wrap gap-3">
@@ -461,14 +463,14 @@ export function TopicResults({
         disabled={editing || outdated || !active}
         onAdjusted={onAdjusted}
       />
-      {sources.length === 1 && (
+      {
         <label className="block max-w-sm space-y-1">
           <span>Colour by</span>
           <Select
-            value={colourBy ?? '__source'}
+            value={colourField ? (colourBy ?? '__source') : '__source'}
+            disabled={sources.length !== 1 || applied.basis.colour_fields.length === 0 || failed}
             onValueChange={(value) => {
               const next = value === '__source' ? null : value;
-              setColourBy(next);
               onSettings({ topic_colour_by: next });
             }}
           >
@@ -484,13 +486,17 @@ export function TopicResults({
               ))}
             </SelectContent>
           </Select>
-          {applied.basis.colour_fields.length === 0 && (
+          {(sources.length !== 1 || applied.basis.colour_fields.length === 0 || failed) && (
             <p className="text-description text-label-secondary">
-              No current field has 2–8 nonmissing groups.
+              {sources.length !== 1
+                ? 'Colour by is available with one Data Block.'
+                : failed
+                  ? 'Could not refresh Topic results. Retry the result refresh.'
+                  : 'No current field has 2–8 nonmissing groups.'}
             </p>
           )}
         </label>
-      )}
+      }
       {colourGroups && (
         <div aria-label="Metadata colour legend" className="flex flex-wrap gap-3">
           {colourGroups.map((group, index) => (
@@ -509,24 +515,30 @@ export function TopicResults({
       <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,210px),1fr))] gap-3">
         <div className="space-y-2">
           <label className="flex items-center justify-between gap-2">
-            Number of topics
+            Requested number of Topics
             <AnalysisNumberInput
-              aria-label="Number of topics"
+              aria-label="Requested number of Topics"
               className="w-24"
               value={count}
               min={summary.natural_topic_count ? 1 : 0}
-              max={summary.natural_topic_count}
-              disabled={summary.natural_topic_count < 2}
+              max={Number.MAX_SAFE_INTEGER}
+              disabled={summary.natural_topic_count === 0}
               onCommit={changeCount}
             />
           </label>
+          {applied.basis.topics.length !== applied.count && (
+            <p role="status" className="text-description">
+              Achieved {applied.basis.topics.length} Topics; requested {applied.count}. The retained
+              hierarchy cannot reach this target while respecting the maximum segment size.
+            </p>
+          )}
           <input
             type="range"
             aria-label="Number of topics slider"
             className="w-full accent-primary"
             min={1}
             max={Math.max(1, summary.natural_topic_count)}
-            value={sliderValue ?? count}
+            value={sliderValue ?? Math.min(count, summary.natural_topic_count)}
             disabled={summary.natural_topic_count < 2}
             onChange={(event) => {
               setSliderValue(Number(event.target.value));
@@ -546,9 +558,9 @@ export function TopicResults({
           <AnalysisNumberInput
             aria-label="Top topics per document"
             value={topN}
-            min={count ? 1 : 0}
-            max={count}
-            disabled={count < 2}
+            min={applied.basis.topics.length ? 1 : 0}
+            max={applied.basis.topics.length}
+            disabled={applied.basis.topics.length < 2}
             onCommit={(value) => {
               setTopN(value);
               if (isSaved)
@@ -647,6 +659,7 @@ export function TopicResults({
             />
           </div>
           <TopicSelectionPanel
+            eligibility={eligibility}
             canPublish={isSaved}
             onInspect={setInspectedTopic}
             inspectionDisabled={unresolved}
@@ -665,6 +678,30 @@ export function TopicResults({
           />
         </>
       )}
+      {applied.basis.has_outlier && (
+        <section
+          aria-label="Topic outliers"
+          className="space-y-2 rounded border border-surface-border bg-surface p-3"
+        >
+          <h4 className="font-medium text-label-secondary">Outliers</h4>
+          <TopicSizeComposition
+            sizes={outlierCounts}
+            {...corpusPresentation}
+            groupColors={corpusPresentation.denominators.map(() => GREY)}
+          />
+          <p className="text-description text-label-secondary">
+            Dominant outlier documents. Processed empty texts are excluded; outliers have no map
+            coordinates and do not count as Topics.
+          </p>
+          <Button
+            variant="outline"
+            disabled={unresolved || !applied.basis.outlier_counts.some((count) => count > 0)}
+            onClick={() => setInspectedTopic(-1)}
+          >
+            View outlier documents
+          </Button>
+        </section>
+      )}
       {inspectedTopic !== null && (
         <TopicDocuments
           key={`${modelId}-${String(applied.count)}-${String(topN)}`}
@@ -675,8 +712,10 @@ export function TopicResults({
           count={applied.count}
           topN={topN}
           topicCounts={
-            allTopics.find((item) => item.id === inspectedTopic)?.colourCounts ??
-            allTopics.find((item) => item.id === inspectedTopic)?.dominantCounts
+            inspectedTopic === -1
+              ? outlierCounts
+              : (allTopics.find((item) => item.id === inspectedTopic)?.colourCounts ??
+                allTopics.find((item) => item.id === inspectedTopic)?.dominantCounts)
           }
           corpusPresentation={corpusPresentation}
           onClose={() => {

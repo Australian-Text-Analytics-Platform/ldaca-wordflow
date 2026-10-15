@@ -15,7 +15,7 @@ data = ["dep:arrow-array", "dep:arrow-schema", "dep:arrow-ipc", "dep:arrow-csv",
 cache = ["dep:duckdb", "dep:fs2", "dep:tempfile"]
 tokenization = ["dep:fs2", "dep:hf-hub", "dep:lindera", "dep:tokenizers", "dep:ureq", "dep:zip", "dep:caseless"]
 embedding = ["dep:hf-hub", "dep:ndarray", "dep:ort", "dep:tokenizers"]
-topic-modeling = ["embedding", "tokenization", "dep:hdbscan", "dep:pacmap", "dep:rmp-serde", "dep:zstd"]
+topic-modeling = ["embedding", "tokenization", "dep:hdbscan", "dep:rayon", "dep:pacmap", "dep:rmp-serde", "dep:zstd"]
 quotation = ["dep:cxx", "dep:cxx-build"]
 full = ["data", "tokenization", "embedding", "topic-modeling", "quotation", "cache"]
 
@@ -42,7 +42,8 @@ sha2 = { version = "0.11.0" }
 tempfile = { version = "3.27.0", optional = true }
 pacmap = { version = "0.2.6", features = ["intel-mkl-static"], optional = true }
 ndarray = { version = "0.16.1", optional = true }
-hdbscan = { version = "0.12.0", optional = true }
+hdbscan = { version = "0.12.0", features = ["parallel"], optional = true }
+rayon = { version = "1.11.0", optional = true }
 arrow-array = { version = "58.4.0", optional = true }
 arrow-schema = { version = "58.4.0", optional = true }
 arrow-ipc = { version = "58.4.0", optional = true }

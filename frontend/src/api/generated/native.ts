@@ -3527,6 +3527,7 @@ export interface components {
       page_size: number;
       source: number;
       top_n: number;
+      /** Format: int32 */
       topic: number;
       topic_count: number;
     };
@@ -3580,6 +3581,7 @@ export interface components {
           dominant_counts: number[][];
           /** Format: uuid */
           natural_projection: string;
+          outlier_colour_counts?: number[] | null;
           outlier_counts: number[];
           source_columns: [string, string][][];
           source_inputs: components['schemas']['DocumentInput'][];
@@ -3639,6 +3641,7 @@ export interface components {
       max_segment_tokens: number;
       maximum_topic_size?: number | null;
       minimum_topic_size: number;
+      requested_topic_count?: number | null;
       /** Format: int64 */
       seed: number;
       segmentation: components['schemas']['SegmentationMethod'];

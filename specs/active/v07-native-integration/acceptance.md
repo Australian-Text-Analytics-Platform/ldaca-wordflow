@@ -532,3 +532,55 @@ Historical download follow-up: version-1 Concordance and Quotation downloads
 resolve the original text binding from their saved manifest after source renames.
 The bundled-engine regression checks original text plus offsets across every
 page and confirms that the historical result stays at version 1.
+
+## v0.7.12–v0.7.13 batch 3: Topics fitting and presentation
+
+Automatic segmentation packs whole neighbouring paragraphs without cutting one to
+fill spare capacity. Fresh runs use the fixed internal HDBSCAN minimum of 10 and
+one parallel fit, with an optional hard segment cap. Requested Topic count is a
+target; retained hierarchy cuts respect the cap and report the achieved count.
+Count adjustments reuse the hierarchy, while maximum changes refit the retained
+reduced vectors once. Historical analyses keep their meaning and require Rerun
+when the required new adjustment inputs are unavailable.
+
+True dominant -1 outliers have a separate grey count/share footer and document
+inspection without map coordinates. Processed empty outcomes remain eligible but
+are not outliers. Version-2 document inspection now explicitly orders by current
+source position, including downloads; historical coverage ordering is preserved.
+Search and lasso share one eligibility projection, lists retain faded excluded
+selections, newest selections appear first, and representative-word highlights
+also reach the read-only hover clouds. Colour by remains visible with a reason
+when unavailable and follows native source-column renames for live results.
+
+Observed checks:
+
+- Backend: 240 library tests, 58 integration tests and two CLI tests pass, followed
+  by the additional true-outlier inspection regression. Strict all-target and
+  all-feature Clippy and formatting pass. Fifteen optional library tests and one
+  subprocess helper remain ignored in the default suite.
+- Native library: 117 tests pass, with four optional model/benchmark tests ignored
+  by default. Strict Clippy and no-default, tokenisation-only, data-only and
+  Topic-only checks pass; existing narrow-feature cache warnings remain.
+- Explicitly provisioned real-model acceptance executes both supported embedding
+  models twice with fresh downstream stage callbacks. MiniLM produces four Topics
+  over 104 segments; multilingual MiniLM produces four over 128. Each Run records
+  exactly one clustering stage. Exact embedding caches remain reusable.
+- Actual ONNX profiling observes CoreML and CPU execution providers at the explicit
+  thread cap of two. A CPU-only fallback executes the same input with cosine
+  agreement above 0.99. This verifies Apple Silicon; Windows DirectML remains an
+  outstanding platform gate.
+- Frontend: all 813 tests and 17 script tests pass. Production build, lint, tooling
+  types, Knip, formatting, API generation checks, bundled-doc drift and Markdown
+  links pass.
+- Chromium: both real-model Topic journeys pass with temporary sampled populations,
+  full Run, live metadata edits and column rename, atomic retained adjustments,
+  stale responses, missing-intermediate diagnostics, publication and figure exports.
+  Native hover acceptance reproduced a neighbouring tooltip grace-path obstruction;
+  only these pointer-free Topic cards disable hoverable-content grace. Searched
+  bubbles now open their cards and retain nonempty SVG contents across 30 frames.
+  Fresh light/dark and narrow screenshots under `.tmp/wdio/browser/` were inspected.
+
+The legacy nested-glyph word-cloud click report remains reproduction required;
+no unrelated glyph or Safari remount workaround was introduced. Browser acceptance
+uses the instrumented debug API host. Final WebKit, uninstrumented release,
+Windows and physical-control gates remain open. No push or publication occurred.

@@ -1,7 +1,9 @@
 import type { TopicModelingTopic } from './topicPresentation';
 import { Button } from '@/components/ui/button';
 import { Search, X } from 'lucide-react';
-import { matchTopicWords } from './topicSearch';
+import { topicEligibility, type TopicEligibility } from './topicSearch';
+import { TopicWords } from './TopicWords';
+import { useEffect, useRef } from 'react';
 import { topicRepresentativeText } from './topicPresentation';
 import { TopicSizeComposition, type TopicCorpusPresentation } from './TopicSizeComposition';
 
@@ -19,6 +21,7 @@ interface Props {
   corpusPresentation: TopicCorpusPresentation;
   hoveredTopicId: number | null;
   onHoveredTopicChange: (topicId: number | null) => void;
+  eligibility?: TopicEligibility;
 }
 
 /**
@@ -42,22 +45,21 @@ export function TopicSelectionPanel({
   corpusPresentation,
   hoveredTopicId,
   onHoveredTopicChange,
+  eligibility,
 }: Props) {
   const sortedTopics = topics.toSorted((a, b) => b.total_size - a.total_size);
   const hasLassoFilter = lassoTopicIds.size > 0;
 
-  const filteredTopics = sortedTopics.filter((topic) => {
-    if (hasLassoFilter && !lassoTopicIds.has(topic.id)) return false;
-    if (topicSearchQuery.trim()) {
-      return matchTopicWords(
-        topic.representative_words.map((word) => word.word),
-        topicSearchQuery,
-      );
-    }
-    return true;
-  });
-
-  const selectedTopics = sortedTopics.filter((t) => selectedTopicIds.has(t.id));
+  const projection = eligibility ?? topicEligibility(topics, topicSearchQuery, lassoTopicIds);
+  const filteredTopics = sortedTopics.filter((topic) => projection.eligible.has(topic.id));
+  const selectedTopics = [...selectedTopicIds]
+    .reverse()
+    .flatMap((id) => topics.find((topic) => topic.id === id) ?? []);
+  const selectedList = useRef<HTMLDivElement>(null);
+  const newest = selectedTopics[0]?.id;
+  useEffect(() => {
+    if (selectedList.current) selectedList.current.scrollTop = 0;
+  }, [newest]);
 
   return (
     <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-4">
@@ -85,13 +87,13 @@ export function TopicSelectionPanel({
               : 'Select topics to highlight them and prioritize them in downloads. Run on all data to publish annotated Tables.'}
           </p>
         ) : (
-          <div className="max-h-80 space-y-1 overflow-y-auto">
+          <div ref={selectedList} className="max-h-80 space-y-1 overflow-y-auto">
             {selectedTopics.map((topic) => {
               const isHovered = hoveredTopicId === topic.id;
               return (
                 <div
                   key={topic.id}
-                  className={`flex items-center justify-between rounded-lg border border-surface-border p-2 transition-colors ${isHovered ? 'bg-list-hover' : 'bg-panel/50'}`}
+                  className={`flex items-center justify-between rounded-lg border border-surface-border p-2 transition-colors ${isHovered ? 'bg-list-hover' : 'bg-panel/50'} ${projection.eligible.has(topic.id) ? '' : 'opacity-40'}`}
                   onMouseEnter={() => {
                     onHoveredTopicChange(topic.id);
                   }}
@@ -109,7 +111,10 @@ export function TopicSelectionPanel({
                       className="truncate text-label-secondary text-description"
                       title={topicRepresentativeText(topic)}
                     >
-                      {topicRepresentativeText(topic)}
+                      <TopicWords
+                        words={topic.representative_words}
+                        highlighted={projection.highlights.get(topic.id)}
+                      />
                     </div>
                   </div>
                   <button
@@ -195,7 +200,10 @@ export function TopicSelectionPanel({
                     className="mt-0.5 truncate text-label-secondary text-description"
                     title={topicRepresentativeText(topic)}
                   >
-                    {topicRepresentativeText(topic)}
+                    <TopicWords
+                      words={topic.representative_words}
+                      highlighted={projection.highlights.get(topic.id)}
+                    />
                   </div>
                 </button>
                 {onInspect && (

@@ -1,4 +1,4 @@
-//! Read-only inspection uses the same positive Top-N memberships as publication.
+//! Read-only inspection uses publication memberships or true dominant outliers.
 use super::*;
 use duckdb::arrow::{
     array::{Array, ArrayRef, Float64Array, StructArray, UInt64Array},
@@ -11,7 +11,7 @@ use duckdb::arrow::{
 #[serde(deny_unknown_fields)]
 pub(crate) struct TopicDocumentQuery {
     pub source: usize,
-    pub topic: usize,
+    pub topic: i32,
     pub topic_count: usize,
     pub top_n: usize,
     pub page: u64,
@@ -121,17 +121,14 @@ impl PreviewDocuments {
             .iter()
             .copied()
             .collect::<std::collections::BTreeMap<_, _>>();
-        let mut rows = ids
-            .iter()
+        ids.iter()
             .enumerate()
             .filter_map(|(index, id)| {
                 selected
                     .get(id)
                     .map(|coverage| (index as u64 + 1, *coverage))
             })
-            .collect::<Vec<_>>();
-        rows.sort_by(|a, b| b.1.total_cmp(&a.1).then(a.0.cmp(&b.0)));
-        rows
+            .collect::<Vec<_>>()
     }
 
     fn page(&self, selected: &[(u64, f64)], columns: &[String]) -> Result<tempfile::NamedTempFile> {
@@ -232,8 +229,11 @@ impl Database {
         } else {
             input.page_size as usize
         };
-        model.validate_count(input.topic_count)?;
-        if input.topic >= input.topic_count || !(1..=input.topic_count).contains(&input.top_n) {
+        let achieved = model.achieved_count(input.topic_count)?;
+        if input.topic < -1
+            || input.topic >= achieved as i32
+            || (input.topic >= 0 && !(1..=achieved).contains(&input.top_n))
+        {
             return Err(Error::invalid("Choose a valid topic and Top-N membership"));
         }
         let source = model
@@ -262,13 +262,19 @@ impl Database {
             .filter(|doc| {
                 doc.doc_index >= begin && doc.doc_index < begin + source.processed_count()
             })
-            .filter(|doc| memberships(doc, input.top_n).contains(&(input.topic as i32)))
+            .filter(|doc| {
+                if input.topic == -1 {
+                    is_outlier(doc)
+                } else {
+                    memberships(doc, input.top_n).contains(&input.topic)
+                }
+            })
             .map(|doc| {
                 (
                     (doc.doc_index - begin + 1) as u64,
                     doc.topic_coverage
                         .iter()
-                        .find(|(id, _)| *id == input.topic as i32)
+                        .find(|(id, _)| *id == input.topic)
                         .map_or(0.0, |(_, value)| f64::from(*value)),
                 )
             })
@@ -324,7 +330,7 @@ impl Database {
                 let file = arrow_page(
                     &self.conn,
                     &format!(
-                        "SELECT * FROM {captured} ORDER BY coverage DESC,document_id{}",
+                        "SELECT * FROM {captured} ORDER BY document_id{}",
                         if all {
                             String::new()
                         } else {
@@ -495,6 +501,7 @@ mod tests {
     fn live_inspection_expands_duplicates_before_paging_and_download_and_keeps_nested_types() {
         let (mut p, mut model, _) = fixture();
         let request = TopicRequest {
+            requested_topic_count: None,
             inputs: vec![model.sources[0].input.clone()],
             embedding_model: MODELS[0].id.into(),
             tokenizer: "native:plain_words_en".into(),
@@ -636,6 +643,35 @@ mod tests {
             .next()
             .map(|batch| batch.unwrap())
             .unwrap_or_else(|| RecordBatch::new_empty(reader.schema()))
+    }
+    #[test]
+    fn outlier_inspection_excludes_empty_outcomes_and_non_dominant_noise() {
+        let (p, mut model, _) = fixture();
+        for (document, dominant) in model.natural.documents.iter_mut().zip([0, -1, 1, -1]) {
+            document.dominant_topic = dominant;
+        }
+        let TopicQuery::Documents(mut query) = request(1, 1) else {
+            unreachable!()
+        };
+        query.topic = -1;
+        query.top_n = 0;
+        let TopicProjection::Documents(page) = p
+            .database
+            .project_topic_model(&model, None, TopicQuery::Documents(query))
+            .unwrap()
+        else {
+            panic!("Expected outlier documents")
+        };
+        assert_eq!(page.total_rows, 1);
+        assert_eq!(
+            read(&page)
+                .column(0)
+                .as_any()
+                .downcast_ref::<UInt64Array>()
+                .unwrap()
+                .value(0),
+            2
+        );
     }
     #[test]
     fn preview_inspection_keeps_ties_identity_metadata_and_snapshot_without_project_writes() {

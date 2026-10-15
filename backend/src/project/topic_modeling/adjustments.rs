@@ -34,6 +34,20 @@ impl TopicModel {
         assets: Option<&ldaca_rs::model_assets::ModelAssets>,
         cancellation: &CancellationToken,
     ) -> Result<Self> {
+        if self
+            .sources
+            .iter()
+            .any(|source| source.processed_column.is_none())
+        {
+            return Err(model_error(
+                "Rerun this historical analysis before changing retained Topic stages.",
+            ));
+        }
+        if request.settings.minimum_topic_size != 10 {
+            return Err(Error::invalid(
+                "Native Topic fitting uses a fixed minimum size of 10 segments.",
+            ));
+        }
         if self.revision != request.expected_projection {
             return Err(Error::new(
                 "topic_adjustment_stale",
@@ -374,7 +388,7 @@ mod tests {
                 TopicAdjustment {
                     expected_projection: replacement_revision,
                     settings: TopicAdjustmentSettings {
-                        minimum_topic_size: 2,
+                        minimum_topic_size: 10,
                         maximum_topic_size: None,
                         tokenizer: "native:plain_words_en".into(),
                     },

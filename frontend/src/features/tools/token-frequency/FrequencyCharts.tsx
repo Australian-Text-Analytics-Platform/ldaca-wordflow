@@ -9,7 +9,7 @@ import { juxtorpusColor } from './frequencySettings';
 registerEChartsModules([SVGRenderer]);
 
 interface FrequencyCloudProps {
-  words: { token: string; value: number; count: string; color?: string }[];
+  words: { token: string; value: number; count: string; color?: string; highlighted?: boolean }[];
   label: string;
   color?: string;
   onTokenContextMenu?: (token: string) => void;
@@ -34,6 +34,7 @@ export function FrequencyCorpusCloud({ rows, ...props }: ProjectionCloudProps) {
     token: String(row.token),
     value: Number(row.frequency),
     count: String(row.frequency),
+    highlighted: row.highlighted === true,
   }));
   return <FrequencyCloud {...props} words={words} />;
 }
@@ -107,7 +108,10 @@ function FrequencyCloud({
       data: words.map((word) => ({
         name: word.token,
         value: word.value,
-        textStyle: { color: word.color ?? color },
+        textStyle: {
+          color: word.color ?? color,
+          ...(word.highlighted ? { fontWeight: 'bold' } : {}),
+        },
       })),
     };
     // Clearing stops the extension's pending layout before a resize or new result.

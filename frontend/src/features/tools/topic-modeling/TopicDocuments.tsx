@@ -92,14 +92,20 @@ export function TopicDocuments({
     >
       <DialogContent className="flex max-h-[85vh] max-w-5xl flex-col">
         <DialogHeader>
-          <DialogTitle>Topic {topic} documents</DialogTitle>
+          <DialogTitle>
+            {topic === -1 ? 'Outlier documents' : `Topic ${topic} documents`}
+          </DialogTitle>
           <DialogDescription>
             {'analysis' in owner
               ? selected.processed_column
-                ? 'Current matching source rows'
+                ? 'Current source rows matching processed texts'
                 : 'Saved source snapshot'
               : 'Preview sample'}{' '}
-            · Top {topN} memberships, including ties. Ordered by topic coverage. Read only.
+            {topic === -1
+              ? '· Dominant outlier documents.'
+              : `· Top ${topN} memberships, including ties.`}{' '}
+            {selected.processed_column ? 'Current source order.' : 'Ordered by Topic coverage.'}{' '}
+            Read only.
           </DialogDescription>
           {corpusPresentation && (
             <TopicSizeComposition sizes={topicCounts} {...corpusPresentation} />

@@ -17,7 +17,7 @@ use super::reduce;
 use super::rollup;
 use super::{DocumentResult, TopicInfo, TopicModelingResult};
 
-const CONTEXT_VERSION: u8 = 3;
+const CONTEXT_VERSION: u8 = 4;
 const MIN_READABLE_CONTEXT_VERSION: u8 = 2;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,6 +53,8 @@ pub struct TopicProjectionContext {
     version: u8,
     document_count: usize,
     natural_cluster_count: usize,
+    #[serde(default)]
+    maximum_topic_size: Option<usize>,
     vocabulary: Vec<String>,
     leaves: Vec<Leaf>,
     merges: Vec<Merge>,
@@ -218,6 +220,7 @@ pub fn prepare_context(input: ProjectionInput<'_>) -> Result<TopicProjectionCont
         version: CONTEXT_VERSION,
         document_count,
         natural_cluster_count,
+        maximum_topic_size: None,
         vocabulary,
         leaves,
         merges,
@@ -361,14 +364,9 @@ fn leaf_projection_ids(context: &TopicProjectionContext, topic_count: usize) -> 
 
     let mut members = (0..natural).map(|leaf| vec![leaf]).collect::<Vec<_>>();
     let mut active = (0..natural).collect::<BTreeSet<_>>();
-    for (merge_index, merge) in context
-        .merges
-        .iter()
-        .take(natural.saturating_sub(topic_count))
-        .enumerate()
-    {
-        if !active.remove(&merge.left) || !active.remove(&merge.right) {
-            bail!("Topic projection merge references an inactive node");
+    for (merge_index, merge) in context.merges.iter().enumerate() {
+        if active.len() <= topic_count {
+            break;
         }
         let mut combined = members
             .get(merge.left)
@@ -384,11 +382,22 @@ fn leaf_projection_ids(context: &TopicProjectionContext, topic_count: usize) -> 
             bail!("Topic projection merge ordering is invalid");
         }
         members.push(combined);
+        if !active.contains(&merge.left) || !active.contains(&merge.right) {
+            continue;
+        }
+        let segments: usize = members[node_id]
+            .iter()
+            .map(|leaf| context.leaves[*leaf].segment_count)
+            .sum();
+        if context
+            .maximum_topic_size
+            .is_some_and(|maximum| segments > maximum)
+        {
+            continue;
+        }
+        active.remove(&merge.left);
+        active.remove(&merge.right);
         active.insert(node_id);
-    }
-
-    if active.len() != topic_count {
-        bail!("Topic projection cut did not produce the requested Topic count");
     }
     let mut ordered = active
         .into_iter()
@@ -411,6 +420,32 @@ fn leaf_projection_ids(context: &TopicProjectionContext, topic_count: usize) -> 
         }
     }
     Ok(projected)
+}
+
+/// Number achieved by the retained hierarchy without violating its segment cap.
+pub fn projected_topic_count(context: &TopicProjectionContext, requested: usize) -> Result<usize> {
+    validate_context(context)?;
+    Ok(leaf_projection_ids(context, requested)?
+        .into_iter()
+        .max()
+        .map_or(0, |id| id as usize + 1))
+}
+
+/// Apply a hard segment cap to later hierarchy cuts without changing fitted leaves.
+pub fn limit_topic_size(
+    context: &mut TopicProjectionContext,
+    maximum: Option<usize>,
+) -> Result<()> {
+    if maximum.is_some_and(|maximum| {
+        context
+            .leaves
+            .iter()
+            .any(|leaf| leaf.segment_count > maximum)
+    }) {
+        bail!("A fitted Topic exceeds the maximum segment size");
+    }
+    context.maximum_topic_size = maximum;
+    Ok(())
 }
 
 fn normalize_embedding(embedding: &[f64]) -> Result<Vec<f32>> {
@@ -459,6 +494,7 @@ pub fn project(
 ) -> Result<TopicModelingResult> {
     validate_context(context)?;
     let projection_ids = leaf_projection_ids(context, topic_count)?;
+    let topic_count = projection_ids.iter().max().map_or(0, |id| *id as usize + 1);
     let mut term_counts = vec![HashMap::<String, usize>::new(); topic_count];
     let embedding_width = context
         .leaves
@@ -605,6 +641,7 @@ pub fn project_words(
 ) -> Result<Vec<Vec<ctfidf::RepresentativeWord>>> {
     validate_context(context)?;
     let ids = leaf_projection_ids(context, topic_count)?;
+    let topic_count = ids.iter().max().map_or(0, |id| *id as usize + 1);
     let mut counts = vec![HashMap::new(); topic_count];
     for leaf in &context.leaves {
         for &(term, count) in &leaf.term_counts {
@@ -872,6 +909,59 @@ mod tests {
         let context = fixture();
         let projected = leaf_projection_ids(&context, 2).unwrap();
         assert_eq!(projected, vec![0, 0, 1]);
+    }
+
+    #[test]
+    fn cap_constrained_merges_report_an_unreachable_target_without_refitting() {
+        let mut context = fixture();
+        limit_topic_size(&mut context, Some(4)).unwrap();
+        let result = project(&context, 1).unwrap();
+        assert_eq!(result.topics.len(), 2);
+        assert_eq!(projected_topic_count(&context, 1).unwrap(), 2);
+        assert_eq!(
+            project_words(&context, 1, &HashSet::new()).unwrap().len(),
+            2
+        );
+        assert_eq!(
+            serde_json::to_value(&result.documents).unwrap(),
+            serde_json::to_value(project_documents(&context, 1).unwrap()).unwrap()
+        );
+        assert_eq!(projected_topic_count(&context, 3).unwrap(), 3);
+        assert!(limit_topic_size(&mut context, Some(1)).is_err());
+    }
+
+    #[test]
+    fn a_blocked_branch_does_not_prevent_other_valid_hierarchy_merges() {
+        let mut context = fixture();
+        context.natural_cluster_count = 4;
+        context.leaves.push(Leaf {
+            id: 3,
+            segment_count: 2,
+            embedding_sum: vec![0.0, 1.0],
+            term_counts: vec![],
+        });
+        context.leaves[0].segment_count = 3;
+        context.leaves[1].segment_count = 3;
+        context.merges = vec![
+            Merge {
+                left: 0,
+                right: 1,
+                minimum_leaf_id: 0,
+            },
+            Merge {
+                left: 2,
+                right: 3,
+                minimum_leaf_id: 2,
+            },
+            Merge {
+                left: 4,
+                right: 5,
+                minimum_leaf_id: 0,
+            },
+        ];
+        limit_topic_size(&mut context, Some(5)).unwrap();
+        assert_eq!(leaf_projection_ids(&context, 1).unwrap(), vec![0, 1, 2, 2]);
+        assert_eq!(projected_topic_count(&context, 1).unwrap(), 3);
     }
 
     #[test]

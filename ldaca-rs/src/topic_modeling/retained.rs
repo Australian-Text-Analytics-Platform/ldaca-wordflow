@@ -207,7 +207,7 @@ pub(super) fn finish(
             .iter()
             .map(|embedding| embedding.as_slice())
             .collect::<Vec<_>>();
-        let context = projection::prepare_context(projection::ProjectionInput {
+        let mut context = projection::prepare_context(projection::ProjectionInput {
             document_count: documents.len(),
             labels: &stages.labels,
             embedding_points: &points,
@@ -217,6 +217,7 @@ pub(super) fn finish(
             per_leaf_term_counts: &terms,
             seed: stages.seed,
         })?;
+        projection::limit_topic_size(&mut context, stages.maximum_topic_size)?;
         progress("Projecting topics", None)?;
         let mut result = projection::project(&context, count)?;
         result.projection_context = Some(projection::serialize_context(&context)?);

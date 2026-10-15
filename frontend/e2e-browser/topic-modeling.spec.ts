@@ -27,6 +27,47 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
     await browser.setWindowSize(windowSize.width, windowSize.height);
     await setAnalysisPaneSize('normal');
     const results = $('[aria-label="Topic Modelling results"]');
+    const search = results.$('[aria-label="Search representative words"]');
+    await search.setValue('*');
+    await results.$('[aria-label="Topic graph controls"]').scrollIntoView({block:'start'});
+    await results.$('[aria-label="Fit view"]').click();
+    const highlighted = await results.$$('[data-testid^="topic-flow-node-"]').getElements();
+    let inspected = 0;
+    for (const bubble of highlighted) {
+      const id = await bubble.getAttribute('data-topic-id');
+      const point = await bubble.execute((element) => {
+        const bounds = element.getBoundingClientRect();
+        const radius = Math.min(bounds.width, bounds.height) / 2;
+        for (const fraction of [0, 0.3, 0.6, 0.85]) {
+          for (let angle = 0; angle < 16; angle++) {
+            const x = bounds.x + bounds.width / 2 + radius * fraction * Math.cos(angle * Math.PI / 8);
+            const y = bounds.y + bounds.height / 2 + radius * fraction * Math.sin(angle * Math.PI / 8);
+            if (document.elementFromPoint(x, y)?.closest('[data-testid^="topic-flow-node-"]') === element) return {x:Math.round(x),y:Math.round(y)};
+          }
+        }
+        return null;
+      });
+      if (!point) continue;
+      await browser.performActions([{type:'pointer',id:'topic-hover',parameters:{pointerType:'mouse'},actions:[{type:'pointerMove',duration:150,x:point.x,y:point.y}]}]);
+      const tooltip = $(`[data-testid="topic-flow-tooltip-${id}"]`);
+      await tooltip.waitForDisplayed();
+      await browser.waitUntil(() => tooltip.execute((element) => Boolean(element.querySelector('svg text'))));
+      const stable = await browser.executeAsync<boolean, [string]>((testId, done) => {
+        const element = document.querySelector(`[data-testid="${testId}"]`);
+        let frames = 0;
+        const check = () => {
+          if (!element?.querySelector('svg text')) return done(false);
+          if (++frames === 30) return done(true);
+          requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+      }, `topic-flow-tooltip-${id}`);
+      expect(stable).toBe(true);
+      inspected++;
+    }
+    expect(inspected).toBeGreaterThan(0);
+    await browser.releaseActions();
+    await search.setValue('');
     await results.$('[aria-label="Fit view"]').click();
     const fittedTransform = await results.$('.react-flow__viewport').getAttribute('style');
     await results.$('[aria-label="Zoom out"]').click();
@@ -139,7 +180,7 @@ it('fits a temporary joint sample and publishes a full-data topic model from imp
   });
 });
 
-it('adjusts retained stages atomically and colours captured metadata with own-population shares', async function () {
+it('adjusts retained stages atomically and colours current metadata with own-population shares', async function () {
   this.timeout(300000);
   const fixture = await readFile(resolve(import.meta.dirname, '../e2e/fixtures/data/topic-consultation-reference.json'), 'utf8');
   await projectApi.runSqlScript(baseUrl, `CREATE TABLE data.retained_topics AS SELECT key::BIGINT AS id, value->>'text' AS document, CASE WHEN key::BIGINT%7=0 THEN NULL WHEN key::BIGINT%2=0 THEN '研究' ELSE 'Other' END AS category FROM json_each('${fixture.replaceAll("'", "''")}') ORDER BY id; INSERT INTO wordflow.nodes(table_name,document_column) VALUES ('retained_topics','document')`, 'execute');
@@ -151,38 +192,44 @@ it('adjusts retained stages atomically and colours captured metadata with own-po
   const initial = await topicApi.queryTopicModel(baseUrl, { analysis: id }, { projection: 'map', topic_count: saved.result.payload.natural_topic_count, colour_by: 'category' });
   if (initial.projection !== 'map') throw new Error('Expected a Topic map');
   const category = initial.colour_fields.find((field) => field.column === 'category');
-  expect(category?.groups.reduce((sum, group) => sum + group.count, 0)).toBe(96);
+  expect(category?.groups.reduce((sum, group) => sum + group.count, 0)).toBe(95);
   expect(category?.groups.some((group) => group.missing)).toBe(true);
-  await projectApi.runSqlScript(baseUrl, `UPDATE data.retained_topics SET document='Changed after Run', category='Changed after Run'`, 'execute');
+  await projectApi.runSqlScript(baseUrl, `UPDATE data.retained_topics SET category='Changed after Run' WHERE category='Other'`, 'execute');
   const unchanged = await topicApi.queryTopicModel(baseUrl, { analysis: id }, { projection: 'map', topic_count: saved.result.payload.natural_topic_count, colour_by: 'category' });
-  expect(unchanged).toEqual(initial);
+  if (unchanged.projection !== 'map') throw new Error('Expected a live Topic map');
+  expect(unchanged.topics).toEqual(initial.topics);
+  expect(unchanged.document_counts).toEqual([95]);
+  expect(unchanged.colour_fields[0]?.groups.some((group) => group.label === 'Changed after Run')).toBe(true);
   await browser.url('/');
   await role('button', { name: 'Topic Modelling', exact: true }).click();
   const results = $('[aria-label="Topic Modelling results"]');
   await results.waitForDisplayed({ timeout: 30000 });
-  await expect(results.$('[title*="dominant documents out of 96"]')).toBeDisplayed();
+  await expect(results.$('[title*="dominant documents out of 95"]')).toBeDisplayed();
   await results.$('[aria-label="Colour by"]').click();
   await role('option', { name: 'category', exact: true }).click();
   await expect(results.$('[aria-label="Metadata colour legend"]')).toHaveText(expect.stringContaining('研究'));
-  await expect(results.$('[aria-label="Metadata colour legend"]')).not.toHaveText(expect.stringContaining('Changed after Run'));
-  const minimum = results.$('[aria-label="Adjusted minimum topic size"]');
-  await minimum.setValue('4');
+  await expect(results.$('[aria-label="Metadata colour legend"]')).toHaveText(expect.stringContaining('Changed after Run'));
+  await projectApi.changeColumn(baseUrl, 'retained_topics', { operation: 'rename', column: 'category', name: 'ordered_category' });
+  await expect(results.$('[aria-label="Colour by"]')).toHaveText('ordered_category');
+  await results.$('label=Limit maximum topic size').click();
+  const maximum = results.$('[aria-label="Maximum topic size"]');
+  await maximum.setValue('40');
   await browser.keys('Enter');
-  await browser.waitUntil(async () => (await topicApi.getTopicResult(baseUrl, id))?.result.payload.parameters?.minimum_topic_size === 4, { timeout: 60000 });
+  await browser.waitUntil(async () => (await topicApi.getTopicResult(baseUrl, id))?.result.payload.parameters?.maximum_topic_size === 40, { timeout: 60000 });
   await results.$('[data-testid^="topic-flow-node-"]').waitForDisplayed();
   const adjusted = await topicApi.getTopicResult(baseUrl, id);
   if (!adjusted) throw new Error('Missing adjusted result');
   expect(adjusted.result.payload.natural_projection).not.toBe(saved.result.payload.natural_projection);
   expect(adjusted.request).toEqual(saved.request);
   expect((await getTasks(baseUrl)).tasks.filter((task) => task.tab_id === tab.id)).toHaveLength(1);
-  const stale = await post(`/api/project/analyses/${id}/topic-modeling/adjust`, { expected_projection: saved.result.payload.natural_projection, settings: { minimum_topic_size: 5, maximum_topic_size: null, tokenizer: request.tokenizer } });
+  const stale = await post(`/api/project/analyses/${id}/topic-modeling/adjust`, { expected_projection: saved.result.payload.natural_projection, settings: { minimum_topic_size: 10, maximum_topic_size: 50, tokenizer: request.tokenizer } });
   expect(stale.status).toBe(409);
   expectAppError(/Required Topic intermediates|Rerun/);
   await projectApi.runSqlScript(baseUrl, `UPDATE wordflow.analyses SET result=json_merge_patch(result::JSON, '{"retained_stages":null}') WHERE id='${id}'`, 'execute');
-  await minimum.setValue('5');
+  await maximum.setValue('50');
   await browser.keys('Enter');
   await expect(results.$('[role="alert"]')).toHaveText(expect.stringContaining('Rerun'));
-  await expect(minimum).toHaveValue('5');
+  await expect(maximum).toHaveValue('50');
   await expect(results.$('[data-testid^="topic-flow-node-"]')).toBeDisplayed();
   expect((await topicApi.getTopicResult(baseUrl, id))?.result.payload.natural_projection).toBe(adjusted.result.payload.natural_projection);
   await $('[data-testid="topic-modeling-workspace"]').$('button=Clear results').click();

@@ -54,8 +54,8 @@ export async function topicModelingScenario(
       let results = panel.$('[aria-label="Topic Modelling results"]');
       await results.waitForDisplayed({ timeout: 180000 });
       await expect(results.$('h2')).toHaveText('Preview');
-      await expect(results).toHaveText(expect.stringContaining(`60 of 96 ${first}`));
-      await expect(results).toHaveText(expect.stringContaining(`40 of 64 ${second}`));
+      await expect(results).toHaveText(expect.stringContaining(`59 of 96 ${first}`));
+      await expect(results).toHaveText(expect.stringContaining(`39 of 64 ${second}`));
       expect((await analysesApi.listTabs(base, undefined, 'topic-modeling'))[0]?.analysis).toBeNull();
       await expect(results.$('button=Add to Project')).not.toExist();
       await results.$('button[aria-label^="View documents for topic"]').click();
@@ -74,12 +74,12 @@ export async function topicModelingScenario(
       await results.waitForDisplayed({ timeout: 60000 });
       const saved = await topicApi.getTopicResult(base, id);
       if (!saved) throw new Error('Completed Topic Modelling analysis has no saved output');
-      expect(saved.result.payload.sources.map((s) => s.document_count)).toEqual([96, 64]);
+      expect(saved.result.payload.sources.map((s) => s.document_count)).toEqual([95, 63]);
       expect(saved.request).not.toHaveProperty('sampling');
       await expect(results.$('h2')).toHaveText('Results');
       await results.$('button[aria-label^="View documents for topic"]').click();
       await expect($('[role="dialog"]')).toHaveText(
-        expect.stringContaining('Saved source snapshot'),
+        expect.stringContaining('Current source rows matching processed texts'),
       );
       await expect($('[role="dialog"] table')).toBeDisplayed();
       await $('[role="dialog"]').$('button=Close').click();
@@ -161,7 +161,7 @@ export async function topicModelingScenario(
       const counts = await projectApi.querySql(base, [
         { sql: `SELECT count(*) AS n FROM data.${ objectsApi.identifier(publishedName(first))}` },
       ]);
-      expect(Number(counts.getChild('n')?.get(0))).toBe(96);
+      expect(Number(counts.getChild('n')?.get(0))).toBe(95);
       const shape = await projectApi.querySql(base, [
         { sql: `DESCRIBE data.${ objectsApi.identifier(publishedName(first))}` },
       ]);
@@ -185,7 +185,7 @@ export async function topicModelingScenario(
             rows
               .toArray()
               .map((r: Record<string, unknown>) => JSON.parse(String(r.document)) as unknown),
-          ).toEqual(original.map((item) => {
+          ).toEqual(original.filter((item) => (item as Record<string,unknown>).text != null).map((item) => {
             const { TOPIC_top1: _topic, ...row } = item as Record<string, unknown>;
             return row;
           }));
@@ -212,7 +212,7 @@ export async function topicModelingScenario(
       const retained = await projectApi.querySql(base, [
         { sql: `SELECT count(*) AS n FROM data.${ objectsApi.identifier(publishedName(first))}` },
       ]);
-      expect(Number(retained.getChild('n')?.get(0))).toBe(96);
+      expect(Number(retained.getChild('n')?.get(0))).toBe(95);
       await verifyPublished();
     });
   });

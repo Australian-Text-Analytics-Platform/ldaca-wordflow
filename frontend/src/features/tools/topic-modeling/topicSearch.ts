@@ -1,3 +1,5 @@
+import type { TopicModelingTopic } from './topicPresentation';
+
 /**
  * Escapes literal text before it is embedded in a checklist-search RegExp.
  * Called by: globToRegExp for every non-wildcard query character.
@@ -129,3 +131,41 @@ const matchChecklistOption = (optionLabel: string, query: string): boolean => {
 export const matchTopicWords = (words: string[], query: string) =>
   matchChecklistOption(words.join(', '), query) ||
   words.some((word) => matchChecklistOption(word, query));
+
+export interface TopicEligibility {
+  eligible: Set<number>;
+  highlights: Map<number, Set<string>>;
+}
+
+/** One search/lasso projection supplies graph, lists and word highlights. */
+export function topicEligibility(
+  topics: TopicModelingTopic[],
+  query: string,
+  lasso: Set<number>,
+): TopicEligibility {
+  const eligible = new Set<number>();
+  const highlights = new Map<number, Set<string>>();
+  for (const topic of topics) {
+    const words = topic.representative_words.map((word) => word.word);
+    const matches = matchTopicWords(words, query);
+    if (matches && (!lasso.size || lasso.has(topic.id))) eligible.add(topic.id);
+    const highlighted = new Set<string>();
+    if (query.trim() && matches) {
+      for (const word of words) if (matchChecklistOption(word, query)) highlighted.add(word);
+      if (!highlighted.size) {
+        const joined = words.join(', ').toLowerCase();
+        const literal = decodeEscapedWildcards(query.trim()).toLowerCase();
+        const start = hasUnescapedWildcard(query) ? 0 : joined.indexOf(literal);
+        const end = hasUnescapedWildcard(query) ? joined.length : start + literal.length;
+        let offset = 0;
+        for (const word of words) {
+          const length = word.toLowerCase().length;
+          if (offset < end && offset + length > start) highlighted.add(word);
+          offset += length + 2;
+        }
+      }
+    }
+    highlights.set(topic.id, highlighted);
+  }
+  return { eligible, highlights };
+}

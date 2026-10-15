@@ -45,6 +45,8 @@ pub(crate) struct TopicRequest {
     pub minimum_topic_size: usize,
     #[serde(default)]
     pub maximum_topic_size: Option<usize>,
+    #[serde(default)]
+    pub requested_topic_count: Option<usize>,
     pub seed: u64,
 }
 impl TopicRequest {
@@ -62,9 +64,14 @@ impl TopicRequest {
                 model.token_limit
             )));
         }
-        if self.minimum_topic_size < 2 || self.tokenizer.trim().is_empty() {
+        if self.minimum_topic_size != 10 || self.tokenizer.trim().is_empty() {
             return Err(Error::invalid(
-                "Choose a tokenizer and a minimum topic size of at least 2",
+                "Choose a tokenizer. Native Topic fitting uses a fixed minimum size of 10 segments.",
+            ));
+        }
+        if self.requested_topic_count == Some(0) {
+            return Err(Error::invalid(
+                "Requested number of Topics must be positive, or use the natural count",
             ));
         }
         if self
@@ -240,6 +247,7 @@ pub(crate) enum TopicProjection {
         colour_counts: Option<Vec<Vec<usize>>>,
         document_counts: Vec<usize>,
         outlier_counts: Vec<usize>,
+        outlier_colour_counts: Option<Vec<usize>>,
         source_columns: Vec<Vec<(String, String)>>,
         source_inputs: Vec<DocumentInput>,
     },
@@ -307,10 +315,33 @@ impl TopicModel {
     }
     fn validate_count(&self, count: usize) -> Result<()> {
         let natural = self.natural.topics.len();
-        if (natural == 0 && count != 0) || (natural > 0 && !(1..=natural).contains(&count)) {
+        let live = self
+            .sources
+            .iter()
+            .all(|source| source.processed_column.is_some());
+        if (natural == 0 && count != 0 && !live)
+            || (natural > 0 && (count == 0 || (!live && count > natural)))
+        {
             return Err(Error::invalid("Topic count is outside this model's range"));
         }
         Ok(())
+    }
+    fn cut_count(&self, count: usize) -> Result<usize> {
+        self.validate_count(count)?;
+        Ok(count.min(self.natural.topics.len()))
+    }
+    fn achieved_count(&self, count: usize) -> Result<usize> {
+        let cut = self.cut_count(count)?;
+        if cut == self.natural.topics.len() {
+            return Ok(cut);
+        }
+        projection::projected_topic_count(
+            self.context
+                .as_ref()
+                .ok_or_else(|| model_error("Missing projection context"))?,
+            cut,
+        )
+        .map_err(model_error)
     }
     pub(super) fn query(
         &self,
@@ -325,7 +356,7 @@ impl TopicModel {
                 topic_count,
                 colour_by,
             } => {
-                self.validate_count(topic_count)?;
+                let topic_count = self.cut_count(topic_count)?;
                 let sizes = self
                     .sources
                     .iter()
@@ -356,24 +387,19 @@ impl TopicModel {
                     self.population.is_none()
                         || self.metadata.iter().any(|field| field.column == *column)
                 });
-                let (dominant_counts, colour_counts) = metadata::counts(
+                let (dominant_counts, colour_counts, outlier_colour_counts) = metadata::counts(
                     documents,
                     &sizes,
                     &self.metadata,
                     selected_colour,
-                    topic_count,
+                    projected.topics.len(),
                     self.population.as_deref(),
                 )?;
                 let mut outlier_counts = vec![0; sizes.len()];
                 let mut begin = 0;
                 for (source, size) in sizes.iter().enumerate() {
                     for document in &documents[begin..begin + size] {
-                        if document.dominant_topic == -1
-                            && document
-                                .topic_coverage
-                                .iter()
-                                .any(|(topic, coverage)| *topic == -1 && *coverage > 0.0)
-                        {
+                        if is_outlier(document) {
                             outlier_counts[source] += self
                                 .population
                                 .as_ref()
@@ -390,6 +416,7 @@ impl TopicModel {
                     colour_fields: self.metadata.iter().map(ColourField::summary).collect(),
                     document_counts: self.population_sizes(),
                     outlier_counts,
+                    outlier_colour_counts,
                     source_columns: self
                         .sources
                         .iter()
@@ -417,7 +444,7 @@ impl TopicModel {
         count: usize,
         excluded: &HashSet<String>,
     ) -> Result<Vec<Vec<engine::RepresentativeWord>>> {
-        self.validate_count(count)?;
+        let count = self.cut_count(count)?;
         match &self.context {
             Some(context) => {
                 projection::project_words(context, count, excluded).map_err(model_error)
@@ -427,7 +454,7 @@ impl TopicModel {
         }
     }
     fn documents(&self, count: usize) -> Result<Vec<DocumentResult>> {
-        self.validate_count(count)?;
+        let count = self.cut_count(count)?;
         if count == self.natural.topics.len() {
             return Ok(self.natural.documents.clone());
         }
@@ -998,19 +1025,17 @@ impl Database {
             ));
         }
         let documents = model.documents(request.topic_count)?;
-        if (request.topic_count == 0 && request.top_n != 0)
-            || (request.topic_count > 0 && !(1..=request.topic_count).contains(&request.top_n))
+        let topic_count = model.achieved_count(request.topic_count)?;
+        if (topic_count == 0 && request.top_n != 0)
+            || (topic_count > 0 && !(1..=topic_count).contains(&request.top_n))
         {
             return Err(Error::invalid(
                 "Top topics per document is outside this model's range",
             ));
         }
-        if request.words.len() != request.topic_count
+        if request.words.len() != topic_count
             || request.words.iter().any(|w| w.len() > 100)
-            || request
-                .selected_topics
-                .iter()
-                .any(|id| *id >= request.topic_count)
+            || request.selected_topics.iter().any(|id| *id >= topic_count)
         {
             return Err(Error::invalid(
                 "Topic selection or representative words do not match the projection",
@@ -1021,7 +1046,7 @@ impl Database {
         }
         let assignments = temporary_name();
         tx.execute_batch(&format!("CREATE TEMP TABLE {assignments}(source_index UBIGINT,document_id UBIGINT,dominant BIGINT,coverage VARCHAR,selected BOOLEAN)"))?;
-        let mut counts = vec![vec![0u64; model.sources.len()]; request.topic_count];
+        let mut counts = vec![vec![0u64; model.sources.len()]; topic_count];
         let mut offset = 0;
         {
             let mut appender = tx.appender(&assignments)?;
@@ -1043,7 +1068,7 @@ impl Database {
                         || members
                             .iter()
                             .any(|topic| request.selected_topics.contains(&(*topic as usize)));
-                    let coverage = (-1..request.topic_count as i32)
+                    let coverage = (-1..topic_count as i32)
                         .map(|topic| {
                             let value = doc
                                 .topic_coverage
@@ -1150,7 +1175,7 @@ impl Database {
             };
             if selected.coverage {
                 let name = generated_name(&mut names, "TOPIC_coverage");
-                fields.push(format!("CAST(from_json({output_alias}.coverage,'[{{\"topic_id\":\"BIGINT\",\"coverage\":\"DOUBLE\"}}]') AS STRUCT(topic_id BIGINT,coverage DOUBLE)[{}]) AS {}",request.topic_count+1,query::quote(&name)));
+                fields.push(format!("CAST(from_json({output_alias}.coverage,'[{{\"topic_id\":\"BIGINT\",\"coverage\":\"DOUBLE\"}}]') AS STRUCT(topic_id BIGINT,coverage DOUBLE)[{}]) AS {}",topic_count+1,query::quote(&name)));
                 annotations.0.push(arrow_metadata::Annotation {
                     path: vec![name],
                     extension: "org.ldaca.wordflow.topic_coverage.v1".into(),
@@ -1245,6 +1270,14 @@ fn output_target(name: &str) -> Result<Relation> {
         name: name.trim().into(),
     })
 }
+fn is_outlier(document: &DocumentResult) -> bool {
+    document.dominant_topic == -1
+        && document
+            .topic_coverage
+            .iter()
+            .any(|(topic, coverage)| *topic == -1 && *coverage > 0.0)
+}
+
 fn memberships(document: &DocumentResult, top_n: usize) -> Vec<i32> {
     let mut positive = document
         .topic_coverage
@@ -1269,17 +1302,28 @@ mod tests {
     #[test]
     #[ignore = "explicit model provisioning and acceptance; may download ONNX assets"]
     fn topic_model_acceptance() {
+        let root = PathBuf::from(
+            std::env::var_os("WORDFLOW_TEST_EMBEDDING_ASSETS")
+                .expect("Set an isolated model asset directory"),
+        );
+        let assets = ldaca_rs::model_assets::ModelAssets {
+            huggingface: root.join("huggingface"),
+            lindera: root.join("lindera"),
+            temporary: root.join("tmp"),
+        };
+        std::fs::create_dir_all(&assets.temporary).unwrap();
         let texts: Vec<Value> = serde_json::from_str(include_str!(
             "../../../frontend/e2e/fixtures/data/topic-consultation-reference.json"
         ))
         .unwrap();
         let texts = texts
             .iter()
-            .map(|row| row["text"].as_str().unwrap_or_default().to_owned())
+            .filter_map(|row| row["text"].as_str().map(str::to_owned))
             .collect::<Vec<_>>();
         for supported in MODELS {
             let start = std::time::Instant::now();
-            let model = ldaca_rs::embedding::Embedder::load(Some(supported.id)).unwrap();
+            let model =
+                ldaca_rs::embedding::Embedder::load_in(Some(supported.id), &assets).unwrap();
             assert_eq!(model.max_length(), supported.token_limit);
             let probes = [
                 "Families need affordable housing and lower rents.",
@@ -1311,7 +1355,7 @@ mod tests {
             let mut request = request();
             request.embedding_model = supported.id.into();
             request.max_segment_tokens = supported.token_limit;
-            request.prepare(None).unwrap();
+            request.prepare(Some(&assets)).unwrap();
             let sources = vec![TopicSource {
                 input: request.inputs[0].clone(),
                 columns: vec![],
@@ -1322,19 +1366,58 @@ mod tests {
                 processed_column: None,
                 projection: None,
             }];
+            let mut stages = Vec::new();
             let fitted = fit(
                 &request,
-                sources,
+                sources.clone(),
                 &texts,
-                None,
-                None,
+                Some(root.join("embeddings.duckdb")),
+                Some(&assets),
                 &CancellationToken::new(),
-                &mut |_, _| {},
+                &mut |stage, _| stages.push(stage.to_owned()),
             )
             .unwrap();
             assert!(!fitted.natural.topics.is_empty());
             assert_eq!(fitted.natural.documents.len(), texts.len());
-            assert!(fitted.natural.n_segments > texts.len());
+            assert!(
+                fitted.natural.n_segments
+                    >= texts.iter().filter(|text| !text.trim().is_empty()).count()
+            );
+            let mut repeated = Vec::new();
+            let second = fit(
+                &request,
+                sources,
+                &texts,
+                Some(root.join("embeddings.duckdb")),
+                Some(&assets),
+                &CancellationToken::new(),
+                &mut |stage, _| repeated.push(stage.to_owned()),
+            )
+            .unwrap();
+            assert_eq!(second.natural.documents.len(), texts.len());
+            for observed in [&stages, &repeated] {
+                for stage in [
+                    "Segmenting documents",
+                    "Embedding segments",
+                    "Reducing embeddings",
+                    "Clustering segments",
+                    "Counting representative words",
+                    "Preparing topic hierarchy",
+                    "Projecting topics",
+                ] {
+                    assert!(
+                        observed.iter().any(|value| value == stage),
+                        "missing fresh Run stage {stage}: {observed:?}"
+                    );
+                }
+                assert_eq!(
+                    observed
+                        .iter()
+                        .filter(|value| *value == "Clustering segments")
+                        .count(),
+                    1
+                );
+            }
             eprintln!(
                 "MODEL ACCEPTED {} provider={} topics={} segments={} elapsed={:?} English similarity={} cross-language similarity={}",
                 supported.id,
@@ -1503,9 +1586,88 @@ mod tests {
             segmentation: SegmentationMethod::Automatic,
             max_segment_tokens: 256,
             minimum_topic_size: 10,
+            requested_topic_count: None,
             maximum_topic_size: None,
             seed: 7,
         }
+    }
+
+    #[test]
+    fn native_count_targets_use_achieved_capped_hierarchy_counts() {
+        use std::collections::HashMap;
+        let labels = (0..3)
+            .flat_map(|id| std::iter::repeat_n(id, 10))
+            .collect::<Vec<_>>();
+        let embeddings = labels
+            .iter()
+            .map(|id| match id {
+                0 => vec![1.0, 0.0],
+                1 => vec![0.9, 0.1],
+                _ => vec![-1.0, 0.0],
+            })
+            .collect::<Vec<Vec<f32>>>();
+        let indices = labels.iter().map(|id| *id as usize).collect::<Vec<_>>();
+        let spans = (0..30).map(|i| (i % 10, i % 10 + 1)).collect::<Vec<_>>();
+        let terms = (0..3)
+            .map(|id| HashMap::from([(format!("word{id}"), 10)]))
+            .collect::<Vec<_>>();
+        let mut context = projection::prepare_context(projection::ProjectionInput {
+            document_count: 3,
+            labels: &labels,
+            embedding_points: &embeddings.iter().map(Vec::as_slice).collect::<Vec<_>>(),
+            document_indices: &indices,
+            owned_character_weights: &[1; 30],
+            character_spans: &spans,
+            per_leaf_term_counts: &terms,
+            seed: 7,
+        })
+        .unwrap();
+        projection::limit_topic_size(&mut context, Some(20)).unwrap();
+        let natural = projection::project(&context, 3).unwrap();
+        let model = TopicModel {
+            preview_documents: vec![],
+            revision: Uuid::new_v4(),
+            metadata: vec![],
+            population: Some(vec![2, 1, 1]),
+            parameters: None,
+            sources: vec![TopicSource {
+                input: request().inputs.remove(0),
+                columns: vec![],
+                document_count: 4,
+                processed_text_count: Some(3),
+                total_count: 4,
+                documents: None,
+                processed_column: Some("text".into()),
+                projection: None,
+            }],
+            natural,
+            context: Some(context),
+            resolved_model: "fixture".into(),
+        };
+        assert_eq!(model.achieved_count(1).unwrap(), 2);
+        assert_eq!(model.achieved_count(99).unwrap(), 3);
+        assert_eq!(model.words(1, &HashSet::new()).unwrap().len(), 2);
+        let value = serde_json::to_value(
+            model
+                .query(
+                    TopicQuery::Map {
+                        topic_count: 1,
+                        colour_by: None,
+                    },
+                    HashSet::new(),
+                )
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(value["topics"].as_array().unwrap().len(), 2);
+        assert_eq!(value["dominant_counts"], serde_json::json!([[3], [1]]));
+        assert_eq!(value["document_counts"], serde_json::json!([4]));
+        let mut request = request();
+        request.maximum_topic_size = Some(10);
+        assert!(request.validate().is_err());
+        request.maximum_topic_size = Some(20);
+        request.requested_topic_count = Some(0);
+        assert!(request.validate().is_err());
     }
     fn source() -> Project {
         let p = Project::untitled().unwrap();
